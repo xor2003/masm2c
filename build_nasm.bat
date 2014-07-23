@@ -4,3 +4,4 @@ rem wlink  name iplay_nasm.exe system dos file iplay_nasm.obj option verbose
 alink -m -oEXE iplay_nasm.obj
 D:\upx.exe  --ultra-brute iplay_nasm.exe
 type IPLAY.PCT >> iplay_nasm.exe
+ren iplay_nasm.exe iplay_n.exe
