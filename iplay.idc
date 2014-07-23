@@ -1,6 +1,5 @@
 //
 //
-//
 //      This file should be used in the following way:
 //         - reload executable into IDA with using switch -c
 //         - use File, Load IDC file and load this file.
@@ -3211,6 +3210,7 @@ static Bytes_0(void) {
 	MakeComm	(0X14BA0,	"DMA controller, 8237A-5.\nclear byte pointer flip-flop.");
 	MakeComm	(0X14BA7,	"DMA controller, 8237A-5.\nclear byte pointer flip-flop.");
 	MakeCode	(0X14BB5);
+	MakeName	(0X14BB8,	"sb_callback");
 	MakeWord	(0X14BBB);
 	MakeCode	(0X14BBD);
 	MakeCode	(x=0X14BBF);
@@ -4856,10 +4856,6 @@ static Bytes_0(void) {
 	MakeComm	(0X1876E,	"DMA 8237A-5. mode register bits:\n0-1: channel (00=0; 01=1; 10=2; 11=3)\n2-3: transfer type (00=verify=Nop; 01=write; 10=read)\n4: 1=enable auto-initialization\n5: 1=address increment; 0=address decrement\n6-7: 00=demand mode; 01=single; 10=block; 11=cascade");
 	MakeCode	(x=0X1876E);
 	OpHex		(x,	0);
-	MakeCode	(x=0X18774);
-	OpHex		(x,	1);
-	MakeCode	(x=0X18779);
-	OpHex		(x,	1);
 }
 
 //------------------------------------------------------------------------
@@ -4869,6 +4865,10 @@ static Bytes_1(void) {
         auto x;
 #define id x
 
+	MakeCode	(x=0X18774);
+	OpHex		(x,	1);
+	MakeCode	(x=0X18779);
+	OpHex		(x,	1);
 	MakeCode	(x=0X1877B);
 	OpHex		(x,	1);
 	MakeComm	(0X1878D,	"DMA controller, 8237A-5.\nchannel 1 base address\n(also sets current address)");
@@ -9026,8 +9026,6 @@ static Bytes_1(void) {
 	MakeStr		(0X1CF31,	0X1CF4C);
 	MakeName	(0X1CF31,	"aToggle24bitInterpol");
 	MakeWord	(0X1CF4D);
-	MakeByte	(0X1CF50);
-	MakeName	(0X1CF50,	"aGray");
 }
 
 //------------------------------------------------------------------------
@@ -9037,6 +9035,8 @@ static Bytes_2(void) {
         auto x;
 #define id x
 
+	MakeByte	(0X1CF50);
+	MakeName	(0X1CF50,	"aGray");
 	MakeStr		(0X1CF51,	0X1CF59);
 	MakeName	(0X1CF51,	"aGray_0");
 	MakeByte	(0X1CF5A);

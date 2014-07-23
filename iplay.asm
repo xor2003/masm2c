@@ -10329,7 +10329,7 @@ proc		sb16_on	near		; DATA XREF: seg003:0D1Eo
 		call	sub_13017
 		mov	[dma_mode], 58h	; 'X'
 		mov	[word_2460E], 1000h
-		mov	si, offset loc_14BB8 ; myfunc
+		mov	si, offset sb_callback ; myfunc
 		mov	al, [sb_irq_number]
 		call	setsnd_handler
 		mov	dx, [sb_base_port]
@@ -10431,8 +10431,8 @@ endp		sb16_on
 		xchg	bx, bx
 		nop
 
-; void __cdecl loc_14BB8()
-loc_14BB8:				; DATA XREF: sb16_on+Eo
+; void __cdecl sb_callback()
+sb_callback:				; DATA XREF: sb16_on+Eo
 		push	ax
 		push	dx
 ; ---------------------------------------------------------------------------

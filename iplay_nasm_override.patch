@@ -1,0 +1,60 @@
+--- iplay_n_or.asm	2013-12-04 13:47:13.935073100 +0400
++++ iplay_n.asm	2013-12-04 13:47:14.138073100 +0400
+@@ -2649,7 +2649,7 @@
+ 		mov	di, bx
+ 		mov	cx, 200h
+ 		cld
+-		rep movsd
++		fs rep movsd
+ 		pop	di
+ 		pop	ax
+ 		mov	ecx, [di+24h]
+@@ -2702,7 +2702,7 @@
+ 		cld
+ 
+ loc_1248B:				; CODE XREF: ems_mapmemx+1ACj
+-		movsb
++		fs movsb
+ 		cmp	si, dx
+ 		jb	short loc_12493
+ 		mov	si, bp
+@@ -2717,7 +2717,7 @@
+ 		mov	di, bx
+ 		mov	cx, 200h
+ 		cld
+-		rep movsd
++		fs rep movsd
+ 		retn
+ 
+ 
+@@ -2827,7 +2827,7 @@
+ 		mov	di, bx
+ 		mov	cx, 200h
+ 		cld
+-		rep movsd
++		fs rep movsd
+ 		retn
+ 
+ 
+@@ -15052,9 +15052,9 @@
+ 		mov	di, buffer_1DB6C
+ 		mov	dx, di
+ 		cld
+-		movsd
+-		movsd
+-		movsd
++		fs movsd
++		fs movsd
++		fs movsd
+ 		mov	byte [di], 0
+ 		cmp	byte [fs:2], 0
+ 		jz	short loc_194EB
+@@ -17813,7 +17813,7 @@
+ 		mov	si, bx
+ 		mov	cx, 8
+ 		cld
+-		rep movsd
++		fs rep movsd
+ 		test	byte [fs:bx+3Ch], 1
+ 		jnz	short loc_1AC35
+ 		mov	si, unk_1D6C3
