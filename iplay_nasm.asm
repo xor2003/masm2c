@@ -17061,7 +17061,12 @@ loc_193FC:				; CODE XREF: start+365j
 loc_193FF:				; CODE XREF: start+34Ej
 		mov	ax, [cs:key_code] ; keyboard message loop here
 		or	ax, ax
+		jnz	short loc_193C77
+		hlt
+		mov	ax, [cs:key_code] ; keyboard message loop here
+		or	ax, ax
 		jz	short loc_193C7
+loc_193C77:
 		push	ax
 		call	mouse_hide
 		pop	ax
@@ -18388,7 +18393,12 @@ keyb_19EFD:		; CODE XREF: start+6EBp keyb_19EFD+5Aj ...
 		xor	ax, ax
 		xchg	ax, [cs:key_code]
 		or	ax, ax
+		jnz	short keyb_19EFDD
+		hlt
+		xchg	ax, [cs:key_code]
+		or	ax, ax
 		jz	short keyb_19EFD
+keyb_19EFDD:
 		mov	[word_1DE50], ax
 		mov	cx, 2
 		cmp	ax, 0E04Dh	; gr_right
