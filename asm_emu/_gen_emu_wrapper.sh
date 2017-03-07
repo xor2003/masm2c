@@ -1,0 +1,30 @@
+#!/bin/sh
+# static inline void asm_adcb(struct assembler_state_t *state, const uint8_t src, uint8_t *dst)
+
+echo '#include "asm_emu/x86.h"' > 1.h
+echo '#include "asm_emu/2.h"' >> 1.h
+
+#echo '#include "asm_emu/1.h"' > 1.cpp
+echo 'static struct assembler_state_t asm_cpu_state;' >> 1.h
+
+cat 1.txt | while read line;do
+name=$(echo $line | cut -f4 -d' ' | cut -f1 -d'(')
+echo "name $name"
+
+new_sig=$(echo $line| perl -pe 's! asm! !; s![bwl]\(!(!; s!;$!!; s!struct assembler_state_t \*state(, )?!!;')
+echo "newsig $new_sig"
+
+new_def=$(echo $line| perl -pe 's! asm! !; s![bwl]\(!(!; s!;$!!; s!struct assembler_state_t \*state(, )?!!; s!$!\;\n!')
+echo "newdef $new_def"
+
+call=$(echo $line| perl -pe 's!static inline void!!; s!struct assembler_state_t \*!!; s!uint(8|16|32)_t \*?!!g; s!const !!g; s!$!\;!; s!state!asm_cpu_state!')
+echo "call $call"
+
+# echo $new_def >> 1.h
+
+echo $new_sig >> 1.h
+echo "{" >> 1.h
+echo "	$call" >> 1.h
+echo "}" >> 1.h
+echo "" >> 1.h
+done

@@ -38,11 +38,11 @@ _moduleread proc far		; CODE XREF: _read_module+56P
 		push	ds
 		push	dx
 		push	cs
-		call	near ptr _snd_offx
+		call	_snd_offx
 
 loc_10006::
 		push	cs
-		call	near ptr _memfree_125DA
+		call	_memfree_125DA
 		pop	dx
 		mov	ax, 3D00h
 		int	21h		; DOS -	2+ - OPEN DISK FILE WITH HANDLE
@@ -58,7 +58,7 @@ loc_10006::
 
 loc_1001F::
 		mov	ax, 0FFFFh
-		jb	short _lfreaderr
+		jb	_lfreaderr
 		call	_ems_save_mapctx
 		cld
 
@@ -75,7 +75,7 @@ loc_10033::
 		push	cs
 
 loc_1003D::
-		call	near ptr _clean_11C43
+		call	_clean_11C43
 
 loc_10040::
 		mov	bx, offset off_25326
@@ -95,9 +95,9 @@ loc_10052::
 		add	bx, cx
 		cld
 		repe cmpsb
-		jz	short loc_10064
+		jz	loc_10064
 		dec	dl
-		jnz	short loc_10045
+		jnz	loc_10045
 		mov	ax, offset _mod_n_t_module ; N.T.
 
 loc_10064::				; CODE XREF: _moduleread+5Bj
@@ -118,17 +118,17 @@ loc_1007B::
 loc_10080::
 		inc	ax
 		cmp	ax, _word_245D4
-		jbe	short loc_1008A
+		jbe	loc_1008A
 		mov	ax, _word_245D4
 
 loc_1008A::				; CODE XREF: _moduleread+85j
 		push	cs
-		call	near ptr sub_12B83
+		call	sub_12B83
 		mov	si, offset _dword_27BC8
 		push	cs
 
 loc_10092::
-		call	near ptr sub_12B18
+		call	sub_12B18
 		xor	ax, ax
 		pop	ds
 		retf
@@ -149,7 +149,7 @@ _lfreaderr::				; CODE XREF: _moduleread+22j
 					; BX = file handle
 		call	_ems_restore_mapctx
 		push	cs
-		call	near ptr _memfree_125DA
+		call	_memfree_125DA
 		mov	ax, ds
 		mov	fs, ax
 		assume fs:seg003
@@ -197,18 +197,18 @@ loc_10118::				; CODE XREF: _mod_n_t_module+5Fj
 		shr	byte ptr [si], 1
 		inc	si
 		dec	cx
-		jnz	short loc_10118
+		jnz	loc_10118
 		call	_mod_1024A
 		call	_mod_102F5
 		call	_mod_read_10311
-		call	near ptr _mod_readfile_11F4E
+		call	_mod_readfile_11F4E
 		jb	loc_10099
 		retn
 ; ---------------------------------------------------------------------------
 
 _mod_tdz_module::				; DATA XREF: seg003:0E04o
 		mov	al, _byte_30943
-		jmp	short loc_10137
+		jmp	loc_10137
 ; ---------------------------------------------------------------------------
 
 _mod_chn_module::				; DATA XREF: seg003:0DF5o
@@ -218,15 +218,15 @@ loc_10137::				; CODE XREF: _mod_n_t_module+75j
 		xor	ah, ah
 		inc	_word_24662
 		sub	al, 30h	; '0'
-		jbe	short locret_10154
+		jbe	locret_10154
 		cmp	al, 9
-		ja	short locret_10154
+		ja	locret_10154
 		dec	_word_24662
 		mov	_word_245D2, 1Fh
 		mov	_word_245D4, ax
 
 loc_10152::
-		jmp	short loc_101A6
+		jmp	loc_101A6
 ; ---------------------------------------------------------------------------
 
 locret_10154::				; CODE XREF: _mod_n_t_module+82j
@@ -238,29 +238,29 @@ _mod_ch_module::				; DATA XREF: seg003:0DFDo
 		inc	_word_24662
 		movzx	ax, _byte_30940
 		sub	al, '0'
-		jb	short locret_10154
+		jb	locret_10154
 		cmp	al, 9
-		ja	short locret_10154
+		ja	locret_10154
 		imul	dx, ax,	10
-		mov	al, byte ptr [unk_30941]
+		mov	al, byte ptr unk_30941
 		sub	al, '0'
-		jb	short locret_10154
+		jb	locret_10154
 		cmp	al, 9
-		ja	short locret_10154
+		ja	locret_10154
 		add	ax, dx
-		jz	short locret_10154
+		jz	locret_10154
 		cmp	ax, ' '
-		ja	short locret_10154
+		ja	locret_10154
 		dec	_word_24662
 		mov	_word_245D2, 1Fh
 		mov	_word_245D4, ax
-		jmp	short loc_101A6
+		jmp	loc_101A6
 ; ---------------------------------------------------------------------------
 
 _mod_cd81_module::			; DATA XREF: seg003:0DE3o seg003:0DECo
 		mov	_word_245D2, 1Fh
 		mov	_word_245D4, 8
-		jmp	short loc_101A6
+		jmp	loc_101A6
 ; ---------------------------------------------------------------------------
 
 _mod_mk_module::				; DATA XREF: seg003:0D9Bo seg003:0DA4o ...
@@ -269,7 +269,7 @@ _mod_mk_module::				; DATA XREF: seg003:0D9Bo seg003:0DA4o ...
 
 loc_101A6::				; CODE XREF: _mod_n_t_module:loc_10152j
 					; _mod_n_t_module+CDj ...
-		mov	eax, [dword ptr	_byte_30940]
+		mov	eax, dword ptr	_byte_30940
 		mov	_module_type_text, eax
 		mov	si, offset _byte_308BE
 		call	_mod_1021E
@@ -278,7 +278,7 @@ loc_101A6::				; CODE XREF: _mod_n_t_module:loc_10152j
 loc_101B7::				; CODE XREF: _mod_n_t_module+31j
 		call	_mod_1024A
 		cmp	_module_type_text, 2E4B2E4Dh ;	M.K.
-		jnz	short loc_10213
+		jnz	loc_10213
 		xor	dx, dx
 		xor	cx, cx
 		mov	bx, _fhandle_module
@@ -302,14 +302,14 @@ loc_101F4::
 		add	eax, _dword_245C4
 		add	eax, 1084
 		cmp	eax, edx
-		jnz	short loc_10213
+		jnz	loc_10213
 		mov	_word_245D4, 8
 		mov	_module_type_text, 20574F57h ;	WOW
 
 loc_10213::				; CODE XREF: _mod_n_t_module+106j
 					; _mod_n_t_module+145j
 		call	_mod_read_10311
-		call	near ptr _mod_readfile_11F4E
+		call	_mod_readfile_11F4E
 		jb	loc_10099
 		retn
 _mod_n_t_module endp ; sp-analysis failed
@@ -329,7 +329,7 @@ _mod_1021E proc near		; CODE XREF: _mod_n_t_module+18p
 		mov	_word_245FA, ax
 		lodsb
 		cmp	al, 78h	; 'x'
-		jb	short loc_10230
+		jb	loc_10230
 		xor	al, al
 
 loc_10230::				; CODE XREF: _mod_1021E+Ej
@@ -385,23 +385,23 @@ loc_10254::				; CODE XREF: _mod_1024A+A6j
 		shl	eax, 1
 		mov	[di+28h], eax
 		cmp	eax, 2
-		jbe	short loc_102DC
+		jbe	loc_102DC
 		cmp	ebx, edx
-		jb	short loc_102C1
+		jb	loc_102C1
 		shr	ebx, 1
 		cmp	ebx, edx
-		jnb	short loc_102DC
+		jnb	loc_102DC
 
 loc_102C1::				; CODE XREF: _mod_1024A+6Dj
 		or	byte ptr [di+3Ch], 8
 		add	eax, ebx
 		cmp	eax, edx
-		jbe	short loc_102DF
+		jbe	loc_102DF
 		mov	eax, [di+28h]
 		shr	eax, 1
 		add	eax, ebx
 		cmp	eax, edx
-		jbe	short loc_102DF
+		jbe	loc_102DF
 
 loc_102DC::				; CODE XREF: _mod_1024A+68j
 					; _mod_1024A+75j
@@ -434,12 +434,12 @@ loc_102FE::				; CODE XREF: _mod_102F5+13j
 		lodsb
 		and	al, 7Fh
 		cmp	al, bl
-		jb	short loc_10307
+		jb	loc_10307
 		mov	bl, al
 
 loc_10307::				; CODE XREF: _mod_102F5+Ej
 		dec	cx
-		jnz	short loc_102FE
+		jnz	loc_102FE
 		inc	bl
 		mov	_word_245F2, bx
 		retn
@@ -460,7 +460,7 @@ loc_10315::				; CODE XREF: _mod_read_10311+D5j
 		shl	cx, 8
 		call	_dosfread
 		test	_moduleflag_246D0, 10b
-		jz	short loc_1035C
+		jz	loc_1035C
 		mov	ax, ds
 		mov	es, ax
 		mov	si, offset _word_31508
@@ -480,7 +480,7 @@ loc_10345::				; CODE XREF: _mod_read_10311+49j
 		rep movsd
 		sub	si, 400h
 		dec	bx
-		jnz	short loc_10345
+		jnz	loc_10345
 
 loc_1035C::				; CODE XREF: _mod_read_10311+18j
 		call	_memalloc12k
@@ -500,25 +500,25 @@ loc_1036C::				; CODE XREF: _mod_read_10311+C5j
 		xchg	al, ah
 		xor	bl, bl
 		and	ax, 0FFFh
-		jz	short loc_103B9
+		jz	loc_103B9
 		mov	bx, 72
 		cmp	ax, 214
-		jbe	short loc_10399
+		jbe	loc_10399
 		mov	bx, 48
 		cmp	ax, 428
-		jbe	short loc_10399
+		jbe	loc_10399
 		mov	bx, 24
 		cmp	ax, 856
-		jbe	short loc_10399
+		jbe	loc_10399
 		xor	bx, bx
 
 loc_10399::				; CODE XREF: _mod_read_10311+74j
 					; _mod_read_10311+7Cj ...
-		cmp	ax, [_table_25118+bx]
-		jnb	short loc_103A8
+		cmp	ax, _table_25118[bx]
+		jnb	loc_103A8
 		add	bx, 2
 		cmp	bx, 166
-		jb	short loc_10399
+		jb	loc_10399
 
 loc_103A8::				; CODE XREF: _mod_read_10311+8Cj
 		mov	ax, bx
@@ -543,12 +543,12 @@ loc_103B9::				; CODE XREF: _mod_read_10311+6Cj
 		pop	cx
 		inc	ch
 		cmp	ch, cl
-		jb	short loc_1036C
+		jb	loc_1036C
 		mov	byte ptr [es:di], 0
 		inc	di
 		pop	cx
 		dec	cx
-		jnz	short loc_10365
+		jnz	loc_10365
 		call	_mem_reallocx
 		pop	cx
 		dec	cx
@@ -563,7 +563,7 @@ _mod_read_10311 endp
 
 __2stm_module proc near	; DATA XREF: seg003:0E19o
 		mov	_module_type_text, 4D545332h
-		jmp	short loc_103FF
+		jmp	loc_103FF
 ; ---------------------------------------------------------------------------
 
 _stm_module::				; DATA XREF: seg003:0E0Co
@@ -613,7 +613,7 @@ loc_10467::
 		mov	[di+38h], eax
 		mov	ax, [si+18h]
 		or	ax, ax
-		jnz	short loc_10487
+		jnz	loc_10487
 		mov	ax, _freq_245DE
 
 loc_10487::				; CODE XREF: __2stm_module+97j
@@ -624,13 +624,13 @@ loc_10487::				; CODE XREF: __2stm_module+97j
 		mov	[di+24h], ebx
 		movzx	eax, word ptr [si+14h]
 		cmp	ax, 0FFFFh
-		jnz	short loc_104B6
+		jnz	loc_104B6
 		xor	eax, eax
 		mov	[di+24h], eax
 		mov	[di+28h], eax
 		dec	edx
 		mov	[di+2Ch], edx
-		jmp	short loc_104C7
+		jmp	loc_104C7
 ; ---------------------------------------------------------------------------
 
 loc_104B6::				; CODE XREF: __2stm_module+B6j
@@ -654,11 +654,11 @@ loc_104C7::				; CODE XREF: __2stm_module+C9j
 
 loc_104E6::				; CODE XREF: __2stm_module+105j
 		cmp	byte ptr [si], 63h ; 'c'
-		jnb	short loc_104F2
+		jnb	loc_104F2
 		inc	ax
 		inc	si
 		cmp	ax, 80h	; 'Ä'
-		jb	short loc_104E6
+		jb	loc_104E6
 
 loc_104F2::				; CODE XREF: __2stm_module+FEj
 		mov	_word_245FA, ax
@@ -685,12 +685,12 @@ loc_10513::				; CODE XREF: __2stm_module+185j
 		xor	cl, cl
 		mov	al, [si]
 		cmp	al, 0FEh ; '˛'
-		jz	short loc_10565
+		jz	loc_10565
 		mov	cl, 0FFh
 		cmp	al, 0FFh
-		jz	short loc_1052E
+		jz	loc_1052E
 		cmp	al, 0FBh ; '˚'
-		jnb	short loc_10565
+		jnb	loc_10565
 		inc	al
 		mov	bl, al
 
@@ -702,21 +702,21 @@ loc_1052E::				; CODE XREF: __2stm_module+139j
 		shr	ah, 1
 		or	al, ah
 		cmp	al, 40h	; '@'
-		jbe	short loc_10544
+		jbe	loc_10544
 		mov	al, 0FFh
 
 loc_10544::				; CODE XREF: __2stm_module+155j
 		mov	cl, al
 		mov	ax, [si+2]
 		and	al, 0Fh
-		jz	short loc_10565
+		jz	loc_10565
 		cmp	al, 0Ah
-		ja	short loc_10565
+		ja	loc_10565
 		mov	dh, ah
 		rol	ebx, 10h
 		mov	bl, al
 		and	bx, 0Fh
-		mov	dl, byte ptr [cs:asc_1058C+bx] ; "\x18\v\r\n\x02\x01\x03\x04\a"
+		mov	dl, byte ptr cs:asc_1058C[bx] ; "\x18\v\r\n\x02\x01\x03\x04\a"
 		ror	ebx, 10h
 
 loc_10565::				; CODE XREF: __2stm_module+133j
@@ -726,17 +726,17 @@ loc_10565::				; CODE XREF: __2stm_module+133j
 		pop	cx
 		inc	ch
 		cmp	ch, cl
-		jb	short loc_10513
+		jb	loc_10513
 		mov	byte ptr [es:di], 0
 		inc	di
 		pop	cx
 		dec	cx
-		jnz	short loc_1050C
+		jnz	loc_1050C
 		call	_mem_reallocx
 		pop	cx
 		dec	cx
 		jnz	loc_104F9
-		call	near ptr _mod_readfile_11F4E
+		call	_mod_readfile_11F4E
 		jb	loc_10099
 		retn
 __2stm_module endp ; sp-analysis failed
@@ -757,7 +757,7 @@ _s3m_module proc near		; DATA XREF: seg003:0E26o
 		mov	_freq_245DE, 8363
 		mov	_byte_2461A, 2
 		cmp	_word_30532, 2
-		jnb	short loc_105C7
+		jnb	loc_105C7
 		mov	_byte_24673, 0
 
 loc_105C7::				; CODE XREF: _s3m_module+29j
@@ -767,14 +767,14 @@ loc_105C7::				; CODE XREF: _s3m_module+29j
 		mov	di, offset asc_246B0 ; "				"
 		mov	cx, 1Ch		; count
 		call	_copy_printable
-		test	byte ptr [_config_word+1], 20h
-		jz	short loc_1061E
+		test	byte ptr _config_word[1], 20h
+		jz	loc_1061E
 		mov	dx, 64h	; 'd'
 		mov	cl, _byte_3053B
 		and	cx, 7Fh
-		jz	short loc_10618
+		jz	loc_10618
 		test	_byte_3053B, 80h
-		jz	short loc_105FF
+		jz	loc_105FF
 		mov	ax, 0Bh
 		mul	cx
 		shrd	ax, dx,	3
@@ -788,16 +788,16 @@ loc_105FF::				; CODE XREF: _s3m_module+58j
 		div	cx
 		mov	dx, 100
 		cmp	ax, 100
-		jbe	short loc_10618
+		jbe	loc_10618
 		cmp	ax, 2500
-		ja	short loc_10618
+		ja	loc_10618
 		mov	dx, ax
 
 loc_10618::				; CODE XREF: _s3m_module+51j
 					; _s3m_module+78j ...
 		mov	ax, dx
-		push	cs
-		call	near ptr _change_amplif
+;		push	cs
+		call	_change_amplif
 
 loc_1061E::				; CODE XREF: _s3m_module+45j
 		xor	si, si
@@ -806,14 +806,14 @@ loc_1061E::				; CODE XREF: _s3m_module+45j
 		mov	cx, 20h	; ' '
 
 loc_10628::				; CODE XREF: _s3m_module+AEj
-		mov	al, [_byte_30548+si]
+		mov	al, _byte_30548[si]
 		cmp	al, 0FFh
-		jz	short loc_10640
+		jz	loc_10640
 		mov	dx, si
 		shr	al, 4
 		mov	ah, 1
 		cmp	al, 1
-		jz	short loc_1063D
+		jz	loc_1063D
 		mov	ah, 0
 
 loc_1063D::				; CODE XREF: _s3m_module+A2j
@@ -823,7 +823,7 @@ loc_10640::				; CODE XREF: _s3m_module+97j
 		inc	si
 		add	di, 50h	; 'P'
 		dec	cx
-		jnz	short loc_10628
+		jnz	loc_10628
 		inc	dx
 		mov	_word_245D4, dx
 		mov	cx, _word_245D4
@@ -831,25 +831,25 @@ loc_10640::				; CODE XREF: _s3m_module+97j
 
 loc_10652::				; CODE XREF: _s3m_module+CEj
 		mov	al, _byte_2461E
-		test	[_byte_30548+si], 8
-		jz	short loc_1065F
+		test	_byte_30548[si], 8
+		jz	loc_1065F
 		mov	al, _byte_2461F
 
 loc_1065F::				; CODE XREF: _s3m_module+C3j
-		mov	byte ptr [_dword_27BC8+si], al
+		mov	byte ptr _dword_27BC8[si], al
 		inc	si
 		dec	cx
-		jnz	short loc_10652
+		jnz	loc_10652
 		mov	ax, _word_3052A
 		cmp	ax, 63h	; 'c'
-		jb	short loc_10672
+		jb	loc_10672
 		mov	ax, 63h	; 'c'
 
 loc_10672::				; CODE XREF: _s3m_module+D6j
 		mov	_word_245D2, ax
 		mov	ax, _word_3052C
 		cmp	ax, 100h
-		jb	short loc_10680
+		jb	loc_10680
 		mov	ax, 100h
 
 loc_10680::				; CODE XREF: _s3m_module+E4j
@@ -862,7 +862,7 @@ loc_10680::				; CODE XREF: _s3m_module+E4j
 		mov	es, ax
 		mov	di, offset _myout ; out
 		mov	bx, (offset _dword_30566+2)
-		add	bx, word ptr [unk_30528]
+		add	bx, word ptr unk_30528
 		movzx	ecx, _word_245D2
 
 loc_106A3::				; CODE XREF: _s3m_module+1CAj
@@ -877,7 +877,7 @@ loc_106A3::				; CODE XREF: _s3m_module+1CAj
 		xor	eax, eax
 		xor	edx, edx
 		cmp	byte ptr [si], 1
-		jnz	short loc_106D8
+		jnz	loc_106D8
 		movzx	eax, word ptr [si+10h]
 		mov	edx, eax
 		cmp	eax, 100000h
@@ -892,20 +892,20 @@ loc_106D8::				; CODE XREF: _s3m_module+12Bj
 		mov	[di+38h], eax
 		mov	ax, [si+20h]
 		or	ax, ax
-		jnz	short loc_106F8
+		jnz	loc_106F8
 		mov	ax, _freq_245DE
 
 loc_106F8::				; CODE XREF: _s3m_module+15Cj
 		mov	[di+36h], ax
 		mov	al, [si+1Ch]
 		cmp	al, 3Fh	; '?'
-		jb	short loc_10704
+		jb	loc_10704
 		mov	al, 3Fh	; '?'
 
 loc_10704::				; CODE XREF: _s3m_module+169j
 		mov	[di+3Dh], al
 		test	byte ptr [si+1Fh], 1
-		jnz	short loc_10720
+		jnz	loc_10720
 
 loc_1070D::				; CODE XREF: _s3m_module+18Dj
 					; _s3m_module+1A0j ...
@@ -914,19 +914,19 @@ loc_1070D::				; CODE XREF: _s3m_module+18Dj
 		mov	[di+28h], eax
 		dec	edx
 		mov	[di+2Ch], edx
-		jmp	short loc_1074F
+		jmp	loc_1074F
 ; ---------------------------------------------------------------------------
 
 loc_10720::				; CODE XREF: _s3m_module+174j
 		cmp	word ptr [si+14h], 0FFFFh
-		jz	short loc_1070D
+		jz	loc_1070D
 		movzx	edx, word ptr [si+14h]
 		mov	[di+24h], edx
 		movzx	eax, word ptr [si+18h]
 		or	eax, eax
-		jz	short loc_1070D
+		jz	loc_1070D
 		dec	eax
-		jz	short loc_1070D
+		jz	loc_1070D
 		mov	[di+2Ch], eax
 		inc	eax
 		sub	eax, [di+24h]
@@ -946,22 +946,22 @@ loc_1074F::				; CODE XREF: _s3m_module+187j
 		mov	si, (offset _dword_30566+2)
 		xor	di, di
 		xor	bx, bx
-		mov	ax, word ptr [unk_30528]
+		mov	ax, word ptr unk_30528
 		cmp	ax, 80h	; 'Ä'
 		mov	ah, al
-		ja	short loc_1079A
+		ja	loc_1079A
 		xor	cl, cl
 
 loc_10778::				; CODE XREF: _s3m_module+1FFj
 		mov	al, [si]
 		cmp	al, 0F0h ; ''
-		jnb	short loc_1078F
-		mov	[_byte_27FE8+di], al
+		jnb	loc_1078F
+		mov	_byte_27FE8[di], al
 		inc	bl
 		inc	di
 		cmp	cl, 0F0h ; ''
-		jb	short loc_1078F
-		mov	[_byte_280E7+di], 0FFh
+		jb	loc_1078F
+		mov	_byte_280E7[di], 0FFh
 
 loc_1078F::				; CODE XREF: _s3m_module+1E5j
 					; _s3m_module+1F1j
@@ -969,21 +969,21 @@ loc_1078F::				; CODE XREF: _s3m_module+1E5j
 		inc	si
 		inc	bh
 		cmp	bh, ah
-		jb	short loc_10778
-		jmp	short loc_107AC
+		jb	loc_10778
+		jmp	loc_107AC
 ; ---------------------------------------------------------------------------
 
 loc_1079A::				; CODE XREF: _s3m_module+1DDj
 					; _s3m_module+213j
 		mov	al, [si]
 		cmp	al, 0FFh
-		jz	short loc_107AC
-		mov	[_byte_27FE8+di], al
+		jz	loc_107AC
+		mov	_byte_27FE8[di], al
 		inc	bl
 		inc	di
 		inc	si
 		cmp	bl, ah
-		jb	short loc_1079A
+		jb	loc_1079A
 
 loc_107AC::				; CODE XREF: _s3m_module+201j
 					; _s3m_module+207j
@@ -994,7 +994,7 @@ loc_107AC::				; CODE XREF: _s3m_module+201j
 loc_107B4::				; CODE XREF: _s3m_module+323j
 		push	ax
 		mov	bx, (offset _dword_30566+2)
-		add	bx, word ptr [unk_30528]
+		add	bx, word ptr unk_30528
 		add	ax, _word_3052A
 		shl	ax, 1
 		add	bx, ax
@@ -1002,7 +1002,7 @@ loc_107B4::				; CODE XREF: _s3m_module+323j
 		mov	cx, 2
 		movzx	eax, word ptr [bx]
 		or	ax, ax
-		jnz	short loc_107E0
+		jnz	loc_107E0
 
 loc_107D2::				; CODE XREF: _s3m_module+25Bj
 		call	_memalloc12k
@@ -1019,7 +1019,7 @@ loc_107E0::				; CODE XREF: _s3m_module+239j
 		mov	dx, offset _word_31508
 		mov	cx, _word_31508
 		cmp	cx, 308Fh
-		jnb	short loc_107D2
+		jnb	loc_107D2
 		add	cx, 0Fh
 		and	cl, 0F0h
 		sub	cx, 2
@@ -1038,60 +1038,60 @@ loc_10811::				; CODE XREF: _s3m_module+30Bj
 		xor	bx, bx
 		mov	ch, al
 		test	ch, 20h
-		jz	short loc_1082D
+		jz	loc_1082D
 		mov	bx, [si]
 		add	si, 2
 		cmp	bl, 0FEh ; '˛'
-		jnb	short loc_10826
+		jnb	loc_10826
 		inc	bl
 
 loc_10826::				; CODE XREF: _s3m_module+28Bj
 		cmp	bh, 63h	; 'c'
-		jbe	short loc_1082D
+		jbe	loc_1082D
 		xor	bh, bh
 
 loc_1082D::				; CODE XREF: _s3m_module+281j
 					; _s3m_module+292j
 		mov	cl, 0FFh
 		test	ch, 40h
-		jz	short loc_1083E
+		jz	loc_1083E
 		mov	cl, [si]
 		inc	si
 		cmp	cl, 40h	; '@'
-		jbe	short loc_1083E
+		jbe	loc_1083E
 		mov	cl, 0FFh
 
 loc_1083E::				; CODE XREF: _s3m_module+29Bj
 					; _s3m_module+2A3j
 		test	ch, 80h
-		jz	short loc_1088D
+		jz	loc_1088D
 		mov	dx, [si]
 		add	si, 2
 		cmp	dl, 19h
-		ja	short loc_1088D
+		ja	loc_1088D
 		rol	ebx, 10h
 		movzx	bx, dl
-		mov	dl, [cs:_s3mtable_108D6+bx]
+		mov	dl, cs:_s3mtable_108D6[bx]
 		cmp	dl, 0FFh
-		jz	short loc_10885
+		jz	loc_10885
 		cmp	dl, 0Fh
-		jz	short loc_10880
+		jz	loc_10880
 		cmp	dl, 0Eh
-		jnz	short loc_10887
+		jnz	loc_10887
 		mov	bl, dh
 		shr	bl, 4
-		mov	al, [cs:_s3mtable_108F0+bx]
+		mov	al, cs:_s3mtable_108F0[bx]
 		cmp	al, 0FFh
-		jz	short loc_10885
+		jz	loc_10885
 		shl	al, 4
 		and	dh, 0Fh
 		or	dh, al
-		jmp	short loc_10887
+		jmp	loc_10887
 ; ---------------------------------------------------------------------------
 
 loc_10880::				; CODE XREF: _s3m_module+2CAj
 		cmp	dh, 20h	; ' '
-		ja	short loc_10887
+		ja	loc_10887
 
 loc_10885::				; CODE XREF: _s3m_module+2C5j
 					; _s3m_module+2DDj
@@ -1100,7 +1100,7 @@ loc_10885::				; CODE XREF: _s3m_module+2C5j
 loc_10887::				; CODE XREF: _s3m_module+2CFj
 					; _s3m_module+2E7j ...
 		ror	ebx, 10h
-		jmp	short loc_1088F
+		jmp	loc_1088F
 ; ---------------------------------------------------------------------------
 
 loc_1088D::				; CODE XREF: _s3m_module+2AAj
@@ -1109,9 +1109,9 @@ loc_1088D::				; CODE XREF: _s3m_module+2AAj
 
 loc_1088F::				; CODE XREF: _s3m_module+2F4j
 		and	ch, 1Fh
-		cmp	byte ptr [_word_245D4+1], ch
-		jnb	short loc_1089C
-		mov	byte ptr [_word_245D4+1], ch
+		cmp	byte ptr _word_245D4[1], ch
+		jnb	loc_1089C
+		mov	byte ptr _word_245D4[1], ch
 
 loc_1089C::				; CODE XREF: _s3m_module+2FFj
 		call	sub_11BA6
@@ -1135,13 +1135,13 @@ loc_108B1::				; CODE XREF: _s3m_module+246j
 		mov	ax, _word_245D4
 		inc	ah
 		cmp	al, ah
-		jb	short loc_108C9
+		jb	loc_108C9
 		mov	al, ah
 
 loc_108C9::				; CODE XREF: _s3m_module+32Ej
 		xor	ah, ah
 		mov	_word_245D4, ax
-		call	near ptr _mod_readfile_11F4E
+		call	_mod_readfile_11F4E
 		jb	loc_10099
 		retn
 _s3m_module endp ; sp-analysis failed
@@ -1160,7 +1160,7 @@ _s3mtable_108F0	db 0,3,5,4,7,0FFh,0FFh,0FFh,8,0FFh,0FFh,6,0Ch,0Dh,0FFh
 
 _e669_module proc near	; DATA XREF: seg003:0E61o
 		mov	_module_type_text, 39363645h
-		jmp	short loc_10914
+		jmp	loc_10914
 ; ---------------------------------------------------------------------------
 
 __669_module::				; DATA XREF: seg003:0E5Ao
@@ -1198,17 +1198,17 @@ loc_1095C::				; CODE XREF: _e669_module+60j
 		xor	bh, bh
 
 loc_1096F::				; CODE XREF: _e669_module+91j
-		mov	bl, [_byte_30579+si]
+		mov	bl, _byte_30579[si]
 		cmp	bl, 0FFh
-		jz	short loc_10993
-		mov	[_byte_27FE8+si], bl
-		mov	al, [_byte_305F9+bx]
-		mov	[_byte_280E8+si], al
-		mov	al, [_byte_30679+bx]
-		mov	[_byte_281E8+si], al
+		jz	loc_10993
+		mov	_byte_27FE8[si], bl
+		mov	al, _byte_305F9[bx]
+		mov	_byte_280E8[si], al
+		mov	al, _byte_30679[bx]
+		mov	_byte_281E8[si], al
 		inc	si
 		cmp	si, 80h	; 'Ä'
-		jb	short loc_1096F
+		jb	loc_1096F
 
 loc_10993::				; CODE XREF: _e669_module+76j
 		mov	_word_245FA, si
@@ -1240,13 +1240,13 @@ loc_109BD::				; CODE XREF: _e669_module+127j
 		mov	[di+24h], ebx
 		mov	eax, [si+15h]
 		cmp	eax, 0FFFFFh
-		jb	short loc_10A0F
+		jb	loc_10A0F
 		xor	eax, eax
 		mov	[di+24h], eax
 		mov	[di+28h], eax
 		dec	edx
 		mov	[di+2Ch], edx
-		jmp	short loc_10A20
+		jmp	loc_10A20
 ; ---------------------------------------------------------------------------
 
 loc_10A0F::				; CODE XREF: _e669_module+FAj
@@ -1260,7 +1260,7 @@ loc_10A20::				; CODE XREF: _e669_module+10Dj
 		add	si, 19h
 		add	di, 40h	; '@'
 		dec	cx
-		jnz	short loc_109BD
+		jnz	loc_109BD
 		mov	cx, _word_245F2
 
 loc_10A2D::				; CODE XREF: _e669_module+1C9j
@@ -1283,9 +1283,9 @@ loc_10A47::				; CODE XREF: _e669_module+1B7j
 		xor	bx, bx
 		mov	cl, 0FFh
 		cmp	al, 0FFh
-		jz	short loc_10A83
+		jz	loc_10A83
 		cmp	al, 0FEh ; '˛'
-		jz	short loc_10A75
+		jz	loc_10A75
 		shr	al, 2
 		xor	ah, ah
 		mov	dl, 0Ch
@@ -1316,18 +1316,18 @@ loc_10A83::				; CODE XREF: _e669_module+150j
 		mov	dh, ah
 		shr	al, 4
 		cmp	al, 5
-		ja	short loc_10AAA
+		ja	loc_10AAA
 		mov	dl, 0Fh
-		jz	short loc_10AAC
+		jz	loc_10AAC
 		cmp	al, 4
-		jz	short loc_10AAA
+		jz	loc_10AAA
 		cmp	al, 2
-		jz	short loc_10AAA
+		jz	loc_10AAA
 		cmp	al, 3
-		jnz	short loc_10AAA
+		jnz	loc_10AAA
 		mov	dl, 1
 		mov	dh, ah
-		jmp	short loc_10AAC
+		jmp	loc_10AAC
 ; ---------------------------------------------------------------------------
 
 loc_10AAA::				; CODE XREF: _e669_module+192j
@@ -1341,7 +1341,7 @@ loc_10AAC::				; CODE XREF: _e669_module+196j
 		pop	cx
 		inc	ch
 		cmp	ch, cl
-		jb	short loc_10A47
+		jb	loc_10A47
 		mov	byte ptr [es:di], 0
 		inc	di
 		pop	cx
@@ -1351,7 +1351,7 @@ loc_10AAC::				; CODE XREF: _e669_module+196j
 		pop	cx
 		dec	cx
 		jnz	loc_10A2D
-		call	near ptr _mod_readfile_11F4E
+		call	_mod_readfile_11F4E
 		jb	loc_10099
 		retn
 _e669_module endp ; sp-analysis failed
@@ -1374,19 +1374,19 @@ _mtm_module proc near		; DATA XREF: seg003:0E2Fo
 		mov	cx, 14h		; count
 		call	_copy_printable
 		cmp	_sndcard_type,	0
-		jnz	short loc_10B25
+		jnz	loc_10B25
 		xor	si, si
 		mov	cx, 10h
 
 loc_10B0F::				; CODE XREF: _mtm_module+4Ej
-		mov	al, byte ptr [_word_3052A+si]
+		mov	al, byte ptr _word_3052A[si]
 		mov	di, ax
 		and	di, 0Fh
-		mov	al, [cs:_byte_13C54+di]
-		mov	byte ptr [_dword_27BC8+si], al
+		mov	al, cs:_byte_13C54[di]
+		mov	byte ptr _dword_27BC8[si], al
 		inc	si
 		dec	cx
-		jnz	short loc_10B0F
+		jnz	loc_10B0F
 
 loc_10B25::				; CODE XREF: _mtm_module+33j
 		movzx	ax, _byte_30526
@@ -1433,13 +1433,13 @@ loc_10B66::				; CODE XREF: _snd_off+1Ej
 		mov	[di+24h], ebx
 		mov	eax, [si+1Eh]
 		cmp	eax, 2
-		ja	short loc_10BB5
+		ja	loc_10BB5
 		xor	eax, eax
 		mov	[di+24h], eax
 		mov	[di+28h], eax
 		dec	edx
 		mov	[di+2Ch], edx
-		jmp	short loc_10BC6
+		jmp	loc_10BC6
 ; ---------------------------------------------------------------------------
 
 loc_10BB5::				; CODE XREF: _snd_off-368Dj
@@ -1453,7 +1453,7 @@ loc_10BC6::				; CODE XREF: _snd_off-367Aj
 		add	si, 25h	; '%'
 		add	di, 40h	; '@'
 		dec	cx
-		jnz	short loc_10B5A
+		jnz	loc_10B5A
 		mov	di, offset _byte_27FE8
 		mov	cx, 20h	; ' '
 		cld
@@ -1478,9 +1478,9 @@ loc_10C12::				; CODE XREF: _snd_off-3603j
 
 loc_10C15::				; CODE XREF: _snd_off-3606j
 		cmp	word ptr [si], 0
-		jz	short loc_10C20
+		jz	loc_10C20
 		cmp	bp, ax
-		jb	short loc_10C20
+		jb	loc_10C20
 		mov	ax, bp
 
 loc_10C20::				; CODE XREF: _snd_off-3615j
@@ -1488,9 +1488,9 @@ loc_10C20::				; CODE XREF: _snd_off-3615j
 		add	si, 2
 		inc	bp
 		cmp	bp, 20h	; ' '
-		jbe	short loc_10C15
+		jbe	loc_10C15
 		dec	cx
-		jnz	short loc_10C12
+		jnz	loc_10C12
 		mov	_word_245D4, ax
 		mov	bx, offset _byte_33508
 		mov	cx, _word_245F2
@@ -1507,7 +1507,7 @@ loc_10C3F::				; CODE XREF: _snd_off-35AFj
 		push	si
 		mov	ax, [bx]
 		or	ax, ax
-		jnz	short loc_10C5A
+		jnz	loc_10C5A
 		mov	ax, ds
 		mov	es, ax
 		mov	di, si
@@ -1515,7 +1515,7 @@ loc_10C3F::				; CODE XREF: _snd_off-35AFj
 		xor	eax, eax
 		cld
 		rep stosd
-		jmp	short loc_10C73
+		jmp	loc_10C73
 ; ---------------------------------------------------------------------------
 
 loc_10C5A::				; CODE XREF: _snd_off-35E7j
@@ -1534,7 +1534,7 @@ loc_10C73::				; CODE XREF: _snd_off-35D5j
 		add	bx, 2
 		add	si, 192
 		dec	cx
-		jnz	short loc_10C3F
+		jnz	loc_10C3F
 		call	_memalloc12k
 		mov	si, offset _word_31508
 		mov	cx, 40h	; '@'
@@ -1552,7 +1552,7 @@ loc_10C92::
 		xor	bx, bx
 		mov	al, [si]
 		shr	al, 2
-		jz	short loc_10CAA
+		jz	loc_10CAA
 		xor	ah, ah
 		mov	dl, 0Ch
 		div	dl
@@ -1576,14 +1576,14 @@ loc_10CAA::				; CODE XREF: _snd_off-3594j
 		pop	cx
 		inc	ch
 		cmp	ch, cl
-		jb	short loc_10C91
+		jb	loc_10C91
 		mov	byte ptr [es:di], 0
 		inc	di
 		pop	si
 		pop	cx
 		add	si, 3
 		dec	cx
-		jnz	short loc_10C89
+		jnz	loc_10C89
 		call	_mem_reallocx
 		pop	cx
 		pop	bx
@@ -1608,7 +1608,7 @@ loc_10CAA::				; CODE XREF: _snd_off-3594j
 		int	21h		; DOS -	2+ - MOVE FILE READ/WRITE POINTER (LSEEK)
 					; AL = method: offset from beginning of	file
 		adc	_word_24662, 0
-		call	near ptr _mod_readfile_11F4E
+		call	_mod_readfile_11F4E
 		jb	loc_10099
 		retn
 _snd_off_chunk endp
@@ -1666,7 +1666,7 @@ loc_10D8C::				; CODE XREF: _psm_module+FAj
 		mov	eax, [si+25h]
 		mov	[di+38h], eax
 		mov	ax, [si+3Eh]
-		jnz	short loc_10DC7
+		jnz	loc_10DC7
 		mov	ax, _freq_245DE
 
 loc_10DC7::				; CODE XREF: _psm_module+9Cj
@@ -1676,13 +1676,13 @@ loc_10DC7::				; CODE XREF: _psm_module+9Cj
 		mov	ebx, [si+34h]
 		mov	[di+24h], ebx
 		or	ebx, ebx
-		jnz	short loc_10DF0
+		jnz	loc_10DF0
 		xor	eax, eax
 		mov	[di+24h], eax
 		mov	[di+28h], eax
 		dec	edx
 		mov	[di+2Ch], edx
-		jmp	short loc_10E19
+		jmp	loc_10E19
 ; ---------------------------------------------------------------------------
 
 loc_10DF0::				; CODE XREF: _psm_module+B5j
@@ -1692,7 +1692,7 @@ loc_10DF0::				; CODE XREF: _psm_module+B5j
 		dec	eax
 		mov	[di+2Ch], eax
 		cmp	eax, edx
-		jb	short loc_10E15
+		jb	loc_10E15
 		dec	edx
 		mov	[di+2Ch], edx
 		sub	edx, ebx
@@ -1734,13 +1734,13 @@ loc_10E4C::				; CODE XREF: _psm_module+1DCj
 
 loc_10E68::				; CODE XREF: _psm_module+14Ej
 		cmp	[_byte_27FE8+si], al
-		jnz	short loc_10E72
+		jnz	loc_10E72
 		mov	[_byte_281E8+si], dl
 
 loc_10E72::				; CODE XREF: _psm_module+146j
 		inc	si
 		dec	cx
-		jnz	short loc_10E68
+		jnz	loc_10E68
 		mov	dx, offset _byte_3150C
 		mov	cx, _word_31508
 		sub	cx, 4
@@ -1753,17 +1753,17 @@ loc_10E8C::				; CODE XREF: _psm_module+1D5j
 		push	cx
 		lodsb
 		or	al, al
-		jz	short loc_10EF4
+		jz	loc_10EF4
 
 loc_10E92::				; CODE XREF: _psm_module+1CCj
 		xor	bx, bx
 		mov	ch, al
 		test	ch, 80h
-		jz	short loc_10EBD
+		jz	loc_10EBD
 		mov	bx, [si]
 		add	si, 2
 		or	bl, bl
-		jz	short loc_10EB6
+		jz	loc_10EB6
 		dec	bl
 		movzx	ax, bl
 		mov	bl, 0Ch
@@ -1775,50 +1775,50 @@ loc_10E92::				; CODE XREF: _psm_module+1CCj
 
 loc_10EB6::				; CODE XREF: _psm_module+17Cj
 		cmp	bh, 63h	; 'c'
-		jbe	short loc_10EBD
+		jbe	loc_10EBD
 		xor	bh, bh
 
 loc_10EBD::				; CODE XREF: _psm_module+173j
 					; _psm_module+193j
 		mov	cl, 0FFh
 		test	ch, 40h
-		jz	short loc_10ECE
+		jz	loc_10ECE
 		mov	cl, [si]
 		inc	si
 		cmp	cl, 40h	; '@'
-		jbe	short loc_10ECE
+		jbe	loc_10ECE
 		mov	cl, 0FFh
 
 loc_10ECE::				; CODE XREF: _psm_module+19Cj
 					; _psm_module+1A4j
 		test	ch, 20h
-		jz	short loc_10EDD
+		jz	loc_10EDD
 		mov	dx, [si]
 		add	si, 2
 		cmp	dl, 0Fh
-		jbe	short loc_10EDF
+		jbe	loc_10EDF
 
 loc_10EDD::				; CODE XREF: _psm_module+1ABj
 		xor	dx, dx
 
 loc_10EDF::				; CODE XREF: _psm_module+1B5j
 		and	ch, 1Fh
-		cmp	byte ptr [_word_245D4+1], ch
-		jnb	short loc_10EEC
-		mov	byte ptr [_word_245D4+1], ch
+		cmp	byte ptr _word_245D4[1], ch
+		jnb	loc_10EEC
+		mov	byte ptr _word_245D4[1], ch
 
 loc_10EEC::				; CODE XREF: _psm_module+1C0j
 		call	sub_11BA6
 		lodsb
 		or	al, al
-		jnz	short loc_10E92
+		jnz	loc_10E92
 
 loc_10EF4::				; CODE XREF: _psm_module+16Aj
 		mov	byte ptr [es:di], 0
 		inc	di
 		pop	cx
 		dec	cx
-		jnz	short loc_10E8C
+		jnz	loc_10E8C
 		call	_mem_reallocx
 		pop	cx
 		dec	cx
@@ -1826,13 +1826,13 @@ loc_10EF4::				; CODE XREF: _psm_module+16Aj
 		mov	ax, _word_245D4
 		inc	ah
 		cmp	al, ah
-		jb	short loc_10F11
+		jb	loc_10F11
 		mov	al, ah
 
 loc_10F11::				; CODE XREF: _psm_module+1E7j
 		xor	ah, ah
 		mov	_word_245D4, ax
-		call	near ptr _mod_readfile_11F4E
+		call	_mod_readfile_11F4E
 		jb	loc_10099
 		retn
 _psm_module endp ; sp-analysis failed
@@ -1848,29 +1848,29 @@ _far_module proc near		; DATA XREF: seg003:0E40o
 		mov	_byte_24673, 0
 		mov	_byte_2467E, 2
 		mov	_word_245D4, 10h
-		mov	al, byte ptr [_word_30552+1]
+		mov	al, byte ptr _word_30552[1]
 		and	ax, 0Fh
 		mov	di, ax
-		mov	al, [cs:_table_14057+di]
+		mov	al, cs:_table_14057[di]
 		mov	_byte_2467B, al
 		mov	_byte_2467C, 0
 		call	_calc_14043
 		mov	_byte_2467A, al
 		mov	_byte_24679, 4
 		cmp	_sndcard_type,	0
-		jnz	short loc_10F80
+		jnz	loc_10F80
 		xor	si, si
 		mov	cx, _word_245D4
 
 loc_10F6A::				; CODE XREF: _far_module+60j
-		mov	al, byte ptr [_word_30554+si]
+		mov	al, byte ptr _word_30554[si]
 		mov	di, ax
 		and	di, 0Fh
-		mov	al, [cs:_byte_13C54+di]
-		mov	byte ptr [_dword_27BC8+si], al
+		mov	al, cs:_byte_13C54[di]
+		mov	byte ptr _dword_27BC8[si], al
 		inc	si
 		dec	cx
-		jnz	short loc_10F6A
+		jnz	loc_10F6A
 
 loc_10F80::				; CODE XREF: _far_module+44j
 		mov	ax, ds
@@ -1881,12 +1881,12 @@ loc_10F80::				; CODE XREF: _far_module+44j
 		call	_copy_printable
 		mov	dx, (offset _dword_30566+2)
 		mov	cx, 303h
-		movzx	eax, word ptr [_dword_30566+2]
+		movzx	eax, word ptr _dword_30566[2]
 		add	eax, 62h ; 'b'
 		call	_dosseek
 		movzx	ax, _byte_30669
 		cmp	ax, 100h
-		jb	short loc_10FB0
+		jb	loc_10FB0
 		mov	ax, 100h
 
 loc_10FB0::				; CODE XREF: _far_module+8Dj
@@ -1905,23 +1905,23 @@ loc_10FB0::				; CODE XREF: _far_module+8Dj
 loc_10FCF::				; CODE XREF: _far_module+C0j
 		inc	dx
 		cmp	word ptr [bx], 0
-		jz	short loc_10FD7
+		jz	loc_10FD7
 		mov	ax, dx
 
 loc_10FD7::				; CODE XREF: _far_module+B5j
 		add	bx, 2
 		cmp	dx, 100h
-		jb	short loc_10FCF
+		jb	loc_10FCF
 		or	ax, ax
 		stc
 		jz	loc_10099
 		cmp	ax, 100h
-		jb	short loc_10FEF
+		jb	loc_10FEF
 		mov	ax, 100h
 
 loc_10FEF::				; CODE XREF: _far_module+CCj
 		mov	_word_245F2, ax
-		mov	byte ptr [_chrin+3], 0
+		mov	byte ptr _chrin[3], 0
 		mov	si, offset _byte_3066B
 		mov	cx, _word_245F2
 
@@ -1930,7 +1930,7 @@ loc_10FFE::				; CODE XREF: _far_module+214j
 		push	si
 		mov	ax, [si]
 		or	ax, ax
-		jnz	short loc_1100F
+		jnz	loc_1100F
 		call	_memalloc12k
 		mov	cx, 40h	; '@'
 		jmp	loc_11120
@@ -1944,24 +1944,24 @@ loc_1100F::				; CODE XREF: _far_module+E6j
 		push	ax
 		dec	al
 		and	al, 3Fh
-		mov	byte ptr [_chrin], al
+		mov	byte ptr _chrin, al
 		xor	di, di
 		mov	cx, _word_245FA
-		mov	ah, byte ptr [_chrin+3]
+		mov	ah, byte ptr _chrin[3]
 
 loc_1102D::				; CODE XREF: _far_module+11Bj
-		cmp	ah, [_byte_27FE8+di]
-		jnz	short loc_11037
-		mov	[_byte_281E8+di], al
+		cmp	ah, _byte_27FE8[di]
+		jnz	loc_11037
+		mov	_byte_281E8[di], al
 
 loc_11037::				; CODE XREF: _far_module+113j
 		inc	di
 		dec	cx
-		jnz	short loc_1102D
+		jnz	loc_1102D
 		mov	dx, offset _word_31508
 		mov	cx, [si]
 		call	_dosfread
-		mov	byte ptr [_chrin+1], 0
+		mov	byte ptr _chrin[1], 0
 		call	_memalloc12k
 		pop	cx
 		xor	ch, ch
@@ -1978,7 +1978,7 @@ loc_11058::				; CODE XREF: _far_module+1ECj
 		mov	cl, 0FFh
 		mov	al, [si]
 		or	al, al
-		jz	short loc_11082
+		jz	loc_11082
 		dec	al
 		xor	ah, ah
 		mov	dl, 0Ch
@@ -1991,7 +1991,7 @@ loc_11058::				; CODE XREF: _far_module+1ECj
 		mov	bh, [si+1]
 		inc	bh
 		cmp	bh, 63h	; 'c'
-		jb	short loc_11082
+		jb	loc_11082
 		xor	bh, bh
 
 loc_11082::				; CODE XREF: _far_module+143j
@@ -1999,7 +1999,7 @@ loc_11082::				; CODE XREF: _far_module+143j
 		mov	cl, 0FFh
 		mov	al, [si+2]
 		or	al, al
-		jz	short loc_11094
+		jz	loc_11094
 		dec	al
 		and	al, 0Fh
 		shl	al, 2
@@ -2011,44 +2011,44 @@ loc_11094::				; CODE XREF: _far_module+16Bj
 		shr	dl, 4
 		and	dh, 0Fh
 		cmp	dl, 3
-		jz	short loc_110CB
+		jz	loc_110CB
 		cmp	dl, 4
-		jz	short loc_110E4
+		jz	loc_110E4
 		cmp	dl, 5
-		jz	short loc_110CF
+		jz	loc_110CF
 		cmp	dl, 6
-		jz	short loc_110D9
+		jz	loc_110D9
 		cmp	dl, 0Bh
-		jz	short loc_110FA
+		jz	loc_110FA
 
 loc_110B8::
 		cmp	dl, 0Dh
-		jz	short loc_110EF
+		jz	loc_110EF
 		cmp	dl, 0Eh
-		jz	short loc_110F3
+		jz	loc_110F3
 		cmp	dl, 0Fh
-		jz	short loc_110EB
+		jz	loc_110EB
 		xor	dx, dx
-		jmp	short loc_110FF
+		jmp	loc_110FF
 ; ---------------------------------------------------------------------------
 
 loc_110CB::				; CODE XREF: _far_module+184j
 		mov	dl, 19h
-		jmp	short loc_110FF
+		jmp	loc_110FF
 ; ---------------------------------------------------------------------------
 
 loc_110CF::				; CODE XREF: _far_module+18Ej
 		shr	dh, 1
-		mov	byte ptr [_chrin+1], dh
+		mov	byte ptr _chrin[1], dh
 		xor	dx, dx
-		jmp	short loc_110FF
+		jmp	loc_110FF
 ; ---------------------------------------------------------------------------
 
 loc_110D9::				; CODE XREF: _far_module+193j
 		shl	dh, 4
-		or	dh, byte ptr [_chrin+1]
+		or	dh, byte ptr _chrin[1]
 		mov	dl, 4
-		jmp	short loc_110FF
+		jmp	loc_110FF
 ; ---------------------------------------------------------------------------
 
 loc_110E4::				; CODE XREF: _far_module+189j
@@ -2056,23 +2056,23 @@ loc_110E4::				; CODE XREF: _far_module+189j
 
 loc_110E6::
 		or	dh, 90h
-		jmp	short loc_110FF
+		jmp	loc_110FF
 ; ---------------------------------------------------------------------------
 
 loc_110EB::				; CODE XREF: _far_module+1A7j
 		mov	dl, 1Fh
-		jmp	short loc_110FF
+		jmp	loc_110FF
 ; ---------------------------------------------------------------------------
 
 loc_110EF::				; CODE XREF: _far_module+19Dj
 		mov	dl, 20h	; ' '
-		jmp	short loc_110FF
+		jmp	loc_110FF
 ; ---------------------------------------------------------------------------
 
 loc_110F3::				; CODE XREF: _far_module+1A2j
 		mov	dl, 20h	; ' '
 		shl	dh, 4
-		jmp	short loc_110FF
+		jmp	loc_110FF
 ; ---------------------------------------------------------------------------
 
 loc_110FA::				; CODE XREF: _far_module+198j
@@ -2095,7 +2095,7 @@ loc_110FF::				; CODE XREF: _far_module+1ABj
 		dec	cx
 		jnz	loc_11051
 		mov	cx, 3Fh	; '?'
-		sub	cl, byte ptr [_chrin]
+		sub	cl, byte ptr _chrin
 
 loc_11120::				; CODE XREF: _far_module+EEj
 		xor	al, al
@@ -2104,7 +2104,7 @@ loc_11120::				; CODE XREF: _far_module+EEj
 		call	_mem_reallocx
 		pop	si
 		pop	cx
-		inc	byte ptr [_chrin+3]
+		inc	byte ptr _chrin[3]
 		add	si, 2
 		dec	cx
 		jnz	loc_10FFE
@@ -2170,7 +2170,7 @@ loc_1118D::
 
 loc_111AD::
 		test	byte ptr [si+2Fh], 8
-		jnz	short loc_111C6
+		jnz	loc_111C6
 
 loc_111B3::				; CODE XREF: _far_module+2AFj
 		xor	eax, eax
@@ -2178,13 +2178,13 @@ loc_111B3::				; CODE XREF: _far_module+2AFj
 		mov	[di+28h], eax
 		dec	edx
 		mov	[di+2Ch], edx
-		jmp	short loc_111E8
+		jmp	loc_111E8
 ; ---------------------------------------------------------------------------
 
 loc_111C6::				; CODE XREF: _far_module+293j
 		mov	eax, [si+2Ah]
 		or	eax, eax
-		jz	short loc_111B3
+		jz	loc_111B3
 		mov	[di+2Ch], eax
 		mov	ebx, [si+26h]
 		mov	[di+24h], ebx
@@ -2199,7 +2199,7 @@ loc_111E8::				; CODE XREF: _far_module+2A6j
 		mov	cx, 20h	; ' '   ; count
 		call	_copy_printable
 		test	byte ptr [si+2Eh], 1
-		jz	short loc_11204
+		jz	loc_11204
 		or	byte ptr [di+3Ch], 4
 		shr	dword ptr [di+24h], 1
 		shr	dword ptr [di+2Ch], 1
@@ -2227,7 +2227,7 @@ loc_11217::				; CODE XREF: _far_module+237j
 		cmp	_word_245D2, 0
 		stc
 		jz	loc_10099
-		call	near ptr _mod_readfile_11F4E
+		call	_mod_readfile_11F4E
 		jb	loc_10099
 		retn
 _far_module endp ; sp-analysis failed
@@ -2241,15 +2241,15 @@ _ult_module proc near		; DATA XREF: seg003:0E49o
 		mov	_module_type_text, 20544C55h
 		mov	_moduleflag_246D0, 1000000000b
 		mov	_byte_24673, 0
-		mov	word ptr [_chrin], 40h ;	'@'
+		mov	word ptr _chrin, 40h ;	'@'
 		mov	ax, _word_30515
 
 loc_11256::
 		xchg	al, ah
 		mov	_word_30515, ax
 		cmp	ax, 3034h
-		jb	short loc_11265
-		add	word ptr [_chrin], 2
+		jb	loc_11265
+		add	word ptr _chrin, 2
 
 loc_11265::				; CODE XREF: _ult_module+25j
 		mov	_byte_24679, 6
@@ -2270,7 +2270,7 @@ loc_1126F::
 		call	_dosseek
 		movzx	ax, _my_in
 		mov	_word_245D2, ax
-		mul	word ptr [_chrin]
+		mul	word ptr _chrin
 		mov	cx, ax
 		mov	dx, offset _byte_30539
 		call	_dosfread
@@ -2284,7 +2284,7 @@ loc_112B4::				; CODE XREF: _ult_module+131j
 		push	di
 		mov	edx, [si+38h]
 		sub	edx, [si+34h]
-		jnb	short loc_112C4
+		jnb	loc_112C4
 		xor	edx, edx
 
 loc_112C4::				; CODE XREF: _ult_module+86j
@@ -2298,7 +2298,7 @@ loc_112C4::				; CODE XREF: _ult_module+86j
 		mov	[di+3Dh], al
 		mov	ax, _freq_245DE
 		cmp	_word_30515, 3034h
-		jb	short loc_112F1
+		jb	loc_112F1
 		mov	ax, [si+3Eh]
 
 loc_112F1::				; CODE XREF: _ult_module+B3j
@@ -2307,7 +2307,7 @@ loc_112F1::				; CODE XREF: _ult_module+B3j
 		and	al, 1Ch
 		mov	[di+3Ch], al
 		test	al, 4
-		jz	short loc_11316
+		jz	loc_11316
 		add	_dword_245C4, edx
 		cmp	edx, 80000h
 		cmc
@@ -2316,7 +2316,7 @@ loc_112F1::				; CODE XREF: _ult_module+B3j
 
 loc_11316::				; CODE XREF: _ult_module+C5j
 		test	al, 8
-		jnz	short loc_1132D
+		jnz	loc_1132D
 
 loc_1131A::				; CODE XREF: _ult_module+FBj
 		xor	eax, eax
@@ -2324,17 +2324,17 @@ loc_1131A::				; CODE XREF: _ult_module+FBj
 		mov	[di+28h], eax
 		dec	edx
 		mov	[di+2Ch], edx
-		jmp	short loc_11359
+		jmp	loc_11359
 ; ---------------------------------------------------------------------------
 
 loc_1132D::				; CODE XREF: _ult_module+DFj
 		mov	eax, [si+30h]
 		or	eax, eax
-		jz	short loc_1131A
+		jz	loc_1131A
 		dec	eax
 		mov	ebx, [si+2Ch]
 		test	byte ptr [di+3Ch], 4
-		jz	short loc_11348
+		jz	loc_11348
 		shr	ebx, 1
 		shr	eax, 1
 
@@ -2354,7 +2354,7 @@ loc_11359::				; CODE XREF: _ult_module+F2j
 		add	di, 40h	; '@'
 
 loc_11365::
-		add	si, word ptr [_chrin]
+		add	si, word ptr _chrin
 		dec	cx
 		jnz	loc_112B4
 		mov	dx, offset _byte_30539
@@ -2366,11 +2366,11 @@ loc_11365::
 
 loc_11382::				; CODE XREF: _ult_module+153j
 		cmp	byte ptr [si], 0FFh
-		jz	short loc_1138E
+		jz	loc_1138E
 		inc	ax
 		inc	si
 		cmp	ax, 100h
-		jb	short loc_11382
+		jb	loc_11382
 
 loc_1138E::				; CODE XREF: _ult_module+14Cj
 		mov	_word_245FA, ax
@@ -2390,29 +2390,29 @@ loc_1138E::				; CODE XREF: _ult_module+14Cj
 		mov	_byte_2467E, 0
 		mov	ax, _word_30515
 		cmp	ax, 3031h
-		jz	short loc_113C6
+		jz	loc_113C6
 		mov	_byte_2467E, 2
 
 loc_113C6::				; CODE XREF: _ult_module+186j
 		cmp	ax, 3033h
-		jb	short loc_113F8
+		jb	loc_113F8
 		mov	dx, offset _word_3063B
 		mov	cx, _word_245D4
 		call	_dosfread
 		cmp	_sndcard_type,	0
-		jnz	short loc_113F8
+		jnz	loc_113F8
 		xor	si, si
 		mov	cx, _word_245D4
 
 loc_113E2::				; CODE XREF: _ult_module+1BDj
-		mov	al, byte ptr [_word_3063B+si]
+		mov	al, byte ptr _word_3063B[si]
 		mov	di, ax
 		and	di, 0Fh
-		mov	al, [cs:_byte_13C54+di]
-		mov	byte ptr [_dword_27BC8+si], al
+		mov	al, cs:_byte_13C54[di]
+		mov	byte ptr _dword_27BC8[si], al
 		inc	si
 		dec	cx
-		jnz	short loc_113E2
+		jnz	loc_113E2
 
 loc_113F8::				; CODE XREF: _ult_module+190j
 					; _ult_module+1A1j
@@ -2434,7 +2434,7 @@ loc_113FF::				; CODE XREF: _ult_module+1F9j
 
 loc_11417::				; CODE XREF: _ult_module+1F1j
 		push	cx
-		mov	byte ptr [_word_3063B+1], 1
+		mov	byte ptr _word_3063B[1], 1
 		mov	cx, 40h	; '@'
 
 loc_11420::				; CODE XREF: _ult_module+1EDj
@@ -2442,15 +2442,15 @@ loc_11420::				; CODE XREF: _ult_module+1EDj
 		call	_ult_read
 		pop	cx
 		dec	cx
-		jnz	short loc_11420
+		jnz	loc_11420
 		pop	cx
 		dec	cx
-		jnz	short loc_11417
+		jnz	loc_11417
 		pop	si
 		pop	cx
 		add	si, 4
 		dec	cx
-		jnz	short loc_113FF
+		jnz	loc_113FF
 		mov	cx, _word_245F2
 
 loc_11438::				; CODE XREF: _ult_module+2C6j
@@ -2467,7 +2467,7 @@ loc_11443::				; CODE XREF: _ult_module+250j
 		mov	ax, 4200h
 		int	21h		; DOS -	2+ - MOVE FILE READ/WRITE POINTER (LSEEK)
 					; AL = method: offset from beginning of	file
-		mov	byte ptr [_word_3063B+1], 1
+		mov	byte ptr _word_3063B[1], 1
 		mov	cx, 40h	; '@'
 
 loc_1145A::				; CODE XREF: _ult_module+237j
@@ -2480,7 +2480,7 @@ loc_1145A::				; CODE XREF: _ult_module+237j
 		add	di, 5
 		pop	cx
 		dec	cx
-		jnz	short loc_1145A
+		jnz	loc_1145A
 		xor	dx, dx
 		xor	cx, cx
 		mov	bx, _fhandle_module
@@ -2492,7 +2492,7 @@ loc_1145A::				; CODE XREF: _ult_module+237j
 		pop	cx
 		add	si, 4
 		dec	cx
-		jnz	short loc_11443
+		jnz	loc_11443
 		call	_memalloc12k
 		mov	si, offset _byte_30908
 		mov	cx, 40h	; '@'
@@ -2508,7 +2508,7 @@ loc_1149C::				; CODE XREF: _ult_module+2B2j
 		xor	bx, bx
 		mov	al, [si]
 		or	al, al
-		jz	short loc_114C0
+		jz	loc_114C0
 		dec	al
 		xor	ah, ah
 		mov	cl, 0Ch
@@ -2519,7 +2519,7 @@ loc_1149C::				; CODE XREF: _ult_module+2B2j
 		mov	bl, al
 		mov	bh, [si+1]
 		cmp	bh, 63h	; 'c'
-		jb	short loc_114C0
+		jb	loc_114C0
 		xor	bh, bh
 
 loc_114C0::				; CODE XREF: _ult_module+26Aj
@@ -2535,7 +2535,7 @@ loc_114C0::				; CODE XREF: _ult_module+26Aj
 		xchg	ax, dx
 		call	_ult_1150B
 		cmp	dl, al
-		ja	short loc_114DF
+		ja	loc_114DF
 		xchg	ax, dx
 
 loc_114DF::				; CODE XREF: _ult_module+2A3j
@@ -2544,19 +2544,19 @@ loc_114DF::				; CODE XREF: _ult_module+2A3j
 		add	si, 140h
 		inc	ch
 		cmp	ch, cl
-		jb	short loc_1149C
+		jb	loc_1149C
 		mov	byte ptr [es:di], 0
 		inc	di
 		pop	si
 		pop	cx
 		add	si, 5
 		dec	cx
-		jnz	short loc_11494
+		jnz	loc_11494
 		call	_mem_reallocx
 		pop	cx
 		dec	cx
 		jnz	loc_11438
-		call	near ptr _mod_readfile_11F4E
+		call	_mod_readfile_11F4E
 		jb	loc_10099
 		retn
 _ult_module endp ; sp-analysis failed
@@ -2568,15 +2568,15 @@ _ult_module endp ; sp-analysis failed
 _ult_1150B proc near		; CODE XREF: _ult_module+29Ap
 					; _ult_module+29Ep
 		cmp	al, 5
-		jz	short loc_11520
+		jz	loc_11520
 		cmp	al, 0Ah
-		jz	short loc_11523
+		jz	loc_11523
 		cmp	al, 0Bh
-		jz	short loc_1152A
+		jz	loc_1152A
 		cmp	al, 0Ch
-		jz	short loc_11531
+		jz	loc_11531
 		cmp	al, 0Eh
-		jz	short loc_11539
+		jz	loc_11539
 		retn
 ; ---------------------------------------------------------------------------
 
@@ -2609,9 +2609,9 @@ loc_11539::				; CODE XREF: _ult_1150B+12j
 		mov	dx, ax
 		shr	dx, 4
 		cmp	dl, 0EAh ; 'Í'
-		jz	short loc_1154B
+		jz	loc_1154B
 		cmp	dl, 0EBh ; 'Î'
-		jz	short loc_1154B
+		jz	loc_1154B
 		pop	dx
 		retn
 ; ---------------------------------------------------------------------------
@@ -2633,16 +2633,16 @@ _ult_1150B endp
 
 _ult_read proc near		; CODE XREF: _ult_module+1E8p
 					; _ult_module+222p
-		dec	byte ptr [_word_3063B+1]
-		jnz	short locret_11584
+		dec	byte ptr _word_3063B[1]
+		jnz	locret_11584
 		mov	dx, offset _word_3063B
 		mov	cx, 2
 		call	_dosfread
-		cmp	byte ptr [_word_3063B], 0FCh ; '¸'
-		jz	short loc_11585
+		cmp	byte ptr _word_3063B, 0FCh ; '¸'
+		jz	loc_11585
 		mov	ax, _word_3063B
-		mov	word ptr [_dword_3063D],	ax
-		mov	byte ptr [_word_3063B+1], 1
+		mov	word ptr _dword_3063D,	ax
+		mov	byte ptr _word_3063B[1], 1
 		mov	dx, (offset _dword_3063D+2)
 		mov	cx, 3
 		call	_dosfread
@@ -2756,16 +2756,16 @@ loc_1191C::				; CODE XREF: _inr_read_118B0+FCj
 		add	_dword_257A0, edx
 		mov	eax, _chrin
 		cmp	eax, 54414453h	; SDAT
-		jnz	short loc_11967	; SAMP
+		jnz	loc_11967	; SAMP
 		mov	[di+38h], edx
 		test	_sndflags_24622, 4
-		jnz	short loc_11999
-		jmp	short loc_11999
+		jnz	loc_11999
+		jmp	loc_11999
 ; ---------------------------------------------------------------------------
 
 loc_11967::				; CODE XREF: _inr_read_118B0+A8j
 		cmp	eax, 504D4153h	; SAMP
-		jnz	short loc_11991	; ENDS
+		jnz	loc_11991	; ENDS
 		xor	cx, cx
 		xor	dx, dx
 		mov	bx, _fhandle_module
@@ -2780,22 +2780,22 @@ loc_11967::				; CODE XREF: _inr_read_118B0+A8j
 		mov	ax, 4200h
 		int	21h		; DOS -	2+ - MOVE FILE READ/WRITE POINTER (LSEEK)
 					; AL = method: offset from beginning of	file
-		jmp	short loc_119AF
+		jmp	loc_119AF
 ; ---------------------------------------------------------------------------
 
 loc_11991::				; CODE XREF: _inr_read_118B0+BDj
 		cmp	eax, 53444E45h	; ENDS
-		jz	short loc_119AF
+		jz	loc_119AF
 
 loc_11999::				; CODE XREF: _inr_read_118B0+B3j
 					; _inr_read_118B0+B5j
-		mov	dx, word ptr [_dword_257A0]
-		mov	cx, word ptr [_dword_257A0+2]
+		mov	dx, word ptr _dword_257A0
+		mov	cx, word ptr _dword_257A0[2]
 		mov	bx, _fhandle_module
 		mov	ax, 4200h
 		int	21h		; DOS -	2+ - MOVE FILE READ/WRITE POINTER (LSEEK)
 					; AL = method: offset from beginning of	file
-		jb	short loc_119B2
+		jb	loc_119B2
 		jmp	loc_1191C
 ; ---------------------------------------------------------------------------
 
@@ -2889,11 +2889,11 @@ loc_11A39::				; CODE XREF: _inr_module+172j
 		mov	ax, 4201h
 		int	21h		; DOS -	2+ - MOVE FILE READ/WRITE POINTER (LSEEK)
 					; AL = method: offset from present location
-		add	word ptr [_dword_257A0],	ax
-		adc	word ptr [_dword_257A0+2], dx
+		add	word ptr _dword_257A0,	ax
+		adc	word ptr _dword_257A0[2], dx
 		mov	eax, _chrin
 		cmp	eax, 54534C54h	; TLST
-		jnz	short loc_11A81	; BLST
+		jnz	loc_11A81	; BLST
 		mov	di, offset _byte_280E8 ;	buffer
 		call	_inr_read_119B7
 		jb	loc_11B3D
@@ -2902,7 +2902,7 @@ loc_11A39::				; CODE XREF: _inr_module+172j
 
 loc_11A81::				; CODE XREF: _inr_module+ABj
 		cmp	eax, 54534C42h	; BLST
-		jnz	short loc_11A96	; PLST
+		jnz	loc_11A96	; PLST
 		mov	di, offset _byte_281E8 ;	buffer
 		call	_inr_read_119B7
 		jb	loc_11B3D
@@ -2911,32 +2911,32 @@ loc_11A81::				; CODE XREF: _inr_module+ABj
 
 loc_11A96::				; CODE XREF: _inr_module+C0j
 		cmp	eax, 54534C50h	; PLST
-		jnz	short loc_11AAA	; PATT
+		jnz	loc_11AAA	; PATT
 		mov	di, offset _byte_27FE8 ;	buffer
 		call	_inr_read_119B7
 		jb	loc_11B3D
-		jmp	short loc_11B28
+		jmp	loc_11B28
 ; ---------------------------------------------------------------------------
 
 loc_11AAA::				; CODE XREF: _inr_module+D5j
 		cmp	eax, 54544150h	; PATT
-		jnz	short loc_11B09	; SAMP
+		jnz	loc_11B09	; SAMP
 		mov	ebx, _myin
 		cmp	ebx, 40h ; '@'
-		ja	short loc_11AC0
+		ja	loc_11AC0
 		mov	bx, 40h	; '@'   ; bytes
 
 loc_11AC0::				; CODE XREF: _inr_module+F4j
 		call	_memalloc
-		jb	short loc_11B3D
+		jb	loc_11B3D
 		mov	ecx, _myin
 		mov	di, _word_245F2
 		inc	_word_245F2
 		shl	di, 1
-		mov	[_segs_table+di], ax
+		mov	_segs_table[di], ax
 		cmp	cx, 40h	; '@'
-		jbe	short loc_11AF3
-		mov	[_myseg_size+di], cx
+		jbe	loc_11AF3
+		mov	_myseg_size[di], cx
 		xor	dx, dx
 		mov	bx, _fhandle_module
 		push	ds
@@ -2946,12 +2946,12 @@ loc_11AC0::				; CODE XREF: _inr_module+F4j
 					; BX = file handle, CX = number	of bytes to read
 					; DS:DX	-> buffer
 		pop	ds
-		jb	short loc_11B3D
-		jmp	short loc_11B28
+		jb	loc_11B3D
+		jmp	loc_11B28
 ; ---------------------------------------------------------------------------
 
 loc_11AF3::				; CODE XREF: _inr_module+114j
-		mov	[_myseg_size+di], 40h ; '@'
+		mov	_myseg_size[di], 40h ; '@'
 		xor	di, di
 		mov	es, ax
 		assume es:nothing
@@ -2959,27 +2959,27 @@ loc_11AF3::				; CODE XREF: _inr_module+114j
 		xor	eax, eax
 		cld
 		rep stosd
-		jmp	short loc_11B28
+		jmp	loc_11B28
 ; ---------------------------------------------------------------------------
 
 loc_11B09::				; CODE XREF: _inr_module+E9j
 		cmp	eax, 504D4153h	; SAMP
-		jnz	short loc_11B20	; ENDM
+		jnz	loc_11B20	; ENDM
 		mov	dx, _word_245D2
 		inc	_word_245D2
 		call	_inr_read_118B0
-		jb	short loc_11B3D
-		jmp	short loc_11B28
+		jb	loc_11B3D
+		jmp	loc_11B28
 ; ---------------------------------------------------------------------------
 
 loc_11B20::				; CODE XREF: _inr_module+148j
 		cmp	eax, 4D444E45h	; ENDM
-		jz	short loc_11B41
+		jz	loc_11B41
 
 loc_11B28::				; CODE XREF: _inr_module+B7j
 					; _inr_module+CCj ...
-		mov	dx, word ptr [_dword_257A0]
-		mov	cx, word ptr [_dword_257A0+2]
+		mov	dx, word ptr _dword_257A0
+		mov	cx, word ptr _dword_257A0[2]
 		mov	bx, _fhandle_module
 		mov	ax, 4200h
 		int	21h		; DOS -	2+ - MOVE FILE READ/WRITE POINTER (LSEEK)
@@ -2993,7 +2993,7 @@ loc_11B3D::				; CODE XREF: _inr_module+80j
 ; ---------------------------------------------------------------------------
 
 loc_11B41::				; CODE XREF: _inr_module+15Fj
-		call	near ptr _mod_readfile_11F4E
+		call	_mod_readfile_11F4E
 		retn
 _inr_module endp ; sp-analysis failed
 
@@ -3057,8 +3057,8 @@ _mem_reallocx proc near	; CODE XREF: _mod_read_10311+D0p
 					; __2stm_module+190p ...
 		mov	bx, _my_seg_index
 		shl	bx, 1
-		mov	[_segs_table+bx], es
-		mov	[_myseg_size+bx], di
+		mov	_segs_table[bx], es
+		mov	_myseg_size[bx], di
 		movzx	ebx, di
 		mov	ax, es
 		call	_memrealloc
@@ -3075,15 +3075,15 @@ sub_11BA6 proc near		; CODE XREF: _mod_read_10311+BDp
 					; __2stm_module:loc_10565p ...
 		and	ch, 1Fh
 		or	bl, bl
-		jz	short loc_11BB2
+		jz	loc_11BB2
 		cmp	bl, 0FFh
-		jnz	short loc_11BBB
+		jnz	loc_11BBB
 
 loc_11BB2::				; CODE XREF: sub_11BA6+5j
 		or	bh, bh
-		jz	short loc_11BBE
+		jz	loc_11BBE
 		cmp	bh, 0FFh
-		jz	short loc_11BBE
+		jz	loc_11BBE
 
 loc_11BBB::				; CODE XREF: sub_11BA6+Aj
 		or	ch, 20h
@@ -3091,37 +3091,37 @@ loc_11BBB::				; CODE XREF: sub_11BA6+Aj
 loc_11BBE::				; CODE XREF: sub_11BA6+Ej
 					; sub_11BA6+13j
 		cmp	cl, 40h	; '@'
-		ja	short loc_11BC6
+		ja	loc_11BC6
 		or	ch, 40h
 
 loc_11BC6::				; CODE XREF: sub_11BA6+1Bj
 		or	dx, dx
-		jz	short loc_11BD1
+		jz	loc_11BD1
 		or	dl, dl
-		jz	short loc_11C08
+		jz	loc_11C08
 
 loc_11BCE::				; CODE XREF: sub_11BA6+64j
 		or	ch, 80h
 
 loc_11BD1::				; CODE XREF: sub_11BA6+22j
 		test	ch, 0E0h
-		jz	short locret_11C03
+		jz	locret_11C03
 		mov	[es:di], ch
 		inc	di
 		test	ch, 80h
-		jz	short loc_11BE5
+		jz	loc_11BE5
 		mov	[es:di], dx
 		add	di, 2
 
 loc_11BE5::				; CODE XREF: sub_11BA6+37j
 		test	ch, 40h
-		jz	short loc_11BEE
+		jz	loc_11BEE
 		mov	[es:di], cl
 		inc	di
 
 loc_11BEE::				; CODE XREF: sub_11BA6+42j
 		test	ch, 20h
-		jz	short loc_11BF9
+		jz	loc_11BF9
 		mov	[es:di], bx
 		add	di, 2
 
@@ -3129,7 +3129,7 @@ loc_11BF9::				; CODE XREF: sub_11BA6+4Bj
 		mov	al, ch
 		and	al, 1Fh
 		cmp	al, _byte_2461B
-		ja	short loc_11C04
+		ja	loc_11C04
 
 locret_11C03::				; CODE XREF: sub_11BA6+2Ej
 		retn
@@ -3142,7 +3142,7 @@ loc_11C04::				; CODE XREF: sub_11BA6+5Bj
 
 loc_11C08::				; CODE XREF: sub_11BA6+26j
 		mov	dl, 1Dh
-		jmp	short loc_11BCE
+		jmp	loc_11BCE
 sub_11BA6 endp
 
 
@@ -3152,19 +3152,19 @@ sub_11BA6 endp
 sub_11C0C proc near		; CODE XREF: sub_1415E+65p
 		xor	si, si
 		or	al, al
-		jz	short locret_11C28
+		jz	locret_11C28
 		xor	bx, bx
 
 loc_11C14::				; CODE XREF: sub_11C0C+16j
 					; sub_11C0C+1Aj
-		mov	bl, [cs:_byte_11C29+bx]
+		mov	bl, cs:_byte_11C29[bx]
 		add	si, bx
 		mov	bl, [es:si]
 		inc	si
 		shr	bl, 5
-		jnz	short loc_11C14
+		jnz	loc_11C14
 		dec	al
-		jnz	short loc_11C14
+		jnz	loc_11C14
 
 locret_11C28::				; CODE XREF: sub_11C0C+4j
 		retn
@@ -3188,11 +3188,11 @@ loc_11C33::				; CODE XREF: _copy_printable+Dj
 		mov	al, [si]
 		inc	si
 		cmp	al, 20h	; ' '
-		jb	short loc_11C40
+		jb	loc_11C40
 		mov	[di], al
 		inc	di
 		dec	cx
-		jnz	short loc_11C33
+		jnz	loc_11C33
 
 loc_11C40::				; CODE XREF: _copy_printable+7j
 		pop	di
@@ -3227,7 +3227,7 @@ _clean_11C43 proc far		; CODE XREF: _moduleread:loc_1003Dp
 		mov	_word_245D2, 0
 		mov	_freq_245DE, 8287
 		test	_flag_playsetttings, 8
-		jnz	short loc_11CB8
+		jnz	loc_11CB8
 		mov	_freq_245DE, 8363
 
 loc_11CB8::				; CODE XREF: _clean_11C43+6Dj
@@ -3273,7 +3273,7 @@ loc_11D2D::				; CODE XREF: _clean_11C43+FCj
 		mov	word ptr [di+32h], 0FFFFh
 		add	di, 40h	; '@'
 		dec	dx
-		jnz	short loc_11D2D
+		jnz	loc_11D2D
 		mov	di, offset _segs_table
 		mov	cx, 80h	; 'Ä'
 		xor	eax, eax
@@ -3302,7 +3302,7 @@ _clean_11C43 endp
 _ems_init proc near		; CODE XREF: sub_12DA8+103p
 		mov	_ems_enabled, 0
 		mov	ax, 1
-		test	byte ptr [_config_word],	2
+		test	byte ptr _config_word,	2
 		jz	loc_11E00
 		xor	ax, ax
 		mov	es, ax
@@ -3311,33 +3311,33 @@ _ems_init proc near		; CODE XREF: sub_12DA8+103p
 		mov	es, word ptr [es:19Eh]
 		assume es:nothing
 		cmp	dword ptr [es:0Ah], 584D4D45h ;	EMMX
-		jnz	short loc_11E00
+		jnz	loc_11E00
 		cmp	dword ptr [es:0Eh], 30585858h ;	XXX0
-		jnz	short loc_11E00
+		jnz	loc_11E00
 		mov	ah, 40h	; '@'
 		int	67h		;  - LIM EMS - GET MANAGER STATUS
 					; Return: AH = status
 		mov	bx, ax
 		mov	ax, 2
 		or	bh, bh
-		jnz	short loc_11E00
+		jnz	loc_11E00
 		mov	ah, 46h	; 'F'
 		int	67h		;  - LIM EMS - GET EMM VERSION
 					; Return: AH = status
 		mov	bx, ax
 		mov	ax, 2
 		or	bh, bh
-		jnz	short loc_11E00
+		jnz	loc_11E00
 		mov	ax, 3
 		cmp	bl, 40h	; '@'
-		jb	short loc_11E00
+		jb	loc_11E00
 		mov	ah, 41h	; 'A'
 		int	67h		;  - LIM EMS - GET PAGE	FRAME SEGMENT
 					; Return: AH = 00h function successful,	BX = segment of	page frame
 					; AH = error code
 		cmp	ah, 0
 		mov	ax, 2
-		jnz	short loc_11E00
+		jnz	loc_11E00
 		mov	_ems_pageframe, bx
 		mov	ah, 43h	; 'C'
 		mov	bx, 1
@@ -3346,7 +3346,7 @@ _ems_init proc near		; CODE XREF: sub_12DA8+103p
 					; Return: AH = status
 		cmp	ah, 0
 		mov	ax, 8
-		jnz	short loc_11E00
+		jnz	loc_11E00
 		mov	_ems_handle, dx
 		mov	_ems_enabled, 1
 		mov	_ems_log_pagenum, 0
@@ -3366,7 +3366,7 @@ _ems_init endp
 
 _ems_release proc near	; CODE XREF: _ems_deinit+7p
 		cmp	_ems_enabled, 1
-		jnz	short locret_11E1D
+		jnz	locret_11E1D
 		mov	bx, 8000h
 		call	_ems_mapmem
 		mov	dx, _ems_handle
@@ -3386,7 +3386,7 @@ _ems_release endp
 
 _ems_realloc proc near	; CODE XREF: _memfree_125DA+6p
 		cmp	_ems_enabled, 1
-		jnz	short locret_11E36
+		jnz	locret_11E36
 		mov	dx, _ems_handle
 		mov	bx, 1
 		mov	ah, 51h	; 'Q'
@@ -3407,7 +3407,7 @@ _ems_realloc endp
 
 _ems_deinit proc near		; CODE XREF: _deinit_125B9+Fp
 		cmp	_ems_enabled, 1
-		jnz	short locret_11E46
+		jnz	locret_11E46
 		call	_ems_release
 		mov	_ems_enabled, 0
 
@@ -3422,7 +3422,7 @@ _ems_deinit endp
 _ems_save_mapctx proc	near	; CODE XREF: _moduleread+24p
 					; _volume_prep+16p ...
 		cmp	_ems_enabled, 1
-		jnz	short locret_11E67
+		jnz	locret_11E67
 		mov	cx, 32h	; '2'
 
 loc_11E51::				; CODE XREF: _ems_save_mapctx+19j
@@ -3432,9 +3432,9 @@ loc_11E51::				; CODE XREF: _ems_save_mapctx+19j
 					; DX = handle
 					; Return: AH = status
 		cmp	ah, 0
-		jz	short locret_11E67
+		jz	locret_11E67
 		dec	cx
-		jnz	short loc_11E51
+		jnz	loc_11E51
 		mov	_byte_246A5, 1
 
 locret_11E67::				; CODE XREF: _ems_save_mapctx+5j
@@ -3449,9 +3449,9 @@ _ems_save_mapctx endp
 _ems_restore_mapctx proc near	; CODE XREF: _moduleread+78p
 					; _moduleread+A9p ...
 		cmp	_ems_enabled, 1
-		jnz	short locret_11E8A
+		jnz	locret_11E8A
 		cmp	_byte_246A5, 1
-		jnz	short locret_11E8A
+		jnz	locret_11E8A
 		mov	cx, 32h	; '2'
 
 loc_11E79::				; CODE XREF: _ems_restore_mapctx+20j
@@ -3461,9 +3461,9 @@ loc_11E79::				; CODE XREF: _ems_restore_mapctx+20j
 					; DX = handle
 					; Return: AH = status
 		cmp	ah, 0
-		jz	short locret_11E8A
+		jz	locret_11E8A
 		dec	cx
-		jnz	short loc_11E79
+		jnz	loc_11E79
 
 locret_11E8A::				; CODE XREF: _ems_restore_mapctx+5j
 					; _ems_restore_mapctx+Cj ...
@@ -3477,10 +3477,10 @@ _ems_restore_mapctx endp
 _ems_mapmem proc near		; CODE XREF: _useless_11787+34p
 					; _ems_release+Ap ...
 		cmp	_ems_enabled, 1
-		jnz	short locret_11EC4
+		jnz	locret_11EC4
 		mov	cx, 32h	; '2'
 		cmp	bx, _ems_log_pagenum
-		jb	short loc_11E9E
+		jb	loc_11E9E
 		mov	bx, 0FFFFh	; EMS UNMAP
 
 loc_11E9E::				; CODE XREF: _ems_mapmem+Ej
@@ -3495,9 +3495,9 @@ loc_11E9E::				; CODE XREF: _ems_mapmem+Ej
 					; Return: AH = status
 		pop	bx
 		inc	bx
-		jz	short loc_11EB3
+		jz	loc_11EB3
 		cmp	bx, _ems_log_pagenum
-		jb	short loc_11EB6
+		jb	loc_11EB6
 
 loc_11EB3::				; CODE XREF: _ems_mapmem+20j
 		mov	bx, 0FFFFh
@@ -3510,9 +3510,9 @@ loc_11EB6::				; CODE XREF: _ems_mapmem+26j
 					; Return: AH = status
 		cmp	ah, 0
 		pop	bx
-		jz	short locret_11EC4
+		jz	locret_11EC4
 		dec	cx
-		jnz	short loc_11E9E
+		jnz	loc_11E9E
 
 locret_11EC4::				; CODE XREF: _ems_mapmem+5j
 					; _ems_mapmem+34j
@@ -3526,10 +3526,10 @@ _ems_mapmem endp
 _ems_mapmem2 proc near	; CODE XREF: _ems_mapmemx+48p
 					; _ems_mapmemx+F4p ...
 		cmp	_ems_enabled, 1
-		jnz	short locret_11EFE
+		jnz	locret_11EFE
 		mov	cx, 32h	; '2'
 		cmp	bx, _ems_log_pagenum
-		jb	short loc_11ED8
+		jb	loc_11ED8
 		mov	bx, 0FFFFh
 
 loc_11ED8::				; CODE XREF: _ems_mapmem2+Ej
@@ -3544,9 +3544,9 @@ loc_11ED8::				; CODE XREF: _ems_mapmem2+Ej
 					; Return: AH = status
 		pop	bx
 		inc	bx
-		jz	short loc_11EED
+		jz	loc_11EED
 		cmp	bx, _ems_log_pagenum
-		jb	short loc_11EF0
+		jb	loc_11EF0
 
 loc_11EED::				; CODE XREF: _ems_mapmem2+20j
 		mov	bx, 0FFFFh
@@ -3559,9 +3559,9 @@ loc_11EF0::				; CODE XREF: _ems_mapmem2+26j
 					; Return: AH = status
 		cmp	ah, 0
 		pop	bx
-		jz	short locret_11EFE
+		jz	locret_11EFE
 		dec	cx
-		jnz	short loc_11ED8
+		jnz	loc_11ED8
 
 locret_11EFE::				; CODE XREF: _ems_mapmem2+5j
 					; _ems_mapmem2+34j
@@ -3575,7 +3575,7 @@ _ems_mapmem2 endp
 _ems_realloc2 proc near	; CODE XREF: _mod_readfile_11F4E+36p
 		inc	_byte_24617
 		cmp	_ems_enabled, 1
-		jnz	short loc_11F3C
+		jnz	loc_11F3C
 		mov	ebx, [di+20h]
 		shr	ebx, 4
 		add	bx, 102h
@@ -3593,7 +3593,7 @@ _ems_realloc2 proc near	; CODE XREF: _mod_readfile_11F4E+36p
 					; AH = status
 		pop	bx
 		cmp	ah, 0
-		jnz	short loc_11F3C
+		jnz	loc_11F3C
 		mov	cx, _ems_log_pagenum
 		mov	_ems_log_pagenum, bx
 		mov	bx, cx
@@ -3619,30 +3619,30 @@ _mod_readfile_11F4E proc far	; CODE XREF: _mod_n_t_module+6Ap
 		mov	_byte_24617, 0
 		cmp	_word_24662, 0
 		stc
-		jnz	short locret_11FD3
+		jnz	locret_11FD3
 		test	_sndflags_24622, 4
-		jnz	short loc_11FD6
+		jnz	loc_11FD6
 		test	_sndflags_24622, 10h
-		jnz	short loc_11FD2
+		jnz	loc_11FD2
 		mov	cx, _word_245D2
 		mov	di, offset _myout
 
 loc_11F70::				; CODE XREF: _mod_readfile_11F4E+82j
 		push	cx
 		cmp	dword ptr [di+20h], 0
-		jz	short loc_11FCB
+		jz	loc_11FCB
 		mov	_byte_24675, 1
 		mov	al, [di+3Fh]
 		mov	_byte_24674, al
 		push	di
 		call	_ems_realloc2
 		pop	di
-		jb	short loc_11FD4
+		jb	loc_11FD4
 		mov	[di+30h], ax
 		mov	[di+32h], cx
 		mov	es, ax
 		test	_moduleflag_246D0, 10111011000b
-		jz	short loc_11FA9
+		jz	loc_11FA9
 		mov	dx, [di+38h]
 		mov	cx, [di+3Ah]
 		mov	bx, _fhandle_module
@@ -3671,7 +3671,7 @@ loc_11FCB::				; CODE XREF: _mod_readfile_11F4E+28j
 		add	di, 40h	; '@'
 		pop	cx
 		dec	cx
-		jnz	short loc_11F70
+		jnz	loc_11F70
 
 loc_11FD2::				; CODE XREF: _mod_readfile_11F4E+19j
 		clc
@@ -3690,8 +3690,8 @@ loc_11FD6::				; CODE XREF: _mod_readfile_11F4E+12j
 		mov	cl, _dma_channel_0
 		call	_alloc_dma_buf
 		jb	locret_1221F
-		mov	word ptr [_dma_buf_pointer+2], ax
-		mov	word ptr [_dma_buf_pointer], 0
+		mov	word ptr _dma_buf_pointer[2], ax
+		mov	word ptr _dma_buf_pointer, 0
 		mov	di, offset _myout
 		mov	cx, _word_245D2
 
@@ -3704,7 +3704,7 @@ loc_11FF7::				; CODE XREF: _mod_readfile_11F4E+1D9j
 		mov	al, [di+3Fh]
 		mov	_byte_24674, al
 		test	_moduleflag_246D0, 10111011000b
-		jz	short loc_12027
+		jz	loc_12027
 		mov	dx, [di+38h]
 		mov	cx, [di+3Ah]
 		mov	bx, _fhandle_module
@@ -3714,7 +3714,7 @@ loc_11FF7::				; CODE XREF: _mod_readfile_11F4E+1D9j
 
 loc_12027::				; CODE XREF: _mod_readfile_11F4E+C8j
 		test	byte ptr [di+3Ch], 4
-		jz	short loc_1206B
+		jz	loc_1206B
 		mov	eax, [di+20h]
 		add	eax, 1Fh
 		and	al, 0E0h
@@ -3722,7 +3722,7 @@ loc_12027::				; CODE XREF: _mod_readfile_11F4E+C8j
 		mov	bx, _word_24630
 		shl	bx, 2
 		add	ax, bx
-		jnb	short loc_12056
+		jnb	loc_12056
 		and	_word_24630, 0C000h
 		add	_word_24630, 4000h
 		jb	loc_12117
@@ -3737,7 +3737,7 @@ loc_12056::				; CODE XREF: _mod_readfile_11F4E+F6j
 
 loc_12066::				; CODE XREF: _snd_initialze+13j
 		mov	[di+34h], ax
-		jmp	short loc_12071
+		jmp	loc_12071
 ; ---------------------------------------------------------------------------
 
 loc_1206B::				; CODE XREF: _mod_readfile_11F4E+DDj
@@ -3749,7 +3749,7 @@ loc_12071::				; CODE XREF: _mod_readfile_11F4E+11Bj
 
 loc_12075::				; CODE XREF: _mod_readfile_11F4E+174j
 		cmp	ecx, 8000h
-		jbe	short loc_120C4
+		jbe	loc_120C4
 		sub	ecx, 8000h
 		push	ecx
 		mov	cx, 8000h
@@ -3774,15 +3774,15 @@ loc_120AA::
 		mov	cx, 8000h
 		mov	ax, _word_24630
 		call	_nongravis_182E7
-		xor	word ptr [_dma_buf_pointer], 8000h
+		xor	word ptr _dma_buf_pointer, 8000h
 		add	_word_24630, 800h
 		pop	di
 		pop	ecx
-		jmp	short loc_12075
+		jmp	loc_12075
 ; ---------------------------------------------------------------------------
 
 loc_120C4::				; CODE XREF: _mod_readfile_11F4E+12Ej
-		jcxz	short loc_120E7
+		jcxz	loc_120E7
 		mov	bx, _fhandle_module
 		mov	ah, 3Fh	; '?'
 		push	di
@@ -3806,7 +3806,7 @@ loc_120E7::				; CODE XREF: _mod_readfile_11F4E:loc_120C4j
 		push	cx
 		mov	ax, _word_24630
 		call	_nongravis_182E7
-		xor	word ptr [_dma_buf_pointer], 8000h
+		xor	word ptr _dma_buf_pointer, 8000h
 		pop	ax
 		add	ax, 21h	; '!'
 		and	al, 0E0h
@@ -3824,7 +3824,7 @@ loc_12106::				; CODE XREF: _mod_readfile_11F4E+AFj
 		mov	al, _byte_24628
 		shl	ax, 0Dh
 		cmp	dx, ax
-		jbe	short loc_12123
+		jbe	loc_12123
 
 loc_12117::				; CODE XREF: _mod_readfile_11F4E+104j
 		call	_memfree_18A28
@@ -3840,7 +3840,7 @@ loc_12123::				; CODE XREF: _mod_readfile_11F4E+1C7j
 
 loc_1212B::				; CODE XREF: _mod_readfile_11F4E+1E2j
 		cmp	_byte_2466E, 1
-		jz	short loc_1212B
+		jz	loc_1212B
 		call	_memfree_18A28
 		mov	di, offset _myout
 		mov	cx, _word_245D2
@@ -3851,9 +3851,9 @@ loc_1213C::				; CODE XREF: _mod_readfile_11F4E+2CCj
 		push	cx
 		xor	ax, ax
 		test	byte ptr [di+3Ch], 4
-		jnz	short loc_121B9
+		jnz	loc_121B9
 		test	byte ptr [di+3Ch], 8
-		jz	short loc_1219E
+		jz	loc_1219E
 		mov	edx, [di+24h]
 		push	edi
 		movzx	edi, word ptr [di+34h]
@@ -3883,15 +3883,15 @@ loc_1219E::				; CODE XREF: _mod_readfile_11F4E+203j
 		add	edi, edx
 		inc	edi
 		pop	edi
-		jmp	short loc_12215
+		jmp	loc_12215
 ; ---------------------------------------------------------------------------
 
 loc_121B9::				; CODE XREF: _mod_readfile_11F4E+1FDj
 		test	byte ptr [di+3Ch], 8
-		jz	short loc_121EE
+		jz	loc_121EE
 		mov	edx, [di+24h]
 		test	byte ptr [di+3Ch], 10h
-		jz	short loc_121CD
+		jz	loc_121CD
 		mov	edx, [di+2Ch]
 
 loc_121CD::				; CODE XREF: _mod_readfile_11F4E+279j
@@ -3940,14 +3940,14 @@ _mod_readfile_11F4E endp ; sp-analysis failed
 _mod_sub_12220 proc near	; CODE XREF: _mod_readfile_11F4E+158p
 					; _mod_readfile_11F4E+195p ...
 		cmp	_byte_24674, 1
-		jz	short loc_12228
+		jz	loc_12228
 		retn
 ; ---------------------------------------------------------------------------
 
 loc_12228::				; CODE XREF: _mod_sub_12220+5j
 		mov	al, _byte_24676
 		cmp	_byte_24675, 0
-		jz	short loc_12239
+		jz	loc_12239
 		mov	_byte_24675, 0
 		xor	al, al
 
@@ -3957,7 +3957,7 @@ loc_12239::				; CODE XREF: _mod_sub_12220+10j
 		mov	[es:si], al
 		inc	si
 		dec	cx
-		jnz	short loc_12239
+		jnz	loc_12239
 		mov	_byte_24676, al
 		retn
 _mod_sub_12220 endp
@@ -3974,7 +3974,7 @@ _mod_readfile_12247 proc near	; CODE XREF: _mod_readfile_11F4E+68p
 loc_1224F::				; CODE XREF: _mod_readfile_12247+98j
 		push	dx
 		cmp	dx, 0FFFFh
-		jz	short loc_12262
+		jz	loc_12262
 		push	dx
 		push	cx
 		push	bx
@@ -3990,7 +3990,7 @@ loc_12262::				; CODE XREF: _mod_readfile_12247+Cj
 		xor	dx, dx
 		mov	ecx, 8000h
 		cmp	edi, ecx
-		ja	short loc_12271
+		ja	loc_12271
 		mov	cx, di
 
 loc_12271::				; CODE XREF: _mod_readfile_12247+26j
@@ -4011,7 +4011,7 @@ loc_12271::				; CODE XREF: _mod_readfile_12247+26j
 		pushf
 		push	ax
 		or	ax, ax
-		jz	short loc_122B8
+		jz	loc_122B8
 		push	ax
 		push	bp
 		mov	es, bp
@@ -4022,13 +4022,13 @@ loc_12271::				; CODE XREF: _mod_readfile_12247+26j
 		pop	bp
 		pop	ax
 		cmp	_byte_24673, 0
-		jz	short loc_122B8
+		jz	loc_122B8
 		mov	fs, bp
 		assume fs:nothing
 		mov	cx, ax
 		add	cx, 3
 		shr	cx, 2
-		jz	short loc_122B8
+		jz	loc_122B8
 		mov	edx, 80808080h
 		xor	si, si
 
@@ -4036,7 +4036,7 @@ loc_122AE::				; CODE XREF: _mod_readfile_12247+6Fj
 		xor	[fs:si], edx
 		add	si, 4
 		dec	cx
-		jnz	short loc_122AE
+		jnz	loc_122AE
 
 loc_122B8::				; CODE XREF: _mod_readfile_12247+3Dj
 					; _mod_readfile_12247+51j ...
@@ -4048,15 +4048,15 @@ loc_122B8::				; CODE XREF: _mod_readfile_12247+3Dj
 		pop	esi
 		pop	bx
 		pop	dx
-		jb	short locret_122E7
+		jb	locret_122E7
 		or	ax, ax
-		jz	short loc_122E3
+		jz	loc_122E3
 		movzx	eax, ax
 		add	esi, eax
 		cmp	dx, 0FFFFh
-		jnz	short loc_122DA
+		jnz	loc_122DA
 		add	bp, 800h
-		jmp	short loc_122DC
+		jmp	loc_122DC
 ; ---------------------------------------------------------------------------
 
 loc_122DA::				; CODE XREF: _mod_readfile_12247+8Bj
@@ -4088,7 +4088,7 @@ _ems_mapmemx proc near	; CODE XREF: _mod_readfile_11F4E+75p
 		mov	edx, [di+20h]
 		add	edx, 800h
 		cmp	word ptr [di+32h], 0FFFFh
-		jz	short loc_1234E
+		jz	loc_1234E
 		push	eax
 		push	ecx
 		push	edx
@@ -4134,7 +4134,7 @@ loc_1236C::				; CODE XREF: _ems_mapmemx+9Bj
 		add	si, 4
 		add	di, 4
 		dec	cx
-		jnz	short loc_1236C
+		jnz	loc_1236C
 		retn
 ; ---------------------------------------------------------------------------
 
@@ -4145,7 +4145,7 @@ loc_12386::				; CODE XREF: _ems_mapmemx+4j
 		inc	ecx
 		mov	ebx, ecx
 		cmp	word ptr [di+32h], 0FFFFh
-		jz	short loc_123B0
+		jz	loc_123B0
 		push	ecx
 		push	eax
 		shr	ebx, 0Eh
@@ -4165,7 +4165,7 @@ loc_123B0::				; CODE XREF: _ems_mapmemx+ADj
 		add	ecx, 800h
 		mov	ebx, ecx
 		cmp	word ptr [di+32h], 0FFFFh
-		jz	short loc_123EE
+		jz	loc_123EE
 		push	ecx
 		push	eax
 		shr	ebx, 0Eh
@@ -4191,7 +4191,7 @@ loc_123EE::				; CODE XREF: _ems_mapmemx+E7j
 		mov	ecx, [di+24h]
 		mov	ebx, ecx
 		cmp	word ptr [di+32h], 0FFFFh
-		jz	short loc_1242D
+		jz	loc_1242D
 		push	ecx
 		push	eax
 		shr	ebx, 0Eh
@@ -4211,7 +4211,7 @@ loc_1242D::				; CODE XREF: _ems_mapmemx+12Aj
 		inc	ecx
 		mov	ebx, ecx
 		cmp	word ptr [di+32h], 0FFFFh
-		jz	short loc_12466
+		jz	loc_12466
 		push	ecx
 		push	eax
 		shr	ebx, 0Eh
@@ -4229,7 +4229,7 @@ loc_12466::				; CODE XREF: _ems_mapmemx+15Fj
 		add	cx, ax
 		mov	es, cx
 		cmp	dword ptr [di+28h], 800h
-		ja	short loc_12497
+		ja	loc_12497
 		mov	edx, [di+28h]
 		add	dx, si
 		mov	di, bx
@@ -4240,12 +4240,12 @@ loc_12466::				; CODE XREF: _ems_mapmemx+15Fj
 loc_1248B::				; CODE XREF: _ems_mapmemx+1ACj
 		movs	byte ptr [es:di], byte	ptr [fs:si]
 		cmp	si, dx
-		jb	short loc_12493
+		jb	loc_12493
 		mov	si, bp
 
 loc_12493::				; CODE XREF: _ems_mapmemx+1A7j
 		dec	cx
-		jnz	short loc_1248B
+		jnz	loc_1248B
 		retn
 ; ---------------------------------------------------------------------------
 
@@ -4270,7 +4270,7 @@ _ems_mapmemy proc near
 		mov	edx, [di+20h]
 		add	edx, 800h
 		cmp	word ptr [di+32h], 0FFFFh
-		jz	short loc_12508
+		jz	loc_12508
 		push	eax
 		push	ecx
 		push	edx
@@ -4315,7 +4315,7 @@ loc_12529::				; CODE XREF: _ems_mapmemy+96j
 		add	si, 4
 		add	di, 4
 		dec	cx
-		jnz	short loc_12529
+		jnz	loc_12529
 		retn
 ; ---------------------------------------------------------------------------
 
@@ -4324,7 +4324,7 @@ loc_1253B::				; CODE XREF: _ems_mapmemy+4j
 		add	ecx, 800h
 		mov	ebx, ecx
 		cmp	word ptr [di+32h], 0FFFFh
-		jz	short loc_12568
+		jz	loc_12568
 		push	ecx
 		push	eax
 		shr	ebx, 0Eh
@@ -4344,7 +4344,7 @@ loc_12568::				; CODE XREF: _ems_mapmemy+ABj
 		inc	ecx
 		mov	ebx, ecx
 		cmp	word ptr [di+32h], 0FFFFh
-		jz	short loc_125A1
+		jz	loc_125A1
 		push	ecx
 		push	eax
 		shr	ebx, 0Eh
@@ -4379,9 +4379,9 @@ _deinit_125B9 proc far	; CODE XREF: _start:loc_1907CP
 		mov	ax, seg003
 		mov	ds, ax
 		push	cs
-		call	near ptr _snd_offx
+		call	_snd_offx
 		push	cs
-		call	near ptr _memfree_125DA
+		call	_memfree_125DA
 		call	_ems_deinit
 		mov	ax, _word_2460C
 		call	_setmemallocstrat
@@ -4404,29 +4404,29 @@ _memfree_125DA proc far	; CODE XREF: _moduleread+7p
 		mov	ds, ax
 		assume ds:seg003
 		call	_ems_realloc
-		cmp	word ptr [_dword_24640+2], 0
-		jz	short loc_125F6
+		cmp	word ptr _dword_24640[2], 0
+		jz	loc_125F6
 		call	_memfree_18A28
 		mov	_dword_24640, 0
 
 loc_125F6::				; CODE XREF: _memfree_125DA+Ej
 		cmp	_byte_24665, 1
-		jnz	short loc_1265B
+		jnz	loc_1265B
 		test	_sndflags_24622, 4
-		jnz	short loc_1263D
+		jnz	loc_1263D
 		test	_sndflags_24622, 10h
-		jnz	short loc_1263D
+		jnz	loc_1263D
 		mov	di, offset _myout
 		mov	cx, _word_245D2
 
 loc_12612::				; CODE XREF: _memfree_125DA+61j
 		push	cx
 		test	byte ptr [di+3Ch], 1
-		jz	short loc_12636
+		jz	loc_12636
 		cmp	word ptr [di+32h], 0FFFFh
-		jnz	short loc_12636
+		jnz	loc_12636
 		cmp	word ptr [di+30h], 0
-		jz	short loc_12636
+		jz	loc_12636
 		mov	ax, [di+30h]
 		push	di
 		call	_memfree
@@ -4439,7 +4439,7 @@ loc_12636::				; CODE XREF: _memfree_125DA+3Dj
 		pop	cx
 		add	di, 40h	; '@'
 		dec	cx
-		jnz	short loc_12612
+		jnz	loc_12612
 
 loc_1263D::				; CODE XREF: _memfree_125DA+28j
 					; _memfree_125DA+2Fj
@@ -4449,7 +4449,7 @@ loc_1263D::				; CODE XREF: _memfree_125DA+28j
 loc_12644::				; CODE XREF: _memfree_125DA+7Fj
 		mov	ax, [di]
 		or	ax, ax
-		jz	short loc_12655
+		jz	loc_12655
 		push	cx
 		push	di
 		call	_memfree
@@ -4460,7 +4460,7 @@ loc_12644::				; CODE XREF: _memfree_125DA+7Fj
 loc_12655::				; CODE XREF: _memfree_125DA+6Ej
 		add	di, 2
 		dec	cx
-		jnz	short loc_12644
+		jnz	loc_12644
 
 loc_1265B::				; CODE XREF: _memfree_125DA+21j
 		pop	ds
@@ -4477,25 +4477,25 @@ sub_1265D proc far		; CODE XREF: _read_module+86P
 		mov	ax, seg003
 		mov	es, ax
 		assume es:seg003
-		mov	ax, [es:_volume_245FC]
+		mov	ax, es:_volume_245FC
 		dec	ax
 		mov	cl, al
 		mov	si, offset _volume_25908
 		mov	di, offset asc_246B0 ; "				"
-		movzx	bp, [es:_sndcard_type]
-		mov	ch, [es:_byte_24666]
-		mov	bh, [es:_byte_24667]
-		mov	dl, [es:_sndflags_24622]
-		mov	dh, [es:_byte_24628]
+		movzx	bp, es:_sndcard_type
+		mov	ch, es:_byte_24666
+		mov	bh, es:_byte_24667
+		mov	dl, es:_sndflags_24622
+		mov	dh, es:_byte_24628
 		dec	dh
 		and	dh, 3
 		shl	dh, 1
-		or	dh, [es:_byte_24623]
+		or	dh, es:_byte_24623
 		shl	dh, 1
-		or	dh, [es:_byte_24671]
+		or	dh, es:_byte_24671
 		shl	dh, 3
-		mov	al, byte ptr [es:_word_245F6]
-		mov	ah, byte ptr [es:_word_245F0]
+		mov	al, byte ptr es:_word_245F6
+		mov	ah, byte ptr es:_word_245F0
 		retf
 sub_1265D endp
 
@@ -4509,11 +4509,11 @@ sub_126A9 proc far		; CODE XREF: _read_module+6AP
 		mov	es, ax
 		mov	di, offset asc_246B0 ; "				"
 		mov	si, offset _myout
-		mov	bl, byte ptr [es:_word_245FA]
-		mov	bh, byte ptr [es:_word_245D2]
-		mov	cl, byte ptr [es:_word_245D4]
-		mov	ch, [es:_byte_24617]
-		mov	eax, [es:_module_type_text]
+		mov	bl, byte ptr es:_word_245FA
+		mov	bh, byte ptr es:_word_245D2
+		mov	cl, byte ptr es:_word_245D4
+		mov	ch, es:_byte_24617
+		mov	eax, es:_module_type_text
 		retf
 sub_126A9 endp
 
@@ -4530,7 +4530,7 @@ _volume_prep proc far		; CODE XREF: seg001:18BEP
 		mov	_word_24610, ax
 		mov	_my_size, cx
 		test	_sndflags_24622, 4
-		jnz	short loc_12702
+		jnz	loc_12702
 		push	di
 		push	es
 		call	_ems_save_mapctx
@@ -4548,7 +4548,7 @@ loc_126F0::				; CODE XREF: _volume_prep+2Dj
 		pop	dx
 		add	si, 50h	; 'P'
 		dec	dx
-		jnz	short loc_126F0
+		jnz	loc_126F0
 		call	_ems_restore_mapctx
 		pop	ds
 		retf
@@ -4557,13 +4557,13 @@ loc_126F0::				; CODE XREF: _volume_prep+2Dj
 loc_12702::				; CODE XREF: _volume_prep+12j
 		push	di
 		push	es
-		cmp	word ptr [_dword_24640+2], 0
-		jnz	short loc_12721
+		cmp	word ptr _dword_24640[2], 0
+		jnz	loc_12721
 		mov	eax, 800h
 		mov	cl, _dma_channel_0
 		call	_alloc_dma_buf
-		mov	word ptr [_dword_24640+2], ax
-		mov	word ptr [_dword_24640],	0
+		mov	word ptr _dword_24640[2], ax
+		mov	word ptr _dword_24640,	0
 
 loc_12721::				; CODE XREF: _volume_prep+3Bj
 		mov	ax, ds
@@ -4597,7 +4597,7 @@ loc_1272D::				; CODE XREF: _volume_prep+87j
 		mov	[si+4],	eax
 		add	si, 50h	; 'P'
 		dec	cx
-		jnz	short loc_1272D
+		jnz	loc_1272D
 		pop	es
 		assume es:nothing
 		pop	di
@@ -4608,15 +4608,15 @@ loc_1275F::				; CODE XREF: _volume_prep+C8j
 		push	ax
 		push	si
 		test	byte ptr [si+17h], 1
-		jnz	short loc_1276C
+		jnz	loc_1276C
 		call	_memclean
-		jmp	short loc_1278F
+		jmp	loc_1278F
 ; ---------------------------------------------------------------------------
 
 loc_1276C::				; CODE XREF: _volume_prep+97j
 					; _volume_prep+A3j
 		cmp	_byte_2466E, 1
-		jz	short loc_1276C
+		jz	loc_1276C
 		push	si
 		push	di
 		push	es
@@ -4628,7 +4628,7 @@ loc_1276C::				; CODE XREF: _volume_prep+97j
 
 loc_12780::				; CODE XREF: _volume_prep+B7j
 		cmp	_byte_2466E, 1
-		jz	short loc_12780
+		jz	loc_12780
 		lfs	ax, _dword_24640
 		call	sub_1281A
 
@@ -4637,7 +4637,7 @@ loc_1278F::				; CODE XREF: _volume_prep+9Cj
 		pop	ax
 		add	si, 50h	; 'P'
 		dec	al
-		jnz	short loc_1275F
+		jnz	loc_1275F
 		pop	ds
 		retf
 _volume_prep endp
@@ -4655,7 +4655,7 @@ sub_1279A proc near		; CODE XREF: _volume_prep+ACp
 		shrd	ax, dx,	8
 		add	ax, 30h	; '0'
 		test	_word_24610, 8000h
-		jz	short loc_127BD
+		jz	loc_127BD
 		add	ax, 100h
 
 loc_127BD::				; CODE XREF: sub_1279A+1Ej
@@ -4663,7 +4663,7 @@ loc_127BD::				; CODE XREF: sub_1279A+1Ej
 		setnz	cl
 		shl	ax, cl
 		cmp	ax, 800h
-		jb	short loc_127CE
+		jb	loc_127CE
 		mov	ax, 800h
 
 loc_127CE::				; CODE XREF: sub_1279A+2Fj
@@ -4686,7 +4686,7 @@ loc_127CE::				; CODE XREF: sub_1279A+2Fj
 
 loc_127FC::				; CODE XREF: sub_1279A+67j
 		cmp	_byte_2466E, 1
-		jz	short loc_127FC
+		jz	loc_127FC
 		shr	cx, 1
 		push	ds
 		lds	di, _dma_buf_pointer
@@ -4698,7 +4698,7 @@ loc_1280D::				; CODE XREF: sub_1279A+7Cj
 		add	bx, 2
 		inc	di
 		dec	cx
-		jnz	short loc_1280D
+		jnz	loc_1280D
 		pop	ds
 		retn
 sub_1279A endp
@@ -4717,7 +4717,7 @@ sub_1281A proc near		; CODE XREF: _volume_prep+BEp
 		mov	dh, al
 		xor	dl, dl
 		shr	eax, 10h
-		jmp	short loc_12898
+		jmp	loc_12898
 sub_1281A endp
 
 
@@ -4742,7 +4742,7 @@ _volume_prepare_waves proc near ; CODE XREF: _volume_prep+24p
 		mov	bx, ax
 		shr	eax, 12
 		cmp	word ptr [si+26h], 0FFFFh
-		jz	short loc_12870
+		jz	loc_12870
 		and	eax, 3FFh
 
 loc_12870::				; CODE XREF: _volume_prepare_waves+33j
@@ -4768,9 +4768,9 @@ loc_12898::				; CODE XREF: sub_1281A+19j
 		movzx	ebx, byte ptr [si+23h]
 		mov	si, ax
 		test	_word_24610, 4000h
-		jz	short loc_128BB
+		jz	loc_128BB
 		cmp	_amplification, 120
-		jbe	short loc_128BB
+		jbe	loc_128BB
 		mov	ax, 100
 		push	dx
 		mul	bx
@@ -4785,7 +4785,7 @@ loc_128BB::				; CODE XREF: _volume_prepare_waves+70j
 		inc	bx
 		mov	cx, _my_size
 		test	_word_24610, 8000h
-		jz	short loc_1291E
+		jz	loc_1291E
 		shl	ecx, 16
 		shl	esi, 16
 		mov	si, ax
@@ -4795,29 +4795,29 @@ loc_128DD::				; CODE XREF: _volume_prepare_waves+DFj
 		mov	eax, [fs:si]
 		inc	si
 		or	al, al
-		jns	short loc_12913
+		jns	loc_12913
 		or	ah, ah
-		js	short loc_12913
+		js	loc_12913
 		ror	eax, 8
 		cmp	al, ah
-		jg	short loc_12913
+		jg	loc_12913
 		ror	eax, 8
 		cmp	al, ah
-		jg	short loc_12913
+		jg	loc_12913
 		rol	eax, 16
 		mov	ax, [fs:si+3]
 		rol	eax, 8
 		cmp	al, ah
-		jg	short loc_12913
+		jg	loc_12913
 		ror	eax, 8
 		inc	si
 		cmp	al, ah
-		jle	short loc_1291A
+		jle	loc_1291A
 
 loc_12913::				; CODE XREF: _volume_prepare_waves+AFj
 					; _volume_prepare_waves+B3j ...
 		dec	cx
-		jnz	short loc_128DD
+		jnz	loc_128DD
 		shr	esi, 16
 
 loc_1291A::				; CODE XREF: _volume_prepare_waves+DCj
@@ -4906,7 +4906,7 @@ loc_12921::				; CODE XREF: _volume_prepare_waves+21Cj
 		inc	di
 		adc	si, bp
 		dec	cx
-		jz	short locret_12A55
+		jz	locret_12A55
 		mov	al, [fs:si]
 		mov	al, [ebx+eax*2]
 		mov	[es:di], al
@@ -4914,7 +4914,7 @@ loc_12921::				; CODE XREF: _volume_prepare_waves+21Cj
 		inc	di
 		adc	si, bp
 		dec	cx
-		jz	short locret_12A55
+		jz	locret_12A55
 		mov	al, [fs:si]
 		mov	al, [ebx+eax*2]
 		mov	[es:di], al
@@ -4922,7 +4922,7 @@ loc_12921::				; CODE XREF: _volume_prepare_waves+21Cj
 		inc	di
 		adc	si, bp
 		dec	cx
-		jz	short locret_12A55
+		jz	locret_12A55
 		mov	al, [fs:si]
 		mov	al, [ebx+eax*2]
 		mov	[es:di], al
@@ -4930,7 +4930,7 @@ loc_12921::				; CODE XREF: _volume_prepare_waves+21Cj
 		inc	di
 		adc	si, bp
 		dec	cx
-		jz	short locret_12A55
+		jz	locret_12A55
 		mov	al, [fs:si]
 		mov	al, [ebx+eax*2]
 		mov	[es:di], al
@@ -4938,7 +4938,7 @@ loc_12921::				; CODE XREF: _volume_prepare_waves+21Cj
 		inc	di
 		adc	si, bp
 		dec	cx
-		jz	short locret_12A55
+		jz	locret_12A55
 		mov	al, [fs:si]
 		mov	al, [ebx+eax*2]
 		mov	[es:di], al
@@ -4946,7 +4946,7 @@ loc_12921::				; CODE XREF: _volume_prepare_waves+21Cj
 		inc	di
 		adc	si, bp
 		dec	cx
-		jz	short locret_12A55
+		jz	locret_12A55
 		mov	al, [fs:si]
 		mov	al, [ebx+eax*2]
 		mov	[es:di], al
@@ -4991,12 +4991,12 @@ _volume_12A66 proc far	; CODE XREF: _vlm_141DF+1p _snd_off+14p
 loc_12A73::				; CODE XREF: _volume_12A66+19j
 		push	bx
 		push	cx
-		call	[off_245CE]
+;;		call	[off_245CE]
 		pop	cx
 		pop	bx
 		add	bx, 50h	; 'P'
 		dec	cx
-		jnz	short loc_12A73
+		jnz	loc_12A73
 		pop	ds
 		retf
 _volume_12A66 endp
@@ -5013,7 +5013,7 @@ _change_volume proc far	; CODE XREF: _keyb_19EFD+17P
 		mov	ds, cx
 		assume ds:seg003
 		cmp	ax, -1
-		jz	short loc_12AA9
+		jz	loc_12AA9
 		mov	_volume_245FC,	ax
 		mov	cx, _word_245D4
 		mov	bx, offset _volume_25908
@@ -5022,12 +5022,12 @@ loc_12A98::				; CODE XREF: _change_volume+24j
 		push	bx
 		push	cx
 		mov	al, [bx+8]
-		call	[off_245CC]
+;;		call	[off_245CC]
 		pop	cx
 		pop	bx
 		add	bx, 50h	; 'P'
 		dec	cx
-		jnz	short loc_12A98
+		jnz	loc_12A98
 
 loc_12AA9::				; CODE XREF: _change_volume+9j
 		mov	ax, _volume_245FC
@@ -5047,11 +5047,11 @@ _change_amplif proc far	; CODE XREF: _s3m_module+84p
 		mov	ds, cx
 		assume ds:seg003
 		cmp	ax, -1
-		jz	short loc_12ACE
+		jz	loc_12ACE
 		mov	_amplification, ax
 		mov	_byte_24625, 0
 		cmp	ax, 100
-		jbe	short loc_12ACB
+		jbe	loc_12ACB
 		mov	_byte_24625, 1
 
 loc_12ACB::				; CODE XREF: _change_amplif+16j
@@ -5092,10 +5092,10 @@ _set_playsettings proc far	; CODE XREF: _keyb_19EFD+357P
 		assume ds:seg003
 		mov	_flag_playsetttings, al
 		call	_someplaymode
-		and	byte ptr [_config_word+1], 0FEh
+		and	byte ptr _config_word[1], 0FEh
 		test	_flag_playsetttings, 10h
-		jz	short loc_12AFB
-		or	byte ptr [_config_word+1], 1
+		jz	loc_12AFB
+		or	byte ptr _config_word[1], 1
 
 loc_12AFB::				; CODE XREF: _set_playsettings+16j
 		pop	ds
@@ -5112,7 +5112,7 @@ sub_12AFD proc far		; CODE XREF: _keyb_19EFD+1F9P
 		mov	ds, bx
 		movzx	bx, ch
 		cmp	bx, _word_245D4
-		jnb	short loc_12B16
+		jnb	loc_12B16
 		imul	bx, 80
 		add	bx, offset _volume_25908
 		call	_eff_13A43
@@ -5152,15 +5152,15 @@ loc_12B42::				; CODE XREF: sub_12B18+65j
 		mov	al, [si]
 		mov	[bx+3Ah], al
 		test	_sndflags_24622, 4
-		jnz	short loc_12B5F
+		jnz	loc_12B5F
 		cmp	al, 40h	; '@'
 		mov	al, 0
-		jb	short loc_12B5A
+		jb	loc_12B5A
 		mov	al, 80h	; 'Ä'
 
 loc_12B5A::				; CODE XREF: sub_12B18+3Ej
 		mov	[bx+3Ah], al
-		jmp	short loc_12B62
+		jmp	loc_12B62
 ; ---------------------------------------------------------------------------
 
 loc_12B5F::				; CODE XREF: sub_12B18+38j
@@ -5168,10 +5168,10 @@ loc_12B5F::				; CODE XREF: sub_12B18+38j
 loc_12B62::				; CODE XREF: sub_12B18+45j
 		mov	al, [bx+3Ah]
 		cmp	al, 0
-		jz	short loc_12B71
+		jz	loc_12B71
 		inc	_byte_2461D
 		cmp	al, 80h	; 'Ä'
-		jz	short loc_12B75
+		jz	loc_12B75
 
 loc_12B71::				; CODE XREF: sub_12B18+4Fj
 		inc	_byte_2461C
@@ -5182,7 +5182,7 @@ loc_12B75::				; CODE XREF: sub_12B18+57j
 		inc	si
 		inc	al
 		dec	cx
-		jnz	short loc_12B42
+		jnz	loc_12B42
 		pop	es
 		assume es:nothing
 		pop	ds
@@ -5201,12 +5201,12 @@ sub_12B83 proc far		; CODE XREF: _moduleread+8Bp
 		mov	ds, bx
 		xor	ah, ah
 		cmp	al, 20h	; ' '
-		jb	short loc_12B92
+		jb	loc_12B92
 		mov	al, 20h	; ' '
 
 loc_12B92::				; CODE XREF: sub_12B83+Bj
 		cmp	al, 2
-		ja	short loc_12B98
+		ja	loc_12B98
 		mov	al, 2
 
 loc_12B98::				; CODE XREF: sub_12B83+11j
@@ -5218,23 +5218,23 @@ loc_12B98::				; CODE XREF: sub_12B83+11j
 
 loc_12BA6::				; CODE XREF: sub_12B83+4Cj
 		cmp	byte ptr [di+1Dh], 0
-		jnz	short loc_12BB3
+		jnz	loc_12BB3
 		mov	[di+18h], dl
 		inc	dl
-		jmp	short loc_12BCB
+		jmp	loc_12BCB
 ; ---------------------------------------------------------------------------
 
 loc_12BB3::				; CODE XREF: sub_12B83+27j
 		cmp	byte ptr [di+1Dh], 1
-		jnz	short loc_12BC0
+		jnz	loc_12BC0
 		mov	[di+18h], dh
 		inc	dh
-		jmp	short loc_12BCB
+		jmp	loc_12BCB
 ; ---------------------------------------------------------------------------
 
 loc_12BC0::				; CODE XREF: sub_12B83+34j
 		cmp	byte ptr [di+1Dh], 2
-		jnz	short loc_12BCB
+		jnz	loc_12BCB
 		mov	[di+18h], bl
 		inc	bl
 
@@ -5242,7 +5242,7 @@ loc_12BCB::				; CODE XREF: sub_12B83+2Ej
 					; sub_12B83+3Bj ...
 		add	di, 80
 		dec	cx
-		jnz	short loc_12BA6
+		jnz	loc_12BA6
 		xor	ah, ah
 		mov	al, dl
 		mov	_word_245D6, ax
@@ -5251,7 +5251,7 @@ loc_12BCB::				; CODE XREF: sub_12B83+2Ej
 		mov	al, bl
 		mov	_word_245DA, ax
 		test	_sndflags_24622, 4
-		jz	short loc_12BEF
+		jz	loc_12BEF
 		mov	ax, _word_245D6
 
 loc_12BEF::				; CODE XREF: sub_12B83+64j
@@ -5272,12 +5272,12 @@ _someplaymode proc near	; CODE XREF: _set_playsettings+9p
 		mov	eax, 1775763456
 		mov	ecx, 369D800h
 		cmp	_byte_2461A, 0
-		jnz	short loc_12C3C
+		jnz	loc_12C3C
 		mov	edx, 3
 		mov	eax, 1643177984
 		mov	ecx, 361F0F0h
 		test	_flag_playsetttings, 8
-		jnz	short loc_12C3C
+		jnz	loc_12C3C
 		mov	edx, 3
 		mov	eax, 1776914432
 		mov	ecx, 369E990h
@@ -5291,11 +5291,11 @@ loc_12C3C::				; CODE XREF: _someplaymode+17j
 		div	edi
 		mov	_dword_245BC, eax
 		test	_sndflags_24622, 4
-		jz	short loc_12C86
+		jz	loc_12C86
 		movzx	ecx, _byte_24629
 		mov	eax, 385532977
 		test	_flag_playsetttings, 8
-		jnz	short loc_12C75
+		jnz	loc_12C75
 		mov	eax, 389081954
 
 loc_12C75::				; CODE XREF: _someplaymode+75j
@@ -5314,7 +5314,7 @@ loc_12C8F::				; CODE XREF: _someplaymode+9Ej
 		mov	[di+3Eh], ax
 		add	di, 50h	; 'P'
 		dec	cx
-		jnz	short loc_12C8F
+		jnz	loc_12C8F
 		retn
 _someplaymode endp
 
@@ -5331,7 +5331,7 @@ _getset_playstate proc far	; CODE XREF: _keyb_19EFD+401P
 		mov	ds, bx
 		assume ds:seg003
 		cmp	al, 0FFh
-		jz	short loc_12CA7
+		jz	loc_12CA7
 		mov	_play_state, al
 
 loc_12CA7::				; CODE XREF: _getset_playstate+9j
@@ -5388,7 +5388,7 @@ _read_sndsettings proc far	; CODE XREF: _read_module+7DP
 		mov	bh, _byte_246D9
 		mov	bp, _freq1
 		test	_sndflags_24622, 4
-		jz	short loc_12CFF
+		jz	loc_12CFF
 		mov	bp, _freq2
 
 loc_12CFF::				; CODE XREF: _read_sndsettings+2Aj
@@ -5411,7 +5411,7 @@ sub_12D05 proc far		; CODE XREF: _start-2DP	_start+285P
 		assume ds:seg003
 		mov	si, offset _aDeviceNotIniti ; "Device not initialised!"
 		cmp	_snd_init, 1
-		jnz	short loc_12D2E
+		jnz	loc_12D2E
 		movzx	si, _sndcard_type
 		shl	si, 1
 		mov	si, offset _sb16_txt
@@ -5444,10 +5444,10 @@ sub_12D35 proc far		; CODE XREF: _dosexec+5CP _dosexec+8BP
 		mov	ds, bx
 		assume ds:seg003
 		cmp	al, 1
-		jz	short loc_12D4E
+		jz	loc_12D4E
 
 loc_12D41::
-		mov	[cs:_byte_14F71], 0
+		mov	cs:_byte_14F71, 0
 		call	_setmemalloc1
 		pop	ds
 		pop	bx
@@ -5456,7 +5456,7 @@ loc_12D41::
 ; ---------------------------------------------------------------------------
 
 loc_12D4E::				; CODE XREF: sub_12D35+Aj
-		mov	[cs:_byte_14F71], 1
+		mov	cs:_byte_14F71, 1
 		mov	ax, _word_2460C
 		call	_setmemallocstrat
 		call	_initclockfromrtc
@@ -5497,20 +5497,20 @@ sub_12DA8 proc far		; CODE XREF: _callsubx+24P
 		mov	_config_word, si
 		mov	ax, di
 		mov	_byte_246DC, 4Bh ; 'K'
-		mov	[off_245CA], offset sub_13177
-		mov	[off_245C8], offset sub_13429
-		mov	[off_245CC], offset sub_131EF
-		mov	[off_245CE], offset sub_131DA
+		mov	off_245CA, offset sub_13177
+		mov	off_245C8, offset sub_13429
+		mov	off_245CC, offset sub_131EF
+		mov	off_245CE, offset sub_131DA
 		mov	_byte_24623, 0
 		mov	_bit_mode, 8
 		mov	_word_245E8, 400h
 		mov	_snd_set_flag,	0
 		mov	al, 8
 		call	_getint_vect
-		mov	word ptr [cs:_int8addr],	bx
-		mov	word ptr [cs:_int8addr+2], dx
+		mov	word ptr cs:_int8addr,	bx
+		mov	word ptr cs:_int8addr[2], dx
 		push	cs
-		call	near ptr _clean_11C43
+		call	_clean_11C43
 		call	_snd_initialze
 		jb	loc_12EB2
 		call	_getmemallocstrat
@@ -5521,31 +5521,31 @@ sub_12DA8 proc far		; CODE XREF: _callsubx+24P
 		and	ax, 0F00Fh
 		shr	ah, 4
 		movzx	di, al
-		mov	al, [cs:_byte_13C54+di]
+		mov	al, cs:_byte_13C54[di]
 		movzx	di, ah
-		mov	ah, [cs:_byte_13C54+di]
+		mov	ah, cs:_byte_13C54[di]
 		test	_sndflags_24622, 4
-		jnz	short loc_12E55
+		jnz	loc_12E55
 		mov	ax, 80h	; 'Ä'
 
 loc_12E55::				; CODE XREF: sub_12DA8+A8j
 		mov	_byte_2461E, ah
 		mov	_byte_2461F, al
 		push	cs
-		call	near ptr _clean_11C43
+		call	_clean_11C43
 		mov	al, 0
-		test	byte ptr [_config_word+1], 1
-		jz	short loc_12E6B
+		test	byte ptr _config_word[1], 1
+		jz	loc_12E6B
 		or	al, 10h
 
 loc_12E6B::				; CODE XREF: sub_12DA8+BFj
-		test	byte ptr [_config_word],	4
-		jz	short loc_12E74
+		test	byte ptr _config_word,	4
+		jz	loc_12E74
 		or	al, 4
 
 loc_12E74::				; CODE XREF: sub_12DA8+C8j
-		test	byte ptr [_config_word],	80h
-		jz	short loc_12E7D
+		test	byte ptr _config_word,	80h
+		jz	loc_12E7D
 		or	al, 8
 
 loc_12E7D::				; CODE XREF: sub_12DA8+D1j
@@ -5554,16 +5554,16 @@ loc_12E7D::				; CODE XREF: sub_12DA8+D1j
 		mov	cl, _byte_24623
 		and	cl, 1
 		cmp	_bit_mode, 16
-		jnz	short loc_12E9F
-		mov	[off_245E0], offset _myin
-		mov	[off_245E2], offset _chrin
+		jnz	loc_12E9F
+		mov	off_245E0, offset _myin
+		mov	off_245E2, offset _chrin
 		inc	cl
 
 loc_12E9F::				; CODE XREF: sub_12DA8+E7j
 		shr	ax, cl
 		mov	_word_245E8, ax
 		test	_sndflags_24622, 1
-		jz	short loc_12EAE
+		jz	loc_12EAE
 		call	_ems_init
 
 loc_12EAE::				; CODE XREF: sub_12DA8+101j
@@ -5620,10 +5620,10 @@ sub_12EBA proc far		; CODE XREF: _read_module+E3P
 		xor	ax, ax
 		xor	bx, bx
 		push	cs
-		call	near ptr sub_12F56
+		call	sub_12F56
 		mov	si, offset _dword_27BC8
 		push	cs
-		call	near ptr sub_12B18
+		call	sub_12B18
 		mov	al, _byte_2467A
 		call	sub_13CF6
 		mov	al, _byte_24679
@@ -5682,7 +5682,7 @@ sub_12F56 proc far		; CODE XREF: sub_12EBA+58p
 		call	sub_1415E
 		pop	bx
 		cmp	bh, 1
-		jnz	short loc_12F78
+		jnz	loc_12F78
 		mov	_byte_24668, 0
 		call	sub_135CA
 
@@ -5721,9 +5721,9 @@ _set_timer_int proc near	; CODE XREF: _covox_init+2Dp
 		push	dx		; dx = subrouting offset
 		call	_memalloc
 		pop	dx
-		jb	short locret_12FB3
-		mov	word ptr [_dma_buf_pointer], 0
-		mov	word ptr [_dma_buf_pointer+2], ax
+		jb	locret_12FB3
+		mov	word ptr _dma_buf_pointer, 0
+		mov	word ptr _dma_buf_pointer[2], ax
 		push	ax
 		push	dx
 		call	_memfill8080
@@ -5744,12 +5744,12 @@ _set_timer_int endp
 
 _clean_int8_mem_timr proc near ; CODE	XREF: _covox_cleanp
 					; _stereo_cleanp ...
-		mov	dx, word ptr [cs:_int8addr+2]
-		mov	bx, word ptr [cs:_int8addr]
+		mov	dx, word ptr cs:_int8addr[2]
+		mov	bx, word ptr cs:_int8addr
 		mov	al, 8
 		call	_setint_vect
 		call	_clean_timer
-		mov	ax, word ptr [_dma_buf_pointer+2]
+		mov	ax, word ptr _dma_buf_pointer[2]
 		call	_memfree
 		retn
 _clean_int8_mem_timr endp
@@ -5766,9 +5766,9 @@ _configure_timer proc	near	; CODE XREF: _covox_setp _stereo_setp ...
 		mov	ax, 34DCh
 		div	_freq1
 		call	_set_timer
-		mov	[cs:_byte_14F70], 1
+		mov	cs:_byte_14F70, 1
 		mov	ax, _word_245E4
-		mov	[cs:_word_14F6C], ax
+		mov	cs:_word_14F6C, ax
 		popf
 		retn
 _configure_timer endp
@@ -5783,9 +5783,9 @@ _memfill8080 proc near	; CODE XREF: _set_timer_int+18p
 		cli
 		xor	ax, ax
 		call	_set_timer
-		mov	[cs:_byte_14F70], 0
-		mov	[cs:_word_14F6C], 1
-		mov	es, word ptr [_dma_buf_pointer+2]
+		mov	cs:_byte_14F70, 0
+		mov	cs:_word_14F6C, 1
+		mov	es, word ptr _dma_buf_pointer[2]
 		assume es:nothing
 		xor	di, di
 		mov	cx, 400h
@@ -5807,20 +5807,20 @@ sub_13017 proc near		; CODE XREF: _configure_timerp
 
 loc_1301E::				; CODE XREF: sub_13017+19j
 		test	byte ptr [di+3Ch], 8
-		jnz	short loc_1302C
+		jnz	loc_1302C
 		mov	eax, [di+2Ch]
 		mov	[di+24h], eax
 
 loc_1302C::				; CODE XREF: sub_13017+Bj
 		add	di, 40h	; '@'
 		dec	cx
-		jnz	short loc_1301E
+		jnz	loc_1301E
 		mov	_word_24600, 0
 
 loc_13038::				; CODE XREF: sub_13017+2Aj
 		call	sub_16C69
 		cmp	_word_24600, 800h
-		jbe	short loc_13038
+		jbe	loc_13038
 		retn
 sub_13017 endp
 
@@ -5832,52 +5832,52 @@ sub_13044 proc near		; CODE XREF: _change_amplif:loc_12ACBp
 					; sub_12B83:loc_12BEFp
 		mov	al, _byte_2467E
 		cmp	al, 0
-		jz	short loc_13080
+		jz	loc_13080
 		cmp	al, 1
-		jz	short loc_1305A
+		jz	loc_1305A
 		cmp	al, 2
-		jz	short loc_1306D
+		jz	loc_1306D
 		mov	_byte_2467E, 0
-		jmp	short loc_13080
+		jmp	loc_13080
 ; ---------------------------------------------------------------------------
 
 loc_1305A::				; CODE XREF: sub_13044+9j
 		mov	_byte_2467D, 3Fh ; '?'
-		mov	[off_2462E], offset _table_24798
-		mov	[off_24656], offset _table_25221
-		jmp	short loc_13091
+		mov	off_2462E, offset _table_24798
+		mov	off_24656, offset _table_25221
+		jmp	loc_13091
 ; ---------------------------------------------------------------------------
 
 loc_1306D::				; CODE XREF: sub_13044+Dj
 		mov	_byte_2467D, 3Fh ; '?'
-		mov	[off_2462E], offset _table_24818
-		mov	[off_24656], offset _table_25261
-		jmp	short loc_13091
+		mov	off_2462E, offset _table_24818
+		mov	off_24656, offset _table_25261
+		jmp	loc_13091
 ; ---------------------------------------------------------------------------
 
 loc_13080::				; CODE XREF: sub_13044+5j
 					; sub_13044+14j
 		mov	_byte_2467D, 40h ; '@'
-		mov	[off_2462E], offset _table_24716
-		mov	[off_24656], offset _table_251E0
+		mov	off_2462E, offset _table_24716
+		mov	off_24656, offset _table_251E0
 
 loc_13091::				; CODE XREF: sub_13044+27j
 					; sub_13044+3Aj
 		mov	di, offset _vlm_byte_table
 		movzx	eax, _word_245D6
 		cmp	ax, 2
-		ja	short loc_130A2
+		ja	loc_130A2
 		mov	ax, 2
 
 loc_130A2::				; CODE XREF: sub_13044+59j
 		cmp	_byte_24623, 1
-		jnz	short loc_130AE
+		jnz	loc_130AE
 		shr	ax, 1
 		adc	ax, 0
 
 loc_130AE::				; CODE XREF: sub_13044+63j
 		movzx	ebp, ax
-		mov	si, [off_24656]
+		mov	si, off_24656
 		movzx	cx, _byte_2467D
 		inc	cx
 
@@ -5897,7 +5897,7 @@ loc_130BC::				; CODE XREF: sub_13044+122j
 		shr	eax, 16
 		mov	ecx, eax
 		cmp	_byte_24625, 1
-		jz	short loc_13120
+		jz	loc_13120
 		xor	ax, ax
 		xor	dx, dx
 		mov	bl, 80h	; 'Ä'
@@ -5908,7 +5908,7 @@ loc_130F6::				; CODE XREF: sub_13044+BDj
 		adc	ax, cx
 		add	di, 2
 		dec	bl
-		jnz	short loc_130F6
+		jnz	loc_130F6
 		add	di, 100h
 		xor	ax, ax
 		xor	dx, dx
@@ -5920,9 +5920,9 @@ loc_1310D::				; CODE XREF: sub_13044+D4j
 		sbb	ax, cx
 		mov	[di], ax
 		dec	bl
-		jnz	short loc_1310D
+		jnz	loc_1310D
 		add	di, 100h
-		jmp	short loc_13162
+		jmp	loc_13162
 ; ---------------------------------------------------------------------------
 
 loc_13120::				; CODE XREF: sub_13044+AAj
@@ -5932,7 +5932,7 @@ loc_13120::				; CODE XREF: sub_13044+AAj
 
 loc_13127::				; CODE XREF: sub_13044+F7j
 		cmp	eax, 7FFFh
-		jg	short loc_1316B
+		jg	loc_1316B
 		mov	[di], ax
 
 loc_13131::				; CODE XREF: sub_13044+12Bj
@@ -5940,7 +5940,7 @@ loc_13131::				; CODE XREF: sub_13044+12Bj
 		adc	eax, ecx
 		add	di, 2
 		dec	bl
-		jnz	short loc_13127
+		jnz	loc_13127
 		add	di, 100h
 		xor	eax, eax
 		xor	dx, dx
@@ -5951,12 +5951,12 @@ loc_13148::				; CODE XREF: sub_13044+118j
 		sub	dx, bp
 		sbb	eax, ecx
 		cmp	eax, 0FFFF8000h
-		jl	short loc_13171
+		jl	loc_13171
 		mov	[di], ax
 
 loc_1315A::				; CODE XREF: sub_13044+131j
 		dec	bl
-		jnz	short loc_13148
+		jnz	loc_13148
 		add	di, 100h
 
 loc_13162::				; CODE XREF: sub_13044+DAj
@@ -5969,12 +5969,12 @@ loc_13162::				; CODE XREF: sub_13044+DAj
 
 loc_1316B::				; CODE XREF: sub_13044+E9j
 		mov	word ptr [di], 7FFFh
-		jmp	short loc_13131
+		jmp	loc_13131
 ; ---------------------------------------------------------------------------
 
 loc_13171::				; CODE XREF: sub_13044+112j
 		mov	word ptr [di], 8000h
-		jmp	short loc_1315A
+		jmp	loc_1315A
 sub_13044 endp
 
 
@@ -5984,12 +5984,12 @@ sub_13044 endp
 sub_13177 proc near		; CODE XREF: sub_13429+4Ap
 					; DATA XREF: sub_12DA8+38o
 		or	ax, ax
-		jz	short locret_131B2
+		jz	locret_131B2
 		or	byte ptr [bx+3Dh], 4
 		cmp	byte ptr [bx+1Dh], 1
-		jz	short loc_131B3
+		jz	loc_131B3
 		cmp	ax, [bx+3Eh]
-		jz	short locret_131B2
+		jz	locret_131B2
 		mov	[bx+3Eh], ax
 		movzx	edi, ax
 		xor	edx, edx
@@ -6047,9 +6047,9 @@ loc_131D0::				; CODE XREF: sub_131EF+4j
 sub_131DA proc near		; CODE XREF: sub_13429+74j
 					; DATA XREF: sub_12DA8+4Ao
 		cmp	byte ptr [bx+1Dh], 1
-		jz	short _nullsub_5
+		jz	_nullsub_5
 		test	byte ptr [bx+17h], 1
-		jz	short locret_131EE
+		jz	locret_131EE
 		and	byte ptr [bx+17h], 0FEh
 		mov	byte ptr [bx+35h], 0
 
@@ -6068,10 +6068,10 @@ sub_131EF proc near		; CODE XREF: sub_13429+4Fp
 ; FUNCTION CHUNK AT 31D0 SIZE 0000000A BYTES
 
 		cmp	byte ptr [bx+1Dh], 1
-		jz	short loc_131D0
+		jz	loc_131D0
 		and	byte ptr [bx+3Dh], 0BFh
 		cmp	al, _byte_2467D
-		jbe	short loc_13202
+		jbe	loc_13202
 		mov	al, _byte_2467D
 
 loc_13202::				; CODE XREF: sub_131EF+Ej
@@ -6114,10 +6114,10 @@ sub_131EF endp
 
 sub_13429 proc near		; DATA XREF: sub_12DA8+3Eo
 		test	byte ptr [bx+17h], 4
-		jz	short locret_13498
+		jz	locret_13498
 		mov	al, [bx+2]
 		cmp	al, [bx+3]
-		jz	short loc_13471
+		jz	loc_13471
 		mov	[bx+3],	al
 		dec	al
 		xor	ah, ah
@@ -6145,7 +6145,7 @@ loc_13471::				; CODE XREF: sub_13429+Cj
 		mov	al, [bx+8]
 		call	sub_131EF
 		test	byte ptr [bx+17h], 2
-		jnz	short loc_13499
+		jnz	loc_13499
 		or	byte ptr [bx+17h], 1
 		movzx	eax, word ptr [bx+4Ch]
 		shl	eax, 8
@@ -6180,46 +6180,46 @@ sub_135CA proc near		; CODE XREF: sub_12F56+1Fp
 loc_135D3::				; CODE XREF: sub_135CA+1Aj
 		mov	byte ptr [bx+3Dh], 0
 		test	byte ptr [bx+17h], 10h
-		jnz	short loc_135E0
+		jnz	loc_135E0
 		mov	[bx+0Ah], ax
 
 loc_135E0::				; CODE XREF: sub_135CA+11j
 		add	bx, 50h	; 'P'
 		dec	cx
-		jnz	short loc_135D3
+		jnz	loc_135D3
 		les	si, _pointer_245B4
 		mov	al, [es:si]
 		inc	si
 		or	al, al
-		jz	short loc_135FD
+		jz	loc_135FD
 
 loc_135F2::				; CODE XREF: sub_135CA+31j
 		call	sub_13623
 		mov	al, [es:si]
 		inc	si
 		or	al, al
-		jnz	short loc_135F2
+		jnz	loc_135F2
 
 loc_135FD::				; CODE XREF: sub_135CA+26j
-		mov	word ptr [_pointer_245B4], si
+		mov	word ptr _pointer_245B4, si
 		mov	bx, offset _volume_25908
 		mov	cx, _word_245D4
 
 loc_13608::				; CODE XREF: sub_135CA+56j
 		test	byte ptr [bx+17h], 1
-		jz	short loc_1361C
+		jz	loc_1361C
 		test	byte ptr [bx+3Dh], 0Ch
-		jnz	short loc_1361C
+		jnz	loc_1361C
 		mov	ax, [bx]
 		push	cx
-		call	[off_245CA]
+;;		call	[off_245CA]
 		pop	cx
 
 loc_1361C::				; CODE XREF: sub_135CA+42j
 					; sub_135CA+48j
 		add	bx, 50h	; 'P'
 		dec	cx
-		jnz	short loc_13608
+		jnz	loc_13608
 		retn
 sub_135CA endp
 
@@ -6249,29 +6249,29 @@ sub_13623 proc near		; CODE XREF: sub_12CAD+1Cp
 		add	bx, ax
 		add	bx, offset _volume_25908
 		test	dh, 80h
-		jz	short loc_13661
+		jz	loc_13661
 
 loc_13646::
 		and	dh, 7Fh
 		mov	ax, [es:si]
 		add	si, 2
 		or	ax, ax
-		jz	short loc_13661
+		jz	loc_13661
 		and	byte ptr [bx+17h], 0EFh
 		cmp	al, 20h	; ' '
-		ja	short loc_13661
+		ja	loc_13661
 		or	dh, 80h
 		mov	[bx+0Ah], ax
 
 loc_13661::				; CODE XREF: sub_13623+21j
 					; sub_13623+2Ej ...
 		test	dh, 40h
-		jz	short loc_13677
+		jz	loc_13677
 		and	dh, 0BFh
 		mov	al, [es:si]
 		inc	si
 		cmp	al, 40h	; '@'
-		ja	short loc_13677
+		ja	loc_13677
 		or	dh, 40h
 		mov	[bx+8],	al
 
@@ -6300,7 +6300,7 @@ loc_13677::				; CODE XREF: sub_13623+41j
 		mov	[bx+2],	dh
 		mov	word ptr [bx+4Ch], 0
 		test	byte ptr [bx+17h], 40h
-		jz	short loc_136CB
+		jz	loc_136CB
 		and	byte ptr [bx+17h], 0BFh
 		mov	byte ptr [bx+3], 0
 
@@ -6322,13 +6322,13 @@ loc_136CB::				; CODE XREF: sub_13623+9Ej
 		mov	[bx+38h], ax
 		mov	ax, _freq_245DE
 		mov	cx, [di+36h]
-		jcxz	short loc_13705
+		jcxz	loc_13705
 		mov	ax, cx
 
 loc_13705::				; CODE XREF: sub_13623+DEj
 		mov	[bx+14h], ax
 		test	byte ptr [bx+3Dh], 40h
-		jnz	short loc_13718
+		jnz	loc_13718
 		mov	al, [di+3Dh]
 		mov	[bx+8],	al
 		or	byte ptr [bx+3Dh], 40h
@@ -6344,7 +6344,7 @@ loc_13718::				; CODE XREF: sub_13623+66j
 		mov	[bx+35h], dl
 		or	byte ptr [bx+3Dh], 8
 		test	_sndflags_24622, 10h
-		jnz	short loc_13742
+		jnz	loc_13742
 		test	byte ptr [bx+17h], 4
 		jz	loc_137CE
 
@@ -6353,7 +6353,7 @@ loc_13742::				; CODE XREF: sub_13623+115j
 		call	sub_13826
 		xchg	ax, [bx]
 		test	byte ptr [bx+3Dh], 80h
-		jz	short loc_13791
+		jz	loc_13791
 		mov	_word_245DC, ax
 		mov	ax, [bx+0Ah]
 		and	ah, 0F0h
@@ -6378,14 +6378,14 @@ loc_13742::				; CODE XREF: sub_13623+115j
 
 loc_13791::				; CODE XREF: sub_13623+12Bj
 					; sub_13623+4B1j ...
-		call	[off_245C8]
+;;		call	[off_245C8]
 		test	byte ptr [bx+9], 4
-		jnz	short loc_1379F
+		jnz	loc_1379F
 		mov	byte ptr [bx+0Dh], 0
 
 loc_1379F::				; CODE XREF: sub_13623+176j
 		test	byte ptr [bx+9], 40h
-		jnz	short loc_137A9
+		jnz	loc_137A9
 		mov	byte ptr [bx+0Fh], 0
 
 loc_137A9::				; CODE XREF: sub_13623+180j
@@ -6394,13 +6394,13 @@ loc_137A9::				; CODE XREF: sub_13623+180j
 		ja	_eff_nullsub
 		shl	di, 1
 		mov	al, [bx+0Bh]
-		jmp	[cs:_effoff_18FA2+di]
+		jmp	cs:_effoff_18FA2[di]
 ; ---------------------------------------------------------------------------
 
 loc_137BE::				; CODE XREF: sub_13623+Cj
 		movzx	di, dh
 		shr	di, 5
-		mov	al, [cs:_byte_11C29+di]
+		mov	al, cs:_byte_11C29[di]
 		xor	ah, ah
 		add	si, ax
 		retn
@@ -6419,13 +6419,13 @@ sub_13623 endp ; sp-analysis	failed
 sub_137D5 proc near		; CODE XREF: sub_13623+5Aj
 					; sub_13623+F7j ...
 		test	byte ptr [bx+3Dh], 40h
-		jnz	short loc_137F0
+		jnz	loc_137F0
 		movzx	di, byte ptr [bx+0Ah]
 		cmp	di, 32
 		ja	_eff_nullsub
 		shl	di, 1
 		mov	al, [bx+0Bh]
-		jmp	[cs:_effoff_18F60+di]
+		jmp	cs:_effoff_18F60[di]
 ; ---------------------------------------------------------------------------
 
 loc_137F0::				; CODE XREF: sub_137D5+4j
@@ -6434,9 +6434,9 @@ loc_137F0::				; CODE XREF: sub_137D5+4j
 		ja	_eff_nullsub
 		shl	di, 1
 		mov	al, [bx+0Bh]
-		call	[cs:_effoff_18F60+di]
+;;		call	cs:_effoff_18F60[di]
 		test	byte ptr [bx+3Dh], 40h
-		jz	short locret_13812
+		jz	locret_13812
 		mov	al, [bx+8]
 		jmp	[off_245CC]
 ; ---------------------------------------------------------------------------
@@ -6453,10 +6453,10 @@ sub_13813 proc near		; CODE XREF: sub_140B6+24p
 					; sub_140B6+4Ap ...
 		movzx	di, byte ptr [bx+0Ah]
 		cmp	di, 32
-		ja	short _eff_nullsub
+		ja	_eff_nullsub
 		shl	di, 1
 		mov	al, [bx+0Bh]
-		jmp	[cs:_effoff_18FE4+di]
+		jmp	cs:_effoff_18FE4[di]
 sub_13813 endp
 
 
@@ -6472,26 +6472,26 @@ sub_13826 proc near		; CODE XREF: sub_13623+122p
 		shl	di, 1
 		shr	cl, 4
 		cmp	_byte_2461A, 0
-		jnz	short loc_1386C
+		jnz	loc_1386C
 		mov	ch, cl
 		xor	cl, cl
 		xor	ax, ax
 		or	ch, ch
-		jz	short loc_13863
+		jz	loc_13863
 		mov	ax, 24
 
 loc_13848::
 		dec	ch
-		jz	short loc_13863
+		jz	loc_13863
 		mov	ax, 48
 		dec	ch
-		jz	short loc_13863
+		jz	loc_13863
 		mov	ax, 72
 		dec	ch
-		jz	short loc_13863
+		jz	loc_13863
 		mov	ax, 96
 		dec	ch
-		jz	short loc_13863
+		jz	loc_13863
 		mov	cl, ch
 
 loc_13863::				; CODE XREF: sub_13826+1Dj
@@ -6501,10 +6501,10 @@ loc_13863::				; CODE XREF: sub_13826+1Dj
 		sub	di, offset _word_246DE
 
 loc_1386C::				; CODE XREF: sub_13826+13j
-		mov	ax, [_word_246DE+di]
+		mov	ax, _word_246DE[di]
 		shr	ax, cl
 		mov	cx, [bx+14h]
-		jcxz	short locret_1387D
+		jcxz	locret_1387D
 		mul	_freq_245DE
 		div	cx
 
@@ -6528,7 +6528,7 @@ _eff_nullsub endp
 _eff_1387F proc near		; CODE XREF: sub_13623+196j
 					; sub_137D5+16j ...
 		cmp	_byte_24668, 0
-		jnz	short _eff_nullsub
+		jnz	_eff_nullsub
 _eff_1387F endp ; sp-analysis	failed
 
 
@@ -6543,7 +6543,7 @@ _eff_13886 proc near		; CODE XREF: sub_13623+196j
 loc_1388B::				; CODE XREF: _eff_13DE5+5j
 		sub	[bx], ax
 		cmp	word ptr [bx], 0A0h ; '†'
-		jge	short loc_13897
+		jge	loc_13897
 		mov	word ptr [bx], 0A0h ; '†'
 
 loc_13897::				; CODE XREF: _eff_13886+Bj
@@ -6558,7 +6558,7 @@ _eff_13886 endp
 _eff_1389D proc near		; CODE XREF: sub_13623+196j
 					; sub_137D5+16j ...
 		cmp	_byte_24668, 0
-		jnz	short _eff_nullsub
+		jnz	_eff_nullsub
 _eff_1389D endp ; sp-analysis	failed
 
 
@@ -6572,9 +6572,9 @@ _eff_138A4 proc near		; CODE XREF: sub_13623+196j
 
 loc_138A9::				; CODE XREF: _eff_13DEF+5j
 		add	[bx], ax
-		jb	short loc_138B3
+		jb	loc_138B3
 		cmp	word ptr [bx], 13696
-		jbe	short loc_138B7
+		jbe	loc_138B7
 
 loc_138B3::				; CODE XREF: _eff_138A4+7j
 		mov	word ptr [bx], 13696
@@ -6591,7 +6591,7 @@ loc_138BD::				; CODE XREF: sub_13623+138j
 					; sub_13623+13Ej
 		mov	ax, [bx]
 		cmp	ax, _word_245DC
-		jnz	short loc_138C7
+		jnz	loc_138C7
 		xor	ax, ax
 
 loc_138C7::				; CODE XREF: sub_13623+2A0j
@@ -6607,7 +6607,7 @@ loc_138C7::				; CODE XREF: sub_13623+2A0j
 _eff_138D2 proc near		; CODE XREF: sub_13623+196j
 					; sub_137D5+16j ...
 		or	al, al
-		jz	short loc_138DE
+		jz	loc_138DE
 		xor	ah, ah
 		shl	ax, 4
 		mov	[bx+12h], ax
@@ -6618,17 +6618,17 @@ loc_138DE::				; CODE XREF: _eff_138D2+2j _eff_139AC+3j ...
 		jz	locret_13CF4
 		mov	dx, [bx+12h]
 		cmp	ax, [bx]
-		jb	short loc_138F6
+		jb	loc_138F6
 		add	[bx], dx
 		cmp	[bx], ax
-		jb	short loc_1390B
-		jmp	short loc_138FC
+		jb	loc_1390B
+		jmp	loc_138FC
 ; ---------------------------------------------------------------------------
 
 loc_138F6::				; CODE XREF: _eff_138D2+1Aj
 		sub	[bx], dx
 		cmp	ax, [bx]
-		jl	short loc_1390B
+		jl	loc_1390B
 
 loc_138FC::				; CODE XREF: _eff_138D2+22j
 		mov	[bx], ax
@@ -6640,7 +6640,7 @@ loc_138FC::				; CODE XREF: _eff_138D2+22j
 loc_1390B::				; CODE XREF: _eff_138D2+20j
 					; _eff_138D2+28j
 		test	byte ptr [bx+17h], 20h
-		jnz	short loc_13917
+		jnz	loc_13917
 		mov	ax, [bx]
 		jmp	[off_245CA]
 ; ---------------------------------------------------------------------------
@@ -6652,10 +6652,10 @@ loc_13917::				; CODE XREF: _eff_138D2+3Dj
 
 loc_1391F::				; CODE XREF: _eff_138D2+55j
 		cmp	[di], ax
-		jbe	short loc_13929
+		jbe	loc_13929
 		add	di, 2
 		dec	cx
-		jnz	short loc_1391F
+		jnz	loc_1391F
 
 loc_13929::				; CODE XREF: _eff_138D2+4Fj
 		mov	ax, [di]
@@ -6672,17 +6672,17 @@ _eff_1392F proc near		; CODE XREF: sub_13623+196j
 
 loc_13931::				; CODE XREF: _eff_13E2D+2j
 		or	al, al
-		jz	short loc_13950
+		jz	loc_13950
 		mov	ch, al
 		mov	dl, [bx+0Ch]
 		and	al, 0Fh
-		jz	short loc_13943
+		jz	loc_13943
 		and	dl, 0F0h
 		or	dl, al
 
 loc_13943::				; CODE XREF: _eff_1392F+Dj
 		and	ch, 0F0h
-		jz	short loc_1394D
+		jz	loc_1394D
 		and	dl, 0Fh
 		or	dl, ch
 
@@ -6695,26 +6695,26 @@ loc_13950::				; CODE XREF: _eff_1392F+4j _eff_139B2+5j ...
 		and	ax, 1Fh
 		mov	dl, [bx+9]
 		and	dl, 3
-		jz	short loc_1397B
+		jz	loc_1397B
 		shl	al, 3
 		cmp	dl, 1
-		jz	short loc_1396D
+		jz	loc_1396D
 		mov	dl, 0FFh
-		jmp	short loc_13981
+		jmp	loc_13981
 ; ---------------------------------------------------------------------------
 
 loc_1396D::				; CODE XREF: _eff_1392F+38j
 		mov	dl, al
 		test	byte ptr [bx+0Dh], 80h
-		jz	short loc_13981
+		jz	loc_13981
 		mov	dl, 0FFh
 		sub	dl, al
-		jmp	short loc_13981
+		jmp	loc_13981
 ; ---------------------------------------------------------------------------
 
 loc_1397B::				; CODE XREF: _eff_1392F+30j
 		mov	di, ax
-		mov	dl, [_table_251C0+di]
+		mov	dl, _table_251C0[di]
 
 loc_13981::				; CODE XREF: _eff_1392F+3Cj
 					; _eff_1392F+44j ...
@@ -6727,7 +6727,7 @@ loc_13981::				; CODE XREF: _eff_1392F+3Cj
 		add	cl, ch
 		shr	ax, cl
 		test	byte ptr [bx+0Dh], 80h
-		jz	short loc_1399D
+		jz	loc_1399D
 		neg	ax
 
 loc_1399D::				; CODE XREF: _eff_1392F+6Aj
@@ -6756,7 +6756,7 @@ _eff_139B2 proc near		; CODE XREF: sub_13623+196j
 					; sub_137D5+16j ...
 		call	_eff_13AD7
 		mov	cl, 3
-		jmp	short loc_13950
+		jmp	loc_13950
 _eff_139B2 endp
 
 
@@ -6766,17 +6766,17 @@ _eff_139B2 endp
 _eff_139B9 proc near		; CODE XREF: sub_13623+196j
 					; sub_137D5+16j ...
 		or	al, al
-		jz	short loc_139D8
+		jz	loc_139D8
 		mov	cl, al
 		mov	dl, [bx+0Eh]
 		and	al, 0Fh
-		jz	short loc_139CB
+		jz	loc_139CB
 		and	dl, 0F0h
 		or	dl, al
 
 loc_139CB::				; CODE XREF: _eff_139B9+Bj
 		and	cl, 0F0h
-		jz	short loc_139D5
+		jz	loc_139D5
 		and	dl, 0Fh
 		or	dl, cl
 
@@ -6790,26 +6790,26 @@ loc_139D8::				; CODE XREF: _eff_139B9+2j
 		mov	dl, [bx+9]
 		shr	dl, 4
 		and	dl, 3
-		jz	short loc_13A06
+		jz	loc_13A06
 		shl	al, 3
 		cmp	dl, 1
-		jz	short loc_139F8
+		jz	loc_139F8
 		mov	dl, 0FFh
-		jmp	short loc_13A0C
+		jmp	loc_13A0C
 ; ---------------------------------------------------------------------------
 
 loc_139F8::				; CODE XREF: _eff_139B9+39j
 		mov	dl, al
 		test	byte ptr [bx+0Fh], 80h
-		jz	short loc_13A0C
+		jz	loc_13A0C
 		mov	dl, 0FFh
 		sub	dl, al
-		jmp	short loc_13A0C
+		jmp	loc_13A0C
 ; ---------------------------------------------------------------------------
 
 loc_13A06::				; CODE XREF: _eff_139B9+31j
 		mov	di, ax
-		mov	dl, [_table_251C0+di]
+		mov	dl, _table_251C0[di]
 
 loc_13A0C::				; CODE XREF: _eff_139B9+3Dj
 					; _eff_139B9+45j ...
@@ -6821,17 +6821,17 @@ loc_13A0C::				; CODE XREF: _eff_139B9+3Dj
 		mov	ah, al
 		mov	al, [bx+8]
 		test	byte ptr [bx+0Fh], 80h
-		jnz	short loc_13A30
+		jnz	loc_13A30
 		add	al, ah
 		cmp	al, _byte_2467D
-		jbe	short loc_13A36
+		jbe	loc_13A36
 		mov	al, _byte_2467D
-		jmp	short loc_13A36
+		jmp	loc_13A36
 ; ---------------------------------------------------------------------------
 
 loc_13A30::				; CODE XREF: _eff_139B9+68j
 		sub	al, ah
-		jns	short loc_13A36
+		jns	loc_13A36
 		xor	al, al
 
 loc_13A36::				; CODE XREF: _eff_139B9+70j
@@ -6849,13 +6849,13 @@ _eff_139B9 endp
 _eff_13A43 proc near		; CODE XREF: sub_12AFD+16p
 					; sub_13623+196j ...
 		cmp	al, 0A4h ; '§'
-		jz	short loc_13A5B
+		jz	loc_13A5B
 		cmp	al, 0A5h ; '•'
-		jz	short loc_13A60
+		jz	loc_13A60
 		cmp	al, 0A6h ; '¶'
-		jz	short loc_13A65
+		jz	loc_13A65
 		cmp	al, 80h	; 'Ä'
-		ja	short locret_13A5A
+		ja	locret_13A5A
 		test	_sndflags_24622, 4
 
 locret_13A5A::				; CODE XREF: _eff_13A43+Ej
@@ -6890,22 +6890,22 @@ _eff_13A43 endp
 _eff_13A94 proc near		; CODE XREF: sub_137D5+16j
 					; sub_137D5+2Bp ...
 		or	al, al
-		jz	short loc_13A9B
+		jz	loc_13A9B
 		mov	[bx+16h], al
 
 loc_13A9B::				; CODE XREF: _eff_13A94+2j
 		movzx	eax, byte ptr [bx+16h]
 		shl	eax, 8
 		cmp	eax, [bx+30h]
-		ja	short loc_13AAE
+		ja	loc_13AAE
 		mov	[bx+4Ch], ax
 		retn
 ; ---------------------------------------------------------------------------
 
 loc_13AAE::				; CODE XREF: _eff_13A94+14j
 		cmp	_byte_2461A, 0
-		jnz	short loc_13AC6
-		call	[off_245CE]
+		jnz	loc_13AC6
+;;		call	[off_245CE]
 		and	byte ptr [bx+17h], 0FBh
 		or	byte ptr [bx+17h], 40h
 		mov	byte ptr [bx+3], 0
@@ -6934,7 +6934,7 @@ _eff_13AD7 proc near		; CODE XREF: sub_13623+196j
 					; sub_137D5+16j ...
 		mov	dl, [bx+8]
 		test	al, 0F0h
-		jnz	short loc_13AEF
+		jnz	loc_13AEF
 
 loc_13ADE::				; CODE XREF: _eff_13E32+1Ej
 					; _eff_13E32+36j ...
@@ -6943,7 +6943,7 @@ loc_13ADE::				; CODE XREF: _eff_13E32+1Ej
 loc_13AE0::				; CODE XREF: _eff_13C95+8j
 		sub	dl, al
 		mov	al, dl
-		jnb	short loc_13AE8
+		jnb	loc_13AE8
 		xor	al, al
 
 loc_13AE8::				; CODE XREF: _eff_13AD7+Dj
@@ -6959,7 +6959,7 @@ loc_13AF2::				; CODE XREF: _eff_13C88+8j
 		add	dl, al
 		mov	al, dl
 		cmp	al, _byte_2467D
-		jbe	short loc_13AFF
+		jbe	loc_13AFF
 		mov	al, _byte_2467D
 
 loc_13AFF::				; CODE XREF: _eff_13AD7+23j
@@ -6978,21 +6978,21 @@ _eff_13B06 proc near		; CODE XREF: sub_13623+196j
 		mov	_word_245F0, ax
 		inc	ax
 		test	_flag_playsetttings, 4
-		jnz	short loc_13B5B
-		bt	word ptr [_byte_282E8], ax
-		jnb	short loc_13B5B
+		jnz	loc_13B5B
+		bt	word ptr _byte_282E8, ax
+		jnb	loc_13B5B
 		mov	cx, _word_245FA
 		add	cx, 7
 		shr	cx, 3
-		jz	short loc_13B34
+		jz	loc_13B34
 		xor	di, di
 
 loc_13B29::				; CODE XREF: _eff_13B06+2Cj
-		cmp	[_byte_282E8+di], 0FFh
-		jnz	short loc_13B3E
+		cmp	_byte_282E8[di], 0FFh
+		jnz	loc_13B3E
 		inc	di
 		dec	cx
-		jnz	short loc_13B29
+		jnz	loc_13B29
 
 loc_13B34::				; CODE XREF: _eff_13B06+1Fj
 					; _eff_13B06+4Ej
@@ -7007,20 +7007,20 @@ loc_13B34::				; CODE XREF: _eff_13B06+1Fj
 ; ---------------------------------------------------------------------------
 
 loc_13B3E::				; CODE XREF: _eff_13B06+28j
-		mov	al, [_byte_282E8+di]
+		mov	al, _byte_282E8[di]
 		shl	di, 3
 		mov	cx, 8
 
 loc_13B48::				; CODE XREF: _eff_13B06+48j
 		shr	al, 1
-		jnb	short loc_13B50
+		jnb	loc_13B50
 		inc	di
 		dec	cx
-		jnz	short loc_13B48
+		jnz	loc_13B48
 
 loc_13B50::				; CODE XREF: _eff_13B06+44j
 		cmp	di, _word_245FA
-		jnb	short loc_13B34
+		jnb	loc_13B34
 		dec	di
 		mov	_word_245F0, di
 
@@ -7037,7 +7037,7 @@ _eff_13B06 endp
 loc_13B66::				; CODE XREF: sub_13623+14Aj
 		mov	al, [bx+0Bh]
 		cmp	al, _byte_2467D
-		jbe	short loc_13B72
+		jbe	loc_13B72
 		mov	al, _byte_2467D
 
 loc_13B72::				; CODE XREF: sub_13623+54Aj
@@ -7051,7 +7051,7 @@ loc_13B72::				; CODE XREF: sub_13623+54Aj
 _eff_13B78 proc near		; CODE XREF: sub_137D5+16j
 					; sub_137D5+2Bp ...
 		cmp	al, _byte_2467D
-		jbe	short loc_13B81
+		jbe	loc_13B81
 		mov	al, _byte_2467D
 
 loc_13B81::				; CODE XREF: _eff_13B78+4j
@@ -7072,7 +7072,7 @@ _eff_13B88 proc near		; CODE XREF: sub_13623+196j
 		mul	ah
 		add	al, dl
 		cmp	al, 3Fh	; '?'
-		ja	short loc_13B5B
+		ja	loc_13B5B
 		mov	_byte_24669, al
 		mov	_byte_2466A, 1
 		retn
@@ -7088,7 +7088,7 @@ _eff_13BA3 proc near		; CODE XREF: sub_13623+196j
 		shr	di, 3
 		and	di, 1Eh
 		and	al, 0Fh
-		jmp	[cs:_effoff_19026+di]
+		jmp	cs:_effoff_19026[di]
 _eff_13BA3 endp
 
 
@@ -7098,7 +7098,7 @@ _eff_13BA3 endp
 _eff_13BB2 proc near		; CODE XREF: sub_13623+196j
 					; sub_137D5+16j ...
 		or	al, al
-		jz	short loc_13BBB
+		jz	loc_13BBB
 		or	byte ptr [bx+17h], 20h
 		retn
 ; ---------------------------------------------------------------------------
@@ -7128,7 +7128,7 @@ _eff_13BC8 proc near		; CODE XREF: sub_13623+196j
 		and	ax, 0Fh
 		mov	di, ax
 		cmp	_byte_2461A, 0
-		jnz	short loc_13BE7
+		jnz	loc_13BE7
 		shl	di, 3
 		mov	ax, di
 		neg	ax
@@ -7141,7 +7141,7 @@ _eff_13BC8 proc near		; CODE XREF: sub_13623+196j
 
 loc_13BE7::				; CODE XREF: _eff_13BC8+Aj
 		shl	di, 1
-		mov	ax, [_table_246F6+di]
+		mov	ax, _table_246F6[di]
 		mov	[bx+14h], dx
 		retn
 _eff_13BC8 endp
@@ -7166,9 +7166,9 @@ _eff_13C02 proc near		; CODE XREF: sub_13623+196j
 		cmp	_byte_24668, 0
 		jnz	locret_13CF4
 		or	al, al
-		jz	short loc_13C2D
+		jz	loc_13C2D
 		cmp	byte ptr [bx+3Ch], 0
-		jnz	short loc_13C1A
+		jnz	loc_13C1A
 		inc	al
 		mov	[bx+3Ch], al
 
@@ -7206,14 +7206,14 @@ _eff_13C34 endp
 _eff_13C3F proc near		; CODE XREF: sub_13623+196j
 					; sub_137D5+16j ...
 		cmp	_byte_24668, 0
-		jz	short loc_13C47
+		jz	loc_13C47
 		retn
 ; ---------------------------------------------------------------------------
 
 loc_13C47::				; CODE XREF: _eff_13C3F+5j
 		mov	di, ax
 		and	di, 0Fh
-		mov	al, [cs:_byte_13C54+di]
+		mov	al, cs:_byte_13C54[di]
 		jmp	_eff_13A43
 _eff_13C3F endp
 
@@ -7231,16 +7231,16 @@ _eff_13C64 proc near		; CODE XREF: sub_13623+196j
 		or	al, al
 		jz	locret_13CF4
 		cmp	_byte_24668, 0
-		jnz	short loc_13C77
+		jnz	loc_13C77
 		test	byte ptr [bx+3Dh], 8
-		jnz	short locret_13CF4
+		jnz	locret_13CF4
 
 loc_13C77::				; CODE XREF: _eff_13C64+Bj
 		mov	dl, al
 		movzx	ax, _byte_24668
 		div	dl
 		or	ah, ah
-		jnz	short locret_13CF4
+		jnz	locret_13CF4
 		jmp	[off_245C8]
 _eff_13C64 endp
 
@@ -7275,7 +7275,7 @@ _eff_13C95 endp
 _eff_13CA2 proc near		; CODE XREF: sub_13623+196j
 					; sub_137D5+16j ...
 		cmp	al, _byte_24668
-		jnz	short locret_13CF4
+		jnz	locret_13CF4
 		xor	al, al
 		jmp	[off_245CC]
 _eff_13CA2 endp
@@ -7294,9 +7294,9 @@ loc_13CAE::				; CODE XREF: sub_13623+158j
 _eff_13CB3 proc near		; CODE XREF: sub_13623+196j
 					; sub_137D5+16j ...
 		cmp	al, _byte_24668
-		jnz	short locret_13CF4
+		jnz	locret_13CF4
 		cmp	word ptr [bx], 0
-		jz	short locret_13CF4
+		jz	locret_13CF4
 		mov	byte ptr [bx+0Ah], 0
 		mov	byte ptr [bx+0Bh], 0
 		jmp	loc_13791
@@ -7309,9 +7309,9 @@ _eff_13CB3 endp
 _eff_13CC9 proc near		; CODE XREF: sub_13623+196j
 					; sub_137D5+16j ...
 		cmp	_byte_24668, 0
-		jnz	short locret_13CF4
+		jnz	locret_13CF4
 		cmp	_byte_2466D, 0
-		jnz	short locret_13CF4
+		jnz	locret_13CF4
 		inc	al
 		mov	_byte_2466C, al
 		retn
@@ -7324,9 +7324,9 @@ _eff_13CC9 endp
 _eff_13CDD proc near		; CODE XREF: sub_13623+196j
 					; sub_137D5+16j ...
 		test	_flag_playsetttings, 2
-		jnz	short _eff_13CE8
+		jnz	_eff_13CE8
 		cmp	al, 20h	; ' '
-		ja	short sub_13CF6
+		ja	sub_13CF6
 _eff_13CDD endp ; sp-analysis	failed
 
 
@@ -7336,7 +7336,7 @@ _eff_13CDD endp ; sp-analysis	failed
 _eff_13CE8 proc near		; CODE XREF: sub_12EBA+6Bp
 					; sub_13623+196j ...
 		or	al, al
-		jz	short locret_13CF5
+		jz	locret_13CF5
 		mov	_byte_24667, al
 		mov	_byte_24668, 0
 
@@ -7364,10 +7364,10 @@ sub_13CF6 proc near		; CODE XREF: sub_12EBA+65p
 		mov	dl, 91
 		div	dl
 		inc	al
-		mov	[cs:_byte_14F72], al
-		mov	[cs:_byte_14F73], al
+		mov	cs:_byte_14F72, al
+		mov	cs:_byte_14F73, al
 		test	_sndflags_24622, 4
-		jnz	short loc_13D4B
+		jnz	loc_13D4B
 		test	_sndflags_24622, 10h
 		jnz	_settimer
 		shl	cx, 1
@@ -7378,7 +7378,7 @@ sub_13CF6 proc near		; CODE XREF: sub_12EBA+65p
 		div	_word_245E8
 		inc	ax
 		or	dx, dx
-		jnz	short loc_13D36
+		jnz	loc_13D36
 		dec	ax
 		mov	dx, _word_245E8
 
@@ -7388,7 +7388,7 @@ loc_13D36::				; CODE XREF: sub_13CF6+39j
 		mov	_word_245EE, ax
 		mov	ax, _word_245E8
 		mov	_word_245E4, ax
-		mov	[cs:_word_14F6C], ax
+		mov	cs:_word_14F6C, ax
 		retn
 ; ---------------------------------------------------------------------------
 
@@ -7436,7 +7436,7 @@ sub_13CF6 endp ; sp-analysis	failed
 loc_13D8D::				; CODE XREF: sub_13D95+10j
 		shl	cx, 1
 		inc	_byte_24618
-		jmp	short loc_13D9A
+		jmp	loc_13D9A
 ; END OF FUNCTION CHUNK	FOR sub_13D95
 
 ; =============== S U B	R O U T	I N E =======================================
@@ -7454,7 +7454,7 @@ loc_13D9A::				; CODE XREF: sub_13D95-2j
 		div	cx
 		neg	al
 		or	ah, ah
-		jnz	short loc_13D8D
+		jnz	loc_13D8D
 		mov	ah, _byte_24618
 		mov	_byte_24619, ah
 		retn
@@ -7466,11 +7466,11 @@ sub_13D95 endp
 _settimer::				; CODE XREF: sub_13CF6+21j
 		xor	ax, ax
 		cmp	cx, 45
-		jbe	short _set_timer
+		jbe	_set_timer
 		mov	dx, 2Dh	; '-'
 		mov	ax, 8426h
 		div	cx
-		jmp	short $+2
+		jmp	$+2
 ; END OF FUNCTION CHUNK	FOR sub_13CF6
 
 ; =============== S U B	R O U T	I N E =======================================
@@ -7478,7 +7478,7 @@ _settimer::				; CODE XREF: sub_13CF6+21j
 
 _set_timer proc near		; CODE XREF: _configure_timer+Fp
 					; _memfill8080+4p ...
-		mov	[cs:_timer_word_14F6E], ax
+		mov	cs:_timer_word_14F6E, ax
 		pushf
 		cli
 		push	ax
@@ -7504,7 +7504,7 @@ _clean_timer proc near	; CODE XREF: _clean_int8_mem_timr+Fp
 		out	43h, al		; Timer	8253-5 (AT: 8254.2).
 		xor	al, al
 		out	40h, al		; Timer	8253-5 (AT: 8254.2).
-		jmp	short $+2
+		jmp	$+2
 		out	40h, al		; Timer	8253-5 (AT: 8254.2).
 		popf
 		retn
@@ -7541,7 +7541,7 @@ loc_13DF9::				; CODE XREF: sub_13623+15Ej
 					; sub_13623+164j
 		mov	ax, [bx]
 		cmp	ax, _word_245DC
-		jnz	short loc_13E03
+		jnz	loc_13E03
 		xor	ax, ax
 
 loc_13E03::				; CODE XREF: sub_13623+7DCj
@@ -7550,7 +7550,7 @@ loc_13E03::				; CODE XREF: sub_13623+7DCj
 		mov	[bx], ax
 		mov	al, [bx+0Bh]
 		or	al, al
-		jnz	short loc_13E18
+		jnz	loc_13E18
 		mov	al, [bx+34h]
 		mov	[bx+0Bh], al
 
@@ -7565,7 +7565,7 @@ loc_13E18::				; CODE XREF: sub_13623+7EDj
 _eff_13E1E proc near		; CODE XREF: sub_13623+196j
 					; sub_137D5+16j ...
 		or	al, al
-		jz	short loc_13E2A
+		jz	loc_13E2A
 		xor	ah, ah
 		shl	ax, 2
 		mov	[bx+12h], ax
@@ -7591,7 +7591,7 @@ _eff_13E2D endp
 _eff_13E32 proc near		; CODE XREF: sub_13623+196j
 					; sub_137D5+16j ...
 		or	al, al
-		jz	short loc_13E39
+		jz	loc_13E39
 		mov	[bx+34h], al
 
 loc_13E39::				; CODE XREF: _eff_13E32+2j
@@ -7602,7 +7602,7 @@ loc_13E39::				; CODE XREF: _eff_13E32+2j
 		mov	ch, al
 		shr	ch, 4
 		cmp	cl, 0Fh
-		jnz	short loc_13E5E
+		jnz	loc_13E5E
 		or	ch, ch
 		jz	loc_13ADE
 		cmp	_byte_24668, 0
@@ -7612,7 +7612,7 @@ loc_13E39::				; CODE XREF: _eff_13E32+2j
 
 loc_13E5E::				; CODE XREF: _eff_13E32+1Aj
 		cmp	ch, 0Fh
-		jz	short loc_13E6F
+		jz	loc_13E6F
 		mov	dl, [bx+8]
 		test	al, 0Fh
 		jnz	loc_13ADE
@@ -7634,7 +7634,7 @@ _eff_13E32 endp
 _eff_13E7F proc near		; CODE XREF: sub_13623+196j
 					; sub_137D5+16j ...
 		call	_eff_13E32
-		jmp	short loc_13E2A
+		jmp	loc_13E2A
 _eff_13E7F endp
 
 
@@ -7671,7 +7671,7 @@ sub_13E9B proc near		; CODE XREF: __2stm_module+2Ep
 		and	dl, 0Fh
 		shr	di, 4
 		mov	ax, dx
-		mul	[cs:_table_13EC3+di]
+		mul	cs:_table_13EC3[di]
 		shr	ax, 4
 		neg	ax
 		add	ax, 31h	; '1'
@@ -7695,7 +7695,7 @@ loc_13ED3::				; CODE XREF: sub_13623+16Aj
 		jz	loc_13791
 		mov	ax, [bx]
 		sub	ax, _word_245DC
-		jns	short loc_13EE8
+		jns	loc_13EE8
 		neg	ax
 
 loc_13EE8::				; CODE XREF: sub_13623+8C1j
@@ -7726,7 +7726,7 @@ _nullsub_2 endp
 _eff_13F05 proc near		; CODE XREF: sub_13623+196j
 					; sub_137D5+16j ...
 		or	al, al
-		jz	short loc_13F0C
+		jz	loc_13F0C
 		mov	[bx+34h], al
 
 loc_13F0C::				; CODE XREF: _eff_13F05+2j
@@ -7742,7 +7742,7 @@ loc_13F0C::				; CODE XREF: _eff_13F05+2j
 		movzx	ax, _byte_24668
 		div	cl
 		cmp	ah, dl
-		jb	short loc_13F34
+		jb	loc_13F34
 		xor	al, al
 		jmp	[off_245CC]
 ; ---------------------------------------------------------------------------
@@ -7759,7 +7759,7 @@ _eff_13F05 endp
 _eff_13F3B proc near		; CODE XREF: sub_13623+196j
 					; sub_137D5+16j ...
 		or	al, al
-		jz	short loc_13F42
+		jz	loc_13F42
 		mov	[bx+34h], al
 
 loc_13F42::				; CODE XREF: _eff_13F3B+2j
@@ -7767,21 +7767,21 @@ loc_13F42::				; CODE XREF: _eff_13F3B+2j
 		mov	ch, al
 		shr	al, 4
 		test	al, 7
-		jz	short loc_13FB7
+		jz	loc_13FB7
 		test	al, 8
-		jnz	short loc_13F96
+		jnz	loc_13F96
 		cmp	al, 6
-		jz	short loc_13F6D
+		jz	loc_13F6D
 		cmp	al, 7
-		jz	short loc_13F7C
+		jz	loc_13F7C
 		dec	al
 		mov	cl, al
 		mov	al, 1
 		shl	al, cl
 		sub	[bx+8],	al
-		jnb	short loc_13FB7
+		jnb	loc_13FB7
 		mov	byte ptr [bx+8], 0
-		jmp	short loc_13FB7
+		jmp	loc_13FB7
 ; ---------------------------------------------------------------------------
 
 loc_13F6D::				; CODE XREF: _eff_13F3B+19j
@@ -7790,12 +7790,12 @@ loc_13F6D::				; CODE XREF: _eff_13F3B+19j
 		mov	dl, 3
 		div	dl
 		mov	[bx+8],	al
-		jmp	short loc_13FB7
+		jmp	loc_13FB7
 ; ---------------------------------------------------------------------------
 
 loc_13F7C::				; CODE XREF: _eff_13F3B+1Dj
 		shr	byte ptr [bx+8], 1
-		jmp	short loc_13FB7
+		jmp	loc_13FB7
 ; ---------------------------------------------------------------------------
 
 loc_13F81::				; CODE XREF: _eff_13F3B+5Fj
@@ -7804,21 +7804,21 @@ loc_13F81::				; CODE XREF: _eff_13F3B+5Fj
 		add	ax, dx
 		add	ax, dx
 		shr	ax, 1
-		jmp	short loc_13FAB
+		jmp	loc_13FAB
 ; ---------------------------------------------------------------------------
 
 loc_13F8F::				; CODE XREF: _eff_13F3B+63j
 		mov	al, [bx+8]
 		add	al, al
-		jmp	short loc_13FAB
+		jmp	loc_13FAB
 ; ---------------------------------------------------------------------------
 
 loc_13F96::				; CODE XREF: _eff_13F3B+15j
 		and	al, 7
 		cmp	al, 6
-		jz	short loc_13F81
+		jz	loc_13F81
 		cmp	al, 7
-		jz	short loc_13F8F
+		jz	loc_13F8F
 		dec	al
 		mov	cl, al
 		mov	al, 1
@@ -7828,7 +7828,7 @@ loc_13F96::				; CODE XREF: _eff_13F3B+15j
 loc_13FAB::				; CODE XREF: _eff_13F3B+52j
 					; _eff_13F3B+59j
 		cmp	al, _byte_2467D
-		jbe	short loc_13FB4
+		jbe	loc_13FB4
 		mov	al, _byte_2467D
 
 loc_13FB4::				; CODE XREF: _eff_13F3B+74j
@@ -7848,7 +7848,7 @@ _eff_13F3B endp
 _eff_13FBE proc near		; CODE XREF: sub_13623+196j
 					; sub_137D5+16j ...
 		or	al, al
-		jnz	short loc_13FCE
+		jnz	loc_13FCE
 		mov	al, [bx+34h]
 		or	al, al
 		jz	locret_13CF4
@@ -7869,10 +7869,10 @@ loc_13FCE::				; CODE XREF: _eff_13FBE+2j
 		mov	dh, 3
 		div	dh
 		or	ah, ah
-		jz	short loc_1401A
+		jz	loc_1401A
 		mov	dh, [bx+0Bh]
 		cmp	ah, 2
-		jz	short loc_14000
+		jz	loc_14000
 		shr	dh, 4
 
 loc_14000::				; CODE XREF: _eff_13FBE+3Dj
@@ -7904,8 +7904,8 @@ _eff_14020 proc near		; CODE XREF: sub_13623+196j
 		push	bx
 		push	si
 		push	es
-		push	cs
-		call	near ptr _change_amplif
+;		push	cs
+		call	_change_amplif
 		pop	es
 		pop	si
 		pop	bx
@@ -7920,7 +7920,7 @@ _eff_14030 proc near		; CODE XREF: sub_13623+196j
 					; sub_137D5+16j ...
 		and	ax, 0Fh
 		mov	di, ax
-		mov	al, [cs:_table_14057+di]
+		mov	al, cs:_table_14057[di]
 		mov	_byte_2467B, al
 
 loc_1403D::				; CODE XREF: _eff_14067+Ej
@@ -7955,23 +7955,23 @@ _table_14057	db 0FFh,80h,40h,2Ah,20h,19h,15h,12h,10h,0Eh,0Ch,0Bh,0Ah
 _eff_14067 proc near		; CODE XREF: sub_13623+196j
 					; sub_137D5+16j ...
 		or	al, al
-		jz	short loc_14080
+		jz	loc_14080
 		test	al, 0Fh
-		jz	short loc_14077
+		jz	loc_14077
 		and	al, 0Fh
 		sub	_byte_2467C, al
-		jmp	short loc_1403D
+		jmp	loc_1403D
 ; ---------------------------------------------------------------------------
 
 loc_14077::				; CODE XREF: _eff_14067+6j
 		shr	al, 4
 		add	_byte_2467C, al
-		jmp	short loc_1403D
+		jmp	loc_1403D
 ; ---------------------------------------------------------------------------
 
 loc_14080::				; CODE XREF: _eff_14067+2j
 		mov	_byte_2467C, 0
-		jmp	short loc_1403D
+		jmp	loc_1403D
 _eff_14067 endp
 
 
@@ -7981,26 +7981,26 @@ _eff_14067 endp
 sub_14087 proc near		; CODE XREF: _eff_13DE5p _eff_13DEFp
 		xor	ah, ah
 		or	al, al
-		jz	short loc_14090
+		jz	loc_14090
 		mov	[bx+34h], al
 
 loc_14090::				; CODE XREF: sub_14087+4j
 		mov	al, [bx+34h]
 		cmp	_byte_24668, 0
-		jz	short loc_140A2
+		jz	loc_140A2
 		cmp	al, 0E0h ; '‡'
-		jnb	short loc_140B3
+		jnb	loc_140B3
 		shl	ax, 2
 		retn
 ; ---------------------------------------------------------------------------
 
 loc_140A2::				; CODE XREF: sub_14087+11j
 		cmp	al, 0E0h ; '‡'
-		jbe	short loc_140B3
+		jbe	loc_140B3
 		mov	dl, al
 		and	al, 0Fh
 		cmp	dl, 0F0h ; ''
-		jbe	short locret_140B2
+		jbe	locret_140B2
 		shl	ax, 2
 
 locret_140B2::				; CODE XREF: sub_14087+26j
@@ -8020,13 +8020,13 @@ sub_14087 endp
 sub_140B6 proc near		; CODE XREF: _gravis_set+1Ep
 					; _gravis_int+91p ...
 		cmp	_byte_24671, 1
-		jz	short locret_140E5
+		jz	locret_140E5
 		cmp	_play_state, 1
-		jz	short locret_140E5
+		jz	locret_140E5
 		inc	_byte_24668
 		mov	al, _byte_24668
 		cmp	al, _byte_24667
-		jnb	short loc_140E6
+		jnb	loc_140E6
 		mov	bx, offset _volume_25908
 		mov	cx, _word_245D4
 
@@ -8038,7 +8038,7 @@ loc_140D8::				; CODE XREF: sub_140B6+2Dj
 		pop	bx
 		add	bx, 50h	; 'P'
 		dec	cx
-		jnz	short loc_140D8
+		jnz	loc_140D8
 
 locret_140E5::				; CODE XREF: sub_140B6+5j sub_140B6+Cj
 		retn
@@ -8047,9 +8047,9 @@ locret_140E5::				; CODE XREF: sub_140B6+5j sub_140B6+Cj
 loc_140E6::				; CODE XREF: sub_140B6+19j
 		mov	_byte_24668, 0
 		cmp	_byte_2466D, 0
-		jnz	short loc_140F7
+		jnz	loc_140F7
 		call	sub_135CA
-		jmp	short loc_14111
+		jmp	loc_14111
 ; ---------------------------------------------------------------------------
 
 loc_140F7::				; CODE XREF: sub_140B6+3Aj
@@ -8064,40 +8064,40 @@ loc_140FE::				; CODE XREF: sub_140B6+53j
 		pop	bx
 		add	bx, 50h	; 'P'
 		dec	cx
-		jnz	short loc_140FE
-		mov	si, word ptr [_pointer_245B4]
-		jmp	short $+2
+		jnz	loc_140FE
+		mov	si, word ptr _pointer_245B4
+		jmp	$+2
 
 loc_14111::				; CODE XREF: sub_140B6+3Fj
 					; _midi_int8p+43p
 		cmp	_byte_2466B, 1
 		jz	loc_141BA
 		cmp	_byte_2466A, 1
-		jz	short loc_14153
+		jz	loc_14153
 		cmp	_byte_2466C, 0
-		jz	short loc_14131
+		jz	loc_14131
 		xor	al, al
 		xchg	al, _byte_2466C
 		mov	_byte_2466D, al
 
 loc_14131::				; CODE XREF: sub_140B6+70j
 		cmp	_byte_2466D, 0
-		jz	short loc_1413E
+		jz	loc_1413E
 		dec	_byte_2466D
-		jnz	short loc_14142
+		jnz	loc_14142
 
 loc_1413E::				; CODE XREF: sub_140B6+80j
 		inc	_word_245F6
 
 loc_14142::				; CODE XREF: sub_140B6+86j
 		mov	bx, _word_245F0
-		movzx	ax, [_byte_281E8+bx]
+		movzx	ax, _byte_281E8[bx]
 		cmp	_word_245F6, ax
 		jbe	loc_141DA
 
 loc_14153::				; CODE XREF: sub_140B6+69j
 		cmp	_play_state, 2
-		jz	short loc_14184
+		jz	loc_14184
 		inc	_word_245F0
 sub_140B6 endp ; sp-analysis	failed
 
@@ -8108,13 +8108,13 @@ sub_140B6 endp ; sp-analysis	failed
 sub_1415E proc near		; CODE XREF: sub_12F56+11p
 		mov	ax, _word_245FA
 		cmp	_word_245F0, ax
-		jb	short loc_14184
+		jb	loc_14184
 		test	_flag_playsetttings, 4
-		jz	short _vlm_141DF
+		jz	_vlm_141DF
 		mov	ax, _word_245F8
 		mov	_word_245F0, ax
 		or	ax, ax
-		jnz	short loc_14184
+		jnz	loc_14184
 		mov	al, _byte_2467A
 		call	sub_13CF6
 		mov	al, _byte_24679
@@ -8123,12 +8123,12 @@ sub_1415E proc near		; CODE XREF: sub_12F56+11p
 loc_14184::				; CODE XREF: sub_140B6+A2j
 					; sub_1415E+7j	...
 		mov	bx, _word_245F0
-		mov	al, [_byte_280E8+bx]
+		mov	al, _byte_280E8[bx]
 		or	al, al
-		jz	short loc_141A2
+		jz	loc_141A2
 		push	bx
 		cmp	al, 0FFh
-		jnz	short loc_1419E
+		jnz	loc_1419E
 		mov	al, _byte_2467A
 		call	sub_13CF6
 		mov	al, _byte_24679
@@ -8138,12 +8138,12 @@ loc_1419E::				; CODE XREF: sub_1415E+35j
 		pop	bx
 
 loc_141A2::				; CODE XREF: sub_1415E+30j
-		bts	word ptr [_byte_282E8], bx
-		movzx	bx, [_byte_27FE8+bx]
+		bts	word ptr _byte_282E8, bx
+		movzx	bx, _byte_27FE8[bx]
 		mov	_my_seg_index,	bx
 		shl	bx, 1
-		mov	es, [_segs_table+bx]
-		mov	word ptr [_pointer_245B4+2], es
+		mov	es, _segs_table[bx]
+		mov	word ptr _pointer_245B4[2], es
 
 loc_141BA::				; CODE XREF: sub_140B6+60j
 		xor	ax, ax
@@ -8156,7 +8156,7 @@ loc_141BA::				; CODE XREF: sub_140B6+60j
 		mov	_byte_2466D, 0
 
 loc_141DA::				; CODE XREF: sub_140B6+99j
-		mov	word ptr [_pointer_245B4], si
+		mov	word ptr _pointer_245B4, si
 		retn
 sub_1415E endp
 
@@ -8166,8 +8166,8 @@ sub_1415E endp
 
 _vlm_141DF proc near		; CODE XREF: _eff_13B06+31p
 					; sub_1415E+Ej
-		push	cs
-		call	near ptr _volume_12A66
+;		push	cs
+		call	_volume_12A66
 		mov	_byte_24671, 1
 		mov	dl, 1
 		mov	bx, 5344h	; DS
@@ -8186,7 +8186,7 @@ _snd_initialze proc near	; CODE XREF: sub_12DA8+78p
 ; FUNCTION CHUNK AT 526B SIZE 000000DB BYTES
 
 		cmp	_snd_init, 1
-		jz	short loc_1420D
+		jz	loc_1420D
 		mov	_snd_init, 1
 		movzx	bx, _sndcard_type
 		shl	bx, 1
@@ -8205,9 +8205,9 @@ _snd_initialze endp ;	sp-analysis failed
 
 _snd_on proc near		; CODE XREF: sub_12EBA+87p
 		cmp	_snd_init, 1
-		jnz	short loc_1420D
+		jnz	loc_1420D
 		cmp	_snd_set_flag,	1
-		jz	short loc_1420D
+		jz	loc_1420D
 		mov	_snd_set_flag,	1
 		movzx	bx, _sndcard_type
 		shl	bx, 1
@@ -8223,12 +8223,12 @@ _snd_off proc	near		; CODE XREF: _snd_offx+8p _snd_deinit+Cp
 ; FUNCTION CHUNK AT 0B5A SIZE 000001CC BYTES
 
 		cmp	_snd_init, 1
-		jnz	short loc_1420D
+		jnz	loc_1420D
 		cmp	_snd_set_flag,	0
-		jz	short loc_1420D
+		jz	loc_1420D
 		mov	_snd_set_flag,	0
-		push	cs
-		call	near ptr _volume_12A66
+;		push	cs
+		call	_volume_12A66
 		movzx	bx, _sndcard_type
 		shl	bx, 1
 		jmp     _sb16_off
@@ -8240,7 +8240,7 @@ _snd_off endp	; sp-analysis failed
 
 _snd_deinit proc near		; CODE XREF: _deinit_125B9+18p
 		cmp	_snd_init, 1
-		jnz	short loc_1420D
+		jnz	loc_1420D
 		mov	_snd_init, 0
 		call	_snd_off
 		movzx	bx, _sndcard_type
@@ -8421,20 +8421,20 @@ _sb16_init proc near		; DATA XREF: seg003:0D08o
 		mov	al, _irq_number
 		mov	_sb_irq_number, al
 		cmp	al, 0FFh
-		jnz	short loc_14ABB
+		jnz	loc_14ABB
 		mov	ah, 80h	; 'Ä'
 		call	_ReadMixerSB
 		cmp	al, 0FFh
-		jz	short loc_14ABB
+		jz	loc_14ABB
 		mov	ah, 2
 		shr	al, 1
-		jb	short loc_14AB3
+		jb	loc_14AB3
 		mov	ah, 5
 		shr	al, 1
-		jb	short loc_14AB3
+		jb	loc_14AB3
 		mov	ah, 7
 		shr	al, 1
-		jb	short loc_14AB3
+		jb	loc_14AB3
 		mov	ah, 0Ah
 
 loc_14AB3::				; CODE XREF: _sb16_init+30j
@@ -8447,30 +8447,30 @@ loc_14ABB::				; CODE XREF: _sb16_init+21j
 		mov	al, _dma_channel
 		mov	_dma_chn_mask,	al
 		cmp	al, 0FFh
-		jnz	short loc_14AFD
+		jnz	loc_14AFD
 		mov	ah, 81h	; 'Å'
 		call	_ReadMixerSB
 		cmp	al, 0FFh
-		jz	short loc_14AFD
+		jz	loc_14AFD
 		cmp	_bit_mode, 8
-		jz	short loc_14AE7
+		jz	loc_14AE7
 		mov	ah, 7
 		test	al, 80h
-		jnz	short loc_14AF5
+		jnz	loc_14AF5
 		mov	ah, 6
 		test	al, 40h
-		jnz	short loc_14AF5
+		jnz	loc_14AF5
 		mov	ah, 5
 		test	al, 20h
-		jnz	short loc_14AF5
+		jnz	loc_14AF5
 
 loc_14AE7::				; CODE XREF: _sb16_init+60j
 		mov	ah, 3
 		test	al, 4
-		jnz	short loc_14AF5
+		jnz	loc_14AF5
 		mov	ah, 1
 		test	al, 2
-		jnz	short loc_14AF5
+		jnz	loc_14AF5
 		mov	ah, 0
 
 loc_14AF5::				; CODE XREF: _sb16_init+66j
@@ -8484,8 +8484,8 @@ loc_14AFD::				; CODE XREF: _sb16_init+50j
 		mov	eax, 1000h
 		mov	cl, _dma_chn_mask
 		call	_alloc_dma_buf
-		mov	word ptr [_dma_buf_pointer], 0
-		mov	word ptr [_dma_buf_pointer+2], ax
+		mov	word ptr _dma_buf_pointer, 0
+		mov	word ptr _dma_buf_pointer[2], ax
 		clc
 		retn
 _sb16_init endp
@@ -8508,7 +8508,7 @@ loc_14B36::				; CODE XREF: _sb16_on+21j
 		in	al, dx		; DMA controller, 8237A-5.
 					; clear	byte pointer flip-flop.
 		or	al, al
-		js	short loc_14B36
+		js	loc_14B36
 		mov	al, 41h	; 'A'
 		out	dx, al		; DMA controller, 8237A-5.
 					; clear	byte pointer flip-flop.
@@ -8517,8 +8517,8 @@ loc_14B3E::				; CODE XREF: _sb16_on+29j
 		in	al, dx		; DMA controller, 8237A-5.
 					; clear	byte pointer flip-flop.
 		or	al, al
-		js	short loc_14B3E
-		mov	al, byte ptr [_freq1+1]
+		js	loc_14B3E
+		mov	al, byte ptr _freq1[1]
 		out	dx, al		; DMA controller, 8237A-5.
 					; clear	byte pointer flip-flop.
 
@@ -8526,8 +8526,8 @@ loc_14B47::				; CODE XREF: _sb16_on+32j
 		in	al, dx		; DMA controller, 8237A-5.
 					; clear	byte pointer flip-flop.
 		or	al, al
-		js	short loc_14B47
-		mov	al, byte ptr [_freq1]
+		js	loc_14B47
+		mov	al, byte ptr _freq1
 		out	dx, al		; DMA controller, 8237A-5.
 					; clear	byte pointer flip-flop.
 
@@ -8535,20 +8535,20 @@ loc_14B50::				; CODE XREF: _sb16_on+3Bj
 		in	al, dx		; DMA controller, 8237A-5.
 					; clear	byte pointer flip-flop.
 		or	al, al
-		js	short loc_14B50
+		js	loc_14B50
 		cmp	_bit_mode, 16
-		jz	short loc_14B6A
+		jz	loc_14B6A
 		mov	ax, _sb_base_port
 		add	al, 0Eh
-		mov	[cs:_word_14BBB], ax
+		mov	cs:_word_14BBB, ax
 		mov	ax, 0C6h ; '∆'
-		jmp	short loc_14B76
+		jmp	loc_14B76
 ; ---------------------------------------------------------------------------
 
 loc_14B6A::				; CODE XREF: _sb16_on+42j
 		mov	ax, _sb_base_port
 		add	al, 0Fh
-		mov	[cs:_word_14BBB], ax
+		mov	cs:_word_14BBB, ax
 		mov	ax, 10B6h
 
 loc_14B76::				; CODE XREF: _sb16_on+50j
@@ -8559,7 +8559,7 @@ loc_14B77::				; CODE XREF: _sb16_on+62j
 		in	al, dx		; DMA controller, 8237A-5.
 					; clear	byte pointer flip-flop.
 		or	al, al
-		js	short loc_14B77
+		js	loc_14B77
 		mov	al, _byte_24623
 		and	al, 1
 		shl	al, 5
@@ -8571,7 +8571,7 @@ loc_14B87::				; CODE XREF: _sb16_on+72j
 		in	al, dx		; DMA controller, 8237A-5.
 					; clear	byte pointer flip-flop.
 		or	al, al
-		js	short loc_14B87
+		js	loc_14B87
 		mov	ax, _word_2460E
 		shr	ax, 2
 		mov	cl, _bit_mode
@@ -8586,7 +8586,7 @@ loc_14BA0::				; CODE XREF: _sb16_on+8Bj
 		in	al, dx		; DMA controller, 8237A-5.
 					; clear	byte pointer flip-flop.
 		or	al, al
-		js	short loc_14BA0
+		js	loc_14BA0
 		mov	al, ah
 		out	dx, al		; DMA controller, 8237A-5.
 					; clear	byte pointer flip-flop.
@@ -8619,7 +8619,7 @@ _sb16_off proc near		; DATA XREF: seg003:0D34o
 		pushf
 		cli
 		cmp	_byte_2466E, 1
-		jnz	short loc_14BFD
+		jnz	loc_14BFD
 		cli
 		mov	dx, _sb_base_port
 		add	dl, 0Ch
@@ -8628,10 +8628,10 @@ loc_14BD8::				; CODE XREF: _sb16_off+14j
 		in	al, dx		; DMA controller, 8237A-5.
 					; clear	byte pointer flip-flop.
 		or	al, al
-		js	short loc_14BD8
+		js	loc_14BD8
 		mov	al, 0DAh ; '⁄'
 		cmp	_bit_mode, 8
-		jz	short loc_14BE8
+		jz	loc_14BE8
 		mov	al, 0D9h ; 'Ÿ'
 
 loc_14BE8::				; CODE XREF: _sb16_off+1Dj
@@ -8642,7 +8642,7 @@ loc_14BE9::				; CODE XREF: _sb16_off+25j
 		in	al, dx		; DMA controller, 8237A-5.
 					; clear	byte pointer flip-flop.
 		or	al, al
-		js	short loc_14BE9
+		js	loc_14BE9
 		call	_restore_intvector
 		mov	cl, _dma_chn_mask
 		call	_set_dmachn_mask
@@ -8679,13 +8679,13 @@ _sbpro_set::				; CODE XREF: _sb_set+6j
 		mov	_word_2460E, 1000h
 		mov	ax, _sb_base_port
 		add	al, 0Eh
-		mov	[cs:_word_14CEB], ax
+		mov	cs:_word_14CEB, ax
 		mov	ah, 0Eh
 		call	_ReadMixerSB
 		mov	_byte_24664, al
 		and	al, 0FDh
 		cmp	_byte_24623, 0
-		jz	short loc_14C89
+		jz	loc_14C89
 		call	_WriteMixerSB
 		or	al, 22h
 
@@ -8704,7 +8704,7 @@ loc_14C99::				; CODE XREF: _sb_set-DBj
 		in	al, dx		; DMA controller, 8237A-5.
 					; clear	byte pointer flip-flop.
 		or	al, al
-		js	short loc_14C99
+		js	loc_14C99
 		mov	al, 40h	; '@'
 		out	dx, al		; DMA controller, 8237A-5.
 					; clear	byte pointer flip-flop.
@@ -8713,7 +8713,7 @@ loc_14CA1::				; CODE XREF: _sb_set-D3j
 		in	al, dx		; DMA controller, 8237A-5.
 					; clear	byte pointer flip-flop.
 		or	al, al
-		js	short loc_14CA1
+		js	loc_14CA1
 		mov	al, _sb_timeconst
 		out	dx, al		; DMA controller, 8237A-5.
 					; clear	byte pointer flip-flop.
@@ -8722,7 +8722,7 @@ loc_14CAA::				; CODE XREF: _sb_set-CAj
 		in	al, dx		; DMA controller, 8237A-5.
 					; clear	byte pointer flip-flop.
 		or	al, al
-		js	short loc_14CAA
+		js	loc_14CAA
 		mov	al, 48h	; 'H'
 		out	dx, al		; DMA controller, 8237A-5.
 					; clear	byte pointer flip-flop.
@@ -8731,7 +8731,7 @@ loc_14CB2::				; CODE XREF: _sb_set-C2j
 		in	al, dx		; DMA controller, 8237A-5.
 					; clear	byte pointer flip-flop.
 		or	al, al
-		js	short loc_14CB2
+		js	loc_14CB2
 		mov	ax, _word_2460E
 		shr	ax, 2
 		dec	ax
@@ -8742,7 +8742,7 @@ loc_14CBF::				; CODE XREF: _sb_set-B5j
 		in	al, dx		; DMA controller, 8237A-5.
 					; clear	byte pointer flip-flop.
 		or	al, al
-		js	short loc_14CBF
+		js	loc_14CBF
 		mov	al, ah
 		out	dx, al		; DMA controller, 8237A-5.
 					; clear	byte pointer flip-flop.
@@ -8751,7 +8751,7 @@ loc_14CC7::				; CODE XREF: _sb_set-ADj
 		in	al, dx		; DMA controller, 8237A-5.
 					; clear	byte pointer flip-flop.
 		or	al, al
-		js	short loc_14CC7
+		js	loc_14CC7
 		mov	al, 90h	; 'ê'
 		out	dx, al		; DMA controller, 8237A-5.
 					; clear	byte pointer flip-flop.
@@ -8831,11 +8831,11 @@ loc_14E29::				; CODE XREF: _proaud_14700+7BCj
 		push	gs
 		mov	al, 20h	; ' '
 		out	20h, al		; Interrupt controller,	8259A.
-		test	byte ptr [_config_word+1], 10h
-		jz	short loc_14E4D
+		test	byte ptr _config_word[1], 10h
+		jz	loc_14E4D
 		inc	_byte_24621
 		and	_byte_24621, 3
-		jnz	short loc_14E4D
+		jnz	loc_14E4D
 		mov	cl, _dma_channel
 		call	_dma_186E3
 
@@ -8846,7 +8846,7 @@ loc_14E4D::				; CODE XREF: _proaud_14700+739j
 		shl	bx, cl
 		mov	dx, 21h	; '!'
 		or	bh, bh
-		jz	short loc_14E66
+		jz	loc_14E66
 		mov	dx, 0A1h ; '°'
 		mov	al, 20h	; ' '
 		out	0A0h, al	; PIC 2	 same as 0020 for PIC 1
@@ -8862,18 +8862,18 @@ loc_14E66::				; CODE XREF: _proaud_14700+75Bj
 loc_14E6E::				; CODE XREF: _proaud_14700+78Aj
 		mov	dx, ax
 		cmp	ax, _word_24600
-		ja	short loc_14E79
+		ja	loc_14E79
 		add	ax, 1000h
 
 loc_14E79::				; CODE XREF: _proaud_14700+774j
 		sub	ax, _word_24600
 		cmp	ax, 800h
-		jb	short loc_14E8C
+		jb	loc_14E8C
 		push	dx
 		call	sub_16C69
 		pop	ax
 		add	ax, 10h
-		jmp	short loc_14E6E
+		jmp	loc_14E6E
 ; ---------------------------------------------------------------------------
 
 loc_14E8C::				; CODE XREF: _proaud_14700+780j
@@ -8882,7 +8882,7 @@ loc_14E8C::				; CODE XREF: _proaud_14700+780j
 		shl	bx, cl
 		mov	dx, 21h	; '!'
 		or	bh, bh
-		jz	short loc_14EA1
+		jz	loc_14EA1
 		mov	dx, 0A1h ; '°'
 		mov	bl, bh
 
@@ -8909,9 +8909,9 @@ _lc_disable_interpol::			; CODE XREF: _proaud_14700+725j
 ; ---------------------------------------------------------------------------
 		mov	al, 20h	; ' '
 		cmp	_irq_number, 7
-		jbe	short loc_14ECC
+		jbe	loc_14ECC
 		out	0A0h, al	; PIC 2	 same as 0020 for PIC 1
-		jmp	short $+2
+		jmp	$+2
 
 loc_14ECC::				; CODE XREF: seg000:4EC6j
 		out	20h, al		; Interrupt controller,	8259A.
@@ -8937,8 +8937,8 @@ loc_14ECC::				; CODE XREF: seg000:4EC6j
 
 _timer_int_end proc far	; CODE XREF: _covox_timer_int+22j
 					; _covox_timer_int+33j ...
-		cmp	[cs:_byte_14F70], 0
-		jz	short loc_14F3C
+		cmp	cs:_byte_14F70, 0
+		jz	loc_14F3C
 		pushad
 		push	ds
 		push	es
@@ -8947,7 +8947,7 @@ _timer_int_end proc far	; CODE XREF: _covox_timer_int+22j
 		mov	ax, seg003
 		mov	ds, ax
 		mov	ax, _word_245E4
-		mov	[cs:_word_14F6C], ax
+		mov	cs:_word_14F6C, ax
 		sti
 		call	sub_16C69
 		pop	gs
@@ -8959,24 +8959,24 @@ _timer_int_end proc far	; CODE XREF: _covox_timer_int+22j
 ; ---------------------------------------------------------------------------
 
 loc_14F3C::				; CODE XREF: _timer_int_end+6j
-		mov	[cs:_word_14F6C], 1
-		jmp	[cs:_int8addr]
+		mov	cs:_word_14F6C, 1
+		jmp	cs:_int8addr
 _timer_int_end endp
 
 ; ---------------------------------------------------------------------------
-		dec	[cs:_byte_14F73]
-		jz	short loc_14F50
+		dec	cs:_byte_14F73
+		jz	loc_14F50
 		iret
 ; ---------------------------------------------------------------------------
 
 loc_14F50::				; CODE XREF: seg000:4F4Dj
 		push	ax
-		mov	al, [cs:_byte_14F72]
-		mov	[cs:_byte_14F73], al
-		mov	ax, [cs:_timer_word_14F6E]
+		mov	al, cs:_byte_14F72
+		mov	cs:_byte_14F73, al
+		mov	ax, cs:_timer_word_14F6E
 		call	_set_timer
 		pop	ax
-		jmp	[cs:_int8addr]
+		jmp	cs:_int8addr
 ; ---------------------------------------------------------------------------
 ; ---------------------------------------------------------------------------
 _int8addr	dd 0			; DATA XREF: sub_12DA8+6Aw
@@ -9000,7 +9000,7 @@ _covox_init proc near		; DATA XREF: seg003:0D0Eo
 		mov	_byte_24623, 0
 		mov	_bit_mode, 8
 		cmp	_snd_base_port, 0FFFFh
-		jnz	short loc_14F95
+		jnz	loc_14F95
 		xor	ax, ax
 		mov	es, ax
 		assume es:nothing
@@ -9009,14 +9009,14 @@ _covox_init proc near		; DATA XREF: seg003:0D0Eo
 
 loc_14F95::				; CODE XREF: _covox_init+14j
 		mov	ax, _snd_base_port
-		mov	[cs:_word_14FC8], ax
+		mov	cs:_word_14FC8, ax
 		pushf
 		cli
 		mov	dx, offset _covox_timer_int
 		call	_set_timer_int
 		sub	ax, 0F00h
-		mov	[cs:_word_14FC0], ax
-		mov	[cs:_word_14FC5], 0F000h
+		mov	cs:_word_14FC0, ax
+		mov	cs:_word_14FC5, 0F000h
 		popf
 		clc
 		retn
@@ -9061,16 +9061,16 @@ _word_14FC8	dw 378h			; DATA XREF: _covox_init+24w
 		assume ds:seg003
 		pop	dx
 		pop	ax
-		inc	[cs:_word_14FC5]
-		jz	short loc_14FE3
-		dec	[cs:_word_14F6C]
+		inc	cs:_word_14FC5
+		jz	loc_14FE3
+		dec	cs:_word_14F6C
 		jz	near ptr _timer_int_end
 		iret
 ; ---------------------------------------------------------------------------
 
 loc_14FE3::				; CODE XREF: _covox_timer_int+1Bj
-		mov	[cs:_word_14FC5], 0F000h
-		dec	[cs:_word_14F6C]
+		mov	cs:_word_14FC5, 0F000h
+		dec	cs:_word_14F6C
 		jz	near ptr _timer_int_end
 		iret
 _covox_timer_int endp	; sp-analysis failed
@@ -9102,7 +9102,7 @@ _stereo_init proc near	; DATA XREF: seg003:0D10o
 		mov	_byte_24623, 1
 		mov	_bit_mode, 8
 		cmp	_snd_base_port, -1
-		jnz	short loc_1501D
+		jnz	loc_1501D
 		xor	ax, ax
 		mov	es, ax
 		mov	ax, [es:408h]
@@ -9111,14 +9111,14 @@ _stereo_init proc near	; DATA XREF: seg003:0D10o
 loc_1501D::				; CODE XREF: _stereo_init+14j
 		mov	ax, _snd_base_port
 		add	ax, 2
-		mov	[cs:_word_1504D], ax
+		mov	cs:_word_1504D, ax
 		pushf
 		cli
 		mov	dx, offset _stereo_timer_int
 		call	_set_timer_int
 		sub	ax, 0F00h
-		mov	word ptr [cs:loc_15047+1], ax
-		mov	[cs:_word_15056], 0F000h
+		mov	word ptr cs:loc_15047[1], ax
+		mov	cs:_word_15056, 0F000h
 		popf
 		clc
 		retn
@@ -9178,16 +9178,16 @@ _word_15056	dw 1234h		; DATA XREF: _stereo_init+3Aw
 		assume ds:seg003
 		pop	dx
 		pop	ax
-		add	[cs:_word_15056], 2
-		jb	short loc_1507E
-		dec	[cs:_word_14F6C]
+		add	cs:_word_15056, 2
+		jb	loc_1507E
+		dec	cs:_word_14F6C
 		jz	near ptr _timer_int_end
 		iret
 ; ---------------------------------------------------------------------------
 
 loc_1507E::				; CODE XREF: _stereo_timer_int+2Ej
-		mov	[cs:_word_15056], 0F000h
-		dec	[cs:_word_14F6C]
+		mov	cs:_word_15056, 0F000h
+		dec	cs:_word_14F6C
 		jz	near ptr _timer_int_end
 		iret
 _stereo_timer_int endp ; sp-analysis failed
@@ -9243,7 +9243,7 @@ _adlib_init proc near		; DATA XREF: seg003:0D12o
 
 loc_150E8::				; CODE XREF: _adlib_init+52j
 		dec	cx
-		jnz	short loc_150E8
+		jnz	loc_150E8
 		mov	ax, 20B0h
 		call	_adlib_18395
 		mov	ax, 0A0h ; '†'
@@ -9256,7 +9256,7 @@ loc_150E8::				; CODE XREF: _adlib_init+52j
 		call	_set_timer_int
 		sub	ax, 0F00h
 		mov	word ptr [cs:loc_15120+1], ax
-		mov	[cs:_word_15126], 0F000h
+		mov	cs:_word_15126, 0F000h
 		popf
 		clc
 		retn
@@ -9295,8 +9295,8 @@ _word_15126	dw 1234h		; DATA XREF: _adlib_init+75w
 		xlat
 		mov	dx, 389h
 		out	dx, al
-		inc	[cs:_word_15126]
-		jz	short loc_1514E
+		inc	cs:_word_15126
+		jz	loc_1514E
 
 loc_1513C::				; CODE XREF: seg000:5155j
 		pop	ds
@@ -9305,14 +9305,14 @@ loc_1513C::				; CODE XREF: seg000:5155j
 		mov	al, 20h	; ' '
 		out	20h, al		; Interrupt controller,	8259A.
 		pop	ax
-		dec	[cs:_word_14F6C]
+		dec	cs:_word_14F6C
 		jz	near ptr _timer_int_end
 		iret
 ; ---------------------------------------------------------------------------
 
 loc_1514E::				; CODE XREF: seg000:513Aj
-		mov	[cs:_word_15126], 0F000h
-		jmp	short loc_1513C
+		mov	cs:_word_15126, 0F000h
+		jmp	loc_1513C
 
 ; =============== S U B	R O U T	I N E =======================================
 
@@ -9347,8 +9347,8 @@ _pcspeaker_init proc near	; DATA XREF: seg003:0D14o
 		mov	dx, offset _pcspeaker_interrupt
 		call	_set_timer_int
 		sub	ax, 0F00h
-		mov	[cs:_word_1519B], ax
-		mov	[cs:_word_151A3], 0F000h
+		mov	cs:_word_1519B, ax
+		mov	cs:_word_151A3, 0F000h
 		popf
 		clc
 		retn
@@ -9397,7 +9397,7 @@ _word_1519B	dw 1000h		; DATA XREF: _pcspeaker_init+1Ew
 _word_151A3	dw 1234h		; DATA XREF: _pcspeaker_init+22w
 					; seg000:51B8w	...
 ; ---------------------------------------------------------------------------
-		mov	bl, [cs:_pc_timer_tbl+bx]
+		mov	bl, cs:_pc_timer_tbl[bx]
 		mov	bh, al
 		mov	al, bl
 		out	42h, al		; Timer	8253-5 (AT: 8254.2).
@@ -9406,16 +9406,16 @@ _word_151A3	dw 1234h		; DATA XREF: _pcspeaker_init+22w
 		mov	al, bh
 		pop	ds
 		pop	bx
-		inc	[cs:_word_151A3]
-		jz	short loc_151C9
-		dec	[cs:_word_14F6C]
+		inc	cs:_word_151A3
+		jz	loc_151C9
+		dec	cs:_word_14F6C
 		jz	near ptr _timer_int_end
 		iret
 ; ---------------------------------------------------------------------------
 
 loc_151C9::				; CODE XREF: seg000:51BDj
-		mov	[cs:_word_151A3], 0F000h
-		dec	[cs:_word_14F6C]
+		mov	cs:_word_151A3, 0F000h
+		dec	cs:_word_14F6C
 		jz	near ptr _timer_int_end
 		iret
 
@@ -9483,16 +9483,16 @@ _midi_init::				; DATA XREF: seg003:0D16o
 		mov	_bit_mode, 8
 		mov	ax, _snd_base_port
 		cmp	ax, 0FFFFh
-		jnz	short loc_15302
+		jnz	loc_15302
 		mov	ax, 330h
 
 loc_15302::				; CODE XREF: _snd_initialze+1107j
 		mov	_word_2465C, ax
 		mov	_snd_base_port, ax
-		mov	[off_245CA], offset _nullsub_4
-		mov	[off_245C8], offset _midi_15466
-		mov	[off_245CC], offset _midi_154AC
-		mov	[off_245CE], offset _midi_1544D
+		mov	off_245CA, offset _nullsub_4
+		mov	off_245C8, offset _midi_15466
+		mov	off_245CC, offset _midi_154AC
+		mov	off_245CE, offset _midi_1544D
 		mov	bx, offset _volume_25908
 		mov	ah, 1
 
@@ -9505,7 +9505,7 @@ loc_15325::				; CODE XREF: _snd_initialze+1146j
 		add	bx, 50h	; 'P'
 		inc	ah
 		cmp	ah, 10h
-		jbe	short loc_15325
+		jbe	loc_15325
 		call	_midi_153C0
 		call	_midi_153D6
 		clc
@@ -9540,11 +9540,11 @@ _midi_int8p proc far		; DATA XREF: _midi_seto
 		mov	ds, ax
 		assume es:nothing
 		cmp	_byte_24671, 1
-		jz	short loc_1539A
+		jz	loc_1539A
 		inc	_byte_24668
 		mov	al, _byte_24668
 		cmp	al, _byte_24667
-		jnb	short loc_1538F
+		jnb	loc_1538F
 		mov	bx, offset _volume_25908
 		mov	cx, _word_245D4
 
@@ -9556,8 +9556,8 @@ loc_15380::				; CODE XREF: _midi_int8p+37j
 		pop	bx
 		add	bx, 50h	; 'P'
 		dec	cx
-		jnz	short loc_15380
-		jmp	short loc_1539A
+		jnz	loc_15380
+		jmp	loc_1539A
 ; ---------------------------------------------------------------------------
 
 loc_1538F::				; CODE XREF: _midi_int8p+23j
@@ -9580,8 +9580,8 @@ _midi_int8p endp
 
 
 _midi_sndoff proc near	; DATA XREF: seg003:0D42o
-		mov	dx, word ptr [cs:_int8addr+2]
-		mov	bx, word ptr [cs:_int8addr]
+		mov	dx, word ptr cs:_int8addr[2]
+		mov	bx, word ptr cs:_int8addr
 		mov	al, 8
 		call	_setint_vect
 		call	_clean_timer
@@ -9633,7 +9633,7 @@ loc_153D8::				; CODE XREF: _midi_153D6+18j
 		call	_midi_15413
 		inc	bl
 		cmp	bl, 10h
-		jb	short loc_153D8
+		jb	loc_153D8
 		retn
 _midi_153D6 endp
 
@@ -9650,9 +9650,9 @@ _midi_153F1 proc near		; CODE XREF: _midi_clean+2p
 loc_153F8::				; CODE XREF: _midi_153F1+Dj
 		in	al, dx
 		test	al, 40h
-		jz	short loc_15401
+		jz	loc_15401
 		dec	cx
-		jnz	short loc_153F8
+		jnz	loc_153F8
 		retn
 ; ---------------------------------------------------------------------------
 
@@ -9664,9 +9664,9 @@ loc_15401::				; CODE XREF: _midi_153F1+Aj
 loc_15406::				; CODE XREF: _midi_153F1+1Bj
 		in	al, dx
 		shl	al, 1
-		jnb	short loc_1540E
+		jnb	loc_1540E
 		dec	cx
-		jnz	short loc_15406
+		jnz	loc_15406
 
 loc_1540E::				; CODE XREF: _midi_153F1+18j
 		dec	dx
@@ -9682,9 +9682,9 @@ _midi_153F1 endp
 _midi_15413 proc near		; CODE XREF: _midi_153D6+6p
 					; _midi_153D6+Bp ...
 		or	ah, ah
-		jns	short loc_15421
+		jns	loc_15421
 		cmp	ah, _byte_24677
-		jz	short locret_15441
+		jz	locret_15441
 		mov	_byte_24677, ah
 
 loc_15421::				; CODE XREF: _midi_15413+2j
@@ -9695,16 +9695,16 @@ loc_15421::				; CODE XREF: _midi_15413+2j
 loc_15428::				; CODE XREF: _midi_15413+23j
 		in	al, dx
 		test	al, 40h
-		jz	short loc_15439
+		jz	loc_15439
 		shl	al, 1
-		jb	short loc_15434
+		jb	loc_15434
 		dec	dx
 		in	al, dx
 		inc	dx
 
 loc_15434::				; CODE XREF: _midi_15413+1Cj
 		dec	cl
-		jnz	short loc_15428
+		jnz	loc_15428
 		retn
 ; ---------------------------------------------------------------------------
 
@@ -9730,7 +9730,7 @@ _midi_15442 proc near		; CODE XREF: _midi_153C0+8p
 loc_15447::				; CODE XREF: _midi_15442+7j
 		in	al, dx
 		dec	cx
-		jnz	short loc_15447
+		jnz	loc_15447
 		retn
 _midi_15442 endp
 
@@ -9765,14 +9765,14 @@ _midi_1544D endp
 
 _midi_15466 proc near		; DATA XREF: _snd_initialze+1118o
 		test	byte ptr [bx+17h], 0FEh
-		jz	short loc_1546F
+		jz	loc_1546F
 		call	_midi_1544D
 
 loc_1546F::				; CODE XREF: _midi_15466+4j
 		or	byte ptr [bx+17h], 1
 		mov	al, [bx+2]
 		cmp	al, [bx+3]
-		jz	short loc_1548D
+		jz	loc_1548D
 		mov	[bx+3],	al
 		call	_midi_154DA
 		or	ah, 0C0h
@@ -9801,12 +9801,12 @@ _midi_15466 endp
 _midi_154AC proc near		; CODE XREF: _midi_15466+2Ap
 					; DATA XREF: _snd_initialze+111Eo
 		cmp	al, _byte_2467D
-		jb	short loc_154B5
+		jb	loc_154B5
 		mov	al, _byte_2467D
 
 loc_154B5::				; CODE XREF: _midi_154AC+4j
 		cmp	al, [bx+1Bh]
-		jz	short locret_154D9
+		jz	locret_154D9
 		mov	[bx+1Bh], al
 		movzx	di, al
 		call	_midi_154DA
@@ -9815,7 +9815,7 @@ loc_154B5::				; CODE XREF: _midi_154AC+4j
 		mov	ah, 7
 		call	_midi_15413
 		mov	al, 80h	; 'Ä'
-		add	di, [off_24656]
+		add	di, off_24656
 		mul	byte ptr [di]
 		call	_midi_15413
 
@@ -9871,7 +9871,7 @@ sub_154F4 proc near		; CODE XREF: sub_15577+9p sub_1609F+9p
 		mov	eax, [si+4]
 		shr	eax, 0Ch
 		cmp	word ptr [si+26h], 0FFFFh
-		jz	short loc_15525
+		jz	loc_15525
 		and	eax, 3FFh
 
 loc_15525::				; CODE XREF: sub_154F4+29j
@@ -9882,7 +9882,7 @@ loc_15525::				; CODE XREF: sub_154F4+29j
 		mov	_word_24614, ax
 		mov	_byte_24616, 0
 		test	_flag_playsetttings, 10h
-		jz	short _lc_inerpol_disabld
+		jz	_lc_inerpol_disabld
 		cmp	al, ah
 		setnz	ah		; dosbox:  setnz sp
 		mov	_byte_24616, ah
@@ -9939,7 +9939,7 @@ sub_15577 proc near		; CODE XREF: sub_16C69:loc_16CB9p
 		xor	edx, edx
 		mov	ax, _word_245E4
 		and	eax, 0Fh
-		jmp	[cs:_offs_noninterp+eax*2]
+		jmp	cs:_offs_noninterp[eax*2]
 sub_15577 endp ; sp-analysis	failed
 
 ; START	OF FUNCTION CHUNK FOR sub_1609F
@@ -10186,7 +10186,7 @@ loc_1578C::				; CODE XREF: sub_1609F-A02j
 		mov	edx, eax
 		shr	edx, 8
 		cmp	edx, [si+48h]
-		ja	short loc_157BD
+		ja	loc_157BD
 		mov	[si+4],	eax
 
 locret_157BC::				; CODE XREF: sub_15577+4j
@@ -10197,15 +10197,15 @@ loc_157BD::				; CODE XREF: sub_1609F-8E9j
 		mov	edx, [si+40h]
 		shl	edx, 8
 		test	byte ptr [si+19h], 8
-		jz	short loc_157E5
+		jz	loc_157E5
 		mov	ebx, [si+44h]
 		shl	ebx, 8
 
 loc_157D3::				; CODE XREF: sub_1609F-8C4j
 		sub	eax, ebx
-		jb	short loc_157DD
+		jb	loc_157DD
 		cmp	eax, edx
-		ja	short loc_157D3
+		ja	loc_157D3
 
 loc_157DD::				; CODE XREF: sub_1609F-8C9j
 		add	eax, ebx
@@ -10224,46 +10224,46 @@ loc_157E5::				; CODE XREF: sub_1609F-8D6j
 
 _lc_perfrm_interpol::			; CODE XREF: sub_15577+11j
 		mov	al, ch
-		cmp	al, [cs:_byte_158B4]
-		jz	short loc_15877
-		mov	[cs:_byte_158B4], al
-		mov	[cs:_byte_158E3], al
-		mov	[cs:_byte_15912], al
-		mov	[cs:_byte_15941], al
-		mov	[cs:_byte_15970], al
-		mov	[cs:_byte_1599F], al
-		mov	[cs:_byte_159CE], al
-		mov	[cs:_byte_159FD], al
-		mov	[cs:_byte_15A2C], al
-		mov	[cs:_byte_15A5B], al
-		mov	[cs:_byte_15A8A], al
-		mov	[cs:_byte_15AB9], al
-		mov	[cs:_byte_15AE8], al
-		mov	[cs:_byte_15B17], al
-		mov	[cs:_byte_15B46], al
-		mov	[cs:_byte_15B81], al
-		mov	[cs:_byte_15BAD], al
-		mov	[cs:_byte_15BDA], al
-		mov	[cs:_byte_15C07], al
-		mov	[cs:_byte_15C34], al
-		mov	[cs:_byte_15C61], al
-		mov	[cs:_byte_15C8E], al
-		mov	[cs:_byte_15CBB], al
-		mov	[cs:_byte_15CE8], al
-		mov	[cs:_byte_15D15], al
-		mov	[cs:_byte_15D42], al
-		mov	[cs:_byte_15D6F], al
-		mov	[cs:_byte_15D9C], al
-		mov	[cs:_byte_15DC9], al
-		mov	[cs:_byte_15DF6], al
-		mov	[cs:_byte_15E23], al
+		cmp	al, cs:_byte_158B4
+		jz	loc_15877
+		mov	cs:_byte_158B4, al
+		mov	cs:_byte_158E3, al
+		mov	cs:_byte_15912, al
+		mov	cs:_byte_15941, al
+		mov	cs:_byte_15970, al
+		mov	cs:_byte_1599F, al
+		mov	cs:_byte_159CE, al
+		mov	cs:_byte_159FD, al
+		mov	cs:_byte_15A2C, al
+		mov	cs:_byte_15A5B, al
+		mov	cs:_byte_15A8A, al
+		mov	cs:_byte_15AB9, al
+		mov	cs:_byte_15AE8, al
+		mov	cs:_byte_15B17, al
+		mov	cs:_byte_15B46, al
+		mov	cs:_byte_15B81, al
+		mov	cs:_byte_15BAD, al
+		mov	cs:_byte_15BDA, al
+		mov	cs:_byte_15C07, al
+		mov	cs:_byte_15C34, al
+		mov	cs:_byte_15C61, al
+		mov	cs:_byte_15C8E, al
+		mov	cs:_byte_15CBB, al
+		mov	cs:_byte_15CE8, al
+		mov	cs:_byte_15D15, al
+		mov	cs:_byte_15D42, al
+		mov	cs:_byte_15D6F, al
+		mov	cs:_byte_15D9C, al
+		mov	cs:_byte_15DC9, al
+		mov	cs:_byte_15DF6, al
+		mov	cs:_byte_15E23, al
 
 loc_15877::				; CODE XREF: sub_15577+282j
 		and	ecx, 0FFh
 		mov	ax, _word_245E4
 		and	eax, 0Fh
 		xor	edx, edx
-		jmp	[cs:_offs_interpol+eax*2]
+		jmp	cs:_offs_interpol[eax*2]
 
 loc_15891::				; CODE XREF: sub_15577+28j
 					; sub_1609F+28j ...
@@ -11206,7 +11206,7 @@ sub_1609F proc near		; CODE XREF: sub_16C69+4Bp
 		xor	edx, edx
 		mov	ax, _word_245E4
 		and	eax, 0Fh
-		jmp	[cs:_offs_noninterp2+eax*2]
+		jmp	cs:_offs_noninterp2[eax*2]
 sub_1609F endp ; sp-analysis	failed
 
 
@@ -11441,46 +11441,46 @@ loc_161C9::				; CODE XREF: sub_1609F+211j
 
 _lc_perfrm_interpol2::			; CODE XREF: sub_1609F+11j
 		mov	al, ch
-		cmp	al, [cs:_byte_16379]
-		jz	short loc_1633C
-		mov	[cs:_byte_16379], al
-		mov	[cs:_byte_163A8], al
-		mov	[cs:_byte_163D7], al
-		mov	[cs:_byte_16406], al
-		mov	[cs:_byte_16435], al
+		cmp	al, cs:_byte_16379
+		jz	loc_1633C
+		mov	cs:_byte_16379, al
+		mov	cs:_byte_163A8, al
+		mov	cs:_byte_163D7, al
+		mov	cs:_byte_16406, al
+		mov	cs:_byte_16435, al
 		mov	byte ptr [cs:unk_16464], al
-		mov	[cs:_byte_16493], al
-		mov	[cs:_byte_164C2], al
-		mov	[cs:_byte_164F1], al
-		mov	[cs:_byte_16520], al
-		mov	[cs:_byte_1654F], al
-		mov	[cs:_byte_1657E], al
+		mov	cs:_byte_16493, al
+		mov	cs:_byte_164C2, al
+		mov	cs:_byte_164F1, al
+		mov	cs:_byte_16520, al
+		mov	cs:_byte_1654F, al
+		mov	cs:_byte_1657E, al
 		mov	byte ptr [cs:unk_165AD], al
-		mov	[cs:_byte_165DC], al
-		mov	[cs:_byte_1660B], al
-		mov	[cs:_byte_16646], al
-		mov	[cs:_byte_16672], al
-		mov	[cs:_byte_1669F], al
-		mov	[cs:_byte_166CC], al
-		mov	[cs:_byte_166F9], al
-		mov	[cs:_byte_16726], al
-		mov	[cs:_byte_16753], al
-		mov	[cs:_byte_16780], al
-		mov	[cs:_byte_167AD], al
-		mov	[cs:_byte_167DA], al
-		mov	[cs:_byte_16807], al
-		mov	[cs:_byte_16834], al
-		mov	[cs:_byte_16861], al
-		mov	[cs:_byte_1688E], al
-		mov	[cs:_byte_168BB], al
-		mov	[cs:_byte_168E8], al
+		mov	cs:_byte_165DC, al
+		mov	cs:_byte_1660B, al
+		mov	cs:_byte_16646, al
+		mov	cs:_byte_16672, al
+		mov	cs:_byte_1669F, al
+		mov	cs:_byte_166CC, al
+		mov	cs:_byte_166F9, al
+		mov	cs:_byte_16726, al
+		mov	cs:_byte_16753, al
+		mov	cs:_byte_16780, al
+		mov	cs:_byte_167AD, al
+		mov	cs:_byte_167DA, al
+		mov	cs:_byte_16807, al
+		mov	cs:_byte_16834, al
+		mov	cs:_byte_16861, al
+		mov	cs:_byte_1688E, al
+		mov	cs:_byte_168BB, al
+		mov	cs:_byte_168E8, al
 
 loc_1633C::				; CODE XREF: sub_1609F+21Fj
 		and	ecx, 0FFh
 		mov	ax, _word_245E4
 		and	eax, 0Fh
 		xor	edx, edx
-		jmp	[cs:_offs_interpol2+eax*2]
+		jmp	cs:_offs_interpol2[eax*2]
 
 loc_16356::				; CODE XREF: sub_1609F+28j
 					; DATA XREF: seg000:8DFEo
@@ -12135,7 +12135,7 @@ _byte_168E8	db 0			; DATA XREF: sub_1609F+299w
 		add	di, 80h	; 'Ä'
 		mov	dx, offset loc_16900
 		cmp	_byte_24616, 1
-		jz	short loc_1690B
+		jz	loc_1690B
 
 loc_16900::				; DATA XREF: seg000:68F6o
 		dec	_byte_24683
@@ -12146,11 +12146,11 @@ loc_16900::				; DATA XREF: seg000:68F6o
 loc_1690B::				; CODE XREF: seg000:5E39j seg000:68FEj
 		mov	ax, _word_24614
 		cmp	al, ah
-		ja	short loc_16929
+		ja	loc_16929
 		add	al, 4
 		cmp	al, ah
-		jnb	short loc_16942
-		mov	byte ptr [_word_24614], al
+		jnb	loc_16942
+		mov	byte ptr _word_24614, al
 		movzx	ebx, al
 		shl	ebx, 9
 		add	bx, offset _vlm_byte_table
@@ -12159,10 +12159,10 @@ loc_1690B::				; CODE XREF: seg000:5E39j seg000:68FEj
 
 loc_16929::				; CODE XREF: seg000:6910j
 		sub	al, 4
-		jbe	short loc_16942
+		jbe	loc_16942
 		cmp	al, ah
-		jbe	short loc_16942
-		mov	byte ptr [_word_24614], al
+		jbe	loc_16942
+		mov	byte ptr _word_24614, al
 		movzx	ebx, al
 		shl	ebx, 9
 		add	bx, offset _vlm_byte_table
@@ -12170,7 +12170,7 @@ loc_16929::				; CODE XREF: seg000:6910j
 ; ---------------------------------------------------------------------------
 
 loc_16942::				; CODE XREF: seg000:6916j seg000:692Bj ...
-		mov	byte ptr [_word_24614], ah
+		mov	byte ptr _word_24614, ah
 		mov	_byte_24616, 0
 		movzx	ebx, ah
 		shl	ebx, 9
@@ -12453,7 +12453,7 @@ loc_16BB0::				; CODE XREF: sub_1609F+4j
 		xor	eax, eax
 		and	bx, 0Fh
 		shl	bx, 1
-		jmp	[cs:off_18E80+bx]
+		jmp	cs:off_18E80[bx]
 
 loc_16BC6::				; CODE XREF: sub_15577+28j
 					; sub_15577+311j ...
@@ -12532,7 +12532,7 @@ loc_16C1A::				; CODE XREF: sub_15577+28j
 
 loc_16C20::				; CODE XREF: sub_15577+28j
 					; sub_15577+311j ...
-		jcxz	short locret_16C68
+		jcxz	locret_16C68
 
 loc_16C22::				; CODE XREF: sub_1609F:loc_16C66j
 		mov	[di], eax
@@ -12555,7 +12555,7 @@ loc_16C22::				; CODE XREF: sub_1609F:loc_16C66j
 		dec	cx
 
 loc_16C66::				; CODE XREF: _snd_initialze+13j
-		jnz	short loc_16C22
+		jnz	loc_16C22
 
 locret_16C68::				; CODE XREF: sub_1609F:loc_16C20j
 		retn
@@ -12575,7 +12575,7 @@ sub_16C69 proc near		; CODE XREF: sub_13017:loc_13038p
 		mov	ax, _word_245E8
 		mov	_word_245E4, ax
 		dec	_word_245EE
-		jnz	short loc_16C88
+		jnz	loc_16C88
 		call	sub_140B6
 		mov	ax, _word_245EA
 		mov	_word_245E4, ax
@@ -12591,15 +12591,15 @@ loc_16C88::				; CODE XREF: sub_16C69+Ej
 
 loc_16C9D::				; CODE XREF: sub_16C69+59j
 		cmp	byte ptr [si+1Dh], 0
-		jnz	short loc_16CBE
+		jnz	loc_16CBE
 		push	cx
 		push	si
 		mov	di, offset _chrin
 		test	_byte_24682, 1
-		jnz	short loc_16CB9
+		jnz	loc_16CB9
 		or	_byte_24682, 1
 		call	sub_1609F
-		jmp	short loc_16CBC
+		jmp	loc_16CBC
 ; ---------------------------------------------------------------------------
 
 loc_16CB9::				; CODE XREF: sub_16C69+44j
@@ -12612,16 +12612,16 @@ loc_16CBC::				; CODE XREF: sub_16C69+4Ej
 loc_16CBE::				; CODE XREF: sub_16C69+38j
 		add	si, 50h	; 'P'
 		dec	cx
-		jnz	short loc_16C9D
+		jnz	loc_16C9D
 		mov	di, _word_24600
 		mov	cx, _word_245E4
 		mov	si, (offset _chrin+1)
-		mov	es, word ptr [_dma_buf_pointer+2]
+		mov	es, word ptr _dma_buf_pointer[2]
 		assume es:nothing
 		mov	ax, 1000h
 		sub	ax, di
 		cmp	ax, cx
-		ja	short loc_16CEB
+		ja	loc_16CEB
 		mov	bx, cx
 		sub	bx, ax
 		mov	cx, ax
@@ -12629,7 +12629,7 @@ loc_16CBE::				; CODE XREF: sub_16C69+38j
 		call	sub_16CF6
 		pop	cx
 		xor	di, di
-		jcxz	short loc_16CEE
+		jcxz	loc_16CEE
 
 loc_16CEB::				; CODE XREF: sub_16C69+71j
 		call	sub_16CF6
@@ -12651,7 +12651,7 @@ sub_16CF6 proc near		; CODE XREF: sub_16C69+7Ap
 		mov	bx, cx
 		and	bx, 0Fh
 		shl	bx, 1
-		jmp	[cs:off_18EA0+bx]
+		jmp	cs:off_18EA0[bx]
 
 loc_16D0B::				; CODE XREF: sub_15577+28j
 					; sub_15577+311j ...
@@ -12778,7 +12778,7 @@ loc_16DA5::				; CODE XREF: sub_15577+28j
 loc_16DB0::				; CODE XREF: sub_15577+28j
 					; sub_15577+311j ...
 		shr	cx, 4
-		jz	short locret_16E23
+		jz	locret_16E23
 		mov	edx, 80808080h
 
 loc_16DBB::				; CODE XREF: sub_16CF6+12Bj
@@ -12813,7 +12813,7 @@ loc_16DBB::				; CODE XREF: sub_16CF6+12Bj
 		add	si, 80h	; 'Ä'
 		add	di, 10h
 		dec	cx
-		jnz	short loc_16DBB
+		jnz	loc_16DBB
 
 locret_16E23::				; CODE XREF: sub_16CF6+BDj
 		retn
@@ -12826,7 +12826,7 @@ loc_16E24::				; CODE XREF: sub_16CF6+5j
 		mov	bx, cx
 		and	bx, 0Fh
 		shl	bx, 1
-		jmp	[cs:off_18EC0+bx]
+		jmp	cs:off_18EC0[bx]
 
 loc_16E3F::				; CODE XREF: sub_15577+28j
 					; sub_15577+311j ...
@@ -13242,28 +13242,28 @@ loc_171DA::				; CODE XREF: sub_16C69+5B7j
 		push	cx
 		push	si
 		cmp	byte ptr [si+1Dh], 0
-		jnz	short loc_1721A
+		jnz	loc_1721A
 		cmp	byte ptr [si+3Ah], 0
-		jz	short loc_17202
-		mov	di, [off_245E0]
+		jz	loc_17202
+		mov	di, off_245E0
 		test	_byte_24682, 1
-		jz	short loc_171F8
+		jz	loc_171F8
 		call	sub_15577
-		jmp	short loc_1721A
+		jmp	loc_1721A
 ; ---------------------------------------------------------------------------
 
 loc_171F8::				; CODE XREF: sub_16C69+588j
 		or	_byte_24682, 1
 		call	sub_1609F
-		jmp	short loc_1721A
+		jmp	loc_1721A
 ; ---------------------------------------------------------------------------
 
 loc_17202::				; CODE XREF: sub_16C69+57Dj
-		mov	di, [off_245E2]
+		mov	di, off_245E2
 		test	_byte_24682, 2
-		jz	short loc_17212
+		jz	loc_17212
 		call	sub_15577
-		jmp	short loc_1721A
+		jmp	loc_1721A
 ; ---------------------------------------------------------------------------
 
 loc_17212::				; CODE XREF: sub_16C69+5A2j
@@ -13276,19 +13276,19 @@ loc_1721A::				; CODE XREF: sub_16C69+577j
 		pop	cx
 		add	si, 50h	; 'P'
 		dec	cx
-		jnz	short loc_171DA
+		jnz	loc_171DA
 		cmp	_bit_mode, 16
 		jz	_lc_16bit
 		mov	di, _word_24600
 		mov	cx, _word_245E4
 		mov	si, (offset _chrin+1)
-		mov	es, word ptr [_dma_buf_pointer+2]
+		mov	es, word ptr _dma_buf_pointer[2]
 		assume es:nothing
 		mov	ax, 1000h
 		sub	ax, di
 		shl	cx, 1
 		cmp	ax, cx
-		ja	short loc_17254
+		ja	loc_17254
 		mov	bx, cx
 		sub	bx, ax
 		mov	cx, ax
@@ -13296,7 +13296,7 @@ loc_1721A::				; CODE XREF: sub_16C69+577j
 		call	sub_1725F
 		pop	cx
 		xor	di, di
-		jcxz	short loc_17257
+		jcxz	loc_17257
 
 loc_17254::				; CODE XREF: sub_16C69+5DAj
 		call	sub_1725F
@@ -13320,7 +13320,7 @@ sub_1725F proc near		; CODE XREF: sub_16C69+5E3p
 		mov	bx, cx
 		and	bx, 0Fh
 		shl	bx, 1
-		jmp	[cs:off_18EE0+bx]
+		jmp	cs:off_18EE0[bx]
 
 loc_1727F::				; CODE XREF: sub_15577+28j
 					; sub_15577+311j ...
@@ -13535,7 +13535,7 @@ loc_17441::				; CODE XREF: sub_1725F+5j
 		mov	bx, cx
 		and	bx, 0Fh
 		shl	bx, 1
-		jmp	[cs:off_18F00+bx]
+		jmp	cs:off_18F00[bx]
 sub_1725F endp ; sp-analysis	failed
 
 ; START	OF FUNCTION CHUNK FOR sub_1609F
@@ -13948,12 +13948,12 @@ _lc_16bit::				; CODE XREF: sub_16C69+5BEj
 		mov	di, _word_24600
 		mov	cx, _word_245E4
 		mov	si, offset _chrin
-		mov	es, word ptr [_dma_buf_pointer+2]
+		mov	es, word ptr _dma_buf_pointer[2]
 		mov	ax, 1000h
 		sub	ax, di
 		shr	ax, 2
 		cmp	cx, ax
-		jbe	short loc_17819
+		jbe	loc_17819
 		mov	bx, cx
 		sub	bx, ax
 		mov	cx, ax
@@ -13961,7 +13961,7 @@ _lc_16bit::				; CODE XREF: sub_16C69+5BEj
 		call	sub_17824
 		pop	cx
 		xor	di, di
-		jcxz	short loc_1781C
+		jcxz	loc_1781C
 
 loc_17819::				; CODE XREF: sub_16C69+B9Fj
 		call	sub_17824
@@ -13982,7 +13982,7 @@ sub_17824 proc near		; CODE XREF: sub_16C69+BA8p
 		mov	bx, cx
 		and	bx, 0Fh
 		shl	bx, 1
-		jmp	[cs:off_18F20+bx]
+		jmp	cs:off_18F20[bx]
 
 loc_17839::				; CODE XREF: sub_15577+28j
 					; sub_15577+311j ...
@@ -14205,7 +14205,7 @@ loc_17A58::				; CODE XREF: sub_17824+5j
 		mov	bx, cx
 		and	bx, 0Fh
 		shl	bx, 1
-		jmp	[cs:off_18F40+bx]
+		jmp	cs:off_18F40[bx]
 sub_17824 endp ; sp-analysis	failed
 
 ; START	OF FUNCTION CHUNK FOR sub_1609F
@@ -14675,7 +14675,7 @@ sub_182DB proc near		; CODE XREF: sub_1279A+44j
 					; sub_1279A+5Ep
 		mov	_dma_mode, 44h	; 'D'
 		mov	_byte_24645, 2
-		jmp	short loc_182F7
+		jmp	loc_182F7
 sub_182DB endp
 
 
@@ -14692,7 +14692,7 @@ _nongravis_182E7 proc	near	; CODE XREF: _mod_readfile_11F4E+162p
 loc_182F7::				; CODE XREF: sub_182DB+Aj
 					; _nongravis_182E7+15j
 		cmp	_byte_2466E, 1
-		jz	short loc_182F7
+		jz	loc_182F7
 		mov	_word_24636, 0
 		mov	bp, ax
 		shl	ax, 2
@@ -14700,15 +14700,15 @@ loc_182F7::				; CODE XREF: sub_182DB+Aj
 		mov	bx, cx
 		shr	cx, 2
 		add	cx, ax
-		jnb	short loc_18338
-		jz	short loc_18338
+		jnb	loc_18338
+		jz	loc_18338
 		neg	ax
 		shl	ax, 2
 		mov	_word_2460E, ax
 		mov	cx, ax
 		sub	bx, ax
 		mov	_word_24636, bx
-		add	ax, word ptr [_dma_buf_pointer]
+		add	ax, word ptr _dma_buf_pointer
 		mov	_word_24634, ax
 		shr	cx, 4
 		add	cx, bp
@@ -14725,7 +14725,7 @@ loc_18338::				; CODE XREF: _gravis_int+E2p
 		mov	bl, 21h	; '!'
 		or	bl, _byte_24645
 		cmp	_dma_channel_0, 4
-		jb	short loc_18360
+		jb	loc_18360
 		or	bl, 4
 		mov	ax, bp
 		and	ax, 0C000h
@@ -14769,7 +14769,7 @@ loc_1838B::				; CODE XREF: _adlib_18389+9j
 		call	_adlib_18395
 		inc	al
 		cmp	al, 0E8h ; 'Ë'
-		jbe	short loc_1838B
+		jbe	loc_1838B
 		retn
 _adlib_18389 endp
 
@@ -14840,34 +14840,34 @@ _adlib_18395 endp
 _sb16_detect_port proc near	; CODE XREF: _useless_12D61+22p
 					; _sb16_init+Fp	...
 		cmp	_snd_base_port, 0FFFFh
-		jz	short loc_183DE
+		jz	loc_183DE
 		mov	ax, _snd_base_port
 		mov	_sb_base_port,	ax
 		call	_CheckSB
-		jnb	short loc_1842D
+		jnb	loc_1842D
 
 loc_183DE::				; CODE XREF: _sb16_detect_port+5j
 		mov	_sb_base_port,	220h
 		call	_CheckSB
-		jnb	short loc_1842D
+		jnb	loc_1842D
 		mov	_sb_base_port,	240h
 		call	_CheckSB
-		jnb	short loc_1842D
+		jnb	loc_1842D
 		mov	_sb_base_port,	210h
 		call	_CheckSB
-		jnb	short loc_1842D
+		jnb	loc_1842D
 		mov	_sb_base_port,	230h
 		call	_CheckSB
-		jnb	short loc_1842D
+		jnb	loc_1842D
 		mov	_sb_base_port,	250h
 		call	_CheckSB
-		jnb	short loc_1842D
+		jnb	loc_1842D
 		mov	_sb_base_port,	260h
 		call	_CheckSB
-		jnb	short loc_1842D
+		jnb	loc_1842D
 		mov	_sb_base_port,	280h
 		call	_CheckSB
-		jnb	short loc_1842D
+		jnb	loc_1842D
 		stc
 		retn
 ; ---------------------------------------------------------------------------
@@ -14906,37 +14906,37 @@ _sb16_detect_port endp
 loc_184C3::				; CODE XREF: _sb_detect_irq+18j
 					; _sb_detect_irq+22j ...
 		cmp	_dma_channel, 0FFh
-		jz	short loc_184DC
+		jz	loc_184DC
 		mov	al, _dma_channel
 		mov	_dma_chn_mask,	al
 		cmp	_bit_mode, 16
-		jz	short _sb16_sound_on
+		jz	_sb16_sound_on
 		call	_sb16_18540
-		jnb	short _sb16_sound_on
+		jnb	_sb16_sound_on
 
 loc_184DC::				; CODE XREF: _sb_detect_irq+7Fj
 		cmp	_bit_mode, 8
-		jz	short loc_18501
+		jz	loc_18501
 		mov	_dma_chn_mask,	5
 		call	_sb16_18540
-		jnb	short _sb16_sound_on
+		jnb	_sb16_sound_on
 		mov	_dma_chn_mask,	6
 		call	_sb16_18540
-		jnb	short _sb16_sound_on
+		jnb	_sb16_sound_on
 		mov	_dma_chn_mask,	7
 		call	_sb16_18540
-		jnb	short _sb16_sound_on
+		jnb	_sb16_sound_on
 
 loc_18501::				; CODE XREF: _sb_detect_irq+98j
 		mov	_dma_chn_mask,	1
 		call	_sb16_18540
-		jnb	short _sb16_sound_on
+		jnb	_sb16_sound_on
 		mov	_dma_chn_mask,	3
 		call	_sb16_18540
-		jnb	short _sb16_sound_on
+		jnb	_sb16_sound_on
 		mov	_dma_chn_mask,	0
 		call	_sb16_18540
-		jnb	short _sb16_sound_on
+		jnb	_sb16_sound_on
 		mov	dx, offset _aErrorCouldNot_1 ; "Error: Could not	find DMA!\r\n"
 		stc
 		retn
@@ -14978,7 +14978,7 @@ _sb16_18540 proc near		; CODE XREF: _sb_detect_irq+8Ep
 		mov	al, _sb_irq_number
 		call	_setsnd_handler
 		cmp	_dma_chn_mask,	4
-		jnb	short loc_18591
+		jnb	loc_18591
 		mov	al, 40h	; '@'
 		call	_WriteSB
 		mov	al, 0D3h ; '”'
@@ -14990,7 +14990,7 @@ _sb16_18540 proc near		; CODE XREF: _sb_detect_irq+8Ep
 		call	_WriteSB
 		mov	al, ah
 		call	_WriteSB
-		jmp	short loc_185B5
+		jmp	loc_185B5
 ; ---------------------------------------------------------------------------
 
 loc_18591::				; CODE XREF: _sb16_18540+32j
@@ -15015,7 +15015,7 @@ loc_185B5::				; CODE XREF: _sb16_18540+4Fj
 
 loc_185B8::				; CODE XREF: _sb16_18540+7Fj
 		cmp	_sb_int_counter, 1
-		jnz	short loc_185CD
+		jnz	loc_185CD
 		loop	loc_185B8
 		call	_restore_intvector
 		mov	cl, _dma_chn_mask
@@ -15060,16 +15060,16 @@ _sb16_handler_int endp
 
 ; ---------------------------------------------------------------------------
 		cmp	cl, 4
-		jnb	short loc_18631
+		jnb	loc_18631
 		xor	al, al
 		out	0Ch, al		; DMA controller, 8237A-5.
 					; clear	byte pointer flip-flop.
 		cmp	cl, 1
-		jz	short loc_18616
+		jz	loc_18616
 		cmp	cl, 2
-		jz	short loc_1861F
+		jz	loc_1861F
 		cmp	cl, 3
-		jz	short loc_18628
+		jz	loc_18628
 		in	al, 1		; DMA controller, 8237A-5.
 					; channel 0 current word count
 		mov	ah, al
@@ -15113,11 +15113,11 @@ loc_18631::				; CODE XREF: seg000:85F8j
 		xor	al, al
 		out	0D8h, al
 		cmp	cl, 5
-		jz	short loc_1864D
+		jz	loc_1864D
 		cmp	cl, 6
-		jz	short loc_18656
+		jz	loc_18656
 		cmp	cl, 7
-		jz	short loc_1865F
+		jz	loc_1865F
 		in	al, 0C2h	; DMA controller, 8237A-5.
 					; channel 1 current address
 		mov	ah, al
@@ -15163,16 +15163,16 @@ loc_1865F::				; CODE XREF: seg000:8642j
 		retn
 ; ---------------------------------------------------------------------------
 		cmp	cl, 4
-		jnb	short loc_186A4
+		jnb	loc_186A4
 		xor	al, al
 		out	0Ch, al		; DMA controller, 8237A-5.
 					; clear	byte pointer flip-flop.
 		cmp	cl, 1
-		jz	short loc_18689
+		jz	loc_18689
 		cmp	cl, 2
-		jz	short loc_18692
+		jz	loc_18692
 		cmp	cl, 3
-		jz	short loc_1869B
+		jz	loc_1869B
 		in	al, 0
 		mov	ah, al
 		in	al, 0
@@ -15214,11 +15214,11 @@ loc_186A4::				; CODE XREF: seg000:866Bj
 		xor	al, al
 		out	0D8h, al
 		cmp	cl, 5
-		jz	short loc_186C2
+		jz	loc_186C2
 		cmp	cl, 6
-		jz	short loc_186CD
+		jz	loc_186CD
 		cmp	cl, 7
-		jz	short loc_186D8
+		jz	loc_186D8
 		in	al, 0C0h	; DMA controller, 8237A-5.
 					; channel 0 current address
 		mov	ah, al
@@ -15268,13 +15268,13 @@ loc_186D8::				; CODE XREF: seg000:86B5j
 
 _dma_186E3 proc near		; CODE XREF: _proaud_set+59p
 					; _wss_set+28p ...
-		test	byte ptr [_config_word+1], 10h
-		jz	short loc_186EF
+		test	byte ptr _config_word[1], 10h
+		jz	loc_186EF
 		and	_dma_mode, 0EFh
 
 loc_186EF::				; CODE XREF: _dma_186E3+5j
 		cmp	cl, 1
-		jz	short loc_18761
+		jz	loc_18761
 		cmp	cl, 2
 		jz	loc_187A6
 		cmp	cl, 3
@@ -15302,15 +15302,15 @@ loc_186EF::				; CODE XREF: _dma_186E3+5j
 					; 4: 1=enable auto-initialization
 					; 5: 1=address increment; 0=address decrement
 					; 6-7: 00=demand mode; 01=single; 10=block; 11=cascade
-		mov	dx, word ptr [_dma_buf_pointer+2]
+		mov	dx, word ptr _dma_buf_pointer[2]
 		rol	dx, 4
 		mov	ax, dx
 		and	al, 0F0h
 		and	dx, 0Fh
-		add	ax, word ptr [_dma_buf_pointer]
+		add	ax, word ptr _dma_buf_pointer
 		adc	dx, 0
-		add	ax, word ptr [_dword_24694]
-		adc	dx, word ptr [_dword_24694+2]
+		add	ax, word ptr _dword_24694
+		adc	dx, word ptr _dword_24694[2]
 		out	0, al
 		mov	al, ah
 		out	0, al
@@ -15349,15 +15349,15 @@ loc_18761::				; CODE XREF: _dma_186E3+Fj
 					; 4: 1=enable auto-initialization
 					; 5: 1=address increment; 0=address decrement
 					; 6-7: 00=demand mode; 01=single; 10=block; 11=cascade
-		mov	dx, word ptr [_dma_buf_pointer+2]
+		mov	dx, word ptr _dma_buf_pointer[2]
 		rol	dx, 4
 		mov	ax, dx
 		and	al, 0F0h
 		and	dx, 0Fh
-		add	ax, word ptr [_dma_buf_pointer]
+		add	ax, word ptr _dma_buf_pointer
 		adc	dx, 0
-		add	ax, word ptr [_dword_24694]
-		adc	dx, word ptr [_dword_24694+2]
+		add	ax, word ptr _dword_24694
+		adc	dx, word ptr _dword_24694[2]
 		out	2, al		; DMA controller, 8237A-5.
 					; channel 1 base address
 					; (also	sets current address)
@@ -15400,15 +15400,15 @@ loc_187A6::				; CODE XREF: _dma_186E3+14j
 					; 4: 1=enable auto-initialization
 					; 5: 1=address increment; 0=address decrement
 					; 6-7: 00=demand mode; 01=single; 10=block; 11=cascade
-		mov	dx, word ptr [_dma_buf_pointer+2]
+		mov	dx, word ptr _dma_buf_pointer[2]
 		rol	dx, 4
 		mov	ax, dx
 		and	al, 0F0h
 		and	dx, 0Fh
-		add	ax, word ptr [_dma_buf_pointer]
+		add	ax, word ptr _dma_buf_pointer
 		adc	dx, 0
-		add	ax, word ptr [_dword_24694]
-		adc	dx, word ptr [_dword_24694+2]
+		add	ax, word ptr _dword_24694
+		adc	dx, word ptr _dword_24694[2]
 		out	4, al		; DMA controller, 8237A-5.
 					; channel 2 base address
 					; (also	sets current address)
@@ -15451,15 +15451,15 @@ loc_187EB::				; CODE XREF: _dma_186E3+1Bj
 					; 4: 1=enable auto-initialization
 					; 5: 1=address increment; 0=address decrement
 					; 6-7: 00=demand mode; 01=single; 10=block; 11=cascade
-		mov	dx, word ptr [_dma_buf_pointer+2]
+		mov	dx, word ptr _dma_buf_pointer[2]
 		rol	dx, 4
 		mov	ax, dx
 		and	al, 0F0h
 		and	dx, 0Fh
-		add	ax, word ptr [_dma_buf_pointer]
+		add	ax, word ptr _dma_buf_pointer
 		adc	dx, 0
-		add	ax, word ptr [_dword_24694]
-		adc	dx, word ptr [_dword_24694+2]
+		add	ax, word ptr _dword_24694
+		adc	dx, word ptr _dword_24694[2]
 		out	6, al		; DMA controller, 8237A-5.
 					; channel 3 base address
 					; (also	sets current address)
@@ -15492,9 +15492,9 @@ loc_18830::				; CODE XREF: _dma_186E3+22j
 		out	0D8h, al
 		mov	al, _dma_mode
 		out	0D6h, al
-		movzx	edx, word ptr [_dma_buf_pointer+2]
+		movzx	edx, word ptr _dma_buf_pointer[2]
 		shl	edx, 4
-		movzx	eax, word ptr [_dma_buf_pointer]
+		movzx	eax, word ptr _dma_buf_pointer
 		add	eax, edx
 		add	eax, _dword_24694
 		shr	eax, 1
@@ -15532,9 +15532,9 @@ loc_18878::				; CODE XREF: _dma_186E3+29j
 		mov	al, _dma_mode
 		or	al, 1
 		out	0D6h, al
-		movzx	edx, word ptr [_dma_buf_pointer+2]
+		movzx	edx, word ptr _dma_buf_pointer[2]
 		shl	edx, 4
-		movzx	eax, word ptr [_dma_buf_pointer]
+		movzx	eax, word ptr _dma_buf_pointer
 		add	eax, edx
 		add	eax, _dword_24694
 		shr	eax, 1
@@ -15572,9 +15572,9 @@ loc_188C2::				; CODE XREF: _dma_186E3+30j
 		mov	al, _dma_mode
 		or	al, 2
 		out	0D6h, al
-		movzx	edx, word ptr [_dma_buf_pointer+2]
+		movzx	edx, word ptr _dma_buf_pointer[2]
 		shl	edx, 4
-		movzx	eax, word ptr [_dma_buf_pointer]
+		movzx	eax, word ptr _dma_buf_pointer
 		add	eax, edx
 		add	eax, _dword_24694
 		shr	eax, 1
@@ -15626,9 +15626,9 @@ loc_1890C::				; CODE XREF: _dma_186E3+37j
 		out	0D6h, al
 		xor	al, al
 		out	0D8h, al
-		movzx	edx, word ptr [_dma_buf_pointer+2]
+		movzx	edx, word ptr _dma_buf_pointer[2]
 		shl	edx, 4
-		movzx	eax, word ptr [_dma_buf_pointer]
+		movzx	eax, word ptr _dma_buf_pointer
 		add	eax, edx
 		add	eax, _dword_24694
 		shr	eax, 1
@@ -15664,7 +15664,7 @@ _set_dmachn_mask proc	near	; CODE XREF: _proaud_sndoff+1Dp
 					; _wss_sndoff+32p ...
 		mov	al, cl
 		cmp	al, 4
-		jnb	short loc_18961
+		jnb	loc_18961
 		or	al, 4
 		out	0Ah, al		; DMA controller, 8237A-5.
 					; single mask bit register
@@ -15702,20 +15702,20 @@ _alloc_dma_buf proc near	; CODE XREF: _mod_readfile_11F4E+92p
 		mov	dx, ax
 		mov	ebx, _dword_24684
 		cmp	_byte_2469C, 4
-		jb	short loc_189DB
+		jb	loc_189DB
 		movzx	eax, ax
 		shl	eax, 4
 		and	eax, 1FFFFh
 		add	eax, ebx
 		cmp	eax, 20000h
-		jbe	short loc_18A0A
+		jbe	loc_18A0A
 		sub	eax, ebx
 		neg	eax
 		add	eax, 20000h
 		add	ebx, eax
 		and	dx, 0E000h
 		add	dh, 20h	; ' '
-		jmp	short loc_18A0A
+		jmp	loc_18A0A
 ; ---------------------------------------------------------------------------
 
 loc_189DB::				; CODE XREF: _alloc_dma_buf+40j
@@ -15724,7 +15724,7 @@ loc_189DB::				; CODE XREF: _alloc_dma_buf+40j
 		and	eax, 0FFFFh
 		add	eax, ebx
 		cmp	eax, 10000h
-		jbe	short loc_18A0A
+		jbe	loc_18A0A
 		sub	eax, ebx
 		neg	eax
 		add	eax, 10000h
@@ -15759,7 +15759,7 @@ _alloc_dma_buf endp
 _memfree_18A28 proc near	; CODE XREF: _mod_readfile_11F4E:loc_12117p
 					; _mod_readfile_11F4E+1E4p ...
 		cmp	_memflg_2469A,	1
-		jnz	short loc_18A3B
+		jnz	loc_18A3B
 		mov	_memflg_2469A,	0
 		mov	ax, _myseg_24698
 		call	_memfree
@@ -15789,7 +15789,7 @@ _setsnd_handler proc near	; CODE XREF: _gravis_init+C1p
 		mov	bx, 0FFFEh
 		rol	bx, cl
 		cmp	cl, 8
-		jb	short loc_18A5C
+		jb	loc_18A5C
 		and	bl, 0FBh
 		add	cl, 60h	; '`'
 
@@ -15889,7 +15889,7 @@ _memalloc proc near		; CODE XREF: _inr_module:loc_11AC0p
 		add	ebx, 0Fh
 		shr	ebx, 4
 		cmp	ebx, 10000h
-		jnb	short loc_18AD9
+		jnb	loc_18AD9
 		mov	ah, 48h
 		int	21h		; DOS -	2+ - ALLOCATE MEMORY
 					; BX = number of 16-byte paragraphs desired
@@ -15927,7 +15927,7 @@ _memrealloc proc near		; CODE XREF: _mem_reallocx+14p
 		add	ebx, 0Fh
 		shr	ebx, 4
 		cmp	ebx, 10000h
-		jnb	short loc_18AFF
+		jnb	loc_18AFF
 		mov	es, ax
 		mov	ah, 4Ah
 		int	21h		; DOS -	2+ - ADJUST MEMORY BLOCK SIZE (SETBLOCK)
@@ -15986,10 +15986,10 @@ _getmemallocstrat endp
 
 _setmemalloc1 proc near	; CODE XREF: sub_12D35+12p
 					; sub_12DA8+85p
-		test	byte ptr [_config_word],	1
-		jz	short _setmemalloc2
+		test	byte ptr _config_word,	1
+		jz	_setmemalloc2
 		mov	ax, 181h
-		jmp	short _setmemallocstrat
+		jmp	_setmemallocstrat
 _setmemalloc1 endp
 
 
@@ -15999,7 +15999,7 @@ _setmemalloc1 endp
 _setmemalloc2 proc near	; CODE XREF: _alloc_dma_buf+1Fp
 					; _setmemalloc1+5j
 		mov	ax, 1
-		jmp	short _setmemallocstrat
+		jmp	_setmemallocstrat
 _setmemalloc2 endp
 
 
@@ -16014,8 +16014,8 @@ _WriteMixerSB proc near	; CODE XREF: _sb_set-F3p
 		add	dl, 4
 		xchg	al, ah
 		out	dx, al
-		jmp	short $+2
-		jmp	short $+2
+		jmp	$+2
+		jmp	$+2
 		inc	dx
 		mov	al, ah
 		out	dx, al
@@ -16035,8 +16035,8 @@ _ReadMixerSB proc near	; CODE XREF: _sb16_init+25p
 		add	dl, 4
 		mov	al, ah
 		out	dx, al
-		jmp	short $+2
-		jmp	short $+2
+		jmp	$+2
+		jmp	$+2
 		inc	dx
 		in	al, dx
 		pop	dx
@@ -16058,9 +16058,9 @@ _WriteSB proc	near		; CODE XREF: _sb_set+32p _sb_set+38p ...
 loc_18B70::				; CODE XREF: _WriteSB+13j
 		in	al, dx
 		or	al, al
-		jns	short loc_18B7C
+		jns	loc_18B7C
 		dec	cx
-		jnz	short loc_18B70
+		jnz	loc_18B70
 		pop	ax
 		pop	cx
 		pop	dx
@@ -16091,9 +16091,9 @@ _ReadSB proc near		; CODE XREF: _sb16_detect_port+70p
 loc_18B8E::				; CODE XREF: _ReadSB+13j
 		in	al, dx
 		or	al, al
-		js	short loc_18B9C
+		js	loc_18B9C
 		dec	cx
-		jnz	short loc_18B8E
+		jnz	loc_18B8E
 		pop	ax
 		pop	cx
 		pop	dx
@@ -16124,11 +16124,11 @@ _CheckSB proc	near		; CODE XREF: _sbpro_sndoff+9p
 
 loc_18BB1::				; CODE XREF: _CheckSB+Ej
 		dec	ax
-		jnz	short loc_18BB1
+		jnz	loc_18BB1
 		out	dx, al
 		call	_ReadSB
 		cmp	al, 0AAh ; '™'
-		jnz	short loc_18BBE
+		jnz	loc_18BBE
 		clc
 		retn
 ; ---------------------------------------------------------------------------
@@ -16233,7 +16233,7 @@ _u4tox proc near		; CODE XREF: _u8tox+4p
 		and	al, 0Fh
 		or	al, '0'
 		cmp	al, '9'
-		jbe	short loc_18C3D
+		jbe	loc_18C3D
 		add	al, 7
 
 loc_18C3D::				; CODE XREF: _u4tox+6j
@@ -16265,11 +16265,11 @@ _my_i16toa10_0 endp ;	sp-analysis failed
 _my_i32toa10_0 proc near	; CODE XREF: _myasmsprintf+B1p
 		xor	cx, cx
 		or	eax, eax
-		jns	short _my_i32toa10_1
+		jns	_my_i32toa10_1
 		mov	dl, '-'
 		call	_my_putdigit
 		neg	eax
-		jmp	short _my_i32toa10_1
+		jmp	_my_i32toa10_1
 _my_i32toa10_0 endp
 
 
@@ -16308,7 +16308,7 @@ _my_u32toa_0 proc near	; CODE XREF: _my_u32toa_0+Dp
 		xor	edx, edx
 		div	ebx
 		or	eax, eax
-		jz	short loc_18C75
+		jz	loc_18C75
 		push	edx
 		call	_my_u32toa_0
 		pop	edx
@@ -16351,7 +16351,7 @@ _myasmsprintf proc near	; CODE XREF: sub_12D05+20p
 		mov	ax, ds
 		mov	es, ax
 		assume es:seg003
-		jmp	short loc_18CA2
+		jmp	loc_18CA2
 ; ---------------------------------------------------------------------------
 
 loc_18C9F::				; CODE XREF: _myasmsprintf+Fj
@@ -16363,14 +16363,14 @@ loc_18CA2::				; CODE XREF: _myasmsprintf+5j
 		mov	al, [si]
 		inc	si
 		cmp	al, 20h	; ' '
-		jnb	short loc_18C9F
+		jnb	loc_18C9F
 		cmp	al, 0Ch
-		ja	short _mysprintf_0_nop
+		ja	_mysprintf_0_nop
 		inc	si
 		mov	bl, al
 		xor	bh, bh
 		shl	bx, 1
-		jmp	[cs:_asmprintf_tbl+bx]
+		jmp	cs:_asmprintf_tbl[bx]
 
 _mysprintf_0_nop::			; CODE XREF: _myasmsprintf+13j
 					; DATA XREF: seg000:_asmprintf_tblo
@@ -16386,7 +16386,7 @@ _mysprintf_1_offstr::			; CODE XREF: _myasmsprintf+1Cj
 		call	_strcpy_count_0
 		pop	si
 		add	si, 2
-		jmp	short loc_18CA2
+		jmp	loc_18CA2
 ; ---------------------------------------------------------------------------
 
 _mysprintf_2_off8str::			; CODE XREF: _myasmsprintf+1Cj
@@ -16394,7 +16394,7 @@ _mysprintf_2_off8str::			; CODE XREF: _myasmsprintf+1Cj
 		mov	bx, [si]
 		mov	bl, [bx]
 		xor	bh, bh
-		jmp	short loc_18CD3
+		jmp	loc_18CD3
 ; ---------------------------------------------------------------------------
 
 _mysprintf_3_off16str::			; CODE XREF: _myasmsprintf+1Cj
@@ -16410,7 +16410,7 @@ loc_18CD3::				; CODE XREF: _myasmsprintf+35j
 		call	_strcpy_count_0
 		pop	si
 		add	si, 4
-		jmp	short loc_18CA2
+		jmp	loc_18CA2
 ; ---------------------------------------------------------------------------
 
 _mysprintf_4_u8toa::			; CODE XREF: _myasmsprintf+1Cj
@@ -16423,7 +16423,7 @@ _mysprintf_4_u8toa::			; CODE XREF: _myasmsprintf+1Cj
 		mov	di, si
 		pop	si
 		add	si, 2
-		jmp	short loc_18CA2
+		jmp	loc_18CA2
 ; ---------------------------------------------------------------------------
 
 _mysprintf_5_u16toa::			; CODE XREF: _myasmsprintf+1Cj
@@ -16436,7 +16436,7 @@ _mysprintf_5_u16toa::			; CODE XREF: _myasmsprintf+1Cj
 		mov	di, si
 		pop	si
 		add	si, 2
-		jmp	short loc_18CA2
+		jmp	loc_18CA2
 ; ---------------------------------------------------------------------------
 
 _mysprintf_6_u32toa::			; CODE XREF: _myasmsprintf+1Cj
@@ -16449,7 +16449,7 @@ _mysprintf_6_u32toa::			; CODE XREF: _myasmsprintf+1Cj
 		mov	di, si
 		pop	si
 		add	si, 2
-		jmp	short loc_18CA2
+		jmp	loc_18CA2
 ; ---------------------------------------------------------------------------
 
 _mysprintf_7_i8toa::			; CODE XREF: _myasmsprintf+1Cj
@@ -16542,7 +16542,7 @@ loc_18D93::				; CODE XREF: _mystrlen_0+9j
 		inc	ax
 		inc	si
 		cmp	byte ptr [si], 0
-		jnz	short loc_18D93
+		jnz	loc_18D93
 		sub	si, ax
 		retn
 _mystrlen_0 endp
@@ -16554,7 +16554,7 @@ _mystrlen_0 endp
 _strcpy_count_0 proc near	; CODE XREF: sub_12D05:loc_12D30p
 					; _myasmsprintf+26p ...
 		xor	cx, cx
-		jmp	short loc_18DA6
+		jmp	loc_18DA6
 ; ---------------------------------------------------------------------------
 
 loc_18DA1::				; CODE XREF: _strcpy_count_0+Ej
@@ -16566,7 +16566,7 @@ loc_18DA6::				; CODE XREF: _strcpy_count_0+2j
 		mov	al, [si]
 		inc	cx
 		or	al, al
-		jnz	short loc_18DA1
+		jnz	loc_18DA1
 		retn
 _strcpy_count_0 endp
 
@@ -17024,7 +17024,7 @@ loc_190B1::
 loc_190BC::
 		int	2Fh
 		cmp	ax, 4F4Bh	; 'KO' check for single instance
-		jnz	short loc_190D3
+		jnz	loc_190D3
 		mov	dx, offset _aCriticalErrorT ; "\r\n\nCritical error: The	player jumped to"...
 		mov	ah, 9
 		int	21h		; DOS -	PRINT STRING
@@ -17047,52 +17047,52 @@ loc_190D3::				; CODE XREF: _start+2Fj
 
 loc_190E2::
 		test	ebp, 80000080h
-		jnz	short loc_19086
+		jnz	loc_19086
 		bt	ebp, 0Bh
-		jnb	short loc_190F7
-		or	byte ptr [_configword], 4
+		jnb	loc_190F7
+		or	byte ptr _configword, 4
 
 loc_190F7::				; CODE XREF: _start+5Ej
 		bt	ebp, 3
-		jnb	short loc_19103
-		and	byte ptr [_configword], 0FBh
+		jnb	loc_19103
+		and	byte ptr _configword, 0FBh
 
 loc_19103::				; CODE XREF: _start+6Aj
 		bt	ebp, 6
-		jnb	short loc_19114
-		and	byte ptr [_configword+1], 0F1h
-		or	byte ptr [_configword+1], 2
+		jnb	loc_19114
+		and	byte ptr _configword[1], 0F1h
+		or	byte ptr _configword[1], 2
 
 loc_19114::				; CODE XREF: _start+76j
 		bt	ebp, 5
-		jnb	short loc_19125
-		and	byte ptr [_configword+1], 0F1h
-		or	byte ptr [_configword+1], 4
+		jnb	loc_19125
+		and	byte ptr _configword[1], 0F1h
+		or	byte ptr _configword[1], 4
 
 loc_19125::				; CODE XREF: _start+87j
 		bt	ebp, 13h
-		jnb	short loc_19131
-		and	byte ptr [_configword+1], 0F1h
+		jnb	loc_19131
+		and	byte ptr _configword[1], 0F1h
 
 loc_19131::				; CODE XREF: _start+98j
 		bt	ebp, 4
-		jnb	short loc_1913D
-		and	byte ptr [_configword], 0FDh
+		jnb	loc_1913D
+		and	byte ptr _configword, 0FDh
 
 loc_1913D::				; CODE XREF: _start+A4j
 		bt	ebp, 14h
-		jnb	short loc_19149
-		and	byte ptr [_configword], 0FEh
+		jnb	loc_19149
+		and	byte ptr _configword, 0FEh
 
 loc_19149::				; CODE XREF: _start+B0j
 		bt	ebp, 0Eh
-		jnb	short loc_19155
-		and	byte ptr [_configword], 0BFh
+		jnb	loc_19155
+		and	byte ptr _configword, 0BFh
 
 loc_19155::				; CODE XREF: _start+BCj
 		bt	ebp, 2
-		jnb	short loc_19161
-		or	byte ptr [_configword], 40h
+		jnb	loc_19161
+		or	byte ptr _configword, 40h
 
 loc_19161::				; CODE XREF: _start+C8j
 		bt	ebp, 15h
@@ -17117,8 +17117,8 @@ loc_1917D::
 		int	21h		; DOS -	2+ - GET INTERRUPT VECTOR
 					; AL = interrupt number
 					; Return: ES:BX	= value	of interrupt vector
-		mov	word ptr [cs:_oint9_1C1A4], bx
-		mov	word ptr [cs:_oint9_1C1A4+2], es
+		mov	word ptr cs:_oint9_1C1A4, bx
+		mov	word ptr cs:_oint9_1C1A4[2], es
 
 loc_191A2::
 		mov	ax, 3524h
@@ -17126,14 +17126,14 @@ loc_191A2::
 loc_191A5::				; DOS -	2+ - GET INTERRUPT VECTOR
 		int	21h		; AL = interrupt number
 					; Return: ES:BX	= value	of interrupt vector
-		mov	word ptr [cs:_oint24_1C1AC], bx
-		mov	word ptr [cs:_oint24_1C1AC+2], es
+		mov	word ptr cs:_oint24_1C1AC, bx
+		mov	word ptr cs:_oint24_1C1AC[2], es
 		mov	ax, 352Fh
 		int	21h		; DOS -	2+ - GET INTERRUPT VECTOR
 					; AL = interrupt number
 					; Return: ES:BX	= value	of interrupt vector
-		mov	word ptr [cs:_oint2f_1C1B4], bx
-		mov	word ptr [cs:_oint2f_1C1B4+2], es
+		mov	word ptr cs:_oint2f_1C1B4, bx
+		mov	word ptr cs:_oint2f_1C1B4[2], es
 		push	ds
 		mov	ax, cs
 		mov	ds, ax
@@ -17172,31 +17172,31 @@ loc_191EA::
 		mov	_swapdata_seg,	ax
 		mov	_byte_1DE70, 0FFh
 		call	_mouse_init
-		mov	bl, byte ptr [_configword+1]
+		mov	bl, byte ptr _configword[1]
 		shr	bl, 1
 		and	bx, 7
 		cmp	bl, 5
-		jbe	short loc_19212
+		jbe	loc_19212
 		xor	bl, bl
 
 loc_19212::				; CODE XREF: _start+17Cj
 		shl	bx, 1
-		mov	ax, [off_1CA8E+bx]
-		mov	[off_1DE3C], ax
+		mov	ax, off_1CA8E[bx]
+		mov	off_1DE3C, ax
 		cmp	_buffer_1DB6C,	40h ; '@'
 		jz	loc_19D94
 		cmp	_buffer_1DB6C,	20h ; ' '
 		jbe	loc_192CA
 		mov	_word_1DE4E, 2
 		call	_find_mods
-		jb	short loc_19256
+		jb	loc_19256
 		call	_callsubx
-		jb	short loc_19256
+		jb	loc_19256
 		call	_readallmoules
-		jb	short loc_19250
+		jb	loc_19250
 
 loc_19242::
-		cmp	byte ptr [_word_1DE50], 1Ch
+		cmp	byte ptr _word_1DE50, 1Ch
 		jz	loc_192E0
 		mov	_byte_1DE7E, 0
 
@@ -17207,21 +17207,21 @@ loc_19250::				; CODE XREF: _start+1AEj _start+5C2j ...
 loc_19256::				; CODE XREF: _start+1A4j _start+1A9j ...
 		call	_mouse_deinit
 		push	ds
-		lds	dx, [cs:_oint2f_1C1B4]
+		lds	dx, _oint2f_1C1B4
 		mov	ax, 252Fh
 		int	21h		; DOS -	SET INTERRUPT VECTOR
 					; AL = interrupt number
 					; DS:DX	= new vector to	be used	for specified interrupt
 		pop	ds
 		push	ds
-		lds	dx, [cs:_oint24_1C1AC]
+		lds	dx, _oint24_1C1AC
 		mov	ax, 2524h
 		int	21h		; DOS -	SET INTERRUPT VECTOR
 					; AL = interrupt number
 					; DS:DX	= new vector to	be used	for specified interrupt
 		pop	ds
 		push	ds
-		lds	dx, [cs:_oint9_1C1A4]
+		lds	dx, _oint9_1C1A4
 		mov	ax, 2509h
 		int	21h		; DOS -	SET INTERRUPT VECTOR
 					; AL = interrupt number
@@ -17248,7 +17248,7 @@ loc_19256::				; CODE XREF: _start+1A4j _start+1A9j ...
 					; DH,DL	= row, column (0,0 = upper left)
 					; BH = page number
 		cmp	_byte_1DE7E, 0
-		jz	short loc_192C3
+		jz	loc_192C3
 		mov	dx, 1400h
 		xor	bh, bh
 		mov	ah, 2
@@ -17272,8 +17272,8 @@ loc_192C3::				; CODE XREF: _start+21Cj
 
 loc_192CA::				; CODE XREF: _start+197j
 		mov	_byte_1DE7E, 5
-		mov	word ptr [_messagepointer], offset _aNotEnoughMemor ; "Not enough	memory.\r\n$"
-		mov	word ptr [_messagepointer+2], ds
+		mov	_messagepointer, offset _aNotEnoughMemor ; "Not enough	memory.\r\n$"
+		mov	word ptr _messagepointer[2], ds
 		call	_callsubx
 		jb	loc_19256
 
@@ -17340,7 +17340,7 @@ loc_192FF::				; CODE XREF: _start+471j _start+4A7j ...
 		mov	ah, 7Bh	; '{'   ; color
 		call	_put_message
 		cmp	_byte_1DE7F, 1
-		jnz	short loc_19395
+		jnz	loc_19395
 		mov	si, offset _msg	; "Searching directory for modules  "
 		mov	ax, 7E0Dh
 		call	_message_1BE77
@@ -17374,27 +17374,27 @@ loc_193C7::				; CODE XREF: _start+373j
 		jnz	loc_19827
 		mov	al, _byte_1DE7C
 		cmp	al, _byte_1DE7D
-		jz	short loc_193FF	; keyboard message loop	here
+		jz	loc_193FF	; keyboard message loop	here
 		mov	_byte_1DE7D, al
 		les	di, _videomempointer
 		add	di, 104Ah	; videoptr
 		mov	ah, 78h	; 'x'   ; color
 		mov	si, offset _aHitBackspaceToRe ; "Hit backspace to return	to playmode, F-"...
 		cmp	_byte_1DE7C, 0
-		jz	short loc_193FC
+		jz	loc_193FC
 		mov	si, offset _aPressF1ForHelpQu ; "		 Press F-1 for help, Qu"...
 
 loc_193FC::				; CODE XREF: _start+365j
 		call	_put_message
 
 loc_193FF::				; CODE XREF: _start+34Ej
-		mov	ax, [cs:_key_code] ; keyboard message loop here
+		mov	ax, _key_code ; keyboard message loop here
 		or	ax, ax
-		jz	short loc_193C7
+		jz	loc_193C7
 		push	ax
 		call	_mouse_hide
 		pop	ax
-		mov	[cs:_key_code], 0
+		mov	_key_code, 0
 		cmp	al, 1
 		jz	loc_1964E
 		cmp	al, 48h	; 'H'
@@ -17446,9 +17446,9 @@ loc_19464::				; CODE XREF: seg001:0839j
 		movs	dword ptr [es:di], dword ptr [fs:si]
 		mov	byte ptr [di], 0
 		cmp	byte ptr [fs:2], 0
-		jz	short loc_194EB
+		jz	loc_194EB
 		cmp	byte ptr [fs:2], 1
-		jz	short loc_19506
+		jz	loc_19506
 		push	dx
 
 loc_1949E::
@@ -17464,25 +17464,25 @@ loc_1949E::
 		call	_read_module
 
 loc_194B9::
-		jnb	short loc_194E3
+		jnb	loc_194E3
 		mov	si, offset _aNotEnoughMemo_0 ; "Not enough memory available to load all"...
 		cmp	ax, 0FFFEh
-		jz	short loc_194CE
+		jz	loc_194CE
 		mov	si, offset _aNotEnoughDram_0 ; "Not enough DRAM on your UltraSound to l"...
 		cmp	ax, 0FFFDh
-		jz	short loc_194CE
+		jz	loc_194CE
 		mov	si, offset _aModuleIsCorrupt ; _msg
 
 loc_194CE::				; CODE XREF: _start+42Fj _start+437j
 		mov	ax, 7E0Dh
 		call	_message_1BE77
 		xor	ax, ax
-		mov	[cs:_key_code], ax
+		mov	_key_code, ax
 
 loc_194DA::				; CODE XREF: _start+44Fj
-		xchg	ax, [cs:_key_code]
+		xchg	ax, key_code
 		or	ax, ax
-		jz	short loc_194DA
+		jz	loc_194DA
 
 loc_194E3::				; CODE XREF: _start:loc_194B9j
 		mov	_byte_1DE7F, 0
@@ -17524,7 +17524,7 @@ loc_19506::				; CODE XREF: _start+409j
 
 loc_1953C::				; CODE XREF: _start+38Fj _start+603j ...
 		cmp	_word_1DE62, 0Eh
-		jnb	short loc_1955D
+		jnb	loc_1955D
 		mov	bx, _word_1DE54
 		dec	bx
 		mov	ax, _word_1DE62
@@ -17551,7 +17551,7 @@ loc_1955D::				; CODE XREF: _start+4AFj
 loc_1957F::				; CODE XREF: _start+389j
 					; DATA XREF: dseg:_str_24461o ...
 		cmp	_word_1DE62, 0
-		jz	short loc_19595
+		jz	loc_19595
 		mov	ax, _word_1DE62
 		mov	bl, 70h	; 'p'
 		call	_recolortxt
@@ -17582,7 +17582,7 @@ loc_195BE::				; CODE XREF: _start+39Bj
 		mov	ax, _word_1DE54
 		dec	ax
 		cmp	ax, 0Fh
-		jb	short loc_195DE
+		jb	loc_195DE
 		sub	ax, 0Eh
 		mov	_word_1DE5E, ax
 		mov	_word_1DE62, 0Eh
@@ -17616,7 +17616,7 @@ loc_19610::				; CODE XREF: _start:loc_19439j
 		mov	ax, _word_1DE54
 		dec	ax
 		cmp	ax, 0Fh
-		jb	short loc_19648
+		jb	loc_19648
 		mov	ax, 0Eh
 		xchg	ax, _word_1DE62
 		cmp	ax, 0Eh
@@ -17650,13 +17650,13 @@ loc_19657::				; CODE XREF: _start:loc_19445j
 		add	ax, dx
 		add	ax, _word_1DE52
 		mov	fs, ax
-		test	[cs:_keyb_switches], 4
-		jnz	short loc_196B0
+		test	_keyb_switches, 4
+		jnz	loc_196B0
 		cmp	byte ptr [fs:2], 2
 		jnz	loc_193BC
 		mov	_word_1DE60, 0FFFFh
 		test	byte ptr [fs:3], 40h
-		jnz	short loc_19698
+		jnz	loc_19698
 		or	byte ptr [fs:3], 40h
 		inc	_word_1DE5C
 		jmp	loc_1953C
@@ -17684,10 +17684,10 @@ loc_196B0::				; CODE XREF: _start+5DFj
 
 loc_196D0::				; CODE XREF: _start+647j _start+649j
 		xor	ax, ax
-		xchg	ax, [cs:_key_code]
+		xchg	ax, _key_code
 		or	ax, ax
-		jz	short loc_196D0
-		js	short loc_196D0
+		jz	loc_196D0
+		js	loc_196D0
 		mov	_byte_1DE7F, 0
 		cmp	ax, 15h
 		jnz	loc_192FF
@@ -17696,9 +17696,9 @@ loc_196D0::				; CODE XREF: _start+647j _start+649j
 
 loc_196F1::				; CODE XREF: _start+6BAj
 		test	byte ptr [fs:3], 40h
-		jz	short loc_19744
+		jz	loc_19744
 		cmp	byte ptr [fs:2], 2
-		jnz	short loc_19744
+		jnz	loc_19744
 		push	cx
 		push	fs
 		mov	cx, 602h
@@ -17709,11 +17709,11 @@ loc_196F1::				; CODE XREF: _start+6BAj
 		pop	fs
 		push	fs
 		mov	eax, [fs:0Ch]
-		mov	dword ptr [_aFile], eax ; "File"
+		mov	dword ptr _aFile, eax ; "File"
 		mov	eax, [fs:10h]
-		mov	dword ptr [_aName], eax ; "name"
+		mov	dword ptr _aName, eax ; "name"
 		mov	eax, [fs:14h]
-		mov	dword ptr [_a_ext], eax ; ".Ext"
+		mov	dword ptr _a_ext, eax ; ".Ext"
 		mov	si, offset _aDeletingFile ; "Deleting file: "
 		mov	ax, 7E0Dh
 		call	_message_1BE77
@@ -17730,7 +17730,7 @@ loc_19744::				; CODE XREF: _start+665j _start+66Dj
 		mov	fs, ax
 		assume fs:nothing
 		dec	cx
-		jnz	short loc_196F1
+		jnz	loc_196F1
 		mov	_word_1DE62, 0
 		mov	_word_1DE5E, 0
 		mov	_byte_1DE7F, 1
@@ -17746,7 +17746,7 @@ loc_19762::				; CODE XREF: _start+3ADj
 		mov	bl, 7Fh	; ''
 		mov	ax, 7800h
 		call	_draw_frame
-		call	[off_1DE3C]
+;;		call	[off_1DE3C]
 		call	_keyb_19EFD
 		mov	_byte_1DE7F, 0
 		jmp	loc_192F7
@@ -17775,9 +17775,9 @@ loc_19788::				; CODE XREF: _start+3B9j
 		call	_write_scr
 
 loc_197BF::				; CODE XREF: _start+733j
-		cmp	byte ptr [cs:_key_code],	0
-		jle	short loc_197BF
-		mov	[cs:_key_code], 0
+		cmp	byte ptr _key_code,	0
+		jle	loc_197BF
+		mov	_key_code, 0
 		mov	_byte_1DE7F, 0
 		jmp	loc_192F7
 ; ---------------------------------------------------------------------------
@@ -17791,7 +17791,7 @@ loc_197D6::				; CODE XREF: _start+3BFj
 ; ---------------------------------------------------------------------------
 
 loc_197E7::				; CODE XREF: _start+3C5j
-		xor	byte ptr [_configword], 20h
+		xor	byte ptr _configword, 20h
 		jmp	loc_193BC
 _start endp
 
@@ -17832,7 +17832,7 @@ loc_19848::				; CODE XREF: _start+33Aj
 		assume es:nothing
 		mov	edx, [es:46Ch]
 		cmp	edx, _dword_1DE88
-		jz	short loc_1987C
+		jz	loc_1987C
 		mov	_dword_1DE88, edx
 		pop	es
 		assume es:nothing
@@ -17910,12 +17910,12 @@ _filelist_198B8 proc near	; CODE XREF: _start:loc_193AEp
 		cld
 		mov	ax, _word_1DE5E
 		cmp	ax, _word_1DE60
-		jz	short _recolortxtx
+		jz	_recolortxtx
 		mov	_word_1DE60, ax
 		mov	cx, _word_1DE54
 		sub	cx, _word_1DE5E
 		cmp	cx, 0Fh
-		jb	short loc_198D5
+		jb	loc_198D5
 		mov	cx, 0Fh
 
 loc_198D5::				; CODE XREF: _filelist_198B8+18j
@@ -17936,7 +17936,7 @@ loc_198E7::				; CODE XREF: _filelist_198B8+13Cj
 		mov	bp, di
 		mov	ah, 7Eh	; '~'
 		cmp	byte ptr [fs:2], 2
-		jz	short loc_198FD
+		jz	loc_198FD
 		mov	ah, 7Bh	; '{'
 
 loc_198FD::				; CODE XREF: _filelist_198B8+41j
@@ -17946,19 +17946,19 @@ loc_198FD::				; CODE XREF: _filelist_198B8+41j
 loc_19903::				; CODE XREF: _filelist_198B8+5Aj
 		mov	al, [fs:si]
 		or	al, al
-		jz	short loc_19914	; " " fill the space after file	names
+		jz	loc_19914	; " " fill the space after file	names
 		mov	[es:di], ax
 		inc	si
 		add	di, 2
 		dec	cx
-		jnz	short loc_19903
+		jnz	loc_19903
 
 loc_19914::				; CODE XREF: _filelist_198B8+50j
 		mov	ax, 7E20h	; " " fill the space after file	names
 		cld
 		rep stosw
 		cmp	byte ptr [fs:2], 2
-		jz	short loc_1992A
+		jz	loc_1992A
 		mov	cx, 51
 
 loc_19925::
@@ -17991,7 +17991,7 @@ loc_19950::
 
 loc_19958::
 		and	eax, 0Fh
-		lea	si, [_aJanfebmaraprmayj+eax+eax*2] ; "	JanFebMarAprMayJunJulAugSepOctNovDec"
+		lea	si, _aJanfebmaraprmayj[eax+eax*2] ; "	JanFebMarAprMayJunJulAugSepOctNovDec"
 		cld
 		movsw
 		movsb
@@ -18020,17 +18020,17 @@ loc_19958::
 		mov	word ptr [di+5], ' '
 		pop	bp
 		mov	si, offset _buffer_1 ; str
-		mov	es, word ptr [_videomempointer+2]
+		mov	es, word ptr _videomempointer[2]
 		assume es:nothing
 		lea	di, [bp+18h]
 		mov	ah, 7Fh	; ''
 		call	_text_1BF69
 		test	byte ptr [fs:3], 40h
-		jz	short loc_199CF
+		jz	loc_199CF
 		mov	si, offset _aMarkedToDelete ; "<Marked to Delete>    "
 		mov	ah, 7Fh	; ''
 		call	_text_1BF69
-		jmp	short loc_199E7
+		jmp	loc_199E7
 ; ---------------------------------------------------------------------------
 
 loc_199CF::				; CODE XREF: _filelist_198B8+10Bj
@@ -18040,12 +18040,12 @@ loc_199CF::				; CODE XREF: _filelist_198B8+10Bj
 loc_199D4::				; CODE XREF: _filelist_198B8+12Dj
 		mov	al, [fs:si]
 		or	al, al
-		jz	short loc_199E7
+		jz	loc_199E7
 		mov	[es:di], ax
 		inc	si
 		add	di, 2
 		cmp	si, 30h	; '0'
-		jb	short loc_199D4
+		jb	loc_199D4
 
 loc_199E7::				; CODE XREF: _filelist_198B8+6Fj
 					; _filelist_198B8+115j ...
@@ -18077,7 +18077,7 @@ loc_19A04::				; CODE XREF: _recolortxt+19j
 		mov	[es:di], al
 		add	di, 2
 		dec	cx
-		jnz	short loc_19A04
+		jnz	loc_19A04
 		retn
 _recolortxt endp
 
@@ -18093,11 +18093,11 @@ loc_19A17::				; CODE XREF: _cpy_printable+Ej
 		mov	al, [si]
 		inc	si
 		cmp	al, ' '
-		jb	short loc_19A25
+		jb	loc_19A25
 		mov	[es:di], al
 		inc	di
 		dec	cx
-		jnz	short loc_19A17
+		jnz	loc_19A17
 
 loc_19A25::				; CODE XREF: _cpy_printable+7j
 		cld
@@ -18110,7 +18110,7 @@ _cpy_printable endp
 
 ; ---------------------------------------------------------------------------
 		dec	cx
-		jz	short locret_19A3E
+		jz	locret_19A3E
 		mov	al, [es:si]
 		inc	si
 
@@ -18119,13 +18119,13 @@ loc_19A34::				; CODE XREF: seg001:09ECj
 		mov	al, [es:si]
 		inc	si
 		dec	cx
-		jnz	short loc_19A34
+		jnz	loc_19A34
 
 locret_19A3E::				; CODE XREF: seg001:09DEj
 		retn
 ; ---------------------------------------------------------------------------
 		dec	cx
-		jz	short locret_19A52
+		jz	locret_19A52
 		mov	al, [es:si]
 		inc	si
 
@@ -18135,7 +18135,7 @@ loc_19A46::				; CODE XREF: seg001:0A00j
 		mov	al, ah
 		inc	si
 		dec	cx
-		jnz	short loc_19A46
+		jnz	loc_19A46
 
 locret_19A52::				; CODE XREF: seg001:09F0j
 		retn
@@ -18147,7 +18147,7 @@ _modules_search proc near	; CODE XREF: _start+300p
 		mov	_word_1DE64, 2192
 		mov	_word_1DE66, 0
 		cmp	_word_1DE52, 0
-		jz	short loc_19A6E
+		jz	loc_19A6E
 		mov	es, _word_1DE52
 		assume es:nothing
 		mov	ah, 49h
@@ -18168,7 +18168,7 @@ loc_19A6E::				; CODE XREF: _modules_search+11j
 		xor	eax, eax
 		cld
 		rep stosd
-		mov	dword ptr [_buffer_1DB6C], 2A2E2Ah ; '*.*'
+		mov	dword ptr _buffer_1DB6C, 2A2E2Ah ; '*.*'
 		mov	_word_1DE5C, 0
 		mov	_word_1DE54, 0
 		mov	_word_1DE56, 0
@@ -18190,10 +18190,10 @@ loc_19AC3::				; CODE XREF: _modules_search+CFj
 		mov	[fs:di], ax
 		inc	_word_1DE66
 		and	_word_1DE66, 7
-		test	byte ptr [unk_1DC01], 10h
-		jz	short loc_19B1D
-		cmp	word ptr [_buffer_1DB6C], '.'
-		jz	short loc_19B1D
+		test	byte ptr unk_1DC01, 10h
+		jz	loc_19B1D
+		cmp	word ptr _buffer_1DB6C, '.'
+		jz	loc_19B1D
 		mov	byte ptr [es:2], 0
 		mov	si, offset _buffer_1DB6C
 		mov	di, 0Ch
@@ -18217,10 +18217,10 @@ loc_19B1D::				; CODE XREF: _modules_search+94j
 		call	_dosfindnext
 		pop	es
 		assume es:nothing
-		jnb	short loc_19AC3
+		jnb	loc_19AC3
 
 loc_19B24::				; '*.*'
-		mov	dword ptr [_buffer_1DB6C], 2A2E2Ah
+		mov	dword ptr _buffer_1DB6C, 2A2E2Ah
 		mov	_word_1DE4E, 2
 		push	es
 		call	_find_mods
@@ -18237,7 +18237,7 @@ loc_19B3C::				; CODE XREF: _modules_search+24Bj
 		mov	[fs:di], ax
 		inc	_word_1DE66
 		and	_word_1DE66, 7
-		test	byte ptr [unk_1DC01], 10h
+		test	byte ptr unk_1DC01, 10h
 		jnz	loc_19C99
 		mov	si, offset _buffer_1DB6C
 		mov	cx, 8
@@ -18247,9 +18247,9 @@ loc_19B6A::				; CODE XREF: _modules_search+125j
 		cmp	byte ptr [si], 0
 		jz	loc_19C99
 		cmp	byte ptr [si], '.'
-		jz	short loc_19B7D
+		jz	loc_19B7D
 		dec	cx
-		jnz	short loc_19B6A
+		jnz	loc_19B6A
 		jmp	loc_19C99
 ; ---------------------------------------------------------------------------
 
@@ -18263,7 +18263,7 @@ loc_19B83::				; CODE XREF: _modules_search+13Fj
 		jz	loc_19C99
 		add	si, 4
 		cmp	eax, edx
-		jnz	short loc_19B83
+		jnz	loc_19B83
 		mov	si, offset _buffer_1DB6C
 		mov	dx, si
 		mov	byte ptr [es:2], 2
@@ -18284,15 +18284,15 @@ loc_19BB4::
 		movsd
 		mov	ebp, eax
 		inc	_word_1DE58
-		cmp	[cs:_key_code], 1
-		jnz	short loc_19BDD
-		mov	[cs:_key_code], 0
-		or	byte ptr [_configword], 20h
+		cmp	_key_code, 1
+		jnz	loc_19BDD
+		mov	_key_code, 0
+		or	byte ptr _configword, 20h
 
 loc_19BDD::				; CODE XREF: _modules_search+17Cj
 		mov	si, offset asc_1DA00 ; "		      "
 		mov	cx, 16h
-		test	byte ptr [_configword], 20h
+		test	byte ptr _configword, 20h
 		jnz	loc_19C80
 		mov	ax, 3D00h
 		int	21h		; DOS -	2+ - OPEN DISK FILE WITH HANDLE
@@ -18315,33 +18315,33 @@ loc_19BDD::				; CODE XREF: _modules_search+17Cj
 		int	21h		; DOS -	2+ - CLOSE A FILE WITH HANDLE
 					; BX = file handle
 		popf
-		jb	short loc_19C86
+		jb	loc_19C86
 		mov	si, offset _byte_1DC7C
 		mov	cx, 16h
 		cmp	ebp, 524E492Eh	; .INR
-		jz	short loc_19C80
+		jz	loc_19C80
 		mov	si, offset unk_1DC7B
 		mov	cx, 16h
 		cmp	ebp, 544C552Eh	; .ULT
-		jz	short loc_19C80
+		jz	loc_19C80
 		mov	si, offset unk_1DC70
 		mov	cx, 16h
 		cmp	ebp, 4D544D2Eh	; .MTM
-		jz	short loc_19C80
+		jz	loc_19C80
 		cmp	ebp, 4D53502Eh	; .PSM
-		jz	short loc_19C80
+		jz	loc_19C80
 		cmp	ebp, 5241462Eh	; .FAR
-		jz	short loc_19C80
+		jz	loc_19C80
 		cmp	ebp, 3936362Eh	; .669
-		jz	short loc_19C71
+		jz	loc_19C71
 		mov	si, offset _byte_1DC7C
 		mov	cx, 16h
 		cmp	ebp, 5353542Eh	; .TSS
-		jz	short loc_19C80
+		jz	loc_19C80
 		mov	si, offset _buffer_1DC6C
 		mov	cx, 16h
 		mov	word ptr [si+14h], '  '
-		jmp	short loc_19C80
+		jmp	loc_19C80
 ; ---------------------------------------------------------------------------
 
 loc_19C71::				; CODE XREF: _modules_search+200j
@@ -18367,7 +18367,7 @@ loc_19C86::				; CODE XREF: _modules_search+19Ej
 		assume es:nothing
 		inc	_word_1DE54
 		cmp	_word_1DE54, 52Bh
-		jnb	short loc_19CA2
+		jnb	loc_19CA2
 
 loc_19C99::				; CODE XREF: _modules_search+10Dj
 					; _modules_search+11Bj ...
@@ -18393,7 +18393,7 @@ loc_19CA9::				; CODE XREF: _modules_search+291j
 		int	21h		; DOS -	GET DEFAULT DISK NUMBER
 		pop	dx
 		cmp	al, dl
-		jnz	short loc_19CDF
+		jnz	loc_19CDF
 		mov	eax, 5D3A415Bh	; [A:]
 		add	ah, dl
 		mov	[es:0Ch], eax
@@ -18411,7 +18411,7 @@ loc_19CDF::				; CODE XREF: _modules_search+262j
 
 loc_19CE1::
 		cmp	dl, 1Ah
-		jb	short loc_19CA9
+		jb	loc_19CA9
 		pop	dx
 		mov	ah, 0Eh
 		int	21h		; DOS -	SELECT DISK
@@ -18449,55 +18449,55 @@ _parse_cmdline proc near	; CODE XREF: _start+44p
 		lodsb
 		movzx	cx, al		; number of bytes on commandline
 		stc
-		jcxz	short loc_19D64
+		jcxz	loc_19D64
 
 loc_19D19::				; CODE XREF: _parse_cmdline+29j
 					; _parse_cmdline+47j ...
 		lodsb
 		cmp	al, 0Dh
-		jz	short loc_19D63
+		jz	loc_19D63
 		or	al, al
-		jz	short loc_19D63
+		jz	loc_19D63
 		cmp	al, ' '
-		jnz	short loc_19D4E
+		jnz	loc_19D4E
 		dec	cx
-		jnz	short loc_19D19
+		jnz	loc_19D19
 		stc
-		jmp	short loc_19D64
+		jmp	loc_19D64
 ; ---------------------------------------------------------------------------
 
 loc_19D2C::				; CODE XREF: _parse_cmdline+52j
 		lodsb
 		cmp	al, 0Dh
-		jz	short loc_19D63
+		jz	loc_19D63
 		or	al, al
-		jz	short loc_19D63
+		jz	loc_19D63
 		cmp	al, '?'
-		jz	short loc_19D47
+		jz	loc_19D47
 		and	al, 0DFh
 		sub	al, 'A'
 		movzx	eax, al
 		bts	ebp, eax
-		jmp	short loc_19D19
+		jmp	loc_19D19
 ; ---------------------------------------------------------------------------
 
 loc_19D47::				; CODE XREF: _parse_cmdline+39j
 		bts	ebp, 1Fh
-		jmp	short loc_19D19
+		jmp	loc_19D19
 ; ---------------------------------------------------------------------------
 
 loc_19D4E::				; CODE XREF: _parse_cmdline+26j
 					; _parse_cmdline+62j
 		cmp	al, '/'
-		jz	short loc_19D2C
+		jz	loc_19D2C
 		stosb
 		lodsb
 		cmp	al, 0Dh
-		jz	short loc_19D63
+		jz	loc_19D63
 		or	al, al
-		jz	short loc_19D63
+		jz	loc_19D63
 		cmp	al, ' '
-		jz	short loc_19D63
+		jz	loc_19D63
 		loop	loc_19D4E
 		stosb
 
@@ -18522,13 +18522,13 @@ _readallmoules proc near	; CODE XREF: _start+1ABp
 					; _readallmoules+12j ...
 		mov	dx, offset _buffer_1DB6C
 		call	_read_module
-		jb	short loc_19D83
+		jb	loc_19D83
 
 loc_19D75::
 		cmp	_word_1DE50, 1
-		jz	short loc_19D81
+		jz	loc_19D81
 		call	_dosfindnext
-		jnb	short _readallmoules
+		jnb	_readallmoules
 
 loc_19D81::				; CODE XREF: _readallmoules+Dj
 		clc
@@ -18537,8 +18537,8 @@ loc_19D81::				; CODE XREF: _readallmoules+Dj
 
 loc_19D83::				; CODE XREF: _readallmoules+6j
 		mov	_byte_1DE7E, 3
-		mov	word ptr [_messagepointer], offset _aModuleLoadErro ; "Module load error.\r\n$"
-		mov	word ptr [_messagepointer+2], ds
+		mov	_messagepointer, offset _aModuleLoadErro ; "Module load error.\r\n$"
+		mov	word ptr _messagepointer[2], ds
 		stc
 		retn
 _readallmoules endp
@@ -18548,8 +18548,8 @@ _readallmoules endp
 
 loc_19D94::				; CODE XREF: _start+18Ej
 		mov	_byte_1DE7E, 4
-		mov	word ptr [_messagepointer], offset _aListFileNotFou ; "List file not found.\r\n$"
-		mov	word ptr [_messagepointer+2], ds
+		mov	word ptr _messagepointer, offset _aListFileNotFou ; "List file not found.\r\n$"
+		mov	word ptr _messagepointer[2], ds
 		mov	dx, (offset _buffer_1DB6C+1)
 		mov	ax, 3D00h
 		int	21h		; DOS -	2+ - OPEN DISK FILE WITH HANDLE
@@ -18576,30 +18576,30 @@ loc_19DBB::				; CODE XREF: _start+D45j
 		pop	dx
 		pop	bx
 		mov	di, dx
-		jb	short loc_19E03
+		jb	loc_19E03
 		or	ax, ax
-		jz	short loc_19E03
+		jz	loc_19E03
 		inc	dx
 		cmp	byte ptr [di], 1Ah
-		jz	short loc_19E03
+		jz	loc_19E03
 		cmp	byte ptr [di], ' '
-		jnb	short loc_19DBB
+		jnb	loc_19DBB
 		mov	byte ptr [di], 0
 		cmp	_buffer_1DB6C,	0
-		jz	short loc_19DB8
+		jz	loc_19DB8
 		cmp	_buffer_1DB6C,	';'
-		jz	short loc_19DB8
+		jz	loc_19DB8
 		push	bx
 		mov	_word_1DE4E, 2
 		call	_find_mods
-		jb	short loc_19DF9
+		jb	loc_19DF9
 		call	_readallmoules
 
 loc_19DF9::				; CODE XREF: _start+D62j
 		pop	bx
 		cmp	_word_1DE50, 1
-		jnz	short loc_19DB8
-		jmp	short loc_19E09
+		jnz	loc_19DB8
+		jmp	loc_19E09
 ; ---------------------------------------------------------------------------
 
 loc_19E03::				; CODE XREF: _start+D36j _start+D3Aj ...
@@ -18617,26 +18617,26 @@ loc_19E09::				; CODE XREF: _start+D6Fj
 _read_module proc near	; CODE XREF: _start+424p
 					; _readallmoules+3p
 		mov	_byte_1DE7E, 3
-		mov	word ptr [_messagepointer], offset _aModuleLoadErro ; "Module load error.\r\n$"
-		mov	word ptr [_messagepointer+2], ds
+		mov	word ptr _messagepointer, offset _aModuleLoadErro ; "Module load error.\r\n$"
+		mov	word ptr _messagepointer[2], ds
 		mov	si, dx
 
 loc_19E22::				; CODE XREF: _read_module+16j
 		inc	si
 		cmp	byte ptr [si-1], 0
-		jnz	short loc_19E22
+		jnz	loc_19E22
 		mov	cx, 0Ch
 
 loc_19E2C::				; CODE XREF: _read_module+2Dj
 		dec	si
 		cmp	byte ptr [si-1], ':'
-		jz	short loc_19E41
+		jz	loc_19E41
 		cmp	byte ptr [si-1], '\'
-		jz	short loc_19E41
+		jz	loc_19E41
 		cmp	si, dx
-		jbe	short loc_19E41
+		jbe	loc_19E41
 		dec	cx
-		jnz	short loc_19E2C
+		jnz	loc_19E2C
 		dec	si
 
 loc_19E41::				; CODE XREF: _read_module+20j
@@ -18648,11 +18648,11 @@ loc_19E47::				; CODE XREF: _read_module+4Bj
 		mov	al, [si]
 		inc	si
 		or	al, al
-		jz	short loc_19E5E
+		jz	loc_19E5E
 		cmp	al, 'a'
-		jb	short loc_19E58
+		jb	loc_19E58
 		cmp	al, 'z'
-		ja	short loc_19E58
+		ja	loc_19E58
 		and	al, 0DFh	; upper	case
 
 loc_19E58::				; CODE XREF: _read_module+3Fj
@@ -18660,7 +18660,7 @@ loc_19E58::				; CODE XREF: _read_module+3Fj
 		mov	[di], al
 		inc	di
 		dec	cx
-		jnz	short loc_19E47
+		jnz	loc_19E47
 
 loc_19E5E::				; CODE XREF: _read_module+3Bj
 		mov	ax, ds
@@ -18673,7 +18673,7 @@ loc_19E5E::				; CODE XREF: _read_module+3Bj
 		mov	_current_patterns, 0
 		mov	_byte_1DE84, 0
 		call	sub_126A9
-		mov	dword ptr [_module_type_txt], eax ; "	"
+		mov	dword ptr _module_type_txt, eax ; "	"
 		xor	ch, ch
 		mov	_amount_of_x, cx
 		mov	_byte_1DE73, bl
@@ -18685,8 +18685,8 @@ loc_19E5E::				; CODE XREF: _read_module+3Bj
 		and	al, 10h
 		shr	al, 4
 		mov	_byte_1DE7B, al
-		mov	word ptr [_segfsbx_1DE28], si
-		mov	word ptr [_segfsbx_1DE28+2], es
+		mov	word ptr _segfsbx_1DE28, si
+		mov	word ptr _segfsbx_1DE28[2], es
 		mov	si, di
 		mov	di, offset asc_1CC2D ; "			      "
 		mov	cx, 30
@@ -18694,7 +18694,7 @@ loc_19E5E::				; CODE XREF: _read_module+3Bj
 loc_19EBA::				; CODE XREF: _read_module+B4j
 		mov	al, [es:si]
 		or	al, al
-		jz	short loc_19EC7
+		jz	loc_19EC7
 		mov	[di], al
 		inc	si
 		inc	di
@@ -18706,7 +18706,7 @@ loc_19EC7::				; CODE XREF: _read_module+AEj
 
 loc_19ECC::				; CODE XREF: _read_module+C3j
 		mov	al, [es:si]
-		mov	byte ptr [_a130295211558+si], al	; "13/02/95 21:15:58"
+		mov	byte ptr _a130295211558[si], al	; "13/02/95 21:15:58"
 		inc	si
 		loop	loc_19ECC
 		call	_video_prp_mtr_positn
@@ -18717,7 +18717,7 @@ loc_19ECC::				; CODE XREF: _read_module+C3j
 		mov	_volume_1DE34,	eax
 		mov	_byte_1DE7C, 0
 		call	sub_12EBA
-		call	[off_1DE3C]
+;;		call	[off_1DE3C]
 _read_module endp ; sp-analysis failed
 
 
@@ -18738,7 +18738,7 @@ _keyb_19EFD proc near		; CODE XREF: _start+6EBp _keyb_19EFD+5Aj ...
 		mov	_word_1DE6C, ax
 		call	_get_playsettings
 		mov	_flg_play_settings, al
-		call	_offs_draw
+;;		call	[_offs_draw]
 		cmp	_byte_1DE7C, 1
 		jz	loc_1A393
 		test	_byte_1DE90, 2
@@ -18746,9 +18746,9 @@ _keyb_19EFD proc near		; CODE XREF: _start+6EBp _keyb_19EFD+5Aj ...
 		test	_byte_1DE90, 1
 		jnz	loc_1A3A7
 		xor	ax, ax
-		xchg	ax, [cs:_key_code]
+		xchg	ax, _key_code
 		or	ax, ax
-		jz	short _keyb_19EFD
+		jz	_keyb_19EFD
 		mov	_word_1DE50, ax
 		mov	cx, 2
 		cmp	ax, 0E04Dh	; gr_right
@@ -18849,7 +18849,7 @@ _l_1A044::				; CODE XREF: _keyb_19EFD+65j
 		call	sub_12F56
 		pop	cx
 		dec	cx
-		jnz	short _l_1A044
+		jnz	_l_1A044
 		jmp	_keyb_19EFD
 ; ---------------------------------------------------------------------------
 
@@ -18862,7 +18862,7 @@ loc_1A070::				; CODE XREF: _keyb_19EFD+79j
 		shl	eax, 6
 		or	al, bl
 		sub	eax, 1
-		jb	short loc_1A0A0
+		jb	loc_1A0A0
 		mov	bl, al
 		and	bl, 3Fh
 		shr	eax, 6
@@ -18870,7 +18870,7 @@ loc_1A070::				; CODE XREF: _keyb_19EFD+79j
 		call	sub_12F56
 		pop	cx
 		dec	cx
-		jnz	short loc_1A070
+		jnz	loc_1A070
 		jmp	_keyb_19EFD
 ; ---------------------------------------------------------------------------
 
@@ -18902,15 +18902,15 @@ _l_right::				; CODE XREF: _keyb_19EFD+8Cj
 		mul	_byte_1DE84
 		add	bx, ax
 		mov	cl, 8
-		test	[cs:_keyb_switches], 3
-		jnz	short loc_1A0E6
+		test	_keyb_switches, 3
+		jnz	loc_1A0E6
 		mov	cl, 1
 
 loc_1A0E6::				; CODE XREF: _keyb_19EFD+1E5j
 		mov	al, [fs:bx+3Ah]
 		add	al, cl
 		cmp	al, 80h	; 'Ä'
-		jbe	short loc_1A0F2
+		jbe	loc_1A0F2
 		mov	al, 80h	; 'Ä'
 
 loc_1A0F2::				; CODE XREF: _keyb_19EFD+1F1j
@@ -18926,50 +18926,50 @@ _l_left::					; CODE XREF: _keyb_19EFD+98j
 		mul	_byte_1DE84
 		add	bx, ax
 		mov	cl, 8
-		test	[cs:_keyb_switches], 3
-		jnz	short loc_1A118
+		test	_keyb_switches, 3
+		jnz	loc_1A118
 		mov	cl, 1
 
 loc_1A118::				; CODE XREF: _keyb_19EFD+217j
 		mov	al, [fs:bx+3Ah]
 		sub	al, cl
-		jnb	short loc_1A0F2
+		jnb	loc_1A0F2
 		mov	al, 0
-		jmp	short loc_1A0F2
+		jmp	loc_1A0F2
 ; ---------------------------------------------------------------------------
 
 _l_l::					; CODE XREF: _keyb_19EFD+FEj
 		mov	al, 0
-		jmp	short loc_1A0F2
+		jmp	loc_1A0F2
 ; ---------------------------------------------------------------------------
 
 _l_m::					; CODE XREF: _keyb_19EFD+104j
 		mov	al, 64
-		jmp	short loc_1A0F2
+		jmp	loc_1A0F2
 ; ---------------------------------------------------------------------------
 
 _l_r::					; CODE XREF: _keyb_19EFD+10Aj
 		mov	al, 128
-		jmp	short loc_1A0F2
+		jmp	loc_1A0F2
 ; ---------------------------------------------------------------------------
 
 _l_s::					; CODE XREF: _keyb_19EFD+110j
 		mov	al, 166
-		jmp	short loc_1A0F2
+		jmp	loc_1A0F2
 ; ---------------------------------------------------------------------------
 
 _l_plus::					; CODE XREF: _keyb_19EFD+A4j
 		mov	ax, -1
 		call	_change_volume
 		mov	cx, 32
-		test	[cs:_keyb_switches], 3
-		jnz	short loc_1A14B
+		test	_keyb_switches, 3
+		jnz	loc_1A14B
 		mov	cx, 2
 
 loc_1A14B::				; CODE XREF: _keyb_19EFD+249j
 		add	ax, cx
 		cmp	ax, 256
-		jb	short loc_1A155
+		jb	loc_1A155
 		mov	ax, 256
 
 loc_1A155::				; CODE XREF: _keyb_19EFD+253j
@@ -18981,13 +18981,13 @@ _l_minus::				; CODE XREF: _keyb_19EFD+AAj
 		mov	ax, -1
 		call	_change_volume
 		mov	cx, 32
-		test	[cs:_keyb_switches], 3
-		jnz	short loc_1A174
+		test	_keyb_switches, 3
+		jnz	loc_1A174
 		mov	cx, 2
 
 loc_1A174::				; CODE XREF: _keyb_19EFD+272j
 		sub	ax, cx
-		jnb	short loc_1A17A
+		jnb	loc_1A17A
 		xor	ax, ax
 
 loc_1A17A::				; CODE XREF: _keyb_19EFD+279j
@@ -18999,14 +18999,14 @@ _l_rbracket::				; CODE XREF: _keyb_19EFD+B6j
 		mov	ax, 0FFFFh
 		call	_change_amplif
 		mov	cx, 1
-		test	[cs:_keyb_switches], 3
-		jnz	short loc_1A199
+		test	_keyb_switches, 3
+		jnz	loc_1A199
 		mov	cx, 0Ah
 
 loc_1A199::				; CODE XREF: _keyb_19EFD+297j
 		add	ax, cx
 		cmp	ax, 2500
-		jb	short loc_1A1A3
+		jb	loc_1A1A3
 		mov	ax, 2500
 
 loc_1A1A3::				; CODE XREF: _keyb_19EFD+2A1j
@@ -19018,18 +19018,18 @@ _l_lbracket::				; CODE XREF: _keyb_19EFD+B0j
 		mov	ax, -1
 		call	_change_amplif
 		mov	cx, 1
-		test	[cs:_keyb_switches], 3
-		jnz	short loc_1A1C2
+		test	_keyb_switches, 3
+		jnz	loc_1A1C2
 		mov	cx, 10
 
 loc_1A1C2::				; CODE XREF: _keyb_19EFD+2C0j
 		sub	ax, cx
-		jnb	short loc_1A1C9
+		jnb	loc_1A1C9
 		mov	ax, 50
 
 loc_1A1C9::				; CODE XREF: _keyb_19EFD+2C7j
 		cmp	ax, 50
-		ja	short loc_1A1D1
+		ja	loc_1A1D1
 		mov	ax, 50
 
 loc_1A1D1::				; CODE XREF: _keyb_19EFD+2CFj
@@ -19050,7 +19050,7 @@ _l_f2::					; CODE XREF: _keyb_19EFD+C2j
 _l_f3::					; CODE XREF: _keyb_19EFD+C8j
 		call	_f3_textmetter
 		mov	_byte_1DE85, 0
-		test	[cs:_keyb_switches], 3
+		test	_keyb_switches, 3
 		jz	_keyb_19EFD
 		mov	_byte_1DE85, 1
 		jmp	_keyb_19EFD
@@ -19058,13 +19058,13 @@ _l_f3::					; CODE XREF: _keyb_19EFD+C8j
 
 _l_f4::					; CODE XREF: _keyb_19EFD+CEj
 		cmp	_offs_draw, offset _f4_draw
-		jnz	short loc_1A219
+		jnz	loc_1A219
 		mov	ax, _word_1DE6E
 		dec	ax
 		add	_current_patterns, ax
 		mov	ax, _current_patterns
 		cmp	ax, _word_1DE46
-		jb	short loc_1A21F
+		jb	loc_1A21F
 
 loc_1A219::				; CODE XREF: _keyb_19EFD+309j
 		mov	_current_patterns, 0
@@ -19085,16 +19085,16 @@ _l_f6::					; CODE XREF: _keyb_19EFD+DAj
 ; ---------------------------------------------------------------------------
 
 _l_f8::					; CODE XREF: _keyb_19EFD+E0j
-		call	[off_1DE42]
+;;		call	[off_1DE42]
 		call	_dosexec
 		mov	_byte_1DE70, 0FFh
-		call	[off_1DE3C]
+;;		call	[off_1DE3C]
 		jmp	_keyb_19EFD
 ; ---------------------------------------------------------------------------
 
 _l_f9::					; CODE XREF: _keyb_19EFD+E6j
-		test	[cs:_keyb_switches], 100b
-		jnz	short _l_f11
+		test	_keyb_switches, 100b
+		jnz	_l_f11
 		call	_get_playsettings
 		xor	al, 1
 		call	_set_playsettings
@@ -19102,8 +19102,8 @@ _l_f9::					; CODE XREF: _keyb_19EFD+E6j
 ; ---------------------------------------------------------------------------
 
 _l_f10::					; CODE XREF: _keyb_19EFD+ECj
-		test	[cs:_keyb_switches], 100b
-		jnz	short _l_f12
+		test	_keyb_switches, 100b
+		jnz	_l_f12
 		call	_get_playsettings
 		xor	al, 2
 		call	_set_playsettings
@@ -19127,19 +19127,19 @@ loc_1A288::
 		call	_set_playsettings
 
 loc_1A28F::
-		xor	byte ptr [_configword+1], 1
+		xor	byte ptr _configword[1], 1
 		jmp	_keyb_19EFD
 ; ---------------------------------------------------------------------------
 
 _l_tab::					; CODE XREF: _keyb_19EFD+116j
-		test	[cs:_keyb_switches], 100b
-		jnz	short loc_1A2C1
+		test	_keyb_switches, 100b
+		jnz	loc_1A2C1
 
 loc_1A2A0::
-		test	[cs:_keyb_switches], 1000b
-		jnz	short loc_1A2D1
-		test	[cs:_keyb_switches], 11b
-		jnz	short loc_1A2E1
+		test	_keyb_switches, 1000b
+		jnz	loc_1A2D1
+		test	_keyb_switches, 11b
+		jnz	loc_1A2E1
 		call	_get_playsettings
 		xor	al, 8
 		call	_set_playsettings
@@ -19173,14 +19173,14 @@ loc_1A2E1::				; CODE XREF: _keyb_19EFD+3B3j
 ; ---------------------------------------------------------------------------
 
 _l_numlock::				; CODE XREF: _keyb_19EFD+11Cj
-		test	[cs:_keyb_switches], 100b
+		test	_keyb_switches, 100b
 		jz	_keyb_19EFD
 		mov	al, 0FFh
 		call	_getset_playstate
 		mov	ah, al
 		mov	al, 1
 		cmp	ah, al
-		jnz	short loc_1A30D
+		jnz	loc_1A30D
 		mov	al, 0
 
 loc_1A30D::				; CODE XREF: _keyb_19EFD+40Cj
@@ -19194,7 +19194,7 @@ _l_scrollock::				; CODE XREF: _keyb_19EFD+122j
 		mov	ah, al
 		mov	al, 2
 		cmp	ah, al
-		jnz	short loc_1A326
+		jnz	loc_1A326
 		mov	al, 0
 
 loc_1A326::				; CODE XREF: _keyb_19EFD+425j
@@ -19212,17 +19212,17 @@ _l_1_end::				; CODE XREF: _keyb_19EFD+128j
 
 loc_1A33E::				; CODE XREF: _keyb_19EFD+13Ej
 		sub	al, 2
-		test	[cs:_keyb_switches], 11b
-		jz	short loc_1A34B
+		test	_keyb_switches, 11b
+		jz	loc_1A34B
 		add	al, 10
 
 loc_1A34B::				; CODE XREF: _keyb_19EFD+44Aj
-		test	[cs:_keyb_switches], 100b
-		jz	short loc_1A356
+		test	_keyb_switches, 100b
+		jz	loc_1A356
 		add	al, 20
 
 loc_1A356::				; CODE XREF: _keyb_19EFD+455j
-		cmp	al, byte ptr [_amount_of_x]
+		cmp	al, byte ptr _amount_of_x
 		jnb	_keyb_19EFD
 		mov	ch, al
 		lfs	bx, _segfsbx_1DE28
@@ -19239,8 +19239,8 @@ loc_1A356::				; CODE XREF: _keyb_19EFD+455j
 
 _l_enter::				; CODE XREF: _keyb_19EFD+12Ej
 					; DATA XREF: dseg:stru_244ABo
-		call	_offs_draw
-		call	_offs_draw2
+;;		call	[_offs_draw]
+;;		call	[_offs_draw2]
 		clc
 		retn
 ; ---------------------------------------------------------------------------
@@ -19251,8 +19251,8 @@ _l_esc::					; CODE XREF: _keyb_19EFD+134j
 		and	_byte_1DE90, 0FDh
 
 loc_1A393::				; CODE XREF: _keyb_19EFD+3Bj
-		call	_offs_draw
-		call	_offs_draw2
+;;		call	[_offs_draw]
+;;		call	[_offs_draw2]
 		call	_snd_offx
 		call	_memfree_125DA
 		clc
@@ -19285,7 +19285,7 @@ loc_1A3C5::				; CODE XREF: _keyb_19EFD+44j
 		assume es:nothing
 		mov	edx, [es:46Ch]
 		cmp	edx, _dword_1DE88
-		jz	short loc_1A3F6
+		jz	loc_1A3F6
 		mov	_dword_1DE88, edx
 		pop	es
 		assume es:nothing
@@ -19303,10 +19303,10 @@ _keyb_19EFD endp
 
 _f1_help proc	near		; CODE XREF: _keyb_19EFD:_l_f1p
 					; DATA XREF: dseg:02A6o
-		mov	[off_1DE3C], offset _text_init
+		mov	off_1DE3C, offset _text_init
 		mov	_offs_draw, offset _f1_draw
 		mov	_offs_draw2, offset _text_init2
-		mov	[off_1DE42], offset loc_1A4A6
+		mov	off_1DE42, offset loc_1A4A6
 		call	_text_init
 		retn
 _f1_help endp
@@ -19317,10 +19317,10 @@ _f1_help endp
 
 _f2_waves proc near		; CODE XREF: _keyb_19EFD:_l_f2p
 					; DATA XREF: dseg:02A0o
-		mov	[off_1DE3C], offset _init_vga_waves
+		mov	off_1DE3C, offset _init_vga_waves
 		mov	_offs_draw, offset _f2_draw_waves
 		mov	_offs_draw2, offset _f2_draw_waves2
-		mov	[off_1DE42], offset _init_vga_waves
+		mov	off_1DE42, offset _init_vga_waves
 		call	_init_vga_waves
 		retn
 _f2_waves endp
@@ -19331,10 +19331,10 @@ _f2_waves endp
 
 _f3_textmetter proc near	; CODE XREF: _keyb_19EFD:_l_f3p
 					; DATA XREF: dseg:off_1CA8Eo
-		mov	[off_1DE3C], offset _text_init
+		mov	off_1DE3C, offset _text_init
 		mov	_offs_draw, offset _f3_draw
 		mov	_offs_draw2, offset _text_init2
-		mov	[off_1DE42], offset loc_1A4A6
+		mov	off_1DE42, offset loc_1A4A6
 		call	_text_init
 		retn
 _f3_textmetter endp
@@ -19345,10 +19345,10 @@ _f3_textmetter endp
 
 _f4_patternnae proc near	; CODE XREF: _keyb_19EFD:loc_1A21Fp
 					; DATA XREF: dseg:02A4o
-		mov	[off_1DE3C], offset _text_init
+		mov	off_1DE3C, offset _text_init
 		mov	_offs_draw, offset _f4_draw
 		mov	_offs_draw2, offset _text_init2
-		mov	[off_1DE42], offset loc_1A4A6
+		mov	off_1DE42, offset loc_1A4A6
 		call	_text_init
 		retn
 _f4_patternnae endp
@@ -19359,10 +19359,10 @@ _f4_patternnae endp
 
 _f5_graphspectr proc near	; CODE XREF: _keyb_19EFD:_l_f5p
 					; DATA XREF: dseg:02A2o
-		mov	[off_1DE3C], offset _init_f5_spectr
+		mov	off_1DE3C, offset _init_f5_spectr
 		mov	_offs_draw, offset _f5_draw_spectr
 		mov	_offs_draw2, offset _f5_draw_spectr
-		mov	[off_1DE42], offset _init_f5_spectr
+		mov	off_1DE42, offset _init_f5_spectr
 		call	_init_f5_spectr
 		retn
 _f5_graphspectr endp
@@ -19373,10 +19373,10 @@ _f5_graphspectr endp
 
 _f6_undoc proc near		; CODE XREF: _keyb_19EFD:_l_f6p
 					; DATA XREF: dseg:02A8o
-		mov	[off_1DE3C], offset _text_init
+		mov	off_1DE3C, offset _text_init
 		mov	_offs_draw, offset _f6_draw
 		mov	_offs_draw2, offset _text_init2
-		mov	[off_1DE42], offset loc_1A4A6
+		mov	off_1DE42, offset loc_1A4A6
 		call	_text_init
 		retn
 _f6_undoc endp
@@ -19408,9 +19408,9 @@ _text_init2 proc near		; CODE XREF: _text_initp
 ; FUNCTION CHUNK AT 14A2 SIZE 0000026B BYTES
 
 		cmp	_byte_1DE86, 1
-		jz	short loc_1A4F2
+		jz	loc_1A4F2
 		cmp	_amount_of_x, 0Ah
-		jbe	short loc_1A4F2
+		jbe	loc_1A4F2
 		jmp	loc_1A5AB
 _text_init2 endp
 
@@ -19421,12 +19421,12 @@ _text_init2 endp
 _setvideomode proc near	; CODE XREF: _start:loc_192F7p
 					; _text_init2:loc_1A4F2p
 		cmp	_byte_1DE70, 0
-		jz	short locret_1A4F1
+		jz	locret_1A4F1
 		cmp	_byte_1DE70, 1
-		jz	short locret_1A4F1
+		jz	locret_1A4F1
 		mov	ax, 3
 		cmp	_byte_1DE70, 2
-		jnz	short loc_1A4D5
+		jnz	loc_1A4D5
 		or	al, 80h
 
 loc_1A4D5::				; CODE XREF: _setvideomode+16j
@@ -19434,7 +19434,7 @@ loc_1A4D5::				; CODE XREF: _setvideomode+16j
 					; AL = mode
 		call	_txt_blinkingoff
 		cmp	_byte_1DE86, 1
-		jz	short loc_1A4E8
+		jz	loc_1A4E8
 		mov	ax, 1111h
 		xor	bl, bl
 		int	10h		; - VIDEO - TEXT-MODE CHARACTER	GENERATOR FUNCTIONS (PS, EGA, VGA)
@@ -19463,15 +19463,15 @@ loc_1A4F2::				; CODE XREF: _text_init2+5j
 					; _text_init2+Cj
 		call	_setvideomode
 		cmp	_byte_1DE86, 1
-		jz	short loc_1A55B
+		jz	loc_1A55B
 		mov	_word_1DE6E, 0Ah
 		mov	eax, _videomempointer
 		add	ax, 36*80
 		mov	_videopoint_shiftd, eax
 		cmp	_byte_1DE70, 0
-		jz	short loc_1A545
+		jz	loc_1A545
 		cmp	_byte_1DE70, 1
-		jz	short loc_1A529
+		jz	loc_1A529
 		mov	cx, 0
 		mov	dx, 1B4Fh
 		mov	bl, 78h	; 'x'
@@ -19526,17 +19526,17 @@ loc_1A55B::				; CODE XREF: _text_init2+50j
 		mov	ax, 7803h
 		call	_draw_frame
 		mov	_byte_1DE70, 0
-		jmp	short loc_1A628
+		jmp	loc_1A628
 ; ---------------------------------------------------------------------------
 
 loc_1A5AB::				; CODE XREF: _text_init2+Ej
 		cmp	_byte_1DE70, 2
-		jz	short loc_1A61A
+		jz	loc_1A61A
 		mov	ax, 3
 		cmp	_byte_1DE70, 1
-		jz	short loc_1A5C3
+		jz	loc_1A5C3
 		cmp	_byte_1DE70, 0
-		jnz	short loc_1A5C5
+		jnz	loc_1A5C5
 
 loc_1A5C3::				; CODE XREF: _text_init2+110j
 		or	al, 80h
@@ -19596,7 +19596,7 @@ loc_1A628::				; CODE XREF: _text_init2+AEj
 		mov	_buffer_1seg, ax
 		movzx	si, _snd_card_type
 		cmp	si, 0Ah
-		jb	short loc_1A645
+		jb	loc_1A645
 		mov	si, 0Ah
 
 loc_1A645::				; CODE XREF: _text_init2+196j
@@ -19607,7 +19607,7 @@ loc_1A645::				; CODE XREF: _text_init2+196j
 		mov	ah, 7Fh	; ''   ; color
 		call	_put_message
 		cmp	_snd_card_type, 0
-		jnz	short loc_1A687
+		jnz	loc_1A687
 		push	di
 		push	es
 		call	sub_1265D
@@ -19626,11 +19626,11 @@ loc_1A645::				; CODE XREF: _text_init2+196j
 
 loc_1A687::				; CODE XREF: _text_init2+1B2j
 		cmp	_snd_card_type, 0Ah
-		jz	short loc_1A6B7
+		jz	loc_1A6B7
 		mov	si, (offset _buffer_1DC6C+2)
 
 loc_1A691::				; ' )'
-		mov	word ptr [_buffer_1DC6C], 2820h
+		mov	word ptr _buffer_1DC6C, 2820h
 		xor	dx, dx
 
 loc_1A699::
@@ -19649,7 +19649,7 @@ loc_1A6A1::
 loc_1A6B7::				; CODE XREF: _text_init2+1E2j
 		mov	al, 78h	; 'x'
 		cmp	_byte_1DE7B, 1
-		jnz	short loc_1A6C2
+		jnz	loc_1A6C2
 		mov	al, 7Ch	; '|'
 
 loc_1A6C2::				; CODE XREF: _text_init2+214j
@@ -19658,8 +19658,8 @@ loc_1A6C2::				; CODE XREF: _text_init2+214j
 		mov	si, offset _bottom_menu ; str
 		call	_write_scr
 		call	sub_126A9
-		mov	word ptr [_dword_1DE2C],	si
-		mov	word ptr [_dword_1DE2C+2], es
+		mov	word ptr _dword_1DE2C,	si
+		mov	word ptr _dword_1DE2C[2], es
 		push	cx
 		mov	si, offset _buffer_1DC6C
 		mov	al, ch
@@ -19697,7 +19697,7 @@ loc_1A6C2::				; CODE XREF: _text_init2+214j
 		call	_my_u16toa10
 		mov	dword ptr [si],	20424Bh	; 'KB '
 		cmp	si, (offset _buffer_1DC6C+2)
-		jb	short loc_1A74D
+		jb	loc_1A74D
 		mov	byte ptr [si+2], 0
 
 loc_1A74D::				; CODE XREF: _text_init2+29Dj
@@ -19752,7 +19752,7 @@ _txt_draw_bottom proc	near	; CODE XREF: seg001:_f3_drawp
 		call	_put_message
 		mov	si, offset _aPal	; "(PAL) "
 		test	_flg_play_settings, 8
-		jnz	short loc_1A7CC
+		jnz	loc_1A7CC
 		mov	si, offset _aNtsc ; str
 
 loc_1A7CC::				; CODE XREF: _txt_draw_bottom+51j
@@ -19789,7 +19789,7 @@ loc_1A7CC::				; CODE XREF: _txt_draw_bottom+51j
 		add	di, 198h
 		mov	ah, 7Ch	; '|'
 		test	_flg_play_settings, 1
-		jnz	short loc_1A83E
+		jnz	loc_1A83E
 		mov	ah, 78h	; 'x'
 
 loc_1A83E::				; CODE XREF: _txt_draw_bottom+C4j
@@ -19799,7 +19799,7 @@ loc_1A83E::				; CODE XREF: _txt_draw_bottom+C4j
 		add	di, 238h
 		mov	ah, 7Ch	; '|'
 		test	_flg_play_settings, 2
-		jnz	short loc_1A856
+		jnz	loc_1A856
 		mov	ah, 78h	; 'x'
 
 loc_1A856::				; CODE XREF: _txt_draw_bottom+DCj
@@ -19809,7 +19809,7 @@ loc_1A856::				; CODE XREF: _txt_draw_bottom+DCj
 		add	di, 2D8h
 		mov	ah, 7Ch	; '|'
 		test	_flg_play_settings, 4
-		jnz	short loc_1A86E
+		jnz	loc_1A86E
 		mov	ah, 78h	; 'x'
 
 loc_1A86E::				; CODE XREF: _txt_draw_bottom+F4j
@@ -19819,7 +19819,7 @@ loc_1A86E::				; CODE XREF: _txt_draw_bottom+F4j
 		add	di, 378h	; interp text offset
 		mov	ah, 7Ch	; '|'
 		test	_flg_play_settings, 10h
-		jnz	short loc_1A886
+		jnz	loc_1A886
 		mov	ah, 78h	; 'x'
 
 loc_1A886::				; CODE XREF: _txt_draw_bottom+10Cj
@@ -19860,7 +19860,7 @@ loc_1A8EB::				; CODE XREF: _txt_draw_bottom+17Fj
 		inc	si
 		add	di, 2
 		dec	cx
-		jnz	short loc_1A8EB
+		jnz	loc_1A8EB
 		retn
 _txt_draw_bottom endp
 
@@ -19869,7 +19869,7 @@ _txt_draw_bottom endp
 _f3_draw  proc near			; DATA XREF: _f3_textmetter+6o
 		call	_txt_draw_bottom
 		cmp	_byte_1DE85, 1
-		jz	short loc_1A913
+		jz	loc_1A913
 		mov	es, _buffer_1seg
 		assume es:nothing
 		xor	di, di
@@ -19885,7 +19885,7 @@ loc_1A913::				; CODE XREF: seg001:18B0j
 		add	di, 3C4h
 		mov	cx, _amount_of_x
 		cmp	cx, _word_1DE6E
-		jbe	short loc_1A934
+		jbe	loc_1A934
 		mov	cx, _word_1DE6E
 
 loc_1A934::				; CODE XREF: seg001:18DEj
@@ -19899,13 +19899,13 @@ loc_1A93A::				; CODE XREF: seg001:1AB8j
 		mov	dl, al
 		add	al, '1'
 		cmp	al, '9'
-		jbe	short loc_1A947
+		jbe	loc_1A947
 		add	al, 7
 
 loc_1A947::				; CODE XREF: seg001:18F3j
 		mov	ah, 1Eh
 		cmp	dl, _byte_1DE84
-		jz	short loc_1A951
+		jz	loc_1A951
 		mov	ah, 7Eh	; '~'
 
 loc_1A951::				; CODE XREF: seg001:18FDj
@@ -19917,7 +19917,7 @@ loc_1A951::				; CODE XREF: seg001:18FDj
 		movzx	si, byte ptr [fs:bx+35h]
 		mov	al, ' '
 		test	si, 0Fh
-		jz	short loc_1A975
+		jz	loc_1A975
 		mov	ax, si
 		shr	al, 4
 		add	al, '0'
@@ -19927,39 +19927,39 @@ loc_1A975::				; CODE XREF: seg001:191Cj
 		mov	[es:di+4], ax
 		and	si, 0Fh
 		shl	si, 1
-		mov	al, byte ptr [_notes+si]	; "  C-C#D-D#E-F-F#G-G#A-A#B-"
+		mov	al, byte ptr _notes[si]	; "  C-C#D-D#E-F-F#G-G#A-A#B-"
 		mov	[es:di], ax
-		mov	al, byte ptr [(_notes+1)+si]
+		mov	al, byte ptr _notes[si+1]
 		mov	[es:di+2], ax
 		add	di, 8
 		test	byte ptr [fs:bx+17h], 1
-		jnz	short loc_1A9AD
+		jnz	loc_1A9AD
 		mov	si, offset _aMute ; "<Mute>		  "
 		mov	ah, 7Fh	; ''
 		test	byte ptr [fs:bx+17h], 2
-		jnz	short loc_1A9A8
+		jnz	loc_1A9A8
 
 loc_1A9A5::				; CODE XREF: seg001:1964j
 		mov	si, offset asc_1DA00 ; "		      "
 
 loc_1A9A8::				; CODE XREF: seg001:1953j
 		call	_put_message
-		jmp	short loc_1A9C2
+		jmp	loc_1A9C2
 ; ---------------------------------------------------------------------------
 
 loc_1A9AD::				; CODE XREF: seg001:1947j
 		movzx	eax, byte ptr [fs:bx+2]
 		dec	ax
-		js	short loc_1A9A5
+		js	loc_1A9A5
 		shl	ax, 6
 		mov	si, ax
-		add	si, word ptr [_dword_1DE2C]
+		add	si, word ptr _dword_1DE2C
 		call	_txt_1ABAE
 
 loc_1A9C2::				; CODE XREF: seg001:195Bj
 		add	di, 2
 		cmp	_byte_1DE85, 1
-		jnz	short loc_1AA1A
+		jnz	loc_1AA1A
 		push	di
 		push	es
 		mov	ax, ds
@@ -19995,7 +19995,7 @@ loc_1AA17::
 
 loc_1AA1A::				; CODE XREF: seg001:197Aj
 		cmp	_snd_card_type, 0Ah
-		jz	short loc_1AA62
+		jz	loc_1AA62
 		mov	si, _buffer_2seg
 		mov	cx, 50h	; 'P'
 		xor	eax, eax
@@ -20004,47 +20004,47 @@ loc_1AA1A::				; CODE XREF: seg001:197Aj
 loc_1AA2E::				; CODE XREF: seg001:19EBj
 		mov	dl, [si]
 		or	dl, dl
-		jns	short loc_1AA36
+		jns	loc_1AA36
 		neg	dl
 
 loc_1AA36::				; CODE XREF: seg001:19E2j
 		inc	si
 		add	eax, edx
 		dec	cx
-		jnz	short loc_1AA2E
+		jnz	loc_1AA2E
 		mov	_buffer_2seg, si
 		xor	edx, edx
 		div	_volume_1DE34
 		cmp	al, 60
-		jb	short loc_1AA4F
+		jb	loc_1AA4F
 		mov	al, 60
 
 loc_1AA4F::				; CODE XREF: seg001:19FBj
 		cmp	_byte_1DE83, 0
-		jz	short loc_1AA5C
+		jz	loc_1AA5C
 		cmp	al, [fs:bx+1Ah]
-		jb	short loc_1AA73
+		jb	loc_1AA73
 
 loc_1AA5C::				; CODE XREF: seg001:1A04j
 		mov	[fs:bx+1Ah], al
-		jmp	short loc_1AA88
+		jmp	loc_1AA88
 ; ---------------------------------------------------------------------------
 
 loc_1AA62::				; CODE XREF: seg001:19CFj
 		test	byte ptr [fs:bx+17h], 1
-		jz	short loc_1AA73
+		jz	loc_1AA73
 		mov	al, [fs:bx+22h]
 		mov	[fs:bx+1Ah], al
-		jmp	short loc_1AA88
+		jmp	loc_1AA88
 ; ---------------------------------------------------------------------------
 
 loc_1AA73::				; CODE XREF: seg001:1A0Aj seg001:1A17j
 					; DATA XREF: ...
 		and	_byte_1DE71, 1Fh
-		jnz	short loc_1AA88
+		jnz	loc_1AA88
 		mov	al, _byte_1DE83
 		sub	[fs:bx+1Ah], al
-		jns	short loc_1AA88
+		jns	loc_1AA88
 		mov	byte ptr [fs:bx+1Ah], 0
 
 loc_1AA88::				; CODE XREF: seg001:1A10j seg001:1A21j ...
@@ -20052,11 +20052,11 @@ loc_1AA88::				; CODE XREF: seg001:1A10j seg001:1A21j ...
 		shr	cx, 1
 		mov	dx, 30
 		sub	dx, cx
-		jcxz	short _volume_endstr
+		jcxz	_volume_endstr
 		mov	si, cx
 		mov	cx, 0Dh
 		cmp	si, cx
-		ja	short _volume_medium
+		ja	_volume_medium
 		mov	cx, si
 
 _volume_medium::				; CODE XREF: seg001:1A4Dj
@@ -20064,17 +20064,17 @@ _volume_medium::				; CODE XREF: seg001:1A4Dj
 		cld
 		rep stosw
 		sub	si, 0Dh
-		jbe	short _volume_endstr
+		jbe	_volume_endstr
 		mov	cx, 0Ch
 		cmp	si, cx
-		ja	short _volume_higher
+		ja	_volume_higher
 		mov	cx, si
 
 _volume_higher::				; CODE XREF: seg001:1A61j
 		mov	ah, 7Eh	; '~'
 		rep stosw
 		sub	si, 0Ch
-		jbe	short _volume_endstr
+		jbe	_volume_endstr
 		mov	cx, si
 		mov	ah, 7Ch	; '|'
 		rep stosw
@@ -20091,13 +20091,13 @@ loc_1AACB::				; CODE XREF: seg001:loc_1AA17j
 		mov	si, offset asc_1D6E0 ; "	       "
 		mov	al, [fs:bx+0Ah]
 		cmp	al, 1Dh
-		jz	short loc_1AB0D
+		jz	loc_1AB0D
 		cmp	al, 0Eh
-		jnz	short loc_1AAF0
+		jnz	loc_1AAF0
 		mov	si, offset _aSetLoopPoint ; "Set	Loop Point "
 		mov	al, [fs:bx+0Bh]
 		cmp	al, 60h	; '`'
-		jz	short loc_1AAF7
+		jz	loc_1AAF7
 		mov	si, offset _aSetFilter ;	"Set Filter	"
 		shr	al, 4
 
@@ -20125,11 +20125,11 @@ loc_1AB0D proc near				; CODE XREF: seg001:1A89j
 		mov	si, offset _aArpeggio ; "Arpeggio       "
 		mov	al, [fs:bx+0Bh]
 		cmp	al, 37h	; '7'
-		jz	short loc_1AB5D	; min
+		jz	loc_1AB5D	; min
 		cmp	al, 47h	; 'G'
-		jz	short loc_1AB67	; maj
+		jz	loc_1AB67	; maj
 		cmp	al, 48h	; 'H'
-		jz	short loc_1AB53	; puls
+		jz	loc_1AB53	; puls
 		xor	cl, cl
 		call	sub_1AB8C
 		mov	[si+9],	ax
@@ -20141,23 +20141,23 @@ loc_1AB0D proc near				; CODE XREF: seg001:1A89j
 		and	cl, 0Fh
 		call	sub_1AB8C
 		mov	[si+0Dh], ax
-		jmp	short loc_1AAF7
+		jmp	loc_1AAF7
 ; ---------------------------------------------------------------------------
 
 loc_1AB44::				; CODE XREF: seg001:1B26j seg001:1B2Aj
 		mov	dword ptr [si+9], '    '
 		mov	word ptr [si+0Dh], '  '
-		jmp	short loc_1AAF7
+		jmp	loc_1AAF7
 ; ---------------------------------------------------------------------------
 
 loc_1AB53::				; CODE XREF: seg001:1ACEj
 		mov	dword ptr [si+0Bh], 73756C70h ;	puls
-		jmp	short loc_1AB6F
+		jmp	loc_1AB6F
 ; ---------------------------------------------------------------------------
 
 loc_1AB5D::				; CODE XREF: seg001:1AC6j
 		mov	dword ptr [si+0Bh], 206E696Dh ;	min
-		jmp	short loc_1AB6F
+		jmp	loc_1AB6F
 ; ---------------------------------------------------------------------------
 
 loc_1AB67::				; CODE XREF: seg001:1ACAj
@@ -20166,13 +20166,13 @@ loc_1AB67::				; CODE XREF: seg001:1ACAj
 loc_1AB6F::				; CODE XREF: seg001:1B0Bj seg001:1B15j
 		mov	al, [fs:bx+35h]
 		and	ax, 0Fh
-		jz	short loc_1AB44
+		jz	loc_1AB44
 		cmp	al, 0Ch
-		ja	short loc_1AB44
+		ja	loc_1AB44
 		shl	ax, 1
 		push	si
 		mov	si, ax
-		mov	ax, word ptr [_notes+si]	; "  C-C#D-D#E-F-F#G-G#A-A#B-"
+		mov	ax, word ptr_notes[si]	; "  C-C#D-D#E-F-F#G-G#A-A#B-"
 		pop	si
 		mov	[si+9],	ax
 		jmp	loc_1AAF7
@@ -20186,17 +20186,17 @@ sub_1AB8C proc near		; CODE XREF: seg001:1AD2p seg001:1ADFp ...
 		and	ax, 0Fh
 		add	al, cl
 		cmp	al, 0Ch
-		jbe	short loc_1AB9B
+		jbe	loc_1AB9B
 		sub	al, 0Ch
 
 loc_1AB9B::				; CODE XREF: sub_1AB8C+Bj
 		shl	ax, 1
 		push	si
 		mov	si, ax
-		mov	ax, word ptr [_notes+si]	; "  C-C#D-D#E-F-F#G-G#A-A#B-"
+		mov	ax, word ptr _notes[si]	; "  C-C#D-D#E-F-F#G-G#A-A#B-"
 		pop	si
 		cmp	ah, 2Dh	; '-'
-		jz	short loc_1ABAB
+		jz	loc_1ABAB
 		retn
 ; ---------------------------------------------------------------------------
 
@@ -20219,7 +20219,7 @@ loc_1ABB3::				; CODE XREF: _txt_1ABAE+10j
 		inc	si
 		add	di, 2
 		dec	cx
-		jnz	short loc_1ABB3
+		jnz	loc_1ABB3
 		retn
 _txt_1ABAE endp
 
@@ -20233,13 +20233,13 @@ _f4_draw proc near				; DATA XREF: _keyb_19EFD:_l_f4o
 		mov	si, offset _aSamplename ; "# SampleName	 "
 		mov	ah, 7Eh	; '~'
 		call	_text_1BF69
-		mov	di, word ptr [_videomempointer]
+		mov	di, _videomempointer
 		add	di, 464h
 		lfs	bx, _dword_1DE2C
 		mov	bp, _current_patterns
 		imul	ax, bp,	40h
 		add	bx, ax
-		mov	dl, byte ptr [_word_1DE6E]
+		mov	dl, _word_1DE6E
 		dec	dl
 
 loc_1ABF0::				; CODE XREF: seg001:1CA1j
@@ -20265,7 +20265,7 @@ loc_1ABF0::				; CODE XREF: seg001:1CA1j
 		cld
 		rep movs dword	ptr [es:di], dword ptr [fs:si]
 		test	byte ptr [fs:bx+3Ch], 1
-		jnz	short loc_1AC35
+		jnz	loc_1AC35
 		mov	si, offset unk_1D6C3
 		mov	cx, 9
 		rep movsb
@@ -20281,14 +20281,14 @@ loc_1AC35::				; CODE XREF: seg001:1BD8j
 		call	_my_pnt_u32toa_fill
 		mov	eax, 363120h	; ' 16'
 		test	byte ptr [fs:bx+3Ch], 4
-		jnz	short loc_1AC5F
+		jnz	loc_1AC5F
 		mov	eax, 382020h	; '  8'
 
 loc_1AC5F::				; CODE XREF: seg001:1C07j
 		mov	[di], eax
 		mov	al, 1Dh
 		test	byte ptr [fs:bx+3Ch], 10h
-		jnz	short loc_1AC6D
+		jnz	loc_1AC6D
 		mov	al, ' '
 
 loc_1AC6D::				; CODE XREF: seg001:1C19j
@@ -20305,7 +20305,7 @@ loc_1AC6D::				; CODE XREF: seg001:1C19j
 		mov	ah, [fs:bx+3Eh]
 		and	ah, 0Fh
 		test	ah, 8
-		jz	short loc_1ACAC
+		jz	loc_1ACAC
 		mov	al, '-'
 		neg	ah
 		add	ah, 10h
@@ -20315,7 +20315,7 @@ loc_1ACAC::				; CODE XREF: seg001:1C53j
 		mov	[di], eax
 		add	di, 4
 		test	byte ptr [fs:bx+3Ch], 8
-		jz	short loc_1ACD2
+		jz	loc_1ACD2
 		mov	eax, [fs:bx+24h]
 		mov	bp, 7
 		call	_my_pnt_u32toa_fill
@@ -20327,7 +20327,7 @@ loc_1ACD2::				; CODE XREF: seg001:1BE2j seg001:1C6Aj
 		mov	byte ptr [di], 0
 		pop	di
 		push	di
-		mov	es, word ptr [_videomempointer+2]
+		mov	es, _videomempointer[2]
 		assume es:nothing
 		mov	si, offset _buffer_1 ; 2800h
 		mov	ah, 7Fh	; ''
@@ -20370,7 +20370,7 @@ _my_u32toa_fill proc near	; CODE XREF: _filelist_198B8+82p
 		pop	di
 		pop	bx
 		cmp	cx, bp
-		jb	short loc_1AD0F
+		jb	loc_1AD0F
 		mov	cx, bp
 
 loc_1AD0F::				; CODE XREF: _my_u32toa_fill+Ej
@@ -20463,7 +20463,7 @@ _init_vga_waves proc near	; CODE XREF: _f2_waves+18p
 		jb	loc_1AE5E
 		cmp	ax, 2
 		jnz	loc_1AE5E
-		cmp	word ptr [_buffer_1DC6C], 4453h ; 'SD' check picture signature
+		cmp	word ptr _buffer_1DC6C, 4453h ; 'SD' check picture signature
 		jnz	loc_1AE5E
 		call	_set_egasequencer
 		call	_read2buffer
@@ -20499,11 +20499,11 @@ loc_1ADE7::				; CODE XREF: _init_vga_waves+11Aj
 		mov	cl, [si]
 		inc	si
 		cmp	si, offset _buffer_1seg
-		jnb	short loc_1AE0C	; WARNING: push	returns	address	to stack
+		jnb	loc_1AE0C	; WARNING: push	returns	address	to stack
 
 loc_1ADF0::				; DATA XREF: _init_vga_waves:loc_1AE0Co
 		or	cl, cl
-		js	short loc_1AE2D
+		js	loc_1AE2D
 		inc	cl
 
 loc_1ADF6::				; CODE XREF: _init_vga_waves+D9j
@@ -20512,23 +20512,23 @@ loc_1ADF6::				; CODE XREF: _init_vga_waves+D9j
 		mov	[es:bx+di], al
 		inc	si
 		cmp	si, offset _buffer_1seg
-		jnb	short loc_1AE11
+		jnb	loc_1AE11
 
 loc_1AE05::				; DATA XREF: _init_vga_waves:loc_1AE11o
 		inc	di
 		dec	cl
-		jnz	short loc_1ADF6
-		jmp	short loc_1AE46
+		jnz	loc_1ADF6
+		jmp	loc_1AE46
 ; ---------------------------------------------------------------------------
 
 loc_1AE0C::				; CODE XREF: _init_vga_waves+BFj
 		push	offset loc_1ADF0 ; WARNING: push returns address to stack
-		jmp	short _read2buffer
+		jmp	_read2buffer
 ; ---------------------------------------------------------------------------
 
 loc_1AE11::				; CODE XREF: _init_vga_waves+D4j
 		push	offset loc_1AE05
-		jmp	short _read2buffer
+		jmp	_read2buffer
 ; ---------------------------------------------------------------------------
 
 loc_1AE16::				; CODE XREF: _init_vga_waves+109j
@@ -20563,7 +20563,7 @@ loc_1AE2D::				; CODE XREF: _init_vga_waves+C3j
 		mov	al, [si]
 		inc	si
 		cmp	si, offset _buffer_1seg
-		jnb	short loc_1AE16
+		jnb	loc_1AE16
 
 loc_1AE3A::				; CODE XREF: _init_vga_waves+115j
 					; DATA XREF: _init_vga_waves:loc_1AE16o
@@ -20571,17 +20571,17 @@ loc_1AE3A::				; CODE XREF: _init_vga_waves+115j
 		mov	[es:bx+di], al
 		inc	di
 		dec	cl
-		jnz	short loc_1AE3A
+		jnz	loc_1AE3A
 
 loc_1AE46::				; CODE XREF: _init_vga_waves+DBj
 		cmp	di, 50h	; 'P'
-		jb	short loc_1ADE7
+		jb	loc_1ADE7
 		shl	ah, 1
 		test	ah, 10h
-		jz	short loc_1ADE2
+		jz	loc_1ADE2
 		add	bx, 50h	; 'P'
 		cmp	bx, 9600h
-		jb	short loc_1ADE0
+		jb	loc_1ADE0
 		call	_graph_1C070
 
 loc_1AE5E::				; CODE XREF: _init_vga_waves+52j
@@ -20639,7 +20639,7 @@ loc_1AE7E::				; CODE XREF: _init_vga_waves+189j
 loc_1AEB2::				; CODE XREF: _init_vga_waves+5j
 		call	_f2_draw_waves2
 		call	_video_prp_mtr_positn
-		jmp	short loc_1AE7E
+		jmp	loc_1AE7E
 _init_vga_waves_chunk endp
 
 ; =============== S U B	R O U T	I N E =======================================
@@ -20683,7 +20683,7 @@ _lc_next_x8::				; CODE XREF: _f2_draw_waves+86j
 		movsx	di, byte ptr [gs:si] ; y1
 		movsx	dx, byte ptr [fs:si] ; y2
 		cmp	di, dx
-		jz	short loc_1AF3A
+		jz	loc_1AF3A
 		neg	di
 		mov	cx, di
 		shl	di, 6
@@ -20691,9 +20691,9 @@ _lc_next_x8::				; CODE XREF: _f2_draw_waves+86j
 		add	di, cx		; di = y * 80
 		lea	cx, [bx+di]
 		or	cx, cx		; y * 80 + x
-		js	short loc_1AF1E
+		js	loc_1AF1E
 		cmp	cx, 280*80	; bottom y margin 280
-		jnb	short loc_1AF1E
+		jnb	loc_1AF1E
 		and	byte ptr [es:bx+di], 111b ; clean previous dot
 
 loc_1AF1E::				; CODE XREF: _f2_draw_waves+58j
@@ -20705,9 +20705,9 @@ loc_1AF1E::				; CODE XREF: _f2_draw_waves+58j
 		add	di, dx
 		lea	cx, [bx+di]
 		or	cx, cx
-		js	short loc_1AF3A
+		js	loc_1AF3A
 		cmp	cx, 280*80
-		jnb	short loc_1AF3A
+		jnb	loc_1AF3A
 		or	byte ptr [es:bx+di], 1000b ; set new dot
 
 loc_1AF3A::				; CODE XREF: _f2_draw_waves+46j
@@ -20715,18 +20715,18 @@ loc_1AF3A::				; CODE XREF: _f2_draw_waves+46j
 		add	si, 8
 		inc	bx		; (x*8)++
 		dec	ah
-		jnz	short _lc_next_x8 ; y1
+		jnz	_lc_next_x8 ; y1
 		sub	si, 128h
 		inc	si
 		shr	al, 1		; next video bit
-		jnb	short _lc_nextvideobit ;	37 * 8 = 296 by	x
+		jnb	_lc_nextvideobit ;	37 * 8 = 296 by	x
 		pop	di
 		pop	si
 		pop	cx
 		add	si, 128h
 		add	di, 2		; next x
 		dec	cx
-		jnz	short _lc_next_meter
+		jnz	_lc_next_meter
 		mov	ax, _buffer_1seg
 		xchg	ax, _buffer_2seg
 		mov	_buffer_1seg, ax
@@ -20774,9 +20774,9 @@ loc_1AF8E::				; CODE XREF: _f2_draw_waves2+51j
 		add	di, cx
 		lea	cx, [bx+di]
 		or	cx, cx
-		js	short loc_1AFAE
+		js	loc_1AFAE
 		cmp	cx, 22400
-		jnb	short loc_1AFAE
+		jnb	loc_1AFAE
 		and	byte ptr [es:bx+di], 111b
 
 loc_1AFAE::				; CODE XREF: _f2_draw_waves2+3Fj
@@ -20784,18 +20784,18 @@ loc_1AFAE::				; CODE XREF: _f2_draw_waves2+3Fj
 		add	si, 8
 		inc	bx
 		dec	ah
-		jnz	short loc_1AF8E
+		jnz	loc_1AF8E
 		sub	si, 128h
 		inc	si
 		shr	al, 1
-		jnb	short loc_1AF86
+		jnb	loc_1AF86
 		pop	di
 		pop	si
 		pop	cx
 		add	si, 128h
 		add	di, 2
 		dec	cx
-		jnz	short loc_1AF79
+		jnz	loc_1AF79
 		jmp	loc_1AE7E
 _f2_draw_waves2 endp
 
@@ -20815,78 +20815,78 @@ _init_f5_spectr proc near	; CODE XREF: _f5_graphspectr+18p
 		mov	dx, 3C8h
 		xor	al, al
 		out	dx, al
-		jmp	short $+2
-		jmp	short $+2
+		jmp	$+2
+		jmp	$+2
 		inc	dx
 		out	dx, al
-		jmp	short $+2
+		jmp	$+2
 		out	dx, al
-		jmp	short $+2
+		jmp	$+2
 		out	dx, al
-		jmp	short $+2
+		jmp	$+2
 		mov	bp, 16Ch
 		xor	bx, bx
 
 loc_1AFFE::				; CODE XREF: _init_f5_spectr+43j
 		mov	al, bh
 		out	dx, al
-		jmp	short $+2
+		jmp	$+2
 		mov	al, 3Fh	; '?'
 		out	dx, al
-		jmp	short $+2
+		jmp	$+2
 		xor	al, al
 		out	dx, al
-		jmp	short $+2
+		jmp	$+2
 		add	bx, bp
 		cmp	bh, 40h	; '@'
-		jb	short loc_1AFFE
+		jb	loc_1AFFE
 
 loc_1B014::				; CODE XREF: _init_f5_spectr+58j
 		sub	bx, bp
 		mov	al, 3Fh	; '?'
 		out	dx, al
-		jmp	short $+2
+		jmp	$+2
 		mov	al, bh
 		out	dx, al
-		jmp	short $+2
+		jmp	$+2
 		xor	al, al
 		out	dx, al
-		jmp	short $+2
+		jmp	$+2
 		or	bh, bh
-		jns	short loc_1B014
+		jns	loc_1B014
 		mov	dx, 3C8h
 		mov	al, 0FCh ; '¸'
 		out	dx, al
-		jmp	short $+2
-		jmp	short $+2
+		jmp	$+2
+		jmp	$+2
 		inc	dx
 		xor	al, al
 		out	dx, al
-		jmp	short $+2
+		jmp	$+2
 		out	dx, al
-		jmp	short $+2
+		jmp	$+2
 		out	dx, al
-		jmp	short $+2
+		jmp	$+2
 		mov	al, 10h
 		out	dx, al
-		jmp	short $+2
+		jmp	$+2
 		out	dx, al
-		jmp	short $+2
+		jmp	$+2
 		mov	al, 30h	; '0'
 		out	dx, al
-		jmp	short $+2
+		jmp	$+2
 		mov	al, 10h
 		out	dx, al
-		jmp	short $+2
+		jmp	$+2
 		out	dx, al
-		jmp	short $+2
+		jmp	$+2
 		out	dx, al
-		jmp	short $+2
+		jmp	$+2
 		mov	al, 3Fh	; '?'
 		out	dx, al
-		jmp	short $+2
+		jmp	$+2
 		out	dx, al
-		jmp	short $+2
+		jmp	$+2
 		out	dx, al
 		call	_graph_1C070
 		mov	ax, ds
@@ -20898,8 +20898,8 @@ loc_1B014::				; CODE XREF: _init_f5_spectr+58j
 		cld
 		rep stosd
 		mov	ax, 200h
-		test	byte ptr [_configword], 8
-		jnz	short loc_1B080
+		test	byte ptr _configword, 8
+		jnz	loc_1B080
 		shr	ax, 1
 
 loc_1B080::				; CODE XREF: _init_f5_spectr+ADj
@@ -20926,11 +20926,11 @@ loc_1B098::				; CODE XREF: _spectr_1B084+1Bj
 		add	si, 4
 		shr	ax, 1
 		test	ax, ax
-		jnz	short loc_1B098
+		jnz	loc_1B098
 		sub	si, 4
-		mov	ebx, [_tabledword_24526+si]
+		mov	ebx, _tabledword_24526[si]
 		mov	_multip_244D0,	ebx
-		mov	eax, [_tabledword_24562+si]
+		mov	eax, _tabledword_24562[si]
 		mov	_multip_244CC,	eax
 		add	eax, 10000h
 		mov	_dword_244C8, eax
@@ -21016,7 +21016,7 @@ loc_1B134::
 		add	eax, _dword_24508
 		mov	[si+4],	eax
 		mov	eax, _dword_244C8
-		mov	dword ptr [unk_244C4], eax
+		mov	unk_244C4, eax
 		mov	eax, _multip_244CC
 		imul	_dword_244C8
 		shrd	eax, edx, 10h
@@ -21029,7 +21029,7 @@ loc_1B134::
 		imul	_multip_244CC
 		shrd	eax, edx, 10h
 		add	_dword_244D4, eax
-		mov	eax, [dword ptr	unk_244C4]
+		mov	eax, unk_244C4
 		imul	_multip_244D0
 		shrd	eax, edx, 10h
 		add	_dword_244D4, eax
@@ -21055,12 +21055,12 @@ loc_1B245::				; CODE XREF: _spectr_1B084+1C8j
 		add	si, 4
 		shr	ax, 1
 		test	ax, ax
-		jnz	short loc_1B245
+		jnz	loc_1B245
 		sub	si, 4
-		mov	ebx, [_tabledword_24526+si]
+		mov	ebx, _tabledword_24526[si]
 		neg	ebx
 		mov	_multip_244D0,	ebx
-		mov	eax, [_tabledword_24562+si]
+		mov	eax, _tabledword_24562[si]
 		neg	eax
 		mov	_multip_244CC,	eax
 		add	eax, 10000h
@@ -21141,9 +21141,9 @@ loc_1B282::				; CODE XREF: _spectr_1B084+357j
 		add	eax, _dword_24508
 		mov	[si+4],	eax
 		mov	eax, _dword_244C8
-		mov	dword ptr [unk_244C4], eax
+		mov	unk_244C4, eax
 		mov	eax, _dword_244C8
-		mov	dword ptr [unk_244C4], eax
+		mov	unk_244C4, eax
 		mov	eax, _multip_244CC
 		imul	_dword_244C8
 		shrd	eax, edx, 10h
@@ -21156,7 +21156,7 @@ loc_1B282::				; CODE XREF: _spectr_1B084+357j
 		imul	_multip_244CC
 		shrd	eax, edx, 10h
 		add	_dword_244D4, eax
-		mov	eax, [dword ptr	unk_244C4]
+		mov	eax, unk_244C4
 		imul	_multip_244D0
 		shrd	eax, edx, 10h
 		add	_dword_244D4, eax
@@ -21199,7 +21199,7 @@ _spectr_1B406 proc near	; CODE XREF: _spectr_1B084+Cp
 loc_1B426::				; CODE XREF: _spectr_1B406+5Fj
 		push	cx
 		cmp	si, di
-		jle	short loc_1B440
+		jle	loc_1B440
 		mov	edx, [si]
 		mov	ebx, [si+4]
 		xchg	edx, [di]
@@ -21215,12 +21215,12 @@ loc_1B440::				; CODE XREF: _spectr_1B406+23j
 
 loc_1B44A::				; CODE XREF: _spectr_1B406+51j
 		cmp	ax, 2
-		jl	short loc_1B459
+		jl	loc_1B459
 		cmp	si, ax
-		jl	short loc_1B459
+		jl	loc_1B459
 		sub	si, ax
 		shr	ax, 1
-		jmp	short loc_1B44A
+		jmp	loc_1B44A
 ; ---------------------------------------------------------------------------
 
 loc_1B459::				; CODE XREF: _spectr_1B406+47j
@@ -21231,7 +21231,7 @@ loc_1B459::				; CODE XREF: _spectr_1B406+47j
 		pop	cx
 		add	di, 8
 		dec	cx
-		jnz	short loc_1B426
+		jnz	loc_1B426
 		mov	_word_24516, 2
 
 loc_1B46D::				; CODE XREF: _spectr_1B406+1BEj
@@ -21241,9 +21241,9 @@ loc_1B46D::				; CODE XREF: _spectr_1B406+1BEj
 		shl	ax, 1
 		mov	_word_2451C, ax
 		mov	si, _word_2450C
-		mov	eax, [_tabledword_24526+si]
+		mov	eax, _tabledword_24526[si]
 		mov	_multip_244D0,	eax
-		mov	eax, [_tabledword_24562+si]
+		mov	eax, _tabledword_24562[si]
 		mov	_multip_244CC,	eax
 		add	_word_2450C, 4
 		mov	_dword_244C8, 10000h
@@ -21316,7 +21316,7 @@ loc_1B4CD::				; CODE XREF: _spectr_1B406+156j
 		mov	ecx, _multip_244CC
 		mov	ebp, _multip_244D0
 		mov	eax, _dword_244C8
-		mov	dword ptr [unk_244C4], eax
+		mov	unk_244C4, eax
 		mov	eax, _dword_244C8
 		imul	ecx
 		shrd	eax, edx, 10h
@@ -21329,7 +21329,7 @@ loc_1B4CD::				; CODE XREF: _spectr_1B406+156j
 		imul	ecx
 		shrd	eax, edx, 10h
 		add	_dword_244D4, eax
-		mov	eax, [dword ptr	unk_244C4]
+		mov	eax, unk_244C4
 		imul	ebp
 		shrd	eax, edx, 10h
 		add	_dword_244D4, eax
@@ -21368,7 +21368,7 @@ loc_1B5EC::				; CODE XREF: _f5_draw_spectr+2A1j
 		mov	cx, bp
 		xor	dx, dx
 		cmp	byte ptr [fs:bx+3Ah], 64
-		ja	short loc_1B5FC
+		ja	loc_1B5FC
 		mov	al, [si]
 		cbw
 		add	dx, ax
@@ -21377,7 +21377,7 @@ loc_1B5FC::				; CODE XREF: _f5_draw_spectr+2Dj
 		dec	cx
 		jz	loc_1B85F
 		cmp	byte ptr [fs:bx+8Ah], 64
-		ja	short loc_1B610
+		ja	loc_1B610
 		mov	al, [si+200h]
 		cbw
 		add	dx, ax
@@ -21386,7 +21386,7 @@ loc_1B610::				; CODE XREF: _f5_draw_spectr+3Fj
 		dec	cx
 		jz	loc_1B85F
 		cmp	byte ptr [fs:bx+0DAh], 64
-		ja	short loc_1B624
+		ja	loc_1B624
 		mov	al, [si+400h]
 		cbw
 		add	dx, ax
@@ -21395,7 +21395,7 @@ loc_1B624::				; CODE XREF: _f5_draw_spectr+53j
 		dec	cx
 		jz	loc_1B85F
 		cmp	byte ptr [fs:bx+12Ah], 64
-		ja	short loc_1B638
+		ja	loc_1B638
 		mov	al, [si+600h]
 		cbw
 		add	dx, ax
@@ -21404,7 +21404,7 @@ loc_1B638::				; CODE XREF: _f5_draw_spectr+67j
 		dec	cx
 		jz	loc_1B85F
 		cmp	byte ptr [fs:bx+17Ah], 64
-		ja	short loc_1B64C
+		ja	loc_1B64C
 		mov	al, [si+800h]
 		cbw
 		add	dx, ax
@@ -21413,7 +21413,7 @@ loc_1B64C::				; CODE XREF: _f5_draw_spectr+7Bj
 		dec	cx
 		jz	loc_1B85F
 		cmp	byte ptr [fs:bx+1CAh], 64
-		ja	short loc_1B660
+		ja	loc_1B660
 		mov	al, [si+0A00h]
 		cbw
 		add	dx, ax
@@ -21422,7 +21422,7 @@ loc_1B660::				; CODE XREF: _f5_draw_spectr+8Fj
 		dec	cx
 		jz	loc_1B85F
 		cmp	byte ptr [fs:bx+21Ah], 64
-		ja	short loc_1B674
+		ja	loc_1B674
 		mov	al, [si+0C00h]
 		cbw
 		add	dx, ax
@@ -21431,7 +21431,7 @@ loc_1B674::				; CODE XREF: _f5_draw_spectr+A3j
 		dec	cx
 		jz	loc_1B85F
 		cmp	byte ptr [fs:bx+26Ah], 64
-		ja	short loc_1B688
+		ja	loc_1B688
 		mov	al, [si+0E00h]
 		cbw
 		add	dx, ax
@@ -21440,7 +21440,7 @@ loc_1B688::				; CODE XREF: _f5_draw_spectr+B7j
 		dec	cx
 		jz	loc_1B85F
 		cmp	byte ptr [fs:bx+2BAh], 64
-		ja	short loc_1B69C
+		ja	loc_1B69C
 		mov	al, [si+1000h]
 		cbw
 		add	dx, ax
@@ -21449,7 +21449,7 @@ loc_1B69C::				; CODE XREF: _f5_draw_spectr+CBj
 		dec	cx
 		jz	loc_1B85F
 		cmp	byte ptr [fs:bx+30Ah], 64
-		ja	short loc_1B6B0
+		ja	loc_1B6B0
 		mov	al, [si+1200h]
 		cbw
 		add	dx, ax
@@ -21458,7 +21458,7 @@ loc_1B6B0::				; CODE XREF: _f5_draw_spectr+DFj
 		dec	cx
 		jz	loc_1B85F
 		cmp	byte ptr [fs:bx+35Ah], 64
-		ja	short loc_1B6C4
+		ja	loc_1B6C4
 		mov	al, [si+1400h]
 		cbw
 		add	dx, ax
@@ -21467,7 +21467,7 @@ loc_1B6C4::				; CODE XREF: _f5_draw_spectr+F3j
 		dec	cx
 		jz	loc_1B85F
 		cmp	byte ptr [fs:bx+3AAh], 64
-		ja	short loc_1B6D8
+		ja	loc_1B6D8
 		mov	al, [si+1600h]
 		cbw
 		add	dx, ax
@@ -21476,7 +21476,7 @@ loc_1B6D8::				; CODE XREF: _f5_draw_spectr+107j
 		dec	cx
 		jz	loc_1B85F
 		cmp	byte ptr [fs:bx+3FAh], 64
-		ja	short loc_1B6EC
+		ja	loc_1B6EC
 		mov	al, [si+1800h]
 		cbw
 		add	dx, ax
@@ -21485,7 +21485,7 @@ loc_1B6EC::				; CODE XREF: _f5_draw_spectr+11Bj
 		dec	cx
 		jz	loc_1B85F
 		cmp	byte ptr [fs:bx+44Ah], 64
-		ja	short loc_1B700
+		ja	loc_1B700
 		mov	al, [si+1A00h]
 		cbw
 		add	dx, ax
@@ -21494,7 +21494,7 @@ loc_1B700::				; CODE XREF: _f5_draw_spectr+12Fj
 		dec	cx
 		jz	loc_1B85F
 		cmp	byte ptr [fs:bx+49Ah], 64
-		ja	short loc_1B714
+		ja	loc_1B714
 		mov	al, [si+1C00h]
 		cbw
 		add	dx, ax
@@ -21503,7 +21503,7 @@ loc_1B714::				; CODE XREF: _f5_draw_spectr+143j
 		dec	cx
 		jz	loc_1B85F
 		cmp	byte ptr [fs:bx+4EAh], 40h ; '@'
-		ja	short loc_1B728
+		ja	loc_1B728
 		mov	al, [si+1E00h]
 		cbw
 		add	dx, ax
@@ -21512,7 +21512,7 @@ loc_1B728::				; CODE XREF: _f5_draw_spectr+157j
 		dec	cx
 		jz	loc_1B85F
 		cmp	byte ptr [fs:bx+53Ah], 40h ; '@'
-		ja	short loc_1B73C
+		ja	loc_1B73C
 		mov	al, [si+2000h]
 		cbw
 		add	dx, ax
@@ -21521,7 +21521,7 @@ loc_1B73C::				; CODE XREF: _f5_draw_spectr+16Bj
 		dec	cx
 		jz	loc_1B85F
 		cmp	byte ptr [fs:bx+58Ah], 40h ; '@'
-		ja	short loc_1B750
+		ja	loc_1B750
 		mov	al, [si+2200h]
 		cbw
 		add	dx, ax
@@ -21530,7 +21530,7 @@ loc_1B750::				; CODE XREF: _f5_draw_spectr+17Fj
 		dec	cx
 		jz	loc_1B85F
 		cmp	byte ptr [fs:bx+5DAh], 40h ; '@'
-		ja	short loc_1B764
+		ja	loc_1B764
 		mov	al, [si+2400h]
 		cbw
 		add	dx, ax
@@ -21539,7 +21539,7 @@ loc_1B764::				; CODE XREF: _f5_draw_spectr+193j
 		dec	cx
 		jz	loc_1B85F
 		cmp	byte ptr [fs:bx+62Ah], 40h ; '@'
-		ja	short loc_1B778
+		ja	loc_1B778
 		mov	al, [si+2600h]
 		cbw
 		add	dx, ax
@@ -21548,7 +21548,7 @@ loc_1B778::				; CODE XREF: _f5_draw_spectr+1A7j
 		dec	cx
 		jz	loc_1B85F
 		cmp	byte ptr [fs:bx+67Ah], 40h ; '@'
-		ja	short loc_1B78C
+		ja	loc_1B78C
 		mov	al, [si+2800h]
 		cbw
 		add	dx, ax
@@ -21557,7 +21557,7 @@ loc_1B78C::				; CODE XREF: _f5_draw_spectr+1BBj
 		dec	cx
 		jz	loc_1B85F
 		cmp	byte ptr [fs:bx+6CAh], 40h ; '@'
-		ja	short loc_1B7A0
+		ja	loc_1B7A0
 		mov	al, [si+2A00h]
 		cbw
 		add	dx, ax
@@ -21566,7 +21566,7 @@ loc_1B7A0::				; CODE XREF: _f5_draw_spectr+1CFj
 		dec	cx
 		jz	loc_1B85F
 		cmp	byte ptr [fs:bx+71Ah], 40h ; '@'
-		ja	short loc_1B7B4
+		ja	loc_1B7B4
 		mov	al, [si+2C00h]
 		cbw
 		add	dx, ax
@@ -21575,7 +21575,7 @@ loc_1B7B4::				; CODE XREF: _f5_draw_spectr+1E3j
 		dec	cx
 		jz	loc_1B85F
 		cmp	byte ptr [fs:bx+76Ah], 40h ; '@'
-		ja	short loc_1B7C8
+		ja	loc_1B7C8
 		mov	al, [si+2E00h]
 		cbw
 		add	dx, ax
@@ -21584,7 +21584,7 @@ loc_1B7C8::				; CODE XREF: _f5_draw_spectr+1F7j
 		dec	cx
 		jz	loc_1B85F
 		cmp	byte ptr [fs:bx+7BAh], 40h ; '@'
-		ja	short loc_1B7DC
+		ja	loc_1B7DC
 		mov	al, [si+3000h]
 		cbw
 		add	dx, ax
@@ -21593,68 +21593,68 @@ loc_1B7DC::				; CODE XREF: _f5_draw_spectr+20Bj
 		dec	cx
 		jz	loc_1B85F
 		cmp	byte ptr [fs:bx+80Ah], 40h ; '@'
-		ja	short loc_1B7F0
+		ja	loc_1B7F0
 		mov	al, [si+3200h]
 		cbw
 		add	dx, ax
 
 loc_1B7F0::				; CODE XREF: _f5_draw_spectr+21Fj
 		dec	cx
-		jz	short loc_1B85F
+		jz	loc_1B85F
 		cmp	byte ptr [fs:bx+85Ah], 40h ; '@'
-		ja	short loc_1B802
+		ja	loc_1B802
 		mov	al, [si+3400h]
 		cbw
 		add	dx, ax
 
 loc_1B802::				; CODE XREF: _f5_draw_spectr+231j
 		dec	cx
-		jz	short loc_1B85F
+		jz	loc_1B85F
 		cmp	byte ptr [fs:bx+8AAh], 40h ; '@'
-		ja	short loc_1B814
+		ja	loc_1B814
 		mov	al, [si+3600h]
 		cbw
 		add	dx, ax
 
 loc_1B814::				; CODE XREF: _f5_draw_spectr+243j
 		dec	cx
-		jz	short loc_1B85F
+		jz	loc_1B85F
 		cmp	byte ptr [fs:bx+8FAh], 40h ; '@'
-		ja	short loc_1B826
+		ja	loc_1B826
 		mov	al, [si+3800h]
 		cbw
 		add	dx, ax
 
 loc_1B826::				; CODE XREF: _f5_draw_spectr+255j
 		dec	cx
-		jz	short loc_1B85F
+		jz	loc_1B85F
 		cmp	byte ptr [fs:bx+94Ah], 40h ; '@'
-		ja	short loc_1B838
+		ja	loc_1B838
 		mov	al, [si+3A00h]
 		cbw
 		add	dx, ax
 
 loc_1B838::				; CODE XREF: _f5_draw_spectr+267j
 		dec	cx
-		jz	short loc_1B85F
+		jz	loc_1B85F
 		cmp	byte ptr [fs:bx+99Ah], 40h ; '@'
-		ja	short loc_1B84A
+		ja	loc_1B84A
 		mov	al, [si+3C00h]
 		cbw
 		add	dx, ax
 
 loc_1B84A::				; CODE XREF: _f5_draw_spectr+279j
 		dec	cx
-		jz	short loc_1B85F
+		jz	loc_1B85F
 		cmp	byte ptr [fs:bx+9EAh], 40h ; '@'
-		ja	short loc_1B85C
+		ja	loc_1B85C
 		mov	al, [si+3E00h]
 		cbw
 		add	dx, ax
 
 loc_1B85C::				; CODE XREF: _f5_draw_spectr+28Bj
 		dec	cx
-		jz	short $+2
+		jz	$+2
 
 loc_1B85F::				; CODE XREF: _f5_draw_spectr+35j
 					; _f5_draw_spectr+49j ...
@@ -21694,7 +21694,7 @@ loc_1B8BC::				; CODE XREF: _f5_draw_spectr+571j
 		mov	cx, bp
 		xor	dx, dx
 		cmp	byte ptr [fs:bx+3Ah], 40h ; '@'
-		jb	short loc_1B8CC
+		jb	loc_1B8CC
 		mov	al, [si]
 		cbw
 		add	dx, ax
@@ -21703,7 +21703,7 @@ loc_1B8CC::				; CODE XREF: _f5_draw_spectr+2FDj
 		dec	cx
 		jz	loc_1BB2F
 		cmp	byte ptr [fs:bx+8Ah], 40h ; '@'
-		jb	short loc_1B8E0
+		jb	loc_1B8E0
 		mov	al, [si+200h]
 		cbw
 		add	dx, ax
@@ -21712,7 +21712,7 @@ loc_1B8E0::				; CODE XREF: _f5_draw_spectr+30Fj
 		dec	cx
 		jz	loc_1BB2F
 		cmp	byte ptr [fs:bx+0DAh], 40h ; '@'
-		jb	short loc_1B8F4
+		jb	loc_1B8F4
 		mov	al, [si+400h]
 		cbw
 		add	dx, ax
@@ -21721,7 +21721,7 @@ loc_1B8F4::				; CODE XREF: _f5_draw_spectr+323j
 		dec	cx
 		jz	loc_1BB2F
 		cmp	byte ptr [fs:bx+12Ah], 40h ; '@'
-		jb	short loc_1B908
+		jb	loc_1B908
 		mov	al, [si+600h]
 		cbw
 		add	dx, ax
@@ -21730,7 +21730,7 @@ loc_1B908::				; CODE XREF: _f5_draw_spectr+337j
 		dec	cx
 		jz	loc_1BB2F
 		cmp	byte ptr [fs:bx+17Ah], 40h ; '@'
-		jb	short loc_1B91C
+		jb	loc_1B91C
 		mov	al, [si+800h]
 		cbw
 		add	dx, ax
@@ -21739,7 +21739,7 @@ loc_1B91C::				; CODE XREF: _f5_draw_spectr+34Bj
 		dec	cx
 		jz	loc_1BB2F
 		cmp	byte ptr [fs:bx+1CAh], 40h ; '@'
-		jb	short loc_1B930
+		jb	loc_1B930
 		mov	al, [si+0A00h]
 		cbw
 		add	dx, ax
@@ -21748,7 +21748,7 @@ loc_1B930::				; CODE XREF: _f5_draw_spectr+35Fj
 		dec	cx
 		jz	loc_1BB2F
 		cmp	byte ptr [fs:bx+21Ah], 40h ; '@'
-		jb	short loc_1B944
+		jb	loc_1B944
 		mov	al, [si+0C00h]
 		cbw
 		add	dx, ax
@@ -21757,7 +21757,7 @@ loc_1B944::				; CODE XREF: _f5_draw_spectr+373j
 		dec	cx
 		jz	loc_1BB2F
 		cmp	byte ptr [fs:bx+26Ah], 40h ; '@'
-		jb	short loc_1B958
+		jb	loc_1B958
 		mov	al, [si+0E00h]
 		cbw
 		add	dx, ax
@@ -21766,7 +21766,7 @@ loc_1B958::				; CODE XREF: _f5_draw_spectr+387j
 		dec	cx
 		jz	loc_1BB2F
 		cmp	byte ptr [fs:bx+2BAh], 40h ; '@'
-		jb	short loc_1B96C
+		jb	loc_1B96C
 		mov	al, [si+1000h]
 		cbw
 		add	dx, ax
@@ -21775,7 +21775,7 @@ loc_1B96C::				; CODE XREF: _f5_draw_spectr+39Bj
 		dec	cx
 		jz	loc_1BB2F
 		cmp	byte ptr [fs:bx+30Ah], 40h ; '@'
-		jb	short loc_1B980
+		jb	loc_1B980
 		mov	al, [si+1200h]
 		cbw
 		add	dx, ax
@@ -21784,7 +21784,7 @@ loc_1B980::				; CODE XREF: _f5_draw_spectr+3AFj
 		dec	cx
 		jz	loc_1BB2F
 		cmp	byte ptr [fs:bx+35Ah], 40h ; '@'
-		jb	short loc_1B994
+		jb	loc_1B994
 		mov	al, [si+1400h]
 		cbw
 		add	dx, ax
@@ -21793,7 +21793,7 @@ loc_1B994::				; CODE XREF: _f5_draw_spectr+3C3j
 		dec	cx
 		jz	loc_1BB2F
 		cmp	byte ptr [fs:bx+3AAh], 40h ; '@'
-		jb	short loc_1B9A8
+		jb	loc_1B9A8
 		mov	al, [si+1600h]
 		cbw
 		add	dx, ax
@@ -21802,7 +21802,7 @@ loc_1B9A8::				; CODE XREF: _f5_draw_spectr+3D7j
 		dec	cx
 		jz	loc_1BB2F
 		cmp	byte ptr [fs:bx+3FAh], 40h ; '@'
-		jb	short loc_1B9BC
+		jb	loc_1B9BC
 		mov	al, [si+1800h]
 		cbw
 		add	dx, ax
@@ -21811,7 +21811,7 @@ loc_1B9BC::				; CODE XREF: _f5_draw_spectr+3EBj
 		dec	cx
 		jz	loc_1BB2F
 		cmp	byte ptr [fs:bx+44Ah], 40h ; '@'
-		jb	short loc_1B9D0
+		jb	loc_1B9D0
 		mov	al, [si+1A00h]
 		cbw
 		add	dx, ax
@@ -21820,7 +21820,7 @@ loc_1B9D0::				; CODE XREF: _f5_draw_spectr+3FFj
 		dec	cx
 		jz	loc_1BB2F
 		cmp	byte ptr [fs:bx+49Ah], 40h ; '@'
-		jb	short loc_1B9E4
+		jb	loc_1B9E4
 		mov	al, [si+1C00h]
 		cbw
 		add	dx, ax
@@ -21829,7 +21829,7 @@ loc_1B9E4::				; CODE XREF: _f5_draw_spectr+413j
 		dec	cx
 		jz	loc_1BB2F
 		cmp	byte ptr [fs:bx+4EAh], 40h ; '@'
-		jb	short loc_1B9F8
+		jb	loc_1B9F8
 		mov	al, [si+1E00h]
 		cbw
 		add	dx, ax
@@ -21838,7 +21838,7 @@ loc_1B9F8::				; CODE XREF: _f5_draw_spectr+427j
 		dec	cx
 		jz	loc_1BB2F
 		cmp	byte ptr [fs:bx+53Ah], 40h ; '@'
-		jb	short loc_1BA0C
+		jb	loc_1BA0C
 		mov	al, [si+2000h]
 		cbw
 		add	dx, ax
@@ -21847,7 +21847,7 @@ loc_1BA0C::				; CODE XREF: _f5_draw_spectr+43Bj
 		dec	cx
 		jz	loc_1BB2F
 		cmp	byte ptr [fs:bx+58Ah], 40h ; '@'
-		jb	short loc_1BA20
+		jb	loc_1BA20
 		mov	al, [si+2200h]
 		cbw
 		add	dx, ax
@@ -21856,7 +21856,7 @@ loc_1BA20::				; CODE XREF: _f5_draw_spectr+44Fj
 		dec	cx
 		jz	loc_1BB2F
 		cmp	byte ptr [fs:bx+5DAh], 40h ; '@'
-		jb	short loc_1BA34
+		jb	loc_1BA34
 		mov	al, [si+2400h]
 		cbw
 		add	dx, ax
@@ -21865,7 +21865,7 @@ loc_1BA34::				; CODE XREF: _f5_draw_spectr+463j
 		dec	cx
 		jz	loc_1BB2F
 		cmp	byte ptr [fs:bx+62Ah], 40h ; '@'
-		jb	short loc_1BA48
+		jb	loc_1BA48
 		mov	al, [si+2600h]
 		cbw
 		add	dx, ax
@@ -21874,7 +21874,7 @@ loc_1BA48::				; CODE XREF: _f5_draw_spectr+477j
 		dec	cx
 		jz	loc_1BB2F
 		cmp	byte ptr [fs:bx+67Ah], 40h ; '@'
-		jb	short loc_1BA5C
+		jb	loc_1BA5C
 		mov	al, [si+2800h]
 		cbw
 		add	dx, ax
@@ -21883,7 +21883,7 @@ loc_1BA5C::				; CODE XREF: _f5_draw_spectr+48Bj
 		dec	cx
 		jz	loc_1BB2F
 		cmp	byte ptr [fs:bx+6CAh], 40h ; '@'
-		jb	short loc_1BA70
+		jb	loc_1BA70
 		mov	al, [si+2A00h]
 		cbw
 		add	dx, ax
@@ -21892,7 +21892,7 @@ loc_1BA70::				; CODE XREF: _f5_draw_spectr+49Fj
 		dec	cx
 		jz	loc_1BB2F
 		cmp	byte ptr [fs:bx+71Ah], 40h ; '@'
-		jb	short loc_1BA84
+		jb	loc_1BA84
 		mov	al, [si+2C00h]
 		cbw
 		add	dx, ax
@@ -21901,7 +21901,7 @@ loc_1BA84::				; CODE XREF: _f5_draw_spectr+4B3j
 		dec	cx
 		jz	loc_1BB2F
 		cmp	byte ptr [fs:bx+76Ah], 40h ; '@'
-		jb	short loc_1BA98
+		jb	loc_1BA98
 		mov	al, [si+2E00h]
 		cbw
 		add	dx, ax
@@ -21910,7 +21910,7 @@ loc_1BA98::				; CODE XREF: _f5_draw_spectr+4C7j
 		dec	cx
 		jz	loc_1BB2F
 		cmp	byte ptr [fs:bx+7BAh], 40h ; '@'
-		jb	short loc_1BAAC
+		jb	loc_1BAAC
 		mov	al, [si+3000h]
 		cbw
 		add	dx, ax
@@ -21919,68 +21919,68 @@ loc_1BAAC::				; CODE XREF: _f5_draw_spectr+4DBj
 		dec	cx
 		jz	loc_1BB2F
 		cmp	byte ptr [fs:bx+80Ah], 40h ; '@'
-		jb	short loc_1BAC0
+		jb	loc_1BAC0
 		mov	al, [si+3200h]
 		cbw
 		add	dx, ax
 
 loc_1BAC0::				; CODE XREF: _f5_draw_spectr+4EFj
 		dec	cx
-		jz	short loc_1BB2F
+		jz	loc_1BB2F
 		cmp	byte ptr [fs:bx+85Ah], 40h ; '@'
-		jb	short loc_1BAD2
+		jb	loc_1BAD2
 		mov	al, [si+3400h]
 		cbw
 		add	dx, ax
 
 loc_1BAD2::				; CODE XREF: _f5_draw_spectr+501j
 		dec	cx
-		jz	short loc_1BB2F
+		jz	loc_1BB2F
 		cmp	byte ptr [fs:bx+8AAh], 40h ; '@'
-		jb	short loc_1BAE4
+		jb	loc_1BAE4
 		mov	al, [si+3600h]
 		cbw
 		add	dx, ax
 
 loc_1BAE4::				; CODE XREF: _f5_draw_spectr+513j
 		dec	cx
-		jz	short loc_1BB2F
+		jz	loc_1BB2F
 		cmp	byte ptr [fs:bx+8FAh], 40h ; '@'
-		jb	short loc_1BAF6
+		jb	loc_1BAF6
 		mov	al, [si+3800h]
 		cbw
 		add	dx, ax
 
 loc_1BAF6::				; CODE XREF: _f5_draw_spectr+525j
 		dec	cx
-		jz	short loc_1BB2F
+		jz	loc_1BB2F
 		cmp	byte ptr [fs:bx+94Ah], 40h ; '@'
-		jb	short loc_1BB08
+		jb	loc_1BB08
 		mov	al, [si+3A00h]
 		cbw
 		add	dx, ax
 
 loc_1BB08::				; CODE XREF: _f5_draw_spectr+537j
 		dec	cx
-		jz	short loc_1BB2F
+		jz	loc_1BB2F
 		cmp	byte ptr [fs:bx+99Ah], 40h ; '@'
-		jb	short loc_1BB1A
+		jb	loc_1BB1A
 		mov	al, [si+3C00h]
 		cbw
 		add	dx, ax
 
 loc_1BB1A::				; CODE XREF: _f5_draw_spectr+549j
 		dec	cx
-		jz	short loc_1BB2F
+		jz	loc_1BB2F
 		cmp	byte ptr [fs:bx+9EAh], 40h ; '@'
-		jb	short loc_1BB2C
+		jb	loc_1BB2C
 		mov	al, [si+3E00h]
 		cbw
 		add	dx, ax
 
 loc_1BB2C::				; CODE XREF: _f5_draw_spectr+55Bj
 		dec	cx
-		jz	short $+2
+		jz	$+2
 
 loc_1BB2F::				; CODE XREF: _f5_draw_spectr+305j
 					; _f5_draw_spectr+319j ...
@@ -22063,29 +22063,29 @@ _spectr_1BBC1 proc near	; CODE XREF: _f5_draw_spectr+2DFp
 		mov	ebx, eax
 		call	_spectr_1C4F8
 		or	ah, ah
-		jz	short loc_1BBF4
+		jz	loc_1BBF4
 		mov	al, 0FFh
 
 loc_1BBF4::				; CODE XREF: _spectr_1BBC1+2Fj
 		cmp	_byte_1DE82, 0
-		jz	short loc_1BC0C
+		jz	loc_1BC0C
 		mov	ah, [di+64h]
 		sub	ah, _byte_1DE82
-		jnb	short loc_1BC06
+		jnb	loc_1BC06
 		xor	ah, ah
 
 loc_1BC06::				; CODE XREF: _spectr_1BBC1+41j
 		cmp	ah, al
-		jb	short loc_1BC0C
+		jb	loc_1BC0C
 		mov	al, ah
 
 loc_1BC0C::				; CODE XREF: _spectr_1BBC1+38j
 					; _spectr_1BBC1+47j
 		mov	[di], al
 		cmp	byte ptr [di+12Ch], 0
-		jz	short loc_1BC1B
+		jz	loc_1BC1B
 		cmp	al, [di+0C8h]
-		jb	short loc_1BC24
+		jb	loc_1BC24
 
 loc_1BC1B::				; CODE XREF: _spectr_1BBC1+52j
 		mov	[di+0C8h], al
@@ -22096,7 +22096,7 @@ loc_1BC24::				; CODE XREF: _spectr_1BBC1+58j
 		add	si, 8
 		pop	cx
 		dec	cx
-		jnz	short _spectr_1BBC1
+		jnz	_spectr_1BBC1
 		retn
 _spectr_1BBC1 endp
 
@@ -22111,19 +22111,19 @@ _spectr_1BC2D proc near	; CODE XREF: _f5_draw_spectr+5C6p
 loc_1BC30::				; CODE XREF: _spectr_1BC2D+B7j
 		mov	al, [bx]
 		cmp	al, 90
-		jb	short loc_1BC38
+		jb	loc_1BC38
 		mov	al, 90
 
 loc_1BC38::				; CODE XREF: _spectr_1BC2D+7j
 		mov	ah, [bx+64h]
 		cmp	ah, 90
-		jb	short loc_1BC42
+		jb	loc_1BC42
 		mov	ah, 90
 
 loc_1BC42::				; CODE XREF: _spectr_1BC2D+11j
 		cmp	al, ah
-		jz	short loc_1BC92
-		jb	short loc_1BC70
+		jz	loc_1BC92
+		jb	loc_1BC70
 		movzx	dx, ah
 		shl	dx, 6
 		mov	di, dx
@@ -22141,8 +22141,8 @@ loc_1BC5F::				; CODE XREF: _spectr_1BC2D+3Fj
 		inc	ah
 		sub	di, 140h
 		dec	dl
-		jnz	short loc_1BC5F
-		jmp	short loc_1BC92
+		jnz	loc_1BC5F
+		jmp	loc_1BC92
 ; ---------------------------------------------------------------------------
 
 loc_1BC70::				; CODE XREF: _spectr_1BC2D+19j
@@ -22161,17 +22161,17 @@ loc_1BC87::				; CODE XREF: _spectr_1BC2D+63j
 		mov	[es:di], ax
 		sub	di, 140h
 		dec	dl
-		jnz	short loc_1BC87
+		jnz	loc_1BC87
 
 loc_1BC92::				; CODE XREF: _spectr_1BC2D+17j
 					; _spectr_1BC2D+41j
 		cmp	byte ptr [bx+12Ch], 0
-		jz	short loc_1BCDF
+		jz	loc_1BCDF
 		dec	byte ptr [bx+12Ch]
-		jnz	short loc_1BCC0
+		jnz	loc_1BCC0
 		movzx	dx, byte ptr [bx+0C8h]
 		cmp	dl, 5Ah	; 'Z'
-		jb	short loc_1BCAB
+		jb	loc_1BCAB
 		mov	dl, 5Ah	; 'Z'
 
 loc_1BCAB::				; CODE XREF: _spectr_1BC2D+7Aj
@@ -22184,13 +22184,13 @@ loc_1BCAB::				; CODE XREF: _spectr_1BC2D+7Aj
 loc_1BCB7::
 		add	di, bp
 		mov	word ptr [es:di], 0
-		jmp	short loc_1BCDF
+		jmp	loc_1BCDF
 ; ---------------------------------------------------------------------------
 
 loc_1BCC0::				; CODE XREF: _spectr_1BC2D+70j
 		movzx	dx, byte ptr [bx+0C8h]
 		cmp	dl, 5Ah	; 'Z'
-		jb	short loc_1BCCC
+		jb	loc_1BCCC
 		mov	dl, 5Ah	; 'Z'
 
 loc_1BCCC::				; CODE XREF: _spectr_1BC2D+9Bj
@@ -22219,19 +22219,19 @@ _spectr_1BCE9 proc near	; CODE XREF: _f5_draw_spectr+5BDp
 					; _f5_draw_spectr+5CFp
 		mov	al, [bx]
 		cmp	al, 90
-		jb	short loc_1BCF1
+		jb	loc_1BCF1
 		mov	al, 90
 
 loc_1BCF1::				; CODE XREF: _spectr_1BCE9+4j
 		mov	ah, [bx+64h]
 		cmp	ah, 90
-		jb	short loc_1BCFB
+		jb	loc_1BCFB
 		mov	ah, 90
 
 loc_1BCFB::				; CODE XREF: _spectr_1BCE9+Ej
 		cmp	al, ah
-		jz	short locret_1BD67
-		jb	short loc_1BD3E
+		jz	locret_1BD67
+		jb	loc_1BD3E
 		movzx	dx, ah
 		shl	dx, 6
 		mov	di, dx
@@ -22243,7 +22243,7 @@ loc_1BCFB::				; CODE XREF: _spectr_1BCE9+Ej
 		sub	dl, ah
 		shr	ah, 1
 		mov	eax, 0FCFCFCFCh
-		jnb	short loc_1BD26
+		jnb	loc_1BD26
 		or	eax, 1010101h
 
 loc_1BD26::				; CODE XREF: _spectr_1BCE9+35j
@@ -22253,7 +22253,7 @@ loc_1BD26::				; CODE XREF: _spectr_1BCE9+35j
 		sub	di, 140h
 		xor	eax, 1010101h
 		dec	dl
-		jnz	short loc_1BD26
+		jnz	loc_1BD26
 		retn
 ; ---------------------------------------------------------------------------
 
@@ -22274,7 +22274,7 @@ loc_1BD56::				; CODE XREF: _spectr_1BCE9+7Cj
 		mov	[es:di+4], eax
 		sub	di, 140h
 		dec	dl
-		jnz	short loc_1BD56
+		jnz	loc_1BD56
 
 locret_1BD67::				; CODE XREF: _spectr_1BCE9+14j
 		retn
@@ -22292,7 +22292,7 @@ _f6_draw::				; DATA XREF: _f6_undoc+6o
 		cmp	cx, _word_1DE6E
 
 loc_1BD80::
-		jbe	short loc_1BD86
+		jbe	loc_1BD86
 		mov	cx, _word_1DE6E
 
 loc_1BD86::				; CODE XREF: seg001:loc_1BD80j
@@ -22305,13 +22305,13 @@ loc_1BD88::				; CODE XREF: seg001:2DDCj
 		mov	dl, al
 		add	al, 31h	; '1'
 		cmp	al, 39h	; '9'
-		jbe	short loc_1BD95
+		jbe	loc_1BD95
 		add	al, 7
 
 loc_1BD95::				; CODE XREF: seg001:2D41j
 		mov	ah, 1Eh
 		cmp	dl, _byte_1DE84
-		jz	short loc_1BD9F
+		jz	loc_1BD9F
 		mov	ah, 7Eh	; '~'
 
 loc_1BD9F::				; CODE XREF: seg001:2D4Bj
@@ -22337,9 +22337,9 @@ loc_1BD9F::				; CODE XREF: seg001:2D4Bj
 		add	si, ax
 		mov	al, 4Dh	; 'M'
 		cmp	dl, 40h	; '@'
-		jz	short loc_1BDF2
+		jz	loc_1BDF2
 		mov	al, 4Ch	; 'L'
-		jb	short loc_1BDF2
+		jb	loc_1BDF2
 		mov	al, 52h	; 'R'
 
 loc_1BDF2::				; CODE XREF: seg001:2D9Aj seg001:2D9Ej
@@ -22349,14 +22349,14 @@ loc_1BDF2::				; CODE XREF: seg001:2D9Aj seg001:2D9Ej
 		cld
 		mov	al, [fs:bx+3Ah]
 		sub	al, 40h	; '@'
-		js	short loc_1BE07
+		js	loc_1BE07
 		inc	si
 
 loc_1BE07::				; CODE XREF: seg001:2DB4j
 		cmp	al, 0F7h ; '˜'
-		jl	short loc_1BE10
+		jl	loc_1BE10
 		cmp	al, 9
-		jg	short loc_1BE10
+		jg	loc_1BE10
 		inc	si
 
 loc_1BE10::				; CODE XREF: seg001:2DB9j seg001:2DBDj
@@ -22389,7 +22389,7 @@ _hex_1BE39 proc near		; CODE XREF: seg001:2DE5p
 		and	al, 0Fh
 		or	al, 30h
 		cmp	al, 39h	; '9'
-		jbe	short loc_1BE43
+		jbe	loc_1BE43
 		add	al, 7
 
 loc_1BE43::				; CODE XREF: _hex_1BE39+6j
@@ -22424,7 +22424,7 @@ loc_1BE85::				; CODE XREF: _message_1BE77+15j
 		inc	ah
 		inc	si
 		or	al, al
-		jnz	short loc_1BE85
+		jnz	loc_1BE85
 		mov	cl, 4Eh	; 'N'
 		sub	cl, ah
 		shr	ah, 1
@@ -22469,18 +22469,18 @@ _draw_frame proc near		; CODE XREF: _start+1FEp _start+278p ...
 		inc	bp
 		movzx	si, cl
 		sub	bp, si
-		jbe	short loc_1BF57
+		jbe	loc_1BF57
 		sub	bp, 2
-		jb	short loc_1BF57
+		jb	loc_1BF57
 		mov	dl, dh
 		inc	dl
 		sub	dl, ch
-		jbe	short loc_1BF57
+		jbe	loc_1BF57
 		xor	dh, dh
 		sub	dx, 2
-		jb	short loc_1BF57
+		jb	loc_1BF57
 		cmp	al, 6
-		jnb	short loc_1BF57
+		jnb	loc_1BF57
 		movzx	si, al
 		imul	si, 6
 		add	si, offset _frameborder ; "	€€€€€€…ª»ºÕ∫⁄ø¿Ÿƒ≥÷∑”Ωƒ∫’∏‘æÕ≥"
@@ -22488,7 +22488,7 @@ _draw_frame proc near		; CODE XREF: _start+1FEp _start+278p ...
 		cld
 		stosw
 		mov	cx, bp
-		jcxz	short loc_1BF11
+		jcxz	loc_1BF11
 		mov	al, [si+4]
 		rep stosw
 
@@ -22497,7 +22497,7 @@ loc_1BF11::				; CODE XREF: _draw_frame+47j
 		mov	al, [si+1]
 		stosw
 		or	dx, dx
-		jz	short loc_1BF3A
+		jz	loc_1BF3A
 
 loc_1BF1B::				; CODE XREF: _draw_frame+75j
 		xchg	bl, ah
@@ -22507,7 +22507,7 @@ loc_1BF1B::				; CODE XREF: _draw_frame+75j
 		mov	al, [si+5]
 		stosw
 		mov	cx, bp
-		jcxz	short loc_1BF31
+		jcxz	loc_1BF31
 		mov	al, ' '
 		rep stosw
 
@@ -22516,7 +22516,7 @@ loc_1BF31::				; CODE XREF: _draw_frame+68j
 		mov	al, [si+5]
 		stosw
 		dec	dx
-		jnz	short loc_1BF1B
+		jnz	loc_1BF1B
 
 loc_1BF3A::				; CODE XREF: _draw_frame+56j
 		xchg	bl, ah
@@ -22527,7 +22527,7 @@ loc_1BF3A::				; CODE XREF: _draw_frame+56j
 		stosw
 		xchg	bl, ah
 		mov	cx, bp
-		jcxz	short loc_1BF53
+		jcxz	loc_1BF53
 		mov	al, [si+4]
 		rep stosw
 
@@ -22550,7 +22550,7 @@ _write_scr proc near		; CODE XREF: _start+20Bp _start+72Ap ...
 		mov	bp, di
 		add	di, [si]
 		add	si, 2
-		jmp	short _n2_setcolor
+		jmp	_n2_setcolor
 _write_scr endp
 
 ; ---------------------------------------------------------------------------
@@ -22574,21 +22574,21 @@ _text_1BF69 proc near		; CODE XREF: _filelist_198B8+102p
 		mov	al, [si]
 		inc	si		; str
 		or	al, al
-		jz	short locret_1BF85
+		jz	locret_1BF85
 		cmp	al, 1
-		jz	short _n1_movepos
+		jz	_n1_movepos
 		cmp	al, 2
-		jz	short _n2_setcolor
+		jz	_n2_setcolor
 		mov	[es:di], ax
 		add	di, 2
-		jmp	short _text_1BF69
+		jmp	_text_1BF69
 ; ---------------------------------------------------------------------------
 
 _n2_setcolor::				; CODE XREF: _write_scr+7j
 					; _text_1BF69+Dj
 		lodsb
 		mov	ah, al
-		jmp	short _text_1BF69
+		jmp	_text_1BF69
 ; ---------------------------------------------------------------------------
 
 locret_1BF85::				; CODE XREF: _text_1BF69+5j
@@ -22613,7 +22613,7 @@ _put_message proc near	; CODE XREF: _start+2A8p _start+2EDp ...
 		cld
 		lodsb
 		or	al, al
-		jnz	short loc_1BF86
+		jnz	loc_1BF86
 		retn
 _put_message endp ; sp-analysis failed
 
@@ -22627,7 +22627,7 @@ _put_message2 proc near	; CODE XREF: _put_message2+6j
 		cld
 		lods	byte ptr [fs:si]
 		or	al, al
-		jnz	short _put_message2
+		jnz	_put_message2
 		retn
 _put_message2 endp
 
@@ -22642,7 +22642,7 @@ _loadcfg proc	near		; CODE XREF: _start:loc_190D3p
 					; DS:DX	-> ASCIZ filename
 					; AL = access mode
 					; 0 - read
-		jb	short loc_1BFE3
+		jb	loc_1BFE3
 		mov	bx, ax
 		mov	dx, offset _cfg_buffer
 		mov	cx, 4
@@ -22652,11 +22652,11 @@ _loadcfg proc	near		; CODE XREF: _start:loc_190D3p
 					; BX = file handle, CX = number	of bytes to read
 					; DS:DX	-> buffer
 		pop	bx
-		jb	short loc_1BFC9
+		jb	loc_1BFC9
 		mov	eax, _dword_1DCEC
-		cmp	eax, [dword ptr	_cfg_buffer]
+		cmp	eax, dword ptr	_cfg_buffer
 		stc
-		jnz	short loc_1BFC9
+		jnz	loc_1BFC9
 		mov	dx, offset _snd_card_type
 		mov	cx, 0Ch
 		mov	ah, 3Fh	; '?'
@@ -22672,7 +22672,7 @@ loc_1BFC9::				; CODE XREF: _loadcfg+18j _loadcfg+24j
 		int	21h		; DOS -	2+ - CLOSE A FILE WITH HANDLE
 					; BX = file handle
 		popf
-		jb	short loc_1BFE3
+		jb	loc_1BFE3
 		mov	si, offset _snd_card_type
 		mov	cx, 0Ch
 		xor	al, al
@@ -22682,7 +22682,7 @@ loc_1BFD9::				; CODE XREF: _loadcfg+45j
 		inc	si
 		loop	loc_1BFD9
 		or	al, al
-		jnz	short loc_1BFE3
+		jnz	loc_1BFE3
 		retn
 ; ---------------------------------------------------------------------------
 
@@ -22718,11 +22718,11 @@ _getexename proc near		; CODE XREF: _init_vga_waves+2Fp
 
 loc_1C031::				; CODE XREF: _getexename+18j
 		repne scasb
-		jnz	short loc_1C050
+		jnz	loc_1C050
 		cmp	[es:di], al
-		jnz	short loc_1C031
+		jnz	loc_1C031
 		mov	cx, [es:di+1]
-		jcxz	short loc_1C050
+		jcxz	loc_1C050
 		add	di, 3
 
 loc_1C043::				; CODE XREF: _getexename+2Cj
@@ -22731,7 +22731,7 @@ loc_1C043::				; CODE XREF: _getexename+2Cj
 		inc	di
 		inc	si
 		or	al, al
-		jnz	short loc_1C043
+		jnz	loc_1C043
 		clc
 		retn
 ; ---------------------------------------------------------------------------
@@ -22801,7 +22801,7 @@ _graph_1C070 endp
 
 
 _int9_keyb proc far		; DATA XREF: _start+133o
-		cmp	[cs:_byte_1C1B8], 1
+		cmp	_byte_1C1B8, 1
 		jz	loc_1C11F
 		push	ax
 		in	al, 60h		; 8042 keyboard	controller data	register
@@ -22809,29 +22809,29 @@ _int9_keyb proc far		; DATA XREF: _start+133o
 		jz	_l_escaped_scancode
 		cmp	al, 0E1h ; '·'
 		jz	_l_escaped_scancode
-		mov	ah, [cs:_prev_scan_code]
+		mov	ah, cs:_prev_scan_code
 		or	ah, ah
-		jz	short loc_1C0A5
-		mov	[cs:_prev_scan_code], 0
+		jz	loc_1C0A5
+		mov	cs:_prev_scan_code, 0
 
 loc_1C0A5::				; CODE XREF: _int9_keyb+20j
 		cmp	al, 36h	; '6'
-		jz	short _l_rshift
+		jz	_l_rshift
 		cmp	al, 0B6h ; '∂'
-		jz	short _l_rshiftup
+		jz	_l_rshiftup
 		cmp	al, 2Ah	; '*'
-		jz	short _l_lshift
+		jz	_l_lshift
 		cmp	al, 0AAh ; '™'
-		jz	short _l_lshiftup
+		jz	_l_lshiftup
 		cmp	al, 1Dh
-		jz	short _l_ctrl
+		jz	_l_ctrl
 		cmp	al, 9Dh	; 'ù'
-		jz	short _l_lctrlup
+		jz	_l_lctrlup
 		cmp	al, 38h	; '8'
-		jz	short _l_alt
+		jz	_l_alt
 		cmp	al, 0B8h ; '∏'
-		jz	short _l_altup
-		mov	[cs:_key_code], ax
+		jz	_l_altup
+		mov	_key_code, ax
 
 loc_1C0C9::				; CODE XREF: _int9_keyb+62j
 					; _int9_keyb+6Aj ...
@@ -22868,54 +22868,54 @@ loc_1C0C9::				; CODE XREF: _int9_keyb+62j
 ; ---------------------------------------------------------------------------
 
 _l_rshift::				; CODE XREF: _int9_keyb+2Aj
-		or	[cs:_keyb_switches], 1
-		jmp	short loc_1C0C9
+		or	_keyb_switches, 1
+		jmp	loc_1C0C9
 ; ---------------------------------------------------------------------------
 
 _l_rshiftup::				; CODE XREF: _int9_keyb+2Ej
-		and	[cs:_keyb_switches], not	1
-		jmp	short loc_1C0C9
+		and	_keyb_switches, not	1
+		jmp	loc_1C0C9
 ; ---------------------------------------------------------------------------
 
 _l_lshift::				; CODE XREF: _int9_keyb+32j
-		or	[cs:_keyb_switches], 10b
-		jmp	short loc_1C0C9
+		or	_keyb_switches, 10b
+		jmp	loc_1C0C9
 ; ---------------------------------------------------------------------------
 
 _l_lshiftup::				; CODE XREF: _int9_keyb+36j
-		and	[cs:_keyb_switches], not	10b
-		jmp	short loc_1C0C9
+		and	_keyb_switches, not	10b
+		jmp	loc_1C0C9
 ; ---------------------------------------------------------------------------
 
 _l_ctrl::					; CODE XREF: _int9_keyb+3Aj
-		or	[cs:_keyb_switches], 100b
-		jmp	short loc_1C0C9
+		or	_keyb_switches, 100b
+		jmp	loc_1C0C9
 ; ---------------------------------------------------------------------------
 
 _l_lctrlup::				; CODE XREF: _int9_keyb+3Ej
-		and	[cs:_keyb_switches], not	100b
-		jmp	short loc_1C0C9
+		and	_keyb_switches, not	100b
+		jmp	loc_1C0C9
 ; ---------------------------------------------------------------------------
 		assume ds:dseg
 
 _l_alt::					; CODE XREF: _int9_keyb+42j
-		or	[cs:_keyb_switches], 1000b
-		jmp	short loc_1C0C9
+		or	_keyb_switches, 1000b
+		jmp	loc_1C0C9
 ; ---------------------------------------------------------------------------
 
 _l_altup::				; CODE XREF: _int9_keyb+46j
-		and	[cs:_keyb_switches], not	1000b
-		jmp	short loc_1C0C9
+		and	_keyb_switches, not	1000b
+		jmp	loc_1C0C9
 ; ---------------------------------------------------------------------------
 
 _l_escaped_scancode::			; CODE XREF: _int9_keyb+Fj
 					; _int9_keyb+15j
-		mov	[cs:_prev_scan_code], al
-		jmp	short loc_1C0C9
+		mov	cs:_prev_scan_code, al
+		jmp	loc_1C0C9
 ; ---------------------------------------------------------------------------
 
 loc_1C11F::				; CODE XREF: _int9_keyb+6j
-		jmp	[cs:_oint9_1C1A4]
+		jmp	cs:_oint9_1C1A4
 _int9_keyb endp
 
 
@@ -22928,7 +22928,7 @@ _get_keybsw proc near
 		mov	es, ax
 		assume es:nothing
 		mov	ax, [es:17h]
-		mov	[cs:_keyb_switches], ax
+		mov	_keyb_switches, ax
 		pop	es
 		assume es:nothing
 		retn
@@ -22943,7 +22943,7 @@ _set_keybsw proc near
 		xor	ax, ax
 		mov	es, ax
 		assume es:nothing
-		mov	ax, [cs:_keyb_switches]
+		mov	ax, _keyb_switches
 		mov	[es:17h], ax
 		pop	es
 		assume es:nothing
@@ -22965,10 +22965,10 @@ _prev_scan_code	db 0			; DATA XREF: _int9_keyb+19r
 _int24 proc far		; DATA XREF: _start+13Bo
 		mov	al, 3
 		test	ah, 8
-		jnz	short locret_1C159
+		jnz	locret_1C159
 		mov	al, 0
 		test	ah, 20h
-		jnz	short locret_1C159
+		jnz	locret_1C159
 		mov	al, 1
 
 locret_1C159::				; CODE XREF: _int24+5j _int24+Cj
@@ -22982,22 +22982,22 @@ _int24 endp
 _int2f_checkmyself proc far	; DATA XREF: _start+143o
 		pushf
 		cmp	ax, 60FFh
-		jz	short _lyesitsme	; DS
+		jz	_lyesitsme	; DS
 
 loc_1C160::				; CODE XREF: _int2f_checkmyself+10j
 					; _int2f_checkmyself+16j
 		popf
-		jmp	[cs:_oint2f_1C1B4]
+		jmp	cs:_oint2f_1C1B4
 ; ---------------------------------------------------------------------------
 
 _lyesitsme::				; CODE XREF: _int2f_checkmyself+4j
 		cmp	bx, 5344h	; DS
-		jnz	short loc_1C160
+		jnz	loc_1C160
 		cmp	cx, 4D50h	; PM
-		jnz	short loc_1C160
+		jnz	loc_1C160
 		popf
 		cmp	dl, 1
-		jz	short loc_1C17C
+		jz	loc_1C17C
 		mov	ax, 4F4Bh	; KO
 		iret
 ; ---------------------------------------------------------------------------
@@ -23020,7 +23020,7 @@ _int2f_checkmyself endp
 _int1a_timer proc near	; DATA XREF: _dosexec+47o
 		pushf
 		or	ah, ah
-		jnz	short loc_1C19C
+		jnz	loc_1C19C
 		pushad
 		push	ds
 		push	es
@@ -23031,7 +23031,7 @@ _int1a_timer proc near	; DATA XREF: _dosexec+47o
 
 loc_1C19C::				; CODE XREF: _int1a_timer+3j
 		popf
-		jmp	[cs:_int1Avect]
+		jmp	cs:_int1Avect
 _int1a_timer endp
 
 ; ---------------------------------------------------------------------------
@@ -23069,13 +23069,13 @@ _dosexec proc	near		; CODE XREF: _start+747p
 					; DH,DL	= row, column (0,0 = upper left)
 					; BH = page number
 		test	_byte_1DE78, 2
-		jz	short loc_1C209
+		jz	loc_1C209
 		mov	ax, 351Ah
 		int	21h		; DOS -	2+ - GET INTERRUPT VECTOR
 					; AL = interrupt number
 					; Return: ES:BX	= value	of interrupt vector
-		mov	word ptr [cs:_int1Avect], bx
-		mov	word ptr [cs:_int1Avect+2], es
+		mov	word ptr cs:_int1Avect, bx
+		mov	word ptr cs:_int1Avect[2], es
 		push	ds
 		mov	ax, cs
 		mov	ds, ax
@@ -23092,13 +23092,13 @@ loc_1C209::				; CODE XREF: _dosexec+31j
 		mov	si, offset _byte_1DD3F ;	str
 		call	_dosgetcurdir
 		mov	al, 1
-		mov	[cs:_byte_1C1B8], al
+		mov	cs:_byte_1C1B8, al
 		call	sub_12D35
 		mov	es, _esseg_atstart
 		mov	ax, [es:2Ch]
 		mov	_word_24445, ax
 		call	_get_comspec
-		jb	short loc_1C23E
+		jb	loc_1C23E
 		mov	dx, di
 		push	ds
 		mov	ax, ds
@@ -23115,12 +23115,12 @@ loc_1C209::				; CODE XREF: _dosexec+31j
 
 loc_1C23E::				; CODE XREF: _dosexec+6Fj
 		mov	al, 0
-		mov	[cs:_byte_1C1B8], al
+		mov	cs:_byte_1C1B8, al
 		call	sub_12D35
 		test	_byte_1DE78, 2
-		jz	short loc_1C25C
+		jz	loc_1C25C
 		push	ds
-		lds	dx, [cs:_int1Avect]
+		lds	dx, cs:_int1Avect
 		mov	ax, 251Ah
 		int	21h		; DOS -	SET INTERRUPT VECTOR
 					; AL = interrupt number
@@ -23147,19 +23147,19 @@ _get_comspec proc near	; CODE XREF: _dosexec+6Cp
 loc_1C273::				; CODE XREF: _get_comspec+2Fj
 		cmp	byte ptr [es:di], 0
 		stc
-		jz	short locret_1C29D
+		jz	locret_1C29D
 		cmp	dword ptr [es:di], 534D4F43h ; COMSPEC=
-		jnz	short loc_1C28F
+		jnz	loc_1C28F
 		cmp	dword ptr [es:di+4], 3D434550h
-		jz	short loc_1C299
+		jz	loc_1C299
 
 loc_1C28F::				; CODE XREF: _get_comspec+1Aj
 					; _get_comspec+2Cj
 		inc	di
 		cmp	byte ptr [es:di], 0
-		jnz	short loc_1C28F
+		jnz	loc_1C28F
 		inc	di
-		jmp	short loc_1C273
+		jmp	loc_1C273
 ; ---------------------------------------------------------------------------
 
 loc_1C299::				; CODE XREF: _get_comspec+25j
@@ -23185,21 +23185,21 @@ _find_mods proc near		; CODE XREF: _start+1A1p
 		xor	al, al
 		cld
 		repne scasb
-		jnz	short loc_1C321
+		jnz	loc_1C321
 		dec	di
 		mov	_word_1DE4A, di
 
 loc_1C2B6::				; CODE XREF: _find_mods+2Aj
 		mov	al, [di-1]
 		or	al, al
-		jz	short loc_1C2CA
+		jz	loc_1C2CA
 		cmp	al, '\'
-		jz	short loc_1C2CA
+		jz	loc_1C2CA
 		cmp	al, ':'
-		jz	short loc_1C2CA
+		jz	loc_1C2CA
 		dec	di
 		cmp	si, di
-		jb	short loc_1C2B6
+		jb	loc_1C2B6
 
 loc_1C2CA::				; CODE XREF: _find_mods+1Dj
 					; _find_mods+21j ...
@@ -23216,12 +23216,12 @@ loc_1C2CA::				; CODE XREF: _find_mods+1Dj
 					; CX = search attributes
 					; DS:DX	-> ASCIZ filespec
 					; (drive, path,	and wildcards allowed)
-		jnb	short loc_1C309
+		jnb	loc_1C309
 		mov	si, offset _a_mod_nst_669_s ; ".MOD.NST.669.STM.S3M.MTM.PSM.WOW.INR.FA"...
 
 loc_1C2E7::				; CODE XREF: _find_mods+69j
 		cmp	byte ptr [si], 0
-		jz	short loc_1C321
+		jz	loc_1C321
 		mov	di, _word_1DE4A
 		mov	eax, [si]
 		mov	[di], eax
@@ -23234,7 +23234,7 @@ loc_1C2E7::				; CODE XREF: _find_mods+69j
 					; CX = search attributes
 					; DS:DX	-> ASCIZ filespec
 					; (drive, path,	and wildcards allowed)
-		jb	short loc_1C2E7
+		jb	loc_1C2E7
 
 loc_1C309::				; CODE XREF: _find_mods+44j
 					; _dosfindnext+Bj
@@ -23254,8 +23254,8 @@ loc_1C309::				; CODE XREF: _find_mods+44j
 loc_1C321::				; CODE XREF: _find_mods+11j
 					; _find_mods+4Cj
 		mov	_byte_1DE7E, 2
-		mov	word ptr [_messagepointer], offset _aModuleNotFound ; "Module not	found.\r\n$"
-		mov	word ptr [_messagepointer+2], ds
+		mov	word ptr _messagepointer, offset _aModuleNotFound ; "Module not	found.\r\n$"
+		mov	word ptr _messagepointer[2], ds
 		stc
 		retn
 _find_mods endp
@@ -23274,7 +23274,7 @@ _dosfindnext proc near	; CODE XREF: _modules_search+CBp
 		int	21h		; DOS -	2+ - FIND NEXT ASCIZ (FINDNEXT)
 					; [DTA]	= data block from
 					; last AH = 4Eh/4Fh call
-		jnb	short loc_1C309
+		jnb	loc_1C309
 		retn
 _dosfindnext endp
 
@@ -23294,10 +23294,10 @@ _video_prp_mtr_positn proc near ; CODE XREF: _read_module+C5p
 loc_1C355::				; CODE XREF: _video_prp_mtr_positn+2Dj
 		mov	al, [fs:bx+3Ah]
 		cmp	al, 40h	; '@'
-		jb	short loc_1C365
+		jb	loc_1C365
 		inc	_byte_1DE7A
 		cmp	al, 40h	; '@'
-		ja	short loc_1C369
+		ja	loc_1C369
 
 loc_1C365::				; CODE XREF: _video_prp_mtr_positn+1Bj
 		inc	_byte_1DE79
@@ -23305,22 +23305,22 @@ loc_1C365::				; CODE XREF: _video_prp_mtr_positn+1Bj
 loc_1C369::				; CODE XREF: _video_prp_mtr_positn+23j
 		add	bx, 50h	; 'P'
 		dec	cx
-		jnz	short loc_1C355
+		jnz	loc_1C355
 		movzx	ecx, _byte_1DE79
 		cmp	cl, _byte_1DE7A
-		ja	short loc_1C37F
+		ja	loc_1C37F
 		mov	cl, _byte_1DE7A
 
 loc_1C37F::				; CODE XREF: _video_prp_mtr_positn+39j
 		mov	al, 3
 		cmp	cl, 2
-		jbe	short loc_1C396
+		jbe	loc_1C396
 		mov	al, 2
 		cmp	cl, 4
-		jbe	short loc_1C396
+		jbe	loc_1C396
 		mov	al, 1
 		cmp	cl, 8
-		jbe	short loc_1C396
+		jbe	loc_1C396
 		mov	al, 0
 
 loc_1C396::				; CODE XREF: _video_prp_mtr_positn+44j
@@ -23329,7 +23329,7 @@ loc_1C396::				; CODE XREF: _video_prp_mtr_positn+44j
 		mov	_byte_1DE81, al
 		xor	edx, edx
 		mov	eax, 18350080
-		jcxz	short loc_1C3A9
+		jcxz	loc_1C3A9
 		div	ecx
 
 loc_1C3A9::				; CODE XREF: _video_prp_mtr_positn+64j
@@ -23343,14 +23343,14 @@ loc_1C3A9::				; CODE XREF: _video_prp_mtr_positn+64j
 
 loc_1C3C1::				; CODE XREF: _video_prp_mtr_positn+B5j
 		cmp	byte ptr [fs:bx+3Ah], 40h ; '@'
-		jz	short loc_1C3EE
-		ja	short loc_1C3DC
+		jz	loc_1C3EE
+		ja	loc_1C3DC
 		mov	eax, edi
 		shr	eax, 16
 		imul	ax, 80
 		add	ax, 1
 		add	edi, ebp
-		jmp	short loc_1C3EC
+		jmp	loc_1C3EC
 ; ---------------------------------------------------------------------------
 
 loc_1C3DC::				; CODE XREF: _video_prp_mtr_positn+88j
@@ -23367,18 +23367,18 @@ loc_1C3EE::				; CODE XREF: _video_prp_mtr_positn+86j
 		add	si, 2
 		add	bx, 50h	; 'P'
 		dec	cx
-		jnz	short loc_1C3C1
+		jnz	loc_1C3C1
 		mov	si, offset _x_storage
 		mov	cx, _amount_of_x
 		lfs	bx, _segfsbx_1DE28
 		cmp	edi, edx
-		ja	short loc_1C40B
+		ja	loc_1C40B
 		mov	edi, edx
 
 loc_1C40B::				; CODE XREF: _video_prp_mtr_positn+C6j
 					; _video_prp_mtr_positn+EBj
 		cmp	byte ptr [fs:bx+3Ah], 40h ; '@'
-		jnz	short loc_1C424
+		jnz	loc_1C424
 		mov	eax, edi
 		shr	eax, 16
 		imul	ax, 80
@@ -23390,7 +23390,7 @@ loc_1C424::				; CODE XREF: _video_prp_mtr_positn+D0j
 		add	si, 2
 		add	bx, 50h	; 'P'
 		dec	cx
-		jnz	short loc_1C40B
+		jnz	loc_1C40B
 		popf
 		retn
 _video_prp_mtr_positn endp
@@ -23412,9 +23412,9 @@ _callsubx proc near		; CODE XREF: _start:loc_19050p
 		mov	bh, _byte_1DCF8
 		call	sub_12DA8
 		mov	_byte_1DE7E, 1
-		mov	word ptr [_messagepointer], dx
-		mov	word ptr [_messagepointer+2], fs
-		jb	short locret_1C4A7
+		mov	_messagepointer, dx
+		mov	word ptr _messagepointer[2], fs
+		jb	locret_1C4A7
 		mov	_byte_1DE7E, 0
 		call	_read_sndsettings
 		mov	_snd_card_type, al
@@ -23428,7 +23428,7 @@ _callsubx proc near		; CODE XREF: _start:loc_19050p
 		mov	_outp_freq, bp
 		mov	_byte_1DE7C, 1
 		cmp	_snd_card_type, 0
-		jnz	short loc_1C4A6
+		jnz	loc_1C4A6
 		mov	byte ptr [cs:loc_1AA73+4], 0Fh
 
 loc_1C4A6::				; CODE XREF: _callsubx+6Fj
@@ -23492,15 +23492,15 @@ loc_1C501::				; CODE XREF: _spectr_1C4F8+21j
 		add	ecx, edx
 		shr	eax, 1
 		cmp	ecx, ebx
-		jg	short loc_1C515
+		jg	loc_1C515
 		sub	ebx, ecx
 		add	eax, edx
 
 loc_1C515::				; CODE XREF: _spectr_1C4F8+15j
 		shr	edx, 2
-		jnz	short loc_1C501
+		jnz	loc_1C501
 		cmp	eax, ebx
-		jge	short locret_1C521
+		jge	locret_1C521
 		inc	ax
 
 locret_1C521::				; CODE XREF: _spectr_1C4F8+26j
@@ -23575,7 +23575,7 @@ _my_u4tox proc near		; CODE XREF: _my_u8tox+4p
 		and	al, 0Fh
 		or	al, '0'
 		cmp	al, '9'
-		jbe	short loc_1C556
+		jbe	loc_1C556
 		add	al, 7
 
 loc_1C556::				; CODE XREF: _my_u4tox+6j
@@ -23598,11 +23598,11 @@ _my_i16toa10::				; CODE XREF: _useless_sprint_8+7p
 _my_i32toa10::				; CODE XREF: _useless_sprint_9+8p
 		xor	cx, cx
 		or	eax, eax
-		jns	short _my_i32toa10_
+		jns	_my_i32toa10_
 		mov	dl, '-'
 		call	_myputdigit
 		neg	eax
-		jmp	short _my_i32toa10_
+		jmp	_my_i32toa10_
 _my_i8toa10 endp
 
 
@@ -23644,7 +23644,7 @@ _my_u32toa proc near		; CODE XREF: _my_u32toa+Dp
 		xor	edx, edx
 		div	ebx
 		or	eax, eax
-		jz	short loc_1C58E
+		jz	loc_1C58E
 		push	edx
 		call	_my_u32toa
 		pop	edx
@@ -23725,7 +23725,7 @@ loc_1C6AB::				; CODE XREF: _mystrlen+9j
 		inc	ax
 		inc	si
 		cmp	byte ptr [si], 0
-		jnz	short loc_1C6AB
+		jnz	loc_1C6AB
 		sub	si, ax
 		retn
 _mystrlen endp
@@ -23737,7 +23737,7 @@ _mystrlen endp
 _strcpy_count proc near	; CODE XREF: _useless_mysprintf+26p
 					; _useless_mysprintf+43p
 		xor	cx, cx
-		jmp	short loc_1C6BE
+		jmp	loc_1C6BE
 ; ---------------------------------------------------------------------------
 
 loc_1C6B9::				; CODE XREF: _strcpy_count+Ej
@@ -23749,7 +23749,7 @@ loc_1C6BE::				; CODE XREF: _strcpy_count+2j
 		mov	al, [si]
 		inc	cx
 		or	al, al
-		jnz	short loc_1C6B9
+		jnz	loc_1C6B9
 		retn
 _strcpy_count endp
 
@@ -23763,22 +23763,22 @@ _mouse_init proc near		; CODE XREF: _start+16Dp _start+74Ap
 		mov	es, ax
 		assume es:nothing
 		cmp	dword ptr [es:0CCh], 0
-		jz	short loc_1C708
+		jz	loc_1C708
 		mov	ax, 21h	; '!'
 		int	33h		; - MS MOUSE - SOFTWARE	RESET
 					; Return: AX = FFFFh if	mouse driver installed
 					; AX = 0021h if	mouse driver not installed
 					; BX = 2 if mouse driver is installed
 		cmp	ax, 0FFFFh
-		jz	short loc_1C6EF
+		jz	loc_1C6EF
 		xor	ax, ax
 		int	33h		; - MS MOUSE - RESET DRIVER AND	READ STATUS
 					; Return: AX = status
 					; BX = number of buttons
 		test	ax, ax
-		jz	short loc_1C708
+		jz	loc_1C708
 		cmp	ax, 0FFFFh
-		jnz	short loc_1C708
+		jnz	loc_1C708
 
 loc_1C6EF::				; CODE XREF: _mouse_init+1Aj
 		mov	_mouse_exist_flag, 1
@@ -23811,7 +23811,7 @@ _mouse_init endp
 _mouse_deinit proc near	; CODE XREF: _start:loc_19256p
 					; _start:loc_197D6p
 		cmp	_mouse_exist_flag, 1
-		jnz	short locret_1C72B
+		jnz	locret_1C72B
 		mov	_mouse_exist_flag, 0
 		mov	_mouse_visible, 0
 		xor	dx, dx
@@ -23843,9 +23843,9 @@ loc_1C72C::				; DATA XREF: _mouse_init+34o
 
 _mouse_show proc near		; CODE XREF: _start+332p
 		cmp	_mouse_exist_flag, 1
-		jnz	short locret_1C755
+		jnz	locret_1C755
 		cmp	_mouse_visible, 1
-		jz	short locret_1C755
+		jz	locret_1C755
 		mov	_mouse_visible, 1
 		call	_mouse_showcur
 
@@ -23861,9 +23861,9 @@ _mouse_show endp
 _mouse_hide proc near		; CODE XREF: _start+376p
 					; _start:loc_19827p ...
 		cmp	_mouse_exist_flag, 1
-		jnz	short locret_1C76C
+		jnz	locret_1C76C
 		cmp	_mouse_visible, 0
-		jz	short locret_1C76C
+		jz	locret_1C76C
 		mov	_mouse_visible, 0
 		call	_mouse_hide2
 
@@ -23878,7 +23878,7 @@ _mouse_hide endp
 
 _mouse_getpos proc near
 		cmp	_mouse_exist_flag, 1
-		jnz	short loc_1C783
+		jnz	loc_1C783
 		mov	ax, 3
 		int	33h		; - MS MOUSE - RETURN POSITION AND BUTTON STATUS
 					; Return: BX = button status, CX = column, DX =	row
@@ -23902,7 +23902,7 @@ _mouse_getpos endp
 
 _mouse_showcur proc near	; CODE XREF: _mouse_show+13p
 		cmp	_mouse_exist_flag, 1
-		jnz	short loc_1C7A7
+		jnz	loc_1C7A7
 		mov	ax, 1
 		int	33h		; - MS MOUSE - SHOW MOUSE CURSOR
 					; SeeAlso: AX=0002h, INT 16/AX=FFFEh
@@ -23916,7 +23916,7 @@ _mouse_showcur endp
 
 _mouse_hide2 proc near	; CODE XREF: _mouse_hide+13p
 		cmp	_mouse_exist_flag, 1
-		jnz	short loc_1C7A7
+		jnz	loc_1C7A7
 		mov	ax, 2
 		int	33h		; - MS MOUSE - HIDE MOUSE CURSOR
 					; SeeAlso: AX=0001h, INT 16/AX=FFFFh
@@ -23936,23 +23936,23 @@ _mouse_hide2 endp
 
 _mouse_1C7A9 proc near	; CODE XREF: _mouse_1C7CF+10p
 		cmp	cx, si
-		jbe	short loc_1C7AF
+		jbe	loc_1C7AF
 		xchg	cx, si
 
 loc_1C7AF::				; CODE XREF: _mouse_1C7A9+2j
 		cmp	dx, di
-		jbe	short loc_1C7B5
+		jbe	loc_1C7B5
 		xchg	dx, di
 
 loc_1C7B5::				; CODE XREF: _mouse_1C7A9+8j
 		cmp	ax, cx
-		jb	short loc_1C7CA
+		jb	loc_1C7CA
 		cmp	ax, si
-		ja	short loc_1C7CA
+		ja	loc_1C7CA
 		cmp	bp, dx
-		jb	short loc_1C7CA
+		jb	loc_1C7CA
 		cmp	bp, di
-		ja	short loc_1C7CA
+		ja	loc_1C7CA
 		sub	ax, cx
 		sub	bp, dx
 		retn
@@ -23981,12 +23981,12 @@ _mouse_1C7CF proc near	; CODE XREF: _start+7ADp _start+7C9p ...
 
 		mov	cx, [bx]
 		cmp	cx, -1
-		jz	short loc_1C7E9
+		jz	loc_1C7E9
 		mov	dx, [bx+2]
 		mov	si, [bx+4]
 		mov	di, [bx+6]
 		call	_mouse_1C7A9
-		jb	short loc_1C7CC
+		jb	loc_1C7CC
 		mov	bx, [bx+8]
 		clc
 		retn
@@ -24772,7 +24772,8 @@ _critsectpoint_off dw 0			; DATA XREF: _start+150w
 _critsectpoint_seg dw 0			; DATA XREF: _start+154w
 _swapdata_off	dw 0			; DATA XREF: _start+161w
 _swapdata_seg	dw 0			; DATA XREF: _start+165w
-_videomempointer	dd 0			; DATA XREF: _start:loc_1917Dw
+_videomempointer	dw 0			; DATA XREF: _start:loc_1917Dw
+			dw 0
 					; _start+207r ...
 _videopoint_shiftd dd 0			; DATA XREF: _text_init2+5Fw
 					; _text_init2+BEw ...
@@ -24780,7 +24781,8 @@ _segfsbx_1DE28	dd 0			; DATA XREF: _read_module+99w
 					; _keyb_19EFD:_l_rightr ...
 _dword_1DE2C	dd 0			; DATA XREF: _text_init2+22Aw
 					; seg001:196Br	...
-_messagepointer	dd 0			; DATA XREF: _start+228r _start+23Dw ...
+_messagepointer	dw 0			; DATA XREF: _start+228r _start+23Dw ...
+		dw 0
 _volume_1DE34	dd 0			; DATA XREF: _read_module+DAw
 					; seg001:19F4r
 _outp_freq	dw 0			; DATA XREF: _read_module+82w
@@ -24983,11 +24985,8 @@ stru_244AB	struct_0 <2, 1,	4Dh, 4,	offset _l_enter>	; DATA XREF: _keyb_19EFD+4AF
 stru_244B7	struct_0 <0, 0,	4Fh, 31h, offset _l_esc>	; DATA XREF: _keyb_19EFD:loc_1A3C5o
 		dw 0FFFFh
 		db    0
-unk_244C4	db    0			; DATA XREF: _spectr_1B084+14Ew
+unk_244C4	dd    0			; DATA XREF: _spectr_1B084+14Ew
 					; _spectr_1B084+18Br ...
-		db    0
-		db    0
-		db    0
 _dword_244C8	dd 0			; DATA XREF: _spectr_1B084+39w
 					; _spectr_1B084+62r ...
 _multip_244CC	dd 0			; DATA XREF: _spectr_1B084+2Fw
