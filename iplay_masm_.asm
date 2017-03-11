@@ -1733,9 +1733,9 @@ loc_10E4C::				; CODE XREF: _psm_module+1DCj
 		and	dl, 3Fh
 
 loc_10E68::				; CODE XREF: _psm_module+14Ej
-		cmp	[_byte_27FE8+si], al
+		cmp	_byte_27FE8[si], al
 		jnz	loc_10E72
-		mov	[_byte_281E8+si], dl
+		mov	_byte_281E8[si], dl
 
 loc_10E72::				; CODE XREF: _psm_module+146j
 		inc	si
@@ -9016,7 +9016,7 @@ loc_14F95::				; CODE XREF: _covox_init+14j
 		call	_set_timer_int
 		sub	ax, 0F00h
 		mov	cs:_word_14FC0, ax
-		mov	cs:_word_14FC5, 0F000h
+;;		mov	cs:_word_14FC5, 0F000h
 		popf
 		clc
 		retn
@@ -9069,7 +9069,7 @@ _word_14FC8	dw 378h			; DATA XREF: _covox_init+24w
 ; ---------------------------------------------------------------------------
 
 loc_14FE3::				; CODE XREF: _covox_timer_int+1Bj
-		mov	cs:_word_14FC5, 0F000h
+;;		mov	cs:_word_14FC5, 0F000h
 		dec	cs:_word_14F6C
 		jz	near ptr _timer_int_end
 		iret
@@ -9118,7 +9118,7 @@ loc_1501D::				; CODE XREF: _stereo_init+14j
 		call	_set_timer_int
 		sub	ax, 0F00h
 		mov	word ptr cs:loc_15047[1], ax
-		mov	cs:_word_15056, 0F000h
+;;		mov	cs:_word_15056, 0F000h
 		popf
 		clc
 		retn
@@ -9186,7 +9186,7 @@ _word_15056	dw 1234h		; DATA XREF: _stereo_init+3Aw
 ; ---------------------------------------------------------------------------
 
 loc_1507E::				; CODE XREF: _stereo_timer_int+2Ej
-		mov	cs:_word_15056, 0F000h
+;;		mov	cs:_word_15056, 0F000h
 		dec	cs:_word_14F6C
 		jz	near ptr _timer_int_end
 		iret
@@ -9256,7 +9256,7 @@ loc_150E8::				; CODE XREF: _adlib_init+52j
 		call	_set_timer_int
 		sub	ax, 0F00h
 		mov	word ptr [cs:loc_15120+1], ax
-		mov	cs:_word_15126, 0F000h
+;;		mov	cs:_word_15126, 0F000h
 		popf
 		clc
 		retn
@@ -9348,7 +9348,7 @@ _pcspeaker_init proc near	; DATA XREF: seg003:0D14o
 		call	_set_timer_int
 		sub	ax, 0F00h
 		mov	cs:_word_1519B, ax
-		mov	cs:_word_151A3, 0F000h
+;;		mov	cs:_word_151A3, 0F000h
 		popf
 		clc
 		retn
@@ -18186,7 +18186,7 @@ loc_19AC3::				; CODE XREF: _modules_search+CFj
 		add	di, _word_1DE64
 		mov	bx, _word_1DE66
 		mov	ah, 7Fh	; ''
-		mov	al, byte ptr [_slider+bx] ; "Ä\\|/Ä\\|/"
+		mov	al, byte ptr _slider[bx] ; "Ä\\|/Ä\\|/"
 		mov	[fs:di], ax
 		inc	_word_1DE66
 		and	_word_1DE66, 7
@@ -18233,7 +18233,7 @@ loc_19B3C::				; CODE XREF: _modules_search+24Bj
 		add	di, _word_1DE64
 		mov	bx, _word_1DE66
 		mov	ah, 7Fh	; ''
-		mov	al, byte ptr [_slider+bx] ; "Ä\\|/Ä\\|/"
+		mov	al, byte ptr _slider[bx] ; "Ä\\|/Ä\\|/"
 		mov	[fs:di], ax
 		inc	_word_1DE66
 		and	_word_1DE66, 7
@@ -26301,5 +26301,5 @@ _byte_34510	db 1000h dup(?)
 seg004 ends
 
 
-		end _start
+;		end _start
  

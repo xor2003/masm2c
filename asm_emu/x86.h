@@ -23,6 +23,7 @@
 #include <math.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdint.h>
 
 #define ASM_X86_INTERNAL_H
 
@@ -455,6 +456,7 @@ static inline void asm_leab(struct assembler_state_t *state, uint8_t src, uint8_
 #include "asm_emu/x86_shl.h"
 #include "asm_emu/x86_shld.h"
 #include "asm_emu/x86_shr.h"
+#include "asm_emu/x86_shrd.h"
 #include "asm_emu/x86_sbb.h"
 #include "asm_emu/x86_stos.h"
 #include "asm_emu/x86_sub.h"

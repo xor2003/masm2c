@@ -11,13 +11,13 @@ cat 1.txt | while read line;do
 name=$(echo $line | cut -f4 -d' ' | cut -f1 -d'(')
 echo "name $name"
 
-new_sig=$(echo $line| perl -pe 's! asm! !; s![bwl]\(!(!; s!;$!!; s!struct assembler_state_t \*state(, )?!!;')
+new_sig=$(echo $line| perl -pe 's! asm! !; s![bwl]\(!(!; s!;$!!; s!struct assembler_state_t \*state(, )?!!; s!uint(8|16|32)_t \*!uint$1_t &!g;')
 echo "newsig $new_sig"
 
 new_def=$(echo $line| perl -pe 's! asm! !; s![bwl]\(!(!; s!;$!!; s!struct assembler_state_t \*state(, )?!!; s!$!\;\n!')
 echo "newdef $new_def"
 
-call=$(echo $line| perl -pe 's!static inline void!!; s!struct assembler_state_t \*!!; s!uint(8|16|32)_t \*?!!g; s!const !!g; s!$!\;!; s!state!asm_cpu_state!')
+call=$(echo $line| perl -pe 's!static inline void!!; s!struct assembler_state_t \*!!; s!uint(8|16|32)_t \*!&!g; s!uint(8|16|32)_t ?!!g; s!const !!g; s!$!\;!; s!state!&asm_cpu_state!')
 echo "call $call"
 
 # echo $new_def >> 1.h

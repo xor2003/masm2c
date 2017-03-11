@@ -1,408 +1,388 @@
 #include "asm_emu/x86.h"
 #include "asm_emu/2.h"
-static struct assembler_state_t asm_cpu_state;
-static inline void _adc(const uint8_t src, uint8_t *dst)
+//static struct assembler_state_t asm_cpu_state;
+class asm_emu : public assembler_state_t
 {
-	 asm_adcb(&asm_cpu_state, src, dst);
-}
-
-static inline void _adc(const uint32_t src, uint32_t *dst)
-{
-	 asm_adcl(&asm_cpu_state, src, dst);
-}
-
-static inline void _adc(const uint16_t src, uint16_t *dst)
-{
-	 asm_adcw(&asm_cpu_state, src, dst);
-}
-
-static inline void _add(const uint8_t src, uint8_t *dst)
-{
-	 asm_addb(&asm_cpu_state, src, dst);
-}
-
-static inline void _add(const uint32_t src, uint32_t *dst)
-{
-	 asm_addl(&asm_cpu_state, src, dst);
-}
+public:
 
-static inline void _add(const uint16_t src, uint16_t *dst)
+inline void _adc(uint8_t &dst, const uint8_t src)
 {
-	 asm_addw(&asm_cpu_state, src, dst);
+	 asm_adcb(this, src, &dst);
 }
 
-static inline void _and(const uint8_t src, uint8_t *dst)
+inline void _adc(uint32_t &dst, const uint32_t src)
 {
-	 asm_andb(&asm_cpu_state, src, dst);
+	 asm_adcl(this, src, &dst);
 }
 
-static inline void _and(const uint32_t src, uint32_t *dst)
+inline void _adc(uint16_t &dst, const uint16_t src)
 {
-	 asm_andl(&asm_cpu_state, src, dst);
+	 asm_adcw(this, src, &dst);
 }
 
-static inline void _and(const uint16_t src, uint16_t *dst)
+inline void _add(uint8_t &dst, const uint8_t src)
 {
-	 asm_andw(&asm_cpu_state, src, dst);
+	 asm_addb(this, src, &dst);
 }
 
-static inline void _cmp(uint8_t src, uint8_t dst)
+inline void _add(uint32_t &dst, const uint32_t src)
 {
-	 asm_cmpb(&asm_cpu_state, src, dst);
+	 asm_addl(this, src, &dst);
 }
 
-static inline void _cmp(uint32_t src, uint32_t dst)
+inline void _add(uint16_t &dst, const uint16_t src)
 {
-	 asm_cmpl(&asm_cpu_state, src, dst);
+	 asm_addw(this, src, &dst);
 }
 
-static inline void _cmp(uint16_t src, uint16_t dst)
+inline void _and(uint8_t &dst, const uint8_t src)
 {
-	 asm_cmpw(&asm_cpu_state, src, dst);
+	 asm_andb(this, src, &dst);
 }
 
-static inline void _dec(uint8_t *dst)
+inline void _and(uint32_t &dst, const uint32_t src)
 {
-	 asm_decb(&asm_cpu_state, dst);
+	 asm_andl(this, src, &dst);
 }
 
-static inline void _dec(uint32_t *dst)
+inline void _and(uint16_t &dst, const uint16_t src)
 {
-	 asm_decl(&asm_cpu_state, dst);
+	 asm_andw(this, src, &dst);
 }
 
-static inline void _dec(uint16_t *dst)
+inline void _cmp(uint8_t dst, uint8_t src)
 {
-	 asm_decw(&asm_cpu_state, dst);
+	 asm_cmpb(this, src, dst);
 }
 
-static inline void _div(const uint8_t src)
+inline void _cmp(uint32_t dst, uint32_t src)
 {
-	 asm_divb(&asm_cpu_state, src);
+	 asm_cmpl(this, src, dst);
 }
 
-static inline void _div(const uint32_t src)
+inline void _cmp(uint16_t dst, uint16_t src)
 {
-	 asm_divl(&asm_cpu_state, src);
+	 asm_cmpw(this, src, dst);
 }
 
-static inline void _div(const uint16_t src)
+inline void _dec(uint8_t &dst)
 {
-	 asm_divw(&asm_cpu_state, src);
+	 asm_decb(this, &dst);
 }
 
-static inline void _finit()
+inline void _dec(uint32_t &dst)
 {
-	 asm_finit(&asm_cpu_state);;
+	 asm_decl(this, &dst);
 }
 
-static inline void _imul_1_(const uint8_t src)
+inline void _dec(uint16_t &dst)
 {
-	 asm_imul_1_b(&asm_cpu_state, src);
+	 asm_decw(this, &dst);
 }
 
-static inline void _imul_1_(uint32_t src)
+inline void _div(const uint8_t src)
 {
-	 asm_imul_1_l(&asm_cpu_state, src);
+	 asm_divb(this, src);
 }
 
-static inline void _imul_1_(const uint16_t src)
+inline void _div(const uint32_t src)
 {
-	 asm_imul_1_w(&asm_cpu_state, src);
+	 asm_divl(this, src);
 }
 
-static inline void _imul_2_(const uint8_t src, uint8_t *dst)
+inline void _div(const uint16_t src)
 {
-	 asm_imul_2_b(&asm_cpu_state, src, dst);
+	 asm_divw(this, src);
 }
 
-static inline void _imul_2_(uint32_t src, uint32_t *dst)
+inline void _finit()
 {
-	 asm_imul_2_l(&asm_cpu_state, src, dst);
+	 asm_finit(this);;
 }
 
-static inline void _imul_2_(const uint16_t src, uint16_t *dst)
+inline void _mul(const uint8_t src)
 {
-	 asm_imul_2_w(&asm_cpu_state, src, dst);
+	 asm_imul_1_b(this, src);
 }
 
-static inline void _inc(uint8_t *dst)
+inline void _mul(uint32_t src)
 {
-	 asm_incb(&asm_cpu_state, dst);
+	 asm_imul_1_l(this, src);
 }
 
-static inline void _inc(uint32_t *dst)
+inline void _mul(const uint16_t src)
 {
-	 asm_incl(&asm_cpu_state, dst);
+	 asm_imul_1_w(this, src);
 }
 
-static inline void _inc(uint16_t *dst)
+inline void _mul(uint8_t &dst, const uint8_t src)
 {
-	 asm_incw(&asm_cpu_state, dst);
+	 asm_imul_2_b(this, src, &dst);
 }
 
-static inline void _lea(uint8_t src, uint8_t *dst) {*dst = src;}
+inline void _mul(uint32_t &dst, uint32_t src)
 {
-	 asm_leab(&asm_cpu_state, src, dst) {*dst = src;};;
+	 asm_imul_2_l(this, src, &dst);
 }
 
-static inline void _lea(uint32_t src, uint32_t *dst) {*dst = src;}
+inline void _mul(uint16_t &dst, const uint16_t src)
 {
-	 asm_leal(&asm_cpu_state, src, dst) {*dst = src;};;
+	 asm_imul_2_w(this, src, &dst);
 }
 
-static inline void _lea(uint16_t src, uint16_t *dst) {*dst = src;}
+inline void _inc(uint8_t &dst)
 {
-	 asm_leaw(&asm_cpu_state, src, dst) {*dst = src;};;
+	 asm_incb(this, &dst);
 }
 
-static inline void _mov(uint8_t src, uint8_t *dst) {*dst = src;}
+inline void _inc(uint32_t &dst)
 {
-	 asm_movb(&asm_cpu_state, src, dst) {*dst = src;};;
+	 asm_incl(this, &dst);
 }
 
-static inline void _mov(uint32_t src, uint32_t *dst) {*dst = src;}
+inline void _inc(uint16_t &dst)
 {
-	 asm_movl(&asm_cpu_state, src, dst) {*dst = src;};;
+	 asm_incw(this, &dst);
 }
 
-static inline void _mov(uint16_t src, uint16_t *dst) {*dst = src;}
+inline void _lea(uint8_t &dst, uint8_t src)
 {
-	 asm_movw(&asm_cpu_state, src, dst) {*dst = src;};;
+	 asm_leab(this, src, &dst);
 }
 
-static inline void _neg(uint8_t *dst)
+inline void _lea(uint32_t &dst, uint32_t src)
 {
-	 asm_negb(&asm_cpu_state, dst);
+	 asm_leal(this, src, &dst);
 }
 
-static inline void _neg(uint32_t *dst)
+inline void _lea(uint16_t &dst, uint16_t src)
 {
-	 asm_negl(&asm_cpu_state, dst);
+	 asm_leaw(this, src, &dst);
 }
 
-static inline void _neg(uint16_t *dst)
+inline void _mov(uint8_t &dst, uint8_t src)
 {
-	 asm_negw(&asm_cpu_state, dst);
+	 asm_movb(this, src, &dst);
 }
 
-static inline void _or(const uint8_t src, uint8_t *dst)
+inline void _mov(uint32_t &dst, uint32_t src)
 {
-	 asm_orb(&asm_cpu_state, src, dst);
+	 asm_movl(this, src, &dst);
 }
 
-static inline void _or(const uint32_t src, uint32_t *dst)
+inline void _mov(uint16_t &dst, uint16_t src)
 {
-	 asm_orl(&asm_cpu_state, src, dst);
+	 asm_movw(this, src, &dst);
 }
 
-static inline void _or(const uint16_t src, uint16_t *dst)
+inline void _neg(uint8_t &dst)
 {
-	 asm_orw(&asm_cpu_state, src, dst);
+	 asm_negb(this, &dst);
 }
 
-static inline void _pop(uint8_t *dst)
+inline void _neg(uint32_t &dst)
 {
-	 asm_popb(&asm_cpu_state, dst);
+	 asm_negl(this, &dst);
 }
 
-static inline void _pop(uint32_t *dst)
+inline void _neg(uint16_t &dst)
 {
-	 asm_popl(&asm_cpu_state, dst);
+	 asm_negw(this, &dst);
 }
 
-static inline void _pop(uint16_t *dst)
+inline void _or(uint8_t &dst, const uint8_t src)
 {
-	 asm_popw(&asm_cpu_state, dst);
+	 asm_orb(this, src, &dst);
 }
 
-static inline void _push(const uint8_t src)
+inline void _or(uint32_t &dst, const uint32_t src)
 {
-	 asm_pushb(&asm_cpu_state, src);
+	 asm_orl(this, src, &dst);
 }
 
-static inline void _push(const uint32_t src)
+inline void _or(uint16_t &dst, const uint16_t src)
 {
-	 asm_pushl(&asm_cpu_state, src);
+	 asm_orw(this, src, &dst);
 }
 
-static inline void _push(const uint16_t src)
+inline void _pop(uint8_t &dst)
 {
-	 asm_pushw(&asm_cpu_state, src);
+	 asm_popb(this, &dst);
 }
 
-static inline void _rep_stos()
+inline void _pop(uint32_t &dst)
 {
-	 asm_rep_stosb(&asm_cpu_state);
+	 asm_popl(this, &dst);
 }
 
-static inline void _rep_stos()
+inline void _pop(uint16_t &dst)
 {
-	 asm_rep_stosl(&asm_cpu_state);
+	 asm_popw(this, &dst);
 }
 
-static inline void _rep_stos()
+inline void _push(const uint8_t src)
 {
-	 asm_rep_stosw(&asm_cpu_state);
+	 asm_pushb(this, src);
 }
 
-static inline void _sahf()
+inline void _push(const uint32_t src)
 {
-	 asm_sahf(&asm_cpu_state);
+	 asm_pushl(this, src);
 }
 
-static inline void _sar(uint8_t count, uint8_t *dst)
+inline void _push(const uint16_t src)
 {
-	 asm_sarb(&asm_cpu_state, count, dst);
+	 asm_pushw(this, src);
 }
 
-static inline void _sar(uint8_t count, uint32_t *dst)
+inline void _rep_stosb()
 {
-	 asm_sarl(&asm_cpu_state, count, dst);
+	 asm_rep_stosb(this);
 }
 
-static inline void _sar(uint8_t count, uint16_t *dst)
+inline void _rep_stosd()
 {
-	 asm_sarw(&asm_cpu_state, count, dst);
+	 asm_rep_stosl(this);
 }
 
-static inline void _sbb(uint8_t src, uint8_t *dst)
+inline void _rep_stosw()
 {
-	 asm_sbbb(&asm_cpu_state, src, dst);
+	 asm_rep_stosw(this);
 }
 
-static inline void _sbb(uint32_t src, uint32_t *dst)
+inline void _sahf()
 {
-	 asm_sbbl(&asm_cpu_state, src, dst);
+	 asm_sahf(this);
 }
 
-static inline void _sbb(uint16_t src, uint16_t *dst)
+inline void _sar(uint8_t &dst, uint8_t count)
 {
-	 asm_sbbw(&asm_cpu_state, src, dst);
+	 asm_sarb(this, count, &dst);
 }
 
-static inline void _shl(uint8_t count, uint8_t *dst)
+inline void _sar(uint32_t &dst, uint8_t count)
 {
-	 asm_shlb(&asm_cpu_state, count, dst);
+	 asm_sarl(this, count, &dst);
 }
 
-static inline void _shld(uint8_t count, const uint32_t src, uint32_t *dst)
+inline void _sar(uint16_t &dst, uint8_t count)
 {
-	 asm_shldl(&asm_cpu_state, count, src, dst);
+	 asm_sarw(this, count, &dst);
 }
 
-static inline void _shl(uint8_t count, uint32_t *dst)
+inline void _sbb(uint8_t &dst, uint8_t src)
 {
-	 asm_shll(&asm_cpu_state, count, dst);
+	 asm_sbbb(this, src, &dst);
 }
 
-static inline void _shl(uint8_t count, uint16_t *dst)
+inline void _sbb(uint32_t &dst, uint32_t src)
 {
-	 asm_shlw(&asm_cpu_state, count, dst);
+	 asm_sbbl(this, src, &dst);
 }
 
-static inline void _shr(uint8_t count, uint8_t *dst)
+inline void _sbb(uint16_t &dst, uint16_t src)
 {
-	 asm_shrb(&asm_cpu_state, count, dst);
+	 asm_sbbw(this, src, &dst);
 }
 
-static inline void _shrd(uint8_t count, const uint32_t src, uint32_t *dst)
+inline void _shl(uint8_t &dst, uint8_t count)
 {
-	 asm_shrdl(&asm_cpu_state, count, src, dst);
+	 asm_shlb(this, count, &dst);
 }
 
-static inline void _shr(uint8_t count, uint32_t *dst)
+inline void _shld(uint32_t &dst, const uint32_t src, uint8_t count)
 {
-	 asm_shrl(&asm_cpu_state, count, dst);
+	 asm_shldl(this, count, src, &dst);
 }
 
-static inline void _shr(uint8_t count, uint16_t *dst)
+inline void _shl(uint32_t &dst, uint8_t count)
 {
-	 asm_shrw(&asm_cpu_state, count, dst);
+	 asm_shll(this, count, &dst);
 }
 
-static inline void _stos()
+inline void _shl(uint16_t &dst, uint8_t count)
 {
-	 asm_stosb(&asm_cpu_state);
+	 asm_shlw(this, count, &dst);
 }
 
-static inline void _stos()
+inline void _shr(uint8_t &dst, uint8_t count)
 {
-	 asm_stosl(&asm_cpu_state);
+	 asm_shrb(this, count, &dst);
 }
 
-static inline void _stos()
+inline void _shrd(uint32_t &dst, const uint32_t src, uint8_t count)
 {
-	 asm_stosw(&asm_cpu_state);
+	 asm_shrdl(this, count, src, &dst);
 }
 
-static inline void _sub(const uint8_t src, uint8_t *dst)
+inline void _shr(uint32_t &dst, uint8_t count)
 {
-	 asm_subb(&asm_cpu_state, src, dst);
+	 asm_shrl(this, count, &dst);
 }
 
-static inline void _sub(const uint8_t src, uint8_t *dst)
+inline void _shr(uint16_t &dst, uint8_t count)
 {
-	 asm_subb(&asm_cpu_state, src, dst);;
+	 asm_shrw(this, count, &dst);
 }
 
-static inline void _sub(const uint32_t src, uint32_t *dst)
+inline void _stosb()
 {
-	 asm_subl(&asm_cpu_state, src, dst);
+	 asm_stosb(this);
 }
 
-static inline void _sub(const uint32_t src, uint32_t *dst)
+inline void _stosd()
 {
-	 asm_subl(&asm_cpu_state, src, dst);;
+	 asm_stosl(this);
 }
 
-static inline void _sub(const uint16_t src, uint16_t *dst)
+inline void _stosw()
 {
-	 asm_subw(&asm_cpu_state, src, dst);
+	 asm_stosw(this);
 }
 
-static inline void _sub(const uint16_t src, uint16_t *dst)
+inline void _sub(uint8_t &dst, const uint8_t src)
 {
-	 asm_subw(&asm_cpu_state, src, dst);;
+	 asm_subb(this, src, &dst);
 }
 
-static inline void _test(uint8_t src1, uint8_t src2)
+inline void _sub(uint32_t &dst, const uint32_t src)
 {
-	 asm_testb(&asm_cpu_state, src1, src2);
+	 asm_subl(this, src, &dst);
 }
 
-static inline void _test(uint32_t src1, uint32_t src2)
+inline void _sub(uint16_t &dst, const uint16_t src)
 {
-	 asm_testl(&asm_cpu_state, src1, src2);
+	 asm_subw(this, src, &dst);
 }
 
-static inline void _test(uint16_t src1, uint16_t src2)
+inline void _test(uint8_t src1, uint8_t src2)
 {
-	 asm_testw(&asm_cpu_state, src1, src2);
+	 asm_testb(this, src1, src2);
 }
 
-static inline void _update_af(uint32_t *_eflags, const uint32_t newreg, const uint32_t oldreg)
+inline void _test(uint32_t src1, uint32_t src2)
 {
-	 asm_update_af(_eflags, newreg, oldreg);
+	 asm_testl(this, src1, src2);
 }
 
-static inline void _update_pf(uint32_t *_eflags, const uint32_t reg)
+inline void _test(uint16_t src1, uint16_t src2)
 {
-	 asm_update_pf(_eflags, reg);
+	 asm_testw(this, src1, src2);
 }
 
-static inline void _xor(const uint8_t src, uint8_t *dst)
+inline void _xor(uint8_t &dst, const uint8_t src)
 {
-	 asm_xorb(&asm_cpu_state, src, dst);
+	 asm_xorb(this, src, &dst);
 }
 
-static inline void _xor(const uint32_t src, uint32_t *dst)
+inline void _xor(uint32_t &dst, const uint32_t src)
 {
-	 asm_xorl(&asm_cpu_state, src, dst);
+	 asm_xorl(this, src, &dst);
 }
 
-static inline void _xor(const uint16_t src, uint16_t *dst)
+inline void _xor(uint16_t &dst, const uint16_t src)
 {
-	 asm_xorw(&asm_cpu_state, src, dst);
+	 asm_xorw(this, src, &dst);
 }
 
+};
