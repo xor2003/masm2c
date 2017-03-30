@@ -1,0 +1,47 @@
+#!/usr/bin/python
+
+# ScummVM - Graphic Adventure Engine
+#
+# ScummVM is the legal property of its developers, whose names
+# are too numerous to list here. Please refer to the COPYRIGHT
+# file distributed with this source distribution.
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+
+from tasm.parser import parser
+from tasm.cpp import cpp
+
+p = parser(skip_binary_data = [
+	# These data blobs are not output
+	# dreamweb.asm
+#	'characterset1',
+	])
+p.strip_path = 3
+context = p.parse('iplay_masm_.asm')
+p.link()
+generator = cpp(context, "InertiaPlayer", blacklist = [
+	# These functions are not processed
+
+#	'aboutturn',
+	], skip_output = [
+	# These functions are processed but not output
+	], skip_dispatch_call = True, skip_addr_constants = True,
+	header_omit_blacklisted = True,
+	function_name_remapping = {
+	# This remaps the function naming at output for readability
+#	'_moduleread' : '_moduleread',
+	})
+generator.generate('_start') #start routine
