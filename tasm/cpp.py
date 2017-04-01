@@ -70,6 +70,7 @@ class cpp:
 %s""" %(hid, hid, banner))
 		self.context = context
 		self.data_seg = context.binary_data
+		self.cdata_seg = context.c_data
 		self.procs = context.proc_list
 		self.skip_first = skip_first
 		self.proc_queue = []
@@ -688,9 +689,21 @@ namespace %s {
 		print "%d ok, %d failed of %d, %.02g%% translated" %(done, failed, done + failed, 100.0 * done / (done + failed))
 		print "\n".join(self.failed)
 		data_bin = self.data_seg
-		data_impl = "\n\tstatic const uint8 src[] = {\n\t\t"
+		cdata_bin = self.cdata_seg
+		data_impl = ""
 		n = 0
 		comment = str()
+
+		data_impl += "\n /*"
+		for v in cdata_bin:
+			#data_impl += "0x%02x, " %v
+			data_impl += "%s" %v
+			n += 1
+
+		data_impl += " */\n"
+
+		data_impl += "\n\tstatic const uint8_t src[] = {\n\t\t"
+
 		for v in data_bin:
 			data_impl += "0x%02x, " %v
 			n += 1
@@ -702,6 +715,7 @@ namespace %s {
 			elif (n & 0x3) == 0:
 				comment += " "
 		data_impl += "};\n\tds.assign(src, src + sizeof(src));\n"
+
 
 		self.hd.write(
 """\n#include "asm_emu/1.h"
@@ -761,7 +775,8 @@ public:
 		self.hd.write("};\n\n} // End of namespace DreamGen\n\n#endif\n")
 		self.hd.close()
 
-		self.fd.write("void %sContext::__start() { %s\t%s(); \n}\n" %(self.namespace, data_impl, start))
+		#self.fd.write("void %sContext::__start() { %s\t%s(); \n}\n" %(self.namespace, data_impl, start))
+		self.fd.write(" %s\n" %data_impl)
 
 		if self.skip_dispatch_call == False:
 			self.fd.write("\nvoid %sContext::__dispatch_call(uint16 addr) {\n\tswitch(addr) {\n" %self.namespace)

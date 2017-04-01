@@ -21,7 +21,6 @@
 
 import re
 import op
-#import shlex
 
 class proc:
 	last_addr = 0xc000
@@ -178,7 +177,6 @@ class proc:
 			return
 		
 		#s = stmt.split(None)
-		#s = shlex.split(stmt)
 		s = [stmt.replace("\x00", " ") for stmt in re.sub('["\'].+?["\']', lambda m: m.group(0).replace(" ", "\x00"), stmt).split()]
 
 		cmd = s[0]

@@ -37,9 +37,13 @@ class parser:
 		self.proc = None
 		self.proc_list = []
 		self.binary_data = []
+		self.c_data = []
 
 		self.symbols = []
 		self.link_later = []
+		self.data_started = False
+		self.prev_data_type = 0
+		self.prev_data_ctype = 0
 
 	def visible(self):
 		for i in self.__stack:
@@ -152,14 +156,18 @@ class parser:
 
 	def parse_int(self, v):
 		#print "~1~ %s" %v
+		v = v.strip()
+		#print "~2~ %s" %v
 		if re.match(r'[01]+b$', v):
 			v = int(v[:-1], 2)
 			#print "~2~ %i" %v
-		if re.match(r'[\+-]?[0-9a-f]+h$', v):
+		if re.match(r'[\+-]?[0-9a-fA-F]+[Hh]$', v):
 			v = int(v[:-1], 16)
+#			v = hex(int(v[:-1], 16))
 			#print "~3~ %i" %v
 		#print "~4~ %s" %v
 		return int(v)
+#		return v
 	
 	def compact_data(self, width, data):
 		#print "COMPACTING %d %s" %(width, data)
@@ -171,13 +179,11 @@ class parser:
 					raise Exception("invalid string %s" %v)
 				if width == 2:
 					raise Exception("string with data width more than 1") #we could allow it :)
-				#for i in xrange(1, len(v) - 1):
-					#r.append(ord(v[i]))
-				r.append(v)
-				print "~1~: r %s" %r
+				for i in xrange(1, len(v) - 1):
+					r.append(ord(v[i]))
 				continue
 			
-			m = re.match(r'(\w+)\s+dup\s+\(\s*(\S+)\s*\)', v)
+			m = re.match(r'(\w+)\s+dup\s+\((\s*\S+\s*)\)', v)
 			if m is not None:
 				#we should parse that
 				n = self.parse_int(m.group(1))
@@ -193,19 +199,12 @@ class parser:
 				continue
 			
 			try:
-				#print "1: ~%s~" %v
-				v = v.strip()
-				#print "2: ~%s~" %v
 				v = self.parse_int(v)
-				#print "3: ~%s~" %v
-				if v == '?':
-					v = 0
 				if v < 0:
 					v += base
 			except:
 				#global name
-				#traceback.print_stack(file=sys.stdout)
-				print "global/expr: ~%s~" %v
+				print "global/expr: %s" %v
 				try:
 					g = self.get_global(v)
 					v = g.offset
@@ -218,6 +217,208 @@ class parser:
 				r.append(v & 0xff);
 				v >>= 8
 		#print r
+		return r
+
+	def compact_cdata(self, label, width, data):
+		print "COMPACTING %s %d %s" %(label, width, data)
+		first = True
+		string = False
+		elements = 0
+		data_ctype = {1: 'uint8_t', 2: 'uint16_t', 4: 'uint32_t'}[width]
+		r = []
+		base = 0x100 if width == 1 else 0x10000
+		for v in data:
+			v = v.strip()
+			if width == 1 and (v[0] == '"' or v[0] == "'"):
+				if v[-1] != '"' and v[-1] != "'":
+					raise Exception("invalid string %s" %v)
+				if width > 1:
+					raise Exception("string with data width more than 1") #we could allow it :)
+				#for i in xrange(1, len(v) - 1):
+					#r.append(ord(v[i]))
+				for i in xrange(1, len(v) - 1):
+					r.append(v[i])
+
+				string = True
+				continue
+
+				'''
+				print "~1~: v = %s" %v
+				v = v.replace("'", r'"')
+				vv = ""
+				vvv = ""
+
+				if len(label) and first:
+					vv = "\nconst char * const " + label + " = { "
+					if self.strings_started == True:
+						vv = "}" + vv
+				for i in xrange(1, len(v) - 1):
+					vvv += "'" + v[i] + "'"
+					if i != len(v) - 1:
+						vvv += ","
+
+				r.append(vv + vvv)
+				first = False
+				'''
+			
+			m = re.match(r'(\w+)\s+dup\s+\(\s*(\S+)\s*\)', v)
+			if m is not None:
+				#we should parse that
+				n = self.parse_int(m.group(1))
+				if m.group(2) != '?':
+					value = self.parse_int(m.group(2))
+				else:
+					value = 0
+
+				for i in xrange(0, n):
+					v = value
+					r.append(v);
+				elements += n
+				first = False
+				continue
+			
+			try:	
+				elements += 1
+				#print "1: ~%s~" %v
+				v = v.strip()
+				#print "2: ~%s~" %v
+				if v == '?':
+					v = '0'
+				v = self.parse_int(v)
+				#print "3: ~%s~" %v
+				#print "4: ~%s~" %v
+				if v < 0:
+					v += base
+				#print "5: ~%s~" %v
+
+			except:
+				#global name
+				#traceback.print_stack(file=sys.stdout)
+				print "global/expr: ~%s~" %v
+				vv = v.split()
+				#print vv
+				if vv[0] == "offset":
+					v = vv[1]
+
+					data_ctype += r"*"
+					v = "&" + vv[1]
+					r.append(v);
+
+				#print "global/expr: ~%s~" %v
+				try:
+					g = self.get_global(v)
+					v = g.offset
+				except:
+					print "unknown address %s" %(v)
+					self.link_later.append((len(self.binary_data) + len(r), v))
+					v = 0
+		
+			r.append(v);
+
+			first = False
+
+		cur_data_type = 0
+		if string:
+			if len(r) >= 1 and r[-1] == 0:
+				cur_data_type = 1 # 0 terminated
+			else:
+				cur_data_type = 2 # array string
+				#string = False
+				#cur_data_type = 4 # array
+
+		else:
+			cur_data_type = 3 # numbers
+			if elements > 1:
+				cur_data_type = 4 # array
+
+		if self.prev_data_type == 4 and cur_data_type == 3 and len(label)==0 and data_ctype == self.prev_data_ctype: # if no label and it was same size and number or array
+				cur_data_type = 4 # array
+
+		#print "current data type = %d current data c type = %s" %(cur_data_type, data_ctype)
+		print "current data type = %d current data c type = %s" %(cur_data_type, data_ctype)
+  	        vv = ""
+		if (self.prev_data_type != 0 and (cur_data_type != self.prev_data_type or data_ctype != self.prev_data_ctype)) or len(label) or self.prev_data_type == 1 or self.prev_data_type == 3:
+			if self.prev_data_type == 4 or self.prev_data_type == 2:
+				vv += "}"
+			vv += ";\n"
+		else: 
+			if self.prev_data_type != 0 and (cur_data_type == 2 or cur_data_type == 3 or cur_data_type == 4):
+				vv += ","
+
+		if len(label):
+		    if cur_data_type == 1:
+				vv += "const char * const " + label + " = "
+
+		    elif cur_data_type == 2:
+				vv += "const char " + label + "[] = { "
+
+		    elif cur_data_type == 3:
+				vv += data_ctype + " " + label
+				vv += " = "
+
+		    elif cur_data_type == 4:
+				vv += data_ctype + " " + label
+				vv += "[] = {"
+
+		if cur_data_type == 1:
+				vv += "\""
+				for i in xrange(0, len(r)-1):
+					if isinstance(r[i], int):
+						if r[i] == 13:
+							vv += r"\r"
+						elif r[i] == 10:
+							vv += r"\n"
+						else:
+							vv += chr(r[i])
+					else:
+						vv += r[i]
+				vv += "\""
+				r = []
+				r.append(vv)
+
+		elif cur_data_type == 2:
+				for i in xrange(0, len(r)):
+					    if isinstance(r[i], int):
+						if r[i] == 13:
+							vv += r"'\r'"
+						elif r[i] == 10:
+							vv += r"'\n'"
+						else:
+							vv += r"'" + str(r[i]) + r"'"
+					    else:
+						vv += "'" + r[i] + "'"
+					    if i != len(r)-1:
+						vv += ","
+				r = []
+				r.append(vv)
+
+		elif cur_data_type == 4:
+				for i in xrange(0, len(r)):
+					vv += str(r[i])
+					if i != len(r)-1:
+						vv += ","
+				r = []
+				r.append(vv)
+
+		elif cur_data_type == 3:
+				vv += str(r[0])
+				r = []
+				r.append(vv)
+		'''
+		elif cur_data_type == 4:
+			for i in xrange(0, len(r)):
+				vv += str(r[i])
+				if i != len(r)-1:
+					vv += ","
+			r = []
+			r.append(vv)
+		'''
+
+		print r
+		print "retturinging" 
+		self.prev_data_type = cur_data_type
+		self.prev_data_ctype = data_ctype
+		self.data_started = True
 		return r
 
 	def parse(self, fname):
@@ -274,6 +475,7 @@ class parser:
 					print "%d:1: %s" %(len(self.binary_data), arg) #fixme: COPYPASTE
 					binary_width = {'b': 1, 'w': 2, 'd': 4}[cmd0[1]]
 					self.binary_data += self.compact_data(binary_width, lex.parse_args(arg))
+					self.c_data += self.compact_cdata("", binary_width, lex.parse_args(arg))
 				continue
 			elif cmd0 == 'include':
 				self.include(os.path.dirname(fname), cmd[1])
@@ -306,6 +508,7 @@ class parser:
 						arg = arg[len(cmd1):].strip()
 						print "%d: %s" %(offset, arg)
 						self.binary_data += self.compact_data(binary_width, lex.parse_args(arg))
+						self.c_data += self.compact_cdata(cmd0, binary_width, lex.parse_args(arg))
 						self.set_global(cmd0.lower(), op.var(binary_width, offset))
 						skipping_binary_data = False
 					else:
