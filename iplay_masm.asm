@@ -544,7 +544,7 @@ loc_103B9::				; CODE XREF: _mod_read_10311+6Cj
 		inc	ch
 		cmp	ch, cl
 		jb	short loc_1036C
-		mov	byte ptr [es:di], 0
+		mov	byte ptr es:[di], 0
 		inc	di
 		pop	cx
 		dec	cx
@@ -727,7 +727,7 @@ loc_10565::				; CODE XREF: __2stm_module+133j
 		inc	ch
 		cmp	ch, cl
 		jb	short loc_10513
-		mov	byte ptr [es:di], 0
+		mov	byte ptr es:[di], 0
 		inc	di
 		pop	cx
 		dec	cx
@@ -1120,7 +1120,7 @@ loc_1089C::				; CODE XREF: _s3m_module+2FFj
 		jnz	loc_10811
 
 loc_108A6::				; CODE XREF: _s3m_module+276j
-		mov	byte ptr [es:di], 0
+		mov	byte ptr es:[di], 0
 		inc	di
 		pop	cx
 		dec	cx
@@ -1342,7 +1342,7 @@ loc_10AAC::				; CODE XREF: _e669_module+196j
 		inc	ch
 		cmp	ch, cl
 		jb	short loc_10A47
-		mov	byte ptr [es:di], 0
+		mov	byte ptr es:[di], 0
 		inc	di
 		pop	cx
 		dec	cx
@@ -1577,7 +1577,7 @@ loc_10CAA::				; CODE XREF: _snd_off-3594j
 		inc	ch
 		cmp	ch, cl
 		jb	short loc_10C91
-		mov	byte ptr [es:di], 0
+		mov	byte ptr es:[di], 0
 		inc	di
 		pop	si
 		pop	cx
@@ -1814,7 +1814,7 @@ loc_10EEC::				; CODE XREF: _psm_module+1C0j
 		jnz	short loc_10E92
 
 loc_10EF4::				; CODE XREF: _psm_module+16Aj
-		mov	byte ptr [es:di], 0
+		mov	byte ptr es:[di], 0
 		inc	di
 		pop	cx
 		dec	cx
@@ -2089,7 +2089,7 @@ loc_110FF::				; CODE XREF: _far_module+1ABj
 		inc	ch
 		cmp	ch, cl
 		jb	loc_11058
-		mov	byte ptr [es:di], 0
+		mov	byte ptr es:[di], 0
 		inc	di
 		pop	cx
 		dec	cx
@@ -2545,7 +2545,7 @@ loc_114DF::				; CODE XREF: _ult_module+2A3j
 		inc	ch
 		cmp	ch, cl
 		jb	short loc_1149C
-		mov	byte ptr [es:di], 0
+		mov	byte ptr es:[di], 0
 		inc	di
 		pop	si
 		pop	cx
@@ -3106,23 +3106,23 @@ loc_11BCE::				; CODE XREF: sub_11BA6+64j
 loc_11BD1::				; CODE XREF: sub_11BA6+22j
 		test	ch, 0E0h
 		jz	short locret_11C03
-		mov	[es:di], ch
+		mov	es:[di], ch
 		inc	di
 		test	ch, 80h
 		jz	short loc_11BE5
-		mov	[es:di], dx
+		mov	es:[di], dx
 		add	di, 2
 
 loc_11BE5::				; CODE XREF: sub_11BA6+37j
 		test	ch, 40h
 		jz	short loc_11BEE
-		mov	[es:di], cl
+		mov	es:[di], cl
 		inc	di
 
 loc_11BEE::				; CODE XREF: sub_11BA6+42j
 		test	ch, 20h
 		jz	short loc_11BF9
-		mov	[es:di], bx
+		mov	es:[di], bx
 		add	di, 2
 
 loc_11BF9::				; CODE XREF: sub_11BA6+4Bj
@@ -3159,7 +3159,7 @@ loc_11C14::				; CODE XREF: sub_11C0C+16j
 					; sub_11C0C+1Aj
 		mov	bl, [cs:_byte_11C29+bx]
 		add	si, bx
-		mov	bl, [es:si]
+		mov	bl, es:[si]
 		inc	si
 		shr	bl, 5
 		jnz	short loc_11C14
@@ -3308,11 +3308,11 @@ _ems_init proc near		; CODE XREF: sub_12DA8+103p
 		mov	es, ax
 		assume es:nothing
 		mov	ax, 1
-		mov	es, word ptr [es:19Eh]
+		mov	es, word ptr es:[19Eh]
 		assume es:nothing
-		cmp	dword ptr [es:0Ah], 584D4D45h ;	EMMX
+		cmp	dword ptr es:[0Ah], 584D4D45h ;	EMMX
 		jnz	short loc_11E00
-		cmp	dword ptr [es:0Eh], 30585858h ;	XXX0
+		cmp	dword ptr es:[0Eh], 30585858h ;	XXX0
 		jnz	short loc_11E00
 		mov	ah, 40h	; '@'
 		int	67h		;  - LIM EMS - GET MANAGER STATUS
@@ -3953,8 +3953,8 @@ loc_12228::				; CODE XREF: _mod_sub_12220+5j
 
 loc_12239::				; CODE XREF: _mod_sub_12220+10j
 					; _mod_sub_12220+21j
-		add	al, [es:si]
-		mov	[es:si], al
+		add	al, es:[si]
+		mov	es:[si], al
 		inc	si
 		dec	cx
 		jnz	short loc_12239
@@ -4033,7 +4033,7 @@ loc_12271::				; CODE XREF: _mod_readfile_12247+26j
 		xor	si, si
 
 loc_122AE::				; CODE XREF: _mod_readfile_12247+6Fj
-		xor	[fs:si], edx
+		xor	fs:[si], edx
 		add	si, 4
 		dec	cx
 		jnz	short loc_122AE
@@ -4128,9 +4128,9 @@ loc_1234E::				; CODE XREF: _ems_mapmemx+20j
 		cld
 
 loc_1236C::				; CODE XREF: _ems_mapmemx+9Bj
-		mov	eax, [es:di]
-		mov	[fs:si], eax
-		mov	dword ptr [es:di], 0
+		mov	eax, es:[di]
+		mov	fs:[si], eax
+		mov	dword ptr es:[di], 0
 		add	si, 4
 		add	di, 4
 		dec	cx
@@ -4185,7 +4185,7 @@ loc_123EE::				; CODE XREF: _ems_mapmemx+E7j
 		mov	di, bx
 		mov	cx, 200h
 		cld
-		rep movs dword	ptr [es:di], dword ptr [fs:si]
+		rep movs dword	ptr es:[di], dword ptr fs:[si]
 		pop	di
 		pop	ax
 		mov	ecx, [di+24h]
@@ -4238,7 +4238,7 @@ loc_12466::				; CODE XREF: _ems_mapmemx+15Fj
 		cld
 
 loc_1248B::				; CODE XREF: _ems_mapmemx+1ACj
-		movs	byte ptr [es:di], byte	ptr [fs:si]
+		movs	byte ptr es:[di], byte	ptr fs:[si]
 		cmp	si, dx
 		jb	short loc_12493
 		mov	si, bp
@@ -4253,7 +4253,7 @@ loc_12497::				; CODE XREF: _ems_mapmemx+193j
 		mov	di, bx
 		mov	cx, 200h
 		cld
-		rep movs dword	ptr [es:di], dword ptr [fs:si]
+		rep movs dword	ptr es:[di], dword ptr fs:[si]
 		retn
 _ems_mapmemx endp
 
@@ -4310,8 +4310,8 @@ loc_12508::				; CODE XREF: _ems_mapmemy+20j
 		cld
 
 loc_12529::				; CODE XREF: _ems_mapmemy+96j
-		mov	eax, [fs:si]
-		mov	[es:di], eax
+		mov	eax, fs:[si]
+		mov	es:[di], eax
 		add	si, 4
 		add	di, 4
 		dec	cx
@@ -4364,7 +4364,7 @@ loc_125A1::				; CODE XREF: _ems_mapmemy+E0j
 		mov	di, bx
 		mov	cx, 200h
 		cld
-		rep movs dword	ptr [es:di], dword ptr [fs:si]
+		rep movs dword	ptr es:[di], dword ptr fs:[si]
 		retn
 _ems_mapmemy endp
 
@@ -4477,25 +4477,25 @@ sub_1265D proc far		; CODE XREF: _read_module+86P
 		mov	ax, seg003
 		mov	es, ax
 		assume es:seg003
-		mov	ax, [es:_volume_245FC]
+		mov	ax, es:[_volume_245FC]
 		dec	ax
 		mov	cl, al
 		mov	si, offset _volume_25908
 		mov	di, offset asc_246B0 ; "				"
-		movzx	bp, [es:_sndcard_type]
-		mov	ch, [es:_byte_24666]
-		mov	bh, [es:_byte_24667]
-		mov	dl, [es:_sndflags_24622]
-		mov	dh, [es:_byte_24628]
+		movzx	bp, es:[_sndcard_type]
+		mov	ch, es:[_byte_24666]
+		mov	bh, es:[_byte_24667]
+		mov	dl, es:[_sndflags_24622]
+		mov	dh, es:[_byte_24628]
 		dec	dh
 		and	dh, 3
 		shl	dh, 1
-		or	dh, [es:_byte_24623]
+		or	dh, es:[_byte_24623]
 		shl	dh, 1
-		or	dh, [es:_byte_24671]
+		or	dh, es:[_byte_24671]
 		shl	dh, 3
-		mov	al, byte ptr [es:_word_245F6]
-		mov	ah, byte ptr [es:_word_245F0]
+		mov	al, byte ptr es:[_word_245F6]
+		mov	ah, byte ptr es:[_word_245F0]
 		retf
 sub_1265D endp
 
@@ -4509,11 +4509,11 @@ sub_126A9 proc far		; CODE XREF: _read_module+6AP
 		mov	es, ax
 		mov	di, offset asc_246B0 ; "				"
 		mov	si, offset _myout
-		mov	bl, byte ptr [es:_word_245FA]
-		mov	bh, byte ptr [es:_word_245D2]
-		mov	cl, byte ptr [es:_word_245D4]
-		mov	ch, [es:_byte_24617]
-		mov	eax, [es:_module_type_text]
+		mov	bl, byte ptr es:[_word_245FA]
+		mov	bh, byte ptr es:[_word_245D2]
+		mov	cl, byte ptr es:[_word_245D4]
+		mov	ch, es:[_byte_24617]
+		mov	eax, es:[_module_type_text]
 		retf
 sub_126A9 endp
 
@@ -4792,7 +4792,7 @@ loc_128BB::				; CODE XREF: _volume_prepare_waves+70j
 		mov	cx, 100h
 
 loc_128DD::				; CODE XREF: _volume_prepare_waves+DFj
-		mov	eax, [fs:si]
+		mov	eax, fs:[si]
 		inc	si
 		or	al, al
 		jns	short loc_12913
@@ -4805,7 +4805,7 @@ loc_128DD::				; CODE XREF: _volume_prepare_waves+DFj
 		cmp	al, ah
 		jg	short loc_12913
 		rol	eax, 16
-		mov	ax, [fs:si+3]
+		mov	ax, fs:[si+3]
 		rol	eax, 8
 		cmp	al, ah
 		jg	short loc_12913
@@ -4827,129 +4827,129 @@ loc_1291E::				; CODE XREF: _volume_prepare_waves+99j
 		xor	eax, eax
 
 loc_12921::				; CODE XREF: _volume_prepare_waves+21Cj
-		mov	al, [fs:si]
+		mov	al, fs:[si]
 		mov	al, [ebx+eax*2]
-		mov	[es:di], al
+		mov	es:[di], al
 		add	dl, dh
 		inc	di
 		adc	si, bp
 		dec	cx
 		jz	locret_12A55
-		mov	al, [fs:si]
+		mov	al, fs:[si]
 		mov	al, [ebx+eax*2]
-		mov	[es:di], al
+		mov	es:[di], al
 		add	dl, dh
 		inc	di
 		adc	si, bp
 		dec	cx
 		jz	locret_12A55
-		mov	al, [fs:si]
+		mov	al, fs:[si]
 		mov	al, [ebx+eax*2]
-		mov	[es:di], al
+		mov	es:[di], al
 		add	dl, dh
 		inc	di
 		adc	si, bp
 		dec	cx
 		jz	locret_12A55
-		mov	al, [fs:si]
+		mov	al, fs:[si]
 		mov	al, [ebx+eax*2]
-		mov	[es:di], al
+		mov	es:[di], al
 		add	dl, dh
 		inc	di
 		adc	si, bp
 		dec	cx
 		jz	locret_12A55
-		mov	al, [fs:si]
+		mov	al, fs:[si]
 		mov	al, [ebx+eax*2]
-		mov	[es:di], al
+		mov	es:[di], al
 		add	dl, dh
 		inc	di
 		adc	si, bp
 		dec	cx
 		jz	locret_12A55
-		mov	al, [fs:si]
+		mov	al, fs:[si]
 		mov	al, [ebx+eax*2]
-		mov	[es:di], al
+		mov	es:[di], al
 		add	dl, dh
 		inc	di
 		adc	si, bp
 		dec	cx
 		jz	locret_12A55
-		mov	al, [fs:si]
+		mov	al, fs:[si]
 		mov	al, [ebx+eax*2]
-		mov	[es:di], al
+		mov	es:[di], al
 		add	dl, dh
 		inc	di
 		adc	si, bp
 		dec	cx
 		jz	locret_12A55
-		mov	al, [fs:si]
+		mov	al, fs:[si]
 		mov	al, [ebx+eax*2]
-		mov	[es:di], al
+		mov	es:[di], al
 		add	dl, dh
 		inc	di
 		adc	si, bp
 		dec	cx
 		jz	locret_12A55
-		mov	al, [fs:si]
+		mov	al, fs:[si]
 		mov	al, [ebx+eax*2]
-		mov	[es:di], al
+		mov	es:[di], al
 		add	dl, dh
 		inc	di
 		adc	si, bp
 		dec	cx
 		jz	locret_12A55
-		mov	al, [fs:si]
+		mov	al, fs:[si]
 		mov	al, [ebx+eax*2]
-		mov	[es:di], al
+		mov	es:[di], al
 		add	dl, dh
 		inc	di
 		adc	si, bp
 		dec	cx
 		jz	short locret_12A55
-		mov	al, [fs:si]
+		mov	al, fs:[si]
 		mov	al, [ebx+eax*2]
-		mov	[es:di], al
+		mov	es:[di], al
 		add	dl, dh
 		inc	di
 		adc	si, bp
 		dec	cx
 		jz	short locret_12A55
-		mov	al, [fs:si]
+		mov	al, fs:[si]
 		mov	al, [ebx+eax*2]
-		mov	[es:di], al
+		mov	es:[di], al
 		add	dl, dh
 		inc	di
 		adc	si, bp
 		dec	cx
 		jz	short locret_12A55
-		mov	al, [fs:si]
+		mov	al, fs:[si]
 		mov	al, [ebx+eax*2]
-		mov	[es:di], al
+		mov	es:[di], al
 		add	dl, dh
 		inc	di
 		adc	si, bp
 		dec	cx
 		jz	short locret_12A55
-		mov	al, [fs:si]
+		mov	al, fs:[si]
 		mov	al, [ebx+eax*2]
-		mov	[es:di], al
+		mov	es:[di], al
 		add	dl, dh
 		inc	di
 		adc	si, bp
 		dec	cx
 		jz	short locret_12A55
-		mov	al, [fs:si]
+		mov	al, fs:[si]
 		mov	al, [ebx+eax*2]
-		mov	[es:di], al
+		mov	es:[di], al
 		add	dl, dh
 		inc	di
 		adc	si, bp
 		dec	cx
 		jz	short locret_12A55
-		mov	al, [fs:si]
+		mov	al, fs:[si]
 		mov	al, [ebx+eax*2]
-		mov	[es:di], al
+		mov	es:[di], al
 		add	dl, dh
 		inc	di
 		adc	si, bp
@@ -6188,14 +6188,14 @@ loc_135E0::				; CODE XREF: sub_135CA+11j
 		dec	cx
 		jnz	short loc_135D3
 		les	si, _pointer_245B4
-		mov	al, [es:si]
+		mov	al, es:[si]
 		inc	si
 		or	al, al
 		jz	short loc_135FD
 
 loc_135F2::				; CODE XREF: sub_135CA+31j
 		call	sub_13623
-		mov	al, [es:si]
+		mov	al, es:[si]
 		inc	si
 		or	al, al
 		jnz	short loc_135F2
@@ -6253,7 +6253,7 @@ sub_13623 proc near		; CODE XREF: sub_12CAD+1Cp
 
 loc_13646::
 		and	dh, 7Fh
-		mov	ax, [es:si]
+		mov	ax, es:[si]
 		add	si, 2
 		or	ax, ax
 		jz	short loc_13661
@@ -6268,7 +6268,7 @@ loc_13661::				; CODE XREF: sub_13623+21j
 		test	dh, 40h
 		jz	short loc_13677
 		and	dh, 0BFh
-		mov	al, [es:si]
+		mov	al, es:[si]
 		inc	si
 		cmp	al, 40h	; '@'
 		ja	short loc_13677
@@ -6280,7 +6280,7 @@ loc_13677::				; CODE XREF: sub_13623+41j
 		mov	[bx+3Dh], dh
 		test	dh, 20h
 		jz	sub_137D5
-		mov	dx, [es:si]
+		mov	dx, es:[si]
 		add	si, 2
 		or	dh, dh
 		jz	loc_13718
@@ -9004,7 +9004,7 @@ _covox_init proc near		; DATA XREF: seg003:0D0Eo
 		xor	ax, ax
 		mov	es, ax
 		assume es:nothing
-		mov	ax, [es:408h]
+		mov	ax, es:[408h]
 		mov	_snd_base_port, ax
 
 loc_14F95::				; CODE XREF: _covox_init+14j
@@ -9105,7 +9105,7 @@ _stereo_init proc near	; DATA XREF: seg003:0D10o
 		jnz	short loc_1501D
 		xor	ax, ax
 		mov	es, ax
-		mov	ax, [es:408h]
+		mov	ax, es:[408h]
 		mov	_snd_base_port, ax
 
 loc_1501D::				; CODE XREF: _stereo_init+14j
@@ -9946,7 +9946,7 @@ sub_15577 endp ; sp-analysis	failed
 
 loc_155A8::				; CODE XREF: sub_1609F+28j
 					; sub_1609F+2AEj ...
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		adc	si, bp
@@ -9955,7 +9955,7 @@ loc_155A8::				; CODE XREF: sub_1609F+28j
 
 loc_155B8::				; CODE XREF: sub_15577+28j
 					; sub_1609F+28j ...
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		adc	si, bp
@@ -9964,7 +9964,7 @@ loc_155B8::				; CODE XREF: sub_15577+28j
 
 loc_155C8::				; CODE XREF: sub_15577+28j
 					; sub_1609F+28j ...
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		adc	si, bp
@@ -9973,7 +9973,7 @@ loc_155C8::				; CODE XREF: sub_15577+28j
 
 loc_155D8::				; CODE XREF: sub_15577+28j
 					; sub_1609F+28j ...
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		adc	si, bp
@@ -9982,7 +9982,7 @@ loc_155D8::				; CODE XREF: sub_15577+28j
 
 loc_155E8::				; CODE XREF: sub_15577+28j
 					; sub_1609F+28j ...
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		adc	si, bp
@@ -9991,7 +9991,7 @@ loc_155E8::				; CODE XREF: sub_15577+28j
 
 loc_155F8::				; CODE XREF: sub_15577+28j
 					; sub_1609F+28j ...
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		adc	si, bp
@@ -10000,7 +10000,7 @@ loc_155F8::				; CODE XREF: sub_15577+28j
 
 loc_15608::				; CODE XREF: sub_15577+28j
 					; sub_1609F+28j ...
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		adc	si, bp
@@ -10009,7 +10009,7 @@ loc_15608::				; CODE XREF: sub_15577+28j
 
 loc_15618::				; CODE XREF: sub_15577+28j
 					; sub_1609F+28j ...
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 
@@ -10020,7 +10020,7 @@ loc_15621::
 
 loc_15628::				; CODE XREF: sub_15577+28j
 					; sub_1609F+28j ...
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		adc	si, bp
@@ -10029,7 +10029,7 @@ loc_15628::				; CODE XREF: sub_15577+28j
 
 loc_15638::				; CODE XREF: sub_15577+28j
 					; sub_1609F+28j ...
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		adc	si, bp
@@ -10038,7 +10038,7 @@ loc_15638::				; CODE XREF: sub_15577+28j
 
 loc_15648::				; CODE XREF: sub_15577+28j
 					; sub_1609F+28j ...
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		adc	si, bp
@@ -10047,7 +10047,7 @@ loc_15648::				; CODE XREF: sub_15577+28j
 
 loc_15658::				; CODE XREF: sub_15577+28j
 					; sub_1609F+28j ...
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		adc	si, bp
@@ -10056,7 +10056,7 @@ loc_15658::				; CODE XREF: sub_15577+28j
 
 loc_15668::				; CODE XREF: sub_15577+28j
 					; sub_1609F+28j ...
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		adc	si, bp
@@ -10065,7 +10065,7 @@ loc_15668::				; CODE XREF: sub_15577+28j
 
 loc_15678::				; CODE XREF: sub_15577+28j
 					; sub_1609F+28j ...
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		adc	si, bp
@@ -10074,7 +10074,7 @@ loc_15678::				; CODE XREF: sub_15577+28j
 
 loc_15688::				; CODE XREF: sub_15577+28j
 					; sub_1609F+28j ...
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		adc	si, bp
@@ -10087,82 +10087,82 @@ loc_15698::				; CODE XREF: sub_15577+28j
 		jz	loc_1578C
 
 loc_156A1::				; CODE XREF: sub_1609F-917j
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		adc	si, bp
 		add	[di], ax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		adc	si, bp
 		add	[di+8],	ax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		adc	si, bp
 		add	[di+10h], ax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		adc	si, bp
 		add	[di+18h], ax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		adc	si, bp
 		add	[di+20h], ax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		adc	si, bp
 		add	[di+28h], ax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		adc	si, bp
 		add	[di+30h], ax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		adc	si, bp
 		add	[di+38h], ax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		adc	si, bp
 		add	[di+40h], ax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		adc	si, bp
 		add	[di+48h], ax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		adc	si, bp
 		add	[di+50h], ax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		adc	si, bp
 		add	[di+58h], ax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		adc	si, bp
 		add	[di+60h], ax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		adc	si, bp
 		add	[di+68h], ax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		adc	si, bp
 		add	[di+70h], ax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		adc	si, bp
@@ -10267,9 +10267,9 @@ loc_15877::				; CODE XREF: sub_15577+282j
 
 loc_15891::				; CODE XREF: sub_15577+28j
 					; sub_1609F+28j ...
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		mov	ax, [ebx+edx*2]
-		mov	dl, [es:si+1]
+		mov	dl, es:[si+1]
 		cwde
 		movsx	edx, word ptr [ebx+edx*2]
 		sub	edx, eax
@@ -10291,9 +10291,9 @@ _byte_158B4	db 0			; DATA XREF: sub_15577+27Dr
 
 loc_158C0::				; CODE XREF: sub_15577+28j
 					; sub_15577+311j ...
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		mov	ax, [ebx+edx*2]
-		mov	dl, [es:si+1]
+		mov	dl, es:[si+1]
 		cwde
 		movsx	edx, word ptr [ebx+edx*2]
 		sub	edx, eax
@@ -10314,9 +10314,9 @@ _byte_158E3	db 0			; DATA XREF: sub_15577+288w
 
 loc_158EF::				; CODE XREF: sub_15577+28j
 					; sub_15577+311j ...
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		mov	ax, [ebx+edx*2]
-		mov	dl, [es:si+1]
+		mov	dl, es:[si+1]
 		cwde
 		movsx	edx, word ptr [ebx+edx*2]
 		sub	edx, eax
@@ -10337,9 +10337,9 @@ _byte_15912	db 0			; DATA XREF: sub_15577+28Cw
 
 loc_1591E::				; CODE XREF: sub_15577+28j
 					; sub_15577+311j ...
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		mov	ax, [ebx+edx*2]
-		mov	dl, [es:si+1]
+		mov	dl, es:[si+1]
 		cwde
 		movsx	edx, word ptr [ebx+edx*2]
 		sub	edx, eax
@@ -10360,9 +10360,9 @@ _byte_15941	db 0			; DATA XREF: sub_15577+290w
 
 loc_1594D::				; CODE XREF: sub_15577+28j
 					; sub_15577+311j ...
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		mov	ax, [ebx+edx*2]
-		mov	dl, [es:si+1]
+		mov	dl, es:[si+1]
 		cwde
 		movsx	edx, word ptr [ebx+edx*2]
 		sub	edx, eax
@@ -10383,9 +10383,9 @@ _byte_15970	db 0			; DATA XREF: sub_15577+294w
 
 loc_1597C::				; CODE XREF: sub_15577+28j
 					; sub_15577+311j ...
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		mov	ax, [ebx+edx*2]
-		mov	dl, [es:si+1]
+		mov	dl, es:[si+1]
 		cwde
 		movsx	edx, word ptr [ebx+edx*2]
 		sub	edx, eax
@@ -10406,9 +10406,9 @@ _byte_1599F	db 0			; DATA XREF: sub_15577+298w
 
 loc_159AB::				; CODE XREF: sub_15577+28j
 					; sub_15577+311j ...
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		mov	ax, [ebx+edx*2]
-		mov	dl, [es:si+1]
+		mov	dl, es:[si+1]
 		cwde
 		movsx	edx, word ptr [ebx+edx*2]
 		sub	edx, eax
@@ -10429,9 +10429,9 @@ _byte_159CE	db 0			; DATA XREF: sub_15577+29Cw
 
 loc_159DA::				; CODE XREF: sub_15577+28j
 					; sub_15577+311j ...
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		mov	ax, [ebx+edx*2]
-		mov	dl, [es:si+1]
+		mov	dl, es:[si+1]
 		cwde
 		movsx	edx, word ptr [ebx+edx*2]
 		sub	edx, eax
@@ -10452,9 +10452,9 @@ _byte_159FD	db 0			; DATA XREF: sub_15577+2A0w
 
 loc_15A09::				; CODE XREF: sub_15577+28j
 					; sub_15577+311j ...
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		mov	ax, [ebx+edx*2]
-		mov	dl, [es:si+1]
+		mov	dl, es:[si+1]
 		cwde
 		movsx	edx, word ptr [ebx+edx*2]
 		sub	edx, eax
@@ -10475,9 +10475,9 @@ _byte_15A2C	db 0			; DATA XREF: sub_15577+2A4w
 
 loc_15A38::				; CODE XREF: sub_15577+28j
 					; sub_15577+311j ...
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		mov	ax, [ebx+edx*2]
-		mov	dl, [es:si+1]
+		mov	dl, es:[si+1]
 		cwde
 		movsx	edx, word ptr [ebx+edx*2]
 		sub	edx, eax
@@ -10498,9 +10498,9 @@ _byte_15A5B	db 0			; DATA XREF: sub_15577+2A8w
 
 loc_15A67::				; CODE XREF: sub_15577+28j
 					; sub_15577+311j ...
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		mov	ax, [ebx+edx*2]
-		mov	dl, [es:si+1]
+		mov	dl, es:[si+1]
 		cwde
 		movsx	edx, word ptr [ebx+edx*2]
 		sub	edx, eax
@@ -10521,9 +10521,9 @@ _byte_15A8A	db 0			; DATA XREF: sub_15577+2ACw
 
 loc_15A96::				; CODE XREF: sub_15577+28j
 					; sub_15577+311j ...
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		mov	ax, [ebx+edx*2]
-		mov	dl, [es:si+1]
+		mov	dl, es:[si+1]
 		cwde
 		movsx	edx, word ptr [ebx+edx*2]
 		sub	edx, eax
@@ -10544,9 +10544,9 @@ _byte_15AB9	db 0			; DATA XREF: sub_15577+2B0w
 
 loc_15AC5::				; CODE XREF: sub_15577+28j
 					; sub_15577+311j ...
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		mov	ax, [ebx+edx*2]
-		mov	dl, [es:si+1]
+		mov	dl, es:[si+1]
 		cwde
 		movsx	edx, word ptr [ebx+edx*2]
 		sub	edx, eax
@@ -10567,9 +10567,9 @@ _byte_15AE8	db 0			; DATA XREF: sub_15577+2B4w
 
 loc_15AF4::				; CODE XREF: sub_15577+28j
 					; sub_15577+311j ...
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		mov	ax, [ebx+edx*2]
-		mov	dl, [es:si+1]
+		mov	dl, es:[si+1]
 		cwde
 		movsx	edx, word ptr [ebx+edx*2]
 		sub	edx, eax
@@ -10590,9 +10590,9 @@ _byte_15B17	db 0			; DATA XREF: sub_15577+2B8w
 
 loc_15B23::				; CODE XREF: sub_15577+28j
 					; sub_15577+311j ...
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		mov	ax, [ebx+edx*2]
-		mov	dl, [es:si+1]
+		mov	dl, es:[si+1]
 		cwde
 		movsx	edx, word ptr [ebx+edx*2]
 		sub	edx, eax
@@ -10618,9 +10618,9 @@ loc_15B52::				; CODE XREF: sub_15577+28j
 
 loc_15B5B::				; CODE XREF: seg000:5E41j
 		xor	edx, edx
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		mov	ax, [ebx+edx*2]
-		mov	dl, [es:si+1]
+		mov	dl, es:[si+1]
 		cwde
 		movsx	edx, word ptr [ebx+edx*2]
 		sub	edx, eax
@@ -10636,9 +10636,9 @@ _byte_15B81	db 0			; DATA XREF: sub_15577+2C0w
 		adc	si, bp
 		xor	edx, edx
 		add	[di], eax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		mov	ax, [ebx+edx*2]
-		mov	dl, [es:si+1]
+		mov	dl, es:[si+1]
 		cwde
 		movsx	edx, word ptr [ebx+edx*2]
 		sub	edx, eax
@@ -10653,9 +10653,9 @@ _byte_15BAD	db 0			; DATA XREF: sub_15577+2C4w
 		adc	si, bp
 		xor	edx, edx
 		add	[di+8],	eax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		mov	ax, [ebx+edx*2]
-		mov	dl, [es:si+1]
+		mov	dl, es:[si+1]
 		cwde
 		movsx	edx, word ptr [ebx+edx*2]
 		sub	edx, eax
@@ -10670,9 +10670,9 @@ _byte_15BDA	db 0			; DATA XREF: sub_15577+2C8w
 		adc	si, bp
 		xor	edx, edx
 		add	[di+10h], eax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		mov	ax, [ebx+edx*2]
-		mov	dl, [es:si+1]
+		mov	dl, es:[si+1]
 		cwde
 		movsx	edx, word ptr [ebx+edx*2]
 		sub	edx, eax
@@ -10687,9 +10687,9 @@ _byte_15C07	db 0			; DATA XREF: sub_15577+2CCw
 		adc	si, bp
 		xor	edx, edx
 		add	[di+18h], eax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		mov	ax, [ebx+edx*2]
-		mov	dl, [es:si+1]
+		mov	dl, es:[si+1]
 		cwde
 		movsx	edx, word ptr [ebx+edx*2]
 		sub	edx, eax
@@ -10704,9 +10704,9 @@ _byte_15C34	db 0			; DATA XREF: sub_15577+2D0w
 		adc	si, bp
 		xor	edx, edx
 		add	[di+20h], eax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		mov	ax, [ebx+edx*2]
-		mov	dl, [es:si+1]
+		mov	dl, es:[si+1]
 		cwde
 		movsx	edx, word ptr [ebx+edx*2]
 		sub	edx, eax
@@ -10721,9 +10721,9 @@ _byte_15C61	db 0			; DATA XREF: sub_15577+2D4w
 		adc	si, bp
 		xor	edx, edx
 		add	[di+28h], eax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		mov	ax, [ebx+edx*2]
-		mov	dl, [es:si+1]
+		mov	dl, es:[si+1]
 		cwde
 		movsx	edx, word ptr [ebx+edx*2]
 		sub	edx, eax
@@ -10738,9 +10738,9 @@ _byte_15C8E	db 0			; DATA XREF: sub_15577+2D8w
 		adc	si, bp
 		xor	edx, edx
 		add	[di+30h], eax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		mov	ax, [ebx+edx*2]
-		mov	dl, [es:si+1]
+		mov	dl, es:[si+1]
 		cwde
 		movsx	edx, word ptr [ebx+edx*2]
 		sub	edx, eax
@@ -10755,9 +10755,9 @@ _byte_15CBB	db 0			; DATA XREF: sub_15577+2DCw
 		adc	si, bp
 		xor	edx, edx
 		add	[di+38h], eax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		mov	ax, [ebx+edx*2]
-		mov	dl, [es:si+1]
+		mov	dl, es:[si+1]
 		cwde
 		movsx	edx, word ptr [ebx+edx*2]
 		sub	edx, eax
@@ -10772,9 +10772,9 @@ _byte_15CE8	db 0			; DATA XREF: sub_15577+2E0w
 		adc	si, bp
 		xor	edx, edx
 		add	[di+40h], eax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		mov	ax, [ebx+edx*2]
-		mov	dl, [es:si+1]
+		mov	dl, es:[si+1]
 		cwde
 		movsx	edx, word ptr [ebx+edx*2]
 		sub	edx, eax
@@ -10789,9 +10789,9 @@ _byte_15D15	db 0			; DATA XREF: sub_15577+2E4w
 		adc	si, bp
 		xor	edx, edx
 		add	[di+48h], eax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		mov	ax, [ebx+edx*2]
-		mov	dl, [es:si+1]
+		mov	dl, es:[si+1]
 		cwde
 		movsx	edx, word ptr [ebx+edx*2]
 		sub	edx, eax
@@ -10806,9 +10806,9 @@ _byte_15D42	db 0			; DATA XREF: sub_15577+2E8w
 		adc	si, bp
 		xor	edx, edx
 		add	[di+50h], eax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		mov	ax, [ebx+edx*2]
-		mov	dl, [es:si+1]
+		mov	dl, es:[si+1]
 		cwde
 		movsx	edx, word ptr [ebx+edx*2]
 		sub	edx, eax
@@ -10823,9 +10823,9 @@ _byte_15D6F	db 0			; DATA XREF: sub_15577+2ECw
 		adc	si, bp
 		xor	edx, edx
 		add	[di+58h], eax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		mov	ax, [ebx+edx*2]
-		mov	dl, [es:si+1]
+		mov	dl, es:[si+1]
 		cwde
 		movsx	edx, word ptr [ebx+edx*2]
 		sub	edx, eax
@@ -10840,9 +10840,9 @@ _byte_15D9C	db 0			; DATA XREF: sub_15577+2F0w
 		adc	si, bp
 		xor	edx, edx
 		add	[di+60h], eax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		mov	ax, [ebx+edx*2]
-		mov	dl, [es:si+1]
+		mov	dl, es:[si+1]
 		cwde
 		movsx	edx, word ptr [ebx+edx*2]
 		sub	edx, eax
@@ -10857,9 +10857,9 @@ _byte_15DC9	db 0			; DATA XREF: sub_15577+2F4w
 		adc	si, bp
 		xor	edx, edx
 		add	[di+68h], eax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		mov	ax, [ebx+edx*2]
-		mov	dl, [es:si+1]
+		mov	dl, es:[si+1]
 		cwde
 		movsx	edx, word ptr [ebx+edx*2]
 		sub	edx, eax
@@ -10874,9 +10874,9 @@ _byte_15DF6	db 0			; DATA XREF: sub_15577+2F8w
 		adc	si, bp
 		xor	edx, edx
 		add	[di+70h], eax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		mov	ax, [ebx+edx*2]
-		mov	dl, [es:si+1]
+		mov	dl, es:[si+1]
 		cwde
 		movsx	edx, word ptr [ebx+edx*2]
 		sub	edx, eax
@@ -10911,7 +10911,7 @@ loc_15E48::				; CODE XREF: sub_15577+1Aj
 
 loc_15E5B::				; CODE XREF: sub_15577+28j
 					; sub_15577+311j ...
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		cwde
@@ -10921,7 +10921,7 @@ loc_15E5B::				; CODE XREF: sub_15577+28j
 
 loc_15E6E::				; CODE XREF: sub_15577+28j
 					; sub_15577+311j ...
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		cwde
@@ -10931,7 +10931,7 @@ loc_15E6E::				; CODE XREF: sub_15577+28j
 
 loc_15E81::				; CODE XREF: sub_15577+28j
 					; sub_15577+311j ...
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		cwde
@@ -10941,7 +10941,7 @@ loc_15E81::				; CODE XREF: sub_15577+28j
 
 loc_15E94::				; CODE XREF: sub_15577+28j
 					; sub_15577+311j ...
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		cwde
@@ -10951,7 +10951,7 @@ loc_15E94::				; CODE XREF: sub_15577+28j
 
 loc_15EA7::				; CODE XREF: sub_15577+28j
 					; sub_15577+311j ...
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		cwde
@@ -10961,7 +10961,7 @@ loc_15EA7::				; CODE XREF: sub_15577+28j
 
 loc_15EBA::				; CODE XREF: sub_15577+28j
 					; sub_15577+311j ...
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		cwde
@@ -10971,7 +10971,7 @@ loc_15EBA::				; CODE XREF: sub_15577+28j
 
 loc_15ECD::				; CODE XREF: sub_15577+28j
 					; sub_15577+311j ...
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		cwde
@@ -10981,7 +10981,7 @@ loc_15ECD::				; CODE XREF: sub_15577+28j
 
 loc_15EE0::				; CODE XREF: sub_15577+28j
 					; sub_15577+311j ...
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		cwde
@@ -10991,7 +10991,7 @@ loc_15EE0::				; CODE XREF: sub_15577+28j
 
 loc_15EF3::				; CODE XREF: sub_15577+28j
 					; sub_15577+311j ...
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		cwde
@@ -11001,7 +11001,7 @@ loc_15EF3::				; CODE XREF: sub_15577+28j
 
 loc_15F06::				; CODE XREF: sub_15577+28j
 					; sub_15577+311j ...
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		cwde
@@ -11011,7 +11011,7 @@ loc_15F06::				; CODE XREF: sub_15577+28j
 
 loc_15F19::				; CODE XREF: sub_15577+28j
 					; sub_15577+311j ...
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		cwde
@@ -11021,7 +11021,7 @@ loc_15F19::				; CODE XREF: sub_15577+28j
 
 loc_15F2C::				; CODE XREF: sub_15577+28j
 					; sub_15577+311j ...
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		cwde
@@ -11031,7 +11031,7 @@ loc_15F2C::				; CODE XREF: sub_15577+28j
 
 loc_15F3F::				; CODE XREF: sub_15577+28j
 					; sub_15577+311j ...
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		cwde
@@ -11041,7 +11041,7 @@ loc_15F3F::				; CODE XREF: sub_15577+28j
 
 loc_15F52::				; CODE XREF: sub_15577+28j
 					; sub_15577+311j ...
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		cwde
@@ -11051,7 +11051,7 @@ loc_15F52::				; CODE XREF: sub_15577+28j
 
 loc_15F65::				; CODE XREF: sub_15577+28j
 					; sub_15577+311j ...
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		cwde
@@ -11065,97 +11065,97 @@ loc_15F78::				; CODE XREF: sub_15577+28j
 		jz	loc_1578C
 
 loc_15F81::				; CODE XREF: sub_15577+B21j
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		cwde
 		adc	si, bp
 		add	[di], eax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		cwde
 		adc	si, bp
 		add	[di+8],	eax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		cwde
 		adc	si, bp
 		add	[di+10h], eax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		cwde
 		adc	si, bp
 		add	[di+18h], eax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		cwde
 		adc	si, bp
 		add	[di+20h], eax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		cwde
 		adc	si, bp
 		add	[di+28h], eax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		cwde
 		adc	si, bp
 		add	[di+30h], eax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		cwde
 		adc	si, bp
 		add	[di+38h], eax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		cwde
 		adc	si, bp
 		add	[di+40h], eax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		cwde
 		adc	si, bp
 		add	[di+48h], eax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		cwde
 		adc	si, bp
 		add	[di+50h], eax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		cwde
 		adc	si, bp
 		add	[di+58h], eax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		cwde
 		adc	si, bp
 		add	[di+60h], eax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		cwde
 		adc	si, bp
 		add	[di+68h], eax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		cwde
 		adc	si, bp
 		add	[di+70h], eax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		cwde
@@ -11211,7 +11211,7 @@ sub_1609F endp ; sp-analysis	failed
 
 
 loc_160D0::				; DATA XREF: seg000:8DDEo
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		adc	si, bp
@@ -11221,7 +11221,7 @@ loc_160D0::				; DATA XREF: seg000:8DDEo
 
 loc_160E0::				; CODE XREF: sub_1609F+28j
 					; DATA XREF: seg000:8DDCo
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		adc	si, bp
@@ -11230,7 +11230,7 @@ loc_160E0::				; CODE XREF: sub_1609F+28j
 
 loc_160F0::				; CODE XREF: sub_1609F+28j
 					; DATA XREF: seg000:8DDAo
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		adc	si, bp
@@ -11239,7 +11239,7 @@ loc_160F0::				; CODE XREF: sub_1609F+28j
 
 loc_16100::				; CODE XREF: sub_1609F+28j
 					; DATA XREF: seg000:8DD8o
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		adc	si, bp
@@ -11248,7 +11248,7 @@ loc_16100::				; CODE XREF: sub_1609F+28j
 
 loc_16110::				; CODE XREF: sub_1609F+28j
 					; DATA XREF: seg000:8DD6o
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		adc	si, bp
@@ -11257,7 +11257,7 @@ loc_16110::				; CODE XREF: sub_1609F+28j
 
 loc_16120::				; CODE XREF: sub_137D5+39j
 					; _eff_139B9+86j ...
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		adc	si, bp
@@ -11266,7 +11266,7 @@ loc_16120::				; CODE XREF: sub_137D5+39j
 
 loc_16130::				; CODE XREF: sub_1609F+28j
 					; DATA XREF: seg000:8DD2o
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		adc	si, bp
@@ -11275,7 +11275,7 @@ loc_16130::				; CODE XREF: sub_1609F+28j
 
 loc_16140::				; CODE XREF: sub_1609F+28j
 					; DATA XREF: seg000:8DD0o
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		adc	si, bp
@@ -11284,7 +11284,7 @@ loc_16140::				; CODE XREF: sub_1609F+28j
 
 loc_16150::				; CODE XREF: sub_1609F+28j
 					; DATA XREF: seg000:8DCEo
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		adc	si, bp
@@ -11293,7 +11293,7 @@ loc_16150::				; CODE XREF: sub_1609F+28j
 
 loc_16160::				; CODE XREF: sub_1609F+28j
 					; DATA XREF: seg000:8DCCo
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 
 loc_16165::				; CODE XREF: _snd_initialze+13j
@@ -11304,7 +11304,7 @@ loc_16165::				; CODE XREF: _snd_initialze+13j
 
 loc_16170::				; CODE XREF: sub_1609F+28j
 					; DATA XREF: seg000:8DCAo
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		adc	si, bp
@@ -11313,7 +11313,7 @@ loc_16170::				; CODE XREF: sub_1609F+28j
 
 loc_16180::				; CODE XREF: sub_1609F+28j
 					; DATA XREF: seg000:8DC8o
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		adc	si, bp
@@ -11322,7 +11322,7 @@ loc_16180::				; CODE XREF: sub_1609F+28j
 
 loc_16190::				; CODE XREF: sub_1609F+28j
 					; DATA XREF: seg000:8DC6o
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		adc	si, bp
@@ -11331,7 +11331,7 @@ loc_16190::				; CODE XREF: sub_1609F+28j
 
 loc_161A0::				; CODE XREF: sub_1609F+28j
 					; DATA XREF: seg000:8DC4o
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		adc	si, bp
@@ -11340,7 +11340,7 @@ loc_161A0::				; CODE XREF: sub_1609F+28j
 
 loc_161B0::				; CODE XREF: sub_1609F+28j
 					; DATA XREF: seg000:8DC2o
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		adc	si, bp
@@ -11353,82 +11353,82 @@ loc_161C0::				; CODE XREF: sub_1609F+28j
 		jz	loc_1578C
 
 loc_161C9::				; CODE XREF: sub_1609F+211j
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		adc	si, bp
 		mov	[di], ax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		adc	si, bp
 		mov	[di+8],	ax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		adc	si, bp
 		mov	[di+10h], ax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		adc	si, bp
 		mov	[di+18h], ax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		adc	si, bp
 		mov	[di+20h], ax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		adc	si, bp
 		mov	[di+28h], ax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		adc	si, bp
 		mov	[di+30h], ax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		adc	si, bp
 		mov	[di+38h], ax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		adc	si, bp
 		mov	[di+40h], ax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		adc	si, bp
 		mov	[di+48h], ax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		adc	si, bp
 		mov	[di+50h], ax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		adc	si, bp
 		mov	[di+58h], ax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		adc	si, bp
 		mov	[di+60h], ax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		adc	si, bp
 		mov	[di+68h], ax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		adc	si, bp
 		mov	[di+70h], ax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		adc	si, bp
@@ -11484,9 +11484,9 @@ loc_1633C::				; CODE XREF: sub_1609F+21Fj
 
 loc_16356::				; CODE XREF: sub_1609F+28j
 					; DATA XREF: seg000:8DFEo
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		mov	ax, [ebx+edx*2]
-		mov	dl, [es:si+1]
+		mov	dl, es:[si+1]
 		cwde
 		movsx	edx, word ptr [ebx+edx*2]
 
@@ -11511,9 +11511,9 @@ _byte_16379	db 0			; DATA XREF: sub_1609F+21Ar
 loc_16385::				; CODE XREF: sub_1609F+28j
 					; sub_1609F+2AEj
 					; DATA XREF: ...
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		mov	ax, [ebx+edx*2]
-		mov	dl, [es:si+1]
+		mov	dl, es:[si+1]
 		cwde
 		movsx	edx, word ptr [ebx+edx*2]
 		sub	edx, eax
@@ -11535,9 +11535,9 @@ _byte_163A8	db 0			; DATA XREF: sub_1609F+225w
 loc_163B4::				; CODE XREF: sub_1609F+28j
 					; sub_1609F+2AEj
 					; DATA XREF: ...
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		mov	ax, [ebx+edx*2]
-		mov	dl, [es:si+1]
+		mov	dl, es:[si+1]
 		cwde
 		movsx	edx, word ptr [ebx+edx*2]
 		sub	edx, eax
@@ -11559,9 +11559,9 @@ _byte_163D7	db 0			; DATA XREF: sub_1609F+229w
 loc_163E3::				; CODE XREF: sub_1609F+28j
 					; sub_1609F+2AEj
 					; DATA XREF: ...
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		mov	ax, [ebx+edx*2]
-		mov	dl, [es:si+1]
+		mov	dl, es:[si+1]
 		cwde
 		movsx	edx, word ptr [ebx+edx*2]
 		sub	edx, eax
@@ -11583,9 +11583,9 @@ _byte_16406	db 0			; DATA XREF: sub_1609F+22Dw
 loc_16412::				; CODE XREF: sub_1609F+28j
 					; sub_1609F+2AEj
 					; DATA XREF: ...
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		mov	ax, [ebx+edx*2]
-		mov	dl, [es:si+1]
+		mov	dl, es:[si+1]
 		cwde
 		movsx	edx, word ptr [ebx+edx*2]
 		sub	edx, eax
@@ -11607,9 +11607,9 @@ _byte_16435	db 0			; DATA XREF: sub_1609F+231w
 loc_16441::				; CODE XREF: sub_1609F+28j
 					; sub_1609F+2AEj
 					; DATA XREF: ...
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		mov	ax, [ebx+edx*2]
-		mov	dl, [es:si+1]
+		mov	dl, es:[si+1]
 		cwde
 		movsx	edx, word ptr [ebx+edx*2]
 		sub	edx, eax
@@ -11632,9 +11632,9 @@ loc_1646D::
 loc_16470::				; CODE XREF: sub_1609F+28j
 					; sub_1609F+2AEj
 					; DATA XREF: ...
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		mov	ax, [ebx+edx*2]
-		mov	dl, [es:si+1]
+		mov	dl, es:[si+1]
 		cwde
 		movsx	edx, word ptr [ebx+edx*2]
 		sub	edx, eax
@@ -11655,9 +11655,9 @@ _byte_16493	db 0			; DATA XREF: sub_1609F+239w
 loc_1649F::				; CODE XREF: sub_1609F+28j
 					; sub_1609F+2AEj
 					; DATA XREF: ...
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		mov	ax, [ebx+edx*2]
-		mov	dl, [es:si+1]
+		mov	dl, es:[si+1]
 		cwde
 		movsx	edx, word ptr [ebx+edx*2]
 		sub	edx, eax
@@ -11679,9 +11679,9 @@ _byte_164C2	db 0			; DATA XREF: sub_1609F+23Dw
 loc_164CE::				; CODE XREF: sub_1609F+28j
 					; sub_1609F+2AEj
 					; DATA XREF: ...
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		mov	ax, [ebx+edx*2]
-		mov	dl, [es:si+1]
+		mov	dl, es:[si+1]
 		cwde
 		movsx	edx, word ptr [ebx+edx*2]
 		sub	edx, eax
@@ -11703,9 +11703,9 @@ _byte_164F1	db 0			; DATA XREF: sub_1609F+241w
 loc_164FD::				; CODE XREF: sub_1609F+28j
 					; sub_1609F+2AEj
 					; DATA XREF: ...
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		mov	ax, [ebx+edx*2]
-		mov	dl, [es:si+1]
+		mov	dl, es:[si+1]
 		cwde
 		movsx	edx, word ptr [ebx+edx*2]
 		sub	edx, eax
@@ -11727,9 +11727,9 @@ _byte_16520	db 0			; DATA XREF: sub_1609F+245w
 loc_1652C::				; CODE XREF: sub_1609F+28j
 					; sub_1609F+2AEj
 					; DATA XREF: ...
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		mov	ax, [ebx+edx*2]
-		mov	dl, [es:si+1]
+		mov	dl, es:[si+1]
 		cwde
 		movsx	edx, word ptr [ebx+edx*2]
 		sub	edx, eax
@@ -11751,9 +11751,9 @@ _byte_1654F	db 0			; DATA XREF: sub_1609F+249w
 loc_1655B::				; CODE XREF: sub_1609F+28j
 					; sub_1609F+2AEj
 					; DATA XREF: ...
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		mov	ax, [ebx+edx*2]
-		mov	dl, [es:si+1]
+		mov	dl, es:[si+1]
 		cwde
 
 loc_16568::
@@ -11777,9 +11777,9 @@ _byte_1657E	db 0			; DATA XREF: sub_1609F+24Dw
 loc_1658A::				; CODE XREF: sub_1609F+28j
 					; sub_1609F+2AEj
 					; DATA XREF: ...
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		mov	ax, [ebx+edx*2]
-		mov	dl, [es:si+1]
+		mov	dl, es:[si+1]
 		cwde
 		movsx	edx, word ptr [ebx+edx*2]
 		sub	edx, eax
@@ -11801,9 +11801,9 @@ unk_165AD	db    0			; DATA XREF: sub_1609F+251w
 loc_165B9::				; CODE XREF: sub_1609F+28j
 					; sub_1609F+2AEj
 					; DATA XREF: ...
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		mov	ax, [ebx+edx*2]
-		mov	dl, [es:si+1]
+		mov	dl, es:[si+1]
 		cwde
 		movsx	edx, word ptr [ebx+edx*2]
 		sub	edx, eax
@@ -11825,9 +11825,9 @@ _byte_165DC	db 0			; DATA XREF: sub_1609F+255w
 loc_165E8::				; CODE XREF: sub_1609F+28j
 					; sub_1609F+2AEj
 					; DATA XREF: ...
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		mov	ax, [ebx+edx*2]
-		mov	dl, [es:si+1]
+		mov	dl, es:[si+1]
 		cwde
 		movsx	edx, word ptr [ebx+edx*2]
 		sub	edx, eax
@@ -11854,9 +11854,9 @@ loc_16617::				; CODE XREF: sub_1609F+28j
 
 loc_16620::				; CODE XREF: seg000:6904j
 		xor	edx, edx
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		mov	ax, [ebx+edx*2]
-		mov	dl, [es:si+1]
+		mov	dl, es:[si+1]
 		cwde
 		movsx	edx, word ptr [ebx+edx*2]
 		sub	edx, eax
@@ -11872,9 +11872,9 @@ _byte_16646	db 0			; DATA XREF: sub_1609F+25Dw
 		adc	si, bp
 		xor	edx, edx
 		mov	[di], eax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		mov	ax, [ebx+edx*2]
-		mov	dl, [es:si+1]
+		mov	dl, es:[si+1]
 		cwde
 		movsx	edx, word ptr [ebx+edx*2]
 		sub	edx, eax
@@ -11889,9 +11889,9 @@ _byte_16672	db 0			; DATA XREF: sub_1609F+261w
 		adc	si, bp
 		xor	edx, edx
 		mov	[di+8],	eax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		mov	ax, [ebx+edx*2]
-		mov	dl, [es:si+1]
+		mov	dl, es:[si+1]
 		cwde
 
 loc_16689::
@@ -11908,9 +11908,9 @@ _byte_1669F	db 0			; DATA XREF: sub_1609F+265w
 		adc	si, bp
 		xor	edx, edx
 		mov	[di+10h], eax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		mov	ax, [ebx+edx*2]
-		mov	dl, [es:si+1]
+		mov	dl, es:[si+1]
 		cwde
 		movsx	edx, word ptr [ebx+edx*2]
 		sub	edx, eax
@@ -11925,9 +11925,9 @@ _byte_166CC	db 0			; DATA XREF: sub_1609F+269w
 		adc	si, bp
 		xor	edx, edx
 		mov	[di+18h], eax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		mov	ax, [ebx+edx*2]
-		mov	dl, [es:si+1]
+		mov	dl, es:[si+1]
 		cwde
 		movsx	edx, word ptr [ebx+edx*2]
 		sub	edx, eax
@@ -11942,9 +11942,9 @@ _byte_166F9	db 0			; DATA XREF: sub_1609F+26Dw
 		adc	si, bp
 		xor	edx, edx
 		mov	[di+20h], eax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		mov	ax, [ebx+edx*2]
-		mov	dl, [es:si+1]
+		mov	dl, es:[si+1]
 		cwde
 		movsx	edx, word ptr [ebx+edx*2]
 		sub	edx, eax
@@ -11959,9 +11959,9 @@ _byte_16726	db 0			; DATA XREF: sub_1609F+271w
 		adc	si, bp
 		xor	edx, edx
 		mov	[di+28h], eax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		mov	ax, [ebx+edx*2]
-		mov	dl, [es:si+1]
+		mov	dl, es:[si+1]
 		cwde
 		movsx	edx, word ptr [ebx+edx*2]
 		sub	edx, eax
@@ -11976,9 +11976,9 @@ _byte_16753	db 0			; DATA XREF: sub_1609F+275w
 		adc	si, bp
 		xor	edx, edx
 		mov	[di+30h], eax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		mov	ax, [ebx+edx*2]
-		mov	dl, [es:si+1]
+		mov	dl, es:[si+1]
 		cwde
 
 loc_1676A::				; CODE XREF: _snd_initialze+13j
@@ -11996,9 +11996,9 @@ _byte_16780	db 0			; DATA XREF: sub_1609F+279w
 		adc	si, bp
 		xor	edx, edx
 		mov	[di+38h], eax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		mov	ax, [ebx+edx*2]
-		mov	dl, [es:si+1]
+		mov	dl, es:[si+1]
 		cwde
 		movsx	edx, word ptr [ebx+edx*2]
 		sub	edx, eax
@@ -12013,9 +12013,9 @@ _byte_167AD	db 0			; DATA XREF: sub_1609F+27Dw
 		adc	si, bp
 		xor	edx, edx
 		mov	[di+40h], eax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		mov	ax, [ebx+edx*2]
-		mov	dl, [es:si+1]
+		mov	dl, es:[si+1]
 		cwde
 		movsx	edx, word ptr [ebx+edx*2]
 		sub	edx, eax
@@ -12030,9 +12030,9 @@ _byte_167DA	db 0			; DATA XREF: sub_1609F+281w
 		adc	si, bp
 		xor	edx, edx
 		mov	[di+48h], eax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		mov	ax, [ebx+edx*2]
-		mov	dl, [es:si+1]
+		mov	dl, es:[si+1]
 		cwde
 		movsx	edx, word ptr [ebx+edx*2]
 		sub	edx, eax
@@ -12047,9 +12047,9 @@ _byte_16807	db 0			; DATA XREF: sub_1609F+285w
 		adc	si, bp
 		xor	edx, edx
 		mov	[di+50h], eax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		mov	ax, [ebx+edx*2]
-		mov	dl, [es:si+1]
+		mov	dl, es:[si+1]
 		cwde
 		movsx	edx, word ptr [ebx+edx*2]
 		sub	edx, eax
@@ -12064,9 +12064,9 @@ _byte_16834	db 0			; DATA XREF: sub_1609F+289w
 		adc	si, bp
 		xor	edx, edx
 		mov	[di+58h], eax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		mov	ax, [ebx+edx*2]
-		mov	dl, [es:si+1]
+		mov	dl, es:[si+1]
 		cwde
 		movsx	edx, word ptr [ebx+edx*2]
 		sub	edx, eax
@@ -12081,9 +12081,9 @@ _byte_16861	db 0			; DATA XREF: sub_1609F+28Dw
 		adc	si, bp
 		xor	edx, edx
 		mov	[di+60h], eax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		mov	ax, [ebx+edx*2]
-		mov	dl, [es:si+1]
+		mov	dl, es:[si+1]
 		cwde
 		movsx	edx, word ptr [ebx+edx*2]
 		sub	edx, eax
@@ -12098,9 +12098,9 @@ _byte_1688E	db 0			; DATA XREF: sub_1609F+291w
 		adc	si, bp
 		xor	edx, edx
 		mov	[di+68h], eax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		mov	ax, [ebx+edx*2]
-		mov	dl, [es:si+1]
+		mov	dl, es:[si+1]
 		cwde
 		movsx	edx, word ptr [ebx+edx*2]
 		sub	edx, eax
@@ -12115,9 +12115,9 @@ _byte_168BB	db 0			; DATA XREF: sub_1609F+295w
 		adc	si, bp
 		xor	edx, edx
 		mov	[di+70h], eax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		mov	ax, [ebx+edx*2]
-		mov	dl, [es:si+1]
+		mov	dl, es:[si+1]
 		cwde
 		movsx	edx, word ptr [ebx+edx*2]
 		sub	edx, eax
@@ -12190,7 +12190,7 @@ loc_16963::				; CODE XREF: _snd_initialze+13j
 loc_1696C::				; CODE XREF: sub_1609F+28j
 					; sub_1609F+2AEj
 					; DATA XREF: ...
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		cwde
@@ -12200,7 +12200,7 @@ loc_1696C::				; CODE XREF: sub_1609F+28j
 
 loc_1697F::				; CODE XREF: sub_1609F+28j
 					; sub_1609F+2AEj ...
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		cwde
@@ -12210,7 +12210,7 @@ loc_1697F::				; CODE XREF: sub_1609F+28j
 
 loc_16992::				; CODE XREF: sub_1609F+28j
 					; sub_1609F+2AEj ...
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		cwde
@@ -12220,7 +12220,7 @@ loc_16992::				; CODE XREF: sub_1609F+28j
 
 loc_169A5::				; CODE XREF: sub_1609F+28j
 					; sub_1609F+2AEj ...
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		cwde
@@ -12230,7 +12230,7 @@ loc_169A5::				; CODE XREF: sub_1609F+28j
 
 loc_169B8::				; CODE XREF: sub_1609F+28j
 					; sub_1609F+2AEj ...
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		cwde
@@ -12240,7 +12240,7 @@ loc_169B8::				; CODE XREF: sub_1609F+28j
 
 loc_169CB::				; CODE XREF: sub_1609F+28j
 					; sub_1609F+2AEj ...
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		cwde
@@ -12250,7 +12250,7 @@ loc_169CB::				; CODE XREF: sub_1609F+28j
 
 loc_169DE::				; CODE XREF: sub_1609F+28j
 					; sub_1609F+2AEj ...
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		cwde
@@ -12260,7 +12260,7 @@ loc_169DE::				; CODE XREF: sub_1609F+28j
 
 loc_169F1::				; CODE XREF: sub_1609F+28j
 					; sub_1609F+2AEj ...
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		cwde
@@ -12270,7 +12270,7 @@ loc_169F1::				; CODE XREF: sub_1609F+28j
 
 loc_16A04::				; CODE XREF: sub_1609F+28j
 					; sub_1609F+2AEj ...
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		cwde
@@ -12280,7 +12280,7 @@ loc_16A04::				; CODE XREF: sub_1609F+28j
 
 loc_16A17::				; CODE XREF: sub_1609F+28j
 					; sub_1609F+2AEj ...
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		cwde
@@ -12290,7 +12290,7 @@ loc_16A17::				; CODE XREF: sub_1609F+28j
 
 loc_16A2A::				; CODE XREF: sub_1609F+28j
 					; sub_1609F+2AEj ...
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		cwde
@@ -12300,7 +12300,7 @@ loc_16A2A::				; CODE XREF: sub_1609F+28j
 
 loc_16A3D::				; CODE XREF: sub_1609F+28j
 					; sub_1609F+2AEj ...
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		cwde
@@ -12310,7 +12310,7 @@ loc_16A3D::				; CODE XREF: sub_1609F+28j
 
 loc_16A50::				; CODE XREF: sub_1609F+28j
 					; sub_1609F+2AEj ...
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		cwde
@@ -12320,7 +12320,7 @@ loc_16A50::				; CODE XREF: sub_1609F+28j
 
 loc_16A63::				; CODE XREF: sub_1609F+28j
 					; sub_1609F+2AEj ...
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		cwde
@@ -12330,7 +12330,7 @@ loc_16A63::				; CODE XREF: sub_1609F+28j
 
 loc_16A76::				; CODE XREF: sub_1609F+28j
 					; sub_1609F+2AEj ...
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		cwde
@@ -12344,97 +12344,97 @@ loc_16A89::				; CODE XREF: sub_1609F+28j
 		jz	loc_1578C
 
 loc_16A92::				; CODE XREF: sub_1609F+B0Aj
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		cwde
 		adc	si, bp
 		mov	[di], eax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		cwde
 		adc	si, bp
 		mov	[di+8],	eax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		cwde
 		adc	si, bp
 		mov	[di+10h], eax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		cwde
 		adc	si, bp
 		mov	[di+18h], eax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		cwde
 		adc	si, bp
 		mov	[di+20h], eax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		cwde
 		adc	si, bp
 		mov	[di+28h], eax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		cwde
 		adc	si, bp
 		mov	[di+30h], eax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		cwde
 		adc	si, bp
 		mov	[di+38h], eax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		cwde
 		adc	si, bp
 		mov	[di+40h], eax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		cwde
 		adc	si, bp
 		mov	[di+48h], eax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		cwde
 		adc	si, bp
 		mov	[di+50h], eax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		cwde
 		adc	si, bp
 		mov	[di+58h], eax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		cwde
 		adc	si, bp
 		mov	[di+60h], eax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		cwde
 		adc	si, bp
 		mov	[di+68h], eax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		cwde
 		adc	si, bp
 		mov	[di+70h], eax
-		mov	dl, [es:si]
+		mov	dl, es:[si]
 		add	cl, ch
 		mov	ax, [ebx+edx*2]
 		cwde
@@ -12657,7 +12657,7 @@ loc_16D0B::				; CODE XREF: sub_15577+28j
 					; sub_15577+311j ...
 		mov	al, [si]
 		xor	al, 80h
-		mov	[es:di], al
+		mov	es:[di], al
 		add	si, 8
 		inc	di
 
@@ -12665,7 +12665,7 @@ loc_16D16::				; CODE XREF: sub_15577+28j
 					; sub_15577+311j ...
 		mov	al, [si]
 		xor	al, 80h
-		mov	[es:di], al
+		mov	es:[di], al
 		add	si, 8
 		inc	di
 
@@ -12673,7 +12673,7 @@ loc_16D21::				; CODE XREF: sub_15577+28j
 					; sub_15577+311j ...
 		mov	al, [si]
 		xor	al, 80h
-		mov	[es:di], al
+		mov	es:[di], al
 		add	si, 8
 		inc	di
 
@@ -12681,7 +12681,7 @@ loc_16D2C::				; CODE XREF: sub_15577+28j
 					; sub_15577+311j ...
 		mov	al, [si]
 		xor	al, 80h
-		mov	[es:di], al
+		mov	es:[di], al
 		add	si, 8
 		inc	di
 
@@ -12689,7 +12689,7 @@ loc_16D37::				; CODE XREF: sub_15577+28j
 					; sub_15577+311j ...
 		mov	al, [si]
 		xor	al, 80h
-		mov	[es:di], al
+		mov	es:[di], al
 		add	si, 8
 		inc	di
 
@@ -12697,7 +12697,7 @@ loc_16D42::				; CODE XREF: sub_15577+28j
 					; sub_15577+311j ...
 		mov	al, [si]
 		xor	al, 80h
-		mov	[es:di], al
+		mov	es:[di], al
 		add	si, 8
 		inc	di
 
@@ -12705,7 +12705,7 @@ loc_16D4D::				; CODE XREF: sub_15577+28j
 					; sub_15577+311j ...
 		mov	al, [si]
 		xor	al, 80h
-		mov	[es:di], al
+		mov	es:[di], al
 		add	si, 8
 		inc	di
 
@@ -12713,7 +12713,7 @@ loc_16D58::				; CODE XREF: sub_15577+28j
 					; sub_15577+311j ...
 		mov	al, [si]
 		xor	al, 80h
-		mov	[es:di], al
+		mov	es:[di], al
 
 loc_16D5F::
 		add	si, 8
@@ -12723,7 +12723,7 @@ loc_16D63::				; CODE XREF: sub_15577+28j
 					; sub_15577+311j ...
 		mov	al, [si]
 		xor	al, 80h
-		mov	[es:di], al
+		mov	es:[di], al
 		add	si, 8
 		inc	di
 
@@ -12731,7 +12731,7 @@ loc_16D6E::				; CODE XREF: sub_15577+28j
 					; sub_15577+311j ...
 		mov	al, [si]
 		xor	al, 80h
-		mov	[es:di], al
+		mov	es:[di], al
 		add	si, 8
 		inc	di
 
@@ -12739,7 +12739,7 @@ loc_16D79::				; CODE XREF: sub_15577+28j
 					; sub_15577+311j ...
 		mov	al, [si]
 		xor	al, 80h
-		mov	[es:di], al
+		mov	es:[di], al
 		add	si, 8
 		inc	di
 
@@ -12747,7 +12747,7 @@ loc_16D84::				; CODE XREF: sub_15577+28j
 					; sub_15577+311j ...
 		mov	al, [si]
 		xor	al, 80h
-		mov	[es:di], al
+		mov	es:[di], al
 		add	si, 8
 		inc	di
 
@@ -12755,7 +12755,7 @@ loc_16D8F::				; CODE XREF: sub_15577+28j
 					; sub_15577+311j ...
 		mov	al, [si]
 		xor	al, 80h
-		mov	[es:di], al
+		mov	es:[di], al
 		add	si, 8
 		inc	di
 
@@ -12763,7 +12763,7 @@ loc_16D9A::				; CODE XREF: sub_15577+28j
 					; sub_15577+311j ...
 		mov	al, [si]
 		xor	al, 80h
-		mov	[es:di], al
+		mov	es:[di], al
 		add	si, 8
 		inc	di
 
@@ -12771,7 +12771,7 @@ loc_16DA5::				; CODE XREF: sub_15577+28j
 					; sub_15577+311j ...
 		mov	al, [si]
 		xor	al, 80h
-		mov	[es:di], al
+		mov	es:[di], al
 		add	si, 8
 		inc	di
 
@@ -12788,28 +12788,28 @@ loc_16DBB::				; CODE XREF: sub_16CF6+12Bj
 		mov	al, [si]
 		mov	ah, [si+8]
 		xor	eax, edx
-		mov	[es:di], eax
+		mov	es:[di], eax
 		mov	al, [si+30h]
 		mov	ah, [si+38h]
 		shl	eax, 10h
 		mov	al, [si+20h]
 		mov	ah, [si+28h]
 		xor	eax, edx
-		mov	[es:di+4], eax
+		mov	es:[di+4], eax
 		mov	al, [si+50h]
 		mov	ah, [si+58h]
 		shl	eax, 10h
 		mov	al, [si+40h]
 		mov	ah, [si+48h]
 		xor	eax, edx
-		mov	[es:di+8], eax
+		mov	es:[di+8], eax
 		mov	al, [si+70h]
 		mov	ah, [si+78h]
 		shl	eax, 10h
 		mov	al, [si+60h]
 		mov	ah, [si+68h]
 		xor	eax, edx
-		mov	[es:di+0Ch], eax
+		mov	es:[di+0Ch], eax
 		add	si, 80h	; '€'
 		add	di, 10h
 		dec	cx
@@ -12840,7 +12840,7 @@ loc_16E3F::				; CODE XREF: sub_15577+28j
 
 loc_16E56::				; DATA XREF: sub_16CF6+14Fo
 		xor	ah, 80h
-		mov	[es:di], ah
+		mov	es:[di], ah
 		inc	di
 
 loc_16E5D::				; CODE XREF: sub_15577+28j
@@ -12856,7 +12856,7 @@ loc_16E5D::				; CODE XREF: sub_15577+28j
 
 loc_16E74::				; DATA XREF: sub_16CF6+16Do
 		xor	ah, 80h
-		mov	[es:di], ah
+		mov	es:[di], ah
 		inc	di
 
 loc_16E7B::				; CODE XREF: sub_15577+28j
@@ -12871,7 +12871,7 @@ loc_16E7B::				; CODE XREF: sub_15577+28j
 
 loc_16E92::				; DATA XREF: sub_16CF6+18Bo
 		xor	ah, 80h
-		mov	[es:di], ah
+		mov	es:[di], ah
 		inc	di
 
 loc_16E99::				; CODE XREF: sub_15577+28j
@@ -12886,7 +12886,7 @@ loc_16E99::				; CODE XREF: sub_15577+28j
 
 loc_16EB0::				; DATA XREF: sub_16CF6+1A9o
 		xor	ah, 80h
-		mov	[es:di], ah
+		mov	es:[di], ah
 		inc	di
 
 loc_16EB7::				; CODE XREF: sub_15577+28j
@@ -12901,7 +12901,7 @@ loc_16EB7::				; CODE XREF: sub_15577+28j
 
 loc_16ECE::				; DATA XREF: sub_16CF6+1C7o
 		xor	ah, 80h
-		mov	[es:di], ah
+		mov	es:[di], ah
 		inc	di
 
 loc_16ED5::				; CODE XREF: sub_15577+28j
@@ -12916,7 +12916,7 @@ loc_16ED5::				; CODE XREF: sub_15577+28j
 
 loc_16EEC::				; DATA XREF: sub_16CF6+1E5o
 		xor	ah, 80h
-		mov	[es:di], ah
+		mov	es:[di], ah
 		inc	di
 
 loc_16EF3::				; CODE XREF: sub_15577+28j
@@ -12931,7 +12931,7 @@ loc_16EF3::				; CODE XREF: sub_15577+28j
 
 loc_16F0A::				; DATA XREF: sub_16CF6+203o
 		xor	ah, 80h
-		mov	[es:di], ah
+		mov	es:[di], ah
 		inc	di
 
 loc_16F11::				; CODE XREF: sub_15577+28j
@@ -12948,7 +12948,7 @@ loc_16F1D::				; CODE XREF: _snd_initialze+13j
 
 loc_16F28::				; DATA XREF: sub_16CF6+221o
 		xor	ah, 80h
-		mov	[es:di], ah
+		mov	es:[di], ah
 		inc	di
 
 loc_16F2F::				; CODE XREF: sub_15577+28j
@@ -12963,7 +12963,7 @@ loc_16F2F::				; CODE XREF: sub_15577+28j
 
 loc_16F46::				; DATA XREF: sub_16CF6+23Fo
 		xor	ah, 80h
-		mov	[es:di], ah
+		mov	es:[di], ah
 		inc	di
 
 loc_16F4D::				; CODE XREF: sub_15577+28j
@@ -12978,7 +12978,7 @@ loc_16F4D::				; CODE XREF: sub_15577+28j
 
 loc_16F64::				; DATA XREF: sub_16CF6+25Do
 		xor	ah, 80h
-		mov	[es:di], ah
+		mov	es:[di], ah
 		inc	di
 
 loc_16F6B::				; CODE XREF: sub_15577+28j
@@ -12993,7 +12993,7 @@ loc_16F6B::				; CODE XREF: sub_15577+28j
 
 loc_16F82::				; DATA XREF: sub_16CF6+27Bo
 		xor	ah, 80h
-		mov	[es:di], ah
+		mov	es:[di], ah
 		inc	di
 
 loc_16F89::				; CODE XREF: sub_15577+28j
@@ -13008,7 +13008,7 @@ loc_16F89::				; CODE XREF: sub_15577+28j
 
 loc_16FA0::				; DATA XREF: sub_16CF6+299o
 		xor	ah, 80h
-		mov	[es:di], ah
+		mov	es:[di], ah
 		inc	di
 
 loc_16FA7::				; CODE XREF: sub_15577+28j
@@ -13023,7 +13023,7 @@ loc_16FA7::				; CODE XREF: sub_15577+28j
 
 loc_16FBE::				; DATA XREF: sub_16CF6+2B7o
 		xor	ah, 80h
-		mov	[es:di], ah
+		mov	es:[di], ah
 		inc	di
 
 loc_16FC5::				; CODE XREF: sub_15577+28j
@@ -13038,7 +13038,7 @@ loc_16FC5::				; CODE XREF: sub_15577+28j
 
 loc_16FDC::				; DATA XREF: sub_16CF6+2D5o
 		xor	ah, 80h
-		mov	[es:di], ah
+		mov	es:[di], ah
 		inc	di
 
 loc_16FE3::				; CODE XREF: sub_15577+28j
@@ -13053,7 +13053,7 @@ loc_16FE3::				; CODE XREF: sub_15577+28j
 
 loc_16FFA::				; DATA XREF: sub_16CF6+2F3o
 		xor	ah, 80h
-		mov	[es:di], ah
+		mov	es:[di], ah
 		inc	di
 
 loc_17001::				; CODE XREF: sub_15577+28j
@@ -13071,7 +13071,7 @@ loc_17008::				; CODE XREF: sub_16CF6+4D8j
 
 loc_1701C::				; DATA XREF: sub_16CF6+315o
 		xor	ah, 80h
-		mov	[es:di], ah
+		mov	es:[di], ah
 		mov	eax, [si+8]
 		mov	bx, offset loc_17037
 		cmp	eax, ebp
@@ -13081,7 +13081,7 @@ loc_1701C::				; DATA XREF: sub_16CF6+315o
 
 loc_17037::				; DATA XREF: sub_16CF6+330o
 		xor	ah, 80h
-		mov	[es:di+1], ah
+		mov	es:[di+1], ah
 		mov	eax, [si+10h]
 		mov	bx, offset loc_17053
 		cmp	eax, ebp
@@ -13091,7 +13091,7 @@ loc_17037::				; DATA XREF: sub_16CF6+330o
 
 loc_17053::				; DATA XREF: sub_16CF6+34Co
 		xor	ah, 80h
-		mov	[es:di+2], ah
+		mov	es:[di+2], ah
 		mov	eax, [si+18h]
 		mov	bx, offset loc_1706F
 		cmp	eax, ebp
@@ -13101,7 +13101,7 @@ loc_17053::				; DATA XREF: sub_16CF6+34Co
 
 loc_1706F::				; DATA XREF: sub_16CF6+368o
 		xor	ah, 80h
-		mov	[es:di+3], ah
+		mov	es:[di+3], ah
 		mov	eax, [si+20h]
 		mov	bx, offset loc_1708B
 		cmp	eax, ebp
@@ -13111,7 +13111,7 @@ loc_1706F::				; DATA XREF: sub_16CF6+368o
 
 loc_1708B::				; DATA XREF: sub_16CF6+384o
 		xor	ah, 80h
-		mov	[es:di+4], ah
+		mov	es:[di+4], ah
 		mov	eax, [si+28h]
 		mov	bx, offset loc_170A7
 		cmp	eax, ebp
@@ -13121,7 +13121,7 @@ loc_1708B::				; DATA XREF: sub_16CF6+384o
 
 loc_170A7::				; DATA XREF: sub_16CF6+3A0o
 		xor	ah, 80h
-		mov	[es:di+5], ah
+		mov	es:[di+5], ah
 		mov	eax, [si+30h]
 		mov	bx, offset loc_170C3
 		cmp	eax, ebp
@@ -13131,7 +13131,7 @@ loc_170A7::				; DATA XREF: sub_16CF6+3A0o
 
 loc_170C3::				; DATA XREF: sub_16CF6+3BCo
 		xor	ah, 80h
-		mov	[es:di+6], ah
+		mov	es:[di+6], ah
 		mov	eax, [si+38h]
 		mov	bx, offset loc_170DF
 		cmp	eax, ebp
@@ -13141,7 +13141,7 @@ loc_170C3::				; DATA XREF: sub_16CF6+3BCo
 
 loc_170DF::				; DATA XREF: sub_16CF6+3D8o
 		xor	ah, 80h
-		mov	[es:di+7], ah
+		mov	es:[di+7], ah
 		mov	eax, [si+40h]
 		mov	bx, offset loc_170FB
 		cmp	eax, ebp
@@ -13151,7 +13151,7 @@ loc_170DF::				; DATA XREF: sub_16CF6+3D8o
 
 loc_170FB::				; DATA XREF: sub_16CF6+3F4o
 		xor	ah, 80h
-		mov	[es:di+8], ah
+		mov	es:[di+8], ah
 		mov	eax, [si+48h]
 		mov	bx, offset loc_17117
 		cmp	eax, ebp
@@ -13161,7 +13161,7 @@ loc_170FB::				; DATA XREF: sub_16CF6+3F4o
 
 loc_17117::				; DATA XREF: sub_16CF6+410o
 		xor	ah, 80h
-		mov	[es:di+9], ah
+		mov	es:[di+9], ah
 		mov	eax, [si+50h]
 		mov	bx, offset loc_17133
 		cmp	eax, ebp
@@ -13171,7 +13171,7 @@ loc_17117::				; DATA XREF: sub_16CF6+410o
 
 loc_17133::				; DATA XREF: sub_16CF6+42Co
 		xor	ah, 80h
-		mov	[es:di+0Ah], ah
+		mov	es:[di+0Ah], ah
 		mov	eax, [si+58h]
 		mov	bx, offset loc_1714F
 		cmp	eax, ebp
@@ -13181,7 +13181,7 @@ loc_17133::				; DATA XREF: sub_16CF6+42Co
 
 loc_1714F::				; DATA XREF: sub_16CF6+448o
 		xor	ah, 80h
-		mov	[es:di+0Bh], ah
+		mov	es:[di+0Bh], ah
 		mov	eax, [si+60h]
 		mov	bx, offset loc_1716B
 		cmp	eax, ebp
@@ -13191,7 +13191,7 @@ loc_1714F::				; DATA XREF: sub_16CF6+448o
 
 loc_1716B::				; DATA XREF: sub_16CF6+464o
 		xor	ah, 80h
-		mov	[es:di+0Ch], ah
+		mov	es:[di+0Ch], ah
 		mov	eax, [si+68h]
 		mov	bx, offset loc_17187
 		cmp	eax, ebp
@@ -13201,7 +13201,7 @@ loc_1716B::				; DATA XREF: sub_16CF6+464o
 
 loc_17187::				; DATA XREF: sub_16CF6+480o
 		xor	ah, 80h
-		mov	[es:di+0Dh], ah
+		mov	es:[di+0Dh], ah
 		mov	eax, [si+70h]
 		mov	bx, offset loc_171A3
 		cmp	eax, ebp
@@ -13211,7 +13211,7 @@ loc_17187::				; DATA XREF: sub_16CF6+480o
 
 loc_171A3::				; DATA XREF: sub_16CF6+49Co
 		xor	ah, 80h
-		mov	[es:di+0Eh], ah
+		mov	es:[di+0Eh], ah
 		mov	eax, [si+78h]
 		mov	bx, offset loc_171BF
 		cmp	eax, ebp
@@ -13221,7 +13221,7 @@ loc_171A3::				; DATA XREF: sub_16CF6+49Co
 
 loc_171BF::				; DATA XREF: sub_16CF6+4B8o
 		xor	ah, 80h
-		mov	[es:di+0Fh], ah
+		mov	es:[di+0Fh], ah
 		add	si, 80h	; '€'
 		add	di, 10h
 		dec	cx
@@ -13328,7 +13328,7 @@ loc_1727F::				; CODE XREF: sub_15577+28j
 		mov	ah, [si+4]
 		add	si, 8
 		xor	ax, dx
-		mov	[es:di], ax
+		mov	es:[di], ax
 		add	di, 2
 
 loc_1728F::				; CODE XREF: sub_15577+28j
@@ -13337,7 +13337,7 @@ loc_1728F::				; CODE XREF: sub_15577+28j
 		mov	ah, [si+4]
 		add	si, 8
 		xor	ax, dx
-		mov	[es:di], ax
+		mov	es:[di], ax
 		add	di, 2
 
 loc_1729F::				; CODE XREF: sub_15577+28j
@@ -13346,7 +13346,7 @@ loc_1729F::				; CODE XREF: sub_15577+28j
 		mov	ah, [si+4]
 		add	si, 8
 		xor	ax, dx
-		mov	[es:di], ax
+		mov	es:[di], ax
 		add	di, 2
 
 loc_172AF::				; CODE XREF: sub_15577+28j
@@ -13355,7 +13355,7 @@ loc_172AF::				; CODE XREF: sub_15577+28j
 		mov	ah, [si+4]
 		add	si, 8
 		xor	ax, dx
-		mov	[es:di], ax
+		mov	es:[di], ax
 		add	di, 2
 
 loc_172BF::				; CODE XREF: sub_15577+28j
@@ -13364,7 +13364,7 @@ loc_172BF::				; CODE XREF: sub_15577+28j
 		mov	ah, [si+4]
 		add	si, 8
 		xor	ax, dx
-		mov	[es:di], ax
+		mov	es:[di], ax
 		add	di, 2
 
 loc_172CF::				; CODE XREF: sub_15577+28j
@@ -13373,7 +13373,7 @@ loc_172CF::				; CODE XREF: sub_15577+28j
 		mov	ah, [si+4]
 		add	si, 8
 		xor	ax, dx
-		mov	[es:di], ax
+		mov	es:[di], ax
 		add	di, 2
 
 loc_172DF::				; CODE XREF: sub_15577+28j
@@ -13382,7 +13382,7 @@ loc_172DF::				; CODE XREF: sub_15577+28j
 		mov	ah, [si+4]
 		add	si, 8
 		xor	ax, dx
-		mov	[es:di], ax
+		mov	es:[di], ax
 		add	di, 2
 
 loc_172EF::				; CODE XREF: sub_15577+28j
@@ -13391,7 +13391,7 @@ loc_172EF::				; CODE XREF: sub_15577+28j
 		mov	ah, [si+4]
 		add	si, 8
 		xor	ax, dx
-		mov	[es:di], ax
+		mov	es:[di], ax
 		add	di, 2
 
 loc_172FF::				; CODE XREF: sub_15577+28j
@@ -13400,7 +13400,7 @@ loc_172FF::				; CODE XREF: sub_15577+28j
 		mov	ah, [si+4]
 		add	si, 8
 		xor	ax, dx
-		mov	[es:di], ax
+		mov	es:[di], ax
 		add	di, 2
 
 loc_1730F::				; CODE XREF: sub_15577+28j
@@ -13409,7 +13409,7 @@ loc_1730F::				; CODE XREF: sub_15577+28j
 		mov	ah, [si+4]
 		add	si, 8
 		xor	ax, dx
-		mov	[es:di], ax
+		mov	es:[di], ax
 		add	di, 2
 
 loc_1731F::				; CODE XREF: sub_15577+28j
@@ -13418,7 +13418,7 @@ loc_1731F::				; CODE XREF: sub_15577+28j
 		mov	ah, [si+4]
 		add	si, 8
 		xor	ax, dx
-		mov	[es:di], ax
+		mov	es:[di], ax
 		add	di, 2
 
 loc_1732F::				; CODE XREF: sub_15577+28j
@@ -13427,7 +13427,7 @@ loc_1732F::				; CODE XREF: sub_15577+28j
 		mov	ah, [si+4]
 		add	si, 8
 		xor	ax, dx
-		mov	[es:di], ax
+		mov	es:[di], ax
 		add	di, 2
 
 loc_1733F::				; CODE XREF: sub_15577+28j
@@ -13436,7 +13436,7 @@ loc_1733F::				; CODE XREF: sub_15577+28j
 		mov	ah, [si+4]
 		add	si, 8
 		xor	ax, dx
-		mov	[es:di], ax
+		mov	es:[di], ax
 		add	di, 2
 
 loc_1734F::				; CODE XREF: sub_15577+28j
@@ -13445,7 +13445,7 @@ loc_1734F::				; CODE XREF: sub_15577+28j
 		mov	ah, [si+4]
 		add	si, 8
 		xor	ax, dx
-		mov	[es:di], ax
+		mov	es:[di], ax
 		add	di, 2
 
 loc_1735F::				; CODE XREF: sub_15577+28j
@@ -13454,7 +13454,7 @@ loc_1735F::				; CODE XREF: sub_15577+28j
 		mov	ah, [si+4]
 		add	si, 8
 		xor	ax, dx
-		mov	[es:di], ax
+		mov	es:[di], ax
 		add	di, 2
 
 loc_1736F::				; CODE XREF: sub_15577+28j
@@ -13475,8 +13475,8 @@ loc_17376::				; CODE XREF: sub_1725F+1DDj
 		mov	bh, [si+14h]
 		xor	eax, edx
 		xor	ebx, edx
-		mov	[es:di], eax
-		mov	[es:di+4], ebx
+		mov	es:[di], eax
+		mov	es:[di+4], ebx
 		mov	al, [si+28h]
 		mov	bl, [si+38h]
 		mov	ah, [si+2Ch]
@@ -13489,8 +13489,8 @@ loc_17376::				; CODE XREF: sub_1725F+1DDj
 		mov	bh, [si+34h]
 		xor	eax, edx
 		xor	ebx, edx
-		mov	[es:di+8], eax
-		mov	[es:di+0Ch], ebx
+		mov	es:[di+8], eax
+		mov	es:[di+0Ch], ebx
 		mov	al, [si+48h]
 		mov	bl, [si+58h]
 		mov	ah, [si+4Ch]
@@ -13503,8 +13503,8 @@ loc_17376::				; CODE XREF: sub_1725F+1DDj
 		mov	bh, [si+54h]
 		xor	eax, edx
 		xor	ebx, edx
-		mov	[es:di+10h], eax
-		mov	[es:di+14h], ebx
+		mov	es:[di+10h], eax
+		mov	es:[di+14h], ebx
 		mov	al, [si+68h]
 		mov	bl, [si+78h]
 		mov	ah, [si+6Ch]
@@ -13517,8 +13517,8 @@ loc_17376::				; CODE XREF: sub_1725F+1DDj
 		mov	bh, [si+74h]
 		xor	eax, edx
 		xor	ebx, edx
-		mov	[es:di+18h], eax
-		mov	[es:di+1Ch], ebx
+		mov	es:[di+18h], eax
+		mov	es:[di+1Ch], ebx
 		add	si, 80h	; '€'
 		add	di, 20h	; ' '
 		dec	cx
@@ -13552,7 +13552,7 @@ loc_1745C::				; CODE XREF: sub_15577+28j
 
 loc_17473::				; DATA XREF: sub_1609F+13C3o
 		xor	ah, 80h
-		mov	[es:di], ah
+		mov	es:[di], ah
 		inc	di
 
 loc_1747A::				; CODE XREF: sub_15577+28j
@@ -13567,7 +13567,7 @@ loc_1747A::				; CODE XREF: sub_15577+28j
 
 loc_17491::				; DATA XREF: sub_1609F+13E1o
 		xor	ah, 80h
-		mov	[es:di], ah
+		mov	es:[di], ah
 		inc	di
 
 loc_17498::				; CODE XREF: sub_15577+28j
@@ -13582,7 +13582,7 @@ loc_17498::				; CODE XREF: sub_15577+28j
 
 loc_174AF::				; DATA XREF: sub_1609F+13FFo
 		xor	ah, 80h
-		mov	[es:di], ah
+		mov	es:[di], ah
 		inc	di
 
 loc_174B6::				; CODE XREF: sub_15577+28j
@@ -13597,7 +13597,7 @@ loc_174B6::				; CODE XREF: sub_15577+28j
 
 loc_174CD::				; DATA XREF: sub_1609F+141Do
 		xor	ah, 80h
-		mov	[es:di], ah
+		mov	es:[di], ah
 		inc	di
 
 loc_174D4::				; CODE XREF: sub_15577+28j
@@ -13612,7 +13612,7 @@ loc_174D4::				; CODE XREF: sub_15577+28j
 
 loc_174EB::				; DATA XREF: sub_1609F+143Bo
 		xor	ah, 80h
-		mov	[es:di], ah
+		mov	es:[di], ah
 		inc	di
 
 loc_174F2::				; CODE XREF: sub_15577+28j
@@ -13627,7 +13627,7 @@ loc_174F2::				; CODE XREF: sub_15577+28j
 
 loc_17509::				; DATA XREF: sub_1609F+1459o
 		xor	ah, 80h
-		mov	[es:di], ah
+		mov	es:[di], ah
 		inc	di
 
 loc_17510::				; CODE XREF: sub_15577+28j
@@ -13642,7 +13642,7 @@ loc_17510::				; CODE XREF: sub_15577+28j
 
 loc_17527::				; DATA XREF: sub_1609F+1477o
 		xor	ah, 80h
-		mov	[es:di], ah
+		mov	es:[di], ah
 		inc	di
 
 loc_1752E::				; CODE XREF: sub_15577+28j
@@ -13657,7 +13657,7 @@ loc_1752E::				; CODE XREF: sub_15577+28j
 
 loc_17545::				; DATA XREF: sub_1609F+1495o
 		xor	ah, 80h
-		mov	[es:di], ah
+		mov	es:[di], ah
 		inc	di
 
 loc_1754C::				; CODE XREF: sub_15577+28j
@@ -13674,7 +13674,7 @@ loc_1754F::				; CODE XREF: _snd_initialze+13j
 
 loc_17563::				; DATA XREF: sub_1609F+14B3o
 		xor	ah, 80h
-		mov	[es:di], ah
+		mov	es:[di], ah
 		inc	di
 
 loc_1756A::				; CODE XREF: sub_15577+28j
@@ -13689,7 +13689,7 @@ loc_1756A::				; CODE XREF: sub_15577+28j
 
 loc_17581::				; DATA XREF: sub_1609F+14D1o
 		xor	ah, 80h
-		mov	[es:di], ah
+		mov	es:[di], ah
 		inc	di
 
 loc_17588::				; CODE XREF: sub_15577+28j
@@ -13704,7 +13704,7 @@ loc_17588::				; CODE XREF: sub_15577+28j
 
 loc_1759F::				; DATA XREF: sub_1609F+14EFo
 		xor	ah, 80h
-		mov	[es:di], ah
+		mov	es:[di], ah
 		inc	di
 
 loc_175A6::				; CODE XREF: sub_15577+28j
@@ -13719,7 +13719,7 @@ loc_175A6::				; CODE XREF: sub_15577+28j
 
 loc_175BD::				; DATA XREF: sub_1609F+150Do
 		xor	ah, 80h
-		mov	[es:di], ah
+		mov	es:[di], ah
 		inc	di
 
 loc_175C4::				; CODE XREF: sub_15577+28j
@@ -13734,7 +13734,7 @@ loc_175C4::				; CODE XREF: sub_15577+28j
 
 loc_175DB::				; DATA XREF: sub_1609F+152Bo
 		xor	ah, 80h
-		mov	[es:di], ah
+		mov	es:[di], ah
 		inc	di
 
 loc_175E2::				; CODE XREF: sub_15577+28j
@@ -13749,7 +13749,7 @@ loc_175E2::				; CODE XREF: sub_15577+28j
 
 loc_175F9::				; DATA XREF: sub_1609F+1549o
 		xor	ah, 80h
-		mov	[es:di], ah
+		mov	es:[di], ah
 		inc	di
 
 loc_17600::				; CODE XREF: sub_15577+28j
@@ -13764,7 +13764,7 @@ loc_17600::				; CODE XREF: sub_15577+28j
 
 loc_17617::				; DATA XREF: sub_1609F+1567o
 		xor	ah, 80h
-		mov	[es:di], ah
+		mov	es:[di], ah
 		inc	di
 
 loc_1761E::				; CODE XREF: sub_15577+28j
@@ -13782,7 +13782,7 @@ loc_17625::				; CODE XREF: sub_1609F+174Bj
 
 loc_17639::				; DATA XREF: sub_1609F+1589o
 		xor	ah, 80h
-		mov	[es:di], ah
+		mov	es:[di], ah
 		mov	eax, [si+4]
 		mov	bx, offset loc_17654
 		cmp	eax, ebp
@@ -13792,7 +13792,7 @@ loc_17639::				; DATA XREF: sub_1609F+1589o
 
 loc_17654::				; DATA XREF: sub_1609F+15A4o
 		xor	ah, 80h
-		mov	[es:di+1], ah
+		mov	es:[di+1], ah
 		mov	eax, [si+8]
 		mov	bx, offset loc_17670
 		cmp	eax, ebp
@@ -13802,7 +13802,7 @@ loc_17654::				; DATA XREF: sub_1609F+15A4o
 
 loc_17670::				; DATA XREF: sub_1609F+15C0o
 		xor	ah, 80h
-		mov	[es:di+2], ah
+		mov	es:[di+2], ah
 		mov	eax, [si+0Ch]
 		mov	bx, offset loc_1768C
 		cmp	eax, ebp
@@ -13812,7 +13812,7 @@ loc_17670::				; DATA XREF: sub_1609F+15C0o
 
 loc_1768C::				; DATA XREF: sub_1609F+15DCo
 		xor	ah, 80h
-		mov	[es:di+3], ah
+		mov	es:[di+3], ah
 		mov	eax, [si+10h]
 		mov	bx, offset loc_176A8
 		cmp	eax, ebp
@@ -13822,7 +13822,7 @@ loc_1768C::				; DATA XREF: sub_1609F+15DCo
 
 loc_176A8::				; DATA XREF: sub_1609F+15F8o
 		xor	ah, 80h
-		mov	[es:di+4], ah
+		mov	es:[di+4], ah
 		mov	eax, [si+14h]
 		mov	bx, offset loc_176C4
 		cmp	eax, ebp
@@ -13832,7 +13832,7 @@ loc_176A8::				; DATA XREF: sub_1609F+15F8o
 
 loc_176C4::				; DATA XREF: sub_1609F+1614o
 		xor	ah, 80h
-		mov	[es:di+5], ah
+		mov	es:[di+5], ah
 		mov	eax, [si+18h]
 		mov	bx, offset loc_176E0
 		cmp	eax, ebp
@@ -13842,7 +13842,7 @@ loc_176C4::				; DATA XREF: sub_1609F+1614o
 
 loc_176E0::				; DATA XREF: sub_1609F+1630o
 		xor	ah, 80h
-		mov	[es:di+6], ah
+		mov	es:[di+6], ah
 		mov	eax, [si+1Ch]
 		mov	bx, offset loc_176FC
 		cmp	eax, ebp
@@ -13852,7 +13852,7 @@ loc_176E0::				; DATA XREF: sub_1609F+1630o
 
 loc_176FC::				; DATA XREF: sub_1609F+164Co
 		xor	ah, 80h
-		mov	[es:di+7], ah
+		mov	es:[di+7], ah
 		mov	eax, [si+20h]
 		mov	bx, offset loc_17718
 		cmp	eax, ebp
@@ -13862,7 +13862,7 @@ loc_176FC::				; DATA XREF: sub_1609F+164Co
 
 loc_17718::				; DATA XREF: sub_1609F+1668o
 		xor	ah, 80h
-		mov	[es:di+8], ah
+		mov	es:[di+8], ah
 		mov	eax, [si+24h]
 		mov	bx, offset loc_17734
 		cmp	eax, ebp
@@ -13872,7 +13872,7 @@ loc_17718::				; DATA XREF: sub_1609F+1668o
 
 loc_17734::				; DATA XREF: sub_1609F+1684o
 		xor	ah, 80h
-		mov	[es:di+9], ah
+		mov	es:[di+9], ah
 		mov	eax, [si+28h]
 		mov	bx, offset loc_17750
 		cmp	eax, ebp
@@ -13882,7 +13882,7 @@ loc_17734::				; DATA XREF: sub_1609F+1684o
 
 loc_17750::				; DATA XREF: sub_1609F+16A0o
 		xor	ah, 80h
-		mov	[es:di+0Ah], ah
+		mov	es:[di+0Ah], ah
 		mov	eax, [si+2Ch]
 		mov	bx, offset loc_1776C
 		cmp	eax, ebp
@@ -13892,7 +13892,7 @@ loc_17750::				; DATA XREF: sub_1609F+16A0o
 
 loc_1776C::				; DATA XREF: sub_1609F+16BCo
 		xor	ah, 80h
-		mov	[es:di+0Bh], ah
+		mov	es:[di+0Bh], ah
 		mov	eax, [si+30h]
 		mov	bx, offset loc_17788
 		cmp	eax, ebp
@@ -13902,7 +13902,7 @@ loc_1776C::				; DATA XREF: sub_1609F+16BCo
 
 loc_17788::				; DATA XREF: sub_1609F+16D8o
 		xor	ah, 80h
-		mov	[es:di+0Ch], ah
+		mov	es:[di+0Ch], ah
 		mov	eax, [si+34h]
 		mov	bx, offset loc_177A4
 		cmp	eax, ebp
@@ -13912,7 +13912,7 @@ loc_17788::				; DATA XREF: sub_1609F+16D8o
 
 loc_177A4::				; DATA XREF: sub_1609F+16F4o
 		xor	ah, 80h
-		mov	[es:di+0Dh], ah
+		mov	es:[di+0Dh], ah
 		mov	eax, [si+38h]
 		mov	bx, offset loc_177C0
 		cmp	eax, ebp
@@ -13922,7 +13922,7 @@ loc_177A4::				; DATA XREF: sub_1609F+16F4o
 
 loc_177C0::				; DATA XREF: sub_1609F+1710o
 		xor	ah, 80h
-		mov	[es:di+0Eh], ah
+		mov	es:[di+0Eh], ah
 		mov	eax, [si+3Ch]
 		mov	bx, offset loc_177DC
 		cmp	eax, ebp
@@ -13932,7 +13932,7 @@ loc_177C0::				; DATA XREF: sub_1609F+1710o
 
 loc_177DC::				; DATA XREF: sub_1609F+172Co
 		xor	ah, 80h
-		mov	[es:di+0Fh], ah
+		mov	es:[di+0Fh], ah
 		add	si, 40h	; '@'
 		add	di, 10h
 		dec	cx
@@ -13990,7 +13990,7 @@ loc_17839::				; CODE XREF: sub_15577+28j
 		shl	eax, 10h
 		mov	ax, [si]
 		add	si, 8
-		mov	[es:di], eax
+		mov	es:[di], eax
 		add	di, 4
 
 loc_1784C::				; CODE XREF: sub_15577+28j
@@ -13999,7 +13999,7 @@ loc_1784C::				; CODE XREF: sub_15577+28j
 		shl	eax, 10h
 		mov	ax, [si]
 		add	si, 8
-		mov	[es:di], eax
+		mov	es:[di], eax
 		add	di, 4
 
 loc_1785F::				; CODE XREF: sub_15577+28j
@@ -14008,7 +14008,7 @@ loc_1785F::				; CODE XREF: sub_15577+28j
 		shl	eax, 10h
 		mov	ax, [si]
 		add	si, 8
-		mov	[es:di], eax
+		mov	es:[di], eax
 		add	di, 4
 
 loc_17872::				; CODE XREF: sub_15577+28j
@@ -14017,7 +14017,7 @@ loc_17872::				; CODE XREF: sub_15577+28j
 		shl	eax, 10h
 		mov	ax, [si]
 		add	si, 8
-		mov	[es:di], eax
+		mov	es:[di], eax
 		add	di, 4
 
 loc_17885::				; CODE XREF: sub_15577+28j
@@ -14026,7 +14026,7 @@ loc_17885::				; CODE XREF: sub_15577+28j
 		shl	eax, 10h
 		mov	ax, [si]
 		add	si, 8
-		mov	[es:di], eax
+		mov	es:[di], eax
 		add	di, 4
 
 loc_17898::				; CODE XREF: sub_15577+28j
@@ -14035,7 +14035,7 @@ loc_17898::				; CODE XREF: sub_15577+28j
 		shl	eax, 10h
 		mov	ax, [si]
 		add	si, 8
-		mov	[es:di], eax
+		mov	es:[di], eax
 		add	di, 4
 
 loc_178AB::				; CODE XREF: sub_15577+28j
@@ -14044,7 +14044,7 @@ loc_178AB::				; CODE XREF: sub_15577+28j
 		shl	eax, 10h
 		mov	ax, [si]
 		add	si, 8
-		mov	[es:di], eax
+		mov	es:[di], eax
 		add	di, 4
 
 loc_178BE::				; CODE XREF: sub_15577+28j
@@ -14053,7 +14053,7 @@ loc_178BE::				; CODE XREF: sub_15577+28j
 		shl	eax, 10h
 		mov	ax, [si]
 		add	si, 8
-		mov	[es:di], eax
+		mov	es:[di], eax
 		add	di, 4
 
 loc_178D1::				; CODE XREF: sub_15577+28j
@@ -14062,7 +14062,7 @@ loc_178D1::				; CODE XREF: sub_15577+28j
 		shl	eax, 10h
 		mov	ax, [si]
 		add	si, 8
-		mov	[es:di], eax
+		mov	es:[di], eax
 		add	di, 4
 
 loc_178E4::				; CODE XREF: sub_15577+28j
@@ -14071,7 +14071,7 @@ loc_178E4::				; CODE XREF: sub_15577+28j
 		shl	eax, 10h
 		mov	ax, [si]
 		add	si, 8
-		mov	[es:di], eax
+		mov	es:[di], eax
 		add	di, 4
 
 loc_178F7::				; CODE XREF: sub_15577+28j
@@ -14080,7 +14080,7 @@ loc_178F7::				; CODE XREF: sub_15577+28j
 		shl	eax, 10h
 		mov	ax, [si]
 		add	si, 8
-		mov	[es:di], eax
+		mov	es:[di], eax
 		add	di, 4
 
 loc_1790A::				; CODE XREF: sub_15577+28j
@@ -14089,7 +14089,7 @@ loc_1790A::				; CODE XREF: sub_15577+28j
 		shl	eax, 10h
 		mov	ax, [si]
 		add	si, 8
-		mov	[es:di], eax
+		mov	es:[di], eax
 		add	di, 4
 
 loc_1791D::				; CODE XREF: sub_15577+28j
@@ -14098,7 +14098,7 @@ loc_1791D::				; CODE XREF: sub_15577+28j
 		shl	eax, 10h
 		mov	ax, [si]
 		add	si, 8
-		mov	[es:di], eax
+		mov	es:[di], eax
 		add	di, 4
 
 loc_17930::				; CODE XREF: sub_15577+28j
@@ -14107,7 +14107,7 @@ loc_17930::				; CODE XREF: sub_15577+28j
 		shl	eax, 10h
 		mov	ax, [si]
 		add	si, 8
-		mov	[es:di], eax
+		mov	es:[di], eax
 		add	di, 4
 
 loc_17943::				; CODE XREF: sub_15577+28j
@@ -14116,7 +14116,7 @@ loc_17943::				; CODE XREF: sub_15577+28j
 		shl	eax, 10h
 		mov	ax, [si]
 		add	si, 8
-		mov	[es:di], eax
+		mov	es:[di], eax
 		add	di, 4
 
 loc_17956::				; CODE XREF: sub_15577+28j
@@ -14128,67 +14128,67 @@ loc_1795D::				; CODE XREF: sub_17824+22Fj
 		mov	ax, [si+4]
 		shl	eax, 10h
 		mov	ax, [si]
-		mov	[es:di], eax
+		mov	es:[di], eax
 		mov	ax, [si+0Ch]
 		shl	eax, 10h
 		mov	ax, [si+8]
-		mov	[es:di+4], eax
+		mov	es:[di+4], eax
 		mov	ax, [si+14h]
 		shl	eax, 10h
 		mov	ax, [si+10h]
-		mov	[es:di+8], eax
+		mov	es:[di+8], eax
 		mov	ax, [si+1Ch]
 		shl	eax, 10h
 		mov	ax, [si+18h]
-		mov	[es:di+0Ch], eax
+		mov	es:[di+0Ch], eax
 		mov	ax, [si+24h]
 		shl	eax, 10h
 		mov	ax, [si+20h]
-		mov	[es:di+10h], eax
+		mov	es:[di+10h], eax
 		mov	ax, [si+2Ch]
 		shl	eax, 10h
 		mov	ax, [si+28h]
-		mov	[es:di+14h], eax
+		mov	es:[di+14h], eax
 		mov	ax, [si+34h]
 		shl	eax, 10h
 		mov	ax, [si+30h]
-		mov	[es:di+18h], eax
+		mov	es:[di+18h], eax
 		mov	ax, [si+3Ch]
 		shl	eax, 10h
 		mov	ax, [si+38h]
-		mov	[es:di+1Ch], eax
+		mov	es:[di+1Ch], eax
 		mov	ax, [si+44h]
 		shl	eax, 10h
 		mov	ax, [si+40h]
-		mov	[es:di+20h], eax
+		mov	es:[di+20h], eax
 		mov	ax, [si+4Ch]
 		shl	eax, 10h
 		mov	ax, [si+48h]
-		mov	[es:di+24h], eax
+		mov	es:[di+24h], eax
 		mov	ax, [si+54h]
 		shl	eax, 10h
 		mov	ax, [si+50h]
-		mov	[es:di+28h], eax
+		mov	es:[di+28h], eax
 		mov	ax, [si+5Ch]
 		shl	eax, 10h
 		mov	ax, [si+58h]
-		mov	[es:di+2Ch], eax
+		mov	es:[di+2Ch], eax
 		mov	ax, [si+64h]
 		shl	eax, 10h
 		mov	ax, [si+60h]
-		mov	[es:di+30h], eax
+		mov	es:[di+30h], eax
 		mov	ax, [si+6Ch]
 		shl	eax, 10h
 		mov	ax, [si+68h]
-		mov	[es:di+34h], eax
+		mov	es:[di+34h], eax
 		mov	ax, [si+74h]
 		shl	eax, 10h
 		mov	ax, [si+70h]
-		mov	[es:di+38h], eax
+		mov	es:[di+38h], eax
 		mov	ax, [si+7Ch]
 		shl	eax, 10h
 		mov	ax, [si+78h]
-		mov	[es:di+3Ch], eax
+		mov	es:[di+3Ch], eax
 		add	si, 80h	; '€'
 		add	di, 40h	; '@'
 		dec	cx
@@ -14221,7 +14221,7 @@ loc_17A72::				; CODE XREF: sub_15577+28j
 		jg	loc_18DB8
 
 loc_17A89::				; DATA XREF: sub_1609F+19D9o
-		mov	[es:di], ax
+		mov	es:[di], ax
 		add	di, 2
 
 loc_17A8F::				; CODE XREF: sub_15577+28j
@@ -14235,7 +14235,7 @@ loc_17A8F::				; CODE XREF: sub_15577+28j
 		jg	loc_18DB8
 
 loc_17AA6::				; DATA XREF: sub_1609F+19F6o
-		mov	[es:di], ax
+		mov	es:[di], ax
 		add	di, 2
 
 loc_17AAC::				; CODE XREF: sub_15577+28j
@@ -14249,7 +14249,7 @@ loc_17AAC::				; CODE XREF: sub_15577+28j
 		jg	loc_18DB8
 
 loc_17AC3::				; DATA XREF: sub_1609F+1A13o
-		mov	[es:di], ax
+		mov	es:[di], ax
 		add	di, 2
 
 loc_17AC9::				; CODE XREF: sub_15577+28j
@@ -14263,7 +14263,7 @@ loc_17AC9::				; CODE XREF: sub_15577+28j
 		jg	loc_18DB8
 
 loc_17AE0::				; DATA XREF: sub_1609F+1A30o
-		mov	[es:di], ax
+		mov	es:[di], ax
 		add	di, 2
 
 loc_17AE6::				; CODE XREF: sub_15577+28j
@@ -14277,7 +14277,7 @@ loc_17AE6::				; CODE XREF: sub_15577+28j
 		jg	loc_18DB8
 
 loc_17AFD::				; DATA XREF: sub_1609F+1A4Do
-		mov	[es:di], ax
+		mov	es:[di], ax
 		add	di, 2
 
 loc_17B03::				; CODE XREF: sub_15577+28j
@@ -14291,7 +14291,7 @@ loc_17B03::				; CODE XREF: sub_15577+28j
 		jg	loc_18DB8
 
 loc_17B1A::				; DATA XREF: sub_1609F+1A6Ao
-		mov	[es:di], ax
+		mov	es:[di], ax
 		add	di, 2
 
 loc_17B20::				; CODE XREF: sub_15577+28j
@@ -14305,7 +14305,7 @@ loc_17B20::				; CODE XREF: sub_15577+28j
 		jg	loc_18DB8
 
 loc_17B37::				; DATA XREF: sub_1609F+1A87o
-		mov	[es:di], ax
+		mov	es:[di], ax
 		add	di, 2
 
 loc_17B3D::				; CODE XREF: sub_15577+28j
@@ -14319,7 +14319,7 @@ loc_17B3D::				; CODE XREF: sub_15577+28j
 		jg	loc_18DB8
 
 loc_17B54::				; DATA XREF: sub_1609F+1AA4o
-		mov	[es:di], ax
+		mov	es:[di], ax
 		add	di, 2
 
 loc_17B5A::				; CODE XREF: sub_15577+28j
@@ -14333,7 +14333,7 @@ loc_17B5A::				; CODE XREF: sub_15577+28j
 		jg	loc_18DB8
 
 loc_17B71::				; DATA XREF: sub_1609F+1AC1o
-		mov	[es:di], ax
+		mov	es:[di], ax
 		add	di, 2
 
 loc_17B77::				; CODE XREF: sub_15577+28j
@@ -14347,7 +14347,7 @@ loc_17B77::				; CODE XREF: sub_15577+28j
 		jg	loc_18DB8
 
 loc_17B8E::				; DATA XREF: sub_1609F+1ADEo
-		mov	[es:di], ax
+		mov	es:[di], ax
 		add	di, 2
 
 loc_17B94::				; CODE XREF: sub_15577+28j
@@ -14361,7 +14361,7 @@ loc_17B94::				; CODE XREF: sub_15577+28j
 		jg	loc_18DB8
 
 loc_17BAB::				; DATA XREF: sub_1609F+1AFBo
-		mov	[es:di], ax
+		mov	es:[di], ax
 		add	di, 2
 
 loc_17BB1::				; CODE XREF: sub_15577+28j
@@ -14375,7 +14375,7 @@ loc_17BB1::				; CODE XREF: sub_15577+28j
 		jg	loc_18DB8
 
 loc_17BC8::				; DATA XREF: sub_1609F+1B18o
-		mov	[es:di], ax
+		mov	es:[di], ax
 		add	di, 2
 
 loc_17BCE::				; CODE XREF: sub_15577+28j
@@ -14389,7 +14389,7 @@ loc_17BCE::				; CODE XREF: sub_15577+28j
 		jg	loc_18DB8
 
 loc_17BE5::				; DATA XREF: sub_1609F+1B35o
-		mov	[es:di], ax
+		mov	es:[di], ax
 		add	di, 2
 
 loc_17BEB::				; CODE XREF: sub_15577+28j
@@ -14403,7 +14403,7 @@ loc_17BEB::				; CODE XREF: sub_15577+28j
 		jg	loc_18DB8
 
 loc_17C02::				; DATA XREF: sub_1609F+1B52o
-		mov	[es:di], ax
+		mov	es:[di], ax
 		add	di, 2
 
 loc_17C08::				; CODE XREF: sub_15577+28j
@@ -14417,7 +14417,7 @@ loc_17C08::				; CODE XREF: sub_15577+28j
 		jg	loc_18DB8
 
 loc_17C1F::				; DATA XREF: sub_1609F+1B6Fo
-		mov	[es:di], ax
+		mov	es:[di], ax
 		add	di, 2
 
 loc_17C25::				; CODE XREF: sub_15577+28j
@@ -14434,7 +14434,7 @@ loc_17C2C::				; CODE XREF: seg000:7DC1j
 		jg	loc_18DB8
 
 loc_17C40::				; DATA XREF: sub_1609F+1B90o
-		mov	[es:di], ax
+		mov	es:[di], ax
 		mov	eax, [si+4]
 		mov	bx, offset loc_17C58
 		cmp	eax, ebp
@@ -14443,7 +14443,7 @@ loc_17C40::				; DATA XREF: sub_1609F+1B90o
 		jg	loc_18DB8
 
 loc_17C58::				; DATA XREF: sub_1609F+1BA8o
-		mov	[es:di+2], ax
+		mov	es:[di+2], ax
 		mov	eax, [si+8]
 		mov	bx, offset loc_17C71
 		cmp	eax, ebp
@@ -14452,7 +14452,7 @@ loc_17C58::				; DATA XREF: sub_1609F+1BA8o
 		jg	loc_18DB8
 
 loc_17C71::				; DATA XREF: sub_1609F+1BC1o
-		mov	[es:di+4], ax
+		mov	es:[di+4], ax
 		mov	eax, [si+0Ch]
 		mov	bx, offset loc_17C8A
 		cmp	eax, ebp
@@ -14461,7 +14461,7 @@ loc_17C71::				; DATA XREF: sub_1609F+1BC1o
 		jg	loc_18DB8
 
 loc_17C8A::				; DATA XREF: sub_1609F+1BDAo
-		mov	[es:di+6], ax
+		mov	es:[di+6], ax
 		mov	eax, [si+10h]
 		mov	bx, offset loc_17CA3
 		cmp	eax, ebp
@@ -14470,7 +14470,7 @@ loc_17C8A::				; DATA XREF: sub_1609F+1BDAo
 		jg	loc_18DB8
 
 loc_17CA3::				; DATA XREF: sub_1609F+1BF3o
-		mov	[es:di+8], ax
+		mov	es:[di+8], ax
 		mov	eax, [si+14h]
 		mov	bx, offset loc_17CBC
 		cmp	eax, ebp
@@ -14479,7 +14479,7 @@ loc_17CA3::				; DATA XREF: sub_1609F+1BF3o
 		jg	loc_18DB8
 
 loc_17CBC::				; DATA XREF: sub_1609F+1C0Co
-		mov	[es:di+0Ah], ax
+		mov	es:[di+0Ah], ax
 		mov	eax, [si+18h]
 		mov	bx, offset loc_17CD5
 		cmp	eax, ebp
@@ -14488,7 +14488,7 @@ loc_17CBC::				; DATA XREF: sub_1609F+1C0Co
 		jg	loc_18DB8
 
 loc_17CD5::				; DATA XREF: sub_1609F+1C25o
-		mov	[es:di+0Ch], ax
+		mov	es:[di+0Ch], ax
 		mov	eax, [si+1Ch]
 		mov	bx, offset loc_17CEE
 		cmp	eax, ebp
@@ -14497,7 +14497,7 @@ loc_17CD5::				; DATA XREF: sub_1609F+1C25o
 		jg	loc_18DB8
 
 loc_17CEE::				; DATA XREF: sub_1609F+1C3Eo
-		mov	[es:di+0Eh], ax
+		mov	es:[di+0Eh], ax
 		mov	eax, [si+20h]
 		mov	bx, offset loc_17D07
 		cmp	eax, ebp
@@ -14506,7 +14506,7 @@ loc_17CEE::				; DATA XREF: sub_1609F+1C3Eo
 		jg	loc_18DB8
 
 loc_17D07::				; DATA XREF: sub_1609F+1C57o
-		mov	[es:di+10h], ax
+		mov	es:[di+10h], ax
 		mov	eax, [si+24h]
 		mov	bx, offset loc_17D20
 		cmp	eax, ebp
@@ -14516,7 +14516,7 @@ loc_17D07::				; DATA XREF: sub_1609F+1C57o
 ; END OF FUNCTION CHUNK	FOR sub_1609F
 
 loc_17D20::				; DATA XREF: sub_1609F+1C70o
-		mov	[es:di+12h], ax
+		mov	es:[di+12h], ax
 		mov	eax, [si+28h]
 		mov	bx, offset loc_17D39
 		cmp	eax, ebp
@@ -14525,7 +14525,7 @@ loc_17D20::				; DATA XREF: sub_1609F+1C70o
 		jg	loc_18DB8
 
 loc_17D39::				; DATA XREF: seg000:7D28o
-		mov	[es:di+14h], ax
+		mov	es:[di+14h], ax
 		mov	eax, [si+2Ch]
 		mov	bx, offset loc_17D52
 		cmp	eax, ebp
@@ -14534,7 +14534,7 @@ loc_17D39::				; DATA XREF: seg000:7D28o
 		jg	loc_18DB8
 
 loc_17D52::				; DATA XREF: seg000:7D41o
-		mov	[es:di+16h], ax
+		mov	es:[di+16h], ax
 		mov	eax, [si+30h]
 		mov	bx, offset loc_17D6B
 		cmp	eax, ebp
@@ -14543,7 +14543,7 @@ loc_17D52::				; DATA XREF: seg000:7D41o
 		jg	loc_18DB8
 
 loc_17D6B::				; DATA XREF: seg000:7D5Ao
-		mov	[es:di+18h], ax
+		mov	es:[di+18h], ax
 		mov	eax, [si+34h]
 		mov	bx, offset loc_17D84
 		cmp	eax, ebp
@@ -14552,7 +14552,7 @@ loc_17D6B::				; DATA XREF: seg000:7D5Ao
 		jg	loc_18DB8
 
 loc_17D84::				; DATA XREF: seg000:7D73o
-		mov	[es:di+1Ah], ax
+		mov	es:[di+1Ah], ax
 		mov	eax, [si+38h]
 		mov	bx, offset loc_17D9D
 		cmp	eax, ebp
@@ -14561,7 +14561,7 @@ loc_17D84::				; DATA XREF: seg000:7D73o
 		jg	loc_18DB8
 
 loc_17D9D::				; DATA XREF: seg000:7D8Co
-		mov	[es:di+1Ch], ax
+		mov	es:[di+1Ch], ax
 		mov	eax, [si+3Ch]
 		mov	bx, offset loc_17DB6
 		cmp	eax, ebp
@@ -14570,7 +14570,7 @@ loc_17D9D::				; DATA XREF: seg000:7D8Co
 		jg	loc_18DB8
 
 loc_17DB6::				; DATA XREF: seg000:7DA5o
-		mov	[es:di+1Eh], ax
+		mov	es:[di+1Eh], ax
 		add	si, 40h	; '@'
 		add	di, 20h	; ' '
 		dec	cx
@@ -15805,14 +15805,14 @@ loc_18A5C::				; CODE XREF: _setsnd_handler+17j
 		xor	ax, ax
 		mov	es, ax
 		assume es:nothing
-		les	cx, [es:bx]
+		les	cx, es:[bx]
 		assume es:nothing
 		mov	_old_intprocoffset, cx
 		mov	_old_intprocseg, es
 		mov	es, ax
 		assume es:nothing
-		mov	[es:bx], si
-		mov	word ptr [es:bx+2], cs
+		mov	es:[bx], si
+		mov	word ptr es:[bx+2], cs
 		pop	es
 		assume es:nothing
 		popf
@@ -15837,9 +15837,9 @@ _restore_intvector proc near	; CODE XREF: _gravis_clean+16p
 		mov	es, ax
 		assume es:nothing
 		mov	ax, _old_intprocoffset
-		mov	[es:bx], ax
+		mov	es:[bx], ax
 		mov	ax, _old_intprocseg
-		mov	[es:bx+2], ax
+		mov	es:[bx+2], ax
 		pop	es
 		assume es:seg003
 		popf
@@ -16188,7 +16188,7 @@ _initclockfromrtc proc near	; CODE XREF: _deinit_125B9+1Bp
 		xor	dx, dx
 		mov	es, dx
 		assume es:nothing
-		mov	[es:46Ch], eax
+		mov	es:[46Ch], eax
 		retn
 _initclockfromrtc endp
 
@@ -16558,7 +16558,7 @@ _strcpy_count_0 proc near	; CODE XREF: sub_12D05:loc_12D30p
 ; ---------------------------------------------------------------------------
 
 loc_18DA1::				; CODE XREF: _strcpy_count_0+Ej
-		mov	[es:di], al
+		mov	es:[di], al
 		inc	si
 		inc	di
 
@@ -16950,7 +16950,7 @@ loc_19057::				; "\rCurrent Soundcard settings:\r\n\n$"
 		assume es:dseg
 		mov	di, offset _buffer_1 ; 2800h
 		call	sub_12D05
-		mov	byte ptr [es:di], '$'
+		mov	byte ptr es:[di], '$'
 
 loc_1906E::				; 2800h
 		mov	dx, offset _buffer_1
@@ -17300,7 +17300,7 @@ loc_192FF::				; CODE XREF: _start+471j _start+4A7j ...
 		assume es:dseg
 		mov	di, offset _buffer_1 ; 2800h
 		call	sub_12D05
-		mov	byte ptr [es:di], 0
+		mov	byte ptr es:[di], 0
 		sub	di, 16EFh
 		and	di, 0FFFEh
 		mov	ax, 50h	; 'P'
@@ -17441,13 +17441,13 @@ loc_19464::				; CODE XREF: seg001:0839j
 		mov	di, offset _buffer_1DB6C
 		mov	dx, di
 		cld
-		movs	dword ptr [es:di], dword ptr [fs:si]
-		movs	dword ptr [es:di], dword ptr [fs:si]
-		movs	dword ptr [es:di], dword ptr [fs:si]
+		movs	dword ptr es:[di], dword ptr fs:[si]
+		movs	dword ptr es:[di], dword ptr fs:[si]
+		movs	dword ptr es:[di], dword ptr fs:[si]
 		mov	byte ptr [di], 0
-		cmp	byte ptr [fs:2], 0
+		cmp	byte ptr fs:[2], 0
 		jz	short loc_194EB
-		cmp	byte ptr [fs:2], 1
+		cmp	byte ptr fs:[2], 1
 		jz	short loc_19506
 		push	dx
 
@@ -17502,7 +17502,7 @@ loc_194EB::				; CODE XREF: _start+401j
 
 loc_19506::				; CODE XREF: _start+409j
 		mov	_byte_1DE7F, 1
-		mov	dl, [fs:0Dh]
+		mov	dl, fs:[0Dh]
 		sub	dl, 'A'
 		jb	loc_193BC
 		cmp	dl, 'Z' - 'A' +1
@@ -17652,18 +17652,18 @@ loc_19657::				; CODE XREF: _start:loc_19445j
 		mov	fs, ax
 		test	[cs:_keyb_switches], 4
 		jnz	short loc_196B0
-		cmp	byte ptr [fs:2], 2
+		cmp	byte ptr fs:[2], 2
 		jnz	loc_193BC
 		mov	_word_1DE60, 0FFFFh
-		test	byte ptr [fs:3], 40h
+		test	byte ptr fs:[3], 40h
 		jnz	short loc_19698
-		or	byte ptr [fs:3], 40h
+		or	byte ptr fs:[3], 40h
 		inc	_word_1DE5C
 		jmp	loc_1953C
 ; ---------------------------------------------------------------------------
 
 loc_19698::				; CODE XREF: _start+5F7j
-		and	byte ptr [fs:3], 0BFh
+		and	byte ptr fs:[3], 0BFh
 		sub	_word_1DE5C, 1
 		jnb	loc_1953C
 		mov	_word_1DE5C, 0
@@ -17695,9 +17695,9 @@ loc_196D0::				; CODE XREF: _start+647j _start+649j
 		mov	cx, _word_1DE54
 
 loc_196F1::				; CODE XREF: _start+6BAj
-		test	byte ptr [fs:3], 40h
+		test	byte ptr fs:[3], 40h
 		jz	short loc_19744
-		cmp	byte ptr [fs:2], 2
+		cmp	byte ptr fs:[2], 2
 		jnz	short loc_19744
 		push	cx
 		push	fs
@@ -17708,11 +17708,11 @@ loc_196F1::				; CODE XREF: _start+6BAj
 		call	_draw_frame
 		pop	fs
 		push	fs
-		mov	eax, [fs:0Ch]
+		mov	eax, fs:[0Ch]
 		mov	dword ptr [_aFile], eax ; "File"
-		mov	eax, [fs:10h]
+		mov	eax, fs:[10h]
 		mov	dword ptr [_aName], eax ; "name"
-		mov	eax, [fs:14h]
+		mov	eax, fs:[14h]
 		mov	dword ptr [_a_ext], eax ; ".Ext"
 		mov	si, offset _aDeletingFile ; "Deleting file: "
 		mov	ax, 7E0Dh
@@ -17830,7 +17830,7 @@ loc_19848::				; CODE XREF: _start+33Aj
 		xor	dx, dx
 		mov	es, dx
 		assume es:nothing
-		mov	edx, [es:46Ch]
+		mov	edx, es:[46Ch]
 		cmp	edx, _dword_1DE88
 		jz	short loc_1987C
 		mov	_dword_1DE88, edx
@@ -17935,7 +17935,7 @@ loc_198E7::				; CODE XREF: _filelist_198B8+13Cj
 		add	di, ax
 		mov	bp, di
 		mov	ah, 7Eh	; '~'
-		cmp	byte ptr [fs:2], 2
+		cmp	byte ptr fs:[2], 2
 		jz	short loc_198FD
 		mov	ah, 7Bh	; '{'
 
@@ -17944,10 +17944,10 @@ loc_198FD::				; CODE XREF: _filelist_198B8+41j
 		mov	cx, 0Ch
 
 loc_19903::				; CODE XREF: _filelist_198B8+5Aj
-		mov	al, [fs:si]
+		mov	al, fs:[si]
 		or	al, al
 		jz	short loc_19914	; " " fill the space after file	names
-		mov	[es:di], ax
+		mov	es:[di], ax
 		inc	si
 		add	di, 2
 		dec	cx
@@ -17957,7 +17957,7 @@ loc_19914::				; CODE XREF: _filelist_198B8+50j
 		mov	ax, 7E20h	; " " fill the space after file	names
 		cld
 		rep stosw
-		cmp	byte ptr [fs:2], 2
+		cmp	byte ptr fs:[2], 2
 		jz	short loc_1992A
 		mov	cx, 51
 
@@ -17973,11 +17973,11 @@ loc_1992A::				; CODE XREF: _filelist_198B8+68j
 		assume es:dseg
 		mov	di, offset _buffer_1 ; 2800h
 		mov	bp, 8		; count
-		mov	eax, [fs:8]
+		mov	eax, fs:[8]
 		call	_my_u32toa_fill
 
 loc_1993D::
-		mov	ax, [fs:6]
+		mov	ax, fs:[6]
 		and	al, 1Fh
 		movzx	eax, al
 		mov	bp, 3		; count
@@ -17986,7 +17986,7 @@ loc_1993D::
 
 loc_19950::
 		inc	di
-		mov	ax, [fs:6]
+		mov	ax, fs:[6]
 		shr	ax, 5
 
 loc_19958::
@@ -17997,21 +17997,21 @@ loc_19958::
 		movsb
 		mov	byte ptr [di], '-'
 		inc	di
-		movzx	eax, word ptr [fs:6]
+		movzx	eax, word ptr fs:[6]
 		shr	ax, 9
 		add	ax, 1980
 		mov	bp, 4		; count
 		call	_my_u32toa_fill
 		mov	byte ptr [di], ' '
 		inc	di
-		mov	ax, [fs:4]
+		mov	ax, fs:[4]
 		shr	ax, 0Bh
 		mov	dl, 10
 		div	dl
 		or	ax, '00'
 		mov	[di], ax
 		mov	byte ptr [di+2], ':'
-		mov	ax, [fs:4]
+		mov	ax, fs:[4]
 		shr	ax, 5
 		and	ax, 3Fh	; '?'
 		div	dl
@@ -18025,7 +18025,7 @@ loc_19958::
 		lea	di, [bp+18h]
 		mov	ah, 7Fh	; ''
 		call	_text_1BF69
-		test	byte ptr [fs:3], 40h
+		test	byte ptr fs:[3], 40h
 		jz	short loc_199CF
 		mov	si, offset _aMarkedToDelete ; "<Marked to Delete>    "
 		mov	ah, 7Fh	; ''
@@ -18038,10 +18038,10 @@ loc_199CF::				; CODE XREF: _filelist_198B8+10Bj
 		mov	si, 1Ah
 
 loc_199D4::				; CODE XREF: _filelist_198B8+12Dj
-		mov	al, [fs:si]
+		mov	al, fs:[si]
 		or	al, al
 		jz	short loc_199E7
-		mov	[es:di], ax
+		mov	es:[di], ax
 		inc	si
 		add	di, 2
 		cmp	si, 30h	; '0'
@@ -18071,10 +18071,10 @@ _recolortxt proc near		; CODE XREF: _start+324p _start+4C1p ...
 		mov	cx, 64
 
 loc_19A04::				; CODE XREF: _recolortxt+19j
-		mov	al, [es:di]
+		mov	al, es:[di]
 		and	al, 0Fh
 		or	al, bl
-		mov	[es:di], al
+		mov	es:[di], al
 		add	di, 2
 		dec	cx
 		jnz	short loc_19A04
@@ -18094,7 +18094,7 @@ loc_19A17::				; CODE XREF: _cpy_printable+Ej
 		inc	si
 		cmp	al, ' '
 		jb	short loc_19A25
-		mov	[es:di], al
+		mov	es:[di], al
 		inc	di
 		dec	cx
 		jnz	short loc_19A17
@@ -18111,12 +18111,12 @@ _cpy_printable endp
 ; ---------------------------------------------------------------------------
 		dec	cx
 		jz	short locret_19A3E
-		mov	al, [es:si]
+		mov	al, es:[si]
 		inc	si
 
 loc_19A34::				; CODE XREF: seg001:09ECj
-		xor	[es:si], al
-		mov	al, [es:si]
+		xor	es:[si], al
+		mov	al, es:[si]
 		inc	si
 		dec	cx
 		jnz	short loc_19A34
@@ -18126,12 +18126,12 @@ locret_19A3E::				; CODE XREF: seg001:09DEj
 ; ---------------------------------------------------------------------------
 		dec	cx
 		jz	short locret_19A52
-		mov	al, [es:si]
+		mov	al, es:[si]
 		inc	si
 
 loc_19A46::				; CODE XREF: seg001:0A00j
-		mov	ah, [es:si]
-		xor	[es:si], al
+		mov	ah, es:[si]
+		xor	es:[si], al
 		mov	al, ah
 		inc	si
 		dec	cx
@@ -18187,14 +18187,14 @@ loc_19AC3::				; CODE XREF: _modules_search+CFj
 		mov	bx, _word_1DE66
 		mov	ah, 7Fh	; ''
 		mov	al, byte ptr [_slider+bx] ; "Ä\\|/Ä\\|/"
-		mov	[fs:di], ax
+		mov	fs:[di], ax
 		inc	_word_1DE66
 		and	_word_1DE66, 7
 		test	byte ptr [unk_1DC01], 10h
 		jz	short loc_19B1D
 		cmp	word ptr [_buffer_1DB6C], '.'
 		jz	short loc_19B1D
-		mov	byte ptr [es:2], 0
+		mov	byte ptr es:[2], 0
 		mov	si, offset _buffer_1DB6C
 		mov	di, 0Ch
 		cld
@@ -18234,7 +18234,7 @@ loc_19B3C::				; CODE XREF: _modules_search+24Bj
 		mov	bx, _word_1DE66
 		mov	ah, 7Fh	; ''
 		mov	al, byte ptr [_slider+bx] ; "Ä\\|/Ä\\|/"
-		mov	[fs:di], ax
+		mov	fs:[di], ax
 		inc	_word_1DE66
 		and	_word_1DE66, 7
 		test	byte ptr [unk_1DC01], 10h
@@ -18266,8 +18266,8 @@ loc_19B83::				; CODE XREF: _modules_search+13Fj
 		jnz	short loc_19B83
 		mov	si, offset _buffer_1DB6C
 		mov	dx, si
-		mov	byte ptr [es:2], 2
-		mov	word ptr [es:0], 0
+		mov	byte ptr es:[2], 2
+		mov	word ptr es:[0], 0
 		mov	di, 0Ch
 		cld
 		movsd
@@ -18279,7 +18279,7 @@ loc_19B83::				; CODE XREF: _modules_search+13Fj
 loc_19BB4::
 		mov	di, 3
 		movsb
-		and	byte ptr [es:3], 3Fh ; '?'
+		and	byte ptr es:[3], 3Fh ; '?'
 		movsd
 		movsd
 		mov	ebp, eax
@@ -18396,9 +18396,9 @@ loc_19CA9::				; CODE XREF: _modules_search+291j
 		jnz	short loc_19CDF
 		mov	eax, 5D3A415Bh	; [A:]
 		add	ah, dl
-		mov	[es:0Ch], eax
-		mov	byte ptr [es:10h], 0
-		mov	byte ptr [es:2], 1
+		mov	es:[0Ch], eax
+		mov	byte ptr es:[10h], 0
+		mov	byte ptr es:[2], 1
 		inc	_word_1DE5A
 		mov	ax, es
 		add	ax, 3
@@ -18507,7 +18507,7 @@ loc_19D63::				; CODE XREF: _parse_cmdline+1Ej
 
 loc_19D64::				; CODE XREF: _parse_cmdline+19j
 					; _parse_cmdline+2Cj
-		mov	byte ptr [es:di], 0
+		mov	byte ptr es:[di], 0
 		mov	ax, es
 		mov	ds, ax
 		assume ds:dseg
@@ -18692,7 +18692,7 @@ loc_19E5E::				; CODE XREF: _read_module+3Bj
 		mov	cx, 30
 
 loc_19EBA::				; CODE XREF: _read_module+B4j
-		mov	al, [es:si]
+		mov	al, es:[si]
 		or	al, al
 		jz	short loc_19EC7
 		mov	[di], al
@@ -18705,7 +18705,7 @@ loc_19EC7::				; CODE XREF: _read_module+AEj
 		xor	si, si
 
 loc_19ECC::				; CODE XREF: _read_module+C3j
-		mov	al, [es:si]
+		mov	al, es:[si]
 		mov	byte ptr [_a130295211558+si], al	; "13/02/95 21:15:58"
 		inc	si
 		loop	loc_19ECC
@@ -18907,7 +18907,7 @@ _l_right::				; CODE XREF: _keyb_19EFD+8Cj
 		mov	cl, 1
 
 loc_1A0E6::				; CODE XREF: _keyb_19EFD+1E5j
-		mov	al, [fs:bx+3Ah]
+		mov	al, fs:[bx+3Ah]
 		add	al, cl
 		cmp	al, 80h	; '€'
 		jbe	short loc_1A0F2
@@ -18931,7 +18931,7 @@ _l_left::					; CODE XREF: _keyb_19EFD+98j
 		mov	cl, 1
 
 loc_1A118::				; CODE XREF: _keyb_19EFD+217j
-		mov	al, [fs:bx+3Ah]
+		mov	al, fs:[bx+3Ah]
 		sub	al, cl
 		jnb	short loc_1A0F2
 		mov	al, 0
@@ -19229,7 +19229,7 @@ loc_1A356::				; CODE XREF: _keyb_19EFD+455j
 		mov	ah, 80
 		mul	ah
 		add	bx, ax
-		xor	byte ptr [fs:bx+17h], 2
+		xor	byte ptr fs:[bx+17h], 2
 		mov	bx, 0FEh ; 'þ'
 		xor	cl, cl
 		xor	dx, dx
@@ -19283,7 +19283,7 @@ loc_1A3C5::				; CODE XREF: _keyb_19EFD+44j
 		xor	dx, dx
 		mov	es, dx
 		assume es:nothing
-		mov	edx, [es:46Ch]
+		mov	edx, es:[46Ch]
 		cmp	edx, _dword_1DE88
 		jz	short loc_1A3F6
 		mov	_dword_1DE88, edx
@@ -19613,7 +19613,7 @@ loc_1A645::				; CODE XREF: _text_init2+196j
 		call	sub_1265D
 		pop	es
 		pop	di
-		mov	word ptr [es:di], 7F20h
+		mov	word ptr es:[di], 7F20h
 		add	di, 2		; videoptr
 		movzx	si, dh
 		and	si, 1100000b
@@ -19794,7 +19794,7 @@ loc_1A7CC::				; CODE XREF: _txt_draw_bottom+51j
 
 loc_1A83E::				; CODE XREF: _txt_draw_bottom+C4j
 		mov	al, 0FEh ; 'þ'
-		mov	[es:di], ax
+		mov	es:[di], ax
 		les	di, _videopoint_shiftd
 		add	di, 238h
 		mov	ah, 7Ch	; '|'
@@ -19804,7 +19804,7 @@ loc_1A83E::				; CODE XREF: _txt_draw_bottom+C4j
 
 loc_1A856::				; CODE XREF: _txt_draw_bottom+DCj
 		mov	al, 0FEh ; 'þ'
-		mov	[es:di], ax
+		mov	es:[di], ax
 		les	di, _videopoint_shiftd
 		add	di, 2D8h
 		mov	ah, 7Ch	; '|'
@@ -19814,7 +19814,7 @@ loc_1A856::				; CODE XREF: _txt_draw_bottom+DCj
 
 loc_1A86E::				; CODE XREF: _txt_draw_bottom+F4j
 		mov	al, 0FEh ; 'þ'
-		mov	[es:di], ax
+		mov	es:[di], ax
 		les	di, _videopoint_shiftd
 		add	di, 378h	; interp text offset
 		mov	ah, 7Ch	; '|'
@@ -19824,7 +19824,7 @@ loc_1A86E::				; CODE XREF: _txt_draw_bottom+F4j
 
 loc_1A886::				; CODE XREF: _txt_draw_bottom+10Cj
 		mov	al, 0FEh ; 'þ'
-		mov	[es:di], ax
+		mov	es:[di], ax
 		mov	si, offset _buffer_1DC6C
 		imul	ax, _word_1DE6A, 100
 		mov	al, ah
@@ -19856,7 +19856,7 @@ loc_1A886::				; CODE XREF: _txt_draw_bottom+10Cj
 
 loc_1A8EB::				; CODE XREF: _txt_draw_bottom+17Fj
 		mov	al, [si]
-		mov	[es:di], ax
+		mov	es:[di], ax
 		inc	si
 		add	di, 2
 		dec	cx
@@ -19909,12 +19909,12 @@ loc_1A947::				; CODE XREF: seg001:18F3j
 		mov	ah, 7Eh	; '~'
 
 loc_1A951::				; CODE XREF: seg001:18FDj
-		mov	[es:di+2], ax
+		mov	es:[di+2], ax
 		mov	al, ' '
-		mov	[es:di], ax
-		mov	[es:di+4], ax
+		mov	es:[di], ax
+		mov	es:[di+4], ax
 		add	di, 6
-		movzx	si, byte ptr [fs:bx+35h]
+		movzx	si, byte ptr fs:[bx+35h]
 		mov	al, ' '
 		test	si, 0Fh
 		jz	short loc_1A975
@@ -19924,19 +19924,19 @@ loc_1A951::				; CODE XREF: seg001:18FDj
 
 loc_1A975::				; CODE XREF: seg001:191Cj
 		mov	ah, 7Fh	; ''
-		mov	[es:di+4], ax
+		mov	es:[di+4], ax
 		and	si, 0Fh
 		shl	si, 1
 		mov	al, byte ptr [_notes+si]	; "  C-C#D-D#E-F-F#G-G#A-A#B-"
-		mov	[es:di], ax
+		mov	es:[di], ax
 		mov	al, byte ptr [(_notes+1)+si]
-		mov	[es:di+2], ax
+		mov	es:[di+2], ax
 		add	di, 8
-		test	byte ptr [fs:bx+17h], 1
+		test	byte ptr fs:[bx+17h], 1
 		jnz	short loc_1A9AD
 		mov	si, offset _aMute ; "<Mute>		  "
 		mov	ah, 7Fh	; ''
-		test	byte ptr [fs:bx+17h], 2
+		test	byte ptr fs:[bx+17h], 2
 		jnz	short loc_1A9A8
 
 loc_1A9A5::				; CODE XREF: seg001:1964j
@@ -19948,7 +19948,7 @@ loc_1A9A8::				; CODE XREF: seg001:1953j
 ; ---------------------------------------------------------------------------
 
 loc_1A9AD::				; CODE XREF: seg001:1947j
-		movzx	eax, byte ptr [fs:bx+2]
+		movzx	eax, byte ptr fs:[bx+2]
 		dec	ax
 		js	short loc_1A9A5
 		shl	ax, 6
@@ -19967,14 +19967,14 @@ loc_1A9C2::				; CODE XREF: seg001:195Bj
 		assume es:dseg
 		mov	di, offset _buffer_1 ; 2800h
 		cld
-		movzx	eax, byte ptr [fs:bx+2]
+		movzx	eax, byte ptr fs:[bx+2]
 		mov	bp, 2
 		call	_my_u32toa_fill
 		mov	bp, 4
-		movzx	eax, byte ptr [fs:bx+22h]
+		movzx	eax, byte ptr fs:[bx+22h]
 		call	_my_u32toa_fill
 		mov	bp, 7
-		movzx	eax, word ptr [fs:bx+1Eh]
+		movzx	eax, word ptr fs:[bx+1Eh]
 		call	_my_u32toa_fill
 		mov	ax, ds
 		mov	es, ax
@@ -20022,19 +20022,19 @@ loc_1AA36::				; CODE XREF: seg001:19E2j
 loc_1AA4F::				; CODE XREF: seg001:19FBj
 		cmp	_byte_1DE83, 0
 		jz	short loc_1AA5C
-		cmp	al, [fs:bx+1Ah]
+		cmp	al, fs:[bx+1Ah]
 		jb	short loc_1AA73
 
 loc_1AA5C::				; CODE XREF: seg001:1A04j
-		mov	[fs:bx+1Ah], al
+		mov	fs:[bx+1Ah], al
 		jmp	short loc_1AA88
 ; ---------------------------------------------------------------------------
 
 loc_1AA62::				; CODE XREF: seg001:19CFj
-		test	byte ptr [fs:bx+17h], 1
+		test	byte ptr fs:[bx+17h], 1
 		jz	short loc_1AA73
-		mov	al, [fs:bx+22h]
-		mov	[fs:bx+1Ah], al
+		mov	al, fs:[bx+22h]
+		mov	fs:[bx+1Ah], al
 		jmp	short loc_1AA88
 ; ---------------------------------------------------------------------------
 
@@ -20043,12 +20043,12 @@ loc_1AA73::				; CODE XREF: seg001:1A0Aj seg001:1A17j
 		and	_byte_1DE71, 1Fh
 		jnz	short loc_1AA88
 		mov	al, _byte_1DE83
-		sub	[fs:bx+1Ah], al
+		sub	fs:[bx+1Ah], al
 		jns	short loc_1AA88
-		mov	byte ptr [fs:bx+1Ah], 0
+		mov	byte ptr fs:[bx+1Ah], 0
 
 loc_1AA88::				; CODE XREF: seg001:1A10j seg001:1A21j ...
-		movzx	cx, byte ptr [fs:bx+1Ah]
+		movzx	cx, byte ptr fs:[bx+1Ah]
 		shr	cx, 1
 		mov	dx, 30
 		sub	dx, cx
@@ -20089,13 +20089,13 @@ loc_1AACB::				; CODE XREF: seg001:loc_1AA17j
 		push	di
 		add	di, 7Ah	; 'z'
 		mov	si, offset asc_1D6E0 ; "	       "
-		mov	al, [fs:bx+0Ah]
+		mov	al, fs:[bx+0Ah]
 		cmp	al, 1Dh
 		jz	short loc_1AB0D
 		cmp	al, 0Eh
 		jnz	short loc_1AAF0
 		mov	si, offset _aSetLoopPoint ; "Set	Loop Point "
-		mov	al, [fs:bx+0Bh]
+		mov	al, fs:[bx+0Bh]
 		cmp	al, 60h	; '`'
 		jz	short loc_1AAF7
 		mov	si, offset _aSetFilter ;	"Set Filter	"
@@ -20123,7 +20123,7 @@ _f3_draw endp
 
 loc_1AB0D proc near				; CODE XREF: seg001:1A89j
 		mov	si, offset _aArpeggio ; "Arpeggio       "
-		mov	al, [fs:bx+0Bh]
+		mov	al, fs:[bx+0Bh]
 		cmp	al, 37h	; '7'
 		jz	short loc_1AB5D	; min
 		cmp	al, 47h	; 'G'
@@ -20133,11 +20133,11 @@ loc_1AB0D proc near				; CODE XREF: seg001:1A89j
 		xor	cl, cl
 		call	sub_1AB8C
 		mov	[si+9],	ax
-		mov	cl, [fs:bx+0Bh]
+		mov	cl, fs:[bx+0Bh]
 		shr	cl, 4
 		call	sub_1AB8C
 		mov	[si+0Bh], ax
-		mov	cl, [fs:bx+0Bh]
+		mov	cl, fs:[bx+0Bh]
 		and	cl, 0Fh
 		call	sub_1AB8C
 		mov	[si+0Dh], ax
@@ -20164,7 +20164,7 @@ loc_1AB67::				; CODE XREF: seg001:1ACAj
 		mov	dword ptr [si+0Bh], 206A616Dh ;	maj
 
 loc_1AB6F::				; CODE XREF: seg001:1B0Bj seg001:1B15j
-		mov	al, [fs:bx+35h]
+		mov	al, fs:[bx+35h]
 		and	ax, 0Fh
 		jz	short loc_1AB44
 		cmp	al, 0Ch
@@ -20182,7 +20182,7 @@ loc_1AB0D endp
 
 
 sub_1AB8C proc near		; CODE XREF: seg001:1AD2p seg001:1ADFp ...
-		mov	al, [fs:bx+35h]
+		mov	al, fs:[bx+35h]
 		and	ax, 0Fh
 		add	al, cl
 		cmp	al, 0Ch
@@ -20214,8 +20214,8 @@ _txt_1ABAE proc near		; CODE XREF: seg001:196Fp
 		mov	cx, 16h
 
 loc_1ABB3::				; CODE XREF: _txt_1ABAE+10j
-		mov	al, [fs:si]
-		mov	[es:di], ax
+		mov	al, fs:[si]
+		mov	es:[di], ax
 		inc	si
 		add	di, 2
 		dec	cx
@@ -20263,8 +20263,8 @@ loc_1ABF0::				; CODE XREF: seg001:1CA1j
 		mov	si, bx
 		mov	cx, 8
 		cld
-		rep movs dword	ptr [es:di], dword ptr [fs:si]
-		test	byte ptr [fs:bx+3Ch], 1
+		rep movs dword	ptr es:[di], dword ptr fs:[si]
+		test	byte ptr fs:[bx+3Ch], 1
 		jnz	short loc_1AC35
 		mov	si, offset unk_1D6C3
 		mov	cx, 9
@@ -20273,28 +20273,28 @@ loc_1ABF0::				; CODE XREF: seg001:1CA1j
 ; ---------------------------------------------------------------------------
 
 loc_1AC35::				; CODE XREF: seg001:1BD8j
-		mov	eax, [fs:bx+20h]
+		mov	eax, fs:[bx+20h]
 		mov	bp, 7
 		call	_my_pnt_u32toa_fill
-		movzx	eax, byte ptr [fs:bx+3Dh]
+		movzx	eax, byte ptr fs:[bx+3Dh]
 		mov	bp, 3
 		call	_my_pnt_u32toa_fill
 		mov	eax, 363120h	; ' 16'
-		test	byte ptr [fs:bx+3Ch], 4
+		test	byte ptr fs:[bx+3Ch], 4
 		jnz	short loc_1AC5F
 		mov	eax, 382020h	; '  8'
 
 loc_1AC5F::				; CODE XREF: seg001:1C07j
 		mov	[di], eax
 		mov	al, 1Dh
-		test	byte ptr [fs:bx+3Ch], 10h
+		test	byte ptr fs:[bx+3Ch], 10h
 		jnz	short loc_1AC6D
 		mov	al, ' '
 
 loc_1AC6D::				; CODE XREF: seg001:1C19j
 		mov	[di+3],	al
 		add	di, 4
-		movzx	eax, word ptr [fs:bx+36h]
+		movzx	eax, word ptr fs:[bx+36h]
 		mov	bp, 6
 		call	_my_pnt_u32toa_fill
 		mov	dword ptr [di],	7A487E02h ;  H
@@ -20302,7 +20302,7 @@ loc_1AC6D::				; CODE XREF: seg001:1C19j
 		mov	dword ptr [di],	7F0220h	;  square
 		add	di, 3
 		mov	eax, '    '
-		mov	ah, [fs:bx+3Eh]
+		mov	ah, fs:[bx+3Eh]
 		and	ah, 0Fh
 		test	ah, 8
 		jz	short loc_1ACAC
@@ -20314,12 +20314,12 @@ loc_1ACAC::				; CODE XREF: seg001:1C53j
 		or	ah, '0'
 		mov	[di], eax
 		add	di, 4
-		test	byte ptr [fs:bx+3Ch], 8
+		test	byte ptr fs:[bx+3Ch], 8
 		jz	short loc_1ACD2
-		mov	eax, [fs:bx+24h]
+		mov	eax, fs:[bx+24h]
 		mov	bp, 7
 		call	_my_pnt_u32toa_fill
-		mov	eax, [fs:bx+2Ch]
+		mov	eax, fs:[bx+2Ch]
 		mov	bp, 7
 		call	_my_pnt_u32toa_fill
 
@@ -20507,9 +20507,9 @@ loc_1ADF0::				; DATA XREF: _init_vga_waves:loc_1AE0Co
 		inc	cl
 
 loc_1ADF6::				; CODE XREF: _init_vga_waves+D9j
-		mov	al, [es:bx+di]
+		mov	al, es:[bx+di]
 		mov	al, [si]
-		mov	[es:bx+di], al
+		mov	es:[bx+di], al
 		inc	si
 		cmp	si, offset _buffer_1seg
 		jnb	short loc_1AE11
@@ -20567,8 +20567,8 @@ loc_1AE2D::				; CODE XREF: _init_vga_waves+C3j
 
 loc_1AE3A::				; CODE XREF: _init_vga_waves+115j
 					; DATA XREF: _init_vga_waves:loc_1AE16o
-		test	byte ptr [es:bx+di], 0
-		mov	[es:bx+di], al
+		test	byte ptr es:[bx+di], 0
+		mov	es:[bx+di], al
 		inc	di
 		dec	cl
 		jnz	short loc_1AE3A
@@ -20680,8 +20680,8 @@ _lc_nextvideobit::			; CODE XREF: _f2_draw_waves+8Fj
 		mov	bx, bp		; reinit (x*8)
 
 _lc_next_x8::				; CODE XREF: _f2_draw_waves+86j
-		movsx	di, byte ptr [gs:si] ; y1
-		movsx	dx, byte ptr [fs:si] ; y2
+		movsx	di, byte ptr gs:[si] ; y1
+		movsx	dx, byte ptr fs:[si] ; y2
 		cmp	di, dx
 		jz	short loc_1AF3A
 		neg	di
@@ -20694,7 +20694,7 @@ _lc_next_x8::				; CODE XREF: _f2_draw_waves+86j
 		js	short loc_1AF1E
 		cmp	cx, 280*80	; bottom y margin 280
 		jnb	short loc_1AF1E
-		and	byte ptr [es:bx+di], 111b ; clean previous dot
+		and	byte ptr es:[bx+di], 111b ; clean previous dot
 
 loc_1AF1E::				; CODE XREF: _f2_draw_waves+58j
 					; _f2_draw_waves+5Ej
@@ -20708,7 +20708,7 @@ loc_1AF1E::				; CODE XREF: _f2_draw_waves+58j
 		js	short loc_1AF3A
 		cmp	cx, 280*80
 		jnb	short loc_1AF3A
-		or	byte ptr [es:bx+di], 1000b ; set new dot
+		or	byte ptr es:[bx+di], 1000b ; set new dot
 
 loc_1AF3A::				; CODE XREF: _f2_draw_waves+46j
 					; _f2_draw_waves+74j ...
@@ -20766,7 +20766,7 @@ loc_1AF86::				; CODE XREF: _f2_draw_waves2+5Aj
 		mov	bx, bp
 
 loc_1AF8E::				; CODE XREF: _f2_draw_waves2+51j
-		movsx	di, byte ptr [gs:si]
+		movsx	di, byte ptr gs:[si]
 		neg	di
 		mov	cx, di
 		shl	di, 6
@@ -20777,7 +20777,7 @@ loc_1AF8E::				; CODE XREF: _f2_draw_waves2+51j
 		js	short loc_1AFAE
 		cmp	cx, 22400
 		jnb	short loc_1AFAE
-		and	byte ptr [es:bx+di], 111b
+		and	byte ptr es:[bx+di], 111b
 
 loc_1AFAE::				; CODE XREF: _f2_draw_waves2+3Fj
 					; _f2_draw_waves2+45j
@@ -21367,7 +21367,7 @@ _f5_draw_spectr proc near	; DATA XREF: _f5_graphspectr+6o
 loc_1B5EC::				; CODE XREF: _f5_draw_spectr+2A1j
 		mov	cx, bp
 		xor	dx, dx
-		cmp	byte ptr [fs:bx+3Ah], 64
+		cmp	byte ptr fs:[bx+3Ah], 64
 		ja	short loc_1B5FC
 		mov	al, [si]
 		cbw
@@ -21376,7 +21376,7 @@ loc_1B5EC::				; CODE XREF: _f5_draw_spectr+2A1j
 loc_1B5FC::				; CODE XREF: _f5_draw_spectr+2Dj
 		dec	cx
 		jz	loc_1B85F
-		cmp	byte ptr [fs:bx+8Ah], 64
+		cmp	byte ptr fs:[bx+8Ah], 64
 		ja	short loc_1B610
 		mov	al, [si+200h]
 		cbw
@@ -21385,7 +21385,7 @@ loc_1B5FC::				; CODE XREF: _f5_draw_spectr+2Dj
 loc_1B610::				; CODE XREF: _f5_draw_spectr+3Fj
 		dec	cx
 		jz	loc_1B85F
-		cmp	byte ptr [fs:bx+0DAh], 64
+		cmp	byte ptr fs:[bx+0DAh], 64
 		ja	short loc_1B624
 		mov	al, [si+400h]
 		cbw
@@ -21394,7 +21394,7 @@ loc_1B610::				; CODE XREF: _f5_draw_spectr+3Fj
 loc_1B624::				; CODE XREF: _f5_draw_spectr+53j
 		dec	cx
 		jz	loc_1B85F
-		cmp	byte ptr [fs:bx+12Ah], 64
+		cmp	byte ptr fs:[bx+12Ah], 64
 		ja	short loc_1B638
 		mov	al, [si+600h]
 		cbw
@@ -21403,7 +21403,7 @@ loc_1B624::				; CODE XREF: _f5_draw_spectr+53j
 loc_1B638::				; CODE XREF: _f5_draw_spectr+67j
 		dec	cx
 		jz	loc_1B85F
-		cmp	byte ptr [fs:bx+17Ah], 64
+		cmp	byte ptr fs:[bx+17Ah], 64
 		ja	short loc_1B64C
 		mov	al, [si+800h]
 		cbw
@@ -21412,7 +21412,7 @@ loc_1B638::				; CODE XREF: _f5_draw_spectr+67j
 loc_1B64C::				; CODE XREF: _f5_draw_spectr+7Bj
 		dec	cx
 		jz	loc_1B85F
-		cmp	byte ptr [fs:bx+1CAh], 64
+		cmp	byte ptr fs:[bx+1CAh], 64
 		ja	short loc_1B660
 		mov	al, [si+0A00h]
 		cbw
@@ -21421,7 +21421,7 @@ loc_1B64C::				; CODE XREF: _f5_draw_spectr+7Bj
 loc_1B660::				; CODE XREF: _f5_draw_spectr+8Fj
 		dec	cx
 		jz	loc_1B85F
-		cmp	byte ptr [fs:bx+21Ah], 64
+		cmp	byte ptr fs:[bx+21Ah], 64
 		ja	short loc_1B674
 		mov	al, [si+0C00h]
 		cbw
@@ -21430,7 +21430,7 @@ loc_1B660::				; CODE XREF: _f5_draw_spectr+8Fj
 loc_1B674::				; CODE XREF: _f5_draw_spectr+A3j
 		dec	cx
 		jz	loc_1B85F
-		cmp	byte ptr [fs:bx+26Ah], 64
+		cmp	byte ptr fs:[bx+26Ah], 64
 		ja	short loc_1B688
 		mov	al, [si+0E00h]
 		cbw
@@ -21439,7 +21439,7 @@ loc_1B674::				; CODE XREF: _f5_draw_spectr+A3j
 loc_1B688::				; CODE XREF: _f5_draw_spectr+B7j
 		dec	cx
 		jz	loc_1B85F
-		cmp	byte ptr [fs:bx+2BAh], 64
+		cmp	byte ptr fs:[bx+2BAh], 64
 		ja	short loc_1B69C
 		mov	al, [si+1000h]
 		cbw
@@ -21448,7 +21448,7 @@ loc_1B688::				; CODE XREF: _f5_draw_spectr+B7j
 loc_1B69C::				; CODE XREF: _f5_draw_spectr+CBj
 		dec	cx
 		jz	loc_1B85F
-		cmp	byte ptr [fs:bx+30Ah], 64
+		cmp	byte ptr fs:[bx+30Ah], 64
 		ja	short loc_1B6B0
 		mov	al, [si+1200h]
 		cbw
@@ -21457,7 +21457,7 @@ loc_1B69C::				; CODE XREF: _f5_draw_spectr+CBj
 loc_1B6B0::				; CODE XREF: _f5_draw_spectr+DFj
 		dec	cx
 		jz	loc_1B85F
-		cmp	byte ptr [fs:bx+35Ah], 64
+		cmp	byte ptr fs:[bx+35Ah], 64
 		ja	short loc_1B6C4
 		mov	al, [si+1400h]
 		cbw
@@ -21466,7 +21466,7 @@ loc_1B6B0::				; CODE XREF: _f5_draw_spectr+DFj
 loc_1B6C4::				; CODE XREF: _f5_draw_spectr+F3j
 		dec	cx
 		jz	loc_1B85F
-		cmp	byte ptr [fs:bx+3AAh], 64
+		cmp	byte ptr fs:[bx+3AAh], 64
 		ja	short loc_1B6D8
 		mov	al, [si+1600h]
 		cbw
@@ -21475,7 +21475,7 @@ loc_1B6C4::				; CODE XREF: _f5_draw_spectr+F3j
 loc_1B6D8::				; CODE XREF: _f5_draw_spectr+107j
 		dec	cx
 		jz	loc_1B85F
-		cmp	byte ptr [fs:bx+3FAh], 64
+		cmp	byte ptr fs:[bx+3FAh], 64
 		ja	short loc_1B6EC
 		mov	al, [si+1800h]
 		cbw
@@ -21484,7 +21484,7 @@ loc_1B6D8::				; CODE XREF: _f5_draw_spectr+107j
 loc_1B6EC::				; CODE XREF: _f5_draw_spectr+11Bj
 		dec	cx
 		jz	loc_1B85F
-		cmp	byte ptr [fs:bx+44Ah], 64
+		cmp	byte ptr fs:[bx+44Ah], 64
 		ja	short loc_1B700
 		mov	al, [si+1A00h]
 		cbw
@@ -21493,7 +21493,7 @@ loc_1B6EC::				; CODE XREF: _f5_draw_spectr+11Bj
 loc_1B700::				; CODE XREF: _f5_draw_spectr+12Fj
 		dec	cx
 		jz	loc_1B85F
-		cmp	byte ptr [fs:bx+49Ah], 64
+		cmp	byte ptr fs:[bx+49Ah], 64
 		ja	short loc_1B714
 		mov	al, [si+1C00h]
 		cbw
@@ -21502,7 +21502,7 @@ loc_1B700::				; CODE XREF: _f5_draw_spectr+12Fj
 loc_1B714::				; CODE XREF: _f5_draw_spectr+143j
 		dec	cx
 		jz	loc_1B85F
-		cmp	byte ptr [fs:bx+4EAh], 40h ; '@'
+		cmp	byte ptr fs:[bx+4EAh], 40h ; '@'
 		ja	short loc_1B728
 		mov	al, [si+1E00h]
 		cbw
@@ -21511,7 +21511,7 @@ loc_1B714::				; CODE XREF: _f5_draw_spectr+143j
 loc_1B728::				; CODE XREF: _f5_draw_spectr+157j
 		dec	cx
 		jz	loc_1B85F
-		cmp	byte ptr [fs:bx+53Ah], 40h ; '@'
+		cmp	byte ptr fs:[bx+53Ah], 40h ; '@'
 		ja	short loc_1B73C
 		mov	al, [si+2000h]
 		cbw
@@ -21520,7 +21520,7 @@ loc_1B728::				; CODE XREF: _f5_draw_spectr+157j
 loc_1B73C::				; CODE XREF: _f5_draw_spectr+16Bj
 		dec	cx
 		jz	loc_1B85F
-		cmp	byte ptr [fs:bx+58Ah], 40h ; '@'
+		cmp	byte ptr fs:[bx+58Ah], 40h ; '@'
 		ja	short loc_1B750
 		mov	al, [si+2200h]
 		cbw
@@ -21529,7 +21529,7 @@ loc_1B73C::				; CODE XREF: _f5_draw_spectr+16Bj
 loc_1B750::				; CODE XREF: _f5_draw_spectr+17Fj
 		dec	cx
 		jz	loc_1B85F
-		cmp	byte ptr [fs:bx+5DAh], 40h ; '@'
+		cmp	byte ptr fs:[bx+5DAh], 40h ; '@'
 		ja	short loc_1B764
 		mov	al, [si+2400h]
 		cbw
@@ -21538,7 +21538,7 @@ loc_1B750::				; CODE XREF: _f5_draw_spectr+17Fj
 loc_1B764::				; CODE XREF: _f5_draw_spectr+193j
 		dec	cx
 		jz	loc_1B85F
-		cmp	byte ptr [fs:bx+62Ah], 40h ; '@'
+		cmp	byte ptr fs:[bx+62Ah], 40h ; '@'
 		ja	short loc_1B778
 		mov	al, [si+2600h]
 		cbw
@@ -21547,7 +21547,7 @@ loc_1B764::				; CODE XREF: _f5_draw_spectr+193j
 loc_1B778::				; CODE XREF: _f5_draw_spectr+1A7j
 		dec	cx
 		jz	loc_1B85F
-		cmp	byte ptr [fs:bx+67Ah], 40h ; '@'
+		cmp	byte ptr fs:[bx+67Ah], 40h ; '@'
 		ja	short loc_1B78C
 		mov	al, [si+2800h]
 		cbw
@@ -21556,7 +21556,7 @@ loc_1B778::				; CODE XREF: _f5_draw_spectr+1A7j
 loc_1B78C::				; CODE XREF: _f5_draw_spectr+1BBj
 		dec	cx
 		jz	loc_1B85F
-		cmp	byte ptr [fs:bx+6CAh], 40h ; '@'
+		cmp	byte ptr fs:[bx+6CAh], 40h ; '@'
 		ja	short loc_1B7A0
 		mov	al, [si+2A00h]
 		cbw
@@ -21565,7 +21565,7 @@ loc_1B78C::				; CODE XREF: _f5_draw_spectr+1BBj
 loc_1B7A0::				; CODE XREF: _f5_draw_spectr+1CFj
 		dec	cx
 		jz	loc_1B85F
-		cmp	byte ptr [fs:bx+71Ah], 40h ; '@'
+		cmp	byte ptr fs:[bx+71Ah], 40h ; '@'
 		ja	short loc_1B7B4
 		mov	al, [si+2C00h]
 		cbw
@@ -21574,7 +21574,7 @@ loc_1B7A0::				; CODE XREF: _f5_draw_spectr+1CFj
 loc_1B7B4::				; CODE XREF: _f5_draw_spectr+1E3j
 		dec	cx
 		jz	loc_1B85F
-		cmp	byte ptr [fs:bx+76Ah], 40h ; '@'
+		cmp	byte ptr fs:[bx+76Ah], 40h ; '@'
 		ja	short loc_1B7C8
 		mov	al, [si+2E00h]
 		cbw
@@ -21583,7 +21583,7 @@ loc_1B7B4::				; CODE XREF: _f5_draw_spectr+1E3j
 loc_1B7C8::				; CODE XREF: _f5_draw_spectr+1F7j
 		dec	cx
 		jz	loc_1B85F
-		cmp	byte ptr [fs:bx+7BAh], 40h ; '@'
+		cmp	byte ptr fs:[bx+7BAh], 40h ; '@'
 		ja	short loc_1B7DC
 		mov	al, [si+3000h]
 		cbw
@@ -21592,7 +21592,7 @@ loc_1B7C8::				; CODE XREF: _f5_draw_spectr+1F7j
 loc_1B7DC::				; CODE XREF: _f5_draw_spectr+20Bj
 		dec	cx
 		jz	loc_1B85F
-		cmp	byte ptr [fs:bx+80Ah], 40h ; '@'
+		cmp	byte ptr fs:[bx+80Ah], 40h ; '@'
 		ja	short loc_1B7F0
 		mov	al, [si+3200h]
 		cbw
@@ -21601,7 +21601,7 @@ loc_1B7DC::				; CODE XREF: _f5_draw_spectr+20Bj
 loc_1B7F0::				; CODE XREF: _f5_draw_spectr+21Fj
 		dec	cx
 		jz	short loc_1B85F
-		cmp	byte ptr [fs:bx+85Ah], 40h ; '@'
+		cmp	byte ptr fs:[bx+85Ah], 40h ; '@'
 		ja	short loc_1B802
 		mov	al, [si+3400h]
 		cbw
@@ -21610,7 +21610,7 @@ loc_1B7F0::				; CODE XREF: _f5_draw_spectr+21Fj
 loc_1B802::				; CODE XREF: _f5_draw_spectr+231j
 		dec	cx
 		jz	short loc_1B85F
-		cmp	byte ptr [fs:bx+8AAh], 40h ; '@'
+		cmp	byte ptr fs:[bx+8AAh], 40h ; '@'
 		ja	short loc_1B814
 		mov	al, [si+3600h]
 		cbw
@@ -21619,7 +21619,7 @@ loc_1B802::				; CODE XREF: _f5_draw_spectr+231j
 loc_1B814::				; CODE XREF: _f5_draw_spectr+243j
 		dec	cx
 		jz	short loc_1B85F
-		cmp	byte ptr [fs:bx+8FAh], 40h ; '@'
+		cmp	byte ptr fs:[bx+8FAh], 40h ; '@'
 		ja	short loc_1B826
 		mov	al, [si+3800h]
 		cbw
@@ -21628,7 +21628,7 @@ loc_1B814::				; CODE XREF: _f5_draw_spectr+243j
 loc_1B826::				; CODE XREF: _f5_draw_spectr+255j
 		dec	cx
 		jz	short loc_1B85F
-		cmp	byte ptr [fs:bx+94Ah], 40h ; '@'
+		cmp	byte ptr fs:[bx+94Ah], 40h ; '@'
 		ja	short loc_1B838
 		mov	al, [si+3A00h]
 		cbw
@@ -21637,7 +21637,7 @@ loc_1B826::				; CODE XREF: _f5_draw_spectr+255j
 loc_1B838::				; CODE XREF: _f5_draw_spectr+267j
 		dec	cx
 		jz	short loc_1B85F
-		cmp	byte ptr [fs:bx+99Ah], 40h ; '@'
+		cmp	byte ptr fs:[bx+99Ah], 40h ; '@'
 		ja	short loc_1B84A
 		mov	al, [si+3C00h]
 		cbw
@@ -21646,7 +21646,7 @@ loc_1B838::				; CODE XREF: _f5_draw_spectr+267j
 loc_1B84A::				; CODE XREF: _f5_draw_spectr+279j
 		dec	cx
 		jz	short loc_1B85F
-		cmp	byte ptr [fs:bx+9EAh], 40h ; '@'
+		cmp	byte ptr fs:[bx+9EAh], 40h ; '@'
 		ja	short loc_1B85C
 		mov	al, [si+3E00h]
 		cbw
@@ -21693,7 +21693,7 @@ loc_1B876::				; CODE XREF: _f5_draw_spectr+2C5j
 loc_1B8BC::				; CODE XREF: _f5_draw_spectr+571j
 		mov	cx, bp
 		xor	dx, dx
-		cmp	byte ptr [fs:bx+3Ah], 40h ; '@'
+		cmp	byte ptr fs:[bx+3Ah], 40h ; '@'
 		jb	short loc_1B8CC
 		mov	al, [si]
 		cbw
@@ -21702,7 +21702,7 @@ loc_1B8BC::				; CODE XREF: _f5_draw_spectr+571j
 loc_1B8CC::				; CODE XREF: _f5_draw_spectr+2FDj
 		dec	cx
 		jz	loc_1BB2F
-		cmp	byte ptr [fs:bx+8Ah], 40h ; '@'
+		cmp	byte ptr fs:[bx+8Ah], 40h ; '@'
 		jb	short loc_1B8E0
 		mov	al, [si+200h]
 		cbw
@@ -21711,7 +21711,7 @@ loc_1B8CC::				; CODE XREF: _f5_draw_spectr+2FDj
 loc_1B8E0::				; CODE XREF: _f5_draw_spectr+30Fj
 		dec	cx
 		jz	loc_1BB2F
-		cmp	byte ptr [fs:bx+0DAh], 40h ; '@'
+		cmp	byte ptr fs:[bx+0DAh], 40h ; '@'
 		jb	short loc_1B8F4
 		mov	al, [si+400h]
 		cbw
@@ -21720,7 +21720,7 @@ loc_1B8E0::				; CODE XREF: _f5_draw_spectr+30Fj
 loc_1B8F4::				; CODE XREF: _f5_draw_spectr+323j
 		dec	cx
 		jz	loc_1BB2F
-		cmp	byte ptr [fs:bx+12Ah], 40h ; '@'
+		cmp	byte ptr fs:[bx+12Ah], 40h ; '@'
 		jb	short loc_1B908
 		mov	al, [si+600h]
 		cbw
@@ -21729,7 +21729,7 @@ loc_1B8F4::				; CODE XREF: _f5_draw_spectr+323j
 loc_1B908::				; CODE XREF: _f5_draw_spectr+337j
 		dec	cx
 		jz	loc_1BB2F
-		cmp	byte ptr [fs:bx+17Ah], 40h ; '@'
+		cmp	byte ptr fs:[bx+17Ah], 40h ; '@'
 		jb	short loc_1B91C
 		mov	al, [si+800h]
 		cbw
@@ -21738,7 +21738,7 @@ loc_1B908::				; CODE XREF: _f5_draw_spectr+337j
 loc_1B91C::				; CODE XREF: _f5_draw_spectr+34Bj
 		dec	cx
 		jz	loc_1BB2F
-		cmp	byte ptr [fs:bx+1CAh], 40h ; '@'
+		cmp	byte ptr fs:[bx+1CAh], 40h ; '@'
 		jb	short loc_1B930
 		mov	al, [si+0A00h]
 		cbw
@@ -21747,7 +21747,7 @@ loc_1B91C::				; CODE XREF: _f5_draw_spectr+34Bj
 loc_1B930::				; CODE XREF: _f5_draw_spectr+35Fj
 		dec	cx
 		jz	loc_1BB2F
-		cmp	byte ptr [fs:bx+21Ah], 40h ; '@'
+		cmp	byte ptr fs:[bx+21Ah], 40h ; '@'
 		jb	short loc_1B944
 		mov	al, [si+0C00h]
 		cbw
@@ -21756,7 +21756,7 @@ loc_1B930::				; CODE XREF: _f5_draw_spectr+35Fj
 loc_1B944::				; CODE XREF: _f5_draw_spectr+373j
 		dec	cx
 		jz	loc_1BB2F
-		cmp	byte ptr [fs:bx+26Ah], 40h ; '@'
+		cmp	byte ptr fs:[bx+26Ah], 40h ; '@'
 		jb	short loc_1B958
 		mov	al, [si+0E00h]
 		cbw
@@ -21765,7 +21765,7 @@ loc_1B944::				; CODE XREF: _f5_draw_spectr+373j
 loc_1B958::				; CODE XREF: _f5_draw_spectr+387j
 		dec	cx
 		jz	loc_1BB2F
-		cmp	byte ptr [fs:bx+2BAh], 40h ; '@'
+		cmp	byte ptr fs:[bx+2BAh], 40h ; '@'
 		jb	short loc_1B96C
 		mov	al, [si+1000h]
 		cbw
@@ -21774,7 +21774,7 @@ loc_1B958::				; CODE XREF: _f5_draw_spectr+387j
 loc_1B96C::				; CODE XREF: _f5_draw_spectr+39Bj
 		dec	cx
 		jz	loc_1BB2F
-		cmp	byte ptr [fs:bx+30Ah], 40h ; '@'
+		cmp	byte ptr fs:[bx+30Ah], 40h ; '@'
 		jb	short loc_1B980
 		mov	al, [si+1200h]
 		cbw
@@ -21783,7 +21783,7 @@ loc_1B96C::				; CODE XREF: _f5_draw_spectr+39Bj
 loc_1B980::				; CODE XREF: _f5_draw_spectr+3AFj
 		dec	cx
 		jz	loc_1BB2F
-		cmp	byte ptr [fs:bx+35Ah], 40h ; '@'
+		cmp	byte ptr fs:[bx+35Ah], 40h ; '@'
 		jb	short loc_1B994
 		mov	al, [si+1400h]
 		cbw
@@ -21792,7 +21792,7 @@ loc_1B980::				; CODE XREF: _f5_draw_spectr+3AFj
 loc_1B994::				; CODE XREF: _f5_draw_spectr+3C3j
 		dec	cx
 		jz	loc_1BB2F
-		cmp	byte ptr [fs:bx+3AAh], 40h ; '@'
+		cmp	byte ptr fs:[bx+3AAh], 40h ; '@'
 		jb	short loc_1B9A8
 		mov	al, [si+1600h]
 		cbw
@@ -21801,7 +21801,7 @@ loc_1B994::				; CODE XREF: _f5_draw_spectr+3C3j
 loc_1B9A8::				; CODE XREF: _f5_draw_spectr+3D7j
 		dec	cx
 		jz	loc_1BB2F
-		cmp	byte ptr [fs:bx+3FAh], 40h ; '@'
+		cmp	byte ptr fs:[bx+3FAh], 40h ; '@'
 		jb	short loc_1B9BC
 		mov	al, [si+1800h]
 		cbw
@@ -21810,7 +21810,7 @@ loc_1B9A8::				; CODE XREF: _f5_draw_spectr+3D7j
 loc_1B9BC::				; CODE XREF: _f5_draw_spectr+3EBj
 		dec	cx
 		jz	loc_1BB2F
-		cmp	byte ptr [fs:bx+44Ah], 40h ; '@'
+		cmp	byte ptr fs:[bx+44Ah], 40h ; '@'
 		jb	short loc_1B9D0
 		mov	al, [si+1A00h]
 		cbw
@@ -21819,7 +21819,7 @@ loc_1B9BC::				; CODE XREF: _f5_draw_spectr+3EBj
 loc_1B9D0::				; CODE XREF: _f5_draw_spectr+3FFj
 		dec	cx
 		jz	loc_1BB2F
-		cmp	byte ptr [fs:bx+49Ah], 40h ; '@'
+		cmp	byte ptr fs:[bx+49Ah], 40h ; '@'
 		jb	short loc_1B9E4
 		mov	al, [si+1C00h]
 		cbw
@@ -21828,7 +21828,7 @@ loc_1B9D0::				; CODE XREF: _f5_draw_spectr+3FFj
 loc_1B9E4::				; CODE XREF: _f5_draw_spectr+413j
 		dec	cx
 		jz	loc_1BB2F
-		cmp	byte ptr [fs:bx+4EAh], 40h ; '@'
+		cmp	byte ptr fs:[bx+4EAh], 40h ; '@'
 		jb	short loc_1B9F8
 		mov	al, [si+1E00h]
 		cbw
@@ -21837,7 +21837,7 @@ loc_1B9E4::				; CODE XREF: _f5_draw_spectr+413j
 loc_1B9F8::				; CODE XREF: _f5_draw_spectr+427j
 		dec	cx
 		jz	loc_1BB2F
-		cmp	byte ptr [fs:bx+53Ah], 40h ; '@'
+		cmp	byte ptr fs:[bx+53Ah], 40h ; '@'
 		jb	short loc_1BA0C
 		mov	al, [si+2000h]
 		cbw
@@ -21846,7 +21846,7 @@ loc_1B9F8::				; CODE XREF: _f5_draw_spectr+427j
 loc_1BA0C::				; CODE XREF: _f5_draw_spectr+43Bj
 		dec	cx
 		jz	loc_1BB2F
-		cmp	byte ptr [fs:bx+58Ah], 40h ; '@'
+		cmp	byte ptr fs:[bx+58Ah], 40h ; '@'
 		jb	short loc_1BA20
 		mov	al, [si+2200h]
 		cbw
@@ -21855,7 +21855,7 @@ loc_1BA0C::				; CODE XREF: _f5_draw_spectr+43Bj
 loc_1BA20::				; CODE XREF: _f5_draw_spectr+44Fj
 		dec	cx
 		jz	loc_1BB2F
-		cmp	byte ptr [fs:bx+5DAh], 40h ; '@'
+		cmp	byte ptr fs:[bx+5DAh], 40h ; '@'
 		jb	short loc_1BA34
 		mov	al, [si+2400h]
 		cbw
@@ -21864,7 +21864,7 @@ loc_1BA20::				; CODE XREF: _f5_draw_spectr+44Fj
 loc_1BA34::				; CODE XREF: _f5_draw_spectr+463j
 		dec	cx
 		jz	loc_1BB2F
-		cmp	byte ptr [fs:bx+62Ah], 40h ; '@'
+		cmp	byte ptr fs:[bx+62Ah], 40h ; '@'
 		jb	short loc_1BA48
 		mov	al, [si+2600h]
 		cbw
@@ -21873,7 +21873,7 @@ loc_1BA34::				; CODE XREF: _f5_draw_spectr+463j
 loc_1BA48::				; CODE XREF: _f5_draw_spectr+477j
 		dec	cx
 		jz	loc_1BB2F
-		cmp	byte ptr [fs:bx+67Ah], 40h ; '@'
+		cmp	byte ptr fs:[bx+67Ah], 40h ; '@'
 		jb	short loc_1BA5C
 		mov	al, [si+2800h]
 		cbw
@@ -21882,7 +21882,7 @@ loc_1BA48::				; CODE XREF: _f5_draw_spectr+477j
 loc_1BA5C::				; CODE XREF: _f5_draw_spectr+48Bj
 		dec	cx
 		jz	loc_1BB2F
-		cmp	byte ptr [fs:bx+6CAh], 40h ; '@'
+		cmp	byte ptr fs:[bx+6CAh], 40h ; '@'
 		jb	short loc_1BA70
 		mov	al, [si+2A00h]
 		cbw
@@ -21891,7 +21891,7 @@ loc_1BA5C::				; CODE XREF: _f5_draw_spectr+48Bj
 loc_1BA70::				; CODE XREF: _f5_draw_spectr+49Fj
 		dec	cx
 		jz	loc_1BB2F
-		cmp	byte ptr [fs:bx+71Ah], 40h ; '@'
+		cmp	byte ptr fs:[bx+71Ah], 40h ; '@'
 		jb	short loc_1BA84
 		mov	al, [si+2C00h]
 		cbw
@@ -21900,7 +21900,7 @@ loc_1BA70::				; CODE XREF: _f5_draw_spectr+49Fj
 loc_1BA84::				; CODE XREF: _f5_draw_spectr+4B3j
 		dec	cx
 		jz	loc_1BB2F
-		cmp	byte ptr [fs:bx+76Ah], 40h ; '@'
+		cmp	byte ptr fs:[bx+76Ah], 40h ; '@'
 		jb	short loc_1BA98
 		mov	al, [si+2E00h]
 		cbw
@@ -21909,7 +21909,7 @@ loc_1BA84::				; CODE XREF: _f5_draw_spectr+4B3j
 loc_1BA98::				; CODE XREF: _f5_draw_spectr+4C7j
 		dec	cx
 		jz	loc_1BB2F
-		cmp	byte ptr [fs:bx+7BAh], 40h ; '@'
+		cmp	byte ptr fs:[bx+7BAh], 40h ; '@'
 		jb	short loc_1BAAC
 		mov	al, [si+3000h]
 		cbw
@@ -21918,7 +21918,7 @@ loc_1BA98::				; CODE XREF: _f5_draw_spectr+4C7j
 loc_1BAAC::				; CODE XREF: _f5_draw_spectr+4DBj
 		dec	cx
 		jz	loc_1BB2F
-		cmp	byte ptr [fs:bx+80Ah], 40h ; '@'
+		cmp	byte ptr fs:[bx+80Ah], 40h ; '@'
 		jb	short loc_1BAC0
 		mov	al, [si+3200h]
 		cbw
@@ -21927,7 +21927,7 @@ loc_1BAAC::				; CODE XREF: _f5_draw_spectr+4DBj
 loc_1BAC0::				; CODE XREF: _f5_draw_spectr+4EFj
 		dec	cx
 		jz	short loc_1BB2F
-		cmp	byte ptr [fs:bx+85Ah], 40h ; '@'
+		cmp	byte ptr fs:[bx+85Ah], 40h ; '@'
 		jb	short loc_1BAD2
 		mov	al, [si+3400h]
 		cbw
@@ -21936,7 +21936,7 @@ loc_1BAC0::				; CODE XREF: _f5_draw_spectr+4EFj
 loc_1BAD2::				; CODE XREF: _f5_draw_spectr+501j
 		dec	cx
 		jz	short loc_1BB2F
-		cmp	byte ptr [fs:bx+8AAh], 40h ; '@'
+		cmp	byte ptr fs:[bx+8AAh], 40h ; '@'
 		jb	short loc_1BAE4
 		mov	al, [si+3600h]
 		cbw
@@ -21945,7 +21945,7 @@ loc_1BAD2::				; CODE XREF: _f5_draw_spectr+501j
 loc_1BAE4::				; CODE XREF: _f5_draw_spectr+513j
 		dec	cx
 		jz	short loc_1BB2F
-		cmp	byte ptr [fs:bx+8FAh], 40h ; '@'
+		cmp	byte ptr fs:[bx+8FAh], 40h ; '@'
 		jb	short loc_1BAF6
 		mov	al, [si+3800h]
 		cbw
@@ -21954,7 +21954,7 @@ loc_1BAE4::				; CODE XREF: _f5_draw_spectr+513j
 loc_1BAF6::				; CODE XREF: _f5_draw_spectr+525j
 		dec	cx
 		jz	short loc_1BB2F
-		cmp	byte ptr [fs:bx+94Ah], 40h ; '@'
+		cmp	byte ptr fs:[bx+94Ah], 40h ; '@'
 		jb	short loc_1BB08
 		mov	al, [si+3A00h]
 		cbw
@@ -21963,7 +21963,7 @@ loc_1BAF6::				; CODE XREF: _f5_draw_spectr+525j
 loc_1BB08::				; CODE XREF: _f5_draw_spectr+537j
 		dec	cx
 		jz	short loc_1BB2F
-		cmp	byte ptr [fs:bx+99Ah], 40h ; '@'
+		cmp	byte ptr fs:[bx+99Ah], 40h ; '@'
 		jb	short loc_1BB1A
 		mov	al, [si+3C00h]
 		cbw
@@ -21972,7 +21972,7 @@ loc_1BB08::				; CODE XREF: _f5_draw_spectr+537j
 loc_1BB1A::				; CODE XREF: _f5_draw_spectr+549j
 		dec	cx
 		jz	short loc_1BB2F
-		cmp	byte ptr [fs:bx+9EAh], 40h ; '@'
+		cmp	byte ptr fs:[bx+9EAh], 40h ; '@'
 		jb	short loc_1BB2C
 		mov	al, [si+3E00h]
 		cbw
@@ -22136,7 +22136,7 @@ loc_1BC42::				; CODE XREF: _spectr_1BC2D+11j
 		mov	al, ah
 
 loc_1BC5F::				; CODE XREF: _spectr_1BC2D+3Fj
-		mov	[es:di], ax
+		mov	es:[di], ax
 		inc	al
 		inc	ah
 		sub	di, 140h
@@ -22158,7 +22158,7 @@ loc_1BC70::				; CODE XREF: _spectr_1BC2D+19j
 		xor	ax, ax
 
 loc_1BC87::				; CODE XREF: _spectr_1BC2D+63j
-		mov	[es:di], ax
+		mov	es:[di], ax
 		sub	di, 140h
 		dec	dl
 		jnz	short loc_1BC87
@@ -22183,7 +22183,7 @@ loc_1BCAB::				; CODE XREF: _spectr_1BC2D+7Aj
 
 loc_1BCB7::
 		add	di, bp
-		mov	word ptr [es:di], 0
+		mov	word ptr es:[di], 0
 		jmp	short loc_1BCDF
 ; ---------------------------------------------------------------------------
 
@@ -22200,7 +22200,7 @@ loc_1BCCC::				; CODE XREF: _spectr_1BC2D+9Bj
 		add	di, dx
 		neg	di
 		add	di, bp
-		mov	word ptr [es:di], 0FEFEh
+		mov	word ptr es:[di], 0FEFEh
 
 loc_1BCDF::				; CODE XREF: _spectr_1BC2D+6Aj
 					; _spectr_1BC2D+91j
@@ -22248,8 +22248,8 @@ loc_1BCFB::				; CODE XREF: _spectr_1BCE9+Ej
 
 loc_1BD26::				; CODE XREF: _spectr_1BCE9+35j
 					; _spectr_1BCE9+52j
-		mov	[es:di], eax
-		mov	[es:di+4], eax
+		mov	es:[di], eax
+		mov	es:[di+4], eax
 		sub	di, 140h
 		xor	eax, 1010101h
 		dec	dl
@@ -22270,8 +22270,8 @@ loc_1BD3E::				; CODE XREF: _spectr_1BCE9+16j
 		xor	eax, eax
 
 loc_1BD56::				; CODE XREF: _spectr_1BCE9+7Cj
-		mov	[es:di], eax
-		mov	[es:di+4], eax
+		mov	es:[di], eax
+		mov	es:[di+4], eax
 		sub	di, 140h
 		dec	dl
 		jnz	short loc_1BD56
@@ -22315,10 +22315,10 @@ loc_1BD95::				; CODE XREF: seg001:2D41j
 		mov	ah, 7Eh	; '~'
 
 loc_1BD9F::				; CODE XREF: seg001:2D4Bj
-		mov	[es:di+2], ax
+		mov	es:[di+2], ax
 		mov	al, 20h	; ' '
-		mov	[es:di], ax
-		mov	[es:di+4], ax
+		mov	es:[di], ax
+		mov	es:[di+4], ax
 		add	di, 6
 		mov	si, offset _buffer_1 ; 2800h
 		mov	eax, 0C4C4C4C4h
@@ -22329,7 +22329,7 @@ loc_1BD9F::				; CODE XREF: seg001:2D4Bj
 		mov	[si+0Eh], eax
 		mov	word ptr [si+12h], 20C4h
 		lea	bp, [si+14h]
-		mov	al, [fs:bx+3Ah]
+		mov	al, fs:[bx+3Ah]
 		mov	dl, al
 		shr	al, 3
 		and	ax, 1Fh
@@ -22347,7 +22347,7 @@ loc_1BDF2::				; CODE XREF: seg001:2D9Aj seg001:2D9Ej
 		mov	si, bp
 		mov	dword ptr [si],	20202020h
 		cld
-		mov	al, [fs:bx+3Ah]
+		mov	al, fs:[bx+3Ah]
 		sub	al, 40h	; '@'
 		js	short loc_1BE07
 		inc	si
@@ -22393,7 +22393,7 @@ _hex_1BE39 proc near		; CODE XREF: seg001:2DE5p
 		add	al, 7
 
 loc_1BE43::				; CODE XREF: _hex_1BE39+6j
-		mov	[es:di], ax
+		mov	es:[di], ax
 		add	di, 2
 		retn
 _hex_1BE39 endp
@@ -22579,7 +22579,7 @@ _text_1BF69 proc near		; CODE XREF: _filelist_198B8+102p
 		jz	short _n1_movepos
 		cmp	al, 2
 		jz	short _n2_setcolor
-		mov	[es:di], ax
+		mov	es:[di], ax
 		add	di, 2
 		jmp	short _text_1BF69
 ; ---------------------------------------------------------------------------
@@ -22625,7 +22625,7 @@ _put_message endp ; sp-analysis failed
 _put_message2 proc near	; CODE XREF: _put_message2+6j
 		stosw
 		cld
-		lods	byte ptr [fs:si]
+		lods	byte ptr fs:[si]
 		or	al, al
 		jnz	short _put_message2
 		retn
@@ -22710,7 +22710,7 @@ _aConfigFileNotF	db 'Config file not found. Run ISETUP first',0Dh,0Ah,'$'
 ; char *__usercall _getexename<esi>()
 _getexename proc near		; CODE XREF: _init_vga_waves+2Fp
 		mov	es, _esseg_atstart
-		mov	es, word ptr [es:2Ch]
+		mov	es, word ptr es:[2Ch]
 		xor	di, di
 		xor	al, al
 		cld
@@ -22719,14 +22719,14 @@ _getexename proc near		; CODE XREF: _init_vga_waves+2Fp
 loc_1C031::				; CODE XREF: _getexename+18j
 		repne scasb
 		jnz	short loc_1C050
-		cmp	[es:di], al
+		cmp	es:[di], al
 		jnz	short loc_1C031
-		mov	cx, [es:di+1]
+		mov	cx, es:[di+1]
 		jcxz	short loc_1C050
 		add	di, 3
 
 loc_1C043::				; CODE XREF: _getexename+2Cj
-		mov	al, [es:di]
+		mov	al, es:[di]
 		mov	[si], al
 		inc	di
 		inc	si
@@ -22927,7 +22927,7 @@ _get_keybsw proc near
 		xor	ax, ax
 		mov	es, ax
 		assume es:nothing
-		mov	ax, [es:17h]
+		mov	ax, es:[17h]
 		mov	[cs:_keyb_switches], ax
 		pop	es
 		assume es:nothing
@@ -22944,7 +22944,7 @@ _set_keybsw proc near
 		mov	es, ax
 		assume es:nothing
 		mov	ax, [cs:_keyb_switches]
-		mov	[es:17h], ax
+		mov	es:[17h], ax
 		pop	es
 		assume es:nothing
 		retn
@@ -23095,7 +23095,7 @@ loc_1C209::				; CODE XREF: _dosexec+31j
 		mov	[cs:_byte_1C1B8], al
 		call	sub_12D35
 		mov	es, _esseg_atstart
-		mov	ax, [es:2Ch]
+		mov	ax, es:[2Ch]
 		mov	_word_24445, ax
 		call	_get_comspec
 		jb	short loc_1C23E
@@ -23141,22 +23141,22 @@ _dosexec endp
 _get_comspec proc near	; CODE XREF: _dosexec+6Cp
 		mov	es, _esseg_atstart
 		assume es:nothing
-		mov	es, word ptr [es:2Ch]
+		mov	es, word ptr es:[2Ch]
 		xor	di, di
 
 loc_1C273::				; CODE XREF: _get_comspec+2Fj
-		cmp	byte ptr [es:di], 0
+		cmp	byte ptr es:[di], 0
 		stc
 		jz	short locret_1C29D
-		cmp	dword ptr [es:di], 534D4F43h ; COMSPEC=
+		cmp	dword ptr es:[di], 534D4F43h ; COMSPEC=
 		jnz	short loc_1C28F
-		cmp	dword ptr [es:di+4], 3D434550h
+		cmp	dword ptr es:[di+4], 3D434550h
 		jz	short loc_1C299
 
 loc_1C28F::				; CODE XREF: _get_comspec+1Aj
 					; _get_comspec+2Cj
 		inc	di
-		cmp	byte ptr [es:di], 0
+		cmp	byte ptr es:[di], 0
 		jnz	short loc_1C28F
 		inc	di
 		jmp	short loc_1C273
@@ -23292,7 +23292,7 @@ _video_prp_mtr_positn proc near ; CODE XREF: _read_module+C5p
 		mov	cx, _amount_of_x
 
 loc_1C355::				; CODE XREF: _video_prp_mtr_positn+2Dj
-		mov	al, [fs:bx+3Ah]
+		mov	al, fs:[bx+3Ah]
 		cmp	al, 40h	; '@'
 		jb	short loc_1C365
 		inc	_byte_1DE7A
@@ -23342,7 +23342,7 @@ loc_1C3A9::				; CODE XREF: _video_prp_mtr_positn+64j
 		mov	edx, edi
 
 loc_1C3C1::				; CODE XREF: _video_prp_mtr_positn+B5j
-		cmp	byte ptr [fs:bx+3Ah], 40h ; '@'
+		cmp	byte ptr fs:[bx+3Ah], 40h ; '@'
 		jz	short loc_1C3EE
 		ja	short loc_1C3DC
 		mov	eax, edi
@@ -23377,7 +23377,7 @@ loc_1C3EE::				; CODE XREF: _video_prp_mtr_positn+86j
 
 loc_1C40B::				; CODE XREF: _video_prp_mtr_positn+C6j
 					; _video_prp_mtr_positn+EBj
-		cmp	byte ptr [fs:bx+3Ah], 40h ; '@'
+		cmp	byte ptr fs:[bx+3Ah], 40h ; '@'
 		jnz	short loc_1C424
 		mov	eax, edi
 		shr	eax, 16
@@ -23475,7 +23475,7 @@ _rereadrtc_settmr proc near	; CODE XREF: _int1a_timer+9p
 		xor	dx, dx
 		mov	es, dx
 		assume es:nothing
-		mov	[es:46Ch], eax
+		mov	es:[46Ch], eax
 		retn
 _rereadrtc_settmr endp
 
@@ -23741,7 +23741,7 @@ _strcpy_count proc near	; CODE XREF: _useless_mysprintf+26p
 ; ---------------------------------------------------------------------------
 
 loc_1C6B9::				; CODE XREF: _strcpy_count+Ej
-		mov	[es:di], al
+		mov	es:[di], al
 		inc	si
 		inc	di
 
@@ -23762,7 +23762,7 @@ _mouse_init proc near		; CODE XREF: _start+16Dp _start+74Ap
 		xor	ax, ax
 		mov	es, ax
 		assume es:nothing
-		cmp	dword ptr [es:0CCh], 0
+		cmp	dword ptr es:[0CCh], 0
 		jz	short loc_1C708
 		mov	ax, 21h	; '!'
 		int	33h		; - MS MOUSE - SOFTWARE	RESET
