@@ -38,6 +38,8 @@ class parser:
 		self.proc_list = []
 		self.binary_data = []
 		self.c_data = []
+		self.h_data = []
+		self.dummy_enum = 0
 
 		self.symbols = []
 		self.link_later = []
@@ -227,8 +229,9 @@ class parser:
 		first = True
 		string = False
 		elements = 0
-		data_ctype = {1: 'uint8_t', 2: 'uint16_t', 4: 'uint32_t'}[width]
+		data_ctype = {1: 'db', 2: 'dw', 4: 'dd'}[width]
 		r = []
+		rh = []
 		base = 0x100 if width == 1 else 0x10000
 		for v in data:
 			v = v.strip()
@@ -281,8 +284,6 @@ class parser:
 				vv = v.split()
 				#print vv
 				if vv[0] == "offset": # pointer
-					v = vv[1]
-
 					data_ctype += r"*"
 					v = "&" + vv[1]
 					r.append(v);
@@ -318,7 +319,7 @@ class parser:
 
 		#print "current data type = %d current data c type = %s" %(cur_data_type, data_ctype)
 		print "current data type = %d current data c type = %s" %(cur_data_type, data_ctype)
-  	        vv = ""
+		'''
 		#  if prev data type was set and data format has changed or data type has changed or there is a label or it was 0-term string or it was number
 		if (self.prev_data_type != 0 and (cur_data_type != self.prev_data_type or data_ctype != self.prev_data_ctype)) or len(label) or self.prev_data_type == 1 or self.prev_data_type == 3:
 			# if it was array of numbers or array string
@@ -329,24 +330,31 @@ class parser:
 			#  if prev data type was set and it is not a string
 			if self.prev_data_type != 0 and (cur_data_type == 2 or cur_data_type == 3 or cur_data_type == 4):
 				vv += ","
+		'''
 
-		if len(label):
-		    if cur_data_type == 1: # 0 terminated string
-				vv += "const char * const " + label + " = "
+		if len(label) == 0:
+			self.dummy_enum += 1
+			label = "dummy" + str(self.dummy_enum)
+			
+  	        vh = ""
+  	        vc = ""
 
-		    elif cur_data_type == 2: # array string
-				vv += "const char " + label + "[] = { "
+		if cur_data_type == 1: # 0 terminated string
+				vh = "char " + label + "[" + str(len(r)) + "]" 
 
-		    elif cur_data_type == 3: # number
-				vv += data_ctype + " " + label
-				vv += " = "
+		elif cur_data_type == 2: # array string
+				vh = "char " + label + "[" + str(len(r)) + "]" 
+				vc = "{"
 
-		    elif cur_data_type == 4: # array
-				vv += data_ctype + " " + label
-				vv += "[] = {"
+		elif cur_data_type == 3: # number
+				vh = data_ctype + " " + label
+
+		elif cur_data_type == 4: # array
+				vh = data_ctype + " " + label + "[" + str(elements) + "]"
+				vc = "{"
 
 		if cur_data_type == 1: # string
-				vv += "\""
+				vv = "\""
 				for i in xrange(0, len(r)-1):
 					if isinstance(r[i], int):
 						if r[i] == 13:
@@ -362,6 +370,7 @@ class parser:
 				r.append(vv)
 
 		elif cur_data_type == 2: # array of char
+				vv = ""
 				for i in xrange(0, len(r)):
 					    if isinstance(r[i], int):
 						if r[i] == 13:
@@ -378,6 +387,7 @@ class parser:
 				r.append(vv)
 
 		elif cur_data_type == 4: # array of numbers
+				vv = ""
 				for i in xrange(0, len(r)):
 					vv += str(r[i])
 					if i != len(r)-1:
@@ -386,16 +396,26 @@ class parser:
 				r.append(vv)
 
 		elif cur_data_type == 3: # number
-				vv += str(r[0])
+				vv = str(r[0])
 				r = []
 				r.append(vv)
 
+		r.insert(0, vc)
+		rh.insert(0, vh)
+			# if it was array of numbers or array string
+		if cur_data_type == 4 or cur_data_type == 2:
+			r.append("}")
+
+		r.append(", // " + label + "\n")
+		rh.append(";\n")
+
 		print r
+		print rh
 		print "returning" 
 		self.prev_data_type = cur_data_type
 		self.prev_data_ctype = data_ctype
 		self.data_started = True
-		return r
+		return r, rh
 
 	def parse(self, fname):
 #		print "opening file %s..." %(fname, basedir)
@@ -451,7 +471,9 @@ class parser:
 					print "%d:1: %s" %(len(self.binary_data), arg) #fixme: COPYPASTE
 					binary_width = {'b': 1, 'w': 2, 'd': 4}[cmd0[1]]
 					self.binary_data += self.convert_data_to_blob(binary_width, lex.parse_args(arg))
-					self.c_data += self.convert_data_to_c("", binary_width, lex.parse_args(arg))
+					c, h = self.convert_data_to_c("", binary_width, lex.parse_args(arg))
+					self.c_data += c
+					self.h_data += h
 				continue
 			elif cmd0 == 'include':
 				self.include(os.path.dirname(fname), cmd[1])
@@ -484,7 +506,11 @@ class parser:
 						arg = arg[len(cmd1):].strip()
 						print "%d: %s" %(offset, arg)
 						self.binary_data += self.convert_data_to_blob(binary_width, lex.parse_args(arg))
-						self.c_data += self.convert_data_to_c(cmd0, binary_width, lex.parse_args(arg))
+
+						c, h = self.convert_data_to_c(cmd0, binary_width, lex.parse_args(arg))
+						self.c_data += c
+						self.h_data += h
+
 						self.set_global(cmd0.lower(), op.var(binary_width, offset))
 						skipping_binary_data = False
 					else:

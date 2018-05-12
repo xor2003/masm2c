@@ -2,7 +2,9 @@
 
 //#define __packed  __attribute__((packed))
 
-uint8_t m[];
+struct Mem;
+typedef Mem Memory;
+extern Memory m;
 
 /* https://commons.wikimedia.org/wiki/File:Table_of_x86_Registers_svg.svg */
 /*
@@ -554,25 +556,26 @@ void asm2C_INT(int a) {
 		default:
 			break;
 		}
+/*  protected mode temporrary disabled
 	case 0x31:
 		switch(ax)
 		{
 		case 0x0:
 		{
-			/*
-			   ;2.0 - Function 0000h - Allocate Descriptors:
-			   ;--------------------------------------------
-			   ;  Allocates one or more descriptors in the client's descriptor table. The
-			   ;descriptor(s) allocated must be initialized by the application with other
-			   ;function calls.
-			   ;In:
-			   ;  AX     = 0000h
-			   ;  CX     = number of descriptors to allocate
-			   ;Out:
-			   ;  if successful:
-			   ;    carry flag clear
-			   ;    AX     = base selector
-			 */
+			
+			//   ;2.0 - Function 0000h - Allocate Descriptors:
+			//   ;--------------------------------------------
+			//   ;  Allocates one or more descriptors in the client's descriptor table. The
+			//   ;descriptor(s) allocated must be initialized by the application with other
+			//   ;function calls.
+			//   ;In:
+			//   ;  AX     = 0000h
+			//   ;  CX     = number of descriptors to allocate
+			//   ;Out:
+			//   ;  if successful:
+			//   ;    carry flag clear
+			//   ;    AX     = base selector
+			 
 			log_debug2("Function 0000h - Allocate %d Descriptors\n",cx);
 			if (selectorsPointer+cx>=NB_SELECTORS) {
 				CF = 1;
@@ -587,16 +590,16 @@ void asm2C_INT(int a) {
 		}
 		case 0x02:
 		{
-			/*
-			   This function Converts a real mode segment into a protected mode descriptor.
-			   BX =    real mode segment
-			   Out:
-			   if successful:
-			   carry flag clear
-			   AX =  selector
-			   if failed:
-			   carry flag set
-			 */
+			
+			//   This function Converts a real mode segment into a protected mode descriptor.
+			//   BX =    real mode segment
+			//   Out:
+			//   if successful:
+			//   carry flag clear
+			//   AX =  selector
+			//  if failed:
+			//   carry flag set
+			 
 			log_debug2("Function 0002h - Converts a real mode segment into a protected mode descriptor real mode segment: %d\n",ebx);
 			if (selectorsPointer+1>=NB_SELECTORS) {
 				CF = 1;
@@ -613,14 +616,14 @@ void asm2C_INT(int a) {
 			// Multiple calls for the same real mode segment return the same selector. The returned descriptor should never be modified or freed. <- TOFIX
 			return;
 		}
-		/*
-		   ;2.5 - Function 0007h - Set Segment Base Address:
-		   ; Sets the 32bit linear base address field in the descriptor for the specified
-		   ; segment.
-		   ; In:   AX     = 0007h
-		   ; BX     = selector
-		   ;  CX:DX  = 32bit linear base address of segment
-		 */
+		
+		//   ;2.5 - Function 0007h - Set Segment Base Address:
+		//   ; Sets the 32bit linear base address field in the descriptor for the specified
+		//   ; segment.
+		//   ; In:   AX     = 0007h
+		//   ; BX     = selector
+		//   ;  CX:DX  = 32bit linear base address of segment
+		 
 		case 0x07:
 		{
 			log_debug2("Function 0007h - Set Segment Base Address: ebx: %x, edx:%x ecx:%x\n",READDD(ebx),READDD(edx),READDD(ecx));
@@ -635,20 +638,20 @@ void asm2C_INT(int a) {
 		}
 		case 0x08:
 		{
-			/*
-			   ;2.6 - Function 0008h - Set Segment Limit:
-			   ;-----------------------------------------
-			   ;  Sets the limit field in the descriptor for the specified segment.
-			   ;  In:
-			   ;  AX     = 0008h
-			   ;  BX     = selector
-			   ;  CX:DX  = 32bit segment limit
-			   ;  Out:
-			   ;  if successful:
-			   ;    carry flag clear
-			   ;  if failed:
-			   ;    carry flag set
-			 */
+			
+			//   ;2.6 - Function 0008h - Set Segment Limit:
+			//   ;-----------------------------------------
+			//   ;  Sets the limit field in the descriptor for the specified segment.
+			//   ;  In:
+			//   ;  AX     = 0008h
+			//   ;  BX     = selector
+			//   ;  CX:DX  = 32bit segment limit
+			//   ;  Out:
+			//   ;  if successful:
+			//   ;    carry flag clear
+			//   ;  if failed:
+			//   ;    carry flag set
+			 
 
 			// To implement...
 			log_debug2("Function 0008h - Set Segment Limit for selector %d (Ignored)\n",bx);
@@ -656,15 +659,15 @@ void asm2C_INT(int a) {
 		}
 		case 0x501:
 		{
-			/*
-			   ;2.29 - Function 0501h - Allocate Memory Block:
-			   ;In:  AX     = 0501h
-			   ;  BX:CX  = size of block in bytes (must be non-zero)
-			   ;Out: if successful:
-			   ;    carry flag clear
-			   ;    BX:CX  = linear address of allocated memory block
-			   ;    SI:DI  = memory block handle (used to resize and free block)
-			 */
+			
+			//   ;2.29 - Function 0501h - Allocate Memory Block:
+			//   ;In:  AX     = 0501h
+			//   ;  BX:CX  = size of block in bytes (must be non-zero)
+			//   ;Out: if successful:
+			//   ;    carry flag clear
+			//   ;    BX:CX  = linear address of allocated memory block
+			//   ;    SI:DI  = memory block handle (used to resize and free block)
+			 
 			int32_t nbBlocks=(bx<<16)+cx;
 			log_debug2("Function 0501h - Allocate Memory Block: %d bytes\n",nbBlocks);
 
@@ -689,31 +692,31 @@ void asm2C_INT(int a) {
 			break;
 		}
 		case 0x205: {
-			/*
-			   fo implement
-			   ;2.18 - Function 0204h - Get Protected Mode Interrupt Vector:
-			   ;------------------------------------------------------------
-			   ;
-			   ;  Returns the address of the current protected mode interrupt handler for the
-			   ;specified interrupt.
-			   ;
-			   ;In:
-			   ;  AX     = 0204h
-			   ;  BL     = interrupt number
-			   ;
-			   ;Out:
-			   ;  always successful:
-			   ;    carry flag clear
-			   ;    CX:EDX = selector:offset of protected mode interrupt handler
-
-			   ;  AX     = 0204h
-			   ;  BL     = interrupt number
-			   ;
-			   ;Out:
-			   ;  always successful:
-			   ;    carry flag clear
-			   ;    CX:EDX = selector:offset of protected mode interrupt handler
-			 */
+			
+			//   fo implement
+			//   ;2.18 - Function 0204h - Get Protected Mode Interrupt Vector:
+			//   ;------------------------------------------------------------
+			//   ;
+			//   ;  Returns the address of the current protected mode interrupt handler for the
+			//   ;specified interrupt.
+			//   ;
+			//   ;In:
+			//   ;  AX     = 0204h
+			//   ;  BL     = interrupt number
+			//   ;
+			//   ;Out:
+			//   ;  always successful:
+			//   ;    carry flag clear
+			//   ;    CX:EDX = selector:offset of protected mode interrupt handler
+			
+			//   ;  AX     = 0204h
+			//   ;  BL     = interrupt number
+			//   ;
+			//   ;Out:
+			//   ;  always successful:
+			//   ;    carry flag clear
+			//   ;    CX:EDX = selector:offset of protected mode interrupt handler
+			 
 
 			return;
 		}
@@ -721,7 +724,7 @@ void asm2C_INT(int a) {
 			break;
 		}
 		break;
-
+*/
 	default:
 		break;
 	}
@@ -729,10 +732,10 @@ void asm2C_INT(int a) {
 	log_error("Error DOSInt 0x%x ah:0x%x al:0x%x: not supported.\n",a,ah,al);
 }
 
-int program() {
 jmp_buf jmpbuffer;
 void * dest;
 void * src;
+int program() {
 int i;
 #ifdef INCLUDEMAIN
 dest=NULL;src=NULL;i=0; //to avoid a warning.

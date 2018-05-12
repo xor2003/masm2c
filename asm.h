@@ -345,7 +345,7 @@ void asm2C_printOffsets(unsigned int offset);
 // directmenu
 #define INT(a) asm2C_INT(a); TESTJUMPTOBACKGROUND
 
-#define TESTJUMPTOBACKGROUND  if (jumpToBackGround) CALL(moveToBackGround);
+#define TESTJUMPTOBACKGROUND  //if (jumpToBackGround) CALL(moveToBackGround);
 
 void asm2C_OUT(int16_t address, int data);
 #define OUT(a,b) asm2C_OUT(a,b)

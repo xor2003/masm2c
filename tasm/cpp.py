@@ -71,6 +71,7 @@ class cpp:
 		self.context = context
 		self.data_seg = context.binary_data
 		self.cdata_seg = context.c_data
+		self.hdata_seg = context.h_data
 		self.procs = context.proc_list
 		self.skip_first = skip_first
 		self.proc_queue = []
@@ -691,18 +692,19 @@ class cpp:
 		print "\n".join(self.failed)
 		data_bin = self.data_seg
 		cdata_bin = self.cdata_seg
+		hdata_bin = self.hdata_seg
 		data_impl = ""
 		n = 0
 		comment = str()
 
-		data_impl += "\n /*"
+		data_impl += "\nMemory m = {\n"
 		for v in cdata_bin:
 			#data_impl += "0x%02x, " %v
 			data_impl += "%s" %v
 			n += 1
 
-		data_impl += " */\n"
-
+		data_impl += "};\n"
+		'''
 		data_impl += "\n\tuint8_t m[] = {\n\t\t"
 
 		for v in data_bin:
@@ -716,7 +718,7 @@ class cpp:
 			#elif (n & 0x3) == 0:
 			#	comment += " "
 		data_impl += "};\n\t//ds.assign(src, src + sizeof(src));\n"
-
+		'''
 
 		self.hd.write(
 """\n#include "asm.h"
@@ -747,9 +749,17 @@ class cpp:
 			self.hd.write("static const uint16_t k%s = %s;\n" %o)
 		self.hd.write("\n")
 
+		data_head = "\ntypedef struct Mem {\n"
+		for v in hdata_bin:
+			#data_impl += "0x%02x, " %v
+			data_head += "%s" %v
+			#n += 1
+		data_head += "} Memory;\n"
+		self.hd.write(data_head)
+
 		self.hd.write(
 """
-class %sContext: public asm_emu{
+class %sContext {
 public:
 	%sContext() {}
 
@@ -760,7 +770,6 @@ public:
 			self.hd.write(
 """	
 """)
-
 
 		for p in set(self.methods):
 			if p in self.blacklist:
