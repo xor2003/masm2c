@@ -199,7 +199,7 @@ class proc:
 	def visit(self, visitor, skip = 0):
 		for i in xrange(skip, len(self.stmts)):
 			self.stmts[i].visit(visitor)
-			try:
+			try: # trying to add command and comment
 				visitor.body = visitor.body[:-1] + "\t// " + self.stmts[i].command + " " + self.stmts[i].comments + "\n"
 			except AttributeError:
 				pass

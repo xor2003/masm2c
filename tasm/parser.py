@@ -169,7 +169,8 @@ class parser:
 		return int(v)
 #		return v
 	
-	def compact_data(self, width, data):
+	def convert_data_to_blob(self, width, data):
+		""" Generate blob data """
 		#print "COMPACTING %d %s" %(width, data)
 		r = []
 		base = 0x100 if width == 1 else 0x10000
@@ -220,7 +221,8 @@ class parser:
 		#print r
 		return r
 
-	def compact_cdata(self, label, width, data):
+	def convert_data_to_c(self, label, width, data):
+		""" Generate C formated data """
 		print "COMPACTING %s %d %s" %(label, width, data)
 		first = True
 		string = False
@@ -230,41 +232,19 @@ class parser:
 		base = 0x100 if width == 1 else 0x10000
 		for v in data:
 			v = v.strip()
-			#if width == 1 and (v[0] == '"' or v[0] == "'"):
 			if width == 1 and (v[0] == "'"):
-				#if v[-1] != '"' and v[-1] != "'":
 				if v[-1] != "'":
 					raise Exception("invalid string %s" %v)
 				if width > 1:
 					raise Exception("string with data width more than 1") #we could allow it :)
-				#for i in xrange(1, len(v) - 1):
-					#r.append(ord(v[i]))
 				for i in xrange(1, len(v) - 1):
 					r.append(v[i])
 
 				string = True
 				continue
 
-				'''
-				print "~1~: v = %s" %v
-				v = v.replace("'", r'"')
-				vv = ""
-				vvv = ""
-
-				if len(label) and first:
-					vv = "\nconst char * const " + label + " = { "
-					if self.strings_started == True:
-						vv = "}" + vv
-				for i in xrange(1, len(v) - 1):
-					vvv += "'" + v[i] + "'"
-					if i != len(v) - 1:
-						vvv += ","
-
-				r.append(vv + vvv)
-				first = False
-				'''
 			
-			m = re.match(r'(\w+)\s+dup\s+\(\s*(\S+)\s*\)', v)
+			m = re.match(r'(\w+)\s+dup\s+\(\s*(\S+)\s*\)', v) # parse dup construction
 			if m is not None:
 				#we should parse that
 				n = self.parse_int(m.group(1))
@@ -300,7 +280,7 @@ class parser:
 				print "global/expr: ~%s~" %v
 				vv = v.split()
 				#print vv
-				if vv[0] == "offset":
+				if vv[0] == "offset": # pointer
 					v = vv[1]
 
 					data_ctype += r"*"
@@ -323,28 +303,30 @@ class parser:
 		cur_data_type = 0
 		if string:
 			if len(r) >= 1 and r[-1] == 0:
-				cur_data_type = 1 # 0 terminated
+				cur_data_type = 1 # 0 terminated string
 			else:
 				cur_data_type = 2 # array string
-				#string = False
-				#cur_data_type = 4 # array
 
 		else:
-			cur_data_type = 3 # numbers
+			cur_data_type = 3 # number
 			if elements > 1:
-				cur_data_type = 4 # array
+				cur_data_type = 4 # array of numbers
 
+		# if prev array of numbers and current is a number and empty label and current data type equal to previous
 		if self.prev_data_type == 4 and cur_data_type == 3 and len(label)==0 and data_ctype == self.prev_data_ctype: # if no label and it was same size and number or array
-				cur_data_type = 4 # array
+				cur_data_type = 4 # array of numbers
 
 		#print "current data type = %d current data c type = %s" %(cur_data_type, data_ctype)
 		print "current data type = %d current data c type = %s" %(cur_data_type, data_ctype)
   	        vv = ""
+		#  if prev data type was set and data format has changed or data type has changed or there is a label or it was 0-term string or it was number
 		if (self.prev_data_type != 0 and (cur_data_type != self.prev_data_type or data_ctype != self.prev_data_ctype)) or len(label) or self.prev_data_type == 1 or self.prev_data_type == 3:
+			# if it was array of numbers or array string
 			if self.prev_data_type == 4 or self.prev_data_type == 2:
 				vv += "}"
 			vv += ";\n"
 		else: 
+			#  if prev data type was set and it is not a string
 			if self.prev_data_type != 0 and (cur_data_type == 2 or cur_data_type == 3 or cur_data_type == 4):
 				vv += ","
 
@@ -355,7 +337,7 @@ class parser:
 		    elif cur_data_type == 2: # array string
 				vv += "const char " + label + "[] = { "
 
-		    elif cur_data_type == 3: # numbers
+		    elif cur_data_type == 3: # number
 				vv += data_ctype + " " + label
 				vv += " = "
 
@@ -363,7 +345,7 @@ class parser:
 				vv += data_ctype + " " + label
 				vv += "[] = {"
 
-		if cur_data_type == 1:
+		if cur_data_type == 1: # string
 				vv += "\""
 				for i in xrange(0, len(r)-1):
 					if isinstance(r[i], int):
@@ -379,7 +361,7 @@ class parser:
 				r = []
 				r.append(vv)
 
-		elif cur_data_type == 2:
+		elif cur_data_type == 2: # array of char
 				for i in xrange(0, len(r)):
 					    if isinstance(r[i], int):
 						if r[i] == 13:
@@ -395,7 +377,7 @@ class parser:
 				r = []
 				r.append(vv)
 
-		elif cur_data_type == 4:
+		elif cur_data_type == 4: # array of numbers
 				for i in xrange(0, len(r)):
 					vv += str(r[i])
 					if i != len(r)-1:
@@ -403,22 +385,13 @@ class parser:
 				r = []
 				r.append(vv)
 
-		elif cur_data_type == 3:
+		elif cur_data_type == 3: # number
 				vv += str(r[0])
 				r = []
 				r.append(vv)
-		'''
-		elif cur_data_type == 4:
-			for i in xrange(0, len(r)):
-				vv += str(r[i])
-				if i != len(r)-1:
-					vv += ","
-			r = []
-			r.append(vv)
-		'''
 
 		print r
-		print "retturinging" 
+		print "returning" 
 		self.prev_data_type = cur_data_type
 		self.prev_data_ctype = data_ctype
 		self.data_started = True
@@ -477,8 +450,8 @@ class parser:
 				if not skipping_binary_data:
 					print "%d:1: %s" %(len(self.binary_data), arg) #fixme: COPYPASTE
 					binary_width = {'b': 1, 'w': 2, 'd': 4}[cmd0[1]]
-					self.binary_data += self.compact_data(binary_width, lex.parse_args(arg))
-					self.c_data += self.compact_cdata("", binary_width, lex.parse_args(arg))
+					self.binary_data += self.convert_data_to_blob(binary_width, lex.parse_args(arg))
+					self.c_data += self.convert_data_to_c("", binary_width, lex.parse_args(arg))
 				continue
 			elif cmd0 == 'include':
 				self.include(os.path.dirname(fname), cmd[1])
@@ -510,8 +483,8 @@ class parser:
 						arg = line[len(cmd0):].strip()
 						arg = arg[len(cmd1):].strip()
 						print "%d: %s" %(offset, arg)
-						self.binary_data += self.compact_data(binary_width, lex.parse_args(arg))
-						self.c_data += self.compact_cdata(cmd0, binary_width, lex.parse_args(arg))
+						self.binary_data += self.convert_data_to_blob(binary_width, lex.parse_args(arg))
+						self.c_data += self.convert_data_to_c(cmd0, binary_width, lex.parse_args(arg))
 						self.set_global(cmd0.lower(), op.var(binary_width, offset))
 						skipping_binary_data = False
 					else:
