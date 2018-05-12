@@ -245,6 +245,12 @@ class _jnz(basejmp):
 	def visit(self, visitor):
 		visitor._jnz(self.label)
 
+class _jne(basejmp):
+	def __init__(self, label):
+		self.label = label
+	def visit(self, visitor):
+		visitor._jnz(self.label)
+
 class _jz(basejmp):
 	def __init__(self, label):
 		self.label = label

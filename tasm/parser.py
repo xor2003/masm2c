@@ -174,8 +174,9 @@ class parser:
 		r = []
 		base = 0x100 if width == 1 else 0x10000
 		for v in data:
-			if v[0] == '"':
-				if v[-1] != '"':
+			v = v.strip()
+			if v[0] == "'":
+				if v[-1] != "'":
 					raise Exception("invalid string %s" %v)
 				if width == 2:
 					raise Exception("string with data width more than 1") #we could allow it :)
@@ -229,8 +230,10 @@ class parser:
 		base = 0x100 if width == 1 else 0x10000
 		for v in data:
 			v = v.strip()
-			if width == 1 and (v[0] == '"' or v[0] == "'"):
-				if v[-1] != '"' and v[-1] != "'":
+			#if width == 1 and (v[0] == '"' or v[0] == "'"):
+			if width == 1 and (v[0] == "'"):
+				#if v[-1] != '"' and v[-1] != "'":
+				if v[-1] != "'":
 					raise Exception("invalid string %s" %v)
 				if width > 1:
 					raise Exception("string with data width more than 1") #we could allow it :)
@@ -346,17 +349,17 @@ class parser:
 				vv += ","
 
 		if len(label):
-		    if cur_data_type == 1:
+		    if cur_data_type == 1: # 0 terminated string
 				vv += "const char * const " + label + " = "
 
-		    elif cur_data_type == 2:
+		    elif cur_data_type == 2: # array string
 				vv += "const char " + label + "[] = { "
 
-		    elif cur_data_type == 3:
+		    elif cur_data_type == 3: # numbers
 				vv += data_ctype + " " + label
 				vv += " = "
 
-		    elif cur_data_type == 4:
+		    elif cur_data_type == 4: # array
 				vv += data_ctype + " " + label
 				vv += "[] = {"
 

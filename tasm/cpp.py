@@ -87,9 +87,10 @@ class cpp:
 		self.used_data_offsets = set()
 		self.methods = []
 		self.fd.write("""%s
+#include "asm.c"
 #include \"%s\"
 
-namespace %s {
+//namespace %s {
 """ %(banner, header, namespace))
 
 	def expand_cb(self, match):
@@ -376,7 +377,7 @@ namespace %s {
 		self.schedule(name)
 
 	def _ret(self):
-		self.body += "\treturn;\n"
+		self.body += "\tR(return);\n"
 
 	def parse2(self, dst, src):
 		dst_size, src_size = self.get_size(dst), self.get_size(src)
@@ -393,134 +394,134 @@ namespace %s {
 		return dst, src
 
 	def _mov(self, dst, src):
-		self.body += "\t%s = %s;\n" %self.parse2(dst, src)
+		self.body += "\tR(MOV(%s, %s));\n" %self.parse2(dst, src)
 
 	def _add(self, dst, src):
-		self.body += "\t_add(%s, %s);\n" %self.parse2(dst, src)
+		self.body += "\tR(ADD(%s, %s));\n" %self.parse2(dst, src)
 
 	def _sub(self, dst, src):
 		self.d, self.s = self.parse2(dst, src)
 		if self.d == self.s:
 			self.body += "\t%s = 0;\n" %self.d
 		else:
-			self.body += "\t_sub(%s, %s);\n" %(self.d, self.s)
+			self.body += "\tR(SUB(%s, %s));\n" %(self.d, self.s)
 
 	def _and(self, dst, src):
-		self.body += "\t_and(%s, %s);\n" %self.parse2(dst, src)
+		self.body += "\tR(AND(%s, %s));\n" %self.parse2(dst, src)
 
 	def _or(self, dst, src):
-		self.body += "\t_or(%s, %s);\n" %self.parse2(dst, src)
+		self.body += "\tR(OR(%s, %s));\n" %self.parse2(dst, src)
 
 	def _xor(self, dst, src):
 		self.d, self.s = self.parse2(dst, src)
 		if self.d == self.s:
 			self.body += "\t%s = 0;\n" %self.d
 		else:
-			self.body += "\t_xor(%s, %s);\n" %(self.d, self.s)
+			self.body += "\tR(XOR(%s, %s));\n" %(self.d, self.s)
 
 	def _neg(self, dst):
 		dst = self.expand(dst)
-		self.body += "\t_neg(%s);\n" %(dst)
+		self.body += "\tR(NEG(%s));\n" %(dst)
 
 	def _cbw(self):
-		self.body += "\t_cbw();\n"
+		self.body += "\tR(CBW());\n"
 
 	def _shr(self, dst, src):
-		self.body += "\t_shr(%s, %s);\n" %self.parse2(dst, src)
+		self.body += "\tR(SHR(%s, %s));\n" %self.parse2(dst, src)
 
 	def _shl(self, dst, src):
-		self.body += "\t_shl(%s, %s);\n" %self.parse2(dst, src)
+		self.body += "\tR(SHL(%s, %s));\n" %self.parse2(dst, src)
 
-	#def _sar(self, dst, src):
-	#	self.body += "\t_sar(%s%s);\n" %self.parse2(dst, src)
+	def _sar(self, dst, src):
+		self.body += "\tR(SAR(%s%s));\n" %self.parse2(dst, src)
 
-	#def _sal(self, dst, src):
-	#	self.body += "\t_sal(%s, %s);\n" %self.parse2(dst, src)
+	def _sal(self, dst, src):
+		self.body += "\tR(SAL(%s, %s));\n" %self.parse2(dst, src)
 
-	#def _rcl(self, dst, src):
-	#	self.body += "\t_rcl(%s, %s);\n" %self.parse2(dst, src)
+	def _rcl(self, dst, src):
+		self.body += "\tR(RCL(%s, %s));\n" %self.parse2(dst, src)
 
-	#def _rcr(self, dst, src):
-	#	self.body += "\t_rcr(%s, %s);\n" %self.parse2(dst, src)
+	def _rcr(self, dst, src):
+		self.body += "\tR(RCR(%s, %s));\n" %self.parse2(dst, src)
 
 	def _mul(self, src):
 		src = self.expand(src)
-		self.body += "\t_mul(%s);\n" %(src)
+		self.body += "\tR(MUL(%s));\n" %(src)
 
 	def _div(self, src):
 		src = self.expand(src)
-		self.body += "\t_div(%s);\n" %(src)
+		self.body += "\tR(DIV(%s));\n" %(src)
 
 	def _inc(self, dst):
 		dst = self.expand(dst)
-		self.body += "\t_inc(%s);\n" %(dst)
+		self.body += "\tR(INC(%s));\n" %(dst)
 
 	def _dec(self, dst):
 		dst = self.expand(dst)
-		self.body += "\t_dec(%s);\n" %(dst)
+		self.body += "\tR(DEC(%s));\n" %(dst)
 
 	def _cmp(self, a, b):
-		self.body += "\t_cmp(%s, %s);\n" %self.parse2(a, b)
+		self.body += "\tR(CMP(%s, %s));\n" %self.parse2(a, b)
 
 	def _test(self, a, b):
-		self.body += "\t_test(%s, %s);\n" %self.parse2(a, b)
+		self.body += "\tR(TEST(%s, %s));\n" %self.parse2(a, b)
 
 	def _js(self, label):
-		self.body += "\t\t_js(%s);\n" %(self.jump_to_label(label))
+		self.body += "\t\tR(JS(%s));\n" %(self.jump_to_label(label))
 
 	def _jns(self, label):
-		self.body += "\t\t_jns(%s);\n" %(self.jump_to_label(label))
+		self.body += "\t\tR(JNS(%s));\n" %(self.jump_to_label(label))
 
 	def _jz(self, label):
-		self.body += "\t\t_jz(%s);\n" %(self.jump_to_label(label))
+		self.body += "\t\tR(JZ(%s));\n" %(self.jump_to_label(label))
 
 	def _jnz(self, label):
-		self.body += "\t\t_jnz(%s);\n" %(self.jump_to_label(label))
+		self.body += "\t\tR(JNZ(%s));\n" %(self.jump_to_label(label))
 
 	def _jl(self, label):
-		self.body += "\t\t_jl(%s);\n" %(self.jump_to_label(label))
+		self.body += "\t\tR(JL(%s));\n" %(self.jump_to_label(label))
 
 	def _jg(self, label):
-		self.body += "\t\t_jg(%s);\n" %(self.jump_to_label(label))
+		self.body += "\t\tR(JG(%s));\n" %(self.jump_to_label(label))
 
 	def _jle(self, label):
-		self.body += "\t\t_jle(%s);\n" %(self.jump_to_label(label))
+		self.body += "\t\tR(JLE(%s));\n" %(self.jump_to_label(label))
 
 	def _jge(self, label):
-		self.body += "\t\t_jge(%s);\n" %(self.jump_to_label(label))
+		self.body += "\t\tR(JGE(%s));\n" %(self.jump_to_label(label))
 
 	def _jbe(self, label):
-		self.body += "\t\t_jbe(%s);\n" %(self.jump_to_label(label))
+		self.body += "\t\tR(JBE(%s));\n" %(self.jump_to_label(label))
 
 	def _ja(self, label):
-		self.body += "\t\t_ja(%s);\n" %(self.jump_to_label(label))
+		self.body += "\t\tR(JA(%s));\n" %(self.jump_to_label(label))
 
 	def _jc(self, label):
-		self.body += "\t\t_jc(%s);\n" %(self.jump_to_label(label))
+		self.body += "\t\tR(JC(%s));\n" %(self.jump_to_label(label))
 
 	def _jb(self, label):
-		self.body += "\t\t_jb(%s);\n" %(self.jump_to_label(label))
+		self.body += "\t\tR(JB(%s));\n" %(self.jump_to_label(label))
 
 	def _jnc(self, label):
-		self.body += "\t\t_jnc(%s);\n" %(self.jump_to_label(label))
+		self.body += "\t\tR(JNC(%s));\n" %(self.jump_to_label(label))
 
 	def _xchg(self, dst, src):
-		self.body += "\t_xchg(%s, %s);\n" %self.parse2(dst, src)
+		self.body += "\tR(XCHG(%s, %s));\n" %self.parse2(dst, src)
 
 	def _jmp(self, label):
-		self.body += "\t%s;\n" %(self.jump_to_label(label))
+		self.body += "\t\tR(JMP(%s));\n" %(self.jump_to_label(label))
 
 	def _loop(self, label):
-		self.body += "\tif (--cx)\n\t\t%s;\n" %self.jump_to_label(label)
+		self.body += "\t\tR(LOOP(%s));\n" %self.jump_to_label(label)
 
 	def _jcxz(self, label):
-		self.body += "\tif (cx==0)\n\t\t%s;\n" %(self.jump_to_label(label))
+		self.body += "\t\tR(JCXZ(%s));\n" %(self.jump_to_label(label))
 
 	def _push(self, regs):
 		p = str();
 		for r in regs:
 			r = self.expand(r)
-			p += "\t_push(%s);\n" %(r)
+			p += "\tPUSH(%s);\n" %(r)
 		self.body += p
 
 	def _pop(self, regs):
@@ -529,50 +530,50 @@ namespace %s {
 			self.temps_count -= 1
 			i = self.temps_count
 			r = self.expand(r)
-			p += "\t_pop(%s);\n" %r
+			p += "\tPOP(%s);\n" %r
 		self.body += p
 
 	def _rep(self):
-		self.body += "\twhile(cx--)\n\t"
+		self.body += "\tREP_"
 
 	def _lodsb(self):
-		self.body += "\t_lodsb();\n"
+		self.body += "LODSB();\n"
 
 	def _lodsw(self):
-		self.body += "\t_lodsw();\n"
+		self.body += "LODSW();\n"
 
 	def _stosb(self, n, clear_cx):
-		self.body += "\t_stosb(%s%s);\n" %("" if n == 1 else n, ", true" if clear_cx else "")
+		self.body += "STOSB(%s%s);\n" %("" if n == 1 else n, ", true" if clear_cx else "")
 
 	def _stosw(self, n, clear_cx):
-		self.body += "\t_stosw(%s%s);\n" %("" if n == 1 else n, ", true" if clear_cx else "")
+		self.body += "STOSW(%s%s);\n" %("" if n == 1 else n, ", true" if clear_cx else "")
 
 	def _stosd(self, n, clear_cx):
-		self.body += "\t_stosd(%s%s);\n" %("" if n == 1 else n, ", true" if clear_cx else "")
+		self.body += "STOSD(%s%s);\n" %("" if n == 1 else n, ", true" if clear_cx else "")
 
 	def _movsb(self, n, clear_cx):
-		self.body += "\t_movsb(%s%s);\n" %("" if n == 1 else n, ", true" if clear_cx else "")
+		self.body += "MOVSB(%s%s);\n" %("" if n == 1 else n, ", true" if clear_cx else "")
 
 	def _movsw(self, n, clear_cx):
-		self.body += "\t_movsw(%s%s);\n" %("" if n == 1 else n, ", true" if clear_cx else "")
+		self.body += "MOVSW(%s%s);\n" %("" if n == 1 else n, ", true" if clear_cx else "")
 
 	def _movsd(self, n, clear_cx):
-		self.body += "\t_movsd(%s%s);\n" %("" if n == 1 else n, ", true" if clear_cx else "")
+		self.body += "MOVSD(%s%s);\n" %("" if n == 1 else n, ", true" if clear_cx else "")
 
 	def _stc(self):
-		self.body += "\t_write_cf(true);\n "
+		self.body += "\tR(STC);\n"
 
 	def _clc(self):
-		self.body += "\t_write_cf(false);\n "
+		self.body += "\tR(CLC);\n"
 
 	def _cld(self):
-		self.body += "\t_write_df(false);\n "
+		self.body += "\tR(CLD);\n"
 
 	def _std(self):
-		self.body += "\t_write_df(true);\n "
+		self.body += "\tR(STD);\n"
 
 	def _cmc(self):
-		self.body += "\t_write_df(!_read_df());\n "
+		self.body += "\tR(CMC);\n"
 
 	def __proc(self, name, def_skip = 0):
 		try:
@@ -600,9 +601,9 @@ namespace %s {
 			self.proc_addr.append((name, self.proc.offset))
 			self.body = str()
 			if name in self.function_name_remapping:
-				self.body += "void %sContext::%s() {\n\tSTACK_CHECK;\n" %(self.namespace, self.function_name_remapping[name]);
+				self.body += "void %sContext::%s() {\n" %(self.namespace, self.function_name_remapping[name]);
 			else:
-				self.body += "void %sContext::%s() {\n\tSTACK_CHECK;\n" %(self.namespace, name);
+				self.body += "void %sContext::%s() {\n" %(self.namespace, name);
 			print name
 			self.proc.optimize()
 			self.unbounded = []
@@ -621,7 +622,7 @@ namespace %s {
 			#adding statements
 			#BIG FIXME: this is quite ugly to handle code analysis from the code generation. rewrite me!
 			for label, proc, offset in self.unbounded:
-				self.body += "\treturn;\n" #we need to return before calling code from the other proc
+				self.body += "\tR(return);\n" #we need to return before calling code from the other proc
 				self.body += "/*continuing to unbounded code: %s from %s:%d-%d*/\n" %(label, proc.name, offset, len(proc.stmts))
 				start = len(self.proc.stmts)
 				self.proc.add_label(label)
@@ -652,13 +653,13 @@ namespace %s {
 
 	def write_stubs(self, fname, procs):
 		fd = open(fname, "wt")
-		fd.write("namespace %s {\n" %self.namespace)
+		fd.write("//namespace %s {\n" %self.namespace)
 		for p in procs:
 			if p in self.function_name_remapping:
 				fd.write("void %sContext::%s() {\n\t::error(\"%s\");\n}\n\n" %(self.namespace, self.function_name_remapping[p], self.function_name_remapping[p]))
 			else:
 				fd.write("void %sContext::%s() {\n\t::error(\"%s\");\n}\n\n" %(self.namespace, p, p))
-		fd.write("} // End of namespace  %s\n" %self.namespace)
+		fd.write("//} // End of namespace  %s\n" %self.namespace)
 		fd.close()
 
 
@@ -702,7 +703,7 @@ namespace %s {
 
 		data_impl += " */\n"
 
-		data_impl += "\n\tstatic const uint8_t src[] = {\n\t\t"
+		data_impl += "\n\tuint8_t m[] = {\n\t\t"
 
 		for v in data_bin:
 			data_impl += "0x%02x, " %v
@@ -712,39 +713,38 @@ namespace %s {
 			if (n & 0xf) == 0:
 				data_impl += "\n\t\t//0x%04x: %s\n\t\t" %(n - 16, comment)
 				comment = str()
-			elif (n & 0x3) == 0:
-				comment += " "
-		data_impl += "};\n\tds.assign(src, src + sizeof(src));\n"
+			#elif (n & 0x3) == 0:
+			#	comment += " "
+		data_impl += "};\n\t//ds.assign(src, src + sizeof(src));\n"
 
 
 		self.hd.write(
-"""\n#include "asm_emu/1.h"
+"""\n#include "asm.h"
 
-
-namespace %s {
+//namespace %s {
 
 """
 %(self.namespace))
 
 		if self.skip_addr_constants == False:
 			for name,addr in self.proc_addr:
-				self.hd.write("static const uint16 addr_%s = 0x%04x;\n" %(name, addr))
+				self.hd.write("static const uint16_t addr_%s = 0x%04x;\n" %(name, addr))
 
 
 		for name,addr in self.used_data_offsets:
-			self.hd.write("static const uint16 offset_%s = 0x%04x;\n" %(name, addr))
+			self.hd.write("static const uint16_t offset_%s = 0x%04x;\n" %(name, addr))
 
 		offsets = []
 		for k, v in self.context.get_globals().items():
 			k = re.sub(r'[^A-Za-z0-9_]', '_', k)
 			if isinstance(v, op.var):
-				offsets.append((k.capitalize(), v.offset))
+				offsets.append((k.capitalize(), hex(v.offset)))
 			elif isinstance(v, op.const):
 				offsets.append((k.capitalize(), self.expand_equ(v.value))) #fixme: try to save all constants here
 
 		offsets = sorted(offsets, key=lambda t: t[1])
 		for o in offsets:
-			self.hd.write("static const uint16 k%s = %s;\n" %o)
+			self.hd.write("static const uint16_t k%s = %s;\n" %o)
 		self.hd.write("\n")
 
 		self.hd.write(
@@ -772,113 +772,113 @@ public:
 				else:
 					self.hd.write("\tvoid %s();\n" %p)
 
-		self.hd.write("};\n\n} // End of namespace DreamGen\n\n#endif\n")
+		self.hd.write("};\n\n//} // End of namespace DreamGen\n\n#endif\n")
 		self.hd.close()
 
 		#self.fd.write("void %sContext::__start() { %s\t%s(); \n}\n" %(self.namespace, data_impl, start))
 		self.fd.write(" %s\n" %data_impl)
 
 		if self.skip_dispatch_call == False:
-			self.fd.write("\nvoid %sContext::__dispatch_call(uint16 addr) {\n\tswitch(addr) {\n" %self.namespace)
+			self.fd.write("\nvoid %sContext::__dispatch_call(uint16_t addr) {\n\tswitch(addr) {\n" %self.namespace)
 			self.proc_addr.sort(cmp = lambda x, y: x[1] - y[1])
 			for name,addr in self.proc_addr:
 				self.fd.write("\t\tcase addr_%s: %s(); break;\n" %(name, name))
-			self.fd.write("\t\tdefault: ::error(\"invalid call to %04x dispatched\", (uint16)ax);")
+			self.fd.write("\t\tdefault: ::error(\"invalid call to %04x dispatched\", (uint16_t)ax);")
 			self.fd.write("\n\t}\n}")
 
-		self.fd.write("\n} // End of namespace DreamGen\n")
+		self.fd.write("\n\n//} // End of namespace DreamGen\n")
 		self.fd.close()
 
 
 #x0r
 	def _lea(self, dst, src):
-		self.body += "\t%s = %s;\n" %self.parse2(dst, src)
+		self.body += "\tR(LEA(%s, %s));\n" %self.parse2(dst, src)
 
 
 	def _adc(self, dst, src):
-		self.body += "\t_adc(%s, %s);\n" %self.parse2(dst, src)
+		self.body += "\tR(ADC(%s, %s));\n" %self.parse2(dst, src)
 
 
 	def _setnz(self, dst):
 		dst = self.expand(dst)
-		self.body += "\tif (!flags.z()) %s = 1; else %s = 0; //setnz\n" %(dst, dst)
+		self.body += "\tR(SETNZ(%s))\n" %(dst, dst)
 
 
 	def _setz(self, dst):
 		dst = self.expand(dst)
-		self.body += "\tif (flags.z()) %s = 1; else %s = 0; //setz\n" %(dst, dst)
+		self.body += "\tR(SETZ(%s))\n" %(dst, dst)
 
 	def _setb(self, dst):
 		dst = self.expand(dst)
-		self.body += "\tif (flags.c()) %s = 1; else %s = 0; //setb\n" %(dst, dst)
+		self.body += "\tR(SETB(%s)\n" %(dst, dst)
 
 	def _sbb(self, dst, src):
-		self.body += "\t_sbb(%s, %s);\n" %self.parse2(dst, src)
+		self.body += "\tR(SBB(%s, %s));\n" %self.parse2(dst, src)
 
 	def _movs(self, dst, src):
-		self.body += "\t_movs(%s, %s);\n" %self.parse2(dst, src)
+		self.body += "MOBVS(%s, %s);\n" %self.parse2(dst, src)
 
 	def _bt(self, dst, src):
-		self.body += "\tflags.c() = (%s >> %s) & 1;\n" %self.parse2(dst, src)
+		self.body += "\tR(BT(%s, %s));\n" %self.parse2(dst, src)
 
 
 	def _bts(self, dst, src):
 		self.a, self.b = self.parse2(dst, src)
-		self.body += "\tflags.c() = (%s >> %s) & 1; %s |= 1 << %s;\n" %(self.a, self.b, self.a, self.b)
+		self.body += "\tR(BTS(%s, %s);\n" %(self.a, self.b)
 
 	def _ror(self, dst, src):
-		self.body += "\t_ror(%s, %s);\n" %self.parse2(dst, src)
+		self.body += "\tR(ROR(%s, %s));\n" %self.parse2(dst, src)
 
 	def _rol(self, dst, src):
-		self.body += "\t_rol(%s, %s);\n" %self.parse2(dst, src)
+		self.body += "\tR(ROL(%s, %s));\n" %self.parse2(dst, src)
 
 
 	def _sar(self, dst, src):
-		self.body += "\t_sar(%s%s);\n" %self.parse2(dst, src)
+		self.body += "\tR(SAR(%s%s));\n" %self.parse2(dst, src)
 
 	def _repe(self):
-		self.body += "\twhile(cx-- && flags.z())\n\t"
+		self.body += "\tREPE_"
 
 	def _repne(self):
-		self.body += "\twhile(cx-- && !flags.z())\n\t"
+		self.body += "\tREPNE_"
 
 	def _shrd(self, dst, src, c):
-		self.body += "\t_shrd(%s, %s, " %self.parse2(dst, src)
+		self.body += "\tSHRD(%s, %s, " %self.parse2(dst, src)
 		self.body += "%s);\n" %self.expand(c)
 
 	def _loope(self, label):
-		self.body += "\tif (--cx && flags.z())\n\t\t%s;\n" %self.jump_to_label(label)
+		self.body += "\tR(LOOPE(%s));\n" %self.jump_to_label(label)
 
 	def _pushf(self):
-		self.body = "\t_push(flags);\n"
+		self.body += "\tR(PUSH(flags));\n"
 
 	def _popf(self):
-		self.body = "\t_pop(flags);\n"
+		self.body += "\tR(POP(flags));\n"
 
 	def _pushad(self):
-		self.body = "\t_pushad();\n"
+		self.body += "\tR(PUSHAD);\n"
 
 	def _pusha(self):
-		self.body = "\t_pusha();\n"
+		self.body += "\tR(PUSHA);\n"
 
 	def _popad(self):
-		self.body = "\t_popad();\n"
+		self.body += "\tR(POPAD);\n"
 
 	def _popa(self):
-		self.body = "\t_popa();\n"
+		self.body += "\tR(POPA);\n"
 
 	def _aad(self):
-		self.body = "\t_aad();\n"
+		self.body += "\tR(AAD);\n"
 
 	def _cwde(self):
-		self.body += "\t_cwde();\n"
+		self.body += "\tR(CWDE);\n"
 
 	def _cwd(self):
-		self.body += "\t_cwd();\n"
+		self.body += "\tR(CWD);\n"
 
 	def _lods(self, src):
 		src = self.expand(src)
-		self.body += "\t_lods(%s);\n" %(src)
+		self.body += "\tR(LODS(%s));\n" %(src)
 
 	def _cli(self):
 		self.body += "\t// _cli();\n"
@@ -888,11 +888,11 @@ public:
 
 
 	def _in(self, dst, src):
-		self.body += "\t// _in(%s, %s);\n" %self.parse2(dst, src)
+		self.body += "\tR(IN(%s, %s));\n" %self.parse2(dst, src)
 
 	def _out(self, dst, src):
-		self.body += "\t// _out(%s, %s);\n" %self.parse2(dst, src)
+		self.body += "\tR(OUT(%s, %s));\n" %self.parse2(dst, src)
 
 	def _int(self, dst):
 		dst = self.expand(dst)
-		self.body += "\t// _int(%s);\n" %(dst)
+		self.body += "\tR(INT(%s));\n" %(dst)

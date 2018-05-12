@@ -158,13 +158,14 @@ class proc:
 		self.optimize_sequence(op._movsw);
 	
 	def add(self, stmt):
-		#print stmt
+#		print stmt
 		comment = stmt.find(';')
 		comments = ""
 		if comment >= 0:
 			comments = stmt[comment:]
 			stmt = stmt[:comment]
 		stmt = stmt.strip()
+		command = stmt
 
 		r = self.__label_re.search(stmt)
 		if r is not None:
@@ -180,11 +181,13 @@ class proc:
 		s = [stmt.replace("\x00", " ") for stmt in re.sub('["\'].+?["\']', lambda m: m.group(0).replace(" ", "\x00"), stmt).split()]
 
 		cmd = s[0]
-		cl = getattr(op, '_' + cmd)
+		cl = getattr(op, '_' + cmd.lower())
 		#print "args %s" %s[1:]
 		arg = " ".join(s[1:]) if len(s) > 1 else str()
 		o = cl(arg)
 		o.comments = comments
+		o.command = command
+#		print "~~~" + o.command + o.comments
 		self.stmts.append(o)
 	
 	def __str__(self):
@@ -196,3 +199,10 @@ class proc:
 	def visit(self, visitor, skip = 0):
 		for i in xrange(skip, len(self.stmts)):
 			self.stmts[i].visit(visitor)
+			try:
+				visitor.body = visitor.body[:-1] + "\t// " + self.stmts[i].command + " " + self.stmts[i].comments + "\n"
+			except AttributeError:
+				pass
+
+
+

@@ -716,7 +716,7 @@ loc_10544::				; CODE XREF: __2stm_module+155j
 		rol	ebx, 10h
 		mov	bl, al
 		and	bx, 0Fh
-		mov	dl, byte ptr [cs:asc_1058C+bx] ; "\x18\v\r\n\x02\x01\x03\x04\a"
+		mov	dl, byte ptr cs:[asc_1058C+bx] ; "\x18\v\r\n\x02\x01\x03\x04\a"
 		ror	ebx, 10h
 
 loc_10565::				; CODE XREF: __2stm_module+133j
@@ -1071,7 +1071,7 @@ loc_1083E::				; CODE XREF: _s3m_module+29Bj
 		ja	short loc_1088D
 		rol	ebx, 10h
 		movzx	bx, dl
-		mov	dl, [cs:_s3mtable_108D6+bx]
+		mov	dl, cs:[_s3mtable_108D6+bx]
 		cmp	dl, 0FFh
 		jz	short loc_10885
 		cmp	dl, 0Fh
@@ -1080,7 +1080,7 @@ loc_1083E::				; CODE XREF: _s3m_module+29Bj
 		jnz	short loc_10887
 		mov	bl, dh
 		shr	bl, 4
-		mov	al, [cs:_s3mtable_108F0+bx]
+		mov	al, cs:[_s3mtable_108F0+bx]
 		cmp	al, 0FFh
 		jz	short loc_10885
 		shl	al, 4
@@ -1382,7 +1382,7 @@ loc_10B0F::				; CODE XREF: _mtm_module+4Ej
 		mov	al, byte ptr [_word_3052A+si]
 		mov	di, ax
 		and	di, 0Fh
-		mov	al, [cs:_byte_13C54+di]
+		mov	al, cs:[_byte_13C54+di]
 		mov	byte ptr [_dword_27BC8+si], al
 		inc	si
 		dec	cx
@@ -1851,7 +1851,7 @@ _far_module proc near		; DATA XREF: seg003:0E40o
 		mov	al, byte ptr [_word_30552+1]
 		and	ax, 0Fh
 		mov	di, ax
-		mov	al, [cs:_table_14057+di]
+		mov	al, cs:[_table_14057+di]
 		mov	_byte_2467B, al
 		mov	_byte_2467C, 0
 		call	_calc_14043
@@ -1866,7 +1866,7 @@ loc_10F6A::				; CODE XREF: _far_module+60j
 		mov	al, byte ptr [_word_30554+si]
 		mov	di, ax
 		and	di, 0Fh
-		mov	al, [cs:_byte_13C54+di]
+		mov	al, cs:[_byte_13C54+di]
 		mov	byte ptr [_dword_27BC8+si], al
 		inc	si
 		dec	cx
@@ -2408,7 +2408,7 @@ loc_113E2::				; CODE XREF: _ult_module+1BDj
 		mov	al, byte ptr [_word_3063B+si]
 		mov	di, ax
 		and	di, 0Fh
-		mov	al, [cs:_byte_13C54+di]
+		mov	al, cs:[_byte_13C54+di]
 		mov	byte ptr [_dword_27BC8+si], al
 		inc	si
 		dec	cx
@@ -3157,7 +3157,7 @@ sub_11C0C proc near		; CODE XREF: sub_1415E+65p
 
 loc_11C14::				; CODE XREF: sub_11C0C+16j
 					; sub_11C0C+1Aj
-		mov	bl, [cs:_byte_11C29+bx]
+		mov	bl, cs:[_byte_11C29+bx]
 		add	si, bx
 		mov	bl, es:[si]
 		inc	si
@@ -5447,7 +5447,7 @@ sub_12D35 proc far		; CODE XREF: _dosexec+5CP _dosexec+8BP
 		jz	short loc_12D4E
 
 loc_12D41::
-		mov	[cs:_byte_14F71], 0
+		mov	cs:[_byte_14F71], 0
 		call	_setmemalloc1
 		pop	ds
 		pop	bx
@@ -5456,7 +5456,7 @@ loc_12D41::
 ; ---------------------------------------------------------------------------
 
 loc_12D4E::				; CODE XREF: sub_12D35+Aj
-		mov	[cs:_byte_14F71], 1
+		mov	cs:[_byte_14F71], 1
 		mov	ax, _word_2460C
 		call	_setmemallocstrat
 		call	_initclockfromrtc
@@ -5507,8 +5507,8 @@ sub_12DA8 proc far		; CODE XREF: _callsubx+24P
 		mov	_snd_set_flag,	0
 		mov	al, 8
 		call	_getint_vect
-		mov	word ptr [cs:_int8addr],	bx
-		mov	word ptr [cs:_int8addr+2], dx
+		mov	word ptr cs:[_int8addr],	bx
+		mov	word ptr cs:[_int8addr+2], dx
 		push	cs
 		call	near ptr _clean_11C43
 		call	_snd_initialze
@@ -5521,9 +5521,9 @@ sub_12DA8 proc far		; CODE XREF: _callsubx+24P
 		and	ax, 0F00Fh
 		shr	ah, 4
 		movzx	di, al
-		mov	al, [cs:_byte_13C54+di]
+		mov	al, cs:[_byte_13C54+di]
 		movzx	di, ah
-		mov	ah, [cs:_byte_13C54+di]
+		mov	ah, cs:[_byte_13C54+di]
 		test	_sndflags_24622, 4
 		jnz	short loc_12E55
 		mov	ax, 80h	; '€'
@@ -5744,8 +5744,8 @@ _set_timer_int endp
 
 _clean_int8_mem_timr proc near ; CODE	XREF: _covox_cleanp
 					; _stereo_cleanp ...
-		mov	dx, word ptr [cs:_int8addr+2]
-		mov	bx, word ptr [cs:_int8addr]
+		mov	dx, word ptr cs:[_int8addr+2]
+		mov	bx, word ptr cs:[_int8addr]
 		mov	al, 8
 		call	_setint_vect
 		call	_clean_timer
@@ -5766,9 +5766,9 @@ _configure_timer proc	near	; CODE XREF: _covox_setp _stereo_setp ...
 		mov	ax, 34DCh
 		div	_freq1
 		call	_set_timer
-		mov	[cs:_byte_14F70], 1
+		mov	cs:[_byte_14F70], 1
 		mov	ax, _word_245E4
-		mov	[cs:_word_14F6C], ax
+		mov	cs:[_word_14F6C], ax
 		popf
 		retn
 _configure_timer endp
@@ -5783,8 +5783,8 @@ _memfill8080 proc near	; CODE XREF: _set_timer_int+18p
 		cli
 		xor	ax, ax
 		call	_set_timer
-		mov	[cs:_byte_14F70], 0
-		mov	[cs:_word_14F6C], 1
+		mov	cs:[_byte_14F70], 0
+		mov	cs:[_word_14F6C], 1
 		mov	es, word ptr [_dma_buf_pointer+2]
 		assume es:nothing
 		xor	di, di
@@ -6394,13 +6394,13 @@ loc_137A9::				; CODE XREF: sub_13623+180j
 		ja	_eff_nullsub
 		shl	di, 1
 		mov	al, [bx+0Bh]
-		jmp	[cs:_effoff_18FA2+di]
+		jmp	cs:[_effoff_18FA2+di]
 ; ---------------------------------------------------------------------------
 
 loc_137BE::				; CODE XREF: sub_13623+Cj
 		movzx	di, dh
 		shr	di, 5
-		mov	al, [cs:_byte_11C29+di]
+		mov	al, cs:[_byte_11C29+di]
 		xor	ah, ah
 		add	si, ax
 		retn
@@ -6425,7 +6425,7 @@ sub_137D5 proc near		; CODE XREF: sub_13623+5Aj
 		ja	_eff_nullsub
 		shl	di, 1
 		mov	al, [bx+0Bh]
-		jmp	[cs:_effoff_18F60+di]
+		jmp	cs:[_effoff_18F60+di]
 ; ---------------------------------------------------------------------------
 
 loc_137F0::				; CODE XREF: sub_137D5+4j
@@ -6434,7 +6434,7 @@ loc_137F0::				; CODE XREF: sub_137D5+4j
 		ja	_eff_nullsub
 		shl	di, 1
 		mov	al, [bx+0Bh]
-		call	[cs:_effoff_18F60+di]
+		call	cs:[_effoff_18F60+di]
 		test	byte ptr [bx+3Dh], 40h
 		jz	short locret_13812
 		mov	al, [bx+8]
@@ -6456,7 +6456,7 @@ sub_13813 proc near		; CODE XREF: sub_140B6+24p
 		ja	short _eff_nullsub
 		shl	di, 1
 		mov	al, [bx+0Bh]
-		jmp	[cs:_effoff_18FE4+di]
+		jmp	cs:[_effoff_18FE4+di]
 sub_13813 endp
 
 
@@ -7088,7 +7088,7 @@ _eff_13BA3 proc near		; CODE XREF: sub_13623+196j
 		shr	di, 3
 		and	di, 1Eh
 		and	al, 0Fh
-		jmp	[cs:_effoff_19026+di]
+		jmp	cs:[_effoff_19026+di]
 _eff_13BA3 endp
 
 
@@ -7213,7 +7213,7 @@ _eff_13C3F proc near		; CODE XREF: sub_13623+196j
 loc_13C47::				; CODE XREF: _eff_13C3F+5j
 		mov	di, ax
 		and	di, 0Fh
-		mov	al, [cs:_byte_13C54+di]
+		mov	al, cs:[_byte_13C54+di]
 		jmp	_eff_13A43
 _eff_13C3F endp
 
@@ -7364,8 +7364,8 @@ sub_13CF6 proc near		; CODE XREF: sub_12EBA+65p
 		mov	dl, 91
 		div	dl
 		inc	al
-		mov	[cs:_byte_14F72], al
-		mov	[cs:_byte_14F73], al
+		mov	cs:[_byte_14F72], al
+		mov	cs:[_byte_14F73], al
 		test	_sndflags_24622, 4
 		jnz	short loc_13D4B
 		test	_sndflags_24622, 10h
@@ -7388,7 +7388,7 @@ loc_13D36::				; CODE XREF: sub_13CF6+39j
 		mov	_word_245EE, ax
 		mov	ax, _word_245E8
 		mov	_word_245E4, ax
-		mov	[cs:_word_14F6C], ax
+		mov	cs:[_word_14F6C], ax
 		retn
 ; ---------------------------------------------------------------------------
 
@@ -7478,7 +7478,7 @@ _settimer::				; CODE XREF: sub_13CF6+21j
 
 _set_timer proc near		; CODE XREF: _configure_timer+Fp
 					; _memfill8080+4p ...
-		mov	[cs:_timer_word_14F6E], ax
+		mov	cs:[_timer_word_14F6E], ax
 		pushf
 		cli
 		push	ax
@@ -7671,7 +7671,7 @@ sub_13E9B proc near		; CODE XREF: __2stm_module+2Ep
 		and	dl, 0Fh
 		shr	di, 4
 		mov	ax, dx
-		mul	[cs:_table_13EC3+di]
+		mul	cs:[_table_13EC3+di]
 		shr	ax, 4
 		neg	ax
 		add	ax, 31h	; '1'
@@ -7920,7 +7920,7 @@ _eff_14030 proc near		; CODE XREF: sub_13623+196j
 					; sub_137D5+16j ...
 		and	ax, 0Fh
 		mov	di, ax
-		mov	al, [cs:_table_14057+di]
+		mov	al, cs:[_table_14057+di]
 		mov	_byte_2467B, al
 
 loc_1403D::				; CODE XREF: _eff_14067+Ej
@@ -8540,7 +8540,7 @@ loc_14B50::				; CODE XREF: _sb16_on+3Bj
 		jz	short loc_14B6A
 		mov	ax, _sb_base_port
 		add	al, 0Eh
-		mov	[cs:_word_14BBB], ax
+		mov	cs:[_word_14BBB], ax
 		mov	ax, 0C6h ; 'Æ'
 		jmp	short loc_14B76
 ; ---------------------------------------------------------------------------
@@ -8548,7 +8548,7 @@ loc_14B50::				; CODE XREF: _sb16_on+3Bj
 loc_14B6A::				; CODE XREF: _sb16_on+42j
 		mov	ax, _sb_base_port
 		add	al, 0Fh
-		mov	[cs:_word_14BBB], ax
+		mov	cs:[_word_14BBB], ax
 		mov	ax, 10B6h
 
 loc_14B76::				; CODE XREF: _sb16_on+50j
@@ -8679,7 +8679,7 @@ _sbpro_set::				; CODE XREF: _sb_set+6j
 		mov	_word_2460E, 1000h
 		mov	ax, _sb_base_port
 		add	al, 0Eh
-		mov	[cs:_word_14CEB], ax
+		mov	cs:[_word_14CEB], ax
 		mov	ah, 0Eh
 		call	_ReadMixerSB
 		mov	_byte_24664, al
@@ -8937,7 +8937,7 @@ loc_14ECC::				; CODE XREF: seg000:4EC6j
 
 _timer_int_end proc far	; CODE XREF: _covox_timer_int+22j
 					; _covox_timer_int+33j ...
-		cmp	[cs:_byte_14F70], 0
+		cmp	cs:[_byte_14F70], 0
 		jz	short loc_14F3C
 		pushad
 		push	ds
@@ -8947,7 +8947,7 @@ _timer_int_end proc far	; CODE XREF: _covox_timer_int+22j
 		mov	ax, seg003
 		mov	ds, ax
 		mov	ax, _word_245E4
-		mov	[cs:_word_14F6C], ax
+		mov	cs:[_word_14F6C], ax
 		sti
 		call	sub_16C69
 		pop	gs
@@ -8959,24 +8959,24 @@ _timer_int_end proc far	; CODE XREF: _covox_timer_int+22j
 ; ---------------------------------------------------------------------------
 
 loc_14F3C::				; CODE XREF: _timer_int_end+6j
-		mov	[cs:_word_14F6C], 1
-		jmp	[cs:_int8addr]
+		mov	cs:[_word_14F6C], 1
+		jmp	cs:[_int8addr]
 _timer_int_end endp
 
 ; ---------------------------------------------------------------------------
-		dec	[cs:_byte_14F73]
+		dec	cs:[_byte_14F73]
 		jz	short loc_14F50
 		iret
 ; ---------------------------------------------------------------------------
 
 loc_14F50::				; CODE XREF: seg000:4F4Dj
 		push	ax
-		mov	al, [cs:_byte_14F72]
-		mov	[cs:_byte_14F73], al
-		mov	ax, [cs:_timer_word_14F6E]
+		mov	al, cs:[_byte_14F72]
+		mov	cs:[_byte_14F73], al
+		mov	ax, cs:[_timer_word_14F6E]
 		call	_set_timer
 		pop	ax
-		jmp	[cs:_int8addr]
+		jmp	cs:[_int8addr]
 ; ---------------------------------------------------------------------------
 ; ---------------------------------------------------------------------------
 _int8addr	dd 0			; DATA XREF: sub_12DA8+6Aw
@@ -9009,14 +9009,14 @@ _covox_init proc near		; DATA XREF: seg003:0D0Eo
 
 loc_14F95::				; CODE XREF: _covox_init+14j
 		mov	ax, _snd_base_port
-		mov	[cs:_word_14FC8], ax
+		mov	cs:[_word_14FC8], ax
 		pushf
 		cli
 		mov	dx, offset _covox_timer_int
 		call	_set_timer_int
 		sub	ax, 0F00h
-		mov	[cs:_word_14FC0], ax
-		mov	[cs:_word_14FC5], 0F000h
+		mov	cs:[_word_14FC0], ax
+		mov	cs:[_word_14FC5], 0F000h
 		popf
 		clc
 		retn
@@ -9061,16 +9061,16 @@ _word_14FC8	dw 378h			; DATA XREF: _covox_init+24w
 		assume ds:seg003
 		pop	dx
 		pop	ax
-		inc	[cs:_word_14FC5]
+		inc	cs:[_word_14FC5]
 		jz	short loc_14FE3
-		dec	[cs:_word_14F6C]
+		dec	cs:[_word_14F6C]
 		jz	near ptr _timer_int_end
 		iret
 ; ---------------------------------------------------------------------------
 
 loc_14FE3::				; CODE XREF: _covox_timer_int+1Bj
-		mov	[cs:_word_14FC5], 0F000h
-		dec	[cs:_word_14F6C]
+		mov	cs:[_word_14FC5], 0F000h
+		dec	cs:[_word_14F6C]
 		jz	near ptr _timer_int_end
 		iret
 _covox_timer_int endp	; sp-analysis failed
@@ -9111,14 +9111,14 @@ _stereo_init proc near	; DATA XREF: seg003:0D10o
 loc_1501D::				; CODE XREF: _stereo_init+14j
 		mov	ax, _snd_base_port
 		add	ax, 2
-		mov	[cs:_word_1504D], ax
+		mov	cs:[_word_1504D], ax
 		pushf
 		cli
 		mov	dx, offset _stereo_timer_int
 		call	_set_timer_int
 		sub	ax, 0F00h
-		mov	word ptr [cs:loc_15047+1], ax
-		mov	[cs:_word_15056], 0F000h
+		mov	word ptr cs:[loc_15047+1], ax
+		mov	cs:[_word_15056], 0F000h
 		popf
 		clc
 		retn
@@ -9178,16 +9178,16 @@ _word_15056	dw 1234h		; DATA XREF: _stereo_init+3Aw
 		assume ds:seg003
 		pop	dx
 		pop	ax
-		add	[cs:_word_15056], 2
+		add	cs:[_word_15056], 2
 		jb	short loc_1507E
-		dec	[cs:_word_14F6C]
+		dec	cs:[_word_14F6C]
 		jz	near ptr _timer_int_end
 		iret
 ; ---------------------------------------------------------------------------
 
 loc_1507E::				; CODE XREF: _stereo_timer_int+2Ej
-		mov	[cs:_word_15056], 0F000h
-		dec	[cs:_word_14F6C]
+		mov	cs:[_word_15056], 0F000h
+		dec	cs:[_word_14F6C]
 		jz	near ptr _timer_int_end
 		iret
 _stereo_timer_int endp ; sp-analysis failed
@@ -9255,8 +9255,8 @@ loc_150E8::				; CODE XREF: _adlib_init+52j
 		mov	dx, offset _adlib_timer_int
 		call	_set_timer_int
 		sub	ax, 0F00h
-		mov	word ptr [cs:loc_15120+1], ax
-		mov	[cs:_word_15126], 0F000h
+		mov	word ptr cs:[loc_15120+1], ax
+		mov	cs:[_word_15126], 0F000h
 		popf
 		clc
 		retn
@@ -9295,7 +9295,7 @@ _word_15126	dw 1234h		; DATA XREF: _adlib_init+75w
 		xlat
 		mov	dx, 389h
 		out	dx, al
-		inc	[cs:_word_15126]
+		inc	cs:[_word_15126]
 		jz	short loc_1514E
 
 loc_1513C::				; CODE XREF: seg000:5155j
@@ -9305,13 +9305,13 @@ loc_1513C::				; CODE XREF: seg000:5155j
 		mov	al, 20h	; ' '
 		out	20h, al		; Interrupt controller,	8259A.
 		pop	ax
-		dec	[cs:_word_14F6C]
+		dec	cs:[_word_14F6C]
 		jz	near ptr _timer_int_end
 		iret
 ; ---------------------------------------------------------------------------
 
 loc_1514E::				; CODE XREF: seg000:513Aj
-		mov	[cs:_word_15126], 0F000h
+		mov	cs:[_word_15126], 0F000h
 		jmp	short loc_1513C
 
 ; =============== S U B	R O U T	I N E =======================================
@@ -9347,8 +9347,8 @@ _pcspeaker_init proc near	; DATA XREF: seg003:0D14o
 		mov	dx, offset _pcspeaker_interrupt
 		call	_set_timer_int
 		sub	ax, 0F00h
-		mov	[cs:_word_1519B], ax
-		mov	[cs:_word_151A3], 0F000h
+		mov	cs:[_word_1519B], ax
+		mov	cs:[_word_151A3], 0F000h
 		popf
 		clc
 		retn
@@ -9397,7 +9397,7 @@ _word_1519B	dw 1000h		; DATA XREF: _pcspeaker_init+1Ew
 _word_151A3	dw 1234h		; DATA XREF: _pcspeaker_init+22w
 					; seg000:51B8w	...
 ; ---------------------------------------------------------------------------
-		mov	bl, [cs:_pc_timer_tbl+bx]
+		mov	bl, cs:[_pc_timer_tbl+bx]
 		mov	bh, al
 		mov	al, bl
 		out	42h, al		; Timer	8253-5 (AT: 8254.2).
@@ -9406,16 +9406,16 @@ _word_151A3	dw 1234h		; DATA XREF: _pcspeaker_init+22w
 		mov	al, bh
 		pop	ds
 		pop	bx
-		inc	[cs:_word_151A3]
+		inc	cs:[_word_151A3]
 		jz	short loc_151C9
-		dec	[cs:_word_14F6C]
+		dec	cs:[_word_14F6C]
 		jz	near ptr _timer_int_end
 		iret
 ; ---------------------------------------------------------------------------
 
 loc_151C9::				; CODE XREF: seg000:51BDj
-		mov	[cs:_word_151A3], 0F000h
-		dec	[cs:_word_14F6C]
+		mov	cs:[_word_151A3], 0F000h
+		dec	cs:[_word_14F6C]
 		jz	near ptr _timer_int_end
 		iret
 
@@ -9580,8 +9580,8 @@ _midi_int8p endp
 
 
 _midi_sndoff proc near	; DATA XREF: seg003:0D42o
-		mov	dx, word ptr [cs:_int8addr+2]
-		mov	bx, word ptr [cs:_int8addr]
+		mov	dx, word ptr cs:[_int8addr+2]
+		mov	bx, word ptr cs:[_int8addr]
 		mov	al, 8
 		call	_setint_vect
 		call	_clean_timer
@@ -9939,7 +9939,7 @@ sub_15577 proc near		; CODE XREF: sub_16C69:loc_16CB9p
 		xor	edx, edx
 		mov	ax, _word_245E4
 		and	eax, 0Fh
-		jmp	[cs:_offs_noninterp+eax*2]
+		jmp	cs:[_offs_noninterp+eax*2]
 sub_15577 endp ; sp-analysis	failed
 
 ; START	OF FUNCTION CHUNK FOR sub_1609F
@@ -10224,46 +10224,46 @@ loc_157E5::				; CODE XREF: sub_1609F-8D6j
 
 _lc_perfrm_interpol::			; CODE XREF: sub_15577+11j
 		mov	al, ch
-		cmp	al, [cs:_byte_158B4]
+		cmp	al, cs:[_byte_158B4]
 		jz	short loc_15877
-		mov	[cs:_byte_158B4], al
-		mov	[cs:_byte_158E3], al
-		mov	[cs:_byte_15912], al
-		mov	[cs:_byte_15941], al
-		mov	[cs:_byte_15970], al
-		mov	[cs:_byte_1599F], al
-		mov	[cs:_byte_159CE], al
-		mov	[cs:_byte_159FD], al
-		mov	[cs:_byte_15A2C], al
-		mov	[cs:_byte_15A5B], al
-		mov	[cs:_byte_15A8A], al
-		mov	[cs:_byte_15AB9], al
-		mov	[cs:_byte_15AE8], al
-		mov	[cs:_byte_15B17], al
-		mov	[cs:_byte_15B46], al
-		mov	[cs:_byte_15B81], al
-		mov	[cs:_byte_15BAD], al
-		mov	[cs:_byte_15BDA], al
-		mov	[cs:_byte_15C07], al
-		mov	[cs:_byte_15C34], al
-		mov	[cs:_byte_15C61], al
-		mov	[cs:_byte_15C8E], al
-		mov	[cs:_byte_15CBB], al
-		mov	[cs:_byte_15CE8], al
-		mov	[cs:_byte_15D15], al
-		mov	[cs:_byte_15D42], al
-		mov	[cs:_byte_15D6F], al
-		mov	[cs:_byte_15D9C], al
-		mov	[cs:_byte_15DC9], al
-		mov	[cs:_byte_15DF6], al
-		mov	[cs:_byte_15E23], al
+		mov	cs:[_byte_158B4], al
+		mov	cs:[_byte_158E3], al
+		mov	cs:[_byte_15912], al
+		mov	cs:[_byte_15941], al
+		mov	cs:[_byte_15970], al
+		mov	cs:[_byte_1599F], al
+		mov	cs:[_byte_159CE], al
+		mov	cs:[_byte_159FD], al
+		mov	cs:[_byte_15A2C], al
+		mov	cs:[_byte_15A5B], al
+		mov	cs:[_byte_15A8A], al
+		mov	cs:[_byte_15AB9], al
+		mov	cs:[_byte_15AE8], al
+		mov	cs:[_byte_15B17], al
+		mov	cs:[_byte_15B46], al
+		mov	cs:[_byte_15B81], al
+		mov	cs:[_byte_15BAD], al
+		mov	cs:[_byte_15BDA], al
+		mov	cs:[_byte_15C07], al
+		mov	cs:[_byte_15C34], al
+		mov	cs:[_byte_15C61], al
+		mov	cs:[_byte_15C8E], al
+		mov	cs:[_byte_15CBB], al
+		mov	cs:[_byte_15CE8], al
+		mov	cs:[_byte_15D15], al
+		mov	cs:[_byte_15D42], al
+		mov	cs:[_byte_15D6F], al
+		mov	cs:[_byte_15D9C], al
+		mov	cs:[_byte_15DC9], al
+		mov	cs:[_byte_15DF6], al
+		mov	cs:[_byte_15E23], al
 
 loc_15877::				; CODE XREF: sub_15577+282j
 		and	ecx, 0FFh
 		mov	ax, _word_245E4
 		and	eax, 0Fh
 		xor	edx, edx
-		jmp	[cs:_offs_interpol+eax*2]
+		jmp	cs:[_offs_interpol+eax*2]
 
 loc_15891::				; CODE XREF: sub_15577+28j
 					; sub_1609F+28j ...
@@ -10907,7 +10907,7 @@ loc_15E48::				; CODE XREF: sub_15577+1Aj
 		xor	edx, edx
 		mov	ax, _word_245E4
 		and	eax, 0Fh
-		jmp	[cs:off_18E60+eax*2]
+		jmp	cs:[off_18E60+eax*2]
 
 loc_15E5B::				; CODE XREF: sub_15577+28j
 					; sub_15577+311j ...
@@ -11206,7 +11206,7 @@ sub_1609F proc near		; CODE XREF: sub_16C69+4Bp
 		xor	edx, edx
 		mov	ax, _word_245E4
 		and	eax, 0Fh
-		jmp	[cs:_offs_noninterp2+eax*2]
+		jmp	cs:[_offs_noninterp2+eax*2]
 sub_1609F endp ; sp-analysis	failed
 
 
@@ -11441,46 +11441,46 @@ loc_161C9::				; CODE XREF: sub_1609F+211j
 
 _lc_perfrm_interpol2::			; CODE XREF: sub_1609F+11j
 		mov	al, ch
-		cmp	al, [cs:_byte_16379]
+		cmp	al, cs:[_byte_16379]
 		jz	short loc_1633C
-		mov	[cs:_byte_16379], al
-		mov	[cs:_byte_163A8], al
-		mov	[cs:_byte_163D7], al
-		mov	[cs:_byte_16406], al
-		mov	[cs:_byte_16435], al
-		mov	byte ptr [cs:unk_16464], al
-		mov	[cs:_byte_16493], al
-		mov	[cs:_byte_164C2], al
-		mov	[cs:_byte_164F1], al
-		mov	[cs:_byte_16520], al
-		mov	[cs:_byte_1654F], al
-		mov	[cs:_byte_1657E], al
-		mov	byte ptr [cs:unk_165AD], al
-		mov	[cs:_byte_165DC], al
-		mov	[cs:_byte_1660B], al
-		mov	[cs:_byte_16646], al
-		mov	[cs:_byte_16672], al
-		mov	[cs:_byte_1669F], al
-		mov	[cs:_byte_166CC], al
-		mov	[cs:_byte_166F9], al
-		mov	[cs:_byte_16726], al
-		mov	[cs:_byte_16753], al
-		mov	[cs:_byte_16780], al
-		mov	[cs:_byte_167AD], al
-		mov	[cs:_byte_167DA], al
-		mov	[cs:_byte_16807], al
-		mov	[cs:_byte_16834], al
-		mov	[cs:_byte_16861], al
-		mov	[cs:_byte_1688E], al
-		mov	[cs:_byte_168BB], al
-		mov	[cs:_byte_168E8], al
+		mov	cs:[_byte_16379], al
+		mov	cs:[_byte_163A8], al
+		mov	cs:[_byte_163D7], al
+		mov	cs:[_byte_16406], al
+		mov	cs:[_byte_16435], al
+		mov	byte ptr cs:[unk_16464], al
+		mov	cs:[_byte_16493], al
+		mov	cs:[_byte_164C2], al
+		mov	cs:[_byte_164F1], al
+		mov	cs:[_byte_16520], al
+		mov	cs:[_byte_1654F], al
+		mov	cs:[_byte_1657E], al
+		mov	byte ptr cs:[unk_165AD], al
+		mov	cs:[_byte_165DC], al
+		mov	cs:[_byte_1660B], al
+		mov	cs:[_byte_16646], al
+		mov	cs:[_byte_16672], al
+		mov	cs:[_byte_1669F], al
+		mov	cs:[_byte_166CC], al
+		mov	cs:[_byte_166F9], al
+		mov	cs:[_byte_16726], al
+		mov	cs:[_byte_16753], al
+		mov	cs:[_byte_16780], al
+		mov	cs:[_byte_167AD], al
+		mov	cs:[_byte_167DA], al
+		mov	cs:[_byte_16807], al
+		mov	cs:[_byte_16834], al
+		mov	cs:[_byte_16861], al
+		mov	cs:[_byte_1688E], al
+		mov	cs:[_byte_168BB], al
+		mov	cs:[_byte_168E8], al
 
 loc_1633C::				; CODE XREF: sub_1609F+21Fj
 		and	ecx, 0FFh
 		mov	ax, _word_245E4
 		and	eax, 0Fh
 		xor	edx, edx
-		jmp	[cs:_offs_interpol2+eax*2]
+		jmp	cs:[_offs_interpol2+eax*2]
 
 loc_16356::				; CODE XREF: sub_1609F+28j
 					; DATA XREF: seg000:8DFEo
@@ -12185,7 +12185,7 @@ loc_16959::				; CODE XREF: sub_1609F+1Aj
 		and	eax, 0Fh
 
 loc_16963::				; CODE XREF: _snd_initialze+13j
-		jmp	[cs:off_18E00+eax*2]
+		jmp	cs:[off_18E00+eax*2]
 
 loc_1696C::				; CODE XREF: sub_1609F+28j
 					; sub_1609F+2AEj
@@ -12453,7 +12453,7 @@ loc_16BB0::				; CODE XREF: sub_1609F+4j
 		xor	eax, eax
 		and	bx, 0Fh
 		shl	bx, 1
-		jmp	[cs:off_18E80+bx]
+		jmp	cs:[off_18E80+bx]
 
 loc_16BC6::				; CODE XREF: sub_15577+28j
 					; sub_15577+311j ...
@@ -12651,7 +12651,7 @@ sub_16CF6 proc near		; CODE XREF: sub_16C69+7Ap
 		mov	bx, cx
 		and	bx, 0Fh
 		shl	bx, 1
-		jmp	[cs:off_18EA0+bx]
+		jmp	cs:[off_18EA0+bx]
 
 loc_16D0B::				; CODE XREF: sub_15577+28j
 					; sub_15577+311j ...
@@ -12826,7 +12826,7 @@ loc_16E24::				; CODE XREF: sub_16CF6+5j
 		mov	bx, cx
 		and	bx, 0Fh
 		shl	bx, 1
-		jmp	[cs:off_18EC0+bx]
+		jmp	cs:[off_18EC0+bx]
 
 loc_16E3F::				; CODE XREF: sub_15577+28j
 					; sub_15577+311j ...
@@ -13320,7 +13320,7 @@ sub_1725F proc near		; CODE XREF: sub_16C69+5E3p
 		mov	bx, cx
 		and	bx, 0Fh
 		shl	bx, 1
-		jmp	[cs:off_18EE0+bx]
+		jmp	cs:[off_18EE0+bx]
 
 loc_1727F::				; CODE XREF: sub_15577+28j
 					; sub_15577+311j ...
@@ -13535,7 +13535,7 @@ loc_17441::				; CODE XREF: sub_1725F+5j
 		mov	bx, cx
 		and	bx, 0Fh
 		shl	bx, 1
-		jmp	[cs:off_18F00+bx]
+		jmp	cs:[off_18F00+bx]
 sub_1725F endp ; sp-analysis	failed
 
 ; START	OF FUNCTION CHUNK FOR sub_1609F
@@ -13982,7 +13982,7 @@ sub_17824 proc near		; CODE XREF: sub_16C69+BA8p
 		mov	bx, cx
 		and	bx, 0Fh
 		shl	bx, 1
-		jmp	[cs:off_18F20+bx]
+		jmp	cs:[off_18F20+bx]
 
 loc_17839::				; CODE XREF: sub_15577+28j
 					; sub_15577+311j ...
@@ -14205,7 +14205,7 @@ loc_17A58::				; CODE XREF: sub_17824+5j
 		mov	bx, cx
 		and	bx, 0Fh
 		shl	bx, 1
-		jmp	[cs:off_18F40+bx]
+		jmp	cs:[off_18F40+bx]
 sub_17824 endp ; sp-analysis	failed
 
 ; START	OF FUNCTION CHUNK FOR sub_1609F
@@ -16370,7 +16370,7 @@ loc_18CA2::				; CODE XREF: _myasmsprintf+5j
 		mov	bl, al
 		xor	bh, bh
 		shl	bx, 1
-		jmp	[cs:_asmprintf_tbl+bx]
+		jmp	cs:[_asmprintf_tbl+bx]
 
 _mysprintf_0_nop::			; CODE XREF: _myasmsprintf+13j
 					; DATA XREF: seg000:_asmprintf_tblo
@@ -17117,8 +17117,8 @@ loc_1917D::
 		int	21h		; DOS -	2+ - GET INTERRUPT VECTOR
 					; AL = interrupt number
 					; Return: ES:BX	= value	of interrupt vector
-		mov	word ptr [cs:_oint9_1C1A4], bx
-		mov	word ptr [cs:_oint9_1C1A4+2], es
+		mov	word ptr cs:[_oint9_1C1A4], bx
+		mov	word ptr cs:[_oint9_1C1A4+2], es
 
 loc_191A2::
 		mov	ax, 3524h
@@ -17126,14 +17126,14 @@ loc_191A2::
 loc_191A5::				; DOS -	2+ - GET INTERRUPT VECTOR
 		int	21h		; AL = interrupt number
 					; Return: ES:BX	= value	of interrupt vector
-		mov	word ptr [cs:_oint24_1C1AC], bx
-		mov	word ptr [cs:_oint24_1C1AC+2], es
+		mov	word ptr cs:[_oint24_1C1AC], bx
+		mov	word ptr cs:[_oint24_1C1AC+2], es
 		mov	ax, 352Fh
 		int	21h		; DOS -	2+ - GET INTERRUPT VECTOR
 					; AL = interrupt number
 					; Return: ES:BX	= value	of interrupt vector
-		mov	word ptr [cs:_oint2f_1C1B4], bx
-		mov	word ptr [cs:_oint2f_1C1B4+2], es
+		mov	word ptr cs:[_oint2f_1C1B4], bx
+		mov	word ptr cs:[_oint2f_1C1B4+2], es
 		push	ds
 		mov	ax, cs
 		mov	ds, ax
@@ -17207,21 +17207,21 @@ loc_19250::				; CODE XREF: _start+1AEj _start+5C2j ...
 loc_19256::				; CODE XREF: _start+1A4j _start+1A9j ...
 		call	_mouse_deinit
 		push	ds
-		lds	dx, [cs:_oint2f_1C1B4]
+		lds	dx, cs:[_oint2f_1C1B4]
 		mov	ax, 252Fh
 		int	21h		; DOS -	SET INTERRUPT VECTOR
 					; AL = interrupt number
 					; DS:DX	= new vector to	be used	for specified interrupt
 		pop	ds
 		push	ds
-		lds	dx, [cs:_oint24_1C1AC]
+		lds	dx, cs:[_oint24_1C1AC]
 		mov	ax, 2524h
 		int	21h		; DOS -	SET INTERRUPT VECTOR
 					; AL = interrupt number
 					; DS:DX	= new vector to	be used	for specified interrupt
 		pop	ds
 		push	ds
-		lds	dx, [cs:_oint9_1C1A4]
+		lds	dx, cs:[_oint9_1C1A4]
 		mov	ax, 2509h
 		int	21h		; DOS -	SET INTERRUPT VECTOR
 					; AL = interrupt number
@@ -17388,13 +17388,13 @@ loc_193FC::				; CODE XREF: _start+365j
 		call	_put_message
 
 loc_193FF::				; CODE XREF: _start+34Ej
-		mov	ax, [cs:_key_code] ; keyboard message loop here
+		mov	ax, cs:[_key_code] ; keyboard message loop here
 		or	ax, ax
 		jz	short loc_193C7
 		push	ax
 		call	_mouse_hide
 		pop	ax
-		mov	[cs:_key_code], 0
+		mov	cs:[_key_code], 0
 		cmp	al, 1
 		jz	loc_1964E
 		cmp	al, 48h	; 'H'
@@ -17477,10 +17477,10 @@ loc_194CE::				; CODE XREF: _start+42Fj _start+437j
 		mov	ax, 7E0Dh
 		call	_message_1BE77
 		xor	ax, ax
-		mov	[cs:_key_code], ax
+		mov	cs:[_key_code], ax
 
 loc_194DA::				; CODE XREF: _start+44Fj
-		xchg	ax, [cs:_key_code]
+		xchg	ax, cs:[_key_code]
 		or	ax, ax
 		jz	short loc_194DA
 
@@ -17650,7 +17650,7 @@ loc_19657::				; CODE XREF: _start:loc_19445j
 		add	ax, dx
 		add	ax, _word_1DE52
 		mov	fs, ax
-		test	[cs:_keyb_switches], 4
+		test	cs:[_keyb_switches], 4
 		jnz	short loc_196B0
 		cmp	byte ptr fs:[2], 2
 		jnz	loc_193BC
@@ -17684,7 +17684,7 @@ loc_196B0::				; CODE XREF: _start+5DFj
 
 loc_196D0::				; CODE XREF: _start+647j _start+649j
 		xor	ax, ax
-		xchg	ax, [cs:_key_code]
+		xchg	ax, cs:[_key_code]
 		or	ax, ax
 		jz	short loc_196D0
 		js	short loc_196D0
@@ -17775,9 +17775,9 @@ loc_19788::				; CODE XREF: _start+3B9j
 		call	_write_scr
 
 loc_197BF::				; CODE XREF: _start+733j
-		cmp	byte ptr [cs:_key_code],	0
+		cmp	byte ptr cs:[_key_code],	0
 		jle	short loc_197BF
-		mov	[cs:_key_code], 0
+		mov	cs:[_key_code], 0
 		mov	_byte_1DE7F, 0
 		jmp	loc_192F7
 ; ---------------------------------------------------------------------------
@@ -18284,9 +18284,9 @@ loc_19BB4::
 		movsd
 		mov	ebp, eax
 		inc	_word_1DE58
-		cmp	[cs:_key_code], 1
+		cmp	cs:[_key_code], 1
 		jnz	short loc_19BDD
-		mov	[cs:_key_code], 0
+		mov	cs:[_key_code], 0
 		or	byte ptr [_configword], 20h
 
 loc_19BDD::				; CODE XREF: _modules_search+17Cj
@@ -18746,7 +18746,7 @@ _keyb_19EFD proc near		; CODE XREF: _start+6EBp _keyb_19EFD+5Aj ...
 		test	_byte_1DE90, 1
 		jnz	loc_1A3A7
 		xor	ax, ax
-		xchg	ax, [cs:_key_code]
+		xchg	ax, cs:[_key_code]
 		or	ax, ax
 		jz	short _keyb_19EFD
 		mov	_word_1DE50, ax
@@ -18902,7 +18902,7 @@ _l_right::				; CODE XREF: _keyb_19EFD+8Cj
 		mul	_byte_1DE84
 		add	bx, ax
 		mov	cl, 8
-		test	[cs:_keyb_switches], 3
+		test	cs:[_keyb_switches], 3
 		jnz	short loc_1A0E6
 		mov	cl, 1
 
@@ -18926,7 +18926,7 @@ _l_left::					; CODE XREF: _keyb_19EFD+98j
 		mul	_byte_1DE84
 		add	bx, ax
 		mov	cl, 8
-		test	[cs:_keyb_switches], 3
+		test	cs:[_keyb_switches], 3
 		jnz	short loc_1A118
 		mov	cl, 1
 
@@ -18962,7 +18962,7 @@ _l_plus::					; CODE XREF: _keyb_19EFD+A4j
 		mov	ax, -1
 		call	_change_volume
 		mov	cx, 32
-		test	[cs:_keyb_switches], 3
+		test	cs:[_keyb_switches], 3
 		jnz	short loc_1A14B
 		mov	cx, 2
 
@@ -18981,7 +18981,7 @@ _l_minus::				; CODE XREF: _keyb_19EFD+AAj
 		mov	ax, -1
 		call	_change_volume
 		mov	cx, 32
-		test	[cs:_keyb_switches], 3
+		test	cs:[_keyb_switches], 3
 		jnz	short loc_1A174
 		mov	cx, 2
 
@@ -18999,7 +18999,7 @@ _l_rbracket::				; CODE XREF: _keyb_19EFD+B6j
 		mov	ax, 0FFFFh
 		call	_change_amplif
 		mov	cx, 1
-		test	[cs:_keyb_switches], 3
+		test	cs:[_keyb_switches], 3
 		jnz	short loc_1A199
 		mov	cx, 0Ah
 
@@ -19018,7 +19018,7 @@ _l_lbracket::				; CODE XREF: _keyb_19EFD+B0j
 		mov	ax, -1
 		call	_change_amplif
 		mov	cx, 1
-		test	[cs:_keyb_switches], 3
+		test	cs:[_keyb_switches], 3
 		jnz	short loc_1A1C2
 		mov	cx, 10
 
@@ -19050,7 +19050,7 @@ _l_f2::					; CODE XREF: _keyb_19EFD+C2j
 _l_f3::					; CODE XREF: _keyb_19EFD+C8j
 		call	_f3_textmetter
 		mov	_byte_1DE85, 0
-		test	[cs:_keyb_switches], 3
+		test	cs:[_keyb_switches], 3
 		jz	_keyb_19EFD
 		mov	_byte_1DE85, 1
 		jmp	_keyb_19EFD
@@ -19093,7 +19093,7 @@ _l_f8::					; CODE XREF: _keyb_19EFD+E0j
 ; ---------------------------------------------------------------------------
 
 _l_f9::					; CODE XREF: _keyb_19EFD+E6j
-		test	[cs:_keyb_switches], 100b
+		test	cs:[_keyb_switches], 100b
 		jnz	short _l_f11
 		call	_get_playsettings
 		xor	al, 1
@@ -19102,7 +19102,7 @@ _l_f9::					; CODE XREF: _keyb_19EFD+E6j
 ; ---------------------------------------------------------------------------
 
 _l_f10::					; CODE XREF: _keyb_19EFD+ECj
-		test	[cs:_keyb_switches], 100b
+		test	cs:[_keyb_switches], 100b
 		jnz	short _l_f12
 		call	_get_playsettings
 		xor	al, 2
@@ -19132,13 +19132,13 @@ loc_1A28F::
 ; ---------------------------------------------------------------------------
 
 _l_tab::					; CODE XREF: _keyb_19EFD+116j
-		test	[cs:_keyb_switches], 100b
+		test	cs:[_keyb_switches], 100b
 		jnz	short loc_1A2C1
 
 loc_1A2A0::
-		test	[cs:_keyb_switches], 1000b
+		test	cs:[_keyb_switches], 1000b
 		jnz	short loc_1A2D1
-		test	[cs:_keyb_switches], 11b
+		test	cs:[_keyb_switches], 11b
 		jnz	short loc_1A2E1
 		call	_get_playsettings
 		xor	al, 8
@@ -19173,7 +19173,7 @@ loc_1A2E1::				; CODE XREF: _keyb_19EFD+3B3j
 ; ---------------------------------------------------------------------------
 
 _l_numlock::				; CODE XREF: _keyb_19EFD+11Cj
-		test	[cs:_keyb_switches], 100b
+		test	cs:[_keyb_switches], 100b
 		jz	_keyb_19EFD
 		mov	al, 0FFh
 		call	_getset_playstate
@@ -19212,12 +19212,12 @@ _l_1_end::				; CODE XREF: _keyb_19EFD+128j
 
 loc_1A33E::				; CODE XREF: _keyb_19EFD+13Ej
 		sub	al, 2
-		test	[cs:_keyb_switches], 11b
+		test	cs:[_keyb_switches], 11b
 		jz	short loc_1A34B
 		add	al, 10
 
 loc_1A34B::				; CODE XREF: _keyb_19EFD+44Aj
-		test	[cs:_keyb_switches], 100b
+		test	cs:[_keyb_switches], 100b
 		jz	short loc_1A356
 		add	al, 20
 
@@ -22801,7 +22801,7 @@ _graph_1C070 endp
 
 
 _int9_keyb proc far		; DATA XREF: _start+133o
-		cmp	[cs:_byte_1C1B8], 1
+		cmp	cs:[_byte_1C1B8], 1
 		jz	loc_1C11F
 		push	ax
 		in	al, 60h		; 8042 keyboard	controller data	register
@@ -22809,10 +22809,10 @@ _int9_keyb proc far		; DATA XREF: _start+133o
 		jz	_l_escaped_scancode
 		cmp	al, 0E1h ; 'á'
 		jz	_l_escaped_scancode
-		mov	ah, [cs:_prev_scan_code]
+		mov	ah, cs:[_prev_scan_code]
 		or	ah, ah
 		jz	short loc_1C0A5
-		mov	[cs:_prev_scan_code], 0
+		mov	cs:[_prev_scan_code], 0
 
 loc_1C0A5::				; CODE XREF: _int9_keyb+20j
 		cmp	al, 36h	; '6'
@@ -22831,7 +22831,7 @@ loc_1C0A5::				; CODE XREF: _int9_keyb+20j
 		jz	short _l_alt
 		cmp	al, 0B8h ; '¸'
 		jz	short _l_altup
-		mov	[cs:_key_code], ax
+		mov	cs:[_key_code], ax
 
 loc_1C0C9::				; CODE XREF: _int9_keyb+62j
 					; _int9_keyb+6Aj ...
@@ -22868,54 +22868,54 @@ loc_1C0C9::				; CODE XREF: _int9_keyb+62j
 ; ---------------------------------------------------------------------------
 
 _l_rshift::				; CODE XREF: _int9_keyb+2Aj
-		or	[cs:_keyb_switches], 1
+		or	cs:[_keyb_switches], 1
 		jmp	short loc_1C0C9
 ; ---------------------------------------------------------------------------
 
 _l_rshiftup::				; CODE XREF: _int9_keyb+2Ej
-		and	[cs:_keyb_switches], not	1
+		and	cs:[_keyb_switches], not	1
 		jmp	short loc_1C0C9
 ; ---------------------------------------------------------------------------
 
 _l_lshift::				; CODE XREF: _int9_keyb+32j
-		or	[cs:_keyb_switches], 10b
+		or	cs:[_keyb_switches], 10b
 		jmp	short loc_1C0C9
 ; ---------------------------------------------------------------------------
 
 _l_lshiftup::				; CODE XREF: _int9_keyb+36j
-		and	[cs:_keyb_switches], not	10b
+		and	cs:[_keyb_switches], not	10b
 		jmp	short loc_1C0C9
 ; ---------------------------------------------------------------------------
 
 _l_ctrl::					; CODE XREF: _int9_keyb+3Aj
-		or	[cs:_keyb_switches], 100b
+		or	cs:[_keyb_switches], 100b
 		jmp	short loc_1C0C9
 ; ---------------------------------------------------------------------------
 
 _l_lctrlup::				; CODE XREF: _int9_keyb+3Ej
-		and	[cs:_keyb_switches], not	100b
+		and	cs:[_keyb_switches], not	100b
 		jmp	short loc_1C0C9
 ; ---------------------------------------------------------------------------
 		assume ds:dseg
 
 _l_alt::					; CODE XREF: _int9_keyb+42j
-		or	[cs:_keyb_switches], 1000b
+		or	cs:[_keyb_switches], 1000b
 		jmp	short loc_1C0C9
 ; ---------------------------------------------------------------------------
 
 _l_altup::				; CODE XREF: _int9_keyb+46j
-		and	[cs:_keyb_switches], not	1000b
+		and	cs:[_keyb_switches], not	1000b
 		jmp	short loc_1C0C9
 ; ---------------------------------------------------------------------------
 
 _l_escaped_scancode::			; CODE XREF: _int9_keyb+Fj
 					; _int9_keyb+15j
-		mov	[cs:_prev_scan_code], al
+		mov	cs:[_prev_scan_code], al
 		jmp	short loc_1C0C9
 ; ---------------------------------------------------------------------------
 
 loc_1C11F::				; CODE XREF: _int9_keyb+6j
-		jmp	[cs:_oint9_1C1A4]
+		jmp	cs:[_oint9_1C1A4]
 _int9_keyb endp
 
 
@@ -22928,7 +22928,7 @@ _get_keybsw proc near
 		mov	es, ax
 		assume es:nothing
 		mov	ax, es:[17h]
-		mov	[cs:_keyb_switches], ax
+		mov	cs:[_keyb_switches], ax
 		pop	es
 		assume es:nothing
 		retn
@@ -22943,7 +22943,7 @@ _set_keybsw proc near
 		xor	ax, ax
 		mov	es, ax
 		assume es:nothing
-		mov	ax, [cs:_keyb_switches]
+		mov	ax, cs:[_keyb_switches]
 		mov	es:[17h], ax
 		pop	es
 		assume es:nothing
@@ -22987,7 +22987,7 @@ _int2f_checkmyself proc far	; DATA XREF: _start+143o
 loc_1C160::				; CODE XREF: _int2f_checkmyself+10j
 					; _int2f_checkmyself+16j
 		popf
-		jmp	[cs:_oint2f_1C1B4]
+		jmp	cs:[_oint2f_1C1B4]
 ; ---------------------------------------------------------------------------
 
 _lyesitsme::				; CODE XREF: _int2f_checkmyself+4j
@@ -23031,7 +23031,7 @@ _int1a_timer proc near	; DATA XREF: _dosexec+47o
 
 loc_1C19C::				; CODE XREF: _int1a_timer+3j
 		popf
-		jmp	[cs:_int1Avect]
+		jmp	cs:[_int1Avect]
 _int1a_timer endp
 
 ; ---------------------------------------------------------------------------
@@ -23074,8 +23074,8 @@ _dosexec proc	near		; CODE XREF: _start+747p
 		int	21h		; DOS -	2+ - GET INTERRUPT VECTOR
 					; AL = interrupt number
 					; Return: ES:BX	= value	of interrupt vector
-		mov	word ptr [cs:_int1Avect], bx
-		mov	word ptr [cs:_int1Avect+2], es
+		mov	word ptr cs:[_int1Avect], bx
+		mov	word ptr cs:[_int1Avect+2], es
 		push	ds
 		mov	ax, cs
 		mov	ds, ax
@@ -23092,7 +23092,7 @@ loc_1C209::				; CODE XREF: _dosexec+31j
 		mov	si, offset _byte_1DD3F ;	str
 		call	_dosgetcurdir
 		mov	al, 1
-		mov	[cs:_byte_1C1B8], al
+		mov	cs:[_byte_1C1B8], al
 		call	sub_12D35
 		mov	es, _esseg_atstart
 		mov	ax, es:[2Ch]
@@ -23115,12 +23115,12 @@ loc_1C209::				; CODE XREF: _dosexec+31j
 
 loc_1C23E::				; CODE XREF: _dosexec+6Fj
 		mov	al, 0
-		mov	[cs:_byte_1C1B8], al
+		mov	cs:[_byte_1C1B8], al
 		call	sub_12D35
 		test	_byte_1DE78, 2
 		jz	short loc_1C25C
 		push	ds
-		lds	dx, [cs:_int1Avect]
+		lds	dx, cs:[_int1Avect]
 		mov	ax, 251Ah
 		int	21h		; DOS -	SET INTERRUPT VECTOR
 					; AL = interrupt number
@@ -23429,7 +23429,7 @@ _callsubx proc near		; CODE XREF: _start:loc_19050p
 		mov	_byte_1DE7C, 1
 		cmp	_snd_card_type, 0
 		jnz	short loc_1C4A6
-		mov	byte ptr [cs:loc_1AA73+4], 0Fh
+		mov	byte ptr cs:[loc_1AA73+4], 0Fh
 
 loc_1C4A6::				; CODE XREF: _callsubx+6Fj
 		clc

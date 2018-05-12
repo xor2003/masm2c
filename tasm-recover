@@ -30,7 +30,8 @@ p = parser(skip_binary_data = [
 #	'characterset1',
 	])
 p.strip_path = 3
-context = p.parse('iplay_masm_.asm')
+#context = p.parse('iplay_masm_.asm')
+context = p.parse('addsub.asm')
 p.link()
 generator = cpp(context, "InertiaPlayer", blacklist = [
 	# These functions are not processed
