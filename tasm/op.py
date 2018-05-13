@@ -602,7 +602,7 @@ class _imul(baseop):
 	def __init__(self, arg):
 		self.arg = self.parse_arg(arg)
 	def visit(self, visitor):
-		visitor._mul(self.arg)
+		visitor._imul(self.arg)
 
 class _cmc(baseop):
 	def __init__(self, arg):
@@ -735,5 +735,5 @@ class _idiv(baseop):
 	def __init__(self, arg):
 		self.arg = self.parse_arg(arg)
 	def visit(self, visitor):
-		visitor._div(self.arg)
+		visitor._idiv(self.arg)
 

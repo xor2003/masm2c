@@ -27,10 +27,12 @@ extern "C" {
 #endif
 
 #if defined(_REAL_MODE)
-#define realAddress(offset,segment) ((db *)&m+(dd)offset + 0x10*segment)
+#define raddr(segment,offset) ((db *)&m+(db)(offset) + segment<<8)
 #else
-#define realAddress(offset,segment) ((db *)&m+(dd)offset+selectors[segment])
+#define raddr(segment,offset) ((db *)&m+(db)(offset)+selectors[segment])
 #endif
+
+#define realAddress(offset, segment) raddr(segment,offset)
 
 #define db uint8_t
 #define dw uint16_t
@@ -135,12 +137,24 @@ typedef union registry16Bits
 #define AFFECT_SF(a) SF=ISNEGATIVE(a) //(a>>(nbBits-1))&1
 
 // TODO: add missings affected flags on CMP
-#define CMP(a,b) AFFECT_ZF(a-b); AFFECT_CF(a<b); AFFECT_SF(a-b);
-#define OR(a,b) a=a|b; AFFECT_ZF(a); AFFECT_SF(nbBits, a)
-#define XOR(a,b) a=a^b; AFFECT_ZF(a); AFFECT_SF(nbBits, a)
-#define AND(a,b) a=a&b; AFFECT_ZF(a); AFFECT_SF(nbBits, a)
-#define NEG(a) AFFECT_CF(a!=0); a=-a;
-#define TEST(a,b) AFFECT_ZF((a&b)); AFFECT_CF(b<a); AFFECT_SF(a&b)
+#define CMP(a,b) {AFFECT_ZF(a-b); \
+		AFFECT_CF(a<b); \
+		AFFECT_SF(a-b);}
+#define OR(a,b) {a=a|b; \
+		AFFECT_ZF(a); \
+		AFFECT_SF(nbBits, a)}
+#define XOR(a,b) {a=a^b; \
+		AFFECT_ZF(a); \
+		AFFECT_SF(nbBits, a)}
+#define AND(a,b) {a=a&b; \
+		AFFECT_ZF(a); \
+		AFFECT_SF(nbBits, a)}
+
+#define NEG(a) {AFFECT_CF(a!=0); \
+		a=-a;}
+#define TEST(a,b) {AFFECT_ZF((a&b)); \
+		AFFECT_CF(b<a); \
+		AFFECT_SF(a&b)}
 
 #define SHR(a,b) a=a>>b
 #define SHL(a,b) a=a<<b
@@ -175,15 +189,30 @@ typedef union registry16Bits
 
 #define AAD {al = al + (ah * 10) & 0xFF; ah = 0;} //TODO
 
-#define ADD(a,b) {a=a+b; AFFECT_ZF(a); AFFECT_CF(a<b); AFFECT_SF(a);}
-#define SUB(a,b) {a=a-b; AFFECT_ZF(a); AFFECT_CF(b<a); AFFECT_SF(a);}
+#define ADD(a,b) {a=a+b; \
+		AFFECT_ZF(a); \
+		AFFECT_CF(a<b); \
+		AFFECT_SF(a);}
 
-#define ADC(a,b) {a=a+b+CF; AFFECT_ZF(a); AFFECT_CF(a<b); AFFECT_SF(a);} //TODO
-#define SBB(a,b) {a=a-b-CF; AFFECT_ZF(a); AFFECT_CF(b<a); AFFECT_SF(a);} 
+#define SUB(a,b) {a=a-b; \
+		AFFECT_ZF(a); \
+		AFFECT_CF(b<a); \
+		AFFECT_SF(a);}
+
+#define ADC(a,b) {a=a+b+CF; \
+		AFFECT_ZF(a); \
+		AFFECT_CF(a<b); \
+		AFFECT_SF(a);} //TODO
+#define SBB(a,b) {a=a-b-CF; \
+		AFFECT_ZF(a); \
+		AFFECT_CF(b<a); \
+		AFFECT_SF(a);} 
 
 // TODO: should affects OF, SF, ZF, AF, and PF
-#define INC(a) {a=a+1; AFFECT_ZF(a)}
-#define DEC(a) {a=a-1; AFFECT_ZF(a)}
+#define INC(a) {a=a+1; \
+		AFFECT_ZF(a)}
+#define DEC(a) {a=a-1; \
+		AFFECT_ZF(a)}
 
 #define NOT(a) a= ~a;// AFFECT_ZF(a) //TODO
 #define SETNZ(a) a= (!ZF)&1; //TODO

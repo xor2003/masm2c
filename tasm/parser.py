@@ -39,7 +39,9 @@ class parser:
 		self.binary_data = []
 		self.c_data = []
 		self.h_data = []
+		self.cur_seg_offset = 0
 		self.dummy_enum = 0
+		self.segment = ""
 
 		self.symbols = []
 		self.link_later = []
@@ -66,13 +68,14 @@ class parser:
 		#print "endif"
 		return self.__stack.pop()
 
-	def set_global(self, name, value):
+	def set_global(self, name, value, elements = 1):
 		if len(name) == 0:
 			raise Exception("empty name is not allowed")
 		name = name.lower()
 		#print "adding global %s -> %s" %(name, value)
 		if self.__globals.has_key(name):
 			raise Exception("global %s was already defined", name)
+		value.elements = elements
 		self.__globals[name] = value
 
 	def get_global(self, name):
@@ -153,8 +156,8 @@ class parser:
 		return text
 	
 	def fix_dollar(self, v):
-		print("$ = %d" %len(self.binary_data))
-		return re.sub(r'\$', "%d" %len(self.binary_data), v)
+		print("$ = %d" %self.cur_seg_offset)
+		return re.sub(r'\$', "%d" %self.cur_seg_offset, v)
 
 	def parse_int(self, v):
 		#print "~1~ %s" %v
@@ -214,7 +217,7 @@ class parser:
 					v = g.offset
 				except:
 					print "unknown address %s" %(v)
-					self.link_later.append((len(self.binary_data) + len(r), v))
+					self.link_later.append((self.cur_seg_offset + len(r), v))
 					v = 0
 		
 			for b in xrange(0, width):
@@ -284,8 +287,9 @@ class parser:
 				vv = v.split()
 				#print vv
 				if vv[0] == "offset": # pointer
-					data_ctype += r"*"
-					v = "&" + vv[1]
+					#data_ctype += r"*"
+					data_ctype = "dw"
+					v = "&" + vv[1] + " - &" + self.segment
 					r.append(v);
 
 				#print "global/expr: ~%s~" %v
@@ -294,7 +298,7 @@ class parser:
 					v = g.offset
 				except:
 					print "unknown address %s" %(v)
-					self.link_later.append((len(self.binary_data) + len(r), v))
+					self.link_later.append((self.cur_seg_offset + len(r), v))
 					v = 0
 		
 			r.append(v);
@@ -415,7 +419,7 @@ class parser:
 		self.prev_data_type = cur_data_type
 		self.prev_data_ctype = data_ctype
 		self.data_started = True
-		return r, rh
+		return r, rh, elements
 
 	def parse(self, fname):
 #		print "opening file %s..." %(fname, basedir)
@@ -435,10 +439,10 @@ class parser:
 				if self.visible():
 					name = m.group(1)
 					if not (name.lower() in self.skip_binary_data):
-						print "offset %s -> %d" %(name, len(self.binary_data))
+						print "offset %s -> %s" %(name, "&m." + name.lower() + " - &m." + self.segment)
 						if self.proc is not None:
 							self.proc.add_label(name)
-							self.set_offset(name, (len(self.binary_data), self.proc, len(self.proc.stmts) if self.proc is not None else 0))
+							self.set_offset(name, ("&m." + name.lower() + " - &m." + self.segment, self.proc, len(self.proc.stmts) if self.proc is not None else 0))
 						else:
 							print "Label %s is outside the procedure" %name
 						skipping_binary_data = False
@@ -468,10 +472,13 @@ class parser:
 			if cmd0 == 'db' or cmd0 == 'dw' or cmd0 == 'dd':
 				arg = line[len(cmd0):].strip()
 				if not skipping_binary_data:
-					print "%d:1: %s" %(len(self.binary_data), arg) #fixme: COPYPASTE
+					print "%d:1: %s" %(self.cur_seg_offset, arg) #fixme: COPYPASTE
 					binary_width = {'b': 1, 'w': 2, 'd': 4}[cmd0[1]]
-					self.binary_data += self.convert_data_to_blob(binary_width, lex.parse_args(arg))
-					c, h = self.convert_data_to_c("", binary_width, lex.parse_args(arg))
+					b = self.convert_data_to_blob(binary_width, lex.parse_args(arg))
+					self.binary_data += b
+					self.cur_seg_offset += len(b)
+					
+					c, h, elements = self.convert_data_to_c("", binary_width, lex.parse_args(arg))
 					self.c_data += c
 					self.h_data += h
 				continue
@@ -480,6 +487,10 @@ class parser:
 				continue
 			elif cmd0 == 'endp' or (len(cmd) >= 2 and str(cmd[1]) == 'endp'):
 				self.proc = None
+				continue
+			elif cmd0 == 'ends':
+				print "segement %s ends" %(self.segment)
+				self.segment = ""
 				continue
 			elif cmd0 == 'assume':
 				print "skipping: %s" %line
@@ -501,17 +512,20 @@ class parser:
 				elif cmd1 == 'db' or cmd1 == 'dw' or cmd1 == 'dd':
 					if not (cmd0.lower() in self.skip_binary_data):
 						binary_width = {'b': 1, 'w': 2, 'd': 4}[cmd1[1]]
-						offset = len(self.binary_data)
+						offset = self.cur_seg_offset
 						arg = line[len(cmd0):].strip()
 						arg = arg[len(cmd1):].strip()
 						print "%d: %s" %(offset, arg)
-						self.binary_data += self.convert_data_to_blob(binary_width, lex.parse_args(arg))
+						b = self.convert_data_to_blob(binary_width, lex.parse_args(arg))
+						self.binary_data += b
+						self.cur_seg_offset += len(b)
 
-						c, h = self.convert_data_to_c(cmd0, binary_width, lex.parse_args(arg))
+						c, h, elements = self.convert_data_to_c(cmd0, binary_width, lex.parse_args(arg))
 						self.c_data += c
 						self.h_data += h
-
-						self.set_global(cmd0.lower(), op.var(binary_width, offset))
+						
+						print "~size %d elements %d" %(binary_width, elements)
+						self.set_global(cmd0.lower(), op.var(binary_width, offset), elements)
 						skipping_binary_data = False
 					else:
 						print "skipping binary data for %s" % (cmd0.lower(),)
@@ -523,6 +537,21 @@ class parser:
 					print "procedure %s, #%d" %(name, len(self.proc_list))
 					self.proc_list.append(name)
 					self.set_global(name, self.proc)
+					continue
+				elif cmd1 == 'segment':
+					name = cmd0.lower()
+					self.segment = name
+
+					binary_width = 1
+					offset = int(len(self.binary_data)/16)
+					print "segement %s %x" %(name, offset)
+					self.cur_seg_offset = 16
+
+					self.c_data.append("{0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0}, // segment " + name + "\n")
+					self.h_data.append(" db " + name + "[16]; // segment " + name + "\n")
+
+					self.set_global(name, op.var(binary_width, offset))
+
 					continue
 			if (self.proc):
 				self.proc.add(line)

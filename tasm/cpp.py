@@ -87,12 +87,21 @@ class cpp:
 		self.proc_addr = []
 		self.used_data_offsets = set()
 		self.methods = []
+		self.pointer_flag = False
 		self.fd.write("""%s
 #include "asm.c"
 #include \"%s\"
 
+void _start();
+
+int main()
+{
+	_start();
+	return(0);
+}
 //namespace %s {
 """ %(banner, header, namespace))
+		self.expr_size = 0
 
 	def expand_cb(self, match):
 		name = match.group(0).lower()
@@ -111,7 +120,7 @@ class cpp:
 			except:
 				pass
 			else:
-				print "OFFSET = %d" %offset
+				print "OFFSET = %s" %offset
 				self.indirection = 0
 				self.used_data_offsets.add((name,offset))
 				return "offset_%s" % (name,)
@@ -135,13 +144,15 @@ class cpp:
 			size = g.size
 			if size == 0:
 				raise Exception("invalid var '%s' size %u" %(name, size))
-			if self.indirection == 0:
-				if size == 1:
-					value = "data.byte(k%s)" %(name.capitalize())
-				elif size == 2:
-					value = "data.word(k%s)" %(name.capitalize())
-				elif size == 4:
-					value = "data.dword(k%s)" %(name.capitalize())
+			if self.indirection == 0 or self.indirection == 1: # x0r self.indirection == 1 ??
+				if (self.expr_size != 0 and self.expr_size != size) or g.elements > 1:
+					self.pointer_flag = True
+					value = "(db*)&m.%s" %(name)
+					print "value %s" %value
+				else:
+					value = "m." + name
+				if self.indirection == 1:
+					self.indirection = 0
 			elif self.indirection == -1:
 				value = "%s" %g.offset
 				self.indirection = 0
@@ -154,45 +165,59 @@ class cpp:
 		print 'get_size("%s")' %expr
 		try:
 			v = self.context.parse_int(expr)
-			print 'get_size try'
-			return 1 if v < 256 else 2
+			size = 0
+			if v < 0:
+				raise Exception("negative not handled yet")
+			elif v < 256:
+				size = 1
+			elif v < 65536:
+				size = 2
+			elif v < 4294967296:
+				size = 4
+			print 'get_size res %d' %size
+			return size
 		except:
 			pass
 
 		if re.match(r'byte\s+ptr\s', expr) is not None:
-			print 'get_size 1'
+			print 'get_size res 1'
 			return 1
 
 		if re.match(r'word\s+ptr\s', expr) is not None:
-			print 'get_size 2'
+			print 'get_size res 2'
 			return 2
 
 		if re.match(r'dword\s+ptr\s', expr) is not None:
-			print 'get_size 4'
+			print 'get_size res 4'
 			return 4
 
 		if len(expr) == 2 and expr[0] in ['a', 'b', 'c', 'd'] and expr[1] in ['h', 'l']:
-			print 'get_size 1'
+			print 'get_size res 1'
 			return 1
-		if expr in ['ax', 'bx', 'cx', 'dx', 'si', 'di', 'sp', 'bp', 'ds', 'cs', 'es', 'fs']:
-			print 'get_size 2'
+		if expr in ['ax', 'bx', 'cx', 'dx', 'si', 'di', 'sp', 'bp', 'ds', 'cs', 'es', 'fs', 'gs']:
+			print 'get_size res 2'
 			return 2
 		if expr in ['eax', 'ebx', 'ecx', 'edx', 'esi', 'edi', 'esp', 'ebp']:
-			print 'get_size 4'
+			print 'get_size res 4'
 			return 4
+
+		m = re.match(r'\[([a-zA-Z_]\w*)\]', expr)
+		if m is not None:
+			expr = m.group(1).strip()
 
 		m = re.match(r'[a-zA-Z_]\w*', expr)
 		if m is not None:
-			print 'get_size match []'
+			print 'expr match some a-z'
 			name = m.group(0)
+			print 'name = %s' %name
 			try:
 				g = self.context.get_global(name)
-				print 'get_size %d' %g.size
+				print 'get_size res %d' %g.size
 				return g.size
 			except:
 				pass
 
-		print 'get_size 0'
+		print 'get_size res 0'
 		return 0
 
 	def expand_equ_cb(self, match):
@@ -215,6 +240,8 @@ class cpp:
 		expr = expr.strip()
 
 		size = self.get_size(expr) if def_size == 0 else def_size
+		self.expr_size = size
+		#print "expr \"%s\" %d" %(expr, size)
 		indirection = 0
 		seg = None
 		reg = True
@@ -282,25 +309,48 @@ class cpp:
 		if match_id:
 			print "BEFORE: %d %s" %(indirection, expr)
 			self.indirection = indirection
+			self.pointer_flag = False
 			expr = re.sub(r'\b[a-zA-Z_][a-zA-Z0-9_]+\b', self.expand_cb, expr)
+			print "AFTER: %d %s" %(self.indirection, expr)
+			print "is a pointer %d expr_size %d" %(self.pointer_flag, self.expr_size)
+			if self.pointer_flag:
+				if self.expr_size == 1:  # x0r
+					expr = "*(db*)(%s)" %(expr)
+				elif self.expr_size == 2:
+					expr = "*(dw*)(%s)" %(expr)
+				elif self.expr_size == 4:
+					expr = "*(dd*)(%s)" %(expr)
+
+			self.pointer_flag = False
 			indirection = self.indirection
-			print "AFTER: %d" %indirection
+			print "AFTER: %d %s" %(indirection, expr)
 
 		if indirection == 1:
 			if size == 1:
-				expr = "%s.byte(%s)" %(seg_prefix, expr)
+				expr = "*(db*)(raddr(%s,%s))" %(seg_prefix, expr)
 			elif size == 2:
-				expr = "%s.word(%s)" %(seg_prefix, expr)
+				expr = "*(dw*)(raddr(%s,%s))" %(seg_prefix, expr)
 			elif size == 4:
-				expr = "%s.dword(%s)" %(seg_prefix, expr)
+				expr = "*(dd*)(raddr(%s,%s))" %(seg_prefix, expr)
 			else:
 				expr = "@invalid size 0"
+			print "expr: %s" %expr
 		elif indirection == 0:
 			pass
 		elif indirection == -1:
 			expr = "&%s" %expr
 		else:
 			raise Exception("invalid indirection %d" %indirection)
+		return expr
+
+	def extract_brackets(self, expr):
+		expr = expr.strip()
+		print "extract_brackets %s" %expr
+		m = re.match(r'\[(.*)\]$', expr)
+		if m is not None:
+			#indirection += 1
+			expr = m.group(1).strip()
+		print "extract_brackets res: %s" %expr
 		return expr
 
 	def mangle_label(self, name):
@@ -449,9 +499,17 @@ class cpp:
 		src = self.expand(src)
 		self.body += "\tR(MUL(%s));\n" %(src)
 
+	def _imul(self, src):
+		src = self.expand(src)
+		self.body += "\tR(IMUL(%s));\n" %(src)
+
 	def _div(self, src):
 		src = self.expand(src)
 		self.body += "\tR(DIV(%s));\n" %(src)
+
+	def _idiv(self, src):
+		src = self.expand(src)
+		self.body += "\tR(IDIV(%s));\n" %(src)
 
 	def _inc(self, dst):
 		dst = self.expand(dst)
@@ -601,10 +659,17 @@ class cpp:
 
 			self.proc_addr.append((name, self.proc.offset))
 			self.body = str()
+			'''
 			if name in self.function_name_remapping:
 				self.body += "void %sContext::%s() {\n" %(self.namespace, self.function_name_remapping[name]);
 			else:
 				self.body += "void %sContext::%s() {\n" %(self.namespace, name);
+			'''
+			if name in self.function_name_remapping:
+				self.body += "void %s() {\n" %(self.function_name_remapping[name]);
+			else:
+				self.body += "void %s() {\n" %(name);
+
 			print name
 			self.proc.optimize()
 			self.unbounded = []
@@ -733,8 +798,8 @@ class cpp:
 				self.hd.write("static const uint16_t addr_%s = 0x%04x;\n" %(name, addr))
 
 
-		for name,addr in self.used_data_offsets:
-			self.hd.write("static const uint16_t offset_%s = 0x%04x;\n" %(name, addr))
+		#for name,addr in self.used_data_offsets:
+		#	self.hd.write("static const uint16_t offset_%s = 0x%04x;\n" %(name, addr))
 
 		offsets = []
 		for k, v in self.context.get_globals().items():
@@ -801,7 +866,7 @@ public:
 
 #x0r
 	def _lea(self, dst, src):
-		self.body += "\tR(LEA(%s, %s));\n" %self.parse2(dst, src)
+		self.body += "\tR(%s = %s);\n" %(dst, self.extract_brackets(src))
 
 
 	def _adc(self, dst, src):
@@ -810,16 +875,16 @@ public:
 
 	def _setnz(self, dst):
 		dst = self.expand(dst)
-		self.body += "\tR(SETNZ(%s))\n" %(dst, dst)
+		self.body += "\tR(SETNZ(%s))\n" %(dst)
 
 
 	def _setz(self, dst):
 		dst = self.expand(dst)
-		self.body += "\tR(SETZ(%s))\n" %(dst, dst)
+		self.body += "\tR(SETZ(%s))\n" %(dst)
 
 	def _setb(self, dst):
 		dst = self.expand(dst)
-		self.body += "\tR(SETB(%s)\n" %(dst, dst)
+		self.body += "\tR(SETB(%s)\n" %(dst)
 
 	def _sbb(self, dst, src):
 		self.body += "\tR(SBB(%s, %s));\n" %self.parse2(dst, src)
@@ -843,7 +908,7 @@ public:
 
 
 	def _sar(self, dst, src):
-		self.body += "\tR(SAR(%s%s));\n" %self.parse2(dst, src)
+		self.body += "\tR(SAR(%s, %s));\n" %self.parse2(dst, src)
 
 	def _repe(self):
 		self.body += "\tREPE_"

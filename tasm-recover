@@ -23,6 +23,7 @@
 
 from tasm.parser import parser
 from tasm.cpp import cpp
+import sys, re
 
 p = parser(skip_binary_data = [
 	# These data blobs are not output
@@ -30,10 +31,17 @@ p = parser(skip_binary_data = [
 #	'characterset1',
 	])
 p.strip_path = 3
-#context = p.parse('iplay_masm_.asm')
-context = p.parse('addsub.asm')
+name = sys.argv[1]
+context = p.parse(name)
+#context = p.parse('addsub.asm')
 p.link()
-generator = cpp(context, "InertiaPlayer", blacklist = [
+
+
+m = re.match(r'(.*?)\.asm', name.lower())
+if m is not None:
+	name = m.group(1).strip()
+
+generator = cpp(context, name, blacklist = [
 	# These functions are not processed
 
 #	'aboutturn',
