@@ -31,7 +31,7 @@ class proc:
 		self.stmts = []
 		self.labels = set()
 		self.retlabels = set()
-		self.__label_re = re.compile(r'^(\S+)::?(.*)$')
+		self.__label_re = re.compile(r'^([\S@]+)::?(.*)$')
 		self.offset = proc.last_addr
 		proc.last_addr += 4
 
@@ -95,6 +95,7 @@ class proc:
 		while len(self.stmts) and isinstance(self.stmts[-1], op.label):
 			print "stripping last label"
 			self.stmts.pop()
+		'''
 		#mark labels that directly precede a ret
 		for i in range(len(self.stmts)):
 			if not isinstance(self.stmts[i], op.label):
@@ -151,6 +152,7 @@ class proc:
 					j += 1
 				if j == len(self.stmts) or isinstance(self.stmts[j], op._ret):
 					self.stmts[i] = op._nop(None)
+		'''
 
 		self.optimize_sequence(op._stosb);
 		self.optimize_sequence(op._stosw);
@@ -169,6 +171,7 @@ class proc:
 
 		r = self.__label_re.search(stmt)
 		if r is not None:
+			print "add label %s" %r.group(1)
 			#label
 			self.add_label(r.group(1).lower())
 			#print "remains: %s" %r.group(2)

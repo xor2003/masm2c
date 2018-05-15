@@ -29,9 +29,10 @@ class Unsupported(Exception):
 	pass
 
 class var:
-	def __init__(self, size, offset):
+	def __init__(self, size, offset, name=""):
 		self.size = size
 		self.offset = offset
+		self.name = name
 
 class const:
 	def __init__(self, value):
@@ -257,6 +258,12 @@ class _jz(basejmp):
 	def visit(self, visitor):
 		visitor._jz(self.label)
 
+class _je(basejmp):
+	def __init__(self, label):
+		self.label = label
+	def visit(self, visitor):
+		visitor._jz(self.label)
+
 class _jc(basejmp):
 	def __init__(self, label):
 		self.label = label
@@ -380,6 +387,12 @@ class _lodsw(baseop):
 		pass
 	def visit(self, visitor):
 		visitor._lodsw()
+
+class _lodsd(baseop):
+	def __init__(self, arg):
+		pass
+	def visit(self, visitor):
+		visitor._lodsd()
 
 class _stosd(baseop):
 	def __init__(self, arg):
@@ -558,15 +571,15 @@ class _lfs(baseop):
 
 class _repe(baseop):
 	def __init__(self, arg):
-		pass
+		self.arg = self.parse_arg(arg)
 	def visit(self, visitor):
-		visitor._repe()
+		visitor._repe(self.arg)
 
 class _repne(baseop):
 	def __init__(self, arg):
-		pass
+		self.arg = self.parse_arg(arg)
 	def visit(self, visitor):
-		visitor._repne()
+		visitor._repne(self.arg)
 
 class _adc(baseop):
 	def __init__(self, arg):
@@ -683,6 +696,18 @@ class _bt(baseop):
 	def visit(self, visitor):
 		visitor._bt(self.dst, self.src)
 
+class _btc(baseop):
+	def __init__(self, arg):
+		self.dst, self.src = self.split(arg)
+	def visit(self, visitor):
+		visitor._btc(self.dst, self.src)
+
+class _btr(baseop):
+	def __init__(self, arg):
+		self.dst, self.src = self.split(arg)
+	def visit(self, visitor):
+		visitor._btr(self.dst, self.src)
+
 class _bts(baseop):
 	def __init__(self, arg):
 		self.dst, self.src = self.split(arg)
@@ -736,4 +761,10 @@ class _idiv(baseop):
 		self.arg = self.parse_arg(arg)
 	def visit(self, visitor):
 		visitor._idiv(self.arg)
+
+class _not(baseop):
+	def __init__(self, arg):
+		self.arg = self.parse_arg(arg)
+	def visit(self, visitor):
+		visitor._not(self.arg)
 

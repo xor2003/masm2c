@@ -88,6 +88,7 @@ class cpp:
 		self.used_data_offsets = set()
 		self.methods = []
 		self.pointer_flag = False
+		self.lea = False
 		self.fd.write("""%s
 #include "asm.c"
 #include \"%s\"
@@ -104,14 +105,15 @@ int main()
 		self.expr_size = 0
 
 	def expand_cb(self, match):
-		name = match.group(0).lower()
+		name_original = match.group(0)
+		name = name_original.lower()
 		print "expand_cb name = %s indirection = %u" %(name, self.indirection)
 		if len(name) == 2 and \
-			((name[0] in ['a', 'b', 'c', 'd'] and name[1] in ['h', 'x', 'l']) or name in ['si', 'di', 'bp', 'es', 'ds', 'cs', 'fs', 'gs']):
+			((name[0] in ['a', 'b', 'c', 'd'] and name[1] in ['x', 'h', 'l']) or name in ['si', 'di', 'bp', 'es', 'ds', 'cs', 'fs', 'gs', 'ss']):
 			return "%s" %name
 
-		if len(name) == 3 and \
-			(name in ['eax', 'ebx', 'ecx', 'edx', 'esi', 'edi', 'ebp', 'esp']):
+		elif len(name) == 3 and \
+			(name in ['eax', 'ebx', 'ecx', 'edx', 'esi', 'edi', 'ebp', 'esp', 'eip']):
 			return "%s" %name
 
 		if self.indirection == -1:
@@ -131,26 +133,46 @@ int main()
 			print "expand_cb exception on name = %s" %name
 			return ""
 			
+		print g
 		if isinstance(g, op.const):
+			print "it is const"
 			value = self.expand_equ(g.value)
 			print "equ: %s -> %s" %(name, value)
 		elif isinstance(g, proc.proc):
+			print "it is proc"
 			if self.indirection != -1:
 				print "proc %s offset %s" %(str(proc.proc), str(g.offset))
 				raise Exception("invalid proc label usage")
 			value = str(g.offset)
 			self.indirection = 0
+		elif isinstance(g, op.var):
+			print "it is var"
+			size = g.size
+			if size == 0:
+				raise Exception("invalid var '%s' size %u" %(name, size))
+			value = "offsetof(struct Mem,%s)" %(name_original)
+			self.indirection = 1
+			#	self.indirection = 0
 		else:
 			size = g.size
 			if size == 0:
 				raise Exception("invalid var '%s' size %u" %(name, size))
 			if self.indirection == 0 or self.indirection == 1: # x0r self.indirection == 1 ??
+				'''
 				if (self.expr_size != 0 and self.expr_size != size) or g.elements > 1:
 					self.pointer_flag = True
-					value = "(db*)&m.%s" %(name)
+					if self.lea == False:
+						value = "(db*)&m.%s" %(name_original)
+					else:
+						value = "offsetof(struct Mem,%s)" %(name_original)
 					print "value %s" %value
 				else:
-					value = "m." + name
+					if self.lea == False:
+						value = "m." + name_original
+					else:
+						value = "offsetof(struct Mem,%s)" %(name_original)
+				'''
+				value = "offsetof(struct Mem,%s)" %(name_original)
 				if self.indirection == 1:
 					self.indirection = 0
 			elif self.indirection == -1:
@@ -217,6 +239,11 @@ int main()
 			except:
 				pass
 
+		ex = string.replace(expr, "\\\\", "\\")
+		m = re.match(r'\'(.+)\'$', ex)  # char constants
+		if m is not None:
+			return len(m.group(1))
+
 		print 'get_size res 0'
 		return 0
 
@@ -234,8 +261,8 @@ int main()
 		expr = re.sub(r'\b([0-9][a-fA-F0-9]*)h', '0x\\1', expr)
 		return "(%s)" %expr
 
-	def expand(self, expr, def_size = 0):
-		print "EXPAND \"%s\"" %expr
+	def expand(self, expr, def_size = 0, destination = False):
+		print "EXPAND(expr:\"%s\")" %expr
 
 		expr = expr.strip()
 
@@ -247,12 +274,15 @@ int main()
 		reg = True
 
 		ex = string.replace(expr, "\\\\", "\\")
-		m = re.match(r'\'(..+)\'$', ex)
+		m = re.match(r'\'(.+)\'$', ex)  # char constants
 		if m is not None:
+			return expr
+			'''
 			s = ""
 			for c in m.group(1):
 				s = '{:02X}'.format(ord(c)) + s
 			expr = "0x" + s
+			'''
 
 		m = re.match(r'seg\s+(.*?)$', expr)
 		if m is not None:
@@ -260,11 +290,15 @@ int main()
 
 		match_id = True
 		#print "is it offset ~%s~" %expr
-		m = re.match(r'offset\s+(.*?)$', expr)
+		prog = re.compile(r'offset\s+(.*?)$', re.I)
+		m = prog.match(expr)
 		if m is not None:
 			indirection -= 1
 			expr = m.group(1).strip()
-		#print "after is it offset ~%s~" %expr
+			expr = re.sub(r'\b[a-zA-Z_][a-zA-Z0-9_]*\b', self.expand_cb, expr) # parse each item
+			#expr = "offsetof(struct Mem,%s)" %expr
+			print "after is it offset ~%s~" %expr
+			return expr
 
 		m = re.match(r'byte\s+ptr\s+(.*?)$', expr)
 		if m is not None:
@@ -291,7 +325,12 @@ int main()
 		else:
 			seg_prefix = "ds"
 
-		m = re.match(r'((e?[abcd][xhl])|si|di|bp|sp)([\+-].*)?$', expr)
+		m = re.match(r'\[(.*)\]$', expr)
+		if m is not None:
+			indirection += 1
+			expr = m.group(1).strip()
+
+		m = re.match(r'(e?([abcd][xhl])|si|di|bp|sp)([\+-].*)?$', expr)
 		if m is not None:
 			reg = m.group(1)
 			plus = m.group(3)
@@ -303,29 +342,31 @@ int main()
 			#print "COMMON_REG: ", reg, plus
 			expr = "%s%s" %(reg, plus)
 
-		expr = re.sub(r'\b([0-9][a-fA-F0-9]*)h', '0x\\1', expr)
-		expr = re.sub(r'\b([0-1]+)b', parse_bin, expr)
-		expr = re.sub(r'"(.)"', '\'\\1\'', expr)
+		expr = re.sub(r'\b([0-9][a-fA-F0-9]*)[Hh]', '0x\\1', expr) # convert hex
+		expr = re.sub(r'\b([0-1]+)[Bb]', parse_bin, expr) # convert binary
+		expr = re.sub(r'"(.)"', '\'\\1\'', expr) # convert string
 		if match_id:
-			print "BEFORE: %d %s" %(indirection, expr)
+			print "EXPAND() BEFORE: %d %s" %(indirection, expr)
 			self.indirection = indirection
 			self.pointer_flag = False
-			expr = re.sub(r'\b[a-zA-Z_][a-zA-Z0-9_]+\b', self.expand_cb, expr)
-			print "AFTER: %d %s" %(self.indirection, expr)
+			expr = re.sub(r'\b[a-zA-Z_][a-zA-Z0-9_]*\b', self.expand_cb, expr) # parse each item
+			print "EXPAND() AFTER: %d %s" %(self.indirection, expr)
 			print "is a pointer %d expr_size %d" %(self.pointer_flag, self.expr_size)
-			if self.pointer_flag:
+			'''
+			if destination and not self.lea:
 				if self.expr_size == 1:  # x0r
 					expr = "*(db*)(%s)" %(expr)
 				elif self.expr_size == 2:
 					expr = "*(dw*)(%s)" %(expr)
 				elif self.expr_size == 4:
 					expr = "*(dd*)(%s)" %(expr)
-
+			'''
 			self.pointer_flag = False
 			indirection = self.indirection
 			print "AFTER: %d %s" %(indirection, expr)
 
 		if indirection == 1:
+		   if not (self.lea and not destination):
 			if size == 1:
 				expr = "*(db*)(raddr(%s,%s))" %(seg_prefix, expr)
 			elif size == 2:
@@ -343,22 +384,14 @@ int main()
 			raise Exception("invalid indirection %d" %indirection)
 		return expr
 
-	def extract_brackets(self, expr):
-		expr = expr.strip()
-		print "extract_brackets %s" %expr
-		m = re.match(r'\[(.*)\]$', expr)
-		if m is not None:
-			#indirection += 1
-			expr = m.group(1).strip()
-		print "extract_brackets res: %s" %expr
-		return expr
-
 	def mangle_label(self, name):
 		name = name.lower()
 		return re.sub(r'\$', '_tmp', name)
 
 	def resolve_label(self, name):
 		name = name.lower()
+		name = re.sub(r'@', "arb", name)
+
 		if not name in self.proc.labels:
 			try:
 				offset, proc, pos = self.context.get_offset(name)
@@ -386,6 +419,10 @@ int main()
 
 	def jump_to_label(self, name):
 		jump_proc = False
+		print "label %s" %name
+		prog = re.compile(r'^\s*(near|far|short)\s*', re.I)
+		name = re.sub(prog, '', name)
+		print "label %s" %name
 		if name in self.blacklist:
 			jump_proc = True
 
@@ -440,7 +477,7 @@ int main()
 		if src_size == 0:
 			src_size = dst_size
 
-		dst = self.expand(dst, dst_size)
+		dst = self.expand(dst, dst_size, destination = True)
 		src = self.expand(src, src_size)
 		return dst, src
 
@@ -475,7 +512,7 @@ int main()
 		self.body += "\tR(NEG(%s));\n" %(dst)
 
 	def _cbw(self):
-		self.body += "\tR(CBW());\n"
+		self.body += "\tR(CBW);\n"
 
 	def _shr(self, dst, src):
 		self.body += "\tR(SHR(%s, %s));\n" %self.parse2(dst, src)
@@ -596,28 +633,31 @@ int main()
 		self.body += "\tREP_"
 
 	def _lodsb(self):
-		self.body += "LODSB();\n"
+		self.body += "LODSB;\n"
 
 	def _lodsw(self):
-		self.body += "LODSW();\n"
+		self.body += "LODSW;\n"
+
+	def _lodsd(self):
+		self.body += "LODSD;\n"
 
 	def _stosb(self, n, clear_cx):
-		self.body += "STOSB(%s%s);\n" %("" if n == 1 else n, ", true" if clear_cx else "")
+		self.body += "STOSB;\n" #%("" if n == 1 else n, ", true" if clear_cx else "")
 
 	def _stosw(self, n, clear_cx):
-		self.body += "STOSW(%s%s);\n" %("" if n == 1 else n, ", true" if clear_cx else "")
+		self.body += "STOSW;\n" #%("" if n == 1 else n, ", true" if clear_cx else "")
 
 	def _stosd(self, n, clear_cx):
-		self.body += "STOSD(%s%s);\n" %("" if n == 1 else n, ", true" if clear_cx else "")
+		self.body += "STOSD;\n" #%("" if n == 1 else n, ", true" if clear_cx else "")
 
 	def _movsb(self, n, clear_cx):
-		self.body += "MOVSB(%s%s);\n" %("" if n == 1 else n, ", true" if clear_cx else "")
+		self.body += "MOVSB;\n"# %("" if n == 1 else n, ", true" if clear_cx else "")
 
 	def _movsw(self, n, clear_cx):
-		self.body += "MOVSW(%s%s);\n" %("" if n == 1 else n, ", true" if clear_cx else "")
+		self.body += "MOVSW;\n"# %("" if n == 1 else n, ", true" if clear_cx else "")
 
 	def _movsd(self, n, clear_cx):
-		self.body += "MOVSD(%s%s);\n" %("" if n == 1 else n, ", true" if clear_cx else "")
+		self.body += "MOVSD;\n"# %("" if n == 1 else n, ", true" if clear_cx else "")
 
 	def _stc(self):
 		self.body += "\tR(STC);\n"
@@ -674,7 +714,7 @@ int main()
 			self.proc.optimize()
 			self.unbounded = []
 			self.proc.visit(self, skip)
-
+			'''
 			#adding remaining labels:
 			for i in xrange(0, len(self.unbounded)):
 				u = self.unbounded[i]
@@ -701,6 +741,7 @@ int main()
 				print "re-optimizing..."
 				self.proc.optimize(keep_labels=[label])
 				self.proc.visit(self, start)
+			'''
 			self.body += "}\n";
 			if name not in self.skip_output:
 				self.translated.insert(0, self.body)
@@ -824,9 +865,9 @@ int main()
 
 		self.hd.write(
 """
-class %sContext {
-public:
-	%sContext() {}
+//class %sContext {
+//public:
+//	%sContext() {}
 
 //	void _start();
 """
@@ -846,7 +887,7 @@ public:
 				else:
 					self.hd.write("\tvoid %s();\n" %p)
 
-		self.hd.write("};\n\n//} // End of namespace DreamGen\n\n#endif\n")
+		self.hd.write("//};\n\n//} // End of namespace DreamGen\n\n#endif\n")
 		self.hd.close()
 
 		#self.fd.write("void %sContext::__start() { %s\t%s(); \n}\n" %(self.namespace, data_impl, start))
@@ -866,7 +907,9 @@ public:
 
 #x0r
 	def _lea(self, dst, src):
-		self.body += "\tR(%s = %s);\n" %(dst, self.extract_brackets(src))
+		self.lea = True
+		self.body += "\tR(%s = %s);\n" %(dst, self.expand(src))
+		self.lea = False
 
 
 	def _adc(self, dst, src):
@@ -884,7 +927,7 @@ public:
 
 	def _setb(self, dst):
 		dst = self.expand(dst)
-		self.body += "\tR(SETB(%s)\n" %(dst)
+		self.body += "\tR(SETB(%s))\n" %(dst)
 
 	def _sbb(self, dst, src):
 		self.body += "\tR(SBB(%s, %s));\n" %self.parse2(dst, src)
@@ -895,10 +938,15 @@ public:
 	def _bt(self, dst, src):
 		self.body += "\tR(BT(%s, %s));\n" %self.parse2(dst, src)
 
+	def _btc(self, dst, src):
+		self.body += "\tR(BTC(%s, %s));\n" %self.parse2(dst, src)
+
+	def _btr(self, dst, src):
+		self.body += "\tR(BTR(%s, %s));\n" %self.parse2(dst, src)
 
 	def _bts(self, dst, src):
 		self.a, self.b = self.parse2(dst, src)
-		self.body += "\tR(BTS(%s, %s);\n" %(self.a, self.b)
+		self.body += "\tR(BTS(%s, %s));\n" %(self.a, self.b)
 
 	def _ror(self, dst, src):
 		self.body += "\tR(ROR(%s, %s));\n" %self.parse2(dst, src)
@@ -910,11 +958,11 @@ public:
 	def _sar(self, dst, src):
 		self.body += "\tR(SAR(%s, %s));\n" %self.parse2(dst, src)
 
-	def _repe(self):
-		self.body += "\tREPE_"
+	def _repe(self,arg):
+		self.body += "\tREPE_"+arg.upper()+";\n"
 
-	def _repne(self):
-		self.body += "\tREPNE_"
+	def _repne(self,arg):
+		self.body += "\tREPNE_"+arg.upper()+";\n"
 
 	def _shrd(self, dst, src, c):
 		self.body += "\tSHRD(%s, %s, " %self.parse2(dst, src)
@@ -970,3 +1018,7 @@ public:
 	def _int(self, dst):
 		dst = self.expand(dst)
 		self.body += "\tR(INT(%s));\n" %(dst)
+
+	def _not(self, dst):
+		dst = self.expand(dst)
+		self.body += "\tR(NOT(%s));\n" %(dst)

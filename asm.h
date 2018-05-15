@@ -124,17 +124,19 @@ typedef union registry16Bits
 #define NB_SELECTORS 128
 
 //#define PUSHAD memcpy (&m.stack[m.stackPointer], &m.eax.dd.val, sizeof (dd)*8); m.stackPointer+=sizeof(dd)*8; assert(m.stackPointer<STACK_SIZE)
+#define PUSHAD {PUSH(eax);PUSH(ebx);PUSH(ecx);PUSH(edx); PUSH(esi);PUSH(edi);PUSH(ebp);PUSH(ebp);}
 
 //#define POPAD m.stackPointer-=sizeof(dd)*8; memcpy (&m.eax.dd.val, &m.stack[m.stackPointer], sizeof (dd)*8)
+#define POPAD {POP(ebp);POP(ebp);POP(edi);POP(esi); POP(edx);POP(ecx);POP(ebx);POP(eax); }
 
 #define PUSH(a) memcpy (&stack[stackPointer], &a, sizeof (a)); stackPointer+=sizeof(a); assert(stackPointer<STACK_SIZE)
 
 #define POP(a) stackPointer-=sizeof(a); memcpy (&a, &stack[stackPointer], sizeof (a))
 
-#define AFFECT_ZF(a) ZF=(a==0)
-#define AFFECT_CF(a) CF=a
+#define AFFECT_ZF(a) {ZF=(a==0);}
+#define AFFECT_CF(a) {CF=a;}
 #define ISNEGATIVE(a) (a & (1 << (sizeof(a)*8-1)))
-#define AFFECT_SF(a) SF=ISNEGATIVE(a) //(a>>(nbBits-1))&1
+#define AFFECT_SF(a) {SF=ISNEGATIVE(a);} //(a>>(nbBits-1))&1
 
 // TODO: add missings affected flags on CMP
 #define CMP(a,b) {AFFECT_ZF(a-b); \
@@ -142,13 +144,13 @@ typedef union registry16Bits
 		AFFECT_SF(a-b);}
 #define OR(a,b) {a=a|b; \
 		AFFECT_ZF(a); \
-		AFFECT_SF(nbBits, a)}
+		AFFECT_SF(a)}
 #define XOR(a,b) {a=a^b; \
 		AFFECT_ZF(a); \
-		AFFECT_SF(nbBits, a)}
+		AFFECT_SF(a)}
 #define AND(a,b) {a=a&b; \
 		AFFECT_ZF(a); \
-		AFFECT_SF(nbBits, a)}
+		AFFECT_SF(a)}
 
 #define NEG(a) {AFFECT_CF(a!=0); \
 		a=-a;}
@@ -158,12 +160,12 @@ typedef union registry16Bits
 
 #define SHR(a,b) a=a>>b
 #define SHL(a,b) a=a<<b
-#define ROR(a,b) a=(a>>b | a<<(nbBits-b))
-#define ROL(a,b) a=(a<<b | a>>(nbBits-b))
+#define ROR(a,b) a=(a>>b | a<<(sizeof(a)*8-b))
+#define ROL(a,b) a=(a<<b | a>>(sizeof(a)*8-b))
 
-#define SHRD(a,b,c) a=(a>>c) | ( (b& ((1<<c)-1) ) << (nbBits-c) ) //TODO
+#define SHRD(a,b,c) a=(a>>c) | ( (b& ((1<<c)-1) ) << (sizeof(a)*8-c) ) //TODO
 
-#define SAR(a,b) a=(( (a & (1 << (nbBits-1)))?-1:0)<<(nbBits-(0x1f & b))) | (a >> (0x1f & b))  // TODO
+#define SAR(a,b) a=(( (a & (1 << (sizeof(a)*8-1)))?-1:0)<<(sizeof(a)*8-(0x1f & b))) | (a >> (0x1f & b))  // TODO
 
 #define READDDp(a) ((dd *) &m.a)
 #define READDWp(a) ((dw *) &m.a)
@@ -210,9 +212,9 @@ typedef union registry16Bits
 
 // TODO: should affects OF, SF, ZF, AF, and PF
 #define INC(a) {a=a+1; \
-		AFFECT_ZF(a)}
+		AFFECT_ZF(a);}
 #define DEC(a) {a=a-1; \
-		AFFECT_ZF(a)}
+		AFFECT_ZF(a);}
 
 #define NOT(a) a= ~a;// AFFECT_ZF(a) //TODO
 #define SETNZ(a) a= (!ZF)&1; //TODO
@@ -236,7 +238,7 @@ typedef union registry16Bits
 #define JLE(label) if (ZF || SF) GOTOLABEL(label) // TODO
 #define JL(label) if (SF) GOTOLABEL(label) // TODO
 
-#define JCXZ(label) if (ecx.dw.val == 0) GOTOLABEL(label) // TODO
+#define JCXZ(label) if (cx == 0) GOTOLABEL(label) // TODO
 #define JECXZ(label) if (ecx == 0) GOTOLABEL(label) // TODO
 
 
@@ -255,13 +257,13 @@ typedef union registry16Bits
 
 #define MOV(dest,src) dest = src
 
-#define LFS(dest,src) dest = src; fs.dw.val = *(dw*)((char*)src + nbBits/8)
-#define LES(dest,src) dest = src; es.dw.val = *(dw*)((char*)src + nbBits/8)
-#define LGS(dest,src) dest = src; gs.dw.val = *(dw*)((char*)src + nbBits/8)
-#define LDS(dest,src) dest = src; ds.dw.val = *(dw*)((char*)src + nbBits/8)
+#define LFS(dest,src) dest = src; fs= *(dw*)((char*)src + sizeof(dest))
+#define LES(dest,src) dest = src; es = *(dw*)((char*)src + sizeof(dest))
+#define LGS(dest,src) dest = src; gs = *(dw*)((char*)src + sizeof(dest))
+#define LDS(dest,src) dest = src; ds = *(dw*)((char*)src + sizeof(dest))
 
 #define MOVZX(dest,src) dest = src
-#define MOVSX(dest,src) if (ISNEGATIVE(nbBitsSrc,src)) { dest = ((-1 ^ (( 1 <<nbBitsSrc )-1)) | src ); } else { dest = src; }
+#define MOVSX(dest,src) if (ISNEGATIVE(src)) { dest = ((-1 ^ (( 1 << (sizeof(src)*8) )-1)) | src ); } else { dest = src; }
 
 #define BT(dest,src) CF = dest & (1 << src) //TODO
 #define BTS(dest,src) CF = dest & (1 << src); dest |= 1 << src
@@ -271,12 +273,12 @@ typedef union registry16Bits
 // LEA - Load Effective Address
 #define LEA(dest,src) dest = src
 
-#define XCHG(dest,src) XCHG(dest,src) //TODO
+#define XCHG(dest,src) std::swap(dest,src); //TODO
 
 // MOVSx (DF FLAG not implemented)
 #define MOVSS(a,ecx) src=realAddress(esi,ds); dest=realAddress(edi,es); \
 	if (labs(((char *)dest)-((char *)src))<=a) { \
-		for(i=0; i<ecx; i++) {  \
+		for(dd i=0; i<ecx; i++) {  \
 			src=realAddress(esi,ds); dest=realAddress(edi,es); \
 			memmove(dest,src,a); edi+=a; esi+=a; } \
 	} else { \
@@ -354,8 +356,8 @@ typedef union registry16Bits
 #define JMP(label) GOTOLABEL(label)
 #define GOTOLABEL(a) goto a
 
-#define LOOP(label) DEC(32,ecx); JNZ(label)
-#define LOOPE(label) --ecx; if (ecx!=0 && ZF) GOTOLABEL(label) //TODO
+#define LOOP(label) DEC(cx); JNZ(label)
+#define LOOPE(label) --cx; if (cx!=0 && ZF) GOTOLABEL(label) //TODO
 
 #define CLD DF=0
 #define STD DF=1

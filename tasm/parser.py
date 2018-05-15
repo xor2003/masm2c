@@ -22,7 +22,7 @@
 import os, re
 from proc import proc
 import lex
-import op
+import op, string
 
 import traceback
 import sys
@@ -72,7 +72,7 @@ class parser:
 		if len(name) == 0:
 			raise Exception("empty name is not allowed")
 		name = name.lower()
-		#print "adding global %s -> %s" %(name, value)
+		print "adding global %s -> %s" %(name, value)
 		if self.__globals.has_key(name):
 			raise Exception("global %s was already defined", name)
 		value.elements = elements
@@ -80,11 +80,13 @@ class parser:
 
 	def get_global(self, name):
 		name = name.lower()
+		print "get_global(%s)" %name
 		try:
 			g = self.__globals[name]
+			print g
 		except KeyError:
 			print "get_global KeyError %s" %(name)
-			raise Exception("KeyError")
+			raise KeyError
 		g.used = True
 		return g
 
@@ -163,7 +165,7 @@ class parser:
 		#print "~1~ %s" %v
 		v = v.strip()
 		#print "~2~ %s" %v
-		if re.match(r'[01]+b$', v):
+		if re.match(r'[01]+[Bb]$', v):
 			v = int(v[:-1], 2)
 			#print "~2~ %i" %v
 		if re.match(r'[\+-]?[0-9a-fA-F]+[Hh]$', v):
@@ -211,13 +213,13 @@ class parser:
 					v += base
 			except:
 				#global name
-				print "global/expr: %s" %v
+				#print "global/expr: %s" %v
 				try:
 					g = self.get_global(v)
 					v = g.offset
 				except:
-					print "unknown address %s" %(v)
-					self.link_later.append((self.cur_seg_offset + len(r), v))
+					#print "unknown address %s" %(v)
+					#self.link_later.append((self.cur_seg_offset + len(r), v))
 					v = 0
 		
 			for b in xrange(0, width):
@@ -228,14 +230,14 @@ class parser:
 
 	def convert_data_to_c(self, label, width, data):
 		""" Generate C formated data """
-		print "COMPACTING %s %d %s" %(label, width, data)
+		print "convert_data_to_c %s %d %s" %(label, width, data)
 		first = True
-		string = False
+		is_string = False
 		elements = 0
 		data_ctype = {1: 'db', 2: 'dw', 4: 'dd'}[width]
-		r = []
+		r = [""]
 		rh = []
-		base = 0x100 if width == 1 else 0x10000
+		base = {1: 0x100, 2: 0x10000, 4: 0x100000000}[width]
 		for v in data:
 			v = v.strip()
 			if width == 1 and (v[0] == "'"):
@@ -243,10 +245,11 @@ class parser:
 					raise Exception("invalid string %s" %v)
 				if width > 1:
 					raise Exception("string with data width more than 1") #we could allow it :)
+				v = string.replace(v, "''", "'")
 				for i in xrange(1, len(v) - 1):
 					r.append(v[i])
 
-				string = True
+				is_string = True
 				continue
 
 			
@@ -276,27 +279,40 @@ class parser:
 				v = self.parse_int(v)
 				#print "3: ~%s~" %v
 				#print "4: ~%s~" %v
-				if v < 0:
+
+				if v < 0: # negative values
+					#data_ctype = {1: 'int8_t', 2: 'int16_t', 4: 'int32_t'}[width]
 					v += base
+
 				#print "5: ~%s~" %v
 
 			except:
 				#global name
 				#traceback.print_stack(file=sys.stdout)
-				print "global/expr: ~%s~" %v
-				vv = v.split()
-				#print vv
-				if vv[0] == "offset": # pointer
-					#data_ctype += r"*"
-					data_ctype = "dw"
-					v = "&" + vv[1] + " - &" + self.segment
-					r.append(v);
-
 				#print "global/expr: ~%s~" %v
+				vv = v.split()
+				print vv
+				if vv[0] == "offset": # pointer
+					data_ctype = "dw"
+					#v = "&" + vv[1] + " - &" + self.segment	
+					v = vv[1]
+					#r.append(v);
+
+				print "global/expr: ~%s~" %v
 				try:
+					v = string.replace(v, 'offset ', '')
 					g = self.get_global(v)
-					v = g.offset
-				except:
+					if isinstance(g, op.const):
+						v = int(g.value)
+						if v < 0: # negative values
+							v += base
+					elif isinstance(g, op.var):
+						v = 'offsetof(struct Mem,' + g.name + ')'
+						if self.segment:
+							v += " - offsetof(struct Mem," + self.segment + ")"
+					else:
+						v = g.offset
+				except KeyError:
 					print "unknown address %s" %(v)
 					self.link_later.append((self.cur_seg_offset + len(r), v))
 					v = 0
@@ -306,8 +322,8 @@ class parser:
 			first = False
 
 		cur_data_type = 0
-		if string:
-			if len(r) >= 1 and r[-1] == 0:
+		if is_string:
+			if len(r)-1 >= 1 and r[-1] == 0:
 				cur_data_type = 1 # 0 terminated string
 			else:
 				cur_data_type = 2 # array string
@@ -344,10 +360,10 @@ class parser:
   	        vc = ""
 
 		if cur_data_type == 1: # 0 terminated string
-				vh = "char " + label + "[" + str(len(r)) + "]" 
+				vh = "char " + label + "[" + str(len(r)-1) + "]" 
 
 		elif cur_data_type == 2: # array string
-				vh = "char " + label + "[" + str(len(r)) + "]" 
+				vh = "char " + label + "[" + str(len(r)-1) + "]" 
 				vc = "{"
 
 		elif cur_data_type == 3: # number
@@ -359,7 +375,7 @@ class parser:
 
 		if cur_data_type == 1: # string
 				vv = "\""
-				for i in xrange(0, len(r)-1):
+				for i in xrange(1, len(r)-1):
 					if isinstance(r[i], int):
 						if r[i] == 13:
 							vv += r"\r"
@@ -370,12 +386,13 @@ class parser:
 					else:
 						vv += r[i]
 				vv += "\""
-				r = []
+				r = [""]
 				r.append(vv)
 
 		elif cur_data_type == 2: # array of char
 				vv = ""
-				for i in xrange(0, len(r)):
+				print r
+				for i in xrange(1, len(r)):
 					    if isinstance(r[i], int):
 						if r[i] == 13:
 							vv += r"'\r'"
@@ -384,27 +401,29 @@ class parser:
 						else:
 							vv += r"'" + str(r[i]) + r"'"
 					    else:
+						if r[i] in ["'", '"']:
+							r[i] = "\\" + r[i]
 						vv += "'" + r[i] + "'"
 					    if i != len(r)-1:
 						vv += ","
-				r = []
-				r.append(vv)
-
-		elif cur_data_type == 4: # array of numbers
-				vv = ""
-				for i in xrange(0, len(r)):
-					vv += str(r[i])
-					if i != len(r)-1:
-						vv += ","
-				r = []
+				r = [""]
 				r.append(vv)
 
 		elif cur_data_type == 3: # number
-				vv = str(r[0])
-				r = []
-				r.append(vv)
+				r[1] = str(r[1])
+				#r = []
+				#r.append(vv)
 
-		r.insert(0, vc)
+		elif cur_data_type == 4: # array of numbers
+				#vv = ""
+				for i in xrange(1, len(r)):
+					r[i] = str(r[i])
+					if i != len(r)-1:
+						r[i] += ","
+				#r = []
+				#r.append(vv)
+
+		r[0] = vc
 		rh.insert(0, vh)
 			# if it was array of numbers or array string
 		if cur_data_type == 4 or cur_data_type == 2:
@@ -433,11 +452,14 @@ class parser:
 				continue
 
 			#print line
-			m = re.match('(\w+)\s*?::?', line)
+			m = re.match('([@\w]+)\s*?::?', line)
 			if m is not None:
 				line = line[len(m.group(0)):].strip()
 				if self.visible():
 					name = m.group(1)
+					#print "~name: %s" %name
+					name = re.sub(r'@', "arb", name)
+					#print "~~name: %s" %name
 					if not (name.lower() in self.skip_binary_data):
 						print "offset %s -> %s" %(name, "&m." + name.lower() + " - &m." + self.segment)
 						if self.proc is not None:
@@ -456,23 +478,25 @@ class parser:
 				continue
 			
 			cmd0 = str(cmd[0])
-			if cmd0 == 'if':
+			cmd0l = cmd0.lower()
+			if cmd0l == 'if':
 				self.push_if(cmd[1])
 				continue
-			elif cmd0 == 'else':
+			elif cmd0l == 'else':
 				self.push_else()
 				continue
-			elif cmd0 == 'endif':
+			elif cmd0l == 'endif':
 				self.pop_if()
 				continue
 			
 			if not self.visible():
 				continue
 
-			if cmd0 == 'db' or cmd0 == 'dw' or cmd0 == 'dd':
+			if cmd0l == 'db' or cmd0l == 'dw' or cmd0l == 'dd':
 				arg = line[len(cmd0):].strip()
 				if not skipping_binary_data:
 					print "%d:1: %s" %(self.cur_seg_offset, arg) #fixme: COPYPASTE
+					cmd0 = cmd0.lower()
 					binary_width = {'b': 1, 'w': 2, 'd': 4}[cmd0[1]]
 					b = self.convert_data_to_blob(binary_width, lex.parse_args(arg))
 					self.binary_data += b
@@ -482,39 +506,42 @@ class parser:
 					self.c_data += c
 					self.h_data += h
 				continue
-			elif cmd0 == 'include':
+			elif cmd0l == 'include':
 				self.include(os.path.dirname(fname), cmd[1])
 				continue
-			elif cmd0 == 'endp' or (len(cmd) >= 2 and str(cmd[1]) == 'endp'):
+			elif cmd0l == 'endp' or (len(cmd) >= 2 and str(cmd[1].lower()) == 'endp'):
 				self.proc = None
 				continue
-			elif cmd0 == 'ends':
+			elif cmd0l == 'ends':
 				print "segement %s ends" %(self.segment)
 				self.segment = ""
 				continue
-			elif cmd0 == 'assume':
+			elif cmd0l == 'assume':
 				print "skipping: %s" %line
 				continue
-			elif cmd0 == 'rep':
+			elif cmd0l == 'rep':
 				self.proc.add(cmd0)
 				self.proc.add(" ".join(cmd[1:]))
 				continue
 			
 			if len(cmd) >= 3:
-				cmd1 = cmd[1]
-				if cmd1 == 'equ':
+				cmd1l = cmd[1].lower()
+				if cmd1l == 'equ':
 					if not (cmd0.lower() in self.skip_binary_data):
 						v = cmd[2]
-						self.set_global(cmd0, op.const(self.fix_dollar(v)))
+						vv = self.fix_dollar(v)
+						print "value %s" %vv
+						self.set_global(cmd0, op.const(vv))
 					else:
 						print "skipping binary data for %s" % (cmd0.lower(),)
 						skipping_binary_data = True
-				elif cmd1 == 'db' or cmd1 == 'dw' or cmd1 == 'dd':
+					continue
+				elif cmd1l == 'db' or cmd1l == 'dw' or cmd1l == 'dd':
 					if not (cmd0.lower() in self.skip_binary_data):
-						binary_width = {'b': 1, 'w': 2, 'd': 4}[cmd1[1]]
+						binary_width = {'b': 1, 'w': 2, 'd': 4}[cmd1l[1]]
 						offset = self.cur_seg_offset
-						arg = line[len(cmd0):].strip()
-						arg = arg[len(cmd1):].strip()
+						arg = line[len(cmd0l):].strip()
+						arg = arg[len(cmd1l):].strip()
 						print "%d: %s" %(offset, arg)
 						b = self.convert_data_to_blob(binary_width, lex.parse_args(arg))
 						self.binary_data += b
@@ -525,21 +552,21 @@ class parser:
 						self.h_data += h
 						
 						print "~size %d elements %d" %(binary_width, elements)
-						self.set_global(cmd0.lower(), op.var(binary_width, offset), elements)
+						self.set_global(cmd0.lower(), op.var(binary_width, offset, name=cmd0.lower()), elements)
 						skipping_binary_data = False
 					else:
-						print "skipping binary data for %s" % (cmd0.lower(),)
+						print "skipping binary data for %s" % (cmd0l,)
 						skipping_binary_data = True
 					continue
-				elif cmd1 == 'proc':
-					name = cmd0.lower()
+				elif cmd1l == 'proc':
+					name = cmd0l
 					self.proc = proc(name)
 					print "procedure %s, #%d" %(name, len(self.proc_list))
 					self.proc_list.append(name)
 					self.set_global(name, self.proc)
 					continue
-				elif cmd1 == 'segment':
-					name = cmd0.lower()
+				elif cmd1l == 'segment':
+					name = cmd0l
 					self.segment = name
 
 					binary_width = 1
@@ -563,14 +590,20 @@ class parser:
 		return self
 
 	def link(self):
+		print "link()"
+		print self.c_data
 		for addr, expr in self.link_later:
+			print "addr %s expr %s" %(addr, expr)
 			try:
 				v = self.eval_expr(expr)
 				print "link: patching %04x -> %04x" %(addr, v)
 			except:
 				print "link: Exception %s" %expr
 				continue
-			while v != 0:
-				self.binary_data[addr] = v & 0xff
-				addr += 1
-				v >>= 8
+			#while v != 0:
+			print "link: addr %s v %d" %(addr, v)
+			self.c_data[addr] = str(v)# & 0xff
+			#addr += 1
+			#v = (v >> 8) & 0x00ffffff
+
+		print self.c_data
