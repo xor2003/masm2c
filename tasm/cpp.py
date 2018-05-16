@@ -19,7 +19,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #
 
-import op, traceback, re, proc, string
+import op, traceback, re, proc, string, logging
 from copy import copy
 proc_module = proc
 
@@ -34,30 +34,17 @@ def parse_bin(s):
 
 class cpp:
 	def __init__(self, context, namespace, skip_first = 0, blacklist = [], skip_output = [], skip_dispatch_call = False, skip_addr_constants = False, header_omit_blacklisted = False, function_name_remapping = { }):
+		FORMAT = "%(filename)s:%(lineno)d %(message)s"
+		logging.basicConfig(format=FORMAT)
+		self.logger = logging.getLogger('cpp')
+		self.logger.info('Protocol problem: %s', 'connection reset')
+
 		self.namespace = namespace
 		fname = namespace.lower() + ".cpp"
 		header = namespace.lower() + ".h"
 		banner = """/* PLEASE DO NOT MODIFY THIS FILE. ALL CHANGES WILL BE LOST! LOOK FOR README FOR DETAILS */
 
-/* ScummVM - Graphic Adventure Engine
- *
- * ScummVM is the legal property of its developers, whose names
- * are too numerous to list here. Please refer to the COPYRIGHT
- * file distributed with this source distribution.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+/* 
  *
  */
 """
@@ -110,11 +97,11 @@ int main()
 		print "expand_cb name = %s indirection = %u" %(name, self.indirection)
 		if len(name) == 2 and \
 			((name[0] in ['a', 'b', 'c', 'd'] and name[1] in ['x', 'h', 'l']) or name in ['si', 'di', 'bp', 'es', 'ds', 'cs', 'fs', 'gs', 'ss']):
-			return "%s" %name
+			return name
 
 		elif len(name) == 3 and \
 			(name in ['eax', 'ebx', 'ecx', 'edx', 'esi', 'edi', 'ebp', 'esp', 'eip']):
-			return "%s" %name
+			return name
 
 		if self.indirection == -1:
 			try:
@@ -133,7 +120,7 @@ int main()
 			print "expand_cb exception on name = %s" %name
 			return ""
 			
-		print g
+		#print g
 		if isinstance(g, op.const):
 			print "it is const"
 			value = self.expand_equ(g.value)
@@ -150,7 +137,12 @@ int main()
 			size = g.size
 			if size == 0:
 				raise Exception("invalid var '%s' size %u" %(name, size))
-			value = "offsetof(struct Mem,%s)" %(name_original)
+			if not g.issegment:
+				value = "offset(%s,%s)" %(g.segment, name_original)
+			else:
+				value = "seg_offset(%s)" %(name_original)
+				self.indirection = 0
+				return value
 			self.indirection = 1
 			#	self.indirection = 0
 		else:
@@ -182,9 +174,22 @@ int main()
 				raise Exception("invalid indirection %d name '%s' size %u" %(self.indirection, name, size))
 		return value
 
+	def is_register(self, expr):
+		if len(expr) == 2 and expr[0] in ['a', 'b', 'c', 'd'] and expr[1] in ['h', 'l']:
+			print 'get_size res 1'
+			return 1
+		if expr in ['ax', 'bx', 'cx', 'dx', 'si', 'di', 'sp', 'bp', 'ds', 'cs', 'es', 'fs', 'gs', 'ss']:
+			print 'get_size res 2'
+			return 2
+		if expr in ['eax', 'ebx', 'ecx', 'edx', 'esi', 'edi', 'esp', 'ebp']:
+			print 'get_size res 4'
+			return 4
+		return 0
+
 	def get_size(self, expr):
 		expr = expr.strip()
 		print 'get_size("%s")' %expr
+
 		try:
 			v = self.context.parse_int(expr)
 			size = 0
@@ -213,19 +218,21 @@ int main()
 			print 'get_size res 4'
 			return 4
 
-		if len(expr) == 2 and expr[0] in ['a', 'b', 'c', 'd'] and expr[1] in ['h', 'l']:
-			print 'get_size res 1'
-			return 1
-		if expr in ['ax', 'bx', 'cx', 'dx', 'si', 'di', 'sp', 'bp', 'ds', 'cs', 'es', 'fs', 'gs']:
-			print 'get_size res 2'
-			return 2
-		if expr in ['eax', 'ebx', 'ecx', 'edx', 'esi', 'edi', 'esp', 'ebp']:
-			print 'get_size res 4'
-			return 4
+		size = self.is_register(expr)
+		if size:
+			return size
+
+		m = re.match(r'(cs|ss|ds|es|fs|gs):(.*)', expr)
+		if m is not None:
+			expr = m.group(2).strip()
 
 		m = re.match(r'\[([a-zA-Z_]\w*)\]', expr)
 		if m is not None:
 			expr = m.group(1).strip()
+
+		m = re.match(r'(cs|ss|ds|es|fs|gs):(.*)', expr)
+		if m is not None:
+			expr = m.group(2).strip()
 
 		m = re.match(r'[a-zA-Z_]\w*', expr)
 		if m is not None:
@@ -272,6 +279,15 @@ int main()
 		indirection = 0
 		seg = None
 		reg = True
+
+		try:
+			g = self.context.get_global(expr)
+			print "found global %s" %expr
+			if not self.lea and isinstance(g, op.var):
+				print "it is not lea and it is var"
+				return "m." + expr
+		except:
+			pass
 
 		ex = string.replace(expr, "\\\\", "\\")
 		m = re.match(r'\'(.+)\'$', ex)  # char constants
@@ -330,16 +346,16 @@ int main()
 			indirection += 1
 			expr = m.group(1).strip()
 
-		m = re.match(r'(e?([abcd][xhl])|si|di|bp|sp)([\+-].*)?$', expr)
+		m = re.match(r'(\[?e?([abcd][xhl])|si|di|bp|sp)([\+-\]].*)?$', expr)
 		if m is not None:
 			reg = m.group(1)
 			plus = m.group(3)
-			if plus is not None:
+			if plus is not None and plus != ']':
 				plus = self.expand(plus)
 			else:
 				plus = ""
 			match_id = False
-			#print "COMMON_REG: ", reg, plus
+			print "COMMON_REG: ", reg, plus
 			expr = "%s%s" %(reg, plus)
 
 		expr = re.sub(r'\b([0-9][a-fA-F0-9]*)[Hh]', '0x\\1', expr) # convert hex
@@ -368,7 +384,7 @@ int main()
 		if indirection == 1:
 		   if not (self.lea and not destination):
 			if size == 1:
-				expr = "*(db*)(raddr(%s,%s))" %(seg_prefix, expr)
+				expr = "*(raddr(%s,%s))" %(seg_prefix, expr)
 			elif size == 2:
 				expr = "*(dw*)(raddr(%s,%s))" %(seg_prefix, expr)
 			elif size == 4:
@@ -433,9 +449,9 @@ int main()
 
 		if jump_proc:
 			if name in self.function_name_remapping:
-				return "{ %s(); return; }" %self.function_name_remapping[name]
+				return "%s" %self.function_name_remapping[name]
 			else:
-				return "{ %s(); return; }" %name
+				return "%s" %name
 		else:
 			# TODO: name or self.resolve_label(name) or self.mangle_label(name)??
 			if name in self.proc.retlabels:
@@ -459,9 +475,9 @@ int main()
 			self.body += "\t__dispatch_call(%s);\n" %self.expand('ax', 2)
 			return
 		if name in self.function_name_remapping:
-			self.body += "\t%s();\n" %self.function_name_remapping[name]
+			self.body += "\tR(CALL(%s));\n" %self.function_name_remapping[name]
 		else:
-			self.body += "\t%s();\n" %name
+			self.body += "\tR(CALL(%s));\n" %name
 		self.schedule(name)
 
 	def _ret(self):
@@ -483,6 +499,12 @@ int main()
 
 	def _mov(self, dst, src):
 		self.body += "\tR(MOV(%s, %s));\n" %self.parse2(dst, src)
+
+	def _movsx(self, dst, src):
+		self.body += "\tR(MOVSX(%s, %s));\n" %(self.expand(dst), self.expand(src))
+
+	def _movzx(self, dst, src):
+		self.body += "\tR(MOVZX(%s, %s));\n" %(self.expand(dst), self.expand(src))
 
 	def _add(self, dst, src):
 		self.body += "\tR(ADD(%s, %s));\n" %self.parse2(dst, src)
@@ -533,12 +555,28 @@ int main()
 		self.body += "\tR(RCR(%s, %s));\n" %self.parse2(dst, src)
 
 	def _mul(self, src):
-		src = self.expand(src)
-		self.body += "\tR(MUL(%s));\n" %(src)
+		res = []
+		size = 0
+		for i in src:
+			if size == 0:
+				size = self.get_size(i)
+			else:
+				break
+		for i in src:
+			res.append(self.expand(i, size))
+		self.body += "\tR(MUL%d(%s));\n" %(len(src),",".join(res))
 
 	def _imul(self, src):
-		src = self.expand(src)
-		self.body += "\tR(IMUL(%s));\n" %(src)
+		res = []
+		size = 0
+		for i in src:
+			if size == 0:
+				size = self.get_size(i)
+			else:
+				break
+		for i in src:
+			res.append(self.expand(i, size))
+		self.body += "\tR(IMUL%d(%s));\n" %(len(src),",".join(res))
 
 	def _div(self, src):
 		src = self.expand(src)
@@ -629,8 +667,11 @@ int main()
 			p += "\tPOP(%s);\n" %r
 		self.body += p
 
-	def _rep(self):
-		self.body += "\tREP_"
+	def _rep(self,arg):
+		self.body += "\tREP_"+arg.upper()+";\n"
+
+	def _cmpsb(self):
+		self.body += "CMPSB;\n"
 
 	def _lodsb(self):
 		self.body += "LODSB;\n"
@@ -659,8 +700,14 @@ int main()
 	def _movsd(self, n, clear_cx):
 		self.body += "MOVSD;\n"# %("" if n == 1 else n, ", true" if clear_cx else "")
 
+	def _xlat(self):
+		self.body += "\tR(XLAT);\n"
+
 	def _stc(self):
 		self.body += "\tR(STC);\n"
+
+	def _scasb(self):
+		self.body += "\tR(SCASB);\n"
 
 	def _clc(self):
 		self.body += "\tR(CLC);\n"
@@ -904,13 +951,22 @@ int main()
 		self.fd.write("\n\n//} // End of namespace DreamGen\n")
 		self.fd.close()
 
-
-#x0r
 	def _lea(self, dst, src):
 		self.lea = True
 		self.body += "\tR(%s = %s);\n" %(dst, self.expand(src))
 		self.lea = False
 
+	def _lds(self, dst, src):
+		self.body += "\tR(LDS(%s, %s);\n" %self.parse2(dst, src)
+
+	def _lgs(self, dst, src):
+		self.body += "\tR(LGS(%s, %s);\n" %self.parse2(dst, src)
+
+	def _lfs(self, dst, src):
+		self.body += "\tR(LFS(%s, %s);\n" %self.parse2(dst, src)
+
+	def _les(self, dst, src):
+		self.body += "\tR(LES(%s, %s);\n" %self.parse2(dst, src)
 
 	def _adc(self, dst, src):
 		self.body += "\tR(ADC(%s, %s));\n" %self.parse2(dst, src)

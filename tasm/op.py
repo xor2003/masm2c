@@ -29,10 +29,12 @@ class Unsupported(Exception):
 	pass
 
 class var:
-	def __init__(self, size, offset, name=""):
+	def __init__(self, size, offset, name="", segment="", issegment = False):
 		self.size = size
 		self.offset = offset
 		self.name = name
+		self.segment = segment
+		self.issegment = issegment
 
 class const:
 	def __init__(self, value):
@@ -77,9 +79,10 @@ class baseop(object):
 	def split(self, text):
 #		print "text %s" %text
 #		traceback.print_stack(file=sys.stdout)
-		a, b = lex.parse_args(text)
+		return lex.parse_args(text)
+		#a, b = lex.parse_args(text)
 #		print "a %s b %s" %(a, b)
-		return self.parse_arg(a), self.parse_arg(b)
+		#return self.parse_arg(a), self.parse_arg(b)
 	def __str__(self):
 		return str(self.__class__)
 
@@ -96,9 +99,9 @@ class _call(baseop):
 
 class _rep(baseop):
 	def __init__(self, arg):
-		pass
+		self.arg = self.parse_arg(arg)
 	def visit(self, visitor):
-		visitor._rep()
+		visitor._rep(self.arg)
 
 class _mov(baseop):
 	def __init__(self, arg):
@@ -107,13 +110,13 @@ class _mov(baseop):
 		visitor._mov(self.dst, self.src)
 	def __str__(self):
 		return "mov(%s, %s)" %(self.dst, self.src)
-
+'''
 class _mov2(baseop):
 	def __init__(self, dst, src):
 		self.dst, self.src = dst, src
 	def visit(self, visitor):
 		visitor._mov(self.dst, self.src)
-
+'''
 class _shr(baseop):
 	def __init__(self, arg):
 		self.dst, self.src = self.split(arg)
@@ -194,7 +197,7 @@ class _sub(baseop):
 
 class _mul(baseop):
 	def __init__(self, arg):
-		self.arg = self.parse_arg(arg)
+		self.arg = self.split(arg)
 	def visit(self, visitor):
 		visitor._mul(self.arg)
 
@@ -382,6 +385,18 @@ class _lodsb(baseop):
 	def visit(self, visitor):
 		visitor._lodsb()
 
+class _scasb(baseop):
+	def __init__(self, arg):
+		pass
+	def visit(self, visitor):
+		visitor._scasb()
+
+class _cmpsb(baseop):
+	def __init__(self, arg):
+		pass
+	def visit(self, visitor):
+		visitor._cmpsb()
+
 class _lodsw(baseop):
 	def __init__(self, arg):
 		pass
@@ -496,6 +511,12 @@ class _stc(baseop):
 	def visit(self, visitor):
 		visitor._stc()
 
+class _xlat(baseop):
+	def __init__(self, arg):
+		pass
+	def visit(self, visitor):
+		visitor._xlat()
+
 class _clc(baseop):
 	def __init__(self, arg):
 		pass
@@ -503,12 +524,12 @@ class _clc(baseop):
 		visitor._clc()
 
 class label(baseop):
-	def __init__(self, name):
+	def __init__(self, name,line_number=0):
 		self.name = name
+		self.line_number = line_number
 	def visit(self, visitor):
 		visitor._label(self.name)
 
-#x0r
 class _cld(baseop):
 	def __init__(self, arg):
 		pass
@@ -525,17 +546,17 @@ class _movzx(baseop):
 	def __init__(self, arg):
 		self.dst, self.src = self.split(arg)
 	def visit(self, visitor):
-		visitor._mov(self.dst, self.src)
+		visitor._movzx(self.dst, self.src)
 	def __str__(self):
-		return "mov(%s, %s)" %(self.dst, self.src)
+		return "MOVZX(%s, %s)" %(self.dst, self.src)
 
 class _movsx(baseop):
 	def __init__(self, arg):
 		self.dst, self.src = self.split(arg)
 	def visit(self, visitor):
-		visitor._mov(self.dst, self.src)
+		visitor._movsx(self.dst, self.src)
 	def __str__(self):
-		return "mov(%s, %s)" %(self.dst, self.src)
+		return "MOVSX(%s, %s)" %(self.dst, self.src)
 
 class _lea(baseop):
 	def __init__(self, arg):
@@ -549,25 +570,33 @@ class _lds(baseop):
 	def __init__(self, arg):
 		self.dst, self.src = self.split(arg)
 	def visit(self, visitor):
-		visitor._lea(self.dst, self.src)
+		visitor._lds(self.dst, self.src)
 	def __str__(self):
-		return "%s = %s" %(self.dst, self.src) #TODO
+		return "LDS(%s, %s)" %(self.dst, self.src)
 
 class _les(baseop):
 	def __init__(self, arg):
 		self.dst, self.src = self.split(arg)
 	def visit(self, visitor):
-		visitor._lea(self.dst, self.src)
+		visitor._les(self.dst, self.src)
 	def __str__(self):
-		return "%s = %s" %(self.dst, self.src) #TODO
+		return "LES(%s, %s)" %(self.dst, self.src)
 
 class _lfs(baseop):
 	def __init__(self, arg):
 		self.dst, self.src = self.split(arg)
 	def visit(self, visitor):
-		visitor._lea(self.dst, self.src)
+		visitor._lfs(self.dst, self.src)
 	def __str__(self):
-		return "%s = %s" %(self.dst, self.src) #TODO
+		return "LFS(%s, %s)" %(self.dst, self.src)
+
+class _lgs(baseop):
+	def __init__(self, arg):
+		self.dst, self.src = self.split(arg)
+	def visit(self, visitor):
+		visitor._lgs(self.dst, self.src)
+	def __str__(self):
+		return "LGS(%s, %s)" %(self.dst, self.src)
 
 class _repe(baseop):
 	def __init__(self, arg):
@@ -613,7 +642,7 @@ class _jnbe(basejmp):
 
 class _imul(baseop):
 	def __init__(self, arg):
-		self.arg = self.parse_arg(arg)
+		self.arg = self.split(arg)
 	def visit(self, visitor):
 		visitor._imul(self.arg)
 

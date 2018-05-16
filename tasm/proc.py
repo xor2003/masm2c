@@ -35,8 +35,8 @@ class proc:
 		self.offset = proc.last_addr
 		proc.last_addr += 4
 
-	def add_label(self, label):
-		self.stmts.append(op.label(label))
+	def add_label(self, label,line_number=0):
+		self.stmts.append(op.label(label,line_number=line_number))
 		self.labels.add(label)
 
 	def remove_label(self, label):
@@ -159,7 +159,7 @@ class proc:
 		self.optimize_sequence(op._movsb);
 		self.optimize_sequence(op._movsw);
 	
-	def add(self, stmt):
+	def add(self, stmt, line_number=0):
 #		print stmt
 		comment = stmt.find(';')
 		comments = ""
@@ -190,6 +190,7 @@ class proc:
 		o = cl(arg)
 		o.comments = comments
 		o.command = command
+		o.line_number = line_number
 #		print "~~~" + o.command + o.comments
 		self.stmts.append(o)
 	

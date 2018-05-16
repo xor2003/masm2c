@@ -1,12 +1,12 @@
 ; ---------------------------------------------------------------------------
 
-struct_0 STRUCT ; (sizeof=0xA)
-_word_244B7	dw ?
-anonymous_0	dw ?
-anonymous_1	dw ?
-anonymous_2	dw ?
-anonymous_3	dw ?			; offset (00019050)
-struct_0 ENDS
+;struct_0 STRUCT ; (sizeof=0xA)
+;_word_244B7	dw ?
+;anonymous_0	dw ?
+;anonymous_1	dw ?
+;anonymous_2	dw ?
+;anonymous_3	dw ?			; offset (00019050)
+;struct_0 ENDS
 
 
 ;
@@ -19,9 +19,9 @@ struct_0 ENDS
 ; Base Address:	1000h Range: 10000h-35510h Loaded length: 16308h
 ; Entry	Point :	1905:42
 
-		.386
+;		.386
 ;		pmmx
-		.model large
+;		.model large
 
 ; ===========================================================================
 
@@ -6394,13 +6394,13 @@ loc_137A9::				; CODE XREF: sub_13623+180j
 		ja	_eff_nullsub
 		shl	di, 1
 		mov	al, [bx+0Bh]
-		jmp	cs:_effoff_18FA2[di]
+		jmp	cs:[_effoff_18FA2+di]
 ; ---------------------------------------------------------------------------
 
 loc_137BE::				; CODE XREF: sub_13623+Cj
 		movzx	di, dh
 		shr	di, 5
-		mov	al, cs:_byte_11C29[di]
+		mov	al, cs:[_byte_11C29+di]
 		xor	ah, ah
 		add	si, ax
 		retn
@@ -6425,7 +6425,7 @@ sub_137D5 proc near		; CODE XREF: sub_13623+5Aj
 		ja	_eff_nullsub
 		shl	di, 1
 		mov	al, [bx+0Bh]
-		jmp	cs:_effoff_18F60[di]
+		jmp	cs:[_effoff_18F60+di]
 ; ---------------------------------------------------------------------------
 
 loc_137F0::				; CODE XREF: sub_137D5+4j
@@ -6434,7 +6434,7 @@ loc_137F0::				; CODE XREF: sub_137D5+4j
 		ja	_eff_nullsub
 		shl	di, 1
 		mov	al, [bx+0Bh]
-;;		call	cs:_effoff_18F60[di]
+;;		call	cs:[_effoff_18F60+di]
 		test	byte ptr [bx+3Dh], 40h
 		jz	locret_13812
 		mov	al, [bx+8]
@@ -6456,7 +6456,7 @@ sub_13813 proc near		; CODE XREF: sub_140B6+24p
 		ja	_eff_nullsub
 		shl	di, 1
 		mov	al, [bx+0Bh]
-		jmp	cs:_effoff_18FE4[di]
+		jmp	cs:[_effoff_18FE4+di]
 sub_13813 endp
 
 
@@ -7088,7 +7088,7 @@ _eff_13BA3 proc near		; CODE XREF: sub_13623+196j
 		shr	di, 3
 		and	di, 1Eh
 		and	al, 0Fh
-		jmp	cs:_effoff_19026[di]
+		jmp	cs:[_effoff_19026+di]
 _eff_13BA3 endp
 
 
@@ -12453,7 +12453,7 @@ loc_16BB0::				; CODE XREF: sub_1609F+4j
 		xor	eax, eax
 		and	bx, 0Fh
 		shl	bx, 1
-		jmp	cs:off_18E80[bx]
+		jmp	cs:[off_18E80+bx]
 
 loc_16BC6::				; CODE XREF: sub_15577+28j
 					; sub_15577+311j ...
@@ -12651,7 +12651,7 @@ sub_16CF6 proc near		; CODE XREF: sub_16C69+7Ap
 		mov	bx, cx
 		and	bx, 0Fh
 		shl	bx, 1
-		jmp	cs:off_18EA0[bx]
+		jmp	cs:[off_18EA0+bx]
 
 loc_16D0B::				; CODE XREF: sub_15577+28j
 					; sub_15577+311j ...
@@ -12826,7 +12826,7 @@ loc_16E24::				; CODE XREF: sub_16CF6+5j
 		mov	bx, cx
 		and	bx, 0Fh
 		shl	bx, 1
-		jmp	cs:off_18EC0[bx]
+		jmp	cs:[off_18EC0+bx]
 
 loc_16E3F::				; CODE XREF: sub_15577+28j
 					; sub_15577+311j ...
@@ -13320,7 +13320,7 @@ sub_1725F proc near		; CODE XREF: sub_16C69+5E3p
 		mov	bx, cx
 		and	bx, 0Fh
 		shl	bx, 1
-		jmp	cs:off_18EE0[bx]
+		jmp	cs:[off_18EE0+bx]
 
 loc_1727F::				; CODE XREF: sub_15577+28j
 					; sub_15577+311j ...
@@ -13535,7 +13535,7 @@ loc_17441::				; CODE XREF: sub_1725F+5j
 		mov	bx, cx
 		and	bx, 0Fh
 		shl	bx, 1
-		jmp	cs:off_18F00[bx]
+		jmp	cs:[off_18F00+bx]
 sub_1725F endp ; sp-analysis	failed
 
 ; START	OF FUNCTION CHUNK FOR sub_1609F
@@ -13982,7 +13982,7 @@ sub_17824 proc near		; CODE XREF: sub_16C69+BA8p
 		mov	bx, cx
 		and	bx, 0Fh
 		shl	bx, 1
-		jmp	cs:off_18F20[bx]
+		jmp	cs:[off_18F20+bx]
 
 loc_17839::				; CODE XREF: sub_15577+28j
 					; sub_15577+311j ...
@@ -14205,7 +14205,7 @@ loc_17A58::				; CODE XREF: sub_17824+5j
 		mov	bx, cx
 		and	bx, 0Fh
 		shl	bx, 1
-		jmp	cs:off_18F40[bx]
+		jmp	cs:[off_18F40+bx]
 sub_17824 endp ; sp-analysis	failed
 
 ; START	OF FUNCTION CHUNK FOR sub_1609F
@@ -17181,7 +17181,7 @@ loc_191EA::
 
 loc_19212::				; CODE XREF: _start+17Cj
 		shl	bx, 1
-		mov	ax, off_1CA8E[bx]
+		mov	ax, [off_1CA8E+bx]
 		mov	off_1DE3C, ax
 		cmp	_buffer_1DB6C,	40h ; '@'
 		jz	loc_19D94
@@ -24968,21 +24968,21 @@ unk_24456	db  20h			; DATA XREF: dseg:7C5Bo dseg:7C5Fo
 		db  20h
 		db  20h
 ; struct struct_0 _str_24461
-_str_24461	struct_0 <6, 9,	49h, 9,	offset loc_1957F> ; DATA XREF: _start+79Do
-		struct_0 <6, 19h, 49h, 19h, offset loc_1953C>
-		struct_0 <8, 0Ah, 47h, 18h, offset loc_19880>
-		struct_0 <2, 1,	4Dh, 4,	offset loc_19762>
+;_str_24461	struct_0 <6, 9,	49h, 9,	offset loc_1957F> ; DATA XREF: _start+79Do
+;		struct_0 <6, 19h, 49h, 19h, offset loc_1953C>
+;		struct_0 <8, 0Ah, 47h, 18h, offset loc_19880>
+;		struct_0 <2, 1,	4Dh, 4,	offset loc_19762>
 		dw 0FFFFh
 ; struct struct_0 stru_2448B
-stru_2448B	struct_0 <6, 9,	49h, 9,	offset loc_1957F> ; DATA XREF: _start+7B9o
-		struct_0 <6, 19h, 49h, 19h, offset loc_1953C>
-		struct_0 <2, 1,	4Dh, 4,	offset loc_1964E>
+;stru_2448B	struct_0 <6, 9,	49h, 9,	offset loc_1957F> ; DATA XREF: _start+7B9o
+;		struct_0 <6, 19h, 49h, 19h, offset loc_1953C>
+;		struct_0 <2, 1,	4Dh, 4,	offset loc_1964E>
 		dw 0FFFFh
 ; struct struct_0 stru_244AB
-stru_244AB	struct_0 <2, 1,	4Dh, 4,	offset _l_enter>	; DATA XREF: _keyb_19EFD+4AFo
+;stru_244AB	struct_0 <2, 1,	4Dh, 4,	offset _l_enter>	; DATA XREF: _keyb_19EFD+4AFo
 		dw 0FFFFh
 ; struct struct_0 stru_244B7
-stru_244B7	struct_0 <0, 0,	4Fh, 31h, offset _l_esc>	; DATA XREF: _keyb_19EFD:loc_1A3C5o
+;stru_244B7	struct_0 <0, 0,	4Fh, 31h, offset _l_esc>	; DATA XREF: _keyb_19EFD:loc_1A3C5o
 		dw 0FFFFh
 		db    0
 unk_244C4	dd    0			; DATA XREF: _spectr_1B084+14Ew

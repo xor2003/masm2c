@@ -27,12 +27,14 @@ extern "C" {
 #endif
 
 #if defined(_REAL_MODE)
-#define raddr(segment,offset) ((db *)&m+(db)(offset) + segment<<8)
+#define raddr(segment,offset) ((db *)(&m + offset + segment<<4))
 #else
 #define raddr(segment,offset) ((db *)&m+(db)(offset)+selectors[segment])
 #endif
 
 #define realAddress(offset, segment) raddr(segment,offset)
+#define offset(segment,name) offsetof(struct Mem,name)-offsetof(struct Mem,segment)
+#define seg_offset(segment) ((offsetof(struct Mem,segment)+0xf)>>4)
 
 #define db uint8_t
 #define dw uint16_t

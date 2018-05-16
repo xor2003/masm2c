@@ -34,8 +34,10 @@ class parser:
 		self.__globals = {}
 		self.__offsets = {}
 		self.__stack = []
-		self.proc = None
 		self.proc_list = []
+
+		self.proc = None
+
 		self.binary_data = []
 		self.c_data = []
 		self.h_data = []
@@ -307,9 +309,10 @@ class parser:
 						if v < 0: # negative values
 							v += base
 					elif isinstance(g, op.var):
-						v = 'offsetof(struct Mem,' + g.name + ')'
-						if self.segment:
-							v += " - offsetof(struct Mem," + self.segment + ")"
+						#v = 'offsetof(struct Mem,' + g.name + ')'
+						#if self.segment:
+						#	v += " - offsetof(struct Mem," + self.segment + ")"
+						v = "offset(%s,%s)" %(self.segment, g.name)
 					else:
 						v = g.offset
 				except KeyError:
@@ -440,6 +443,25 @@ class parser:
 		self.data_started = True
 		return r, rh, elements
 
+	def add_label(self, name):
+				if self.visible():
+					#name = m.group(1)
+					#print "~name: %s" %name
+					name = re.sub(r'@', "arb", name)
+					#print "~~name: %s" %name
+					if not (name.lower() in self.skip_binary_data):
+						print "offset %s -> %s" %(name, "&m." + name.lower() + " - &m." + self.segment)
+						if self.proc is not None:
+							self.proc.add_label(name)
+							self.set_offset(name, ("&m." + name.lower() + " - &m." + self.segment, self.proc, len(self.proc.stmts)))
+						else:
+							print "Label %s is outside the procedure" %name
+						skipping_binary_data = False
+					else:
+						print "skipping binary data for %s" % (name,)
+						skipping_binary_data = True
+
+
 	def parse(self, fname):
 #		print "opening file %s..." %(fname, basedir)
 		self.line_number = 0
@@ -451,27 +473,14 @@ class parser:
 			if len(line) == 0 or line[0] == ';' or line[0] == chr(0x1a):
 				continue
 
-			#print line
-			m = re.match('([@\w]+)\s*?::?', line)
-			if m is not None:
-				line = line[len(m.group(0)):].strip()
-				if self.visible():
-					name = m.group(1)
-					#print "~name: %s" %name
-					name = re.sub(r'@', "arb", name)
-					#print "~~name: %s" %name
-					if not (name.lower() in self.skip_binary_data):
-						print "offset %s -> %s" %(name, "&m." + name.lower() + " - &m." + self.segment)
-						if self.proc is not None:
-							self.proc.add_label(name)
-							self.set_offset(name, ("&m." + name.lower() + " - &m." + self.segment, self.proc, len(self.proc.stmts) if self.proc is not None else 0))
-						else:
-							print "Label %s is outside the procedure" %name
-						skipping_binary_data = False
-					else:
-						print "skipping binary data for %s" % (name,)
-						skipping_binary_data = True
 			print "%d:      %s" %(self.line_number, line)
+
+			m = re.match('([@\w]+)\s*::?', line)
+			if m is not None:
+				line = m.group(1).strip()
+				print line
+				self.add_label(line)
+				continue
 
 			cmd = line.split()
 			if len(cmd) == 0:
@@ -487,6 +496,8 @@ class parser:
 				continue
 			elif cmd0l == 'endif':
 				self.pop_if()
+				continue
+			elif cmd0l == 'align':
 				continue
 			
 			if not self.visible():
@@ -510,7 +521,7 @@ class parser:
 				self.include(os.path.dirname(fname), cmd[1])
 				continue
 			elif cmd0l == 'endp' or (len(cmd) >= 2 and str(cmd[1].lower()) == 'endp'):
-				self.proc = None
+				#self.proc = None
 				continue
 			elif cmd0l == 'ends':
 				print "segement %s ends" %(self.segment)
@@ -519,11 +530,49 @@ class parser:
 			elif cmd0l == 'assume':
 				print "skipping: %s" %line
 				continue
-			elif cmd0l == 'rep':
-				self.proc.add(cmd0)
+			elif cmd0l in ['rep','repe','repne']:
+				self.proc.add(cmd0l)
 				self.proc.add(" ".join(cmd[1:]))
 				continue
 			
+			if len(cmd) >= 2:
+				cmd1l = cmd[1].lower()
+				if cmd1l == 'proc':
+					'''
+					name = cmd0l
+					self.proc = proc(name)
+					print "procedure %s, #%d" %(name, len(self.proc_list))
+					self.proc_list.append(name)
+					self.set_global(name, self.proc)
+					'''
+					self.add_label(cmd0l)
+					continue
+				elif cmd1l == 'segment':
+					name = cmd0l
+					self.segment = name
+
+					binary_width = 1
+					offset = int(len(self.binary_data)/16)
+					print "segement %s %x" %(name, offset)
+					self.cur_seg_offset = 16
+
+					self.c_data.append("{0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0}, // segment " + name + "\n")
+					self.h_data.append(" db " + name + "[16]; // segment " + name + "\n")
+
+					self.set_global(name, op.var(binary_width, offset, issegment = True))
+					if self.proc == None:
+						name = "program"
+						self.proc = proc(name)
+						#print "procedure %s, #%d" %(name, len(self.proc_list))
+						self.proc_list.append(name)
+						self.set_global(name, self.proc)
+					continue
+
+				elif cmd1l == 'ends':
+					print "segment %s ends" %(self.segment)
+					self.segment = ""
+					continue
+
 			if len(cmd) >= 3:
 				cmd1l = cmd[1].lower()
 				if cmd1l == 'equ':
@@ -552,36 +601,15 @@ class parser:
 						self.h_data += h
 						
 						print "~size %d elements %d" %(binary_width, elements)
-						self.set_global(cmd0.lower(), op.var(binary_width, offset, name=cmd0.lower()), elements)
+						self.set_global(cmd0.lower(), op.var(binary_width, offset, name=cmd0.lower(),segment=self.segment), elements)
 						skipping_binary_data = False
 					else:
 						print "skipping binary data for %s" % (cmd0l,)
 						skipping_binary_data = True
 					continue
-				elif cmd1l == 'proc':
-					name = cmd0l
-					self.proc = proc(name)
-					print "procedure %s, #%d" %(name, len(self.proc_list))
-					self.proc_list.append(name)
-					self.set_global(name, self.proc)
-					continue
-				elif cmd1l == 'segment':
-					name = cmd0l
-					self.segment = name
 
-					binary_width = 1
-					offset = int(len(self.binary_data)/16)
-					print "segement %s %x" %(name, offset)
-					self.cur_seg_offset = 16
-
-					self.c_data.append("{0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0}, // segment " + name + "\n")
-					self.h_data.append(" db " + name + "[16]; // segment " + name + "\n")
-
-					self.set_global(name, op.var(binary_width, offset))
-
-					continue
 			if (self.proc):
-				self.proc.add(line)
+				self.proc.add(line, line_number=self.line_number)
 			else:
 				#print line
 				pass
