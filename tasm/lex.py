@@ -20,7 +20,7 @@
 #
 
 def parse_args(text):
-	#print "parsing: [%s]" %text
+	print "parsing: [%s]" %text
 	escape = False
 	string = False
 	result = []

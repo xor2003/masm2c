@@ -77,7 +77,7 @@ class baseop(object):
 		return arg
 
 	def split(self, text):
-#		print "text %s" %text
+		print "text %s" %text
 #		traceback.print_stack(file=sys.stdout)
 		return lex.parse_args(text)
 		#a, b = lex.parse_args(text)
@@ -105,7 +105,9 @@ class _rep(baseop):
 
 class _mov(baseop):
 	def __init__(self, arg):
+		#print arg
 		self.dst, self.src = self.split(arg)
+		#print self.dst, self.src
 	def visit(self, visitor):
 		visitor._mov(self.dst, self.src)
 	def __str__(self):

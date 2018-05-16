@@ -176,13 +176,13 @@ int main()
 
 	def is_register(self, expr):
 		if len(expr) == 2 and expr[0] in ['a', 'b', 'c', 'd'] and expr[1] in ['h', 'l']:
-			print 'get_size res 1'
+			print 'is reg res 1'
 			return 1
 		if expr in ['ax', 'bx', 'cx', 'dx', 'si', 'di', 'sp', 'bp', 'ds', 'cs', 'es', 'fs', 'gs', 'ss']:
-			print 'get_size res 2'
+			print 'is reg res 2'
 			return 2
 		if expr in ['eax', 'ebx', 'ecx', 'edx', 'esi', 'edi', 'esp', 'ebp']:
-			print 'get_size res 4'
+			print 'is reg res 4'
 			return 4
 		return 0
 
@@ -355,7 +355,7 @@ int main()
 			else:
 				plus = ""
 			match_id = False
-			print "COMMON_REG: ", reg, plus
+			#print "COMMON_REG: ", reg, plus
 			expr = "%s%s" %(reg, plus)
 
 		expr = re.sub(r'\b([0-9][a-fA-F0-9]*)[Hh]', '0x\\1', expr) # convert hex

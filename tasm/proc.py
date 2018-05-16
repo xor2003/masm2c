@@ -154,10 +154,10 @@ class proc:
 					self.stmts[i] = op._nop(None)
 		'''
 
-		self.optimize_sequence(op._stosb);
-		self.optimize_sequence(op._stosw);
-		self.optimize_sequence(op._movsb);
-		self.optimize_sequence(op._movsw);
+		#x0r optimize speed self.optimize_sequence(op._stosb);
+		#self.optimize_sequence(op._stosw);
+		#self.optimize_sequence(op._movsb);
+		#self.optimize_sequence(op._movsw);
 	
 	def add(self, stmt, line_number=0):
 #		print stmt
@@ -165,7 +165,7 @@ class proc:
 		comments = ""
 		if comment >= 0:
 			comments = stmt[comment:]
-			stmt = stmt[:comment]
+			#stmt = stmt[:comment]
 		stmt = stmt.strip()
 		command = stmt
 

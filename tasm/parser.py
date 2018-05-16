@@ -534,6 +534,8 @@ class parser:
 				self.proc.add(cmd0l)
 				self.proc.add(" ".join(cmd[1:]))
 				continue
+			elif cmd0l == 'end':
+				continue
 			
 			if len(cmd) >= 2:
 				cmd1l = cmd[1].lower()
