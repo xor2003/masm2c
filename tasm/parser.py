@@ -113,9 +113,11 @@ class parser:
 		return self.__offsets[name]
 	
 	def include(self, basedir, fname):
-		path = fname.split('\\')[self.strip_path:]
-		path = os.path.join(basedir, os.path.pathsep.join(path))
-		#print "including %s" %(path)
+		print "file: %s" %(fname)
+		#path = fname.split('\\')[self.strip_path:]
+		path = fname
+		#path = os.path.join(basedir, os.path.pathsep.join(path))
+		print "including %s" %(path)
 		
 		self.parse(path)
 
@@ -384,6 +386,8 @@ class parser:
 							vv += r"\r"
 						elif r[i] == 10:
 							vv += r"\n"
+						elif r[i] == "\\":
+							vv += '\\\\'
 						else:
 							vv += chr(r[i])
 					else:
@@ -399,6 +403,8 @@ class parser:
 					    if isinstance(r[i], int):
 						if r[i] == 13:
 							vv += r"'\r'"
+						elif r[i] == "\\":
+							vv += "'\\\\'"
 						elif r[i] == 10:
 							vv += r"'\n'"
 						else:
@@ -463,7 +469,7 @@ class parser:
 
 
 	def parse(self, fname):
-#		print "opening file %s..." %(fname, basedir)
+		print "opening file %s..." %(fname)
 		self.line_number = 0
 		skipping_binary_data = False
 		fd = open(fname, 'rb')
@@ -563,7 +569,7 @@ class parser:
 
 					self.set_global(name, op.var(binary_width, offset, issegment = True))
 					if self.proc == None:
-						name = "program"
+						name = "start"
 						self.proc = proc(name)
 						#print "procedure %s, #%d" %(name, len(self.proc_list))
 						self.proc_list.append(name)
@@ -589,6 +595,8 @@ class parser:
 					continue
 				elif cmd1l == 'db' or cmd1l == 'dw' or cmd1l == 'dd':
 					if not (cmd0.lower() in self.skip_binary_data):
+						name = cmd0
+						name = re.sub(r'@', "arb", name)
 						binary_width = {'b': 1, 'w': 2, 'd': 4}[cmd1l[1]]
 						offset = self.cur_seg_offset
 						arg = line[len(cmd0l):].strip()
@@ -598,12 +606,12 @@ class parser:
 						self.binary_data += b
 						self.cur_seg_offset += len(b)
 
-						c, h, elements = self.convert_data_to_c(cmd0, binary_width, lex.parse_args(arg))
+						c, h, elements = self.convert_data_to_c(name, binary_width, lex.parse_args(arg))
 						self.c_data += c
 						self.h_data += h
 						
 						print "~size %d elements %d" %(binary_width, elements)
-						self.set_global(cmd0.lower(), op.var(binary_width, offset, name=cmd0.lower(),segment=self.segment), elements)
+						self.set_global(name, op.var(binary_width, offset, name=name,segment=self.segment), elements)
 						skipping_binary_data = False
 					else:
 						print "skipping binary data for %s" % (cmd0l,)
@@ -621,7 +629,7 @@ class parser:
 
 	def link(self):
 		print "link()"
-		print self.c_data
+		#print self.c_data
 		for addr, expr in self.link_later:
 			print "addr %s expr %s" %(addr, expr)
 			try:
@@ -630,10 +638,6 @@ class parser:
 			except:
 				print "link: Exception %s" %expr
 				continue
-			#while v != 0:
 			print "link: addr %s v %d" %(addr, v)
-			self.c_data[addr] = str(v)# & 0xff
-			#addr += 1
-			#v = (v >> 8) & 0x00ffffff
-
-		print self.c_data
+			#self.c_data[addr] = str(v)
+		#print self.c_data

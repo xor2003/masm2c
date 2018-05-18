@@ -80,12 +80,11 @@ class cpp:
 #include "asm.c"
 #include \"%s\"
 
-void _start();
+int start();
 
 int main()
 {
-	_start();
-	return(0);
+	return start();
 }
 //namespace %s {
 """ %(banner, header, namespace))
@@ -137,12 +136,12 @@ int main()
 			size = g.size
 			if size == 0:
 				raise Exception("invalid var '%s' size %u" %(name, size))
-			if not g.issegment:
-				value = "offset(%s,%s)" %(g.segment, name_original)
-			else:
+			if g.issegment:
 				value = "seg_offset(%s)" %(name_original)
 				self.indirection = 0
 				return value
+			else:
+				value = "offset(%s,%s)" %(g.segment, g.name)
 			self.indirection = 1
 			#	self.indirection = 0
 		else:
@@ -285,7 +284,14 @@ int main()
 			print "found global %s" %expr
 			if not self.lea and isinstance(g, op.var):
 				print "it is not lea and it is var"
-				return "m." + expr
+				if g.issegment:
+					return "seg_offset(%s)" %expr
+				else:
+					if g.elements == 1:
+						return "m." + expr
+					else:
+						s = {1: "*(db*)", 2: "*(dw*)", 4: "*(dd*)"}[size]
+						return s+"&m." + expr
 		except:
 			pass
 
@@ -471,8 +477,8 @@ int main()
 
 	def _call(self, name):
 		name = name.lower()
-		if name == 'ax':
-			self.body += "\t__dispatch_call(%s);\n" %self.expand('ax', 2)
+		if self.is_register(name):
+			self.body += "\t__dispatch_call(%s);\n" %self.expand(name, 2)
 			return
 		if name in self.function_name_remapping:
 			self.body += "\tR(CALL(%s));\n" %self.function_name_remapping[name]
@@ -481,7 +487,10 @@ int main()
 		self.schedule(name)
 
 	def _ret(self):
-		self.body += "\tR(return);\n"
+		self.body += "\tR(RETN);\n"
+
+	def _retf(self):
+		self.body += "\tR(RETF);\n"
 
 	def parse2(self, dst, src):
 		dst_size, src_size = self.get_size(dst), self.get_size(src)
@@ -512,7 +521,7 @@ int main()
 	def _sub(self, dst, src):
 		self.d, self.s = self.parse2(dst, src)
 		if self.d == self.s:
-			self.body += "\t%s = 0;\n" %self.d
+			self.body += "\t%s = 0;AFFECT_ZF(0); AFFECT_SF(%s,0);\n" %(self.d,self.d)
 		else:
 			self.body += "\tR(SUB(%s, %s));\n" %(self.d, self.s)
 
@@ -525,7 +534,7 @@ int main()
 	def _xor(self, dst, src):
 		self.d, self.s = self.parse2(dst, src)
 		if self.d == self.s:
-			self.body += "\t%s = 0;\n" %self.d
+			self.body += "\t%s = 0;AFFECT_ZF(0); AFFECT_SF(%s,0);\n" %(self.d,self.d)
 		else:
 			self.body += "\tR(XOR(%s, %s));\n" %(self.d, self.s)
 
@@ -564,7 +573,7 @@ int main()
 				break
 		for i in src:
 			res.append(self.expand(i, size))
-		self.body += "\tR(MUL%d(%s));\n" %(len(src),",".join(res))
+		self.body += "\tR(MUL%d_%d(%s));\n" %(len(src),size,",".join(res))
 
 	def _imul(self, src):
 		res = []
@@ -576,15 +585,17 @@ int main()
 				break
 		for i in src:
 			res.append(self.expand(i, size))
-		self.body += "\tR(IMUL%d(%s));\n" %(len(src),",".join(res))
+		self.body += "\tR(IMUL%d_%d(%s));\n" %(len(src),size,",".join(res))
 
 	def _div(self, src):
 		src = self.expand(src)
-		self.body += "\tR(DIV(%s));\n" %(src)
+		size = self.get_size(src)
+		self.body += "\tR(DIV%d(%s));\n" %(size,src)
 
 	def _idiv(self, src):
 		src = self.expand(src)
-		self.body += "\tR(IDIV(%s));\n" %(src)
+		size = self.get_size(src)
+		self.body += "\tR(IDIV%d(%s));\n" %(size,src)
 
 	def _inc(self, dst):
 		dst = self.expand(dst)
@@ -668,7 +679,7 @@ int main()
 		self.body += p
 
 	def _rep(self,arg):
-		self.body += "\tREP_"+arg.upper()+";\n"
+		self.body += "\tREP\n"
 
 	def _cmpsb(self):
 		self.body += "CMPSB;\n"
@@ -753,9 +764,9 @@ int main()
 				self.body += "void %sContext::%s() {\n" %(self.namespace, name);
 			'''
 			if name in self.function_name_remapping:
-				self.body += "void %s() {\n" %(self.function_name_remapping[name]);
+				self.body += "int %s() {\n" %(self.function_name_remapping[name]);
 			else:
-				self.body += "void %s() {\n" %(name);
+				self.body += "int %s() {\n" %(name);
 
 			print name
 			self.proc.optimize()
@@ -923,7 +934,7 @@ int main()
 			self.hd.write(
 """	
 """)
-
+		'''
 		for p in set(self.methods):
 			if p in self.blacklist:
 				if self.header_omit_blacklisted == False:
@@ -933,7 +944,7 @@ int main()
 					self.hd.write("\tvoid %s();\n" %self.function_name_remapping[p])
 				else:
 					self.hd.write("\tvoid %s();\n" %p)
-
+		'''
 		self.hd.write("//};\n\n//} // End of namespace DreamGen\n\n#endif\n")
 		self.hd.close()
 
@@ -957,16 +968,16 @@ int main()
 		self.lea = False
 
 	def _lds(self, dst, src):
-		self.body += "\tR(LDS(%s, %s);\n" %self.parse2(dst, src)
+		self.body += "\tR(LDS(%s, %s));\n" %self.parse2(dst, src)
 
 	def _lgs(self, dst, src):
-		self.body += "\tR(LGS(%s, %s);\n" %self.parse2(dst, src)
+		self.body += "\tR(LGS(%s, %s));\n" %self.parse2(dst, src)
 
 	def _lfs(self, dst, src):
-		self.body += "\tR(LFS(%s, %s);\n" %self.parse2(dst, src)
+		self.body += "\tR(LFS(%s, %s));\n" %self.parse2(dst, src)
 
 	def _les(self, dst, src):
-		self.body += "\tR(LES(%s, %s);\n" %self.parse2(dst, src)
+		self.body += "\tR(LES(%s, %s));\n" %self.parse2(dst, src)
 
 	def _adc(self, dst, src):
 		self.body += "\tR(ADC(%s, %s));\n" %self.parse2(dst, src)
@@ -1015,10 +1026,10 @@ int main()
 		self.body += "\tR(SAR(%s, %s));\n" %self.parse2(dst, src)
 
 	def _repe(self,arg):
-		self.body += "\tREPE_"+arg.upper()+";\n"
+		self.body += "\tREPE\n"
 
 	def _repne(self,arg):
-		self.body += "\tREPNE_"+arg.upper()+";\n"
+		self.body += "\tREPNE\n"
 
 	def _shrd(self, dst, src, c):
 		self.body += "\tSHRD(%s, %s, " %self.parse2(dst, src)

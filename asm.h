@@ -26,8 +26,9 @@ extern "C" {
 #define INLINE
 #endif
 
+#define _REAL_MODE 1
 #if defined(_REAL_MODE)
-#define raddr(segment,offset) ((db *)(&m + offset + segment<<4))
+#define raddr(segment,offset) (((db *)&m + offset + (segment<<4) ))
 #else
 #define raddr(segment,offset) ((db *)&m+(db)(offset)+selectors[segment])
 #endif
@@ -108,7 +109,7 @@ typedef union registry32Bits
 
 typedef struct dwReg16 {
 	dw val;
-} dwReg16;
+} dwReg16;                                       
 
 
 
@@ -135,35 +136,37 @@ typedef union registry16Bits
 
 #define POP(a) stackPointer-=sizeof(a); memcpy (&a, &stack[stackPointer], sizeof (a))
 
-#define AFFECT_ZF(a) {ZF=(a==0);}
-#define AFFECT_CF(a) {CF=a;}
-#define ISNEGATIVE(a) (a & (1 << (sizeof(a)*8-1)))
-#define AFFECT_SF(a) {SF=ISNEGATIVE(a);} //(a>>(nbBits-1))&1
+#define AFFECT_ZF(a) {ZF=((a)==0);}
+#define AFFECT_CF(a) {CF=(a);}
+//#define ISNEGATIVE(a) (a & (1 << (sizeof(a)*8-1)))
+//#define AFFECT_SF(a) {SF=ISNEGATIVE(a);}
+#define AFFECT_SF(f, a) {SF=((a)>>(sizeof(f)*8-1));}
+#define ISNEGATIVE(f,a) ( (a) & (1 << (sizeof(f)*8-1)) )
 
 // TODO: add missings affected flags on CMP
-#define CMP(a,b) {AFFECT_ZF(a-b); \
-		AFFECT_CF(a<b); \
-		AFFECT_SF(a-b);}
+#define CMP(a,b) {AFFECT_ZF( ((a)& MASK[sizeof(a)]) !=((b)& MASK[sizeof(a)]) ); \
+		AFFECT_CF((a)<(b)); \
+		AFFECT_SF(a, ((a)-(b))&(1 << sizeof(a)*8 - 1) );}
 #define OR(a,b) {a=a|b; \
 		AFFECT_ZF(a); \
-		AFFECT_SF(a)}
+		AFFECT_SF(a,a)}
 #define XOR(a,b) {a=a^b; \
 		AFFECT_ZF(a); \
-		AFFECT_SF(a)}
+		AFFECT_SF(a,a)}
 #define AND(a,b) {a=a&b; \
 		AFFECT_ZF(a); \
-		AFFECT_SF(a)}
+		AFFECT_SF(a,a)}
 
-#define NEG(a) {AFFECT_CF(a!=0); \
+#define NEG(a) {AFFECT_CF((a)!=0); \
 		a=-a;}
-#define TEST(a,b) {AFFECT_ZF((a&b)); \
-		AFFECT_CF(b<a); \
-		AFFECT_SF(a&b)}
+#define TEST(a,b) {AFFECT_ZF((a)&(b)); \
+		AFFECT_CF((b)<(a)); \
+		AFFECT_SF(a,(a)&(b))}
 
-#define SHR(a,b) a=a>>b
-#define SHL(a,b) a=a<<b
-#define ROR(a,b) a=(a>>b | a<<(sizeof(a)*8-b))
-#define ROL(a,b) a=(a<<b | a>>(sizeof(a)*8-b))
+#define SHR(a,b) {a=a>>b;}
+#define SHL(a,b) {a=a<<b;}
+#define ROR(a,b) {a=(a>>b | a<<(sizeof(a)*8-b));}
+#define ROL(a,b) {a=(a<<b | a>>(sizeof(a)*8-b));}
 
 #define SHRD(a,b,c) a=(a>>c) | ( (b& ((1<<c)-1) ) << (sizeof(a)*8-c) ) //TODO
 
@@ -195,28 +198,52 @@ typedef union registry16Bits
 
 #define ADD(a,b) {a=a+b; \
 		AFFECT_ZF(a); \
-		AFFECT_CF(a<b); \
-		AFFECT_SF(a);}
+		AFFECT_CF((a)<(b)); \
+		AFFECT_SF(a,a);}
 
 #define SUB(a,b) {a=a-b; \
 		AFFECT_ZF(a); \
-		AFFECT_CF(b<a); \
-		AFFECT_SF(a);}
+		AFFECT_CF((b)<(a)); \
+		AFFECT_SF(a,a);}
 
 #define ADC(a,b) {a=a+b+CF; \
 		AFFECT_ZF(a); \
-		AFFECT_CF(a<b); \
-		AFFECT_SF(a);} //TODO
+		AFFECT_CF((a)<(b)); \
+		AFFECT_SF(a,a);} //TODO
 #define SBB(a,b) {a=a-b-CF; \
 		AFFECT_ZF(a); \
-		AFFECT_CF(b<a); \
-		AFFECT_SF(a);} 
+		AFFECT_CF((b)<(a)); \
+		AFFECT_SF(a,a);} 
 
 // TODO: should affects OF, SF, ZF, AF, and PF
-#define INC(a) {a=a+1; \
+#define INC(a) {a+=1; \
 		AFFECT_ZF(a);}
-#define DEC(a) {a=a-1; \
+#define DEC(a) {a-=1; \
 		AFFECT_ZF(a);}
+
+#define IMUL1_1(a) ax=(int8_t)al*(int8_t)a
+#define IMUL1_2(a) {int32_t t=(int16_t)ax*(int16_t)a;ax=t;dx=t>>16;}
+#define IMUL1_4(a) {int64_t t=(int32_t)eax*(int32_t)a;eax=t;edx=t>>32;}
+#define IMUL2_2(a,b) {a = (int16_t)a * (int16_t)b;}
+#define IMUL2_4(a,b) {a = (int32_t)a * (int32_t)b;}
+#define IMUL3_2(a,b,c) {a = (int16_t)b * (int16_t)c;}
+#define IMUL3_4(a,b,c) {a = (int32_t)b * (int32_t)c;}
+
+#define MUL1_1(a) ax=al*a
+#define MUL1_2(a) {dd t=ax*a;ax=t;dx=t>>16;}
+#define MUL1_4(a) {uint64_t t=eax*a;eax=t;edx=t>>32;}
+#define MUL2_2(a,b) {a *= b;}
+#define MUL2_4(a,b) {a *= b;}
+#define MUL3_2(a,b,c) {a = b * c;}
+#define MUL3_4(a,b,c) {a = b * c;}
+
+#define IDIV1(a) {al=(int16_t)ax/a;ah=(int16_t)ax%a;}
+#define IDIV2(a) {ax=((int32_t)dx<<16+(int16_t)ax)/a;dx=((int16_t)dx<<16+(int16_t)ax)%a;}
+#define IDIV4(a) {eax=((int64_t)edx<<32+(int32_t)eax)/a;edx=((int64_t)edx<<32+(int32_t)eax)%a;}
+
+#define DIV1(a) {al=ax/a;ah=ax%a;}
+#define DIV2(a) {ax=(dx<<16+ax)/a;dx=(dx<<16+ax)%a;}
+#define DIV4(a) {eax=(edx<<32+eax)/a;edx=(edx<<32+eax)%a;}
 
 #define NOT(a) a= ~a;// AFFECT_ZF(a) //TODO
 #define SETNZ(a) a= (!ZF)&1; //TODO
@@ -265,7 +292,7 @@ typedef union registry16Bits
 #define LDS(dest,src) dest = src; ds = *(dw*)((char*)src + sizeof(dest))
 
 #define MOVZX(dest,src) dest = src
-#define MOVSX(dest,src) if (ISNEGATIVE(src)) { dest = ((-1 ^ (( 1 << (sizeof(src)*8) )-1)) | src ); } else { dest = src; }
+#define MOVSX(dest,src) if (ISNEGATIVE(src,src)) { dest = ((-1 ^ (( 1 << (sizeof(src)*8) )-1)) | src ); } else { dest = src; }
 
 #define BT(dest,src) CF = dest & (1 << src) //TODO
 #define BTS(dest,src) CF = dest & (1 << src); dest |= 1 << src
@@ -277,44 +304,46 @@ typedef union registry16Bits
 
 #define XCHG(dest,src) std::swap(dest,src); //TODO
 
-// MOVSx (DF FLAG not implemented)
-#define MOVSS(a,ecx) src=realAddress(esi,ds); dest=realAddress(edi,es); \
-	if (labs(((char *)dest)-((char *)src))<=a) { \
-		for(dd i=0; i<ecx; i++) {  \
-			src=realAddress(esi,ds); dest=realAddress(edi,es); \
-			memmove(dest,src,a); edi+=a; esi+=a; } \
-	} else { \
-		memmove(dest,src,a*ecx); edi+=a*ecx; esi+=a*ecx; \
-	}
-
 
 #define MOVS(dest,src)  \
-                        memmove(dest,src,nbBits/8); dest+=nbBits/8; src+=nbBits/8; } \
+                        memmove(dest,src,sizeof(dest)); dest+=sizeof(dest); src+=sizeof(dest); } \
 
-#define CMPS(a,ecx) \
-	for(size_t i=0; i<ecx; i++) {  \
-			src=realAddress(esi,ds); dest=realAddress(edi,es); \
-			AFFECT_ZF( (*(char*)dest-*(char*)src) ); edi+=a; esi+=a; \
-			if (!ZF) break; \
+#define CMPS(a) \
+	{  \
+			src=realAddress(si,ds); dest=realAddress(di,es); \
+			AFFECT_ZF( (*(char*)dest-*(char*)src) ); di+=a; si+=a; \
 	}
 
-#define REPE_CMPS(b) CMPS(b,ecx)
-#define REPE_CMPSB REPE_CMPS(1)
+#define SCASB \
+	{  \
+			dest=realAddress(di,es); \
+			AFFECT_ZF( (*(char*)dest-al) ); di+=1; \
+	}
+
+#define CMPSB CMPS(1)
 #define CBW ah = al & (1 << 7)?-1:0 // TODO
 #define CWD dx = ax & (1 << 15)?-1:0
-#define CWDE eax |= ax & (1 << 15)?(-1 & 0xffff0000):0
+#define CWDE {*(((dw*)&eax)+1) = ax & (1 << 15)?-1:0;}
 
-#define MOVSB MOVSS(1,1)
-#define MOVSW MOVSS(2,1)
-#define MOVSD MOVSS(4,1)
+// MOVSx (DF FLAG not implemented)
+#define MOVSS(a) {src=realAddress(si,ds); dest=realAddress(di,es); \
+		memmove(dest,src,a); di+=a; si+=a; }
 
-#define REP_MOVSS(b) MOVSS(b,ecx)
-#define REP_MOVS(dest,src) for(i=0; i<ecx;i++) {MOVS(dest,src)}
+#define MOVSB MOVSS(1)
+#define MOVSW MOVSS(2)
+#define MOVSD MOVSS(4)
+
+#define REP while (cx-- > 0)
+#define REPE AFFECT_ZF(0);while (cx-- > 0 && ZF)
+#define REPNE AFFECT_ZF(1);while (cx-- > 0 && !ZF)
+/*
+#define REP_MOVSS(b) MOVSS(b,cx)
+#define REP_MOVS(dest,src) while (cx-- > 0) {MOVS(dest,src);}
 #define REP_MOVSB REP_MOVSS(1)
 #define REP_MOVSW REP_MOVSS(2)
 #define REP_MOVSD REP_MOVSS(4)
-
-#define STOS(a,b) memcpy (realAddress(edi,es), ((db *)&eax)+b, a); edi+=a
+*/
+#define STOS(a,b) {memcpy (realAddress(di,es), ((db *)&eax)+b, a); di+=a;}
 
 #ifdef MSB_FIRST
 #define STOSB STOS(1,3)
@@ -322,15 +351,15 @@ typedef union registry16Bits
 #else
 #define STOSB STOS(1,0)
 #define STOSW STOS(2,0)
+#define STOSD STOS(4,0)
 #endif
 
-#define STOSD STOS(4,0)
 
-#define REP_STOSB for (i=0; i<ecx; i++) { STOSB; }
-#define REP_STOSW for (i=0; i<ecx; i++) { STOSW; }
-#define REP_STOSD for (i=0; i<ecx; i++) { STOSD; }
+//#define REP_STOSB while (cx>0) { STOSB; --cx;}
+//#define REP_STOSW while (cx>0) { STOSW; --cx;}
+//#define REP_STOSD while (cx>0) { STOSD; --cx;}
 
-#define LODS(a,b) memcpy (((db *)&eax)+b, realAddress(esi,ds), a); esi+=a
+#define LODS(a,b) {memcpy (((db *)&eax)+b, realAddress(si,ds), a); si+=a;}
 
 #ifdef MSB_FIRST
 #define LODSB LODS(1,3)
@@ -341,7 +370,7 @@ typedef union registry16Bits
 #endif
 
 #define LODSD LODS(4,0)
-
+/*
 #define REP_LODS(a,b) for (i=0; i<ecx; i++) { LODS(a,b); }
 
 #ifdef MSB_FIRST
@@ -350,9 +379,9 @@ typedef union registry16Bits
 #else
 #define REP_LODSB REP_LODS(1,0)
 #define REP_LODSW REP_LODS(2,0)
-#endif
-
 #define REP_LODSD REP_LODS(4,0)
+#endif
+*/
 
 // JMP - Unconditional Jump
 #define JMP(label) GOTOLABEL(label)
@@ -400,7 +429,7 @@ int8_t asm2C_IN(int16_t data);
 #define RET POP(jmpbuffer); longjmp(jmpbuffer, 0);
 
 #define RETN RET //TODO test
-#define RETF RET
+#define RETF RET; stackPointer-=2
 
 #ifdef __LIBSDL2__
 #include <SDL2/SDL.h>

@@ -161,11 +161,10 @@ class proc:
 	
 	def add(self, stmt, line_number=0):
 #		print stmt
-		comment = stmt.find(';')
-		comments = ""
-		if comment >= 0:
-			comments = stmt[comment:]
-			#stmt = stmt[:comment]
+		#comment = stmt.find(';')
+		#comments = ""
+		#if comment >= 0:
+		#	comments = stmt[comment:]
 		stmt = stmt.strip()
 		command = stmt
 
@@ -188,9 +187,9 @@ class proc:
 		#print "args %s" %s[1:]
 		arg = " ".join(s[1:]) if len(s) > 1 else str()
 		o = cl(arg)
-		o.comments = comments
-		o.command = command
-		o.line_number = line_number
+		#o.comments = comments
+		o.command = str(line_number) + " " + command
+		#o.line_number = line_number
 #		print "~~~" + o.command + o.comments
 		self.stmts.append(o)
 	
@@ -204,7 +203,7 @@ class proc:
 		for i in xrange(skip, len(self.stmts)):
 			self.stmts[i].visit(visitor)
 			try: # trying to add command and comment
-				visitor.body = visitor.body[:-1] + "\t// " + self.stmts[i].command + " " + self.stmts[i].comments + "\n"
+				visitor.body = visitor.body[:-1] + "\t// " + self.stmts[i].command + "\n"
 			except AttributeError:
 				pass
 

@@ -74,10 +74,13 @@ class segment:
 
 class baseop(object):
 	def parse_arg(self, arg):
-		return arg
+		args = self.split(arg)
+		if len(args)>0:
+			return args[0]
+		return ""
 
 	def split(self, text):
-		print "text %s" %text
+		#print "text %s" %text
 #		traceback.print_stack(file=sys.stdout)
 		return lex.parse_args(text)
 		#a, b = lex.parse_args(text)
@@ -91,7 +94,7 @@ class basejmp(baseop):
 
 class _call(baseop):
 	def __init__(self, arg):
-		self.name = arg
+		self.name = self.parse_arg(arg)
 	def visit(self, visitor):
 		visitor._call(self.name)
 	def __str__(self):
@@ -169,19 +172,19 @@ class _rcr(baseop):
 
 class _neg(baseop):
 	def __init__(self, arg):
-		self.arg = arg
+		self.arg = self.parse_arg(arg)
 	def visit(self, visitor):
 		visitor._neg(self.arg)
 
 class _dec(baseop):
 	def __init__(self, arg):
-		self.dst = arg
+		self.dst = self.parse_arg(arg)
 	def visit(self, visitor):
 		visitor._dec(self.dst)
 
 class _inc(baseop):
 	def __init__(self, arg):
-		self.dst = arg
+		self.dst = self.parse_arg(arg)
 	def visit(self, visitor):
 		visitor._inc(self.dst)
 
@@ -247,110 +250,110 @@ class _xchg(baseop):
 
 class _jnz(basejmp):
 	def __init__(self, label):
-		self.label = label
+		self.label = self.parse_arg(label)
 	def visit(self, visitor):
 		visitor._jnz(self.label)
 
 class _jne(basejmp):
 	def __init__(self, label):
-		self.label = label
+		self.label = self.parse_arg(label)
 	def visit(self, visitor):
 		visitor._jnz(self.label)
 
 class _jz(basejmp):
 	def __init__(self, label):
-		self.label = label
+		self.label = self.parse_arg(label)
 	def visit(self, visitor):
 		visitor._jz(self.label)
 
 class _je(basejmp):
 	def __init__(self, label):
-		self.label = label
+		self.label = self.parse_arg(label)
 	def visit(self, visitor):
 		visitor._jz(self.label)
 
 class _jc(basejmp):
 	def __init__(self, label):
-		self.label = label
+		self.label = self.parse_arg(label)
 	def visit(self, visitor):
 		visitor._jc(self.label)
 
 class _jb(basejmp):
 	def __init__(self, label):
-		self.label = label
+		self.label = self.parse_arg(label)
 	def visit(self, visitor):
 		visitor._jc(self.label)
 
 class _jnc(basejmp):
 	def __init__(self, label):
-		self.label = label
+		self.label = self.parse_arg(label)
 	def visit(self, visitor):
 		visitor._jnc(self.label)
 
 class _jae(basejmp):
 	def __init__(self, label):
-		self.label = label
+		self.label = self.parse_arg(label)
 	def visit(self, visitor):
 		visitor._jnc(self.label)
 
 class _jnb(basejmp):
 	def __init__(self, label):
-		self.label = label
+		self.label = self.parse_arg(label)
 	def visit(self, visitor):
 		visitor._jnc(self.label)
 
 class _js(basejmp):
 	def __init__(self, label):
-		self.label = label
+		self.label = self.parse_arg(label)
 	def visit(self, visitor):
 		visitor._js(self.label)
 
 class _jns(basejmp):
 	def __init__(self, label):
-		self.label = label
+		self.label = self.parse_arg(label)
 	def visit(self, visitor):
 		visitor._jns(self.label)
 
 class _jl(basejmp):
 	def __init__(self, label):
-		self.label = label
+		self.label = self.parse_arg(label)
 	def visit(self, visitor):
 		visitor._jl(self.label)
 
 class _jg(basejmp):
 	def __init__(self, label):
-		self.label = label
+		self.label = self.parse_arg(label)
 	def visit(self, visitor):
 		visitor._jg(self.label)
 
 class _jle(basejmp):
 	def __init__(self, label):
-		self.label = label
+		self.label = self.parse_arg(label)
 	def visit(self, visitor):
 		visitor._jle(self.label)
 
 class _jge(basejmp):
 	def __init__(self, label):
-		self.label = label
+		self.label = self.parse_arg(label)
 	def visit(self, visitor):
 		visitor._jge(self.label)
 
 class _jmp(basejmp):
 	def __init__(self, label):
-		self.label = label
+		self.label = self.parse_arg(label)
 	def visit(self, visitor):
 		visitor._jmp(self.label)
 
 class _loop(basejmp):
 	def __init__(self, label):
-		self.label = label
+		self.label = self.parse_arg(label)
 	def visit(self, visitor):
 		visitor._loop(self.label)
 
 class _push(baseop):
 	def __init__(self, arg):
 		self.regs = []
-		for r in arg.split():
+		for r in lex.parse_args(arg)[0].split():
 			self.regs.append(self.parse_arg(r))
 	def visit(self, visitor):
 		visitor._push(self.regs)
@@ -358,7 +361,7 @@ class _push(baseop):
 class _pop(baseop):
 	def __init__(self, arg):
 		self.regs = []
-		for r in arg.split():
+		for r in lex.parse_args(arg)[0].split():
 			self.regs.append(self.parse_arg(r))
 	def visit(self, visitor):
 		visitor._pop(self.regs)
@@ -373,7 +376,7 @@ class _retf(baseop):
 	def __init__(self, arg):
 		pass
 	def visit(self, visitor):
-		visitor._ret()
+		visitor._retf()
 
 class _retn(baseop):
 	def __init__(self, arg):
@@ -483,7 +486,7 @@ class _sti(baseop):
 
 class _int(baseop):
 	def __init__(self, arg):
-		self.dst = arg
+		self.dst = self.parse_arg(arg)
 	def visit(self, visitor):
 		visitor._int(self.dst)
 #		raise Unsupported("interrupt: %s" %self.arg)
@@ -620,25 +623,25 @@ class _adc(baseop):
 
 class _jbe(basejmp):
 	def __init__(self, label):
-		self.label = label
+		self.label = self.parse_arg(label)
 	def visit(self, visitor):
 		visitor._jbe(self.label)
 
 class _jna(basejmp):
 	def __init__(self, label):
-		self.label = label
+		self.label = self.parse_arg(label)
 	def visit(self, visitor):
 		visitor._jbe(self.label)
 
 class _ja(basejmp):
 	def __init__(self, label):
-		self.label = label
+		self.label = self.parse_arg(label)
 	def visit(self, visitor):
 		visitor._ja(self.label)
 
 class _jnbe(basejmp):
 	def __init__(self, label):
-		self.label = label
+		self.label = self.parse_arg(label)
 	def visit(self, visitor):
 		visitor._ja(self.label)
 
@@ -662,13 +665,13 @@ class _shrd(baseop):
 
 class _loope(basejmp):
 	def __init__(self, label):
-		self.label = label
+		self.label = self.parse_arg(label)
 	def visit(self, visitor):
 		visitor._loope(self.label)
 
 class _jcxz(basejmp):
 	def __init__(self, label):
-		self.label = label
+		self.label = self.parse_arg(label)
 	def visit(self, visitor):
 		visitor._jcxz(self.label)
 
@@ -699,19 +702,19 @@ class _lods(baseop):
 
 class _setnz(baseop):
 	def __init__(self, arg):
-		self.dst = arg
+		self.dst = self.parse_arg(arg)
 	def visit(self, visitor):
 		visitor._setnz(self.dst)
 
 class _setz(baseop):
 	def __init__(self, arg):
-		self.dst = arg
+		self.dst = self.parse_arg(arg)
 	def visit(self, visitor):
 		visitor._setz(self.dst)
 
 class _setb(baseop):
 	def __init__(self, arg):
-		self.dst = arg
+		self.dst = self.parse_arg(arg)
 	def visit(self, visitor):
 		visitor._setb(self.dst)
 

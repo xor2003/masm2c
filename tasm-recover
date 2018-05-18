@@ -53,4 +53,4 @@ generator = cpp(context, name, blacklist = [
 	# This remaps the function naming at output for readability
 #	'_moduleread' : '_moduleread',
 	})
-generator.generate('_start') #start routine
+generator.generate('start') #start routine
