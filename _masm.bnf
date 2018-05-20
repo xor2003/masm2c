@@ -20,40 +20,40 @@ asmInstruction
   : mnemonic  exprList? 
   ; 
 assumeDir
-  : "ASSUME" assumeList dotcom| "ASSUME NOTHING " dotcom
+  : "ASSUME" assumeList dotcom| "ASSUME NOTHING" dotcom
   ; 
 assumeList 
-  : assumeRegister| assumeList  ", " assumeRegister
+  : assumeRegister| assumeList  "," assumeRegister
   ; 
 assumeReg
-  : register  "    : " assumeVal
+  : register ":" assumeVal
   ; 
 assumeRegister
   : assumeSegReg| assumeReg
   ; 
 assumeSegReg
-  : segmentRegister  "    : " assumeSegVal
+  : segmentRegister ":" assumeSegVal
   ; 
 assumeSegVal
-  : frameExpr| "NOTHING" | "ERROR"
+  : frameExpr| "NOTHING" | "ERROR" 
   ; 
 assumeVal
-  : qualifiedType| "NOTHING" | "ERROR"
+  : qualifiedType| "NOTHING" | "ERROR" 
   ; 
 bcdConst
   :  sign?  decNumber
   ; 
 binaryOp
-  : "== "| "!= "| ">= "| "<= "| "> "| "< "| "&" 
+  : "=="| "!="| ">="| "<="| ">"| "<"| "&" 
   ; 
 eqconstExpr
   : "=" constExpr
   ;
 bitDef
-  : bitFieldId  ":"  bitFieldSize eqconstExpr?
+  : bitFieldId ":" bitFieldSize eqconstExpr?
   ; 
 bitDefList
-  : bitDef| bitDefList  ", " dotcom?  bitDef
+  : bitDef| bitDefList  "," dotcom?  bitDef
   ; 
 bitFieldId 
   : id 
@@ -65,16 +65,16 @@ ifcexpr
   : ".IF" cExpr
   ;
 blockStatements
-  : directiveList| ".CONTINUE" ifcexpr? | ".BREAK " ifcexpr?
+  : directiveList| ".CONTINUE" ifcexpr? | ".BREAK" ifcexpr?
   ; 
 bool
-  : "TRUE | FALSE"
+  : "TRUE" | "FALSE" 
   ; 
 byteRegister
   : AL | AH | BL | BH | CL | CH | DL | DH 
   ; 
 cExpr
-  : aExpr| cExpr  ":" aExpr
+  : aExpr| cExpr ":" aExpr
   ; 
 character
   : Any character with ordinal in the range 0–255 except linefeed (10)
@@ -89,16 +89,16 @@ commDecl
   :  nearfar?   langType?  id ":" commType eqconstExpr?
   ; 
 commDir
-  : "COMM " commList dotcom
+  : "COMM" commList dotcom
   ; 
 comment
-  : "  ; " text dotcom
+  : ";" text dotcom
   ; 
 commentDir
   : "COMMENT" delimitertext text delimiter text dotcom
   ; 
 commList
-  : commDecl| commList  ", " commDecl
+  : commDecl| commList  "," commDecl
   ; 
 commType
   : type| constExpr
@@ -110,13 +110,13 @@ constExpr
   : expr
   ; 
 contextDir
-  : "PUSHCONTEXT " contextItemList dotcom| "POPCONTEXT " contextItemList dotcom
+  : "PUSHCONTEXT" contextItemList dotcom| "POPCONTEXT" contextItemList dotcom
   ; 
 contextItem
-  : "ASSUMES "| "RADIX "| "LISTING "| "CPU "| "ALL"
+  : "ASSUMES" | "RADIX" | "LISTING" | "CPU" | "ALL" 
   ; 
 contextItemList
-  : contextItem| contextItemList  ", " contextItem
+  : contextItem| contextItemList  "," contextItem
   ; 
 controlBlock
   : whileBlock| repeatBlock
@@ -132,19 +132,19 @@ elsedirectiveList
   : ".ELSE" dotcom directiveList
   ;
 controlIf
-  : ".IF " cExpr dotcom directiveList controlElseif? elsedirectiveList? ".ENDIF " dotcom
+  : ".IF" cExpr dotcom directiveList controlElseif? elsedirectiveList? ".ENDIF" dotcom
   ; 
 coprocessor
-  : ".8087 "| ".287" | ".387" | ".NO87"
+  : ".8087" | ".287" | ".387" | ".NO87" 
   ; 
 crefDir
   : crefOption dotcom
   ; 
 crefOption
-  : ".CREF"| ".XCREF " idList? | ".NOCREF " idList? 
+  : ".CREF" | ".XCREF" idList? | ".NOCREF" idList? 
   ; 
 cxzExpr
-  : expr| "! " expr| expr  "== " expr| expr  "!= " expr
+  : expr| "!" expr| expr  "==" expr| expr  "!=" expr
   ; 
 dataDecl
   : "DB" | "DW" | "DD" | "DF" | "DQ" | "DT" | dataType | typeId
@@ -156,10 +156,10 @@ dataItem
   : dataDecl scalarInstList| structTag structInstList| typeId structInstList| unionTag structInstList| recordTag recordInstList
   ; 
 dataType
-  : "BYTE "| "SBYTE "| "WORD "| "SWORD "| "DWORD "| "SDWORD" | "FWORD "| "QWORD "| "TBYTE"| "REAL4" | "REAL8 "| "REAL10 "
+  : "BYTE" | "SBYTE" | "WORD" | "SWORD" | "DWORD" | "SDWORD" | "FWORD" | "QWORD" | "TBYTE" | "REAL4" | "REAL8" | "REAL10" 
   ; 
 decdigit
-  : 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9
+  : /\d/
   ; 
 decNumber
   : decdigit| decNumber decdigit
@@ -177,16 +177,16 @@ directiveList
   : directive| directiveList directive
   ; 
 distance
-  : nearfar| "NEAR16 "| "NEAR32 "| "FAR16 "| "FAR32 "
+  : nearfar| "NEAR16" | "NEAR32" | "FAR16" | "FAR32" 
   ; 
 e01
   : e01 orOp e02| e02
   ; 
 e02
-  : e02  "AND " e03| e03
+  : e02 "AND" e03| e03
   ; 
 e03
-  : "NOT " e04| e04
+  : "NOT" e04| e04
   ; 
 e04
   : e04 relOp e05| e05
@@ -201,16 +201,16 @@ e07
   : e07 addOp e08| e08
   ; 
 e08
-  : "HIGH " e09| "LOW " e09| "HIGHWORD " e09| "LOWWORD " e09| e09
+  : "HIGH" e09| "LOW" e09| "HIGHWORD" e09| "LOWWORD" e09| e09
   ; 
 e09
-  : "OFFSET " e10| "SEG " e10| "LROFFSET " e10| "TYPE " e10| "THIS " e10| e09  "PTR " e10| e09 "     : " e10| e10
+  : "OFFSET" e10| "SEG" e10| "LROFFSET" e10| "TYPE" e10| "THIS" e10| e09 "PTR" e10| e09 ":" e10| e10
   ; 
 e10
-  : e10  ". " e11| e10  expr? | e11
+  : e10 "." e11| e10  expr? | e11
   ; 
 e11
-  : "( " expr  ")"|  expr? | "WIDTH " id| "MASK " id| "SIZE " sizeArg| "SIZEOF " sizeArg| "LENGTH " id| "LENGTHOF" id | recordConst| string| constant| type| id| "$"| segmentRegister| register| "ST"| "ST ( " expr " )"
+  : "(" expr ")"|  expr? | "WIDTH" id| "MASK" id| "SIZE" sizeArg| "SIZEOF" sizeArg| "LENGTH" id| "LENGTHOF" id | recordConst| string| constant| type| id| "$"| segmentRegister| register| "ST" | "ST" "(" expr ")"
   ; 
 echoDir
   : "ECHO" arbitraryText dotcom "%OUT" arbitraryText dotcom
@@ -219,19 +219,19 @@ elseifBlock
   : elseifStatement dotcom directiveList elseifBlock? 
   ; 
 elseifStatement
-  : "ELSEIF " constExpr| "ELSEIFE " constExpr| "ELSEIFB " textItem| "ELSEIFNB " textItem | "ELSEIFDEF " id| "ELSEIFNDEF " id| "ELSEIFDIF " textItem " , " textItem| "ELSEIFDIFI " textItem " , " textItem| "ELSEIFIDN " textItem " , " textItem| "ELSEIFIDNI " textItem " , " textItem| "ELSEIF1"| "ELSEIF2"
+  : "ELSEIF" constExpr| "ELSEIFE" constExpr| "ELSEIFB" textItem| "ELSEIFNB" textItem | "ELSEIFDEF" id| "ELSEIFNDEF" id| "ELSEIFDIF" textItem "," textItem| "ELSEIFDIFI" textItem "," textItem| "ELSEIFIDN" textItem "," textItem| "ELSEIFIDNI" textItem "," textItem| "ELSEIF1" | "ELSEIF2" 
   ; 
 endDir
-  : "END"  immExpr?  dotcom
+  : "END" immExpr?  dotcom
   ; 
 endpDir
-  : procId "ENDP " dotcom
+  : procId "ENDP" dotcom
   ; 
 endsDir
-  : id "ENDS " dotcom
+  : id "ENDS" dotcom
   ; 
 equDir
-  : textMacroId  "EQU " equType dotcom
+  : textMacroId "EQU" equType dotcom
   ; 
 equType
   : immExpr| textLiteral
@@ -240,19 +240,19 @@ errorDir
   : errorOpt dotcom
   ; 
 errorOpt
-  : ".ERR"  textItem? | ".ERRE " constExpr " " optText? | ".ERRNZ " constExpr " " optText? | ".ERRB " textItem " " optText? | ".ERRNB " textItem " " optText? | ".ERRDEF " id  optText? | ".ERRNDEF " id " " optText? | ".ERRDIF " textItem  ", " textItem  optText? | ".ERRDIFI " textItem  ", " textItem  optText? | ".ERRIDN " textItem  ", " textItem  optText? | ".ERRIDNI " textItem  ", " textItem  optText? | ".ERR1 " textItem? | ".ERR2 " textItem?  
+  : ".ERR" textItem? | ".ERRE" constExpr optText? | ".ERRNZ" constExpr optText? | ".ERRB" textItem optText? | ".ERRNB" textItem optText? | ".ERRDEF" id  optText? | ".ERRNDEF" id optText? | ".ERRDIF" textItem "," textItem  optText? | ".ERRDIFI" textItem "," textItem  optText? | ".ERRIDN" textItem "," textItem  optText? | ".ERRIDNI" textItem "," textItem  optText? | ".ERR1" textItem? | ".ERR2" textItem?  
   ; 
 exitDir
-  : ".EXIT " expr?  dotcom
+  : ".EXIT" expr?  dotcom
   ; 
 exitmDir    :
-  : "EXITM"| "EXITM " textItem
+  : "EXITM" | "EXITM" textItem
   ; 
 exponent
   : E  sign?  decNumber
   ; 
 expr
-  : "SHORT " e05| ".TYPE " e01| "OPATTR " e01| e01
+  : "SHORT" e05| ".TYPE" e01| "OPATTR" e01| e01
   ; 
 exprList
   : expr| exprList  ","  expr
@@ -261,19 +261,19 @@ altId
   : "(" altId ")"
   ;
 externDef
-  :  langType?  id altId? "    : " externType
+  :  langType?  id altId? ":" externType
   ; 
 externDir
   : externKey externList dotcom
   ; 
 externKey
-  : "EXTRN "| "EXTERN "| "EXTERNDEF"
+  : "EXTRN" | "EXTERN" | "EXTERNDEF" 
   ; 
 externList
-  : externDef| externList  ", " dotcom?  externDef
+  : externDef| externList  "," dotcom?  externDef
   ; 
 externType
-  : "ABS"| qualifiedType
+  : "ABS" | qualifiedType
   ; 
 fieldAlign
   : constExpr
@@ -294,16 +294,16 @@ fileSpec
   : fileCharList| textLiteral
   ; 
 flagName
-  : "ZERO? "| "CARRY?" | "OVERFLOW?"|" SIGN? "| "PARITY? "
+  : "ZERO? "| "CARRY?" | "OVERFLOW?"|"SIGN?"| "PARITY?"
   ; 
 floatNumber 
-  :  sign?  decNumber "."  decNumber?   exponent? | digits R| digits r
+  :  sign?  decNumber "." decNumber?   exponent? | digits R| digits r
   ; 
 forcDir
-  : "FORC" | "IRPC"
+  : "FORC" | "IRPC" 
   ; 
 forDir
-  : "FOR" |" IRP"
+  : "FOR" | "IRP" 
   ; 
 dotdotforParmType
   : ":" forParmType
@@ -312,10 +312,10 @@ forParm
   : id dotdotforParmType?
   ; 
 forParmType
-  : "REQ"| "= " textLiteral
+  : "REQ" | "=" textLiteral
   ; 
 frameExpr
-  : "SEG " id | DGROUP "    : " id| segmentRegister  "    : " id| id
+  : "SEG" id | DGROUP ":" id| segmentRegister ":" id| id
   ; 
 generalDir
   : modelDir | segOrderDir | nameDir| includeLibDir | commentDir| groupDir | assumeDir| structDir | recordDir | typedefDir| externDir | publicDir | commDir | protoTypeDir| equDir | eqDir | textDir| contextDir | optionDir | processorDir| radixDir | titleDir | pageDir | listDir | crefDir | echoDir| ifDir | errorDir | includeDir | macroDir | macroCall | macroRepeat | purgeDir| macroWhile | macroFor | macroForc| aliasDir
@@ -324,16 +324,16 @@ gpRegister
   : AX | EAX | BX | EBX | CX | ECX | DX | EDX| BP | EBP | SP | ESP | DI | EDI | SI | ESI
   ; 
 groupDir 
-  : groupId  "GROUP " segIdList
+  : groupId "GROUP" segIdList
   ; 
 groupId
   : id
   ; 
 hexdigit
-  : a | b | c | d | e | f| A | B | C | D | E | F
+  : /[A-Fa-f]/
   ; 
 id
-  : alpha| id alpha| id decdigit
+  : /[A-Za-z]/ | id /[A-Za-z]/| id decdigit
   ; 
 idList
   : id| idList "," id
@@ -342,22 +342,22 @@ elsedirectiveList
   : "ELSE" dotcom directiveList
   ;
 ifDir
-  : ifStatement dotcom directiveList elseifBlock? elsedirectiveList? "ENDIF " dotcom
+  : ifStatement dotcom directiveList elseifBlock? elsedirectiveList? "ENDIF" dotcom
   ; 
 ifStatement
-  : "IF " constExpr| "IFE " constExpr| "IFB " textItem| "IFNB " textItem| "IFDEF " id| "IFNDEF " id| "IFDIF " textItem ", " textItem| "IFDIFI " textItem , textItem| "IFIDN " textItem , textItem| "IFIDNI " textItem , textItem| "IF1"| "IF2"
+  : "IF" constExpr| "IFE" constExpr| "IFB" textItem| "IFNB" textItem| "IFDEF" id| "IFNDEF" id| "IFDIF" textItem "," textItem| "IFDIFI" textItem "," textItem| "IFIDN" textItem "," textItem| "IFIDNI" textItem "," textItem| "IF1" | "IF2" 
   ; 
 immExpr
   : expr
   ; 
 includeDir
-  : "INCLUDE " fileSpec dotcom
+  : "INCLUDE" fileSpec dotcom
   ; 
 includeLibDir
-  : "INCLUDELIB " fileSpec dotcom
+  : "INCLUDELIB" fileSpec dotcom
   ; 
 initValue
-  : immExpr| string| "?"| constExpr  "DUP ( " scalarInstList" )"| floatNumber| bcdConst
+  : immExpr| string| "?"| constExpr  "DUP" "(" scalarInstList ")"| floatNumber| bcdConst
   ; 
 inSegDir
   :  labelDef?  inSegmentDir
@@ -369,19 +369,19 @@ inSegmentDir
   : instruction| dataDir| controlDir| startupDir| exitDir| offsetDir| labelDir| procDir  localDirList?   inSegDirList?  endpDir| invokeDir| generalDir 
   ; 
 instrPrefix
-  : "REP "| "REPE" | "REPZ" | "REPNE" | "REPNZ" | "LOCK"
+  : "REP" | "REPE" | "REPZ" | "REPNE" | "REPNZ" | "LOCK" 
   ; 
 instruction
   :  instrPrefix?  asmInstruction
   ; 
 invokeArg
-  : register  "::" register| expr| "ADDR" expr
+  : register "::" register| expr| "ADDR" expr
   ; 
 commainvokeList
   : "," dotcom? invokeList
   ;
 invokeDir
-  : "INVOKE " expr commainvokeList? dotcom
+  : "INVOKE" expr commainvokeList? dotcom
   ; 
 invokeList
   : invokeArg| invokeList  "," dotcom?  invokeArg
@@ -393,25 +393,25 @@ keywordList
   : keyword | keyword keywordList
   ; 
 labelDef
-  : id  ":"| id  "::"| "@@:"
+  : id ":" | id "::" | "@@:"
   ; 
 labelDir
-  : id  "LABEL " qualifiedType dotcom
+  : id "LABEL" qualifiedType dotcom
   ; 
 langType
-  : "C" | "PASCAL" | "FORTRAN" |" BASIC" | "SYSCALL" | "STDCALL"
+  : "C" | "PASCAL" | "FORTRAN" | "BASIC" | "SYSCALL" | "STDCALL" 
   ; 
 listDir
   : listOption dotcom
   ; 
 listOption
-  : ".LIST"| ".NOLIST "| ".XLIST"| ".LISTALL"| ".LISTIF "| ".LFCOND"| ".NOLISTIF" | ".SFCOND"| ".TFCOND"| ".LISTMACROALL "| ".LALL"| ".NOLISTMACRO "| ".SALL"| ".LISTMACRO" | ".XALL"
+  : ".LIST" | ".NOLIST" | ".XLIST" | ".LISTALL" | ".LISTIF" | ".LFCOND" | ".NOLISTIF" | ".SFCOND" | ".TFCOND" | ".LISTMACROALL" | ".LALL" | ".NOLISTMACRO" | ".SALL" | ".LISTMACRO" | ".XALL" 
   ; 
 localDef
-  : "LOCAL " idList dotcom
+  : "LOCAL" idList dotcom
   ; 
 localDir
-  : "LOCAL " parmList dotcom
+  : "LOCAL" parmList dotcom
   ; 
 localDirList
   : localDir| localDirList localDir
@@ -420,22 +420,22 @@ localList
   : localDef| localList localDef
   ; 
 macroArg
-  : "% " constExpr| "% " textMacroId| "%" macroFuncId "(" macroArgList " )"| string| arbitraryText| "<" arbitraryText ">"
+  : "%" constExpr| "%" textMacroId| "%" macroFuncId "(" macroArgList ")"| string| arbitraryText| "<" arbitraryText ">"
   ; 
 macroArgList
-  : macroArg| macroArgList  ", " macroArg
+  : macroArg| macroArgList  "," macroArg
   ; 
 macroBody
   :  localList? macroStmtList
   ; 
 macroCall
-  : id macroArgList dotcom| id  "( " macroArgList  ")"
+  : id macroArgList dotcom| id  "(" macroArgList ")"
   ; 
 macroDir
-  : id  "MACRO " macroParmList?  dotcom macroBody "ENDM " dotcom
+  : id "MACRO" macroParmList?  dotcom macroBody "ENDM" dotcom
   ; 
 macroFor
-  : forDir forParm  "," "<" macroArgList  ">"  dotcom macroBody "ENDM " dotcom
+  : forDir forParm  "," "<" macroArgList ">" dotcom macroBody "ENDM" dotcom
   ; 
 macroForc
   : forcDir id  "," textLiteral dotcom macroBody "ENDM" dotcom
@@ -459,28 +459,28 @@ macroParm
   : id dotdotparmType?
   ; 
 macroParmList
-  : macroParm| macroParmList  ", " dotcom?  macroParm
+  : macroParm| macroParmList  "," dotcom?  macroParm
   ; 
 macroProcId
   : id
   ; 
 macroRepeat
-  : repeatDir constExpr dotcom macroBody "ENDM " dotcom
+  : repeatDir constExpr dotcom macroBody "ENDM" dotcom
   ; 
 macroStmt
-  : directive| exitmDir| ":" macroLabel| "GOTO " macroLabel
+  : directive| exitmDir| ":" macroLabel| "GOTO" macroLabel
   ; 
 macroStmtList
   : macroStmt dotcom| macroStmtList macroStmt dotcom
   ; 
 macroWhile
-  : "WHILE " constExpr dotcom macroBody "ENDM " dotcom
+  : "WHILE" constExpr dotcom macroBody "ENDM" dotcom
   ; 
 mapType
-  : "ALL "| "NONE "| "NOTPUBLIC"
+  : "ALL" | "NONE" | "NOTPUBLIC" 
   ; 
 memOption
-  : "TINY "| "SMALL "| "MEDIUM "| "COMPACT "| "LARGE "| "HUGE "| "FLAT" 
+  : "TINY" | "SMALL" | "MEDIUM" | "COMPACT" | "LARGE" | "HUGE" | "FLAT" 
   ; 
 mnemonic
   : Instruction name
@@ -489,61 +489,61 @@ commamodelOptlist
   : "," modelOptlist
   ;
 modelDir
-  : ".MODEL " memOption commamodelOptlist? dotcom
+  : ".MODEL" memOption commamodelOptlist? dotcom
   ; 
 modelOpt
   : langType| stackOption 
   ; 
 modelOptlist
-  : modelOpt| modelOptlist  ", " modelOpt
+  : modelOpt| modelOptlist  "," modelOpt
   ; 
 module
   :  directiveList?  endDir
   ; 
 mulOp
-  : "* "| "/" | "MOD"
+  : "*"| "/" | "MOD" 
   ; 
 nameDir
   : "NAME" id dotcom
   ; 
 nearfar
-  : "NEAR "| "FAR"
+  : "NEAR" | "FAR" 
   ; 
 nestedStruct
-  : structHdr  id?  dotcom structBody "ENDS " dotcom
+  : structHdr  id?  dotcom structBody "ENDS" dotcom
   ; 
 offsetDir
   : offsetDirType dotcom
   ; 
 offsetDirType
-  : "EVEN"| "ORG " immExpr| "ALIGN " constExpr? 
+  : "EVEN" | "ORG" immExpr| "ALIGN" constExpr? 
   ; 
 offsetType
-  : "GROUP" | "SEGMENT "| "FLAT"
+  : "GROUP" | "SEGMENT" | "FLAT" 
   ; 
 oldRecordFieldList
   :  constExpr? | oldRecordFieldList ","  constExpr? 
   ; 
 optionDir
-  : "OPTION " optionList dotcom
+  : "OPTION" optionList dotcom
   ; 
 optionItem
-  : "CASEMAP     : " mapType| "DOTNAME "| "NODOTNAME"| "EMULATOR" | "NOEMULATOR"| "EPILOGUE     : " macroId| "EXPR16" | "EXPR32"| "LANGUAGE     : " langType| "LJMP" | "NOLJMP"| "M510 "| "NOM510"| "NOKEYWORD" "    : <" keywordList ">"| "NOSIGNEXTEND"| "OFFSET     : " offsetType| "OLDMACROS" | "NOOLDMACROS"| "OLDSTRUCTS" | "NOOLDSTRUCTS"| "PROC     : " oVisibility| "PROLOGUE     : " macroId| "READONLY "| "NOREADONLY"| "SCOPED" | "NOSCOPED"| "SEGMENT     : " segSize| "SETIF2     : " bool
+  : "CASEMAP" ":" mapType| "DOTNAME" | "NODOTNAME" | "EMULATOR" | "NOEMULATOR" | "EPILOGUE" ":" macroId| "EXPR16" | "EXPR32" | "LANGUAGE" ":" langType| "LJMP" | "NOLJMP" | "M510" | "NOM510" | "NOKEYWORD" ":" "<" keywordList ">"| "NOSIGNEXTEND" | "OFFSET" ":" offsetType| "OLDMACROS" | "NOOLDMACROS" | "OLDSTRUCTS" | "NOOLDSTRUCTS" | "PROC" ":" oVisibility| "PROLOGUE" ":" macroId| "READONLY" | "NOREADONLY" | "SCOPED" | "NOSCOPED" | "SEGMENT" ":" segSize| "SETIF2" ":" bool
   ; 
 optionList
-  : optionItem| optionList  ", " dotcom?  optionItem
+  : optionItem| optionList  "," dotcom?  optionItem
   ; 
 optText
-  : ", " textItem
+  : "," textItem
   ; 
 orOp
-  : "OR "| "XOR"
+  : "OR" | "XOR" 
   ; 
 oVisibility
-  : "PUBLIC" |" PRIVATE" |" EXPORT"
+  : "PUBLIC" | "PRIVATE" | "EXPORT" 
   ; 
 pageDir
-  : "PAGE " pageExpr?  dotcom
+  : "PAGE" pageExpr?  dotcom
   ; 
 commapageWidth
   : "," pageWidth
@@ -567,10 +567,10 @@ parmId
   : id
   ; 
 parmList
-  : parm| parmList  ", " dotcom?  parm
+  : parm| parmList  "," dotcom?  parm
   ; 
 parmType
-  : "REQ"| "= " textLiteral| "VARARG"
+  : "REQ" | "=" textLiteral| "VARARG" 
   ; 
 pOptions
   :  distance?   langType?   oVisibility? 
@@ -582,11 +582,11 @@ brmacroArgList
   : "<" macroArgList ">"
   ;
 procDir
-  : procId  "PROC " pOptions?  brmacroArgList?  usesRegs?   procParmList? 
+  : procId "PROC" pOptions?  brmacroArgList?  usesRegs?   procParmList? 
   ; 
 processor
-  : ".8086"| ".186"| ".286 "| ".286C "| ".286P"| ".386 "| ".386C "| ".386P"| ".486 "|" .486P" | ".586"| ".586P" |
-    ".686" | ".686P" | ".K3D" | ".MMX" | ".XMM" | ".8086"
+  : ".8086" | ".186" | ".286" | ".286C" | ".286P" | ".386" | ".386C" | ".386P" | ".486" | ".486P" | ".586" | ".586P" |
+ ".686" | ".686P" | ".K3D" | ".MMX" | ".XMM" | ".8086" 
   ; 
 processorDir
   : processor dotcom | coprocessor dotcom
@@ -598,20 +598,20 @@ commaparmList
   : ","  dotcom?  parmList
   ;
 commaparmIdvararg
-  : ","  dotcom?  parmId ":VARARG"
+  : ","  dotcom?  parmId ":VARARG" 
   ;
 procParmList
   : commaparmList? 
     commaparmIdvararg?
   ; 
 protoArg 
-  :  id?  ":" qualifiedType 
+  :  id? ":" qualifiedType 
   ; 
 commaprotoList
   : ","  dotcom?  protoList
   ;
 commaidvararg
-  : ","  dotcom?   id?  ":VARARG"
+  : ","  dotcom?   id? ":VARARG" 
   ;
 protoArgList
   : commaprotoList?
@@ -624,22 +624,22 @@ protoSpec
   :  distance?   langType?   protoArgList?  | typeId
   ; 
 protoTypeDir
-  : id  "PROTO " protoSpec
+  : id "PROTO" protoSpec
   ; 
 pubDef
   :  langType?  id
   ; 
 publicDir
-  : "PUBLIC " pubList dotcom
+  : "PUBLIC" pubList dotcom
   ; 
 pubList
   : pubDef| pubList  "," dotcom?  pubDef
   ; 
 purgeDir
-  : "PURGE " macroIdList
+  : "PURGE" macroIdList
   ; 
 qualifiedType
-  : type|  distance?  "PTR"  qualifiedType? 
+  : type|  distance? "PTR" qualifiedType? 
   ; 
 qualifier
   : qualifiedType| "PROTO" protoSpec
@@ -651,19 +651,19 @@ radixDir
   : ".RADIX" constExpr dotcom
   ; 
 radixOverride
-  : h | o | q | t | y | H | O | Q | T | Y
+  : /[hoqtyHOQTY]/
   ; 
 recordConst
-  : recordTag "{ " oldRecordFieldList "}"| recordTag "<" oldRecordFieldList ">"
+  : recordTag "{" oldRecordFieldList "}"| recordTag "<" oldRecordFieldList ">"
   ; 
 recordDir
-  : recordTag  "RECORD " bitDefList dotcom 
+  : recordTag "RECORD" bitDefList dotcom 
   ; 
 recordFieldList
   :  constExpr? | recordFieldList  ","  dotcom?   constExpr? 
   ; 
 recordInstance
-  : "{"  dotcom?  recordFieldList  dotcom?  "}"| "<" oldRecordFieldList ">"| constExpr "DUP (" recordInstance ")"
+  : "{"  dotcom?  recordFieldList  dotcom?  "}"| "<" oldRecordFieldList ">"| constExpr "DUP" "(" recordInstance ")"
   ; 
 recordInstList
   : recordInstance| recordInstList ","  dotcom?  recordInstance
@@ -678,37 +678,37 @@ regList
   : register| regList register
   ; 
 relOp
-  : "EQ "| "NE "| "LT "| "LE "| "GT "| "GE"
+  : "EQ" | "NE" | "LT" | "LE" | "GT" | "GE" 
   ; 
 repeatBlock
   : ".REPEAT" dotcom blockStatements dotcom untilDir dotcom
   ; 
 repeatDir
-  : "REPEAT" | "REPT"
+  : "REPEAT" | "REPT" 
   ; 
 scalarInstList
   : initValue| scalarInstList  ","  dotcom?  initValue
   ; 
 segAlign
-  : "BYTE "| "WORD "| "DWORD "| "PARA" | "PAGE"
+  : "BYTE" | "WORD" | "DWORD" | "PARA" | "PAGE" 
   ; 
 segAttrib
-  : "PUBLIC"| "STACK"| "COMMON"| "MEMORY"| "AT " constExpr| "PRIVATE"
+  : "PUBLIC" | "STACK" | "COMMON" | "MEMORY" | "AT" constExpr| "PRIVATE" 
   ; 
 segDir
-  : ".CODE " segId? | ".DATA"| ".DATA?"| ".CONST"| ".FARDATA " segId? | ".FARDATA? " segId? | ".STACK " constExpr? 
+  : ".CODE" segId? | ".DATA" | ".DATA?"| ".CONST" | ".FARDATA" segId? | ".FARDATA?" segId? | ".STACK" constExpr? 
   ; 
 segId
   : id
   ; 
 segIdList 
-  : segId| segIdList  ", " segId
+  : segId| segIdList  "," segId
   ; 
 segmentDef
   : segmentDir  inSegDirList?  endsDir| simpleSegDir  inSegDirList?   endsDir? 
   ; 
 segmentDir
-  : segId  "SEGMENT"  segOptionList?  dotcom
+  : segId "SEGMENT" segOptionList?  dotcom
   ; 
 segmentRegister
   : CS | DS | ES | FS | GS | SS
@@ -720,22 +720,22 @@ segOptionList
   : segOption| segOptionList segOption
   ; 
 segOrderDir
-  : ".ALPHA "| ".SEQ" | ".DOSSEG" | "DOSSEG"
+  : ".ALPHA" | ".SEQ" | ".DOSSEG" | "DOSSEG" 
   ; 
 segRO
-  : "READONLY"
+  : "READONLY" 
   ; 
 segSize 
-  : "USE16" | "USE32 "|" FLAT"
+  : "USE16" | "USE32" | "FLAT" 
   ; 
 shiftOp
-  : "SHR "| "SHL"
+  : "SHR" | "SHL" 
   ; 
 sign
   : "-" | "+"
   ; 
 simpleExpr
-  : "( " cExpr  ")"| primary
+  : "(" cExpr ")"| primary
   ; 
 simpleSegDir
   : segDir dotcom
@@ -744,7 +744,7 @@ sizeArg
   : id| type| e10
   ; 
 specialChars
-  : "    :" | "." | "[[" | "]]" | "(" | ")" | "<" | ">" | "{" | "}"| "+" | "-" | "/" | "*" | "&" | "%" | "!"| "'" | "\" | "=" | "  ;" | "," | '"'| whiteSpaceCharacter | endOfLine
+  : ":" | "." | "[[" | "]]" | "(" | ")" | "<" | ">" | "{" | "}"| "+" | "-" | "/" | "*" | "&" | "%" | "!"| "'" | "\" | "=" | "  ;" | "," | '"'| whiteSpaceCharacter | endOfLine
   ; 
 specialRegister
   : CR0 | CR2 | CR3 | DR0 | DR1 | DR2 | DR3 | DR6 | DR7| TR3 | TR4 | TR5 | TR6 | TR7
@@ -753,7 +753,7 @@ stackOption
   : "NEARSTACK" | "FARSTACK" 
   ; 
 startupDir
-  : ".STARTUP "dotcom
+  : ".STARTUP" dotcom
   ; 
 stext
   : stringChar| stext stringChar
@@ -771,10 +771,10 @@ commanonuniq
   : "," "NONUNIQUE"
   ;
 structDir
-  : structTag structHdr  fieldAlign?  commanonuniq? dotcom structBody structTag  "ENDS " dotcom
+  : structTag structHdr  fieldAlign?  commanonuniq? dotcom structBody structTag "ENDS" dotcom
   ; 
 structHdr
-  : "STRUC "| "STRUCT "| "UNION "
+  : "STRUC" | "STRUCT" | "UNION" 
   ; 
 structInstance
   : "<"  fieldInitList?  ">"| "{" dotcom?   fieldInitList?   dotcom?  "}"| constExpr "DUP" "(" structInstList ")"
@@ -792,7 +792,7 @@ term
   : simpleExpr| "!" simpleExpr
   ; 
 text
-  : textLiteral| text character| "! " character text| character| "! " character
+  : textLiteral| text character| "!" character text| character| "!" character
   ; 
 textDir
   : id textMacroDir dotcom
@@ -816,7 +816,7 @@ textStartcomma
   : textStart  ","
   ;
 textMacroDir
-  : "CATSTR" textList? | "TEXTEQU" textList? | "SIZESTR" textItem| "SUBSTR" textItem  "," textStart commatextLen| "INSTR " textStartcomma? textItem  "," textItem
+  : "CATSTR" textList? | "TEXTEQU" textList? | "SIZESTR" textItem| "SUBSTR" textItem  "," textStart commatextLen| "INSTR" textStartcomma? textItem  "," textItem
   ; 
 textMacroId
   : id
@@ -828,13 +828,13 @@ titleDir
   : titleType arbitraryText dotcom
   ; 
 titleType
-  : "TITLE" | "SUBTITLE"| "SUBTTL"
+  : "TITLE" | "SUBTITLE" | "SUBTTL" 
   ; 
 type
   : structTag| unionTag| recordTag| distance| dataType| typeId
   ; 
 typedefDir
-  : typeId  "TYPEDEF" qualifier
+  : typeId "TYPEDEF" qualifier
   ; 
 typeId
   : id
@@ -849,7 +849,7 @@ usesRegs
   : "USES" regList 
   ; 
 whileBlock
-  : ".WHILE" cExpr dotcom blockStatements dotcom ".ENDW"
+  : ".WHILE" cExpr dotcom blockStatements dotcom ".ENDW" 
   ; 
 whiteSpaceCharacter
-  : ASCII 8, 9, 11–13, 26, 32  ;
+  : /[\b\t\v\f\r\x1a\s]/
