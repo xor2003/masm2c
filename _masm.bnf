@@ -2,7 +2,7 @@ dotcom
   : endOfLine| comment
   ; 
 eqDir
-  : id  "= " immExpr dotcom
+  : id  "=" immExpr dotcom
   ; 
 addOp
   : "+" | "-"
@@ -46,8 +46,11 @@ bcdConst
 binaryOp
   : "== "| "!= "| ">= "| "<= "| "> "| "< "| "&" 
   ; 
+eqconstExpr
+  : "=" constExpr
+  ;
 bitDef
-  : bitFieldId  "    :"  bitFieldSize [[ "= " constExpr ]]
+  : bitFieldId  ":"  bitFieldSize eqconstExpr?
   ; 
 bitDefList
   : bitDef| bitDefList  ", " dotcom?  bitDef
@@ -58,8 +61,11 @@ bitFieldId
 bitFieldSize
   : constExpr
   ; 
+ifcexpr
+  : ".IF" cExpr
+  ;
 blockStatements
-  : directiveList| ".CONTINUE" [[ ".IF " cExpr ]]| ".BREAK "[[ ".IF " cExpr ]]
+  : directiveList| ".CONTINUE" ifcexpr? | ".BREAK " ifcexpr?
   ; 
 bool
   : "TRUE | FALSE"
@@ -68,7 +74,7 @@ byteRegister
   : AL | AH | BL | BH | CL | CH | DL | DH 
   ; 
 cExpr
-  : aExpr| cExpr  "    : " aExpr
+  : aExpr| cExpr  ":" aExpr
   ; 
 character
   : Any character with ordinal in the range 0–255 except linefeed (10)
@@ -80,7 +86,7 @@ className
   : string
   ; 
 commDecl
-  :  nearfar?   langType?  id "    : " commType[[ "    : " constExpr ]]
+  :  nearfar?   langType?  id ":" commType eqconstExpr?
   ; 
 commDir
   : "COMM " commList dotcom
@@ -119,10 +125,14 @@ controlDir
   : controlIf| controlBlock
   ; 
 controlElseif
-  : ".ELSEIF" cExpr dotcomdirectiveList controlElseif? 
+  : ".ELSEIF" cExpr dotcom directiveList controlElseif? 
   ; 
+
+elsedirectiveList
+  : ".ELSE" dotcom directiveList
+  ;
 controlIf
-  : ".IF " cExpr dotcomdirectiveList controlElseif? [[ ".ELSE " dotcomdirectiveList ]]".ENDIF " dotcom
+  : ".IF " cExpr dotcom directiveList controlElseif? elsedirectiveList? ".ENDIF " dotcom
   ; 
 coprocessor
   : ".8087 "| ".287" | ".387" | ".NO87"
@@ -206,7 +216,7 @@ echoDir
   : "ECHO" arbitraryText dotcom "%OUT" arbitraryText dotcom
   ; 
 elseifBlock
-  : elseifStatement dotcomdirectiveList elseifBlock? 
+  : elseifStatement dotcom directiveList elseifBlock? 
   ; 
 elseifStatement
   : "ELSEIF " constExpr| "ELSEIFE " constExpr| "ELSEIFB " textItem| "ELSEIFNB " textItem | "ELSEIFDEF " id| "ELSEIFNDEF " id| "ELSEIFDIF " textItem " , " textItem| "ELSEIFDIFI " textItem " , " textItem| "ELSEIFIDN " textItem " , " textItem| "ELSEIFIDNI " textItem " , " textItem| "ELSEIF1"| "ELSEIF2"
@@ -247,8 +257,11 @@ expr
 exprList
   : expr| exprList  ","  expr
   ; 
+altId
+  : "(" altId ")"
+  ;
 externDef
-  :  langType?  id [[" (" altId ")" ]] "    : " externType
+  :  langType?  id altId? "    : " externType
   ; 
 externDir
   : externKey externList dotcom
@@ -292,8 +305,11 @@ forcDir
 forDir
   : "FOR" |" IRP"
   ; 
+dotdotforParmType
+  : ":" forParmType
+  ;
 forParm
-  : id [[ "    : " forParmType ]]
+  : id dotdotforParmType?
   ; 
 forParmType
   : "REQ"| "= " textLiteral
@@ -322,8 +338,11 @@ id
 idList
   : id| idList "," id
   ; 
+elsedirectiveList
+  : "ELSE" dotcom directiveList
+  ;
 ifDir
-  : ifStatement dotcomdirectiveList elseifBlock? [[ "ELSE" dotcomdirectiveList ]]"ENDIF " dotcom
+  : ifStatement dotcom directiveList elseifBlock? elsedirectiveList? "ENDIF " dotcom
   ; 
 ifStatement
   : "IF " constExpr| "IFE " constExpr| "IFB " textItem| "IFNB " textItem| "IFDEF " id| "IFNDEF " id| "IFDIF " textItem ", " textItem| "IFDIFI " textItem , textItem| "IFIDN " textItem , textItem| "IFIDNI " textItem , textItem| "IF1"| "IF2"
@@ -356,13 +375,16 @@ instruction
   :  instrPrefix?  asmInstruction
   ; 
 invokeArg
-  : register  "    :    : " register| expr| "ADDR " expr
+  : register  "::" register| expr| "ADDR" expr
   ; 
+commainvokeList
+  : "," dotcom? invokeList
+  ;
 invokeDir
-  : "INVOKE " expr [[ ", " dotcom? " " invokeList ]] dotcom
+  : "INVOKE " expr commainvokeList? dotcom
   ; 
 invokeList
-  : invokeArg| invokeList  ", " dotcom?  invokeArg
+  : invokeArg| invokeList  "," dotcom?  invokeArg
   ; 
 keyword
   : Any reserved word
@@ -371,7 +393,7 @@ keywordList
   : keyword | keyword keywordList
   ; 
 labelDef
-  : id  "    :"| id  "    :    :"| "@@    :"
+  : id  ":"| id  "::"| "@@:"
   ; 
 labelDir
   : id  "LABEL " qualifiedType dotcom
@@ -410,13 +432,13 @@ macroCall
   : id macroArgList dotcom| id  "( " macroArgList  ")"
   ; 
 macroDir
-  : id  "MACRO " macroParmList?  dotcommacroBody "ENDM " dotcom
+  : id  "MACRO " macroParmList?  dotcom macroBody "ENDM " dotcom
   ; 
 macroFor
-  : forDir forParm  "," "<" macroArgList  ">"  dotcommacroBody "ENDM " dotcom
+  : forDir forParm  "," "<" macroArgList  ">"  dotcom macroBody "ENDM " dotcom
   ; 
 macroForc
-  : forcDir id  "," textLiteral dotcommacroBody "ENDM" dotcom
+  : forcDir id  "," textLiteral dotcom macroBody "ENDM" dotcom
   ; 
 macroFuncId
   : id
@@ -430,8 +452,11 @@ macroIdList
 macroLabel
   : id
   ; 
+dotdotparmType
+  : ":" parmType
+  ;
 macroParm
-  : id [[ "    : " parmType ]]
+  : id dotdotparmType?
   ; 
 macroParmList
   : macroParm| macroParmList  ", " dotcom?  macroParm
@@ -440,7 +465,7 @@ macroProcId
   : id
   ; 
 macroRepeat
-  : repeatDir constExpr dotcommacroBody "ENDM " dotcom
+  : repeatDir constExpr dotcom macroBody "ENDM " dotcom
   ; 
 macroStmt
   : directive| exitmDir| ":" macroLabel| "GOTO " macroLabel
@@ -449,7 +474,7 @@ macroStmtList
   : macroStmt dotcom| macroStmtList macroStmt dotcom
   ; 
 macroWhile
-  : "WHILE " constExpr dotcommacroBody "ENDM " dotcom
+  : "WHILE " constExpr dotcom macroBody "ENDM " dotcom
   ; 
 mapType
   : "ALL "| "NONE "| "NOTPUBLIC"
@@ -460,8 +485,11 @@ memOption
 mnemonic
   : Instruction name
   ; 
+commamodelOptlist
+  : "," modelOptlist
+  ;
 modelDir
-  : ".MODEL " memOption [[ ","  modelOptlist ]] dotcom
+  : ".MODEL " memOption commamodelOptlist? dotcom
   ; 
 modelOpt
   : langType| stackOption 
@@ -482,7 +510,7 @@ nearfar
   : "NEAR "| "FAR"
   ; 
 nestedStruct
-  : structHdr  id?  dotcomstructBody "ENDS " dotcom
+  : structHdr  id?  dotcom structBody "ENDS " dotcom
   ; 
 offsetDir
   : offsetDirType dotcom
@@ -517,8 +545,11 @@ oVisibility
 pageDir
   : "PAGE " pageExpr?  dotcom
   ; 
+commapageWidth
+  : "," pageWidth
+  ;
 pageExpr
-  : "+"|  pageLength?  [[ "," pageWidth ]]
+  : "+"|  pageLength?  commapageWidth?
   ; 
 pageLength
   : constExpr
@@ -526,8 +557,11 @@ pageLength
 pageWidth
   : constExpr
   ; 
+dotdotqualifiedType
+  : ":" qualifiedType
+  ;
 parm
-  : parmId [[ ":" qualifiedType ]]| parmId  constExpr?  [[ ":" qualifiedType ]]
+  : parmId dotdotqualifiedType? | parmId  constExpr? dotdotqualifiedType?
   ; 
 parmId
   : id
@@ -544,12 +578,15 @@ pOptions
 primary
   : expr binaryOp expr| flagName| expr
   ; 
+brmacroArgList
+  : "<" macroArgList ">"
+  ;
 procDir
-  : procId  "PROC " pOptions?  [[ "< " macroArgList  "> "]]  usesRegs?   procParmList? 
+  : procId  "PROC " pOptions?  brmacroArgList?  usesRegs?   procParmList? 
   ; 
 processor
   : ".8086"| ".186"| ".286 "| ".286C "| ".286P"| ".386 "| ".386C "| ".386P"| ".486 "|" .486P" | ".586"| ".586P" |
-    ".686" | ".686P" | ".K3D" | ".MMX" | ".XMM" | ".8086" | ".8087" | ".NO87"
+    ".686" | ".686P" | ".K3D" | ".MMX" | ".XMM" | ".8086"
   ; 
 processorDir
   : processor dotcom | coprocessor dotcom
@@ -557,16 +594,28 @@ processorDir
 procId
   : id
   ; 
+commaparmList
+  : ","  dotcom?  parmList
+  ;
+commaparmIdvararg
+  : ","  dotcom?  parmId ":VARARG"
+  ;
 procParmList
-  : [[ ","  dotcom?  parmList ]] 
-    [[ ","  dotcom?  parmId ":VARARG"]]
+  : commaparmList? 
+    commaparmIdvararg?
   ; 
 protoArg 
   :  id?  ":" qualifiedType 
   ; 
+commaprotoList
+  : ","  dotcom?  protoList
+  ;
+commaidvararg
+  : ","  dotcom?   id?  ":VARARG"
+  ;
 protoArgList
-  : [[ ","  dotcom?  protoList ]] 
-    [[ ","  dotcom?   id?  ":VARARG" ]]
+  : commaprotoList?
+    commaidvararg?
   ; 
 protoList
   : protoArg| protoList  "," dotcom?  protoArg
@@ -671,7 +720,7 @@ segOptionList
   : segOption| segOptionList segOption
   ; 
 segOrderDir
-  : ".ALPHA "| ."SEQ" | ".DOSSEG "| "DOSSEG"
+  : ".ALPHA "| ".SEQ" | ".DOSSEG" | "DOSSEG"
   ; 
 segRO
   : "READONLY"
@@ -718,14 +767,17 @@ stringChar
 structBody
   : structItem dotcom | structBody structItem dotcom
   ; 
+commanonuniq
+  : "," "NONUNIQUE"
+  ;
 structDir
-  : structTag structHdr  fieldAlign?  [["," "NONUNIQUE" ]] dotcomstructBody structTag  "ENDS " dotcom
+  : structTag structHdr  fieldAlign?  commanonuniq? dotcom structBody structTag  "ENDS " dotcom
   ; 
 structHdr
   : "STRUC "| "STRUCT "| "UNION "
   ; 
 structInstance
-  : "<"  fieldInitList?  ">"| "{ " dotcom?   fieldInitList?   dotcom?  "}"| constExpr "DUP" "(" structInstList ")"
+  : "<"  fieldInitList?  ">"| "{" dotcom?   fieldInitList?   dotcom?  "}"| constExpr "DUP" "(" structInstList ")"
   ; 
 structInstList
   : structInstance| structInstList  ","  dotcom?  structInstance
@@ -737,7 +789,7 @@ structTag
   : id
   ; 
 term
-  : simpleExpr| "! " simpleExpr
+  : simpleExpr| "!" simpleExpr
   ; 
 text
   : textLiteral| text character| "! " character text| character| "! " character
@@ -746,19 +798,25 @@ textDir
   : id textMacroDir dotcom
   ; 
 textItem
-  : textLiteral| textMacroId| "% " constExpr
+  : textLiteral| textMacroId| "%" constExpr
   ; 
 textLen
   : constExpr
   ; 
 textList
-  : textItem| textList  ", " dotcom?  textItem
+  : textItem| textList  "," dotcom?  textItem
   ; 
 textLiteral
-  : "< " text " >" dotcom
+  : "<" text ">" dotcom
   ; 
+commatextLen
+  : "," textLen
+  ;
+textStartcomma
+  : textStart  ","
+  ;
 textMacroDir
-  : "CATSTR " textList? |" TEXTEQU " textList? | "SIZESTR " textItem| "SUBSTR " textItem  ", " textStart [[ ", " textLen ]]| "INSTR "[[ textStart  ", "]] textItem  ", " textItem
+  : "CATSTR" textList? | "TEXTEQU" textList? | "SIZESTR" textItem| "SUBSTR" textItem  "," textStart commatextLen| "INSTR " textStartcomma? textItem  "," textItem
   ; 
 textMacroId
   : id
@@ -770,13 +828,13 @@ titleDir
   : titleType arbitraryText dotcom
   ; 
 titleType
-  : "TITLE" | "SUBTITLE "| "SUBTTL"
+  : "TITLE" | "SUBTITLE"| "SUBTTL"
   ; 
 type
   : structTag| unionTag| recordTag| distance| dataType| typeId
   ; 
 typedefDir
-  : typeId  "TYPEDEF " qualifier
+  : typeId  "TYPEDEF" qualifier
   ; 
 typeId
   : id
@@ -785,13 +843,13 @@ unionTag
   : id
   ; 
 untilDir
-  : ".UNTIL " cExpr dotcom ".UNTILCXZ " cxzExpr?  dotcom
+  : ".UNTIL" cExpr dotcom ".UNTILCXZ" cxzExpr?  dotcom
   ; 
 usesRegs
-  : "USES " regList 
+  : "USES" regList 
   ; 
 whileBlock
-  : ".WHILE " cExpr dotcomblockStatements dotcom ".ENDW"
+  : ".WHILE" cExpr dotcom blockStatements dotcom ".ENDW"
   ; 
 whiteSpaceCharacter
   : ASCII 8, 9, 11–13, 26, 32  ;
