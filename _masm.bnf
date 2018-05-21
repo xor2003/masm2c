@@ -1,8 +1,11 @@
-dotcom
-  : endOfLine| comment
+endOfLine
+  : /[\r\n]+/
+  ;
+dotcomma
+  : endOfLine | comment
   ; 
 eqDir
-  : id  "=" immExpr dotcom
+  : id  "=" immExpr dotcomma
   ; 
 addOp
   : "+" | "-"
@@ -20,7 +23,7 @@ asmInstruction
   : mnemonic  exprList? 
   ; 
 assumeDir
-  : "ASSUME" assumeList dotcom| "ASSUME NOTHING" dotcom
+  : "ASSUME" assumeList dotcomma| "ASSUME NOTHING" dotcomma
   ; 
 assumeList 
   : assumeRegister| assumeList  "," assumeRegister
@@ -53,7 +56,7 @@ bitDef
   : bitFieldId ":" bitFieldSize eqconstExpr?
   ; 
 bitDefList
-  : bitDef| bitDefList  "," dotcom?  bitDef
+  : bitDef| bitDefList  "," dotcomma?  bitDef
   ; 
 bitFieldId 
   : id 
@@ -71,13 +74,13 @@ bool
   : "TRUE" | "FALSE" 
   ; 
 byteRegister
-  : AL | AH | BL | BH | CL | CH | DL | DH 
+  : 'AL' | 'AH' | 'BL' | 'BH' | 'CL' | 'CH' | 'DL' | 'DH' 
   ; 
 cExpr
   : aExpr| cExpr ":" aExpr
   ; 
 character
-  : Any character with ordinal in the range 0–255 except linefeed (10)
+  : /[^\n]/
   ; 
 charList
   : character| charList character
@@ -89,13 +92,13 @@ commDecl
   :  nearfar?   langType?  id ":" commType eqconstExpr?
   ; 
 commDir
-  : "COMM" commList dotcom
+  : "COMM" commList dotcomma
   ; 
 comment
-  : ";" text dotcom
+  : ";" text dotcomma
   ; 
 commentDir
-  : "COMMENT" delimitertext text delimiter text dotcom
+  : "COMMENT" delimiter text text delimiter text dotcomma
   ; 
 commList
   : commDecl| commList  "," commDecl
@@ -110,7 +113,7 @@ constExpr
   : expr
   ; 
 contextDir
-  : "PUSHCONTEXT" contextItemList dotcom| "POPCONTEXT" contextItemList dotcom
+  : "PUSHCONTEXT" contextItemList dotcomma| "POPCONTEXT" contextItemList dotcomma
   ; 
 contextItem
   : "ASSUMES" | "RADIX" | "LISTING" | "CPU" | "ALL" 
@@ -125,20 +128,20 @@ controlDir
   : controlIf| controlBlock
   ; 
 controlElseif
-  : ".ELSEIF" cExpr dotcom directiveList controlElseif? 
+  : ".ELSEIF" cExpr dotcomma directiveList controlElseif? 
   ; 
 
 elsedirectiveList
-  : ".ELSE" dotcom directiveList
+  : ".ELSE" dotcomma directiveList
   ;
 controlIf
-  : ".IF" cExpr dotcom directiveList controlElseif? elsedirectiveList? ".ENDIF" dotcom
+  : ".IF" cExpr dotcomma directiveList controlElseif? elsedirectiveList? ".ENDIF" dotcomma
   ; 
 coprocessor
   : ".8087" | ".287" | ".387" | ".NO87" 
   ; 
 crefDir
-  : crefOption dotcom
+  : crefOption dotcomma
   ; 
 crefOption
   : ".CREF" | ".XCREF" idList? | ".NOCREF" idList? 
@@ -150,7 +153,7 @@ dataDecl
   : "DB" | "DW" | "DD" | "DF" | "DQ" | "DT" | dataType | typeId
   ; 
 dataDir
-  :  id?  dataItem dotcom
+  :  id?  dataItem dotcomma
   ; 
 dataItem
   : dataDecl scalarInstList| structTag structInstList| typeId structInstList| unionTag structInstList| recordTag recordInstList
@@ -165,7 +168,7 @@ decNumber
   : decdigit| decNumber decdigit
   ; 
 delimiter
-  : Any character except whiteSpaceCharacter
+  : /[^\b\t\v\f\r\x1a\s]/
   ; 
 digits
   : decdigit| digits decdigit| digits hexdigit
@@ -213,43 +216,43 @@ e11
   : "(" expr ")"|  expr? | "WIDTH" id| "MASK" id| "SIZE" sizeArg| "SIZEOF" sizeArg| "LENGTH" id| "LENGTHOF" id | recordConst| string| constant| type| id| "$"| segmentRegister| register| "ST" | "ST" "(" expr ")"
   ; 
 echoDir
-  : "ECHO" arbitraryText dotcom "%OUT" arbitraryText dotcom
+  : "ECHO" arbitraryText dotcomma "%OUT" arbitraryText dotcomma
   ; 
 elseifBlock
-  : elseifStatement dotcom directiveList elseifBlock? 
+  : elseifStatement dotcomma directiveList elseifBlock? 
   ; 
 elseifStatement
   : "ELSEIF" constExpr| "ELSEIFE" constExpr| "ELSEIFB" textItem| "ELSEIFNB" textItem | "ELSEIFDEF" id| "ELSEIFNDEF" id| "ELSEIFDIF" textItem "," textItem| "ELSEIFDIFI" textItem "," textItem| "ELSEIFIDN" textItem "," textItem| "ELSEIFIDNI" textItem "," textItem| "ELSEIF1" | "ELSEIF2" 
   ; 
 endDir
-  : "END" immExpr?  dotcom
+  : "END" immExpr?  dotcomma
   ; 
 endpDir
-  : procId "ENDP" dotcom
+  : procId "ENDP" dotcomma
   ; 
 endsDir
-  : id "ENDS" dotcom
+  : id "ENDS" dotcomma
   ; 
 equDir
-  : textMacroId "EQU" equType dotcom
+  : textMacroId "EQU" equType dotcomma
   ; 
 equType
   : immExpr| textLiteral
   ; 
 errorDir
-  : errorOpt dotcom
+  : errorOpt dotcomma
   ; 
 errorOpt
   : ".ERR" textItem? | ".ERRE" constExpr optText? | ".ERRNZ" constExpr optText? | ".ERRB" textItem optText? | ".ERRNB" textItem optText? | ".ERRDEF" id  optText? | ".ERRNDEF" id optText? | ".ERRDIF" textItem "," textItem  optText? | ".ERRDIFI" textItem "," textItem  optText? | ".ERRIDN" textItem "," textItem  optText? | ".ERRIDNI" textItem "," textItem  optText? | ".ERR1" textItem? | ".ERR2" textItem?  
   ; 
 exitDir
-  : ".EXIT" expr?  dotcom
+  : ".EXIT" expr?  dotcomma
   ; 
-exitmDir    :
+exitmDir
   : "EXITM" | "EXITM" textItem
   ; 
 exponent
-  : E  sign?  decNumber
+  : "E"  sign?  decNumber
   ; 
 expr
   : "SHORT" e05| ".TYPE" e01| "OPATTR" e01| e01
@@ -264,13 +267,13 @@ externDef
   :  langType?  id altId? ":" externType
   ; 
 externDir
-  : externKey externList dotcom
+  : externKey externList dotcomma
   ; 
 externKey
   : "EXTRN" | "EXTERN" | "EXTERNDEF" 
   ; 
 externList
-  : externDef| externList  "," dotcom?  externDef
+  : externDef| externList  "," dotcomma?  externDef
   ; 
 externType
   : "ABS" | qualifiedType
@@ -282,7 +285,7 @@ fieldInit
   :  initValue? | structInstance
   ; 
 fieldInitList
-  : fieldInit| fieldInitList ","  dotcom?  fieldInit
+  : fieldInit| fieldInitList ","  dotcomma?  fieldInit
   ; 
 fileChar
   : delimiter
@@ -297,7 +300,7 @@ flagName
   : "ZERO? "| "CARRY?" | "OVERFLOW?"|"SIGN?"| "PARITY?"
   ; 
 floatNumber 
-  :  sign?  decNumber "." decNumber?   exponent? | digits R| digits r
+  :  sign?  decNumber "." decNumber?   exponent? | digits "R"| digits "r"
   ; 
 forcDir
   : "FORC" | "IRPC" 
@@ -315,13 +318,16 @@ forParmType
   : "REQ" | "=" textLiteral
   ; 
 frameExpr
-  : "SEG" id | DGROUP ":" id| segmentRegister ":" id| id
+  : "SEG" id | "DGROUP" ":" id| segmentRegister ":" id| id
   ; 
 generalDir
   : modelDir | segOrderDir | nameDir| includeLibDir | commentDir| groupDir | assumeDir| structDir | recordDir | typedefDir| externDir | publicDir | commDir | protoTypeDir| equDir | eqDir | textDir| contextDir | optionDir | processorDir| radixDir | titleDir | pageDir | listDir | crefDir | echoDir| ifDir | errorDir | includeDir | macroDir | macroCall | macroRepeat | purgeDir| macroWhile | macroFor | macroForc| aliasDir
   ; 
+aliasDir
+  : "ALIAS"
+  ;
 gpRegister
-  : AX | EAX | BX | EBX | CX | ECX | DX | EDX| BP | EBP | SP | ESP | DI | EDI | SI | ESI
+  : 'AX' | 'EAX' | 'BX' | 'EBX' | 'CX' | 'ECX' | 'DX' | 'EDX'| 'BP' | 'EBP' | 'SP' | 'ESP' | 'DI' | 'EDI' | 'SI' | 'ESI'
   ; 
 groupDir 
   : groupId "GROUP" segIdList
@@ -339,10 +345,10 @@ idList
   : id| idList "," id
   ; 
 elsedirectiveList
-  : "ELSE" dotcom directiveList
+  : "ELSE" dotcomma directiveList
   ;
 ifDir
-  : ifStatement dotcom directiveList elseifBlock? elsedirectiveList? "ENDIF" dotcom
+  : ifStatement dotcomma directiveList elseifBlock? elsedirectiveList? "ENDIF" dotcomma
   ; 
 ifStatement
   : "IF" constExpr| "IFE" constExpr| "IFB" textItem| "IFNB" textItem| "IFDEF" id| "IFNDEF" id| "IFDIF" textItem "," textItem| "IFDIFI" textItem "," textItem| "IFIDN" textItem "," textItem| "IFIDNI" textItem "," textItem| "IF1" | "IF2" 
@@ -351,10 +357,10 @@ immExpr
   : expr
   ; 
 includeDir
-  : "INCLUDE" fileSpec dotcom
+  : "INCLUDE" fileSpec dotcomma
   ; 
 includeLibDir
-  : "INCLUDELIB" fileSpec dotcom
+  : "INCLUDELIB" fileSpec dotcomma
   ; 
 initValue
   : immExpr| string| "?"| constExpr  "DUP" "(" scalarInstList ")"| floatNumber| bcdConst
@@ -378,40 +384,34 @@ invokeArg
   : register "::" register| expr| "ADDR" expr
   ; 
 commainvokeList
-  : "," dotcom? invokeList
+  : "," dotcomma? invokeList
   ;
 invokeDir
-  : "INVOKE" expr commainvokeList? dotcom
+  : "INVOKE" expr commainvokeList? dotcomma
   ; 
 invokeList
-  : invokeArg| invokeList  "," dotcom?  invokeArg
-  ; 
-keyword
-  : Any reserved word
-  ; 
-keywordList
-  : keyword | keyword keywordList
+  : invokeArg| invokeList  "," dotcomma?  invokeArg
   ; 
 labelDef
   : id ":" | id "::" | "@@:"
   ; 
 labelDir
-  : id "LABEL" qualifiedType dotcom
+  : id "LABEL" qualifiedType dotcomma
   ; 
 langType
   : "C" | "PASCAL" | "FORTRAN" | "BASIC" | "SYSCALL" | "STDCALL" 
   ; 
 listDir
-  : listOption dotcom
+  : listOption dotcomma
   ; 
 listOption
   : ".LIST" | ".NOLIST" | ".XLIST" | ".LISTALL" | ".LISTIF" | ".LFCOND" | ".NOLISTIF" | ".SFCOND" | ".TFCOND" | ".LISTMACROALL" | ".LALL" | ".NOLISTMACRO" | ".SALL" | ".LISTMACRO" | ".XALL" 
   ; 
 localDef
-  : "LOCAL" idList dotcom
+  : "LOCAL" idList dotcomma
   ; 
 localDir
-  : "LOCAL" parmList dotcom
+  : "LOCAL" parmList dotcomma
   ; 
 localDirList
   : localDir| localDirList localDir
@@ -429,16 +429,16 @@ macroBody
   :  localList? macroStmtList
   ; 
 macroCall
-  : id macroArgList dotcom| id  "(" macroArgList ")"
+  : id macroArgList dotcomma| id  "(" macroArgList ")"
   ; 
 macroDir
-  : id "MACRO" macroParmList?  dotcom macroBody "ENDM" dotcom
+  : id "MACRO" macroParmList?  dotcomma macroBody "ENDM" dotcomma
   ; 
 macroFor
-  : forDir forParm  "," "<" macroArgList ">" dotcom macroBody "ENDM" dotcom
+  : forDir forParm  "," "<" macroArgList ">" dotcomma macroBody "ENDM" dotcomma
   ; 
 macroForc
-  : forcDir id  "," textLiteral dotcom macroBody "ENDM" dotcom
+  : forcDir id  "," textLiteral dotcomma macroBody "ENDM" dotcomma
   ; 
 macroFuncId
   : id
@@ -459,22 +459,22 @@ macroParm
   : id dotdotparmType?
   ; 
 macroParmList
-  : macroParm| macroParmList  "," dotcom?  macroParm
+  : macroParm| macroParmList  "," dotcomma?  macroParm
   ; 
 macroProcId
   : id
   ; 
 macroRepeat
-  : repeatDir constExpr dotcom macroBody "ENDM" dotcom
+  : repeatDir constExpr dotcomma macroBody "ENDM" dotcomma
   ; 
 macroStmt
   : directive| exitmDir| ":" macroLabel| "GOTO" macroLabel
   ; 
 macroStmtList
-  : macroStmt dotcom| macroStmtList macroStmt dotcom
+  : macroStmt dotcomma| macroStmtList macroStmt dotcomma
   ; 
 macroWhile
-  : "WHILE" constExpr dotcom macroBody "ENDM" dotcom
+  : "WHILE" constExpr dotcomma macroBody "ENDM" dotcomma
   ; 
 mapType
   : "ALL" | "NONE" | "NOTPUBLIC" 
@@ -483,13 +483,609 @@ memOption
   : "TINY" | "SMALL" | "MEDIUM" | "COMPACT" | "LARGE" | "HUGE" | "FLAT" 
   ; 
 mnemonic
-  : Instruction name
+  : 
+    "aaa"|
+    "aad"|
+    "aam"|
+    "aas"|
+    "adc"|
+    "add"|
+    "and"|
+    "cbw"|
+    "clc"|
+    "cld"|
+    "cli"|
+    "cmc"|
+    "cmp"|
+    "cwd"|
+    "daa"|
+    "das"|
+    "dec"|
+    "div"|
+    "esc"|
+    "hlt"|
+    "inc"|
+    "int"|
+    "jae"|
+    "jbe"|
+    "jge"|
+    "jle"|
+    "jna"|
+    "jnb"|
+    "jnc"|
+    "jne"|
+    "jng"|
+    "jnl"|
+    "jno"|
+    "jnp"|
+    "jns"|
+    "jnz"|
+    "jpe"|
+    "jpo"|
+    "jmp"|
+    "lds"|
+    "lea"|
+    "les"|
+    "mov"|
+    "mul"|
+    "neg"|
+    "nop"|
+    "not"|
+    "out"|
+    "pop"|
+    "rcl"|
+    "rcr"|
+    "ret"|
+    "rol"|
+    "ror"|
+    "sal"|
+    "sar"|
+    "sbb"|
+    "shl"|
+    "shr"|
+    "stc"|
+    "std"|
+    "sti"|
+    "sub"|
+    "xor"|
+    "ins"|
+    "lar"|
+    "lsl"|
+    "ltr"|
+    "str"|
+    "bsf"|
+    "bsr"|
+    "btc"|
+    "btr"|
+    "bts"|
+    "cdq"|
+    "lfs"|
+    "lgs"|
+    "lss"|
+    "ud2"|
+    "por"|
+    "call"|
+    "idiv"|
+    "imul"|
+    "into"|
+    "iret"|
+    "jcxz"|
+    "jnae"|
+    "jnbe"|
+    "jnge"|
+    "jnle"|
+    "lahf"|
+    "loop"|
+    "popf"|
+    "push"|
+    "retn"|
+    "retf"|
+    "sahf"|
+    "test"|
+    "wait"|
+    "xchg"|
+    "xlat"|
+    "outs"|
+    "popa"|
+    "arpl"|
+    "clts"|
+    "lgdt"|
+    "lidt"|
+    "lldt"|
+    "lmsw"|
+    "sgdt"|
+    "sidt"|
+    "sldt"|
+    "smsw"|
+    "verr"|
+    "verw"|
+    "cwde"|
+    "insb"|
+    "insw"|
+    "insd"|
+    "insq"|
+    "seta"|
+    "setb"|
+    "setc"|
+    "sete"|
+    "setg"|
+    "setl"|
+    "seto"|
+    "setp"|
+    "sets"|
+    "setz"|
+    "shld"|
+    "shrd"|
+    "invd"|
+    "xadd"|
+    "pand"|
+    "pxor"|
+    "movd"|
+    "movq"|
+    "emms"|
+    "orps"|
+    "clgi"|
+    "stgi"|
+    "dpps"|
+    "dppd"|
+    "cmpsb"|
+    "cmpsw"|
+    "jecxz"|
+    "lodsb"|
+    "lodsw"|
+    "lodsd"|
+    "loopx"|
+    "movsb"|
+    "movsw"|
+    "pushf"|
+    "scasb"|
+    "scasw"|
+    "stosb"|
+    "stosw"|
+    "bound"|
+    "enter"|
+    "leave"|
+    "pusha"|
+    "cmpsd"|
+    "iretb"|
+    "iretw"|
+    "iretd"|
+    "iretq"|
+    "loope"|
+    "loopz"|
+    "movsx"|
+    "movsd"|
+    "movzx"|
+    "popad"|
+    "popfd"|
+    "scasd"|
+    "setae"|
+    "setbe"|
+    "setge"|
+    "setle"|
+    "setna"|
+    "setnb"|
+    "setnc"|
+    "setne"|
+    "setng"|
+    "setnl"|
+    "setno"|
+    "setnp"|
+    "setns"|
+    "setnz"|
+    "setpe"|
+    "setpo"|
+    "stosd"|
+    "stosq"|
+    "bswap"|
+    "cpuid"|
+    "rdmsr"|
+    "rdtsc"|
+    "wrmsr"|
+    "cmova"|
+    "cmovb"|
+    "cmovc"|
+    "cmove"|
+    "cmovg"|
+    "cmovl"|
+    "cmovo"|
+    "cmovp"|
+    "cmovs"|
+    "cmovz"|
+    "rdpmc"|
+    "paddb"|
+    "paddw"|
+    "paddd"|
+    "psubb"|
+    "psubw"|
+    "psubd"|
+    "pmull"|
+    "pmulh"|
+    "pmadd"|
+    "pandn"|
+    "psllw"|
+    "pslld"|
+    "psrlw"|
+    "psrld"|
+    "psraw"|
+    "psrad"|
+    "psllq"|
+    "psrlq"|
+    "movss"|
+    "addss"|
+    "subss"|
+    "mulss"|
+    "divss"|
+    "rcpss"|
+    "maxss"|
+    "minss"|
+    "addps"|
+    "subps"|
+    "mulps"|
+    "divps"|
+    "rcpps"|
+    "maxps"|
+    "minps"|
+    "cmpss"|
+    "cmpps"|
+    "andps"|
+    "xorps"|
+    "pavgb"|
+    "pavgw"|
+    "pause"|
+    "lddqu"|
+    "mwait"|
+    "pabsb"|
+    "pabsw"|
+    "pabsd"|
+    "vmxon"|
+    "vmrun"|
+    "ptest"|
+    "crc32"|
+    "lzcnt"|
+    "loopne"|
+    "loopnz"|
+    "pushad"|
+    "pushfd"|
+    "setnae"|
+    "setnbe"|
+    "setnge"|
+    "setnle"|
+    "invlpg"|
+    "wbinvd"|
+    "cmovae"|
+    "cmovbe"|
+    "cmovge"|
+    "cmovle"|
+    "cmovna"|
+    "cmovnb"|
+    "cmovnc"|
+    "cmovne"|
+    "cmovng"|
+    "cmovnl"|
+    "cmovno"|
+    "cmovnp"|
+    "cmovns"|
+    "cmovnz"|
+    "cmovpe"|
+    "cmovpo"|
+    "sysret"|
+    "paddsb"|
+    "paddsw"|
+    "psubsb"|
+    "psubsw"|
+    "movaps"|
+    "movups"|
+    "movlps"|
+    "movhps"|
+    "sqrtss"|
+    "sqrtps"|
+    "comiss"|
+    "shufps"|
+    "andnps"|
+    "psadbw"|
+    "pmaxub"|
+    "pminub"|
+    "pmaxsw"|
+    "pminsw"|
+    "pextrw"|
+    "pinsrw"|
+    "pshufw"|
+    "movntq"|
+    "sfence"|
+    "lfence"|
+    "mfence"|
+    "movnti"|
+    "haddpd"|
+    "haddps"|
+    "hsubpd"|
+    "hsubps"|
+    "psignb"|
+    "psignw"|
+    "psignd"|
+    "pshufb"|
+    "phsubw"|
+    "phsubd"|
+    "phaddw"|
+    "phaddd"|
+    "vmread"|
+    "vmcall"|
+    "vmxoff"|
+    "skinit"|
+    "vmload"|
+    "vmsave"|
+    "rdtscp"|
+    "pmuldq"|
+    "pmulld"|
+    "pminsb"|
+    "pmaxsb"|
+    "pminuw"|
+    "pmaxuw"|
+    "pminud"|
+    "pmaxud"|
+    "pminsd"|
+    "pmaxsd"|
+    "pinsrb"|
+    "pinsrd"|
+    "pinsrq"|
+    "pextrb"|
+    "pextrd"|
+    "pextrq"|
+    "popcnt"|
+    "loadall"|
+    "cmpxchg"|
+    "cmovnae"|
+    "cmovnbe"|
+    "cmovnge"|
+    "cmovnle"|
+    "sysexit"|
+    "syscall"|
+    "paddusb"|
+    "paddusw"|
+    "psubusb"|
+    "psubusw"|
+    "pcmpeqb"|
+    "pcmpeqw"|
+    "pcmpeqd"|
+    "movlhps"|
+    "movhlps"|
+    "rsqrtss"|
+    "rsqrtps"|
+    "ucomiss"|
+    "pmulhuw"|
+    "ldmxcsr"|
+    "stmxcsr"|
+    "movntps"|
+    "clflush"|
+    "movntdq"|
+    "movntpd"|
+    "movddup"|
+    "fisfttp"|
+    "monitor"|
+    "palignr"|
+    "phaddsw"|
+    "vmptrld"|
+    "vmptrst"|
+    "vmclear"|
+    "vmwrite"|
+    "vmmcall"|
+    "mpsadbw"|
+    "blendps"|
+    "blendpd"|
+    "pblendw"|
+    "roundps"|
+    "roundss"|
+    "roundpd"|
+    "roundsd"|
+    "pcmpeqq"|
+    "pcmpgtq"|
+    "sysenter"|
+    "pcmpgtpb"|
+    "pcmpgtpw"|
+    "pcmpgtpd"|
+    "packsswb"|
+    "packssdw"|
+    "packuswb"|
+    "unpckhps"|
+    "unpcklps"|
+    "cvtsi2ss"|
+    "cvtss2si"|
+    "cvtpi2ps"|
+    "cvtps2pi"|
+    "pmovmskb"|
+    "maskmovq"|
+    "addsubpd"|
+    "addsubps"|
+    "movshdup"|
+    "movsldup"|
+    "pmulhrsw"|
+    "vmlaunch"|
+    "vmresume"|
+    "blendvps"|
+    "blendvpd"|
+    "pblendvb"|
+    "insertps"|
+    "pmovsxbw"|
+    "pmovzxbw"|
+    "pmovsxbd"|
+    "pmovzxbd"|
+    "pmovsxbq"|
+    "pmovzxbq"|
+    "pmovsxwd"|
+    "pmovzxwd"|
+    "pmovsxwq"|
+    "pmovzxwq"|
+    "pmovsxdq"|
+    "pmovzxdq"|
+    "packusdw"|
+    "movntdqa"|
+    "cmpxchg8b"|
+    "punpckhbw"|
+    "punpckhwd"|
+    "punpckhdq"|
+    "punpcklbw"|
+    "punpcklwd"|
+    "punpckldq"|
+    "cvttss2si"|
+    "cvttps2pi"|
+    "prefetch0"|
+    "prefetch1"|
+    "prefetch2"|
+    "pmaddubsw"|
+    "extractps"|
+    "pcmpestri"|
+    "pcmpestrm"|
+    "pcmpistri"|
+    "pcmpistrm"|
+    "maskmovdqu"|
+    "cmpxchg16b"|
+    "phminposuw"|
+    "prefetchnta"|
+
+    "f2xm1"|
+    "FABS"|
+    "fadd"|
+    "faddp"|
+    "fbld"|
+    "fbstp"|
+    "fchs"|
+    "fclex"|
+    "fcom"|
+    "fcomp"|
+    "fcompp"|
+    "fdecstp"|
+    "fdisi"|
+    "fdiv"|
+    "fdivp"|
+    "fdivr"|
+    "fdivrp"|
+    "feni"|
+    "ffree"|
+    "fiadd"|
+    "ficom"|
+    "ficomp"|
+    "fidiv"|
+    "fidivr"|
+    "fild"|
+    "fimul"|
+    "fincstp"|
+    "finit"|
+    "fist"|
+    "fistp"|
+    "fisub"|
+    "fisubr"|
+    "fld"|
+    "fld1"|
+    "fldcw"|
+    "fldenv"|
+    "fldenvw"|
+    "fldl2e"|
+    "fldl2t"|
+    "fldlg2"|
+    "fldln2"|
+    "fldpi"|
+    "fldz"|
+    "fmul"|
+    "fmulp"|
+    "fnclex"|
+    "fndisi"|
+    "fneni"|
+    "fninit"|
+    "fnop"|
+    "fnsave"|
+    "fnsavew"|
+    "fnstcw"|
+    "fnstenv"|
+    "fnstenvw"|
+    "fnstsw"|
+    "fpatan"|
+    "fprem"|
+    "fptan"|
+    "frndint"|
+    "frstor"|
+    "frstorw"|
+    "fsave"|
+    "fsavew"|
+    "fscale"|
+    "fsqrt"|
+    "fst"|
+    "fstcw"|
+    "fstenv"|
+    "fstenvw"|
+    "fstp"|
+    "fstsw"|
+    "fsub"|
+    "fsubp"|
+    "fsubr"|
+    "fsubrp"|
+    "ftst"|
+    "fwait"|
+    "fxam"|
+    "fxch"|
+    "fxtract"|
+    "fyl2x"|
+    "fyl2xp1"|
+    "fsetpm"|
+    "fcos"|
+    "fldenvd"|
+    "fnsaved"|
+    "fnstenvd"|
+    "fprem1"|
+    "frstord"|
+    "fsaved"|
+    "fsin"|
+    "fsincos"|
+    "fstenvd"|
+    "fucom"|
+    "fucomp"|
+    "fucompp"|
+    "fcmovbe"|
+    "fcmove"|
+    "fcmovnb"|
+    "fcmovnbe"|
+    "fcmovne"|
+    "fcmovnu"|
+    "fcmovu"|
+    "fcomip"|
+    "fucomi"|
+    "fucomip"|
+    "fxrstor"|
+    "fxrstorb"|
+    "fxrstorw"|
+    "fxrstorq"|
+    "fxsave"|
+    "fxsaveb"|
+    "fxsavew"|
+    "fxsaveq"|
+    "ffreep"|
+
+
+    "movdqa"|
+    "movdqu"|
+    "movapd"|
+    "movupd"|
+
+    "psrldq"|
+    "pslldq"|
+    "pshufd"|
+    "pshuflw"|
+    "shufpd"|
+
+    "pmullw"|
+    "pmulhw"|
+    "pmuludq"|
+    "punpcklqdq"|
+    "punpckhqdq"|
+    "paddq"|
+    "pcmpgtd"|
+    "psubq"|
+    "movdq2q"
   ; 
 commamodelOptlist
   : "," modelOptlist
   ;
 modelDir
-  : ".MODEL" memOption commamodelOptlist? dotcom
+  : ".MODEL" memOption commamodelOptlist? dotcomma
   ; 
 modelOpt
   : langType| stackOption 
@@ -504,16 +1100,16 @@ mulOp
   : "*"| "/" | "MOD" 
   ; 
 nameDir
-  : "NAME" id dotcom
+  : "NAME" id dotcomma
   ; 
 nearfar
   : "NEAR" | "FAR" 
   ; 
 nestedStruct
-  : structHdr  id?  dotcom structBody "ENDS" dotcom
+  : structHdr  id?  dotcomma structBody "ENDS" dotcomma
   ; 
 offsetDir
-  : offsetDirType dotcom
+  : offsetDirType dotcomma
   ; 
 offsetDirType
   : "EVEN" | "ORG" immExpr| "ALIGN" constExpr? 
@@ -525,13 +1121,16 @@ oldRecordFieldList
   :  constExpr? | oldRecordFieldList ","  constExpr? 
   ; 
 optionDir
-  : "OPTION" optionList dotcom
+  : "OPTION" optionList dotcomma
   ; 
+readonly
+  : "READONLY"
+  ;
 optionItem
-  : "CASEMAP" ":" mapType| "DOTNAME" | "NODOTNAME" | "EMULATOR" | "NOEMULATOR" | "EPILOGUE" ":" macroId| "EXPR16" | "EXPR32" | "LANGUAGE" ":" langType| "LJMP" | "NOLJMP" | "M510" | "NOM510" | "NOKEYWORD" ":" "<" keywordList ">"| "NOSIGNEXTEND" | "OFFSET" ":" offsetType| "OLDMACROS" | "NOOLDMACROS" | "OLDSTRUCTS" | "NOOLDSTRUCTS" | "PROC" ":" oVisibility| "PROLOGUE" ":" macroId| "READONLY" | "NOREADONLY" | "SCOPED" | "NOSCOPED" | "SEGMENT" ":" segSize| "SETIF2" ":" bool
+  : "CASEMAP" ":" mapType| "DOTNAME" | "NODOTNAME" | "EMULATOR" | "NOEMULATOR" | "EPILOGUE" ":" macroId| "EXPR16" | "EXPR32" | "LANGUAGE" ":" langType| "LJMP" | "NOLJMP" | "M510" | "NOM510" | "NOSIGNEXTEND" | "OFFSET" ":" offsetType| "OLDMACROS" | "NOOLDMACROS" | "OLDSTRUCTS" | "NOOLDSTRUCTS" | "PROC" ":" oVisibility| "PROLOGUE" ":" macroId| readonly | "NOREADONLY" | "SCOPED" | "NOSCOPED" | "SEGMENT" ":" segSize| "SETIF2" ":" bool
   ; 
 optionList
-  : optionItem| optionList  "," dotcom?  optionItem
+  : optionItem| optionList  "," dotcomma?  optionItem
   ; 
 optText
   : "," textItem
@@ -543,7 +1142,7 @@ oVisibility
   : "PUBLIC" | "PRIVATE" | "EXPORT" 
   ; 
 pageDir
-  : "PAGE" pageExpr?  dotcom
+  : "PAGE" pageExpr?  dotcomma
   ; 
 commapageWidth
   : "," pageWidth
@@ -567,7 +1166,7 @@ parmId
   : id
   ; 
 parmList
-  : parm| parmList  "," dotcom?  parm
+  : parm| parmList  "," dotcomma?  parm
   ; 
 parmType
   : "REQ" | "=" textLiteral| "VARARG" 
@@ -589,16 +1188,16 @@ processor
  ".686" | ".686P" | ".K3D" | ".MMX" | ".XMM" | ".8086" 
   ; 
 processorDir
-  : processor dotcom | coprocessor dotcom
+  : processor dotcomma | coprocessor dotcomma
   ; 
 procId
   : id
   ; 
 commaparmList
-  : ","  dotcom?  parmList
+  : ","  dotcomma?  parmList
   ;
 commaparmIdvararg
-  : ","  dotcom?  parmId ":VARARG" 
+  : ","  dotcomma?  parmId ":VARARG" 
   ;
 procParmList
   : commaparmList? 
@@ -608,17 +1207,17 @@ protoArg
   :  id? ":" qualifiedType 
   ; 
 commaprotoList
-  : ","  dotcom?  protoList
+  : ","  dotcomma?  protoList
   ;
 commaidvararg
-  : ","  dotcom?   id? ":VARARG" 
+  : ","  dotcomma?   id? ":VARARG" 
   ;
 protoArgList
   : commaprotoList?
     commaidvararg?
   ; 
 protoList
-  : protoArg| protoList  "," dotcom?  protoArg
+  : protoArg| protoList  "," dotcomma?  protoArg
   ; 
 protoSpec
   :  distance?   langType?   protoArgList?  | typeId
@@ -630,10 +1229,10 @@ pubDef
   :  langType?  id
   ; 
 publicDir
-  : "PUBLIC" pubList dotcom
+  : "PUBLIC" pubList dotcomma
   ; 
 pubList
-  : pubDef| pubList  "," dotcom?  pubDef
+  : pubDef| pubList  "," dotcomma?  pubDef
   ; 
 purgeDir
   : "PURGE" macroIdList
@@ -648,7 +1247,7 @@ quote
   : '"' | "'"
   ; 
 radixDir
-  : ".RADIX" constExpr dotcom
+  : ".RADIX" constExpr dotcomma
   ; 
 radixOverride
   : /[hoqtyHOQTY]/
@@ -657,16 +1256,16 @@ recordConst
   : recordTag "{" oldRecordFieldList "}"| recordTag "<" oldRecordFieldList ">"
   ; 
 recordDir
-  : recordTag "RECORD" bitDefList dotcom 
+  : recordTag "RECORD" bitDefList dotcomma 
   ; 
 recordFieldList
-  :  constExpr? | recordFieldList  ","  dotcom?   constExpr? 
+  :  constExpr? | recordFieldList  ","  dotcomma?   constExpr? 
   ; 
 recordInstance
-  : "{"  dotcom?  recordFieldList  dotcom?  "}"| "<" oldRecordFieldList ">"| constExpr "DUP" "(" recordInstance ")"
+  : "{"  dotcomma?  recordFieldList  dotcomma?  "}"| "<" oldRecordFieldList ">"| constExpr "DUP" "(" recordInstance ")"
   ; 
 recordInstList
-  : recordInstance| recordInstList ","  dotcom?  recordInstance
+  : recordInstance| recordInstList ","  dotcomma?  recordInstance
   ; 
 recordTag
   : id
@@ -681,13 +1280,13 @@ relOp
   : "EQ" | "NE" | "LT" | "LE" | "GT" | "GE" 
   ; 
 repeatBlock
-  : ".REPEAT" dotcom blockStatements dotcom untilDir dotcom
+  : ".REPEAT" dotcomma blockStatements dotcomma untilDir dotcomma
   ; 
 repeatDir
   : "REPEAT" | "REPT" 
   ; 
 scalarInstList
-  : initValue| scalarInstList  ","  dotcom?  initValue
+  : initValue| scalarInstList  ","  dotcomma?  initValue
   ; 
 segAlign
   : "BYTE" | "WORD" | "DWORD" | "PARA" | "PAGE" 
@@ -708,10 +1307,10 @@ segmentDef
   : segmentDir  inSegDirList?  endsDir| simpleSegDir  inSegDirList?   endsDir? 
   ; 
 segmentDir
-  : segId "SEGMENT" segOptionList?  dotcom
+  : segId "SEGMENT" segOptionList?  dotcomma
   ; 
 segmentRegister
-  : CS | DS | ES | FS | GS | SS
+  : 'CS' | 'DS' | 'ES' | 'FS' | 'GS' | 'SS'
   ; 
 segOption
   : segAlign| segRO| segAttrib| segSize| className
@@ -723,7 +1322,7 @@ segOrderDir
   : ".ALPHA" | ".SEQ" | ".DOSSEG" | "DOSSEG" 
   ; 
 segRO
-  : "READONLY" 
+  : readonly
   ; 
 segSize 
   : "USE16" | "USE32" | "FLAT" 
@@ -738,22 +1337,22 @@ simpleExpr
   : "(" cExpr ")"| primary
   ; 
 simpleSegDir
-  : segDir dotcom
+  : segDir dotcomma
   ; 
 sizeArg
   : id| type| e10
   ; 
 specialChars
-  : ":" | "." | "[[" | "]]" | "(" | ")" | "<" | ">" | "{" | "}"| "+" | "-" | "/" | "*" | "&" | "%" | "!"| "'" | "\" | "=" | "  ;" | "," | '"'| whiteSpaceCharacter | endOfLine
+  : ":" | "." | "[[" | "]]" | "(" | ")" | "<" | ">" | "{" | "}"| "+" | "-" | "/" | "*" | "&" | "%" | "!"| "'" | "\\" | "=" | ";" | "," | '"'| whiteSpaceCharacter | endOfLine
   ; 
 specialRegister
-  : CR0 | CR2 | CR3 | DR0 | DR1 | DR2 | DR3 | DR6 | DR7| TR3 | TR4 | TR5 | TR6 | TR7
+  : 'CR0' | 'CR2' | 'CR3' | 'DR0' | 'DR1' | 'DR2' | 'DR3' | 'DR6' | 'DR7'| 'TR3' | 'TR4' | 'TR5' | 'TR6' | 'TR7'
   ; 
 stackOption
   : "NEARSTACK" | "FARSTACK" 
   ; 
 startupDir
-  : ".STARTUP" dotcom
+  : ".STARTUP" dotcomma
   ; 
 stext
   : stringChar| stext stringChar
@@ -762,25 +1361,25 @@ string
   : quote  stext?  quote
   ; 
 stringChar
-  : quote quote| Any character except quote
+  : quote quote| /[^\'\"]/
   ; 
 structBody
-  : structItem dotcom | structBody structItem dotcom
+  : structItem dotcomma | structBody structItem dotcomma
   ; 
 commanonuniq
   : "," "NONUNIQUE"
   ;
 structDir
-  : structTag structHdr  fieldAlign?  commanonuniq? dotcom structBody structTag "ENDS" dotcom
+  : structTag structHdr  fieldAlign?  commanonuniq? dotcomma structBody structTag "ENDS" dotcomma
   ; 
 structHdr
   : "STRUC" | "STRUCT" | "UNION" 
   ; 
 structInstance
-  : "<"  fieldInitList?  ">"| "{" dotcom?   fieldInitList?   dotcom?  "}"| constExpr "DUP" "(" structInstList ")"
+  : "<"  fieldInitList?  ">"| "{" dotcomma?   fieldInitList?   dotcomma?  "}"| constExpr "DUP" "(" structInstList ")"
   ; 
 structInstList
-  : structInstance| structInstList  ","  dotcom?  structInstance
+  : structInstance| structInstList  ","  dotcomma?  structInstance
   ; 
 structItem 
   : dataDir| generalDir| offsetDir| nestedStruct
@@ -795,7 +1394,7 @@ text
   : textLiteral| text character| "!" character text| character| "!" character
   ; 
 textDir
-  : id textMacroDir dotcom
+  : id textMacroDir dotcomma
   ; 
 textItem
   : textLiteral| textMacroId| "%" constExpr
@@ -804,10 +1403,10 @@ textLen
   : constExpr
   ; 
 textList
-  : textItem| textList  "," dotcom?  textItem
+  : textItem| textList  "," dotcomma?  textItem
   ; 
 textLiteral
-  : "<" text ">" dotcom
+  : "<" text ">" dotcomma
   ; 
 commatextLen
   : "," textLen
@@ -825,7 +1424,7 @@ textStart
   : constExpr
   ; 
 titleDir
-  : titleType arbitraryText dotcom
+  : titleType arbitraryText dotcomma
   ; 
 titleType
   : "TITLE" | "SUBTITLE" | "SUBTTL" 
@@ -843,13 +1442,14 @@ unionTag
   : id
   ; 
 untilDir
-  : ".UNTIL" cExpr dotcom ".UNTILCXZ" cxzExpr?  dotcom
+  : ".UNTIL" cExpr dotcomma ".UNTILCXZ" cxzExpr?  dotcomma
   ; 
 usesRegs
   : "USES" regList 
   ; 
 whileBlock
-  : ".WHILE" cExpr dotcom blockStatements dotcom ".ENDW" 
+  : ".WHILE" cExpr dotcomma blockStatements dotcomma ".ENDW" 
   ; 
 whiteSpaceCharacter
   : /[\b\t\v\f\r\x1a\s]/
+  ;
