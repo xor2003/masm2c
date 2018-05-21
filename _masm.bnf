@@ -1,11 +1,14 @@
+module
+  :  directiveList?  endDir
+  ; 
 endOfLine
   : /[\r\n]+/
   ;
-dotcomma
-  : endOfLine | comment
+lineReminder
+  : comment? endOfLine
   ; 
 eqDir
-  : id  "=" immExpr dotcomma
+  : id "=" immExpr lineReminder
   ; 
 addOp
   : "+" | "-"
@@ -23,7 +26,7 @@ asmInstruction
   : mnemonic  exprList? 
   ; 
 assumeDir
-  : "ASSUME" assumeList dotcomma| "ASSUME NOTHING" dotcomma
+  : "ASSUME" assumeList lineReminder| "ASSUME NOTHING" lineReminder
   ; 
 assumeList 
   : assumeRegister| assumeList  "," assumeRegister
@@ -56,7 +59,7 @@ bitDef
   : bitFieldId ":" bitFieldSize eqconstExpr?
   ; 
 bitDefList
-  : bitDef| bitDefList  "," dotcomma?  bitDef
+  : bitDef| bitDefList  "," lineReminder?  bitDef
   ; 
 bitFieldId 
   : id 
@@ -80,7 +83,7 @@ cExpr
   : aExpr| cExpr ":" aExpr
   ; 
 character
-  : /[^\n]/
+  : /[^\n\r]/
   ; 
 charList
   : character| charList character
@@ -92,13 +95,13 @@ commDecl
   :  nearfar?   langType?  id ":" commType eqconstExpr?
   ; 
 commDir
-  : "COMM" commList dotcomma
+  : "COMM" commList lineReminder
   ; 
 comment
-  : ";" text dotcomma
+  : /;[^\n\r]*/
   ; 
 commentDir
-  : "COMMENT" delimiter text text delimiter text dotcomma
+  : "COMMENT" delimiter text text delimiter text lineReminder
   ; 
 commList
   : commDecl| commList  "," commDecl
@@ -113,7 +116,7 @@ constExpr
   : expr
   ; 
 contextDir
-  : "PUSHCONTEXT" contextItemList dotcomma| "POPCONTEXT" contextItemList dotcomma
+  : "PUSHCONTEXT" contextItemList lineReminder| "POPCONTEXT" contextItemList lineReminder
   ; 
 contextItem
   : "ASSUMES" | "RADIX" | "LISTING" | "CPU" | "ALL" 
@@ -128,20 +131,20 @@ controlDir
   : controlIf| controlBlock
   ; 
 controlElseif
-  : ".ELSEIF" cExpr dotcomma directiveList controlElseif? 
+  : ".ELSEIF" cExpr lineReminder directiveList controlElseif? 
   ; 
 
 elsedirectiveList
-  : ".ELSE" dotcomma directiveList
+  : ".ELSE" lineReminder directiveList
   ;
 controlIf
-  : ".IF" cExpr dotcomma directiveList controlElseif? elsedirectiveList? ".ENDIF" dotcomma
+  : ".IF" cExpr lineReminder directiveList controlElseif? elsedirectiveList? ".ENDIF" lineReminder
   ; 
 coprocessor
   : ".8087" | ".287" | ".387" | ".NO87" 
   ; 
 crefDir
-  : crefOption dotcomma
+  : crefOption lineReminder
   ; 
 crefOption
   : ".CREF" | ".XCREF" idList? | ".NOCREF" idList? 
@@ -153,7 +156,7 @@ dataDecl
   : "DB" | "DW" | "DD" | "DF" | "DQ" | "DT" | dataType | typeId
   ; 
 dataDir
-  :  id?  dataItem dotcomma
+  :  id?  dataItem lineReminder
   ; 
 dataItem
   : dataDecl scalarInstList| structTag structInstList| typeId structInstList| unionTag structInstList| recordTag recordInstList
@@ -166,9 +169,6 @@ decdigit
   ; 
 decNumber
   : decdigit| decNumber decdigit
-  ; 
-delimiter
-  : /[^\b\t\v\f\r\x1a\s]/
   ; 
 digits
   : decdigit| digits decdigit| digits hexdigit
@@ -216,37 +216,37 @@ e11
   : "(" expr ")"|  expr? | "WIDTH" id| "MASK" id| "SIZE" sizeArg| "SIZEOF" sizeArg| "LENGTH" id| "LENGTHOF" id | recordConst| string| constant| type| id| "$"| segmentRegister| register| "ST" | "ST" "(" expr ")"
   ; 
 echoDir
-  : "ECHO" arbitraryText dotcomma "%OUT" arbitraryText dotcomma
+  : "ECHO" arbitraryText lineReminder "%OUT" arbitraryText lineReminder
   ; 
 elseifBlock
-  : elseifStatement dotcomma directiveList elseifBlock? 
+  : elseifStatement lineReminder directiveList elseifBlock? 
   ; 
 elseifStatement
   : "ELSEIF" constExpr| "ELSEIFE" constExpr| "ELSEIFB" textItem| "ELSEIFNB" textItem | "ELSEIFDEF" id| "ELSEIFNDEF" id| "ELSEIFDIF" textItem "," textItem| "ELSEIFDIFI" textItem "," textItem| "ELSEIFIDN" textItem "," textItem| "ELSEIFIDNI" textItem "," textItem| "ELSEIF1" | "ELSEIF2" 
   ; 
 endDir
-  : "END" immExpr?  dotcomma
+  : "END" immExpr?  lineReminder?
   ; 
 endpDir
-  : procId "ENDP" dotcomma
+  : procId "ENDP" lineReminder
   ; 
 endsDir
-  : id "ENDS" dotcomma
+  : id "ENDS" lineReminder
   ; 
 equDir
-  : textMacroId "EQU" equType dotcomma
+  : textMacroId "EQU" equType lineReminder
   ; 
 equType
   : immExpr| textLiteral
   ; 
 errorDir
-  : errorOpt dotcomma
+  : errorOpt lineReminder
   ; 
 errorOpt
   : ".ERR" textItem? | ".ERRE" constExpr optText? | ".ERRNZ" constExpr optText? | ".ERRB" textItem optText? | ".ERRNB" textItem optText? | ".ERRDEF" id  optText? | ".ERRNDEF" id optText? | ".ERRDIF" textItem "," textItem  optText? | ".ERRDIFI" textItem "," textItem  optText? | ".ERRIDN" textItem "," textItem  optText? | ".ERRIDNI" textItem "," textItem  optText? | ".ERR1" textItem? | ".ERR2" textItem?  
   ; 
 exitDir
-  : ".EXIT" expr?  dotcomma
+  : ".EXIT" expr?  lineReminder
   ; 
 exitmDir
   : "EXITM" | "EXITM" textItem
@@ -267,13 +267,13 @@ externDef
   :  langType?  id altId? ":" externType
   ; 
 externDir
-  : externKey externList dotcomma
+  : externKey externList lineReminder
   ; 
 externKey
   : "EXTRN" | "EXTERN" | "EXTERNDEF" 
   ; 
 externList
-  : externDef| externList  "," dotcomma?  externDef
+  : externDef| externList  "," lineReminder?  externDef
   ; 
 externType
   : "ABS" | qualifiedType
@@ -285,7 +285,7 @@ fieldInit
   :  initValue? | structInstance
   ; 
 fieldInitList
-  : fieldInit| fieldInitList ","  dotcomma?  fieldInit
+  : fieldInit| fieldInitList ","  lineReminder?  fieldInit
   ; 
 fileChar
   : delimiter
@@ -345,10 +345,10 @@ idList
   : id| idList "," id
   ; 
 elsedirectiveList
-  : "ELSE" dotcomma directiveList
+  : "ELSE" lineReminder directiveList
   ;
 ifDir
-  : ifStatement dotcomma directiveList elseifBlock? elsedirectiveList? "ENDIF" dotcomma
+  : ifStatement lineReminder directiveList elseifBlock? elsedirectiveList? "ENDIF" lineReminder
   ; 
 ifStatement
   : "IF" constExpr| "IFE" constExpr| "IFB" textItem| "IFNB" textItem| "IFDEF" id| "IFNDEF" id| "IFDIF" textItem "," textItem| "IFDIFI" textItem "," textItem| "IFIDN" textItem "," textItem| "IFIDNI" textItem "," textItem| "IF1" | "IF2" 
@@ -357,10 +357,10 @@ immExpr
   : expr
   ; 
 includeDir
-  : "INCLUDE" fileSpec dotcomma
+  : "INCLUDE" fileSpec lineReminder
   ; 
 includeLibDir
-  : "INCLUDELIB" fileSpec dotcomma
+  : "INCLUDELIB" fileSpec lineReminder
   ; 
 initValue
   : immExpr| string| "?"| constExpr  "DUP" "(" scalarInstList ")"| floatNumber| bcdConst
@@ -384,34 +384,34 @@ invokeArg
   : register "::" register| expr| "ADDR" expr
   ; 
 commainvokeList
-  : "," dotcomma? invokeList
+  : "," lineReminder? invokeList
   ;
 invokeDir
-  : "INVOKE" expr commainvokeList? dotcomma
+  : "INVOKE" expr commainvokeList? lineReminder
   ; 
 invokeList
-  : invokeArg| invokeList  "," dotcomma?  invokeArg
+  : invokeArg| invokeList  "," lineReminder?  invokeArg
   ; 
 labelDef
   : id ":" | id "::" | "@@:"
   ; 
 labelDir
-  : id "LABEL" qualifiedType dotcomma
+  : id "LABEL" qualifiedType lineReminder
   ; 
 langType
   : "C" | "PASCAL" | "FORTRAN" | "BASIC" | "SYSCALL" | "STDCALL" 
   ; 
 listDir
-  : listOption dotcomma
+  : listOption lineReminder
   ; 
 listOption
   : ".LIST" | ".NOLIST" | ".XLIST" | ".LISTALL" | ".LISTIF" | ".LFCOND" | ".NOLISTIF" | ".SFCOND" | ".TFCOND" | ".LISTMACROALL" | ".LALL" | ".NOLISTMACRO" | ".SALL" | ".LISTMACRO" | ".XALL" 
   ; 
 localDef
-  : "LOCAL" idList dotcomma
+  : "LOCAL" idList lineReminder
   ; 
 localDir
-  : "LOCAL" parmList dotcomma
+  : "LOCAL" parmList lineReminder
   ; 
 localDirList
   : localDir| localDirList localDir
@@ -429,16 +429,16 @@ macroBody
   :  localList? macroStmtList
   ; 
 macroCall
-  : id macroArgList dotcomma| id  "(" macroArgList ")"
+  : id macroArgList lineReminder| id  "(" macroArgList ")"
   ; 
 macroDir
-  : id "MACRO" macroParmList?  dotcomma macroBody "ENDM" dotcomma
+  : id "MACRO" macroParmList?  lineReminder macroBody "ENDM" lineReminder
   ; 
 macroFor
-  : forDir forParm  "," "<" macroArgList ">" dotcomma macroBody "ENDM" dotcomma
+  : forDir forParm  "," "<" macroArgList ">" lineReminder macroBody "ENDM" lineReminder
   ; 
 macroForc
-  : forcDir id  "," textLiteral dotcomma macroBody "ENDM" dotcomma
+  : forcDir id  "," textLiteral lineReminder macroBody "ENDM" lineReminder
   ; 
 macroFuncId
   : id
@@ -459,22 +459,22 @@ macroParm
   : id dotdotparmType?
   ; 
 macroParmList
-  : macroParm| macroParmList  "," dotcomma?  macroParm
+  : macroParm| macroParmList  "," lineReminder?  macroParm
   ; 
 macroProcId
   : id
   ; 
 macroRepeat
-  : repeatDir constExpr dotcomma macroBody "ENDM" dotcomma
+  : repeatDir constExpr lineReminder macroBody "ENDM" lineReminder
   ; 
 macroStmt
   : directive| exitmDir| ":" macroLabel| "GOTO" macroLabel
   ; 
 macroStmtList
-  : macroStmt dotcomma| macroStmtList macroStmt dotcomma
+  : macroStmt lineReminder| macroStmtList macroStmt lineReminder
   ; 
 macroWhile
-  : "WHILE" constExpr dotcomma macroBody "ENDM" dotcomma
+  : "WHILE" constExpr lineReminder macroBody "ENDM" lineReminder
   ; 
 mapType
   : "ALL" | "NONE" | "NOTPUBLIC" 
@@ -1085,7 +1085,7 @@ commamodelOptlist
   : "," modelOptlist
   ;
 modelDir
-  : ".MODEL" memOption commamodelOptlist? dotcomma
+  : ".MODEL" memOption commamodelOptlist? lineReminder
   ; 
 modelOpt
   : langType| stackOption 
@@ -1093,23 +1093,20 @@ modelOpt
 modelOptlist
   : modelOpt| modelOptlist  "," modelOpt
   ; 
-module
-  :  directiveList?  endDir
-  ; 
 mulOp
   : "*"| "/" | "MOD" 
   ; 
 nameDir
-  : "NAME" id dotcomma
+  : "NAME" id lineReminder
   ; 
 nearfar
   : "NEAR" | "FAR" 
   ; 
 nestedStruct
-  : structHdr  id?  dotcomma structBody "ENDS" dotcomma
+  : structHdr  id?  lineReminder structBody "ENDS" lineReminder
   ; 
 offsetDir
-  : offsetDirType dotcomma
+  : offsetDirType lineReminder
   ; 
 offsetDirType
   : "EVEN" | "ORG" immExpr| "ALIGN" constExpr? 
@@ -1121,7 +1118,7 @@ oldRecordFieldList
   :  constExpr? | oldRecordFieldList ","  constExpr? 
   ; 
 optionDir
-  : "OPTION" optionList dotcomma
+  : "OPTION" optionList lineReminder
   ; 
 readonly
   : "READONLY"
@@ -1130,7 +1127,7 @@ optionItem
   : "CASEMAP" ":" mapType| "DOTNAME" | "NODOTNAME" | "EMULATOR" | "NOEMULATOR" | "EPILOGUE" ":" macroId| "EXPR16" | "EXPR32" | "LANGUAGE" ":" langType| "LJMP" | "NOLJMP" | "M510" | "NOM510" | "NOSIGNEXTEND" | "OFFSET" ":" offsetType| "OLDMACROS" | "NOOLDMACROS" | "OLDSTRUCTS" | "NOOLDSTRUCTS" | "PROC" ":" oVisibility| "PROLOGUE" ":" macroId| readonly | "NOREADONLY" | "SCOPED" | "NOSCOPED" | "SEGMENT" ":" segSize| "SETIF2" ":" bool
   ; 
 optionList
-  : optionItem| optionList  "," dotcomma?  optionItem
+  : optionItem| optionList  "," lineReminder?  optionItem
   ; 
 optText
   : "," textItem
@@ -1142,7 +1139,7 @@ oVisibility
   : "PUBLIC" | "PRIVATE" | "EXPORT" 
   ; 
 pageDir
-  : "PAGE" pageExpr?  dotcomma
+  : "PAGE" pageExpr?  lineReminder
   ; 
 commapageWidth
   : "," pageWidth
@@ -1166,7 +1163,7 @@ parmId
   : id
   ; 
 parmList
-  : parm| parmList  "," dotcomma?  parm
+  : parm| parmList  "," lineReminder?  parm
   ; 
 parmType
   : "REQ" | "=" textLiteral| "VARARG" 
@@ -1188,16 +1185,16 @@ processor
  ".686" | ".686P" | ".K3D" | ".MMX" | ".XMM" | ".8086" 
   ; 
 processorDir
-  : processor dotcomma | coprocessor dotcomma
+  : processor lineReminder | coprocessor lineReminder
   ; 
 procId
   : id
   ; 
 commaparmList
-  : ","  dotcomma?  parmList
+  : ","  lineReminder?  parmList
   ;
 commaparmIdvararg
-  : ","  dotcomma?  parmId ":VARARG" 
+  : ","  lineReminder?  parmId ":VARARG" 
   ;
 procParmList
   : commaparmList? 
@@ -1207,17 +1204,17 @@ protoArg
   :  id? ":" qualifiedType 
   ; 
 commaprotoList
-  : ","  dotcomma?  protoList
+  : ","  lineReminder?  protoList
   ;
 commaidvararg
-  : ","  dotcomma?   id? ":VARARG" 
+  : ","  lineReminder?   id? ":VARARG" 
   ;
 protoArgList
   : commaprotoList?
     commaidvararg?
   ; 
 protoList
-  : protoArg| protoList  "," dotcomma?  protoArg
+  : protoArg| protoList  "," lineReminder?  protoArg
   ; 
 protoSpec
   :  distance?   langType?   protoArgList?  | typeId
@@ -1229,10 +1226,10 @@ pubDef
   :  langType?  id
   ; 
 publicDir
-  : "PUBLIC" pubList dotcomma
+  : "PUBLIC" pubList lineReminder
   ; 
 pubList
-  : pubDef| pubList  "," dotcomma?  pubDef
+  : pubDef| pubList  "," lineReminder?  pubDef
   ; 
 purgeDir
   : "PURGE" macroIdList
@@ -1247,7 +1244,7 @@ quote
   : '"' | "'"
   ; 
 radixDir
-  : ".RADIX" constExpr dotcomma
+  : ".RADIX" constExpr lineReminder
   ; 
 radixOverride
   : /[hoqtyHOQTY]/
@@ -1256,16 +1253,16 @@ recordConst
   : recordTag "{" oldRecordFieldList "}"| recordTag "<" oldRecordFieldList ">"
   ; 
 recordDir
-  : recordTag "RECORD" bitDefList dotcomma 
+  : recordTag "RECORD" bitDefList lineReminder 
   ; 
 recordFieldList
-  :  constExpr? | recordFieldList  ","  dotcomma?   constExpr? 
+  :  constExpr? | recordFieldList  ","  lineReminder?   constExpr? 
   ; 
 recordInstance
-  : "{"  dotcomma?  recordFieldList  dotcomma?  "}"| "<" oldRecordFieldList ">"| constExpr "DUP" "(" recordInstance ")"
+  : "{"  lineReminder?  recordFieldList  lineReminder?  "}"| "<" oldRecordFieldList ">"| constExpr "DUP" "(" recordInstance ")"
   ; 
 recordInstList
-  : recordInstance| recordInstList ","  dotcomma?  recordInstance
+  : recordInstance| recordInstList ","  lineReminder?  recordInstance
   ; 
 recordTag
   : id
@@ -1280,13 +1277,13 @@ relOp
   : "EQ" | "NE" | "LT" | "LE" | "GT" | "GE" 
   ; 
 repeatBlock
-  : ".REPEAT" dotcomma blockStatements dotcomma untilDir dotcomma
+  : ".REPEAT" lineReminder blockStatements lineReminder untilDir lineReminder
   ; 
 repeatDir
   : "REPEAT" | "REPT" 
   ; 
 scalarInstList
-  : initValue| scalarInstList  ","  dotcomma?  initValue
+  : initValue| scalarInstList  ","  lineReminder?  initValue
   ; 
 segAlign
   : "BYTE" | "WORD" | "DWORD" | "PARA" | "PAGE" 
@@ -1307,7 +1304,7 @@ segmentDef
   : segmentDir  inSegDirList?  endsDir| simpleSegDir  inSegDirList?   endsDir? 
   ; 
 segmentDir
-  : segId "SEGMENT" segOptionList?  dotcomma
+  : segId "SEGMENT" segOptionList?  lineReminder
   ; 
 segmentRegister
   : 'CS' | 'DS' | 'ES' | 'FS' | 'GS' | 'SS'
@@ -1337,7 +1334,7 @@ simpleExpr
   : "(" cExpr ")"| primary
   ; 
 simpleSegDir
-  : segDir dotcomma
+  : segDir lineReminder
   ; 
 sizeArg
   : id| type| e10
@@ -1352,7 +1349,7 @@ stackOption
   : "NEARSTACK" | "FARSTACK" 
   ; 
 startupDir
-  : ".STARTUP" dotcomma
+  : ".STARTUP" lineReminder
   ; 
 stext
   : stringChar| stext stringChar
@@ -1364,22 +1361,22 @@ stringChar
   : quote quote| /[^\'\"]/
   ; 
 structBody
-  : structItem dotcomma | structBody structItem dotcomma
+  : structItem lineReminder | structBody structItem lineReminder
   ; 
 commanonuniq
   : "," "NONUNIQUE"
   ;
 structDir
-  : structTag structHdr  fieldAlign?  commanonuniq? dotcomma structBody structTag "ENDS" dotcomma
+  : structTag structHdr  fieldAlign?  commanonuniq? lineReminder structBody structTag "ENDS" lineReminder
   ; 
 structHdr
   : "STRUC" | "STRUCT" | "UNION" 
   ; 
 structInstance
-  : "<"  fieldInitList?  ">"| "{" dotcomma?   fieldInitList?   dotcomma?  "}"| constExpr "DUP" "(" structInstList ")"
+  : "<"  fieldInitList?  ">"| "{" lineReminder?   fieldInitList?   lineReminder?  "}"| constExpr "DUP" "(" structInstList ")"
   ; 
 structInstList
-  : structInstance| structInstList  ","  dotcomma?  structInstance
+  : structInstance| structInstList  ","  lineReminder?  structInstance
   ; 
 structItem 
   : dataDir| generalDir| offsetDir| nestedStruct
@@ -1394,7 +1391,7 @@ text
   : textLiteral| text character| "!" character text| character| "!" character
   ; 
 textDir
-  : id textMacroDir dotcomma
+  : id textMacroDir lineReminder
   ; 
 textItem
   : textLiteral| textMacroId| "%" constExpr
@@ -1403,10 +1400,10 @@ textLen
   : constExpr
   ; 
 textList
-  : textItem| textList  "," dotcomma?  textItem
+  : textItem| textList  "," lineReminder?  textItem
   ; 
 textLiteral
-  : "<" text ">" dotcomma
+  : "<" text ">" lineReminder
   ; 
 commatextLen
   : "," textLen
@@ -1424,7 +1421,7 @@ textStart
   : constExpr
   ; 
 titleDir
-  : titleType arbitraryText dotcomma
+  : titleType arbitraryText lineReminder
   ; 
 titleType
   : "TITLE" | "SUBTITLE" | "SUBTTL" 
@@ -1442,14 +1439,17 @@ unionTag
   : id
   ; 
 untilDir
-  : ".UNTIL" cExpr dotcomma ".UNTILCXZ" cxzExpr?  dotcomma
+  : ".UNTIL" cExpr lineReminder ".UNTILCXZ" cxzExpr?  lineReminder
   ; 
 usesRegs
   : "USES" regList 
   ; 
 whileBlock
-  : ".WHILE" cExpr dotcomma blockStatements dotcomma ".ENDW" 
+  : ".WHILE" cExpr lineReminder blockStatements lineReminder ".ENDW" 
+  ; 
+delimiter
+  : /[^\b\t\v\f\n\r\x1a\s\d]/
   ; 
 whiteSpaceCharacter
-  : /[\b\t\v\f\r\x1a\s]/
+  : /[\b\t\v\f\x1a\s]/
   ;
