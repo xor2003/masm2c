@@ -136,6 +136,8 @@ db vgaRamPaddingBefore[VGARAM_SIZE];
 db vgaRam[VGARAM_SIZE];
 db vgaRamPaddingAfter[VGARAM_SIZE];
 
+dw __disp; //for dispatching calls
+
 static const uint32_t MASK[]={0, 0xff, 0xffff, 0xffffff, 0xffffffff};
 
 bool isLittle;

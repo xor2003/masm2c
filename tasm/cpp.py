@@ -42,6 +42,7 @@ class cpp:
 		self.namespace = namespace
 		fname = namespace.lower() + ".cpp"
 		header = namespace.lower() + ".h"
+		self.indirection = 0
 		banner = """/* PLEASE DO NOT MODIFY THIS FILE. ALL CHANGES WILL BE LOST! LOOK FOR README FOR DETAILS */
 
 /* 
@@ -118,7 +119,7 @@ int main()
 			g = self.context.get_global(name)
 		except:
 			print "expand_cb exception on name = %s" %name
-			return ""
+			return name_original
 			
 		#print g
 		if isinstance(g, op.const):
@@ -146,7 +147,7 @@ int main()
 			self.indirection = 1
 			#	self.indirection = 0
 		elif isinstance(g, op.label):
-			value = g.name #.capitalize()
+			value = "k" + g.name.lower() #.capitalize()
 		else:
 			size = g.size
 			if size == 0:
@@ -275,6 +276,8 @@ int main()
 
 		expr = expr.strip()
 
+		expr = re.sub(r'^\(\s*(.*?)\s*\)$', '\\1', expr) # (expr)
+		print "wo curls "+expr
 		size = self.get_size(expr) if def_size == 0 else def_size
 		self.expr_size = size
 		#print "expr \"%s\" %d" %(expr, size)
@@ -291,6 +294,7 @@ int main()
 					return "seg_offset(%s)" %expr.lower()
 				else:
 					if g.elements == 1:
+						traceback.print_stack(file=sys.stdout)
 						return "m." + expr
 					else:
 						s = {1: "*(db*)", 2: "*(dw*)", 4: "*(dd*)"}[size]
@@ -313,6 +317,9 @@ int main()
 		if m is not None:
 			return "data"
 
+		expr = re.sub(r'\b([0-9][a-fA-F0-9]*)[Hh]', '0x\\1', expr) # convert hex
+		expr = re.sub(r'\b([0-1]+)[Bb]', parse_bin, expr) # convert binary
+
 		match_id = True
 		#print "is it offset ~%s~" %expr
 		prog = re.compile(r'offset\s+(.*?)$', re.I)
@@ -323,7 +330,7 @@ int main()
 			expr = m.group(1).strip()
 			expr = re.sub(r'\b[a-zA-Z_][a-zA-Z0-9_]*\b', self.expand_cb, expr) # parse each item
 			#expr = "offsetof(struct Mem,%s)" %expr
-			print "after is it offset ~%s~" %expr
+			print "after it is offset ~%s~" %expr
 			return expr
 
 		m = re.match(r'byte\s+ptr\s+(.*?)$', expr)
@@ -356,7 +363,7 @@ int main()
 			indirection += 1
 			expr = m.group(1).strip()
 
-		m = re.match(r'(\[?e?([abcd][xhl])|si|di|bp|sp)([\+-\]].*)?$', expr)
+		m = re.match(r'(\[?e?([abcd][xhl])|si|di|bp|sp)([\+-\]].*)?$', expr) # var[bx+]
 		if m is not None:
 			reg = m.group(1)
 			plus = m.group(3)
@@ -368,12 +375,14 @@ int main()
 			#print "COMMON_REG: ", reg, plus
 			expr = "%s%s" %(reg, plus)
 
-		expr = re.sub(r'\[(((e?([abcd][xhl])|si|di|bp|sp)|([\+-]))+)\]', '+\\1', expr) # name[bs+si]
-
-		expr = re.sub(r'\b([0-9][a-fA-F0-9]*)[Hh]', '0x\\1', expr) # convert hex
-		expr = re.sub(r'\b([0-1]+)[Bb]', parse_bin, expr) # convert binary
+		print "~~ "+expr
 		expr = re.sub(r'"(.)"', '\'\\1\'', expr) # convert string
 		expr = re.sub(r'\[((0x)?[0-9][a-fA-F0-9]*)\]', '+\\1', expr) # convert [num]
+
+		expr = re.sub(r'\[(((e?([abcd][xhl])|si|di|bp|sp)|([\+-]))+)\]', '+\\1', expr) # name[bs+si]
+		expr = re.sub(r'\[(e?([abcd][xhl])|si|di|bp|sp)', '+\\1', expr) # name[bs+si]
+		expr = re.sub(r'\]', '', expr) # name[bs+si]
+
 		if match_id:
 			print "EXPAND() BEFORE: %d %s" %(indirection, expr)
 			self.indirection = indirection
@@ -393,7 +402,7 @@ int main()
 			self.pointer_flag = False
 			indirection = self.indirection
 			print "AFTER: %d %s" %(indirection, expr)
-			traceback.print_stack(file=sys.stdout)
+			#traceback.print_stack(file=sys.stdout)
 
 		if indirection == 1:
 		   if not (self.lea and not destination):
@@ -452,7 +461,7 @@ int main()
 		print "jump_to_label(%s)" %name
 		name = name.strip()
 		jump_proc = False
-		prog = re.compile(r'^\s*(near|far|short)\s*', re.I)
+		prog = re.compile(r'^\s*(near|far|short)\s*(ptr)?\s*', re.I) # x0r TODO
 		name = re.sub(prog, '', name)
 		name = self.resolve_label(name)
 		print "label %s" %name
@@ -611,13 +620,13 @@ int main()
 		self.body += "\tR(IMUL%d_%d(%s));\n" %(len(src),size,",".join(res))
 
 	def _div(self, src):
-		src = self.expand(src)
 		size = self.get_size(src)
+		src = self.expand(src)
 		self.body += "\tR(DIV%d(%s));\n" %(size,src)
 
 	def _idiv(self, src):
-		src = self.expand(src)
 		size = self.get_size(src)
+		src = self.expand(src)
 		self.body += "\tR(IDIV%d(%s));\n" %(size,src)
 
 	def _inc(self, dst):
@@ -687,8 +696,9 @@ int main()
 		self.body += "\t\tR(JNC(%s));\n" %label
 
 	def _jmp(self, label):
-		label = self.jump_to_label(label)
-		self.body += "\t\tR(JMP(%s));\n" %label
+		if label != '$+2':
+			label = self.jump_to_label(label)
+			self.body += "\t\tR(JMP(%s));\n" %label
 
 	def _loop(self, label):
 		label = self.jump_to_label(label)
@@ -708,8 +718,9 @@ int main()
 	def _push(self, regs):
 		p = str();
 		for r in regs:
-			r = self.expand(r)
-			p += "\tPUSH(%s);\n" %(r)
+			if self.get_size(r):
+				r = self.expand(r)
+				p += "\tPUSH(%s);\n" %(r)
 		self.body += p
 
 	def _pop(self, regs):
@@ -1080,7 +1091,9 @@ int main()
 		self.body += "\tR(SBB(%s, %s));\n" %self.parse2(dst, src)
 
 	def _movs(self, dst, src):
-		self.body += "MOBVS(%s, %s);\n" %self.parse2(dst, src)
+		size = self.get_size(dst)
+		a, b = self.parse2(dst, src)
+		self.body += "MOVS(%s, %s, %d);\n" %(a, b, size)
 
 	def _bt(self, dst, src):
 		self.body += "\tR(BT(%s, %s));\n" %self.parse2(dst, src)
@@ -1116,10 +1129,10 @@ int main()
 		self.body += "%s);\n" %self.expand(c)
 
 	def _pushf(self):
-		self.body += "\tR(PUSH(flags));\n"
+		self.body += "\tR(PUSHF);\n"
 
 	def _popf(self):
-		self.body += "\tR(POP(flags));\n"
+		self.body += "\tR(POPF);\n"
 
 	def _pushad(self):
 		self.body += "\tR(PUSHAD);\n"
@@ -1143,8 +1156,9 @@ int main()
 		self.body += "\tR(CWD);\n"
 
 	def _lods(self, src):
+		size = self.get_size(src)
 		src = self.expand(src)
-		self.body += "\tR(LODS(%s));\n" %(src)
+		self.body += "\tR(LODS(%s,%d));\n" %(src, size)
 
 	def _cli(self):
 		self.body += "\t// _cli();\n"

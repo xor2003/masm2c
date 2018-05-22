@@ -33,7 +33,7 @@ class parser:
 		self.strip_path = 0
 		self.__globals = {}
 		self.__offsets = {}
-		self.offset_id = 1
+		self.offset_id = 0x1111
 		self.__stack = []
 		self.proc_list = []
 
@@ -409,15 +409,18 @@ class parser:
 					    if isinstance(r[i], int):
 						if r[i] == 13:
 							vv += r"'\r'"
-						elif r[i] == "\\":
-							vv += "'\\\\'"
 						elif r[i] == 10:
 							vv += r"'\n'"
 						else:
-							vv += r"'" + str(r[i]) + r"'"
-					    else:
-						if r[i] in ["'", '"']:
+							vv += str(r[i])
+					    elif isinstance(r[i], str):
+						#print "~~ " + r[i] + str(ord(r[i]))
+						if r[i] in ["\'", '\"', '\\']:
+							#print "aaa"
 							r[i] = "\\" + r[i]
+						elif ord(r[i]) > 127: # \
+							r[i] = hex(ord(r[i]))
+							r[i]='\\' + r[i][1:]
 						vv += "'" + r[i] + "'"
 					    if i != len(r)-1:
 						vv += ","

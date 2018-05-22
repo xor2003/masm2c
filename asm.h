@@ -37,9 +37,9 @@ extern "C" {
 #define offset(segment,name) offsetof(struct Mem,name)-offsetof(struct Mem,segment)
 #define seg_offset(segment) ((offsetof(struct Mem,segment)+0xf)>>4)
 
-#define db uint8_t
-#define dw uint16_t
-#define dd uint32_t
+typedef uint8_t db;
+typedef uint16_t dw;
+typedef uint32_t dd;
 
 #ifdef MSB_FIRST
 typedef struct dblReg {
@@ -126,15 +126,18 @@ typedef union registry16Bits
 #define HEAP_SIZE 1024*1024*4
 #define NB_SELECTORS 128
 
+#define XLAT {al = *raddr(ds,bx+al);}
 //#define PUSHAD memcpy (&m.stack[m.stackPointer], &m.eax.dd.val, sizeof (dd)*8); m.stackPointer+=sizeof(dd)*8; assert(m.stackPointer<STACK_SIZE)
 #define PUSHAD {PUSH(eax);PUSH(ebx);PUSH(ecx);PUSH(edx); PUSH(esi);PUSH(edi);PUSH(ebp);PUSH(ebp);}
+#define PUSHA PUSHAD
 
 //#define POPAD m.stackPointer-=sizeof(dd)*8; memcpy (&m.eax.dd.val, &m.stack[m.stackPointer], sizeof (dd)*8)
 #define POPAD {POP(ebp);POP(ebp);POP(edi);POP(esi); POP(edx);POP(ecx);POP(ebx);POP(eax); }
+#define POPA POPAD
 
-#define PUSH(a) memcpy (&stack[stackPointer], &a, sizeof (a)); stackPointer+=sizeof(a); assert(stackPointer<STACK_SIZE)
+#define PUSH(a) {memcpy (&stack[stackPointer], &a, sizeof (a)); stackPointer+=sizeof(a); assert(stackPointer<STACK_SIZE);}
 
-#define POP(a) stackPointer-=sizeof(a); memcpy (&a, &stack[stackPointer], sizeof (a))
+#define POP(a) {stackPointer-=sizeof(a); memcpy (&a, &stack[stackPointer], sizeof (a));}
 
 #define AFFECT_ZF(a) {ZF=((a)==0);}
 #define AFFECT_CF(a) {CF=(a);}
@@ -168,9 +171,9 @@ typedef union registry16Bits
 #define ROR(a,b) {a=(a>>b | a<<(sizeof(a)*8-b));}
 #define ROL(a,b) {a=(a<<b | a>>(sizeof(a)*8-b));}
 
-#define SHRD(a,b,c) a=(a>>c) | ( (b& ((1<<c)-1) ) << (sizeof(a)*8-c) ) //TODO
+#define SHRD(a,b,c) {a=(a>>c) | ( (b& ((1<<c)-1) ) << (sizeof(a)*8-c) );} //TODO
 
-#define SAR(a,b) a=(( (a & (1 << (sizeof(a)*8-1)))?-1:0)<<(sizeof(a)*8-(0x1f & b))) | (a >> (0x1f & b))  // TODO
+#define SAR(a,b) {a=(( (a & (1 << (sizeof(a)*8-1)))?-1:0)<<(sizeof(a)*8-(0x1f & b))) | (a >> (0x1f & b));}  // TODO
 
 #define READDDp(a) ((dd *) &m.a)
 #define READDWp(a) ((dw *) &m.a)
@@ -286,10 +289,10 @@ typedef union registry16Bits
 
 #define MOV(dest,src) dest = src
 
-#define LFS(dest,src) dest = src; fs= *(dw*)((char*)src + sizeof(dest))
-#define LES(dest,src) dest = src; es = *(dw*)((char*)src + sizeof(dest))
-#define LGS(dest,src) dest = src; gs = *(dw*)((char*)src + sizeof(dest))
-#define LDS(dest,src) dest = src; ds = *(dw*)((char*)src + sizeof(dest))
+#define LFS(dest,src) dest = src; fs= *(dw*)((db*)&(src) + sizeof(dest))
+#define LES(dest,src) dest = src; es = *(dw*)((db*)&(src) + sizeof(dest))
+#define LGS(dest,src) dest = src; gs = *(dw*)((db*)&(src) + sizeof(dest))
+#define LDS(dest,src) dest = src; ds = *(dw*)((db*)&(src) + sizeof(dest))
 
 #define MOVZX(dest,src) dest = src
 #define MOVSX(dest,src) if (ISNEGATIVE(src,src)) { dest = ((-1 ^ (( 1 << (sizeof(src)*8) )-1)) | src ); } else { dest = src; }
@@ -305,8 +308,8 @@ typedef union registry16Bits
 #define XCHG(dest,src) std::swap(dest,src); //TODO
 
 
-#define MOVS(dest,src)  \
-                        memmove(dest,src,sizeof(dest)); dest+=sizeof(dest); src+=sizeof(dest); } \
+#define MOVS(dest,src,s)  {dest=src; dest+=s; src+=s; }
+//                        {memmove(dest,src,s); dest+=s; src+=s; } \
 
 #define CMPS(a) \
 	{  \
@@ -359,17 +362,18 @@ typedef union registry16Bits
 //#define REP_STOSW while (cx>0) { STOSW; --cx;}
 //#define REP_STOSD while (cx>0) { STOSD; --cx;}
 
-#define LODS(a,b) {memcpy (((db *)&eax)+b, realAddress(si,ds), a); si+=a;}
+#define LODS(addr,s) {memcpy (((db *)&eax), &(addr), s);; si+=s;} // TODO not always si!!!
+#define LODSS(a,b) {memcpy (((db *)&eax)+b, realAddress(si,ds), a); si+=a;}
 
 #ifdef MSB_FIRST
-#define LODSB LODS(1,3)
-#define LODSW LODS(2,2)
+#define LODSB LODSS(1,3)
+#define LODSW LODSS(2,2)
 #else
-#define LODSB LODS(1,0)
-#define LODSW LODS(2,0)
+#define LODSB LODSS(1,0)
+#define LODSW LODSS(2,0)
 #endif
+#define LODSD LODSS(4,0)
 
-#define LODSD LODS(4,0)
 /*
 #define REP_LODS(a,b) for (i=0; i<ecx; i++) { LODS(a,b); }
 
@@ -416,8 +420,8 @@ int8_t asm2C_IN(int16_t data);
 
 #define STI // TODO: STI not implemented
 #define CLI // TODO: STI not implemented
-#define PUSHF
-#define POPF
+#define PUSHF PUSH(CF+(ZF<<1)+(DF<<2)+(SF<<3))
+#define POPF {dw t; POP(t); CF=t&1; ZF=(t>>1)&1; DF=(t>>2)&1; SF=(t>>3)&1;}
 #define NOP
 
 #define CALL(label) \
