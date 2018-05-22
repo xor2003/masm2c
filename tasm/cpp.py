@@ -19,7 +19,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #
 
-import op, traceback, re, proc, string, logging
+import op, traceback, re, proc, string, logging, sys
 from copy import copy
 proc_module = proc
 
@@ -80,11 +80,12 @@ class cpp:
 #include "asm.c"
 #include \"%s\"
 
-int start();
+int mainproc();
 
 int main()
 {
-	return start();
+	R(MOV(cs, seg_offset(_text)));	// mov cs,_TEXT
+	return mainproc();
 }
 //namespace %s {
 """ %(banner, header, namespace))
@@ -137,13 +138,15 @@ int main()
 			if size == 0:
 				raise Exception("invalid var '%s' size %u" %(name, size))
 			if g.issegment:
-				value = "seg_offset(%s)" %(name_original)
+				value = "seg_offset(%s)" %(name_original.lower())
 				self.indirection = 0
 				return value
 			else:
 				value = "offset(%s,%s)" %(g.segment, g.name)
 			self.indirection = 1
 			#	self.indirection = 0
+		elif isinstance(g, op.label):
+			value = g.name #.capitalize()
 		else:
 			size = g.size
 			if size == 0:
@@ -285,7 +288,7 @@ int main()
 			if not self.lea and isinstance(g, op.var):
 				print "it is not lea and it is var"
 				if g.issegment:
-					return "seg_offset(%s)" %expr
+					return "seg_offset(%s)" %expr.lower()
 				else:
 					if g.elements == 1:
 						return "m." + expr
@@ -316,6 +319,7 @@ int main()
 		m = prog.match(expr)
 		if m is not None:
 			indirection -= 1
+			size = 2 # x0r dos 16 bit
 			expr = m.group(1).strip()
 			expr = re.sub(r'\b[a-zA-Z_][a-zA-Z0-9_]*\b', self.expand_cb, expr) # parse each item
 			#expr = "offsetof(struct Mem,%s)" %expr
@@ -367,6 +371,7 @@ int main()
 		expr = re.sub(r'\b([0-9][a-fA-F0-9]*)[Hh]', '0x\\1', expr) # convert hex
 		expr = re.sub(r'\b([0-1]+)[Bb]', parse_bin, expr) # convert binary
 		expr = re.sub(r'"(.)"', '\'\\1\'', expr) # convert string
+		expr = re.sub(r'\[((0x)?[0-9][a-fA-F0-9]*)\]', '+\\1', expr) # convert [num]
 		if match_id:
 			print "EXPAND() BEFORE: %d %s" %(indirection, expr)
 			self.indirection = indirection
@@ -386,6 +391,7 @@ int main()
 			self.pointer_flag = False
 			indirection = self.indirection
 			print "AFTER: %d %s" %(indirection, expr)
+			traceback.print_stack(file=sys.stdout)
 
 		if indirection == 1:
 		   if not (self.lea and not destination):
@@ -396,7 +402,8 @@ int main()
 			elif size == 4:
 				expr = "*(dd*)(raddr(%s,%s))" %(seg_prefix, expr)
 			else:
-				expr = "@invalid size 0"
+				print "~%s~ @invalid size 0" %expr
+				expr = "*(dw*)(raddr(%s,%s))" %(seg_prefix, expr)
 			print "expr: %s" %expr
 		elif indirection == 0:
 			pass
@@ -440,15 +447,19 @@ int main()
 		return self.mangle_label(name)
 
 	def jump_to_label(self, name):
+		print "jump_to_label(%s)" %name
+		name = name.strip()
 		jump_proc = False
-		print "label %s" %name
 		prog = re.compile(r'^\s*(near|far|short)\s*', re.I)
 		name = re.sub(prog, '', name)
+		name = self.resolve_label(name)
 		print "label %s" %name
+		hasglobal = False
 		if name in self.blacklist:
 			jump_proc = True
 
 		if self.context.has_global(name) :
+			hasglobal = True
 			g = self.context.get_global(name)
 			if isinstance(g, proc_module.proc):
 				jump_proc = True
@@ -462,8 +473,12 @@ int main()
 			# TODO: name or self.resolve_label(name) or self.mangle_label(name)??
 			if name in self.proc.retlabels:
 				return "return /* (%s) */" % (name)
-			# x0r return "goto %s" %self.resolve_label(name)
-			return "%s" %self.resolve_label(name)
+			## x0r return "goto %s" %self.resolve_label(name)
+			if not hasglobal:
+				name = self.expand(name, destination = True)
+				self.body += "__disp = " + name + ";\n"
+				name = "__dispatch_call";
+			return name
 
 	def _label(self, name):
 		self.body += "%s:\n" %self.mangle_label(name)
@@ -476,6 +491,11 @@ int main()
 		self.proc_queue.append(name)
 
 	def _call(self, name):
+		print "cpp._call(%s)" %name
+		#dst = self.expand(name, destination = True)
+		dst = self.jump_to_label(name)
+		self.body += "\tR(CALL(%s));\n" %(dst)
+		'''
 		name = name.lower()
 		if self.is_register(name):
 			self.body += "\t__dispatch_call(%s);\n" %self.expand(name, 2)
@@ -485,6 +505,7 @@ int main()
 		else:
 			self.body += "\tR(CALL(%s));\n" %name
 		self.schedule(name)
+		'''
 
 	def _ret(self):
 		self.body += "\tR(RETN);\n"
@@ -612,55 +633,75 @@ int main()
 		self.body += "\tR(TEST(%s, %s));\n" %self.parse2(a, b)
 
 	def _js(self, label):
-		self.body += "\t\tR(JS(%s));\n" %(self.jump_to_label(label))
+		label = self.jump_to_label(label)
+		self.body += "\t\tR(JS(%s));\n" %label
 
 	def _jns(self, label):
-		self.body += "\t\tR(JNS(%s));\n" %(self.jump_to_label(label))
+		label = self.jump_to_label(label)
+		self.body += "\t\tR(JNS(%s));\n" %label
 
 	def _jz(self, label):
-		self.body += "\t\tR(JZ(%s));\n" %(self.jump_to_label(label))
+		label = self.jump_to_label(label)
+		self.body += "\t\tR(JZ(%s));\n" %label
 
 	def _jnz(self, label):
-		self.body += "\t\tR(JNZ(%s));\n" %(self.jump_to_label(label))
+		label = self.jump_to_label(label)
+		self.body += "\t\tR(JNZ(%s));\n" %label
 
 	def _jl(self, label):
-		self.body += "\t\tR(JL(%s));\n" %(self.jump_to_label(label))
+		label = self.jump_to_label(label)
+		self.body += "\t\tR(JL(%s));\n" %label
 
 	def _jg(self, label):
-		self.body += "\t\tR(JG(%s));\n" %(self.jump_to_label(label))
+		label = self.jump_to_label(label)
+		self.body += "\t\tR(JG(%s));\n" %label
 
 	def _jle(self, label):
-		self.body += "\t\tR(JLE(%s));\n" %(self.jump_to_label(label))
+		label = self.jump_to_label(label)
+		self.body += "\t\tR(JLE(%s));\n" %label
 
 	def _jge(self, label):
-		self.body += "\t\tR(JGE(%s));\n" %(self.jump_to_label(label))
+		label = self.jump_to_label(label)
+		self.body += "\t\tR(JGE(%s));\n" %label
 
 	def _jbe(self, label):
-		self.body += "\t\tR(JBE(%s));\n" %(self.jump_to_label(label))
+		label = self.jump_to_label(label)
+		self.body += "\t\tR(JBE(%s));\n" %label
 
 	def _ja(self, label):
-		self.body += "\t\tR(JA(%s));\n" %(self.jump_to_label(label))
+		label = self.jump_to_label(label)
+		self.body += "\t\tR(JA(%s));\n" %label
 
 	def _jc(self, label):
-		self.body += "\t\tR(JC(%s));\n" %(self.jump_to_label(label))
+		label = self.jump_to_label(label)
+		self.body += "\t\tR(JC(%s));\n" %label
 
 	def _jb(self, label):
-		self.body += "\t\tR(JB(%s));\n" %(self.jump_to_label(label))
+		label = self.jump_to_label(label)
+		self.body += "\t\tR(JB(%s));\n" %label
 
 	def _jnc(self, label):
-		self.body += "\t\tR(JNC(%s));\n" %(self.jump_to_label(label))
+		label = self.jump_to_label(label)
+		self.body += "\t\tR(JNC(%s));\n" %label
+
+	def _jmp(self, label):
+		label = self.jump_to_label(label)
+		self.body += "\t\tR(JMP(%s));\n" %label
+
+	def _loop(self, label):
+		label = self.jump_to_label(label)
+		self.body += "\t\tR(LOOP(%s));\n" %label
+
+	def _jcxz(self, label):
+		label = self.jump_to_label(label)
+		self.body += "\t\tR(JCXZ(%s));\n" %label
+
+	def _loope(self, label):
+		label = self.jump_to_label(label)
+		self.body += "\tR(LOOPE(%s));\n" %label
 
 	def _xchg(self, dst, src):
 		self.body += "\tR(XCHG(%s, %s));\n" %self.parse2(dst, src)
-
-	def _jmp(self, label):
-		self.body += "\t\tR(JMP(%s));\n" %(self.jump_to_label(label))
-
-	def _loop(self, label):
-		self.body += "\t\tR(LOOP(%s));\n" %self.jump_to_label(label)
-
-	def _jcxz(self, label):
-		self.body += "\t\tR(JCXZ(%s));\n" %(self.jump_to_label(label))
 
 	def _push(self, regs):
 		p = str();
@@ -733,6 +774,8 @@ int main()
 		self.body += "\tR(CMC);\n"
 
 	def __proc(self, name, def_skip = 0):
+		print "__print(%s)" %name
+		#traceback.print_stack(file=sys.stdout)
 		try:
 			skip = def_skip
 			self.temps_count = 0
@@ -764,9 +807,9 @@ int main()
 				self.body += "void %sContext::%s() {\n" %(self.namespace, name);
 			'''
 			if name in self.function_name_remapping:
-				self.body += "int %s() {\n" %(self.function_name_remapping[name]);
+				self.body += "int %s() {\ngoto %s;\n" %(self.function_name_remapping[name], self.context.entry_point);
 			else:
-				self.body += "int %s() {\n" %(name);
+				self.body += "int %s() {\ngoto %s;\n" %(name, self.context.entry_point);
 
 			print name
 			self.proc.optimize()
@@ -800,7 +843,7 @@ int main()
 				self.proc.optimize(keep_labels=[label])
 				self.proc.visit(self, start)
 			'''
-			self.body += "}\n";
+			# self.body += "}\n"; # x0r function end
 			if name not in self.skip_output:
 				self.translated.insert(0, self.body)
 			self.proc = None
@@ -845,7 +888,7 @@ int main()
 			self.proc_done.append(name)
 			self.__proc(name)
 			self.methods.append(name)
-		self.write_stubs("_stubs.cpp", self.failed)
+		#self.write_stubs("_stubs.cpp", self.failed)
 		self.methods += self.failed
 		done, failed = len(self.proc_done), len(self.failed)
 
@@ -860,6 +903,20 @@ int main()
 		data_impl = ""
 		n = 0
 		comment = str()
+
+		self.fd.write("\nreturn(0);\n__dispatch_call:\nswitch (__disp) {\n")
+		offsets = []
+		for k, v in self.context.get_globals().items():
+			k = re.sub(r'[^A-Za-z0-9_]', '_', k)
+			if isinstance(v, op.label):
+				offsets.append((k.lower(), k))
+
+		offsets = sorted(offsets, key=lambda t: t[1])
+		for o in offsets:
+			print o
+			self.fd.write("case k%s: \tgoto %s;\n" %o)
+		self.fd.write("default: stackDump(); abort();\n")
+		self.fd.write("};\n}\n")
 
 		data_impl += "\nMemory m = {\n"
 		for v in cdata_bin:
@@ -904,14 +961,35 @@ int main()
 		for k, v in self.context.get_globals().items():
 			k = re.sub(r'[^A-Za-z0-9_]', '_', k)
 			if isinstance(v, op.var):
-				offsets.append((k.capitalize(), hex(v.offset)))
+				pass #offsets.append((k.capitalize(), hex(v.offset)))
 			elif isinstance(v, op.const):
 				offsets.append((k.capitalize(), self.expand_equ(v.value))) #fixme: try to save all constants here
+			#elif isinstance(v, op.label):
+			#	offsets.append((k.capitalize(), hex(v.line_number)))
 
 		offsets = sorted(offsets, key=lambda t: t[1])
 		for o in offsets:
-			self.hd.write("static const uint16_t k%s = %s;\n" %o)
-		self.hd.write("\n")
+			self.fd.write("static const uint16_t k%s = %s;\n" %o)
+		self.fd.write("\n")
+
+
+
+		self.hd.write("\ntypedef enum {\n")
+		offsets = []
+		for k, v in self.context.get_globals().items():
+			k = re.sub(r'[^A-Za-z0-9_]', '_', k)
+			if isinstance(v, op.var):
+				pass #offsets.append((k.capitalize(), hex(v.offset)))
+			elif isinstance(v, op.const):
+				pass #offsets.append((k.capitalize(), self.expand_equ(v.value))) #fixme: try to save all constants here
+			elif isinstance(v, op.label):
+				offsets.append((k.lower(), hex(v.line_number)))
+
+		offsets = sorted(offsets, key=lambda t: t[1])
+		for o in offsets:
+			self.hd.write("k%s = %s,\n" %o)
+		self.hd.write("} _offsets;\n")
+
 
 		data_head = "\ntypedef struct Mem {\n"
 		for v in hdata_bin:
@@ -1034,9 +1112,6 @@ int main()
 	def _shrd(self, dst, src, c):
 		self.body += "\tSHRD(%s, %s, " %self.parse2(dst, src)
 		self.body += "%s);\n" %self.expand(c)
-
-	def _loope(self, label):
-		self.body += "\tR(LOOPE(%s));\n" %self.jump_to_label(label)
 
 	def _pushf(self):
 		self.body += "\tR(PUSH(flags));\n"

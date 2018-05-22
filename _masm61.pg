@@ -260,11 +260,11 @@ expr
 exprList
   : expr| exprList  ","  expr
   ; 
-altId
+altIdq
   : "(" altId ")"
   ;
 externDef
-  :  langType?  id altId? ":" externType
+  :  langType?  id altIdq? ":" externType
   ; 
 externDir
   : externKey externList lineReminder
@@ -344,9 +344,6 @@ id
 idList
   : id| idList "," id
   ; 
-elsedirectiveList
-  : "ELSE" lineReminder directiveList
-  ;
 ifDir
   : ifStatement lineReminder directiveList elseifBlock? elsedirectiveList? "ENDIF" lineReminder
   ; 

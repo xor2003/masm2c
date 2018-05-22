@@ -33,8 +33,11 @@ class parser:
 		self.strip_path = 0
 		self.__globals = {}
 		self.__offsets = {}
+		self.offset_id = 1
 		self.__stack = []
 		self.proc_list = []
+
+		self.entry_point = ""
 
 		self.proc = None
 
@@ -305,6 +308,7 @@ class parser:
 				print "global/expr: ~%s~" %v
 				try:
 					v = string.replace(v, 'offset ', '')
+					v = re.sub(r'@', "arb", v)
 					g = self.get_global(v)
 					if isinstance(g, op.const):
 						v = int(g.value)
@@ -315,6 +319,8 @@ class parser:
 						#if self.segment:
 						#	v += " - offsetof(struct Mem," + self.segment + ")"
 						v = "offset(%s,%s)" %(self.segment, g.name)
+					elif isinstance(g, op.label):
+						v = "k%s" %(g.name)
 					else:
 						v = g.offset
 				except KeyError:
@@ -459,7 +465,10 @@ class parser:
 						print "offset %s -> %s" %(name, "&m." + name.lower() + " - &m." + self.segment)
 						if self.proc is not None:
 							self.proc.add_label(name)
-							self.set_offset(name, ("&m." + name.lower() + " - &m." + self.segment, self.proc, len(self.proc.stmts)))
+							#self.set_offset(name, ("&m." + name.lower() + " - &m." + self.segment, self.proc, len(self.proc.stmts)))
+							self.set_offset(name, ("&m." + name.lower() + " - &m." + self.segment, self.proc, self.offset_id))
+							self.set_global(name, op.label(name, self.offset_id))
+							self.offset_id += 1
 						else:
 							print "Label %s is outside the procedure" %name
 						skipping_binary_data = False
@@ -541,6 +550,8 @@ class parser:
 				self.proc.add(" ".join(cmd[1:]))
 				continue
 			elif cmd0l == 'end':
+				if len(cmd) >= 2:
+					self.entry_point = cmd[1].lower()
 				continue
 			
 			if len(cmd) >= 2:
@@ -564,12 +575,27 @@ class parser:
 					print "segement %s %x" %(name, offset)
 					self.cur_seg_offset = 16
 
-					self.c_data.append("{0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0}, // segment " + name + "\n")
-					self.h_data.append(" db " + name + "[16]; // segment " + name + "\n")
+					num = (0x10 - (len(self.binary_data) & 0xf)) & 0xf
+					if num:
+						l = [ '0' ] * num
+						self.binary_data += l
+
+						self.dummy_enum += 1
+						labell = "dummy" + str(self.dummy_enum)
+
+						self.c_data.append("{"+ ",".join(l) +"}, // padding\n")
+						self.h_data.append(" db " + labell + "["+ str(num) + "]; // padding\n")
+
+					num = 0x10
+					l = [ '0' ] * num
+					self.binary_data += l
+
+					self.c_data.append("{"+ ",".join(l) +"}, // segment " + name + "\n")
+					self.h_data.append(" db " + name + "["+ str(num) + "]; // segment " + name + "\n")
 
 					self.set_global(name, op.var(binary_width, offset, issegment = True))
 					if self.proc == None:
-						name = "start"
+						name = "mainproc"
 						self.proc = proc(name)
 						#print "procedure %s, #%d" %(name, len(self.proc_list))
 						self.proc_list.append(name)
