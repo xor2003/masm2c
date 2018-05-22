@@ -368,6 +368,8 @@ int main()
 			#print "COMMON_REG: ", reg, plus
 			expr = "%s%s" %(reg, plus)
 
+		expr = re.sub(r'\[(((e?([abcd][xhl])|si|di|bp|sp)|([\+-]))+)\]', '+\\1', expr) # name[bs+si]
+
 		expr = re.sub(r'\b([0-9][a-fA-F0-9]*)[Hh]', '0x\\1', expr) # convert hex
 		expr = re.sub(r'\b([0-1]+)[Bb]', parse_bin, expr) # convert binary
 		expr = re.sub(r'"(.)"', '\'\\1\'', expr) # convert string
