@@ -320,7 +320,7 @@ class parser:
 						#	v += " - offsetof(struct Mem," + self.segment + ")"
 						v = "offset(%s,%s)" %(self.segment, g.name)
 					elif isinstance(g, op.label):
-						v = "k%s" %(g.name)
+						v = "k%s" %(g.name.lower())
 					else:
 						v = g.offset
 				except KeyError:

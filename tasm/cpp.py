@@ -43,6 +43,7 @@ class cpp:
 		fname = namespace.lower() + ".cpp"
 		header = namespace.lower() + ".h"
 		self.indirection = 0
+		self.current_size = 0
 		banner = """/* PLEASE DO NOT MODIFY THIS FILE. ALL CHANGES WILL BE LOST! LOOK FOR README FOR DETAILS */
 
 /* 
@@ -134,8 +135,9 @@ int main()
 			value = str(g.offset)
 			self.indirection = 0
 		elif isinstance(g, op.var):
-			print "it is var"
+			print "it is var "+str(g.size)
 			size = g.size
+			self.current_size = size
 			if size == 0:
 				raise Exception("invalid var '%s' size %u" %(name, size))
 			if g.issegment:
@@ -278,7 +280,9 @@ int main()
 
 		expr = re.sub(r'^\(\s*(.*?)\s*\)$', '\\1', expr) # (expr)
 		print "wo curls "+expr
+
 		size = self.get_size(expr) if def_size == 0 else def_size
+
 		self.expr_size = size
 		#print "expr \"%s\" %d" %(expr, size)
 		indirection = 0
@@ -328,22 +332,30 @@ int main()
 			indirection -= 1
 			size = 2 # x0r dos 16 bit
 			expr = m.group(1).strip()
+			self.current_size = 0
 			expr = re.sub(r'\b[a-zA-Z_][a-zA-Z0-9_]*\b', self.expand_cb, expr) # parse each item
 			#expr = "offsetof(struct Mem,%s)" %expr
+
 			print "after it is offset ~%s~" %expr
 			return expr
 
-		m = re.match(r'byte\s+ptr\s+(.*?)$', expr)
+		print "1:\"%s\")" %expr
+		m = re.match(r'byte\s+ptr\s+(.*)', expr)
 		if m is not None:
 			expr = m.group(1).strip()
+			size = 1
 
-		m = re.match(r'word\s+ptr\s+(.*?)$', expr)
+		m = re.match(r'dword\s+ptr\s+(.*)', expr)
 		if m is not None:
 			expr = m.group(1).strip()
+			size = 4
 
-		m = re.match(r'dword\s+ptr\s+(.*?)$', expr)
+		m = re.match(r'word\s+ptr\s+(.*)', expr)
 		if m is not None:
 			expr = m.group(1).strip()
+			size = 2
+
+		print "2:\"%s\")" %expr
 
 		m = re.match(r'\[(.*)\]$', expr)
 		if m is not None:
@@ -384,10 +396,18 @@ int main()
 		expr = re.sub(r'\]', '', expr) # name[bs+si]
 
 		if match_id:
+			expr = re.sub(r'byte\s+ptr\s*', '', expr)
+			expr = re.sub(r'dword\s+ptr\s*', '', expr)
+			expr = re.sub(r'word\s+ptr\s*', '', expr)
+
 			print "EXPAND() BEFORE: %d %s" %(indirection, expr)
 			self.indirection = indirection
 			self.pointer_flag = False
+			self.current_size = 0
 			expr = re.sub(r'\b[a-zA-Z_][a-zA-Z0-9_]*\b', self.expand_cb, expr) # parse each item
+			if size == 0 and self.current_size != 0:
+				size = self.current_size
+				self.expr_size = size
 			print "EXPAND() AFTER: %d %s" %(self.indirection, expr)
 			print "is a pointer %d expr_size %d" %(self.pointer_flag, self.expr_size)
 			'''
@@ -605,6 +625,8 @@ int main()
 				break
 		for i in src:
 			res.append(self.expand(i, size))
+		if size == 0:
+			size = self.current_size
 		self.body += "\tR(MUL%d_%d(%s));\n" %(len(src),size,",".join(res))
 
 	def _imul(self, src):
@@ -617,6 +639,8 @@ int main()
 				break
 		for i in src:
 			res.append(self.expand(i, size))
+		if size == 0:
+			size = self.current_size
 		self.body += "\tR(IMUL%d_%d(%s));\n" %(len(src),size,",".join(res))
 
 	def _div(self, src):
@@ -652,8 +676,9 @@ int main()
 		self.body += "\t\tR(JNS(%s));\n" %label
 
 	def _jz(self, label):
-		label = self.jump_to_label(label)
-		self.body += "\t\tR(JZ(%s));\n" %label
+		if label != '$+2':
+			label = self.jump_to_label(label)
+			self.body += "\t\tR(JZ(%s));\n" %label
 
 	def _jnz(self, label):
 		label = self.jump_to_label(label)

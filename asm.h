@@ -135,7 +135,7 @@ typedef union registry16Bits
 #define POPAD {POP(ebp);POP(ebp);POP(edi);POP(esi); POP(edx);POP(ecx);POP(ebx);POP(eax); }
 #define POPA POPAD
 
-#define PUSH(a) {memcpy (&stack[stackPointer], &a, sizeof (a)); stackPointer+=sizeof(a); assert(stackPointer<STACK_SIZE);}
+#define PUSH(a) {dd t=(dd)a; memcpy (&stack[stackPointer], &t, sizeof (a)); stackPointer+=sizeof(a); assert(stackPointer<STACK_SIZE);}
 
 #define POP(a) {stackPointer-=sizeof(a); memcpy (&a, &stack[stackPointer], sizeof (a));}
 
