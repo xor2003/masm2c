@@ -199,14 +199,16 @@ class parser:
 					r.append(ord(v[i]))
 				continue
 			
-			m = re.match(r'(\w+)\s+dup\s+\((\s*\S+\s*)\)', v)
+			m = re.match(r'(\w+)\s+dup\s*\((\s*\S+\s*)\)', v)
 			if m is not None:
 				#we should parse that
 				n = self.parse_int(m.group(1))
-				if m.group(2) != '?':
-					value = self.parse_int(m.group(2))
-				else:
+				value = m.group(2)
+				value = value.strip()
+				if value == '?':
 					value = 0
+				else:
+					value = self.parse_int(value)
 				for i in xrange(0, n):
 					v = value
 					for b in xrange(0, width):
@@ -259,15 +261,18 @@ class parser:
 				is_string = True
 				continue
 
-			
-			m = re.match(r'(\w+)\s+dup\s+\(\s*(\S+)\s*\)', v) # parse dup construction
+			print "v ~%s~" %v
+			m = re.match(r'(\w+)\s+dup\s*\((\s*\S+\s*)\)', v)
 			if m is not None:
 				#we should parse that
 				n = self.parse_int(m.group(1))
-				if m.group(2) != '?':
-					value = self.parse_int(m.group(2))
-				else:
+				value = m.group(2)
+				value = value.strip()
+				if value == '?':
 					value = 0
+				else:
+					value = self.parse_int(value)
+				#print "n = %d value = %d" %(n, value)
 
 				for i in xrange(0, n):
 					v = value
@@ -345,8 +350,8 @@ class parser:
 				cur_data_type = 4 # array of numbers
 
 		# if prev array of numbers and current is a number and empty label and current data type equal to previous
-		if self.prev_data_type == 4 and cur_data_type == 3 and len(label)==0 and data_ctype == self.prev_data_ctype: # if no label and it was same size and number or array
-				cur_data_type = 4 # array of numbers
+		#if self.prev_data_type == 4 and cur_data_type == 3 and len(label)==0 and data_ctype == self.prev_data_ctype: # if no label and it was same size and number or array
+		#		cur_data_type = 4 # array of numbers
 
 		#print "current data type = %d current data c type = %s" %(cur_data_type, data_ctype)
 		print "current data type = %d current data c type = %s" %(cur_data_type, data_ctype)
@@ -458,7 +463,7 @@ class parser:
 		self.data_started = True
 		return r, rh, elements
 
-	def add_label(self, name):
+	def add_label(self, name, far="", proc = False):
 				if self.visible():
 					#name = m.group(1)
 					#print "~name: %s" %name
@@ -467,10 +472,13 @@ class parser:
 					if not (name.lower() in self.skip_binary_data):
 						print "offset %s -> %s" %(name, "&m." + name.lower() + " - &m." + self.segment)
 						if self.proc is not None:
-							self.proc.add_label(name)
+							self.proc.add_label(name, proc)
 							#self.set_offset(name, ("&m." + name.lower() + " - &m." + self.segment, self.proc, len(self.proc.stmts)))
 							self.set_offset(name, ("&m." + name.lower() + " - &m." + self.segment, self.proc, self.offset_id))
-							self.set_global(name, op.label(name, self.offset_id))
+							farb = False
+							if far == 'far':
+								farb = True
+							self.set_global(name, op.label(name, proc, line_number=self.offset_id, far=farb))
 							self.offset_id += 1
 						else:
 							print "Label %s is outside the procedure" %name
@@ -560,6 +568,9 @@ class parser:
 			if len(cmd) >= 2:
 				cmd1l = cmd[1].lower()
 				if cmd1l == 'proc':
+					cmd2l = ""
+					if len(cmd) >= 3:
+						cmd2l = cmd[2].lower()
 					'''
 					name = cmd0l
 					self.proc = proc(name)
@@ -567,7 +578,7 @@ class parser:
 					self.proc_list.append(name)
 					self.set_global(name, self.proc)
 					'''
-					self.add_label(cmd0l)
+					self.add_label(cmd0l, far=cmd2l, proc = True)
 					continue
 				elif cmd1l == 'segment':
 					name = cmd0l

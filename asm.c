@@ -77,6 +77,8 @@ uint32_t& e##Z = *(uint32_t *)& r##Z; \
 uint16_t& Z = *(uint16_t *)& r##Z;
 
 //struct uc_x86_state {
+uint16_t barrier1=0;
+
     REGDEF_hl(a);
     REGDEF_hl(b);
     REGDEF_hl(c);
@@ -106,6 +108,8 @@ bool CF;
 bool ZF;
 bool DF;
 bool SF;
+
+uint16_t barrier2=0;
 
 db vgaPalette[256*3];
 dd selectorsPointer;

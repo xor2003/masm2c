@@ -5414,7 +5414,7 @@ sub_12D05 proc far		; CODE XREF: _start-2DP	_start+285P
 		jnz	short loc_12D2E
 		movzx	si, _sndcard_type
 		shl	si, 1
-		mov	si, offset _sb16_txt
+		mov	si, offset _pcspeaker_txt
 		mov	di, offset _chrin
 		call	_myasmsprintf
 		mov	byte ptr [di], 0
@@ -8190,7 +8190,7 @@ _snd_initialze proc near	; CODE XREF: sub_12DA8+78p
 		mov	_snd_init, 1
 		movzx	bx, _sndcard_type
 		shl	bx, 1
-		jmp     _sb16_init
+		jmp     _pcspeaker_init
 ; ---------------------------------------------------------------------------
 
 loc_1420D::				; CODE XREF: _snd_initialze+5j
@@ -8211,7 +8211,7 @@ _snd_on proc near		; CODE XREF: sub_12EBA+87p
 		mov	_snd_set_flag,	1
 		movzx	bx, _sndcard_type
 		shl	bx, 1
-		jmp     _sb16_on
+		jmp     _pcspeaker_set
 _snd_on endp
 
 
@@ -8231,7 +8231,7 @@ _snd_off proc	near		; CODE XREF: _snd_offx+8p _snd_deinit+Cp
 		call	near ptr _volume_12A66
 		movzx	bx, _sndcard_type
 		shl	bx, 1
-		jmp     _sb16_off
+		jmp     _pcspeaker_off
 _snd_off endp	; sp-analysis failed
 
 
@@ -8245,7 +8245,7 @@ _snd_deinit proc near		; CODE XREF: _deinit_125B9+18p
 		call	_snd_off
 		movzx	bx, _sndcard_type
 		shl	bx, 1
-		jmp     _sb16_deinit
+		jmp     _pcspeaker_deinit
 _snd_deinit endp
 
 
@@ -9422,7 +9422,7 @@ loc_151C9::				; CODE XREF: seg000:51BDj
 ; =============== S U B	R O U T	I N E =======================================
 
 
-_pcspeaker_sndoff proc near	; DATA XREF: seg003:0D40o
+_pcspeaker_off proc near	; DATA XREF: seg003:0D40o
 		call	_memfill8080
 		in	al, 61h		; PC/XT	PPI port B bits:
 					; 0: Tmr 2 gate	ÍËÍ OR	03H=spkr ON
@@ -9442,7 +9442,7 @@ _pcspeaker_sndoff proc near	; DATA XREF: seg003:0D40o
 					; 6: 0=hold keyboard clock low
 					; 7: 0=enable kbrd
 		retn
-_pcspeaker_sndoff endp
+_pcspeaker_off endp
 
 
 ; =============== S U B	R O U T	I N E =======================================
@@ -25580,7 +25580,7 @@ _table_25261	db  0, 4, 8,0Ch,10h,14h,18h,1Ch,20h,24h,28h,2Ch,30h,34h
 		dw offset _covox_sndoff
 		dw offset _stereo_sndoff
 		dw offset _adlib_sndoff
-		dw offset _pcspeaker_sndoff
+		dw offset _pcspeaker_off
 		dw offset _midi_sndoff
 		dw offset _sb16_deinit
 		dw offset _covox_clean
@@ -25608,8 +25608,8 @@ _snd_cards_offs	dw offset _aGravisUltrasoun ; DATA XREF:	seg003:114Eo
 		dw offset _sb16_txt
 		dw offset _covox_txt
 		dw offset _covox_txt
-		dw offset _pcspeaker_text
-		dw offset _pcspeaker_text
+		dw offset _pcspeaker_txt
+		dw offset _pcspeaker_txt
 		dw offset _midi_txt
 off_25326	dw offset _inr_module	; DATA XREF: _moduleread:loc_10040o
 					; INR
@@ -25741,7 +25741,7 @@ _aCouldNotFindThe db 'Could not find the ULTRASND environment string',0Dh,0Ah,0
 _aCouldNotFindT_0 db 'Could not find the Gravis UltraSound at the specified port addres'
 		db 's',0Dh,0Ah,0
 _aThisProgramRequ db 'This program requires the soundcards device driver.',0Dh,0Ah,0
-_aErrorSoundcardN db 'Error: Soundcard not found!',0Dh,0Ah,0
+_aErrorSoundcardN db 'Error: Soundcard not found!',0Dh,0Ah,'$',0
 					; DATA XREF: _proaud_init:loc_1464Fo
 					; _wss_test:loc_149ACo ...
 _aErrorCouldNotFi db 'Error: Could not find IRQ/DMA!',0Dh,0Ah,0
@@ -25839,7 +25839,7 @@ _covox_txt	db    2			; DATA XREF: seg003:0D7Co seg003:0D7Eo
 		db    0
 _aAdlibSoundcard_0 db 'Adlib SoundCard',0 ; DATA XREF: seg003:0D6Ao
 _aPcHonker_0	db 'PC Honker',0        ; DATA XREF: seg003:0D6Co
-_pcspeaker_text	db    2			; DATA XREF: seg003:0D80o seg003:0D82o
+_pcspeaker_txt	db    2			; DATA XREF: seg003:0D80o seg003:0D82o
 		db    0
 		dw offset _sndcard_type
 		dw offset _snd_cards_offs

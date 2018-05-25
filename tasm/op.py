@@ -529,11 +529,13 @@ class _clc(baseop):
 		visitor._clc()
 
 class label(baseop):
-	def __init__(self, name,line_number=0):
+	def __init__(self, name, proc, line_number=0, far=False):
 		self.name = name
 		self.line_number = line_number
+		self.far = far
+		self.proc = proc
 	def visit(self, visitor):
-		visitor._label(self.name)
+		visitor._label(self.name, self.proc)
 
 class _cld(baseop):
 	def __init__(self, arg):

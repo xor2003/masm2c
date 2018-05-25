@@ -135,9 +135,11 @@ typedef union registry16Bits
 #define POPAD {POP(ebp);POP(ebp);POP(edi);POP(esi); POP(edx);POP(ecx);POP(ebx);POP(eax); }
 #define POPA POPAD
 
-#define PUSH(a) {memcpy (&stack[stackPointer], &a, sizeof (a)); stackPointer+=sizeof(a); assert(stackPointer<STACK_SIZE);}
+#define PUSH(a) {memcpy (&stack[stackPointer], &a, sizeof (a)); stackPointer+=sizeof(a); assert(stackPointer<STACK_SIZE);\
+	log_debug("after push %d\n",stackPointer);}
 
-#define POP(a) {stackPointer-=sizeof(a); memcpy (&a, &stack[stackPointer], sizeof (a));}
+#define POP(a) {log_debug("before pop %d\n",stackPointer); \
+	stackPointer-=sizeof(a); memcpy (&a, &stack[stackPointer], sizeof (a));}
 
 #define AFFECT_ZF(a) {ZF=((a)==0);}
 #define AFFECT_CF(a) {CF=(a);}
@@ -424,19 +426,20 @@ int8_t asm2C_IN(int16_t data);
 #define POPF {dd t; POP(t); CF=t&1; ZF=(t>>1)&1; DF=(t>>2)&1; SF=(t>>3)&1;}
 #define NOP
 
-#define CALLF(label) {PUSH(cs);CALL(label);}
+#define CALLF(label) {log_debug("before callf %d\n",stackPointer);PUSH(cs);CALL(label);}
 #define CALL(label) \
-	{ db tt='x';  \
+	{ log_debug("before call %d\n",stackPointer); db tt='x';  \
 	if (setjmp(jmpbuffer) == 0) { \
 		PUSH(jmpbuffer); PUSH(tt);\
 		JMP(label); \
 	} }
 
-#define RET {db tt=0; POP(tt); if (tt!='x') {log_error("Stack corrupted.\n");exit(1);} \
- 		POP(jmpbuffer); longjmp(jmpbuffer, 0);}
+#define RET {log_debug("before ret %d\n",stackPointer); db tt=0; POP(tt); if (tt!='x') {log_error("Stack corrupted.\n");exit(1);} \
+ 		POP(jmpbuffer); log_debug("after ret %d\n",stackPointer);longjmp(jmpbuffer, 0);}
 
-#define RETN RET //TODO test
-#define RETF RET; stackPointer-=2
+#define RETN RET
+#define RETF {log_debug("before ret %d\n",stackPointer); db tt=0; POP(tt); if (tt!='x') {log_error("Stack corrupted.\n");exit(1);} \
+ 		POP(jmpbuffer); stackPointer-=2; log_debug("after retf %d\n",stackPointer);longjmp(jmpbuffer, 0);}
 
 #ifdef __LIBSDL2__
 #include <SDL2/SDL.h>

@@ -35,8 +35,8 @@ class proc:
 		self.offset = proc.last_addr
 		proc.last_addr += 4
 
-	def add_label(self, label,line_number=0):
-		self.stmts.append(op.label(label,line_number=line_number))
+	def add_label(self, label, proc, line_number=0):
+		self.stmts.append(op.label(label, proc, line_number=line_number))
 		self.labels.add(label)
 
 	def remove_label(self, label):

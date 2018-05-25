@@ -483,9 +483,7 @@ int main()
 		jump_proc = False
 
 		self.far = False
-		m = re.match(r'far\s+ptr', name)
-		if m is not None:
-			self.far = True
+		name_original = name
 
 		prog = re.compile(r'^\s*(near|far|short)\s*(ptr)?\s*', re.I) # x0r TODO
 		name = re.sub(prog, '', name)
@@ -515,9 +513,22 @@ int main()
 				name = self.expand(name, destination = True)
 				self.body += "__disp = " + name + ";\n"
 				name = "__dispatch_call";
+			else:
+				if isinstance(g, op.label) and g.far:
+					self.far = True # make far calls to far procs
+
+			m = re.match(r'far\s+ptr', name_original)
+			if m is not None:
+				self.far = True
+			m = re.match(r'near\s+ptr', name_original)
+			if m is not None:
+				self.far = False
+
 			return name
 
-	def _label(self, name):
+	def _label(self, name, proc):
+		if proc:
+			self.body += " // Procedure %s() start\n" %(name)
 		self.body += "%s:\n" %self.mangle_label(name)
 
 	def schedule(self, name):
@@ -754,7 +765,7 @@ int main()
 		for r in regs:
 			if self.get_size(r):
 				r = self.expand(r)
-				p += "\tPUSH(%s);\n" %(r)
+				p += "\tR(PUSH(%s));\n" %(r)
 		self.body += p
 
 	def _pop(self, regs):
@@ -763,7 +774,7 @@ int main()
 			self.temps_count -= 1
 			i = self.temps_count
 			r = self.expand(r)
-			p += "\tPOP(%s);\n" %r
+			p += "\tR(POP(%s));\n" %r
 		self.body += p
 
 	def _rep(self,arg):
@@ -962,7 +973,7 @@ int main()
 		for o in offsets:
 			print o
 			self.fd.write("case k%s: \tgoto %s;\n" %o)
-		self.fd.write("default: stackDump(); abort();\n")
+		self.fd.write("default: log_debug("Jump/call to nothere %d\n", __disp);stackDump(); abort();\n")
 		self.fd.write("};\n}\n")
 
 		data_impl += "\nMemory m = {\n"
@@ -1159,8 +1170,8 @@ int main()
 		self.body += "\tREPNE\n"
 
 	def _shrd(self, dst, src, c):
-		self.body += "\tSHRD(%s, %s, " %self.parse2(dst, src)
-		self.body += "%s);\n" %self.expand(c)
+		self.body += "\tR(SHRD(%s, %s, " %self.parse2(dst, src)
+		self.body += "%s));\n" %self.expand(c)
 
 	def _pushf(self):
 		self.body += "\tR(PUSHF);\n"
@@ -1195,10 +1206,10 @@ int main()
 		self.body += "\tR(LODS(%s,%d));\n" %(src, size)
 
 	def _cli(self):
-		self.body += "\t// _cli();\n"
+		self.body += "\tR(CLI);\n"
 
 	def _sti(self):
-		self.body += "\t// _sti();\n"
+		self.body += "\tR(STI);\n"
 
 
 	def _in(self, dst, src):
