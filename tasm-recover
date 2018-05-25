@@ -37,7 +37,7 @@ context = p.parse(name)
 p.link()
 
 
-m = re.match(r'([^\\/\.]+)\.asm', name.lower())
+m = re.match(r'.*?([A-Za-z90-9_\.]+)\.asm', name.lower())
 if m is not None:
 	name = m.group(1).strip()
 

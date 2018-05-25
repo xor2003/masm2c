@@ -25328,7 +25328,7 @@ _word_2468C	dw 0			; DATA XREF: _alloc_dma_buf:loc_18A0Aw
 					; _alloc_dma_buf+B5r
 ;		align 10h
 		db    0
-algn_24691::
+;algn_24691::
 _dword_24694	dd 0			; DATA XREF: _dma_186E3+5Dr
 					; _dma_186E3+A2r ...
 _myseg_24698	dw 0			; DATA XREF: _alloc_dma_buf+31w

@@ -34,8 +34,8 @@ extern "C" {
 #endif
 
 #define realAddress(offset, segment) raddr(segment,offset)
-#define offset(segment,name) offsetof(struct Mem,name)-offsetof(struct Mem,segment)
-#define seg_offset(segment) ((offsetof(struct Mem,segment)+0xf)>>4)
+#define offset(segment,name) offsetof(struct Memory,name)-offsetof(struct Memory,segment)
+#define seg_offset(segment) ((offsetof(struct Memory,segment))>>4)
 
 typedef uint8_t db;
 typedef uint16_t dw;
@@ -122,7 +122,7 @@ typedef union registry16Bits
 
 
 #define VGARAM_SIZE 320*200
-#define STACK_SIZE 1024*sizeof(dd)
+#define STACK_SIZE 1024*1024*4
 #define HEAP_SIZE 1024*1024*4
 #define NB_SELECTORS 128
 
@@ -135,7 +135,7 @@ typedef union registry16Bits
 #define POPAD {POP(ebp);POP(ebp);POP(edi);POP(esi); POP(edx);POP(ecx);POP(ebx);POP(eax); }
 #define POPA POPAD
 
-#define PUSH(a) {dd t=(dd)a; memcpy (&stack[stackPointer], &t, sizeof (a)); stackPointer+=sizeof(a); assert(stackPointer<STACK_SIZE);}
+#define PUSH(a) {memcpy (&stack[stackPointer], &a, sizeof (a)); stackPointer+=sizeof(a); assert(stackPointer<STACK_SIZE);}
 
 #define POP(a) {stackPointer-=sizeof(a); memcpy (&a, &stack[stackPointer], sizeof (a));}
 
@@ -305,7 +305,7 @@ typedef union registry16Bits
 // LEA - Load Effective Address
 #define LEA(dest,src) dest = src
 
-#define XCHG(dest,src) std::swap(dest,src); //TODO
+#define XCHG(dest,src) {dd t = (dd) dest; dest = src; src = t;}//std::swap(dest,src); //TODO
 
 
 #define MOVS(dest,src,s)  {dest=src; dest+=s; src+=s; }
@@ -420,17 +420,20 @@ int8_t asm2C_IN(int16_t data);
 
 #define STI // TODO: STI not implemented
 #define CLI // TODO: STI not implemented
-#define PUSHF PUSH(CF+(ZF<<1)+(DF<<2)+(SF<<3))
-#define POPF {dw t; POP(t); CF=t&1; ZF=(t>>1)&1; DF=(t>>2)&1; SF=(t>>3)&1;}
+#define PUSHF {dd t = CF+(ZF<<1)+(DF<<2)+(SF<<3); PUSH(t);}
+#define POPF {dd t; POP(t); CF=t&1; ZF=(t>>1)&1; DF=(t>>2)&1; SF=(t>>3)&1;}
 #define NOP
 
+#define CALLF(label) {PUSH(cs);CALL(label);}
 #define CALL(label) \
+	{ db tt='x';  \
 	if (setjmp(jmpbuffer) == 0) { \
-		PUSH(jmpbuffer); \
+		PUSH(jmpbuffer); PUSH(tt);\
 		JMP(label); \
-	}
+	} }
 
-#define RET POP(jmpbuffer); longjmp(jmpbuffer, 0);
+#define RET {db tt=0; POP(tt); if (tt!='x') {log_error("Stack corrupted.\n");exit(1);} \
+ 		POP(jmpbuffer); longjmp(jmpbuffer, 0);}
 
 #define RETN RET //TODO test
 #define RETF RET; stackPointer-=2

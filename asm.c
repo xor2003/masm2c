@@ -1,36 +1,18 @@
 #include "asm.h"
-#include <algorithm> 
+//#include <algorithm> 
 
 //#define __packed  __attribute__((packed))
-
-struct Mem;
-typedef Mem Memory;
-extern Memory m;
+struct __attribute__((__packed__)) Memory;
+extern struct Memory m;
 
 /* https://commons.wikimedia.org/wiki/File:Table_of_x86_Registers_svg.svg */
-/*
-#define REGDEF_hl(Z)   \
-    union __packed {        \
-        uint64_t _r##Z##x;   \
-        uint32_t _e##Z##x;   \
-        uint16_t _##Z##x;      \
-        struct __packed {   \
-            uint8_t _##Z##l;   \
-            uint8_t _##Z##h;   \
-        } _dw;                  \
-    } r_e##Z##x;
-*/
-        struct __packed _dw {   
-            uint8_t Xl;   
-            uint8_t Xh;   
-        };
 
 #define REGDEF_hl(Z)   \
 uint64_t r##Z##x; \
 uint32_t& e##Z##x = *(uint32_t *)& r##Z##x; \
 uint16_t& Z##x = *(uint16_t *)& r##Z##x; \
 uint8_t& Z##l = *(uint8_t *)& r##Z##x; \
-uint8_t& Z##h = (*(_dw *)& r##Z##x).Xh; 
+uint8_t& Z##h = *(((uint8_t *)& r##Z##x)+1); 
 
 /*
 //#define eax r_eax._eax
@@ -129,7 +111,7 @@ db vgaPalette[256*3];
 dd selectorsPointer;
 dd selectors[NB_SELECTORS];
 dd stackPointer;
-dd stack[STACK_SIZE];
+db stack[STACK_SIZE];
 dd heapPointer;
 db heap[HEAP_SIZE];
 db vgaRamPaddingBefore[VGARAM_SIZE];
@@ -216,6 +198,7 @@ void stackDump() {
 	log_debug("sizeof(dd *)=%zu\n",sizeof(dd *));
 	log_debug("sizeof(dw)=%zu\n",sizeof(dw));
 	log_debug("sizeof(db)=%zu\n",sizeof(db));
+	log_debug("sizeof(jmp_buf)=%zu\n",sizeof(jmp_buf));
 //	log_debug("sizeof(mem)=%zu\n",sizeof(m));
 	log_debug("eax: %x\n",READDD(eax));
 //	hexDump(&eax,sizeof(dd));
@@ -414,7 +397,7 @@ void asm2C_INT(int a) {
 		{
 		case 0x9:
 		{
-			char * s=(char *) realAddress(edx,ds);
+			char * s=(char *) realAddress(dx,ds);
 			for (i=0; s[i]!='$'; i++) {
 				printf("%c", s[i]);
 			}
@@ -431,9 +414,9 @@ void asm2C_INT(int a) {
 		{
 			char fileName[1000];
 			if (path!=NULL) {
-				sprintf(fileName,"%s/%s",path,(const char *) realAddress(edx, ds));
+				sprintf(fileName,"%s/%s",path,(const char *) realAddress(dx, ds));
 			} else {
-				sprintf(fileName,"%s",(const char *) realAddress(edx, ds));
+				sprintf(fileName,"%s",(const char *) realAddress(dx, ds));
 			}
 			file=fopen(fileName, "rb"); //TOFIX, multiple files support
 			log_debug2("Opening file %s -> %p\n",fileName,(void *) file);
@@ -556,6 +539,7 @@ void asm2C_INT(int a) {
 			jumpToBackGround = 1;
 			executionFinished = 1;
 			exitCode = al;
+			exit(al);
 			return;
 		}
 		default:

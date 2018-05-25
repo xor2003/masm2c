@@ -481,6 +481,12 @@ int main()
 		print "jump_to_label(%s)" %name
 		name = name.strip()
 		jump_proc = False
+
+		self.far = False
+		m = re.match(r'far\s+ptr', name)
+		if m is not None:
+			self.far = True
+
 		prog = re.compile(r'^\s*(near|far|short)\s*(ptr)?\s*', re.I) # x0r TODO
 		name = re.sub(prog, '', name)
 		name = self.resolve_label(name)
@@ -525,7 +531,10 @@ int main()
 		print "cpp._call(%s)" %name
 		#dst = self.expand(name, destination = True)
 		dst = self.jump_to_label(name)
-		self.body += "\tR(CALL(%s));\n" %(dst)
+		if self.far:
+			self.body += "\tR(CALLF(%s));\n" %(dst)
+		else:
+			self.body += "\tR(CALL(%s));\n" %(dst)
 		'''
 		name = name.lower()
 		if self.is_register(name):
@@ -676,7 +685,7 @@ int main()
 		self.body += "\t\tR(JNS(%s));\n" %label
 
 	def _jz(self, label):
-		if label != '$+2':
+		if re.match('.*?(\$\+2)', label) is None:
 			label = self.jump_to_label(label)
 			self.body += "\t\tR(JZ(%s));\n" %label
 
@@ -721,7 +730,7 @@ int main()
 		self.body += "\t\tR(JNC(%s));\n" %label
 
 	def _jmp(self, label):
-		if label != '$+2':
+		if re.match('.*?(\$\+2)', label) is None:
 			label = self.jump_to_label(label)
 			self.body += "\t\tR(JMP(%s));\n" %label
 
@@ -1029,12 +1038,12 @@ int main()
 		self.hd.write("} _offsets;\n")
 
 
-		data_head = "\ntypedef struct Mem {\n"
+		data_head = "\nstruct __attribute__((__packed__)) Memory{\n"
 		for v in hdata_bin:
 			#data_impl += "0x%02x, " %v
 			data_head += "%s" %v
 			#n += 1
-		data_head += "} Memory;\n"
+		data_head += "};\n"
 		self.hd.write(data_head)
 
 		self.hd.write(
