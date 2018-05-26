@@ -973,7 +973,7 @@ int main()
 		for o in offsets:
 			print o
 			self.fd.write("case k%s: \tgoto %s;\n" %o)
-		self.fd.write("default: log_debug("Jump/call to nothere %d\n", __disp);stackDump(); abort();\n")
+		self.fd.write("default: log_debug(\"Jump/call to nothere %d\n\", __disp);stackDump(); abort();\n")
 		self.fd.write("};\n}\n")
 
 		data_impl += "\nMemory m = {\n"

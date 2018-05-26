@@ -330,7 +330,10 @@ class parser:
 						v = g.offset
 				except KeyError:
 					print "unknown address %s" %(v)
-					self.link_later.append((self.cur_seg_offset + len(r), v))
+					print self.c_data
+					print r
+					print len(self.c_data) + len(r)
+					self.link_later.append((len(self.c_data) + len(r), v))
 					v = 0
 		
 			r.append(v);
@@ -672,12 +675,13 @@ class parser:
 		#print self.c_data
 		for addr, expr in self.link_later:
 			print "addr %s expr %s" %(addr, expr)
-			try:
-				v = self.eval_expr(expr)
-				print "link: patching %04x -> %04x" %(addr, v)
-			except:
-				print "link: Exception %s" %expr
-				continue
-			print "link: addr %s v %d" %(addr, v)
-			#self.c_data[addr] = str(v)
+			#try:
+			#v = self.eval_expr(expr)
+			v = "k" + expr
+			print "link: patching %04x -> %s" %(addr, v)
+			#except:
+			#	print "link: Exception %s" %expr
+			#	continue
+			print "link: addr %s v %s" %(addr, v)
+			self.c_data[addr] = str(v)
 		#print self.c_data
