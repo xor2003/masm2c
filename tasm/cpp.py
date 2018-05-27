@@ -44,6 +44,7 @@ class cpp:
 		header = namespace.lower() + ".h"
 		self.indirection = 0
 		self.current_size = 0
+		self.seg_prefix = ""
 		banner = """/* PLEASE DO NOT MODIFY THIS FILE. ALL CHANGES WILL BE LOST! LOOK FOR README FOR DETAILS */
 
 /* 
@@ -146,6 +147,8 @@ int main()
 				return value
 			else:
 				value = "offset(%s,%s)" %(g.segment, g.name)
+				if self.seg_prefix == 'cs':
+					self.body += '\tcs=seg_offset(' + g.segment + ');\n'
 			self.indirection = 1
 			#	self.indirection = 0
 		elif isinstance(g, op.label):
@@ -275,6 +278,7 @@ int main()
 
 	def expand(self, expr, def_size = 0, destination = False):
 		print "EXPAND(expr:\"%s\")" %expr
+		self.seg_prefix=""
 
 		expr = expr.strip()
 
@@ -298,7 +302,7 @@ int main()
 					return "seg_offset(%s)" %expr.lower()
 				else:
 					if g.elements == 1:
-						traceback.print_stack(file=sys.stdout)
+						#traceback.print_stack(file=sys.stdout)
 						return "m." + expr
 					else:
 						s = {1: "*(db*)", 2: "*(dw*)", 4: "*(dd*)"}[size]
@@ -364,11 +368,11 @@ int main()
 
 		m = re.match(r'(\w{2,2}):(.*)$', expr)
 		if m is not None:
-			seg_prefix = m.group(1)
+			self.seg_prefix = m.group(1)
 			expr = m.group(2).strip()
-			print "SEGMENT %s, remains: %s" %(seg_prefix, expr)
+			print "SEGMENT %s, remains: %s" %(self.seg_prefix, expr)
 		else:
-			seg_prefix = "ds"
+			self.seg_prefix = "ds"
 
 		m = re.match(r'\[(.*)\]$', expr)
 		if m is not None:
@@ -427,14 +431,14 @@ int main()
 		if indirection == 1:
 		   if not (self.lea and not destination):
 			if size == 1:
-				expr = "*(raddr(%s,%s))" %(seg_prefix, expr)
+				expr = "*(raddr(%s,%s))" %(self.seg_prefix, expr)
 			elif size == 2:
-				expr = "*(dw*)(raddr(%s,%s))" %(seg_prefix, expr)
+				expr = "*(dw*)(raddr(%s,%s))" %(self.seg_prefix, expr)
 			elif size == 4:
-				expr = "*(dd*)(raddr(%s,%s))" %(seg_prefix, expr)
+				expr = "*(dd*)(raddr(%s,%s))" %(self.seg_prefix, expr)
 			else:
 				print "~%s~ @invalid size 0" %expr
-				expr = "*(dw*)(raddr(%s,%s))" %(seg_prefix, expr)
+				expr = "*(dw*)(raddr(%s,%s))" %(self.seg_prefix, expr)
 			print "expr: %s" %expr
 		elif indirection == 0:
 			pass
@@ -973,7 +977,7 @@ int main()
 		for o in offsets:
 			print o
 			self.fd.write("case k%s: \tgoto %s;\n" %o)
-		self.fd.write("default: log_debug(\"Jump/call to nothere %d\n\", __disp);stackDump(); abort();\n")
+		self.fd.write("default: log_debug(\"Jump/call to nothere %d\\n\", __disp);stackDump(); abort();\n")
 		self.fd.write("};\n}\n")
 
 		data_impl += "\nMemory m = {\n"
@@ -981,7 +985,9 @@ int main()
 			#data_impl += "0x%02x, " %v
 			data_impl += "%s" %v
 			n += 1
-
+		data_impl += """
+		{0}
+		"""
 		data_impl += "};\n"
 		'''
 		data_impl += "\n\tuint8_t m[] = {\n\t\t"
@@ -1054,6 +1060,11 @@ int main()
 			#data_impl += "0x%02x, " %v
 			data_head += "%s" %v
 			#n += 1
+
+		data_head += '''
+db heap[HEAP_SIZE];
+		''';
+
 		data_head += "};\n"
 		self.hd.write(data_head)
 

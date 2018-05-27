@@ -237,6 +237,23 @@ class parser:
 		#print r
 		return r
 
+	def convert_data(self, v):	
+					print "convert_data(%s)" %v
+					g = self.get_global(v)
+					print g
+					if isinstance(g, op.const):
+						v = int(g.value)
+						if v < 0: # negative values
+							v += base
+					elif isinstance(g, op.var):
+						v = "offset(%s,%s)" %(g.segment, g.name)
+					elif isinstance(g, op.label):
+						v = "k%s" %(g.name.lower())
+					else:
+						v = g.offset
+					print v
+					return v
+
 	def convert_data_to_c(self, label, width, data):
 		""" Generate C formated data """
 		print "convert_data_to_c %s %d %s" %(label, width, data)
@@ -261,7 +278,12 @@ class parser:
 				is_string = True
 				continue
 
+			print "is_string %d" %is_string
 			print "v ~%s~" %v
+			'''
+			if is_string and v.isdigit():
+				v = "'\\" +str(hex(int(v)))[1:] + "'"
+			'''
 			m = re.match(r'(\w+)\s+dup\s*\((\s*\S+\s*)\)', v)
 			if m is not None:
 				#we should parse that
@@ -314,20 +336,7 @@ class parser:
 				try:
 					v = string.replace(v, 'offset ', '')
 					v = re.sub(r'@', "arb", v)
-					g = self.get_global(v)
-					if isinstance(g, op.const):
-						v = int(g.value)
-						if v < 0: # negative values
-							v += base
-					elif isinstance(g, op.var):
-						#v = 'offsetof(struct Mem,' + g.name + ')'
-						#if self.segment:
-						#	v += " - offsetof(struct Mem," + self.segment + ")"
-						v = "offset(%s,%s)" %(self.segment, g.name)
-					elif isinstance(g, op.label):
-						v = "k%s" %(g.name.lower())
-					else:
-						v = g.offset
+					v = self.convert_data(v)
 				except KeyError:
 					print "unknown address %s" %(v)
 					print self.c_data
@@ -495,6 +504,18 @@ class parser:
 		print "opening file %s..." %(fname)
 		self.line_number = 0
 		skipping_binary_data = False
+
+		num = 0x1000
+		if num:
+						l = [ '0' ] * num
+						self.binary_data += l
+
+						self.dummy_enum += 1
+						labell = "dummy" + str(self.dummy_enum)
+
+						self.c_data.append("{0}, // padding\n")
+						self.h_data.append(" db " + labell + "["+ str(num) + "]; // protective\n")
+
 		fd = open(fname, 'rb')
 		for line in fd:
 			self.line_number += 1
@@ -668,6 +689,18 @@ class parser:
 				pass
 			
 		fd.close()
+
+		num = (0x10 - (len(self.binary_data) & 0xf)) & 0xf
+		if num:
+						l = [ '0' ] * num
+						self.binary_data += l
+
+						self.dummy_enum += 1
+						labell = "dummy" + str(self.dummy_enum)
+
+						self.c_data.append("{"+ ",".join(l) +"}, // padding\n")
+						self.h_data.append(" db " + labell + "["+ str(num) + "]; // padding\n")
+
 		return self
 
 	def link(self):
@@ -677,7 +710,11 @@ class parser:
 			print "addr %s expr %s" %(addr, expr)
 			#try:
 			#v = self.eval_expr(expr)
-			v = "k" + expr
+			v = expr
+			#if self.has_global('k' + v):
+			#		v = 'k' + v
+			v = self.convert_data(v)
+
 			print "link: patching %04x -> %s" %(addr, v)
 			#except:
 			#	print "link: Exception %s" %expr

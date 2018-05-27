@@ -1,4 +1,5 @@
 #include "asm.h"
+#include "iplay_masm_.h"
 //#include <algorithm> 
 
 //#define __packed  __attribute__((packed))
@@ -117,11 +118,10 @@ dd selectors[NB_SELECTORS];
 dd stackPointer;
 db stack[STACK_SIZE];
 dd heapPointer;
-db heap[HEAP_SIZE];
 db vgaRamPaddingBefore[VGARAM_SIZE];
 db vgaRam[VGARAM_SIZE];
 db vgaRamPaddingAfter[VGARAM_SIZE];
-
+db* diskTransferAddr = 0;
 dw __disp; //for dispatching calls
 
 static const uint32_t MASK[]={0, 0xff, 0xffff, 0xffffff, 0xffffffff};
@@ -221,7 +221,7 @@ void stackDump() {
 	hexDump((void *) realAddress(edi,es),50);
 	log_debug("fs: %d -> %p\n",fs,(void *) realAddress(0,fs));
 	log_debug("gs: %d -> %p\n",gs,(void *) realAddress(0,gs));
-	log_debug("adress heap: %p\n",(void *) &heap);
+	log_debug("adress heap: %p\n",(void *) &m.heap);
 	log_debug("adress vgaRam: %p\n",(void *) &vgaRam);
 	log_debug("first pixels vgaRam: %x\n",*vgaRam);
 	log_debug("flags: ZF = %d\n",ZF);
@@ -295,7 +295,7 @@ void asm2C_OUT(int16_t address, int data) {
 		}
 		break;
 	default:
-		log_error("unknown OUT %d,%d\n",address, data);
+		log_debug("unknown OUT %d,%d\n",address, data);
 		break;
 	}
 }
@@ -407,11 +407,27 @@ void asm2C_INT(int a) {
 			}
 			return;
 		}
+		case 0xe: // select disk
+		{
+			al=1;
+			return;
+		}
+		case 0x19: // Get cur disk
+		{
+			// cur disk is C:
+			al=0x2;
+			return;
+		}
+		case 0x1A: // Set disk transfer addr
+		{
+			diskTransferAddr=(db *)realAddress(dx,ds);
+			return;
+		}
 		case 0x2c:
 		{
 			//MOV(8,8,READDBh(edx),(db)2);
 			// TOFIX
-			edx=0x200;
+			dh=0x2;
 			return;
 		}
 		case 0x3d:
@@ -474,7 +490,7 @@ void asm2C_INT(int a) {
 			    CF set on error AX = error code (05h,06h)
 			 */
 			//char grosbuff[100000];
-			void * buffer=(db *) realAddress(edx, ds);
+			void * buffer=(db *) realAddress(dx, ds);
 			// log_debug2("Reading ecx=%d cx=%d eds=%x edx=%x -> %p file: %p\n",m.ecx,cx,m.ds,m.edx,buffer,(void *)  file);
 
 			if (feof(file)) {
@@ -529,20 +545,80 @@ void asm2C_INT(int a) {
 				seek = SEEK_END;
 				break;
 			}
-			long int offset=(cx<<16)+dx;
+			long int offset=(((long int )cx)<<16)+dx;
 			log_debug2("Seeking to offset %ld %d\n",offset,seek);
 			if (fseek(file,offset,seek)!=0) {
 				log_error("Error seeking\n");
+				CF=1;
 			}
 			return;
 		}
 
+		case 0x48:
+		{
+			
+			//   ;2.29 - Function 048h - Allocate Memory Block:
+			//   ;In:  AH     = 48h
+			//   ;  BX  = size of block in 16xbytes (must be non-zero)
+			//   ;Out: if successful:
+			//   ;    carry flag clear
+			//   ;    AX  =  address of allocated memory block
+			if (bx==0xffff)
+				{ CF=1;
+				  return;
+				}
+			int32_t nbBlocks=(bx<<4);
+			log_debug2("Function 0501h - Allocate Memory Block: %d para\n",bx);
+
+			if (heapPointer+nbBlocks>=HEAP_SIZE) {
+				CF = 1;
+				log_error("Not enough memory (increase HEAP_SIZE)\n");
+				exit(1);
+				return;
+			} else {
+				dd a=offsetof(struct Memory,heap)+heapPointer;
+				heapPointer+=nbBlocks;
+				{
+					log_debug2("New top of heap: %x\n",(dd) offsetof(struct Memory,heap)+heapPointer);
+				}
+				ax=a >> 4;
+				log_debug2("Return pointer %x, seg ax =%x\n",a,ax);
+				return;
+			}
+			break;
+		}
+		case 0x47: // Get cur dir
+		{
+			// cur dir is root
+			*(char *) realAddress(dx, ds)='\0';
+			return;
+		}
+		case 0x4E: // find first matching file
+		{
+			// cur dir is root
+			log_debug2("Find first file %s\n",(void *) (db *) realAddress(dx, ds));
+			strcpy((char*)diskTransferAddr+0x1e,"HACKER4.S3M");
+			return;
+		}
+/*
+		case 0x4A: // realloc mem
+		{
+			
+			return;
+		}
+*/
+		case 0x4F: // find next matching file
+		{
+			CF=1;
+			return;
+		}
 		case 0x4c:
 		{
 			stackDump();
 			jumpToBackGround = 1;
 			executionFinished = 1;
 			exitCode = al;
+			log_error("Graceful exit al:0x%x\n",al);
 			exit(al);
 			return;
 		}
@@ -722,7 +798,7 @@ void asm2C_INT(int a) {
 		break;
 	}
 	CF = 1;
-	log_error("Error DOSInt 0x%x ah:0x%x al:0x%x: not supported.\n",a,ah,al);
+	log_debug("Error DOSInt 0x%x ah:0x%x al:0x%x: bx:0x%x not supported.\n",a,ah,al,bx);
 }
 
 jmp_buf jmpbuffer;
