@@ -207,23 +207,23 @@ typedef union registry16Bits
 
 #define AAD {al = al + (ah * 10) & 0xFF; ah = 0;} //TODO
 
-#define ADD(a,b) {a=a+b; \
+#define ADD(a,b) {AFFECT_CF((a+b)<(a)); \
+		a=a+b; \
 		AFFECT_ZF(a); \
-		AFFECT_CF((a)<(b)); \
 		AFFECT_SF(a,a);}
 
-#define SUB(a,b) {a=a-b; \
+#define SUB(a,b) {AFFECT_CF((a-b)>(a)); \
+		a=a-b; \
 		AFFECT_ZF(a); \
-		AFFECT_CF((b)<(a)); \
 		AFFECT_SF(a,a);}
 
-#define ADC(a,b) {a=a+b+CF; \
+#define ADC(a,b) {AFFECT_CF((a+b+CF)<(a)); \
+		a=a+b+CF; \
 		AFFECT_ZF(a); \
-		AFFECT_CF((a)<(b)); \
 		AFFECT_SF(a,a);} //TODO
-#define SBB(a,b) {a=a-b-CF; \
+#define SBB(a,b) {AFFECT_CF((a-b-CF)>(a)); \
+		a=a-b-CF; \
 		AFFECT_ZF(a); \
-		AFFECT_CF((b)<(a)); \
 		AFFECT_SF(a,a);} 
 
 // TODO: should affects OF, SF, ZF, AF, and PF

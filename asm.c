@@ -871,6 +871,7 @@ return (executionFinished == 0);
 #include <curses.h>
 void realtocurs()
 {
+/*
     if(can_change_color())
     for(int colorNumber=0;colorNumber<16; colorNumber++)
 	{
@@ -889,7 +890,7 @@ void realtocurs()
 	                init_pair((b<<4)+f, f, b);
         }
 }
-/*
+*/
 static short realtocurs[16] =
 {
     COLOR_BLACK, COLOR_BLUE, COLOR_GREEN, COLOR_CYAN, COLOR_RED,
@@ -901,6 +902,14 @@ static short realtocurs[16] =
 //    COLOR_MAGENTA + 8, COLOR_YELLOW + 8, COLOR_WHITE + 8
 
 };
-*/
+    for( int b=0;b<16; b++)
+{
+       for( int f=0;f<16; f++)
+        {
+           if(b !=0 && f !=0)
+                init_pair((b<<4)+f, realtocurs[f], realtocurs[b]);
+        }
+}
+
 
 }
