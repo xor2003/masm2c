@@ -98,7 +98,7 @@ initscr();
     if (!has_colors())
     {
 	endwin();
-	printf("\nUnable to use colors\n");
+	printf("\\nUnable to use colors\\n");
 	return 1;
     }
 
