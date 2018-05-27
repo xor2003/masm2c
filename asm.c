@@ -1,5 +1,6 @@
 #include "asm.h"
 #include "iplay_masm_.h"
+
 //#include <algorithm> 
 
 //#define __packed  __attribute__((packed))
@@ -123,6 +124,7 @@ db vgaRam[VGARAM_SIZE];
 db vgaRamPaddingAfter[VGARAM_SIZE];
 db* diskTransferAddr = 0;
 dw __disp; //for dispatching calls
+#include "memmgr.c"
 
 static const uint32_t MASK[]={0, 0xff, 0xffff, 0xffffff, 0xffffffff};
 
@@ -365,6 +367,7 @@ void asm2C_init() {
 	log_debug2("asm2C_init is_little_endian:%d\n",isLittle);
 }
 
+
 void asm2C_INT(int a) {
 	static FILE * file;
 	int i;
@@ -377,6 +380,8 @@ void asm2C_INT(int a) {
 	dw dx=READDW(edx);
 */
 	CF = 0;
+	int rc;
+#define SUCCESS         0       /* Function was successful      */
 	log_debug2("asm2C_INT ah=%x al=%x ax=%x bx=%x cx=%x dx=%x\n",ah,al,ax,bx,cx,dx);
 
 	switch(a) {
@@ -412,9 +417,9 @@ void asm2C_INT(int a) {
 			al=1;
 			return;
 		}
-		case 0x19: // Get cur disk
+		case 0x19: // Get default disk
 		{
-			// cur disk is C:
+			// def disk is C:
 			al=0x2;
 			return;
 		}
@@ -553,7 +558,13 @@ void asm2C_INT(int a) {
 			}
 			return;
 		}
-
+		case 0x47: // Get cur dir
+		{
+			// cur dir is root
+			*(char *) realAddress(dx, ds)='\0';
+			ax = 0x0100;
+			return;
+		}
 		case 0x48:
 		{
 			
@@ -567,6 +578,7 @@ void asm2C_INT(int a) {
 				{ CF=1;
 				  return;
 				}
+/*
 			int32_t nbBlocks=(bx<<4);
 			log_debug2("Function 0501h - Allocate Memory Block: %d para\n",bx);
 
@@ -585,13 +597,19 @@ void asm2C_INT(int a) {
 				log_debug2("Return pointer %x, seg ax =%x\n",a,ax);
 				return;
 			}
+*/
+      /* Allocate memory */
+      if ((rc = DosMemAlloc(bx, mem_access_mode, &ax, &bx)) < 0)
+      {
+        DosMemLargest(&bx);
+        if (DosMemCheck() != SUCCESS)
+           {log_error("MCB chain corrupted\n");exit(1);}
+           CF=1;
+      }
+	CF=(rc!=SUCCESS);
+      ax++;   /* DosMemAlloc() returns seg of MCB rather than data */
+	return;
 			break;
-		}
-		case 0x47: // Get cur dir
-		{
-			// cur dir is root
-			*(char *) realAddress(dx, ds)='\0';
-			return;
 		}
 		case 0x4E: // find first matching file
 		{
@@ -600,13 +618,33 @@ void asm2C_INT(int a) {
 			strcpy((char*)diskTransferAddr+0x1e,"HACKER4.S3M");
 			return;
 		}
-/*
-		case 0x4A: // realloc mem
-		{
-			
-			return;
-		}
-*/
+      /* Free memory */
+    case 0x49:
+      if ((rc = DosMemFree(es - 1)) < SUCCESS)
+      {
+        if (DosMemCheck() != SUCCESS)
+           {log_error("MCB chain corrupted\n");exit(1);}
+           CF=1;
+      }
+	CF=(rc!=SUCCESS);
+	return;
+      break;
+
+      /* Set memory block size */
+    case 0x4a:
+        if (DosMemCheck() != SUCCESS)
+           {log_error("before 4a: MCB chain corrupted\n");exit(1);}
+
+      if ((rc = DosMemChange(es, bx, &bx)) < 0)
+      {
+        if (DosMemCheck() != SUCCESS)
+           {log_error("after 4a: MCB chain corrupted\n");exit(1);}
+           CF=1;
+      }
+      ax = es; /* Undocumented MS-DOS behaviour expected by BRUN45! */
+	CF=(rc!=SUCCESS);
+	return;
+      break;
 		case 0x4F: // find next matching file
 		{
 			CF=1;
@@ -620,6 +658,10 @@ void asm2C_INT(int a) {
 			exitCode = al;
 			log_error("Graceful exit al:0x%x\n",al);
 			exit(al);
+			return;
+		}
+		case 0x58: // mem allocation policy
+		{
 			return;
 		}
 		default:
@@ -824,4 +866,41 @@ RET;
 executionFinished = 1;
 moveToBackGround:
 return (executionFinished == 0);
+}
+
+#include <curses.h>
+void realtocurs()
+{
+    if(can_change_color())
+    for(int colorNumber=0;colorNumber<16; colorNumber++)
+	{
+	short red   = ( ((colorNumber & 4)>>1) + ((colorNumber & 8)>>3)) /3;
+	short green = ( ((colorNumber & 2))    + ((colorNumber & 8)>>3)) /3;
+	short blue  = ( ((colorNumber & 1)<<1) + ((colorNumber & 8)>>3)) /3;
+	if (colorNumber == 6) green >>= 1;
+	init_color(colorNumber, red,green,blue);
+	}
+
+    for( int b=0;b<16; b++)
+{
+       for( int f=0;f<16; f++)
+        {
+           if(b !=0 && f !=0)
+	                init_pair((b<<4)+f, f, b);
+        }
+}
+/*
+static short realtocurs[16] =
+{
+    COLOR_BLACK, COLOR_BLUE, COLOR_GREEN, COLOR_CYAN, COLOR_RED,
+    COLOR_MAGENTA, COLOR_YELLOW, COLOR_WHITE, 
+    COLOR_BLACK, COLOR_BLUE, COLOR_GREEN, COLOR_CYAN, COLOR_RED,
+    COLOR_MAGENTA, COLOR_YELLOW, COLOR_WHITE
+
+//    COLOR_BLACK + 8, COLOR_BLUE + 8, COLOR_GREEN + 8, COLOR_CYAN + 8, COLOR_RED + 8,
+//    COLOR_MAGENTA + 8, COLOR_YELLOW + 8, COLOR_WHITE + 8
+
+};
+*/
+
 }

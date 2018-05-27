@@ -5405,7 +5405,7 @@ sub_12D05 proc far		; CODE XREF: _start-2DP	_start+285P
 		jnz	short loc_12D2E
 		movzx	si, _sndcard_type
 		shl	si, 1
-		mov	si, offset _pcspeaker_txt
+		mov	si, offset _covox_txt
 		mov	di, offset _chrin
 		call	_myasmsprintf
 		mov	byte ptr [di], 0
@@ -5733,7 +5733,7 @@ _set_timer_int endp
 ; =============== S U B	R O U T	I N E =======================================
 
 
-_clean_int8_mem_timr proc near ; CODE	XREF: _covox_cleanp
+_clean_int8_mem_timr proc near ; CODE	XREF: _covox_deinitp
 					; _stereo_cleanp ...
 		mov	dx, word ptr cs:[_int8addr+2]
 		mov	bx, word ptr cs:[_int8addr]
@@ -5749,7 +5749,7 @@ _clean_int8_mem_timr endp
 ; =============== S U B	R O U T	I N E =======================================
 
 
-_configure_timer proc	near	; CODE XREF: _covox_setp _stereo_setp ...
+_configure_timer proc	near	; CODE XREF: _covox_onp _stereo_setp ...
 		call	sub_13017
 		pushf
 		cli
@@ -5769,7 +5769,7 @@ _configure_timer endp
 
 
 _memfill8080 proc near	; CODE XREF: _set_timer_int+18p
-					; _covox_sndoffp ...
+					; _covox_offp ...
 		pushf
 		cli
 		xor	ax, ax
@@ -8181,7 +8181,7 @@ _snd_initialze proc near	; CODE XREF: sub_12DA8+78p
 		mov	_snd_init, 1
 		movzx	bx, _sndcard_type
 		shl	bx, 1
-		jmp     _pcspeaker_init
+		jmp     _covox_init
 ; ---------------------------------------------------------------------------
 
 loc_1420D::				; CODE XREF: _snd_initialze+5j
@@ -8202,7 +8202,7 @@ _snd_on proc near		; CODE XREF: sub_12EBA+87p
 		mov	_snd_set_flag,	1
 		movzx	bx, _sndcard_type
 		shl	bx, 1
-		jmp     _pcspeaker_on
+		jmp     _covox_on
 _snd_on endp
 
 
@@ -8222,7 +8222,7 @@ _snd_off proc	near		; CODE XREF: _snd_offx+8p _snd_deinit+Cp
 		call	near ptr _volume_12A66
 		movzx	bx, _sndcard_type
 		shl	bx, 1
-		jmp     _pcspeaker_off
+		jmp     _covox_off
 _snd_off endp	; sp-analysis failed
 
 
@@ -8236,7 +8236,7 @@ _snd_deinit proc near		; CODE XREF: _deinit_125B9+18p
 		call	_snd_off
 		movzx	bx, _sndcard_type
 		shl	bx, 1
-		jmp     _pcspeaker_deinit
+		jmp     _covox_deinit
 _snd_deinit endp
 
 
@@ -9017,10 +9017,10 @@ _covox_init endp
 ; =============== S U B	R O U T	I N E =======================================
 
 
-_covox_set proc near		; DATA XREF: seg003:0D24o
+_covox_on proc near		; DATA XREF: seg003:0D24o
 		call	_configure_timer
 		retn
-_covox_set endp
+_covox_on endp
 
 ; ---------------------------------------------------------------------------
 
@@ -9070,19 +9070,19 @@ _covox_timer_int endp	; sp-analysis failed
 ; =============== S U B	R O U T	I N E =======================================
 
 
-_covox_sndoff proc near	; DATA XREF: seg003:0D3Ao
+_covox_off proc near	; DATA XREF: seg003:0D3Ao
 		call	_memfill8080
 		retn
-_covox_sndoff endp
+_covox_off endp
 
 
 ; =============== S U B	R O U T	I N E =======================================
 
 
-_covox_clean proc near	; DATA XREF: seg003:0D50o
+_covox_deinit proc near	; DATA XREF: seg003:0D50o
 		call	_clean_int8_mem_timr
 		retn
-_covox_clean endp
+_covox_deinit endp
 
 
 ; =============== S U B	R O U T	I N E =======================================
@@ -25564,19 +25564,19 @@ _table_25261	db  0, 4, 8,0Ch,10h,14h,18h,1Ch,20h,24h,28h,2Ch,30h,34h
 		dw offset _pcspeaker_init
 		dw offset _midi_init
 		dw offset _sb16_on
-		dw offset _covox_set
+		dw offset _covox_on
 		dw offset _stereo_set
 		dw offset _adlib_set
 		dw offset _pcspeaker_on
 		dw offset _midi_set
 		dw offset _sb16_off
-		dw offset _covox_sndoff
+		dw offset _covox_off
 		dw offset _stereo_sndoff
 		dw offset _adlib_sndoff
 		dw offset _pcspeaker_off
 		dw offset _midi_sndoff
 		dw offset _sb16_deinit
-		dw offset _covox_clean
+		dw offset _covox_deinit
 		dw offset _stereo_clean
 		dw offset _adlib_clean
 		dw offset _pcspeaker_deinit

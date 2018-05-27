@@ -87,6 +87,33 @@ int mainproc();
 
 int main()
 {
+  /* We expect ram_top as Kbytes, so convert to paragraphs */
+  mcb_init(seg_offset(heap), (HEAP_SIZE / 1024) * 64 - first_mcb - 1, MCB_LAST);
+
+initscr();
+ cbreak();
+    noecho();
+    keypad(stdscr, TRUE);
+
+    if (!has_colors())
+    {
+	endwin();
+	printf("\nUnable to use colors\n");
+	return 1;
+    }
+
+realtocurs();
+
+    start_color();
+
+//move(4,5);
+// attron(COLOR_PAIR(0x45));
+//	printw("Hello pam pam");
+// attroff(COLOR_PAIR(0x45));
+
+	refresh();
+
+
 	R(MOV(cs, seg_offset(_text)));	// mov cs,_TEXT
 	return mainproc();
 }
@@ -1062,7 +1089,7 @@ int main()
 			#n += 1
 
 		data_head += '''
-db heap[HEAP_SIZE];
+			db heap[HEAP_SIZE];
 		''';
 
 		data_head += "};\n"
