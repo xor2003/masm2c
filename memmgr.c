@@ -47,14 +47,14 @@ static BYTE *memmgrRcsId =
 uint16_t first_mcb=FP_SEG(&m.heap);         /* Start of user memory                 */
 db mem_access_mode=0;   /* memory allocation scheme             */
 
-#define nxtMCBsize(mcb,size) (mcb + (size<<4) + 0x10)
-#define nxtMCB(mcb) nxtMCBsize((mcb), (mcb)->m_size)
+#define nxtMCBsize(mcbp,size) ((mcb*)(((db*)mcbp) + (size<<4) + 0x10))
+#define nxtMCB(mcbp) nxtMCBsize((mcbp), (mcbp)->m_size)
 
-#define mcbFree(mcb) ((mcb)->m_psp == FREE_PSP)
-#define mcbValid(mcb)	( ((mcb)->m_size != 0xffff) && \
-        ((mcb)->m_type == MCB_NORMAL || (mcb)->m_type == MCB_LAST) )
-#define mcbFreeable(mcb)			\
-	((mcb)->m_type == MCB_NORMAL || (mcb)->m_type == MCB_LAST)
+#define mcbFree(mcbp) ((mcbp)->m_psp == FREE_PSP)
+#define mcbValid(mcbp)	( ((mcbp)->m_size != 0xffff) && \
+        ((mcbp)->m_type == MCB_NORMAL || (mcbp)->m_type == MCB_LAST) )
+#define mcbFreeable(mcbp) \
+	((mcbp)->m_type == MCB_NORMAL || (mcbp)->m_type == MCB_LAST)
 
 #define para2far(seg) ( (mcb *)((db *)&m + (seg<<4)) ) //(seg<<4)
 

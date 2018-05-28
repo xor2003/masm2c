@@ -122,8 +122,8 @@ typedef union registry16Bits
 
 
 #define VGARAM_SIZE 320*200
-#define STACK_SIZE 1024*1024*4
-#define HEAP_SIZE 1024*1024*4
+#define STACK_SIZE 1024*100
+#define HEAP_SIZE 1024*1024-16
 #define NB_SELECTORS 128
 
 #define XLAT {al = *raddr(ds,bx+al);}
@@ -171,7 +171,7 @@ typedef union registry16Bits
 #define NEG(a) {AFFECT_CF((a)!=0); \
 		a=-a;}
 #define TEST(a,b) {AFFECT_ZF((a)&(b)); \
-		AFFECT_CF((b)<(a)); \
+		AFFECT_CF(0); \
 		AFFECT_SF(a,(a)&(b))}
 
 #define SHR(a,b) {a=a>>b;}
@@ -361,7 +361,7 @@ typedef union registry16Bits
 #define STOSW STOS(2,2)
 #else
 #define STOSB STOS(1,0)
-#define STOSW {if (es!=0xB800) {STOS(2,0);} else {attron(COLOR_PAIR(ah)); mvaddch(di/160, (di/2)%80, al); attroff(COLOR_PAIR(ah));di+=2;refresh();}}
+#define STOSW {if (es!=0xB800) {STOS(2,0);} else {attron(COLOR_PAIR(ah)); mvaddch(di/160, (di/2)%80, al); /*attroff(COLOR_PAIR(ah))*/;di+=2;refresh();}}
 #define STOSD STOS(4,0)
 #endif
 

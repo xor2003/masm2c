@@ -59,7 +59,7 @@ static BYTE *mcb_hRcsId =
 typedef UWORD seg;
 typedef UWORD offset;
 
-typedef struct {
+typedef struct  __attribute__((__packed__)) {
   BYTE m_type;                  /* mcb type - chain or end              */
   UWORD m_psp;                  /* owner id via psp segment             */
   UWORD m_size;                 /* size of segment in paragraphs        */
