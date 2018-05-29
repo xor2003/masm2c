@@ -237,7 +237,7 @@ class parser:
 		#print r
 		return r
 
-	def convert_data(self, v):	
+	def convert_data(self, v,base):	
 					print "convert_data(%s)" %v
 					g = self.get_global(v)
 					print g
@@ -336,7 +336,7 @@ class parser:
 				try:
 					v = string.replace(v, 'offset ', '')
 					v = re.sub(r'@', "arb", v)
-					v = self.convert_data(v)
+					v = self.convert_data(v,base)
 				except KeyError:
 					print "unknown address %s" %(v)
 					print self.c_data
@@ -713,7 +713,7 @@ class parser:
 			v = expr
 			#if self.has_global('k' + v):
 			#		v = 'k' + v
-			v = self.convert_data(v)
+			v = self.convert_data(v,0x10000)
 
 			print "link: patching %04x -> %s" %(addr, v)
 			#except:

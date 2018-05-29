@@ -891,6 +891,7 @@ void realtocurs()
         }
 }
 */
+
 static short realtocurs[16] =
 {
     COLOR_BLACK, COLOR_BLUE, COLOR_GREEN, COLOR_CYAN, COLOR_RED,

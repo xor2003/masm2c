@@ -328,7 +328,7 @@ typedef union registry16Bits
 #define SCASB \
 	{  \
 			dest=realAddress(di,es); \
-			AFFECT_ZF( (*(char*)dest-al) ); di+=1; \
+			AFFECT_ZF( ( (*(char*)dest)-al) ); di+=1; \
 	}
 
 #define CMPSB CMPS(1)
