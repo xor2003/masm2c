@@ -352,6 +352,33 @@ bool is_little_endian()
 }
 
 
+//#if !CYGWIN
+  #include <sys/time.h>
+double realElapsedTime(void) {              // returns 0 first time called
+//    static struct timeval t0;
+    struct timeval tv;
+    gettimeofday(&tv, 0);
+ //   if (!t0.tv_sec)                         // one time initialization
+   //     t0 = tv;
+    return ((tv.tv_sec /*- t0.tv_sec*/ + (tv.tv_usec /* - t0.tv_usec*/)) / 1000000.) * 18.;
+}
+/*
+#else
+#include <windows.h>
+double realElapsedTime(void) {              // granularity about 50 microsecs
+    static LARGE_INTEGER freq, start;
+    LARGE_INTEGER count;
+    if (!QueryPerformanceCounter(&count))
+        assert(0 && "QueryPerformanceCounter");
+    if (!freq.QuadPart) {                   // one time initialization
+        if (!QueryPerformanceFrequency(&freq))
+            assert(0 && "QueryPerformanceFrequency");
+        start = count;
+    }
+    return (double)(count.QuadPart) / freq.QuadPart;
+}
+#endif
+*/
 void asm2C_init() {
 	isLittle=is_little_endian();
 #ifdef MSB_FIRST
@@ -390,6 +417,7 @@ void asm2C_INT(int a) {
 		switch(ax)
 		{
 		case 0x03: {
+			clear();
 			log_debug2("Switch to text mode\n");
 			return;
 		}
@@ -399,6 +427,32 @@ void asm2C_INT(int a) {
 			return;
 		}
 		}
+		break;
+	}
+	case 0x1A:
+	{
+		switch(ah) {
+		    case 0x02:  /* GET REAL-TIME CLOCK TIME (AT,XT286,PS) */
+		         {
+        	    struct tm* loctime;
+
+		        
+		    struct timeval curtime;
+	            gettimeofday(&curtime, NULL);
+    
+ //           curtime.tv_sec += cmos.time_diff;
+        	    loctime = localtime((time_t*)&curtime.tv_sec);
+	        	
+        	    dh = (loctime->tm_sec);
+	            cl = (loctime->tm_min);
+
+	            ch = (loctime->tm_hour);
+		    dl = 0;
+			break;
+			}
+
+			        break;
+        		   }
 		break;
 	}
 	case 0x21:
@@ -846,7 +900,7 @@ void asm2C_INT(int a) {
 jmp_buf jmpbuffer;
 void * dest;
 void * src;
-int program() {
+void program() {
 int i;
 #ifdef INCLUDEMAIN
 dest=NULL;src=NULL;i=0; //to avoid a warning.
@@ -865,7 +919,7 @@ RET;
 //...
 executionFinished = 1;
 moveToBackGround:
-return (executionFinished == 0);
+return ;//(executionFinished == 0);
 }
 
 #include <curses.h>

@@ -266,8 +266,8 @@ class parser:
 		base = {1: 0x100, 2: 0x10000, 4: 0x100000000}[width]
 		for v in data:
 			v = v.strip()
-			if width == 1 and (v[0] == "'"):
-				if v[-1] != "'":
+			if width == 1 and (v[0] in ["'", '"']):
+				if v[-1] not in ["'", '"']:
 					raise Exception("invalid string %s" %v)
 				if width > 1:
 					raise Exception("string with data width more than 1") #we could allow it :)
@@ -708,17 +708,17 @@ class parser:
 		#print self.c_data
 		for addr, expr in self.link_later:
 			print "addr %s expr %s" %(addr, expr)
-			#try:
-			#v = self.eval_expr(expr)
-			v = expr
-			#if self.has_global('k' + v):
-			#		v = 'k' + v
-			v = self.convert_data(v,0x10000)
+			try:
+				#v = self.eval_expr(expr)
+				v = expr
+				#if self.has_global('k' + v):
+				#		v = 'k' + v
+				v = self.convert_data(v,0x10000)
 
-			print "link: patching %04x -> %s" %(addr, v)
-			#except:
-			#	print "link: Exception %s" %expr
-			#	continue
+				print "link: patching %04x -> %s" %(addr, v)
+			except:
+				print "link: Exception %s" %expr
+				continue
 			print "link: addr %s v %s" %(addr, v)
 			self.c_data[addr] = str(v)
 		#print self.c_data

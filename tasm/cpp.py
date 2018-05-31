@@ -83,7 +83,7 @@ class cpp:
 #include "asm.c"
 #include \"%s\"
 
-int mainproc();
+void mainproc(int _i, dd eax_, dd ebx_, dd ecx_, dd edx_, dd esi_, dd edi_, dd ebp_);
 
 int main()
 {
@@ -97,14 +97,14 @@ initscr();
 
     if (!has_colors())
     {
-	endwin();
+//	endwin();
 	printf("\\nUnable to use colors\\n");
-	return 1;
+//	return 1;
     }
 
-realtocurs();
-
     start_color();
+
+realtocurs();
 
 //move(4,5);
 // attron(COLOR_PAIR(0x45));
@@ -113,9 +113,9 @@ realtocurs();
 
 	refresh();
 
-
-	R(MOV(cs, seg_offset(_text)));	// mov cs,_TEXT
-	return mainproc();
+R(MOV(cs, seg_offset(_text)));	// mov cs,_TEXT
+	mainproc(kbegin,eax, ebx, ecx, edx,  esi, edi,  ebp);
+	return(0);
 }
 //namespace %s {
 """ %(banner, header, namespace))
@@ -573,6 +573,11 @@ realtocurs();
 		print "cpp._call(%s)" %name
 		#dst = self.expand(name, destination = True)
 		dst = self.jump_to_label(name)
+		if dst!="__dispatch_call":
+			dst="k"+dst
+		else:
+			dst="__disp"
+
 		if self.far:
 			self.body += "\tR(CALLF(%s));\n" %(dst)
 		else:
@@ -898,7 +903,12 @@ realtocurs();
 			if name in self.function_name_remapping:
 				self.body += "int %s() {\ngoto %s;\n" %(self.function_name_remapping[name], self.context.entry_point);
 			else:
-				self.body += "int %s() {\ngoto %s;\n" %(name, self.context.entry_point);
+				self.body += """
+void %s(int _i, dd eax_, dd ebx_, dd ecx_, dd edx_, dd esi_, dd edi_, dd ebp_){
+__disp=_i;
+if (__disp==kbegin) goto %s;
+else goto __dispatch_call;
+""" %(name, self.context.entry_point);
 
 			print name
 			self.proc.optimize()
@@ -993,7 +1003,7 @@ realtocurs();
 		n = 0
 		comment = str()
 
-		self.fd.write("\nreturn(0);\n__dispatch_call:\nswitch (__disp) {\n")
+		self.fd.write("\nreturn;\n__dispatch_call:\nswitch (__disp) {\n")
 		offsets = []
 		for k, v in self.context.get_globals().items():
 			k = re.sub(r'[^A-Za-z0-9_]', '_', k)
@@ -1077,6 +1087,7 @@ realtocurs();
 				offsets.append((k.lower(), hex(v.line_number)))
 
 		offsets = sorted(offsets, key=lambda t: t[1])
+		self.hd.write("kbegin = 0x1001,\n")
 		for o in offsets:
 			self.hd.write("k%s = %s,\n" %o)
 		self.hd.write("} _offsets;\n")

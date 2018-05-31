@@ -12,6 +12,8 @@
 #include <assert.h>
 #include <stdbool.h>
 
+#include <curses.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -151,13 +153,13 @@ typedef union registry16Bits
 #define AFFECT_CF(a) {CF=(a);}
 //#define ISNEGATIVE(a) (a & (1 << (sizeof(a)*8-1)))
 //#define AFFECT_SF(a) {SF=ISNEGATIVE(a);}
-#define AFFECT_SF(f, a) {SF=((a)>>(sizeof(f)*8-1));}
+#define AFFECT_SF(f, a) {SF=( (a)&(1 << sizeof(f)*8 - 1) );}
 #define ISNEGATIVE(f,a) ( (a) & (1 << (sizeof(f)*8-1)) )
 
 // TODO: add missings affected flags on CMP
 #define CMP(a,b) {AFFECT_ZF( ((a)& MASK[sizeof(a)]) !=((b)& MASK[sizeof(a)]) ); \
 		AFFECT_CF((a)<(b)); \
-		AFFECT_SF(a, ((a)-(b))&(1 << sizeof(a)*8 - 1) );}
+		AFFECT_SF(a, (a)-(b) );}
 #define OR(a,b) {a=a|b; \
 		AFFECT_ZF(a); \
 		AFFECT_SF(a,a)}
@@ -176,12 +178,12 @@ typedef union registry16Bits
 
 #define SHR(a,b) {a=a>>b;}
 #define SHL(a,b) {a=a<<b;}
-#define ROR(a,b) {a=(a>>b | a<<(sizeof(a)*8-b));}
-#define ROL(a,b) {a=(a<<b | a>>(sizeof(a)*8-b));}
+#define ROR(a,b) {CF=((a)>>(b-1))&1;a=((a)>>(b) | a<<(sizeof(a)*8-(b)));}
+#define ROL(a,b) {CF=((a)>>(sizeof(a)*8-(b)))&1;a=(((a)<<(b)) | (a)>>(sizeof(a)*8-(b)));}
 
-#define SHRD(a,b,c) {a=(a>>c) | ( (b& ((1<<c)-1) ) << (sizeof(a)*8-c) );} //TODO
+#define SHRD(a,b,c) {a=(a>>c) | ( (b& ((1<<c)-1) ) << (sizeof(a)*8-c) );} //TODO optimize
 
-#define SAR(a,b) {a=(( (a & (1 << (sizeof(a)*8-1)))?-1:0)<<(sizeof(a)*8-(0x1f & b))) | (a >> (0x1f & b));}  // TODO
+#define SAR(a,b) {a=(( (a & (1 << (sizeof(a)*8-1)))?-1:0)<<(sizeof(a)*8-(0x1f & b))) | (a >> (0x1f & b));}  // TODO optimize
 
 #define READDDp(a) ((dd *) &m.a)
 #define READDWp(a) ((dw *) &m.a)
@@ -207,22 +209,22 @@ typedef union registry16Bits
 
 #define AAD {al = al + (ah * 10) & 0xFF; ah = 0;} //TODO
 
-#define ADD(a,b) {AFFECT_CF((a+b)<(a)); \
-		a=a+b; \
+#define ADD(a,b) {dd t=(a+b)& MASK[sizeof(a)];AFFECT_CF((t)<(a)); \
+		a=t; \
 		AFFECT_ZF(a); \
 		AFFECT_SF(a,a);}
 
-#define SUB(a,b) {AFFECT_CF((a-b)>(a)); \
-		a=a-b; \
+#define SUB(a,b) {dd t=(a-b)& MASK[sizeof(a)];AFFECT_CF((t)>(a)); \
+		a=t; \
 		AFFECT_ZF(a); \
 		AFFECT_SF(a,a);}
 
-#define ADC(a,b) {AFFECT_CF((a+b+CF)<(a)); \
-		a=a+b+CF; \
+#define ADC(a,b) {dd t=(a+b+CF)& MASK[sizeof(a)];AFFECT_CF((t)<(a)); \
+		a=t; \
 		AFFECT_ZF(a); \
 		AFFECT_SF(a,a);} //TODO
-#define SBB(a,b) {AFFECT_CF((a-b-CF)>(a)); \
-		a=a-b-CF; \
+#define SBB(a,b) {dd t=(a-b-CF)& MASK[sizeof(a)];AFFECT_CF((t)>(a)); \
+		a=t; \
 		AFFECT_ZF(a); \
 		AFFECT_SF(a,a);} 
 
@@ -232,31 +234,31 @@ typedef union registry16Bits
 #define DEC(a) {a-=1; \
 		AFFECT_ZF(a);}
 
-#define IMUL1_1(a) ax=(int8_t)al*(int8_t)a
-#define IMUL1_2(a) {int32_t t=(int16_t)ax*(int16_t)a;ax=t;dx=t>>16;}
-#define IMUL1_4(a) {int64_t t=(int32_t)eax*(int32_t)a;eax=t;edx=t>>32;}
-#define IMUL2_2(a,b) {a = (int16_t)a * (int16_t)b;}
-#define IMUL2_4(a,b) {a = (int32_t)a * (int32_t)b;}
-#define IMUL3_2(a,b,c) {a = (int16_t)b * (int16_t)c;}
-#define IMUL3_4(a,b,c) {a = (int32_t)b * (int32_t)c;}
+#define IMUL1_1(a) {ax=((int8_t)al)*((int8_t)(a));}
+#define IMUL1_2(a) {int32_t t=((int16_t)ax)*((int16_t)(a));ax=t;dx=t>>16;}
+#define IMUL1_4(a) {int64_t t=((int32_t)eax)*((int32_t)(a));eax=t;edx=t>>32;}
+#define IMUL2_2(a,b) {a = ((int16_t)(a)) * ((int16_t)(b));}
+#define IMUL2_4(a,b) {a = ((int32_t)(a)) * ((int32_t)(b));}
+#define IMUL3_2(a,b,c) {a = ((int16_t)(b)) * ((int16_t)(c));}
+#define IMUL3_4(a,b,c) {a = ((int32_t)(b)) * ((int32_t)(c));}
 
-#define MUL1_1(a) ax=al*a
-#define MUL1_2(a) {dd t=ax*a;ax=t;dx=t>>16;}
-#define MUL1_4(a) {uint64_t t=eax*a;eax=t;edx=t>>32;}
-#define MUL2_2(a,b) {a *= b;}
-#define MUL2_4(a,b) {a *= b;}
-#define MUL3_2(a,b,c) {a = b * c;}
-#define MUL3_4(a,b,c) {a = b * c;}
+#define MUL1_1(a) {ax=al*(a);}
+#define MUL1_2(a) {dd t=ax*(a);ax=t;dx=t>>16;}
+#define MUL1_4(a) {uint64_t t=eax*(a);eax=t;edx=t>>32;}
+#define MUL2_2(a,b) {a *= (b);}
+#define MUL2_4(a,b) {a *= (b);}
+#define MUL3_2(a,b,c) {a = (b) * (c);}
+#define MUL3_4(a,b,c) {a = (b) * (c);}
 
-#define IDIV1(a) {al=(int16_t)ax/a;ah=(int16_t)ax%a;}
-#define IDIV2(a) {ax=((int32_t)dx<<16+(int16_t)ax)/a;dx=((int16_t)dx<<16+(int16_t)ax)%a;}
-#define IDIV4(a) {eax=((int64_t)edx<<32+(int32_t)eax)/a;edx=((int64_t)edx<<32+(int32_t)eax)%a;}
+#define IDIV1(a) {int16_t t=ax;al=t/(a); ah=t%(a);}
+#define IDIV2(a) {int32_t t=(((int32_t)dx)<<16)|ax; ax=t/(a);dx=t%(a);}
+#define IDIV4(a) {int64_t t=(((int64_t)edx)<<32)|eax;eax=t/(a);edx=t%(a);}
 
-#define DIV1(a) {al=ax/a;ah=ax%a;}
-#define DIV2(a) {ax=(dx<<16+ax)/a;dx=(dx<<16+ax)%a;}
-#define DIV4(a) {eax=(edx<<32+eax)/a;edx=(edx<<32+eax)%a;}
+#define DIV1(a) {dw t=ax;al=t/(a);ah=t%(a);}
+#define DIV2(a) {dd t=((((int32_t)dx)<<16)|ax);ax=t/(a);dx=t%(a);}
+#define DIV4(a) {uint64_t t=((((uint64_t)edx)<<32)|eax);eax=t/(a);edx=t%(a);}
 
-#define NOT(a) a= ~a;// AFFECT_ZF(a) //TODO
+#define NOT(a) a= ~(a);// AFFECT_ZF(a) //TODO
 #define SETNZ(a) a= (!ZF)&1; //TODO
 #define SETZ(a) a= (ZF)&1; //TODO
 #define SETB(a) a= (CF)&1; //TODO
@@ -332,9 +334,9 @@ typedef union registry16Bits
 	}
 
 #define CMPSB CMPS(1)
-#define CBW ah = al & (1 << 7)?-1:0 // TODO
-#define CWD dx = ax & (1 << 15)?-1:0
-#define CWDE {*(((dw*)&eax)+1) = ax & (1 << 15)?-1:0;}
+#define CBW ah = ((int8_t)al) < 0?-1:0 // TODO
+#define CWD dx = ((int16_t)ax) < 0?-1:0
+#define CWDE {*(((dw*)&eax)+1) = ((int16_t)ax) < 0?-1:0;}
 
 // MOVSx (DF FLAG not implemented)
 #define MOVSS(a) {src=realAddress(si,ds); dest=realAddress(di,es); \
@@ -344,9 +346,9 @@ typedef union registry16Bits
 #define MOVSW MOVSS(2)
 #define MOVSD MOVSS(4)
 
-#define REP while (cx-- > 0)
-#define REPE AFFECT_ZF(0);while (cx-- > 0 && ZF)
-#define REPNE AFFECT_ZF(1);while (cx-- > 0 && !ZF)
+#define REP cx++;while (--cx != 0)
+#define REPE AFFECT_ZF(0);cx++;while (--cx != 0 && ZF)
+#define REPNE AFFECT_ZF(1);cx++;while (--cx != 0 && !ZF)
 /*
 #define REP_MOVSS(b) MOVSS(b,cx)
 #define REP_MOVS(dest,src) while (cx-- > 0) {MOVS(dest,src);}
@@ -449,6 +451,7 @@ int8_t asm2C_IN(int16_t data);
  		POP(jmpbuffer); stackPointer-=2; log_debug("after retf %d\n",stackPointer);longjmp(jmpbuffer, 0);}
 */
 #define CALLF(label) {PUSH(cs);CALL(label);}
+/*
 #define CALL(label) \
 	{ db tt='x';  \
 	if (setjmp(jmpbuffer) == 0) { \
@@ -458,10 +461,18 @@ int8_t asm2C_IN(int16_t data);
 
 #define RET {db tt=0; POP(tt); if (tt!='x') {log_error("Stack corrupted.\n");exit(1);} \
  		POP(jmpbuffer); longjmp(jmpbuffer, 0);}
-
-#define RETN RET
 #define RETF {db tt=0; POP(tt); if (tt!='x') {log_error("Stack corrupted.\n");exit(1);} \
  		POP(jmpbuffer); stackPointer-=2; longjmp(jmpbuffer, 0);}
+*/
+#define CALL(label) \
+	{ \
+	mainproc(label,eax, ebx, ecx, edx,  esi, edi,  ebp); \
+	}
+
+#define RET {return;}
+
+#define RETN RET
+#define RETF {dw tt=0; POP(tt); RET;}
 
 #ifdef __LIBSDL2__
 #include <SDL2/SDL.h>
