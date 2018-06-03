@@ -8,13 +8,13 @@ struct __attribute__((__packed__)) Memory;
 extern struct Memory m;
 
 /* https://commons.wikimedia.org/wiki/File:Table_of_x86_Registers_svg.svg */
+//uint64_t r##Z##x; \
 
 #define REGDEF_hl(Z)   \
-uint64_t r##Z##x; \
-uint32_t& e##Z##x = *(uint32_t *)& r##Z##x; \
-uint16_t& Z##x = *(uint16_t *)& r##Z##x; \
-uint8_t& Z##l = *(uint8_t *)& r##Z##x; \
-uint8_t& Z##h = *(((uint8_t *)& r##Z##x)+1); 
+static uint32_t e##Z##x; \
+static uint16_t& Z##x = *(uint16_t *)& e##Z##x; \
+static uint8_t& Z##l = *(uint8_t *)& e##Z##x; \
+static uint8_t& Z##h = *(((uint8_t *)& e##Z##x)+1); 
 
 /*
 //#define eax r_eax._eax
@@ -73,10 +73,12 @@ uint8_t& Z##h = *(((uint8_t *)& r##Z##x)+1);
         uint8_t  r##Z##b;   \
     } r_e##Z;
 */
-#define REGDEF_l(Z)   \
-uint64_t r##Z; \
-uint32_t& e##Z = *(uint32_t *)& r##Z; \
-uint16_t& Z = *(uint16_t *)& r##Z;
+
+//uint64_t r##Z; \
+
+#define REGDEF_l(Z) \
+static uint32_t e##Z ; \
+static uint16_t& Z = *(uint16_t *)& e##Z ;
 
 //struct uc_x86_state {
 uint16_t barrier1=0;
@@ -100,16 +102,16 @@ uint16_t barrier1=0;
 #undef REGDEF_bwd
 #undef REGDEF_nol
 
-dw cs;
-dw ds;
-dw es;
-dw fs;
-dw gs;
-dw ss;
-bool CF;
-bool ZF;
-bool DF;
-bool SF;
+static dw cs;
+static dw ds;
+static dw es;
+static dw fs;
+static dw gs;
+static dw ss;
+static bool CF;
+static bool ZF;
+static bool DF;
+static bool SF;
 
 uint16_t barrier2=0;
 

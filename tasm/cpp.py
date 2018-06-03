@@ -1222,6 +1222,10 @@ else goto __dispatch_call;
 		self.body += "\tR(SHRD(%s, %s, " %self.parse2(dst, src)
 		self.body += "%s));\n" %self.expand(c)
 
+	def _shld(self, dst, src, c):
+		self.body += "\tR(SHLD(%s, %s, " %self.parse2(dst, src)
+		self.body += "%s));\n" %self.expand(c)
+
 	def _pushf(self):
 		self.body += "\tR(PUSHF);\n"
 
@@ -1260,6 +1264,8 @@ else goto __dispatch_call;
 	def _sti(self):
 		self.body += "\tR(STI);\n"
 
+	def _leave(self):
+		self.body += "\tR(MOV(esp, ebp);\nR(POP(ebp));\n"
 
 	def _in(self, dst, src):
 		self.body += "\tR(IN(%s, %s));\n" %self.parse2(dst, src)

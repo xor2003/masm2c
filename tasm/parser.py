@@ -83,6 +83,14 @@ class parser:
 		value.elements = elements
 		self.__globals[name] = value
 
+	def reset_global(self, name, value, elements = 1):
+		if len(name) == 0:
+			raise Exception("empty name is not allowed")
+		name = name.lower()
+		print "adding global %s -> %s" %(name, value)
+		value.elements = elements
+		self.__globals[name] = value
+
 	def get_global(self, name):
 		name = name.lower()
 		print "get_global(%s)" %name
@@ -647,12 +655,15 @@ class parser:
 
 			if len(cmd) >= 3:
 				cmd1l = cmd[1].lower()
-				if cmd1l == 'equ':
+				if cmd1l in ['equ','=']:
 					if not (cmd0.lower() in self.skip_binary_data):
-						v = cmd[2]
+						v = " ".join(cmd[2:])
 						vv = self.fix_dollar(v)
 						print "value %s" %vv
-						self.set_global(cmd0, op.const(vv))
+						if cmd1l == 'equ':
+							self.set_global(cmd0, op.const(vv))
+						elif cmd1l == '=':
+							self.reset_global(cmd0, op.const(vv))
 					else:
 						print "skipping binary data for %s" % (cmd0.lower(),)
 						skipping_binary_data = True

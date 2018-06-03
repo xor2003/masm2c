@@ -665,6 +665,12 @@ class _shrd(baseop):
 	def visit(self, visitor):
 		visitor._shrd(self.dst, self.src, self.c)
 
+class _shld(baseop):
+	def __init__(self, arg):
+		self.dst, self.src, self.c = lex.parse_args(arg)
+	def visit(self, visitor):
+		visitor._shld(self.dst, self.src, self.c)
+
 class _loope(basejmp):
 	def __init__(self, label):
 		self.label = self.parse_arg(label)
@@ -791,6 +797,18 @@ class _cwd(baseop):
 		pass
 	def visit(self, visitor):
 		visitor._cwd()
+
+class _leave(baseop):
+	def __init__(self, arg):
+		pass
+	def visit(self, visitor):
+		visitor._leave()
+
+class _enter(baseop):
+	def __init__(self, arg):
+		self.arg = self.parse_arg(arg)
+	def visit(self, visitor):
+		visitor._enter(self.arg)
 
 class _idiv(baseop):
 	def __init__(self, arg):
