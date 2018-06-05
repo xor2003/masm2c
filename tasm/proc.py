@@ -183,13 +183,42 @@ class proc:
 		s = [stmt.replace("\x00", " ") for stmt in re.sub('["\'].+?["\']', lambda m: m.group(0).replace(" ", "\x00"), stmt).split()]
 
 		cmd = s[0]
-		cl = getattr(op, '_' + cmd.lower())
+		try:
+			cl = getattr(op, '_' + cmd.lower())
+		except AttributeError:
+			print cmd
+			if re.match(r"scas[bwd]|cmps[bwd]|movs[bwd]|xlat|lods[bwd]|stos[bwd]|aad|repne|repe|rep|std|stc|cld|clc|cli|cbw|cwde|cwd|cdq|sti|cmc|pushf|popf|nop|pushad|popad|popa|pusha|das|aaa|aas|aam", cmd.lower()) is not None:
+				cl = getattr(op, '_instruction0')
+			elif re.match(r"dec|inc|pop|push|int|neg|div|idiv|mul|setb|setnz|setz|not|lods|cmpxchg8b|bswap", cmd.lower()) is not None:
+				cl = getattr(op, '_instruction1')
+			elif re.match(r"j.*|loop.*", cmd.lower()) is not None:
+				cl = getattr(op, '_jump')
+			elif re.match(r"xchg|cmp|movsx|movzx|mov|or|xor|and|add|adc|sbb|rol|ror|sub|shl|shr|test|in|out|lea|lds|les|lfs|lgs|sar|btr|bts|btc|bt|movs|xadd", cmd.lower()) is not None:
+				cl = getattr(op, '_instruction2')
+			elif re.match(r"shrd|shld", cmd.lower()) is not None:
+				cl = getattr(op, '_instruction3')
+			else:
+				raise Exception("unknown command: "+cmd.lower())
+			
 		#print "args %s" %s[1:]
 		arg = " ".join(s[1:]) if len(s) > 1 else str()
 		o = cl(arg)
 		#o.comments = comments
 		o.command = str(line_number) + " " + command
+		o.cmd = cmd.lower()
 		#o.line_number = line_number
+#		print "~~~" + o.command + o.comments
+		self.stmts.append(o)
+
+	def add_equ(self, label, value, line_number=0):
+		
+		cl = getattr(op, '_equ')
+			
+		#print "args %s" %s[1:]
+		value = re.sub(r'\b([0-9][a-fA-F0-9]*)h', '0x\\1', value)
+		o = cl(label, value)
+		o.command = str(line_number) + " " + label + " = " + value
+		o.cmd = o.command
 #		print "~~~" + o.command + o.comments
 		self.stmts.append(o)
 	

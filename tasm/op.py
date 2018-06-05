@@ -37,8 +37,10 @@ class var:
 		self.issegment = issegment
 
 class const:
-	def __init__(self, value):
+	def __init__(self, value, size=0):
 		self.value = value
+		if size:
+			self.size = size
 
 class reg:
 	def __init__(self, name):
@@ -677,11 +679,23 @@ class _loope(basejmp):
 	def visit(self, visitor):
 		visitor._loope(self.label)
 
+class _loopne(basejmp):
+	def __init__(self, label):
+		self.label = self.parse_arg(label)
+	def visit(self, visitor):
+		visitor._loopne(self.label)
+
 class _jcxz(basejmp):
 	def __init__(self, label):
 		self.label = self.parse_arg(label)
 	def visit(self, visitor):
 		visitor._jcxz(self.label)
+
+class _jecxz(basejmp):
+	def __init__(self, label):
+		self.label = self.parse_arg(label)
+	def visit(self, visitor):
+		visitor._jecxz(self.label)
 
 class _pushf(baseop):
 	def __init__(self, arg):
@@ -756,6 +770,18 @@ class _bts(baseop):
 	def visit(self, visitor):
 		visitor._bts(self.dst, self.src)
 
+class _bsr(baseop):
+	def __init__(self, arg):
+		self.dst, self.src = self.split(arg)
+	def visit(self, visitor):
+		visitor._bsr(self.dst, self.src)
+
+class _bsf(baseop):
+	def __init__(self, arg):
+		self.dst, self.src = self.split(arg)
+	def visit(self, visitor):
+		visitor._bsr(self.dst, self.src)
+
 class _pushad(baseop):
 	def __init__(self, arg):
 		pass
@@ -785,6 +811,12 @@ class _aad(baseop):
 		pass
 	def visit(self, visitor):
 		visitor._aad()
+
+class _daa(baseop):
+	def __init__(self, arg):
+		pass
+	def visit(self, visitor):
+		visitor._daa()
 
 class _cwde(baseop):
 	def __init__(self, arg):
@@ -822,3 +854,38 @@ class _not(baseop):
 	def visit(self, visitor):
 		visitor._not(self.arg)
 
+class _instruction0(baseop):
+	def __init__(self, arg):
+		pass
+	def visit(self, visitor):
+		visitor._instruction0(self.cmd)
+
+class _instruction1(baseop):
+	def __init__(self, arg):
+		self.arg = self.parse_arg(arg)
+	def visit(self, visitor):
+		visitor._instruction1(self.cmd, self.arg)
+
+class _jump(baseop):
+	def __init__(self, arg):
+		self.arg = self.parse_arg(arg)
+	def visit(self, visitor):
+		visitor._jump(self.cmd, self.arg)
+
+class _instruction2(baseop):
+	def __init__(self, arg):
+		self.dst, self.src = self.split(arg)
+	def visit(self, visitor):
+		visitor._instruction2(self.cmd, self.dst, self.src)
+
+class _instruction3(baseop):
+	def __init__(self, arg):
+		self.dst, self.src, self.c = lex.parse_args(arg)
+	def visit(self, visitor):
+		visitor._instruction3(self.cmd, self.dst, self.src, self.c)
+
+class _equ(baseop):
+	def __init__(self, dst, src):
+		self.dst, self.src = dst, src
+	def visit(self, visitor):
+		visitor._equ(self.dst, self.src)

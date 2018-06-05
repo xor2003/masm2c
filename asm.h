@@ -403,6 +403,7 @@ typedef union registry16Bits
 
 #define LOOP(label) DEC(cx); JNZ(label)
 #define LOOPE(label) --cx; if (cx!=0 && ZF) GOTOLABEL(label) //TODO
+#define LOOPNE(label) --cx; if (cx!=0 && !ZF) GOTOLABEL(label) //TODO
 
 #define CLD DF=0
 #define STD DF=1

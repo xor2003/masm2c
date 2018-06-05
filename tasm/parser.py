@@ -268,10 +268,10 @@ class parser:
 		first = True
 		is_string = False
 		elements = 0
-		data_ctype = {1: 'db', 2: 'dw', 4: 'dd'}[width]
+		data_ctype = {1: 'db', 2: 'dw', 4: 'dd', 8: 'dq'}[width]
 		r = [""]
 		rh = []
-		base = {1: 0x100, 2: 0x10000, 4: 0x100000000}[width]
+		base = {1: 0x100, 2: 0x10000, 4: 0x100000000, 8: 0x10000000000000000}[width]
 		for v in data:
 			v = v.strip()
 			if width == 1 and (v[0] in ["'", '"']):
@@ -561,12 +561,12 @@ class parser:
 			if not self.visible():
 				continue
 
-			if cmd0l == 'db' or cmd0l == 'dw' or cmd0l == 'dd':
+			if cmd0l in ['db', 'dw', 'dd', 'dq']:
 				arg = line[len(cmd0):].strip()
 				if not skipping_binary_data:
 					print "%d:1: %s" %(self.cur_seg_offset, arg) #fixme: COPYPASTE
 					cmd0 = cmd0.lower()
-					binary_width = {'b': 1, 'w': 2, 'd': 4}[cmd0[1]]
+					binary_width = {'b': 1, 'w': 2, 'd': 4, 'q': 8}[cmd0[1]]
 					b = self.convert_data_to_blob(binary_width, lex.parse_args(arg))
 					self.binary_data += b
 					self.cur_seg_offset += len(b)
@@ -658,21 +658,43 @@ class parser:
 				if cmd1l in ['equ','=']:
 					if not (cmd0.lower() in self.skip_binary_data):
 						v = " ".join(cmd[2:])
+						print "value1 %s" %v
 						vv = self.fix_dollar(v)
-						print "value %s" %vv
+						vv = " ".join(lex.parse_args(vv))
+						vv = vv.strip()
+						print "value2 %s" %vv
+
+						size = 0
+						m = re.match(r'byte\s+ptr\s+(.*)', vv)
+						if m is not None:
+							vv = m.group(1).strip()
+							size = 1
+
+						m = re.match(r'[dq]word\s+ptr\s+(.*)', vv)
+						if m is not None:
+							vv = m.group(1).strip()
+							size = 4
+
+						m = re.match(r'word\s+ptr\s+(.*)', vv)
+						if m is not None:
+							vv = m.group(1).strip()
+							size = 2
+						'''
 						if cmd1l == 'equ':
-							self.set_global(cmd0, op.const(vv))
+							self.set_global(cmd0, op.const(vv, size=size))
 						elif cmd1l == '=':
-							self.reset_global(cmd0, op.const(vv))
+							self.reset_global(cmd0, op.const(vv, size=size))
+						'''
+						self.proc.add_equ(cmd0.lower(), vv, line_number=self.line_number)
 					else:
 						print "skipping binary data for %s" % (cmd0.lower(),)
 						skipping_binary_data = True
 					continue
-				elif cmd1l == 'db' or cmd1l == 'dw' or cmd1l == 'dd':
+				elif cmd1l  in ['db', 'dw', 'dd', 'dq']:
 					if not (cmd0.lower() in self.skip_binary_data):
 						name = cmd0
 						name = re.sub(r'@', "arb", name)
-						binary_width = {'b': 1, 'w': 2, 'd': 4}[cmd1l[1]]
+						binary_width = {'b': 1, 'w': 2, 'd': 4, 'q': 8}[cmd1l[1]]
 						offset = self.cur_seg_offset
 						arg = line[len(cmd0l):].strip()
 						arg = arg[len(cmd1l):].strip()

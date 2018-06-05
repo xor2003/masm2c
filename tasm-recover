@@ -25,6 +25,18 @@ from tasm.parser import parser
 from tasm.cpp import cpp
 import sys, re
 
+def tracefunc(frame, event, arg, indent=[0]):
+      if event == "call":
+          indent[0] += 2
+          print "-" * indent[0] + "> call function", frame.f_code.co_filename, frame.f_code.co_name
+      elif event == "return":
+          print "<" + "-" * indent[0], "exit function", frame.f_code.co_name
+          indent[0] -= 2
+      return tracefunc
+
+import sys
+sys.settrace(tracefunc)
+
 p = parser(skip_binary_data = [
 	# These data blobs are not output
 	# dreamweb.asm
@@ -37,7 +49,7 @@ context = p.parse(name)
 p.link()
 
 
-m = re.match(r'.*?([A-Za-z90-9_\.]+)\.asm', name.lower())
+m = re.match(r'.*?([A-Za-z90-9_\.-]+)\.asm', name.lower())
 if m is not None:
 	name = m.group(1).strip()
 

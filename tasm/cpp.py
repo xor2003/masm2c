@@ -153,8 +153,8 @@ R(MOV(cs, seg_offset(_text)));	// mov cs,_TEXT
 		#print g
 		if isinstance(g, op.const):
 			print "it is const"
-			value = self.expand_equ(g.value)
-			print "equ: %s -> %s" %(name, value)
+			#value = self.expand_equ(g.value)
+			print "equ: %s -> %s" %(name, self.expand_equ(g.value))
 		elif isinstance(g, proc.proc):
 			print "it is proc"
 			if self.indirection != -1:
@@ -276,6 +276,8 @@ R(MOV(cs, seg_offset(_text)));	// mov cs,_TEXT
 			print 'name = %s' %name
 			try:
 				g = self.context.get_global(name)
+				if isinstance(g, op.const):
+					return self.get_size(g.value)
 				print 'get_size res %d' %g.size
 				return g.size
 			except:
@@ -291,15 +293,23 @@ R(MOV(cs, seg_offset(_text)));	// mov cs,_TEXT
 
 	def expand_equ_cb(self, match):
 		name = match.group(0).lower()
-		g = self.context.get_global(name)
-		if isinstance(g, op.const):
-			return g.value
-		return str(g.offset)
+		print "expand_equ_cb %s" %name
+		try:
+			g = self.context.get_global(name)
+			if isinstance(g, op.const):
+				return g.value
+			return str(g.offset)
+		except:
+			print "some exception"
+			return name
 
 	def expand_equ(self, expr):
 		n = 1
-		while n > 0:
-			expr, n = re.subn(r'\b[a-zA-Z_][a-zA-Z0-9_]+\b', self.expand_equ_cb, expr)
+		print "expand_equ(%s)" %expr
+		#while n > 0:
+		#	expr, n = re.subn(r'\b[a-zA-Z_][a-zA-Z0-9_]+\b', self.expand_equ_cb, expr)
+		#while n > 0:
+		expr = re.sub(r'\b[a-zA-Z_][a-zA-Z0-9_]*\b', self.expand_equ_cb, expr)
 		expr = re.sub(r'\b([0-9][a-fA-F0-9]*)h', '0x\\1', expr)
 		return "(%s)" %expr
 
@@ -604,8 +614,8 @@ R(MOV(cs, seg_offset(_text)));	// mov cs,_TEXT
 		dst_size, src_size = self.get_size(dst), self.get_size(src)
 		if dst_size == 0:
 			if src_size == 0:
-				print "parse2: %s  %s" %(dst, src)
-				raise Exception("both sizes are 0")
+				print "parse2: %s %s both sizes are 0" %(dst, src)
+				#raise Exception("both sizes are 0")
 			dst_size = src_size
 		if src_size == 0:
 			src_size = dst_size
@@ -653,6 +663,9 @@ R(MOV(cs, seg_offset(_text)));	// mov cs,_TEXT
 	def _cbw(self):
 		self.body += "\tR(CBW);\n"
 
+	def _daa(self):
+		self.body += "\tR(DAA);\n"
+
 	def _shr(self, dst, src):
 		self.body += "\tR(SHR(%s, %s));\n" %self.parse2(dst, src)
 
@@ -660,7 +673,7 @@ R(MOV(cs, seg_offset(_text)));	// mov cs,_TEXT
 		self.body += "\tR(SHL(%s, %s));\n" %self.parse2(dst, src)
 
 	def _sar(self, dst, src):
-		self.body += "\tR(SAR(%s%s));\n" %self.parse2(dst, src)
+		self.body += "\tR(SAR(%s, %s));\n" %self.parse2(dst, src)
 
 	def _sal(self, dst, src):
 		self.body += "\tR(SAL(%s, %s));\n" %self.parse2(dst, src)
@@ -670,6 +683,12 @@ R(MOV(cs, seg_offset(_text)));	// mov cs,_TEXT
 
 	def _rcr(self, dst, src):
 		self.body += "\tR(RCR(%s, %s));\n" %self.parse2(dst, src)
+
+	def _bsr(self, dst, src):
+		self.body += "\tR(BSR(%s, %s));\n" %self.parse2(dst, src)
+
+	def _bsf(self, dst, src):
+		self.body += "\tR(BSF(%s, %s));\n" %self.parse2(dst, src)
 
 	def _mul(self, src):
 		res = []
@@ -789,9 +808,17 @@ R(MOV(cs, seg_offset(_text)));	// mov cs,_TEXT
 		label = self.jump_to_label(label)
 		self.body += "\t\tR(JCXZ(%s));\n" %label
 
+	def _jecxz(self, label):
+		label = self.jump_to_label(label)
+		self.body += "\t\tR(JECXZ(%s));\n" %label
+
 	def _loope(self, label):
 		label = self.jump_to_label(label)
 		self.body += "\tR(LOOPE(%s));\n" %label
+
+	def _loopne(self, label):
+		label = self.jump_to_label(label)
+		self.body += "\tR(LOOPNE(%s));\n" %label
 
 	def _xchg(self, dst, src):
 		self.body += "\tR(XCHG(%s, %s));\n" %self.parse2(dst, src)
@@ -1265,7 +1292,7 @@ else goto __dispatch_call;
 		self.body += "\tR(STI);\n"
 
 	def _leave(self):
-		self.body += "\tR(MOV(esp, ebp);\nR(POP(ebp));\n"
+		self.body += "\tR(MOV(esp, ebp));\nR(POP(ebp));\n"
 
 	def _in(self, dst, src):
 		self.body += "\tR(IN(%s, %s));\n" %self.parse2(dst, src)
@@ -1280,3 +1307,26 @@ else goto __dispatch_call;
 	def _not(self, dst):
 		dst = self.expand(dst)
 		self.body += "\tR(NOT(%s));\n" %(dst)
+
+	def _instruction0(self, cmd):
+		self.body += "\tR(%s);\n" %(cmd.upper())
+
+	def _instruction1(self, cmd, dst):
+		dst = self.expand(dst)
+		self.body += "\tR(%s(%s));\n" %(cmd.upper(), dst)
+
+	def _jump(self, cmd, label):
+		label = self.jump_to_label(label)
+		self.body += "\t\tR(%s(%s));\n" %(cmd.upper(), label)
+
+	def _instruction2(self, cmd, dst, src):
+		self.a, self.b = self.parse2(dst, src)
+		self.body += "\tR(%s(%s, %s));\n" %(cmd.upper(), self.a, self.b)
+
+	def _instruction3(self, cmd, dst, src, c):
+		self.a, self.b = self.parse2(dst, src)
+		self.c = self.expand(c)
+		self.body += "\tR(%s(%s, %s, %s));\n" %(cmd.upper(), self.a, self.b, self.c)
+
+	def _equ(self, dst, src):
+		self.body += "#undef %s\n#define %s %s\n" %(dst, dst, src)
