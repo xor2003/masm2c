@@ -1,5 +1,7 @@
 #include "asm.h"
-#include "iplay_masm_.h"
+#include "test-i386.h"
+
+#include <time.h>
 
 //#include <algorithm> 
 
@@ -78,22 +80,27 @@ static uint8_t& Z##h = *(((uint8_t *)& e##Z##x)+1);
 
 #define REGDEF_l(Z) \
 static uint32_t e##Z ; \
+static uint16_t& Z = *(uint16_t *)& e##Z ; \
+static uint8_t&  Z##l = *(uint8_t *)& e##Z ;
+
+#define REGDEF_nol(Z) \
+static uint32_t e##Z ; \
 static uint16_t& Z = *(uint16_t *)& e##Z ;
 
 //struct uc_x86_state {
-uint16_t barrier1=0;
+dd barrier1=0;
 
     REGDEF_hl(a);
     REGDEF_hl(b);
     REGDEF_hl(c);
     REGDEF_hl(d);
 
-    REGDEF_l(sp);
-    REGDEF_l(bp);
     REGDEF_l(si);
     REGDEF_l(di);
+    REGDEF_l(sp);
+    REGDEF_l(bp);
 
-//    REGDEF_nol(ip);
+    REGDEF_nol(ip);
 //    REGDEF_nol(flags);
 //};
 
@@ -108,24 +115,56 @@ static dw es;
 static dw fs;
 static dw gs;
 static dw ss;
-static bool CF;
-static bool ZF;
-static bool DF;
-static bool SF;
 
-uint16_t barrier2=0;
+/*
+struct __fl
+{
+	bool _CF:1;
+	bool res1:1;
+	bool _PF:1;
+	bool res2:1;
+	bool _AF:1;
+	bool res3:1;
+	bool _ZF:1;
+	bool _SF:1;
+	bool _TF:1;
+	bool _IF:1;
+	bool _DF:1;
+	bool _OF:1;
+	int _IOPL:2;
+	bool _NT:1;
+	bool res4:1;
+	bool res5:16;
+};
+static struct __fl __eflags;
+
+#define CF __eflags._CF
+#define ZF __eflags._ZF
+#define DF __eflags._DF
+#define SF __eflags._SF
+*/
+static bool CF;
+static bool PF;
+static bool AF;
+static bool ZF;
+static bool SF;
+static bool DF;
+static bool OF;
+
+dd barrier2=0;
 
 db vgaPalette[256*3];
 dd selectorsPointer;
 dd selectors[NB_SELECTORS];
-dd stackPointer;
-db stack[STACK_SIZE];
+//dd stackPointer;
+dd& stackPointer = esp;
+//db stack[STACK_SIZE];
 dd heapPointer;
 db vgaRamPaddingBefore[VGARAM_SIZE];
 db vgaRam[VGARAM_SIZE];
 db vgaRamPaddingAfter[VGARAM_SIZE];
 db* diskTransferAddr = 0;
-dw __disp; //for dispatching calls
+_offsets __disp; //for dispatching calls
 #include "memmgr.c"
 
 static const uint32_t MASK[]={0, 0xff, 0xffff, 0xffffff, 0xffffffff};
