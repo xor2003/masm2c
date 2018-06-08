@@ -272,11 +272,13 @@ typedef union registry16Bits
 #define ROR(a,b) {CF=((a)>>(shiftmodule(a,b)-1))&1;a=((a)>>(shiftmodule(a,b)) | a<<(sizeof(a)*8-(shiftmodule(a,b))));}
 #define ROL(a,b) {CF=((a)>>(sizeof(a)*8-(shiftmodule(a,b))))&1;a=(((a)<<(shiftmodule(a,b))) | (a)>>(sizeof(a)*8-(shiftmodule(a,b))));}
 
-#define SHRD(a,b,c) {a=(a>>(c&(2*8*sizeof(a)-1)) ) | ( (b& ((1<<(c&(2*8*sizeof(a)-1)))-1) ) << (sizeof(a)*8-(c&(2*8*sizeof(a)-1))) );} //TODO optimize
+#define SHRD(a,b,c) {int shift = c&(2*bitsizeof(a)-1); \
+			dd a1=a>>shift; \
+			a=a1 | ( (b& ((1<<shift)-1) ) << (bitsizeof(a)-shift) );} //TODO optimize
 
-//#define SAR(a,b) {if (b) {a=(( (a & (1 << ((8*sizeof(a))-1)))?-1:0)<<(((8*sizeof(a))-b)>0)?((8*sizeof(a))-b):0) | (a >> b);}}  // TODO optimize
 #define SAR(a,b) {bool sign = (a & (1 << (sizeof(a)*8-1)))!=0; int shift = (bitsizeof(a)-b);shift = shift>0?shift:0;\
 	dd sigg=shift<(bitsizeof(a))?( (sign?-1:0)<<shift):0; a = b>bitsizeof(a)?0:a; a=sigg | (a >> b);}  // TODO optimize
+//#define SAR(a,b) { a= ((int32_t)a)>>b;}  // TODO optimize
 
 #define READDDp(a) ((dd *) &m.a)
 #define READDWp(a) ((dw *) &m.a)
@@ -327,29 +329,29 @@ typedef union registry16Bits
 #define DEC(a) {a-=1; \
 		AFFECT_ZF(a);}
 
-#define IMUL1_1(a) {ax=((int8_t)al)*((int8_t)(a));}
-#define IMUL1_2(a) {int32_t t=((int16_t)ax)*((int16_t)(a));ax=t;dx=t>>16;}
-#define IMUL1_4(a) {int64_t t=((int32_t)eax)*((int32_t)(a));eax=t;edx=t>>32;}
+#define IMUL1_1(a) {ax=(int16_t)((int8_t)al)*((int8_t)(a));}
+#define IMUL1_2(a) {int32_t t=(int32_t)((int16_t)ax)*((int16_t)(a));ax=t;dx=t>>16;}
+#define IMUL1_4(a) {int64_t t=(int64_t)((int32_t)eax)*((int32_t)(a));eax=t;edx=t>>32;}
 #define IMUL2_2(a,b) {a = ((int16_t)(a)) * ((int16_t)(b));}
 #define IMUL2_4(a,b) {a = ((int32_t)(a)) * ((int32_t)(b));}
 #define IMUL3_2(a,b,c) {a = ((int16_t)(b)) * ((int16_t)(c));}
 #define IMUL3_4(a,b,c) {a = ((int32_t)(b)) * ((int32_t)(c));}
 
-#define MUL1_1(a) {ax=al*(a);}
-#define MUL1_2(a) {dd t=ax*(a);ax=t;dx=t>>16;}
-#define MUL1_4(a) {uint64_t t=eax*(a);eax=t;edx=t>>32;}
+#define MUL1_1(a) {ax=(dw)al*(a);}
+#define MUL1_2(a) {dd t=(dd)ax*(a);ax=t;dx=t>>16;}
+#define MUL1_4(a) {uint64_t t=(dq)eax*(a);eax=t;edx=t>>32;}
 #define MUL2_2(a,b) {a *= (b);}
 #define MUL2_4(a,b) {a *= (b);}
 #define MUL3_2(a,b,c) {a = (b) * (c);}
 #define MUL3_4(a,b,c) {a = (b) * (c);}
 
-#define IDIV1(a) {int16_t t=ax;al=t/(a); ah=t%(a);}
-#define IDIV2(a) {int32_t t=(((int32_t)dx)<<16)|ax; ax=t/(a);dx=t%(a);}
-#define IDIV4(a) {int64_t t=(((int64_t)edx)<<32)|eax;eax=t/(a);edx=t%(a);}
+#define IDIV1(a) {int16_t t=ax;al=t/((int8_t)a); ah=t%((int8_t)a);}
+#define IDIV2(a) {int32_t t=(((int32_t)(int16_t)dx)<<16)|ax; ax=t/((int16_t)a);dx=t%((int16_t)a);}
+#define IDIV4(a) {int64_t t=(((int64_t)(int32_t)edx)<<32)|eax;eax=t/((int32_t)a);edx=t%((int32_t)a);}
 
 #define DIV1(a) {dw t=ax;al=t/(a);ah=t%(a);}
-#define DIV2(a) {dd t=((((int32_t)dx)<<16)|ax);ax=t/(a);dx=t%(a);}
-#define DIV4(a) {uint64_t t=((((uint64_t)edx)<<32)|eax);eax=t/(a);edx=t%(a);}
+#define DIV2(a) {dd t=((((dd)dx)<<16)|ax);ax=t/(a);dx=t%(a);}
+#define DIV4(a) {uint64_t t=((((dq)edx)<<32)|eax);eax=t/(a);edx=t%(a);}
 
 #define NOT(a) a= ~(a);// AFFECT_ZF(a) //TODO
 #define SETNZ(a) a= (!ZF)&1; //TODO
