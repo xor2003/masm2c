@@ -7438,6 +7438,24 @@ __disp = kprintf;
 	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 7990 mov     [esp+8], res
 __disp = kprintf;
 	R(CALL(__disp));	// 7991 call    printf
+	R(MOV(*(raddr(ds,ebp+val)), 1));	// 7992 mov     [ebp+val], 1
+	R(CMP(ebx, ebx));	// 7993 cmp     ebx, ebx
+	R(CMOVNZ(esi, *(dd*)(raddr(ds,ebp+val))));	// 7994 cmovnz  esi, [ebp+val]
+#undef res
+#define res esi	// 7995 res = esi
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovnel)));	// 7996 mov     dword ptr [esp+4], offset aCmovnel ; "cmovnel"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 7997 mov     [esp+8], res
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 7998 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+	R(MOV(edi, 0x12345678));	// 7999 mov     edi, 12345678h
+__disp = kprintf;
+	R(CALL(__disp));	// 8000 call    printf
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovnew)));	// 8001 mov     dword ptr [esp+4], offset aCmovnew ; "cmovnew"
+	R(CMP(ebx, ebx));	// 8002 cmp     ebx, ebx
+	R(CMOVNZ(si, bx));	// 8003 cmovnz  si, bx
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 8004 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8005 mov     [esp+8], res
+__disp = kprintf;
+	R(CALL(__disp));	// 7991 call    printf
 	res = 0;AFFECT_ZF(0); AFFECT_SF(res,0);	// 7992 xor     res, res
 	R(MOV(eax, 1));	// 7993 mov     eax, 1
 	R(CMP(ebx, esi));	// 7994 cmp     ebx, esi
@@ -7447,7 +7465,7 @@ loc_40698c:
 #undef res
 #define res eax	// 7999 res = eax
 	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aJne)));	// 8000 mov     dword ptr [esp+4], offset aJne ; "jne"
-	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8001 mov     [esp+8], res
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8016 mov     [esp+8], res
 	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 8002 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
 __disp = kprintf;
 	R(CALL(__disp));	// 8003 call    printf
@@ -7458,7 +7476,24 @@ __disp = kprintf;
 #undef res
 #define res eax	// 8008 res = eax
 	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 8009 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
-	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8010 mov     [esp+8], res
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8025 mov     [esp+8], res
+__disp = kprintf;
+	R(CALL(__disp));	// 8026 call    printf
+	R(MOV(*(raddr(ds,ebp+val)), 1));	// 8027 mov     [ebp+val], 1
+	R(CMP(ebx, esi));	// 8028 cmp     ebx, esi
+	R(CMOVNZ(edi, *(dd*)(raddr(ds,ebp+val))));	// 8029 cmovnz  edi, [ebp+val]
+#undef res
+#define res edi	// 8030 res = edi
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovnel)));	// 8031 mov     dword ptr [esp+4], offset aCmovnel ; "cmovnel"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8032 mov     [esp+8], res
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 8033 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+__disp = kprintf;
+	R(CALL(__disp));	// 8034 call    printf
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovnew)));	// 8035 mov     dword ptr [esp+4], offset aCmovnew ; "cmovnew"
+	R(CMP(ebx, esi));	// 8036 cmp     ebx, esi
+	R(CMOVNZ(di, bx));	// 8037 cmovnz  di, bx
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 8038 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8039 mov     [esp+8], res
 __disp = kprintf;
 	R(CALL(__disp));	// 8011 call    printf
 	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aJe)));	// 8012 mov     dword ptr [esp+4], offset aJe ; "je"
@@ -7478,6 +7513,24 @@ __disp = kprintf;
 	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 8026 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
 	R(MOV(*(dd*)(raddr(ds,esp+8)), eax));	// 8027 mov     [esp+8], eax
 __disp = kprintf;
+	R(CALL(__disp));	// 8057 call    printf
+	R(MOV(res, 0x12345678));	// 8058 mov     res, 12345678h
+	R(MOV(*(raddr(ds,ebp+val)), 1));	// 8059 mov     [ebp+val], 1
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovel)));	// 8060 mov     dword ptr [esp+4], offset aCmovel ; "cmovel"
+	R(CMP(ebx, ebx));	// 8061 cmp     ebx, ebx
+	R(CMOVZ(edi, *(dd*)(raddr(ds,ebp+val))));	// 8062 cmovz   edi, [ebp+val]
+#undef res
+#define res edi	// 8063 res = edi
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 8064 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8065 mov     [esp+8], res
+__disp = kprintf;
+	R(CALL(__disp));	// 8066 call    printf
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovew)));	// 8067 mov     dword ptr [esp+4], offset aCmovew ; "cmovew"
+	R(CMP(ebx, ebx));	// 8068 cmp     ebx, ebx
+	R(CMOVZ(di, bx));	// 8069 cmovz   di, bx
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 8070 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8071 mov     [esp+8], res
+__disp = kprintf;
 	R(CALL(__disp));	// 8028 call    printf
 	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aJe)));	// 8029 mov     dword ptr [esp+4], offset aJe ; "je"
 	R(MOV(eax, 1));	// 8030 mov     eax, 1
@@ -7496,6 +7549,24 @@ __disp = kprintf;
 	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 8043 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
 	R(MOV(*(dd*)(raddr(ds,esp+8)), eax));	// 8044 mov     [esp+8], eax
 __disp = kprintf;
+	R(CALL(__disp));	// 8089 call    printf
+	R(MOV(res, 0x12345678));	// 8090 mov     res, 12345678h
+	R(MOV(*(raddr(ds,ebp+val)), 1));	// 8091 mov     [ebp+val], 1
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovel)));	// 8092 mov     dword ptr [esp+4], offset aCmovel ; "cmovel"
+	R(CMP(ebx, esi));	// 8093 cmp     ebx, esi
+	R(CMOVZ(edi, *(dd*)(raddr(ds,ebp+val))));	// 8094 cmovz   edi, [ebp+val]
+#undef res
+#define res edi	// 8095 res = edi
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 8096 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8097 mov     [esp+8], res
+__disp = kprintf;
+	R(CALL(__disp));	// 8098 call    printf
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovew)));	// 8099 mov     dword ptr [esp+4], offset aCmovew ; "cmovew"
+	R(CMP(ebx, esi));	// 8100 cmp     ebx, esi
+	R(CMOVZ(di, bx));	// 8101 cmovz   di, bx
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 8102 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8103 mov     [esp+8], res
+__disp = kprintf;
 	R(CALL(__disp));	// 8045 call    printf
 	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aJl)));	// 8046 mov     dword ptr [esp+4], offset aJl ; "jl"
 	R(MOV(eax, 1));	// 8047 mov     eax, 1
@@ -7507,323 +7578,1491 @@ loc_406b3f:
 	R(MOV(*(dd*)(raddr(ds,esp+8)), eax));	// 8054 mov     [esp+8], eax
 __disp = kprintf;
 	R(CALL(__disp));	// 8055 call    printf
-	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aJl)));	// 8056 mov     dword ptr [esp+4], offset aJl ; "jl"
-	R(MOV(eax, 1));	// 8057 mov     eax, 1
-	R(CMP(ebx, esi));	// 8058 cmp     ebx, esi
-		R(JL(loc_406bcf));	// 8059 jl      short loc_406BCF
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aSetl)));	// 8115 mov     dword ptr [esp+4], offset aSetl ; "setl"
 	R(MOV(eax, 0));	// 8060 mov     eax, 0
-loc_406bcf:
+	R(CMP(ebx, ebx));	// 8117 cmp     ebx, ebx
+	R(SETL(al));	// 8118 setl    al
 	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 8063 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
 	R(MOV(*(dd*)(raddr(ds,esp+8)), eax));	// 8064 mov     [esp+8], eax
 __disp = kprintf;
 	R(CALL(__disp));	// 8065 call    printf
-	R(OR(res, 0x0FFFFFFFF));	// 8066 or      res, 0FFFFFFFFh
-	R(MOV(eax, 1));	// 8067 mov     eax, 1
-	R(CMP(ebx, edi));	// 8068 cmp     ebx, edi
-		R(JL(loc_406c5a));	// 8069 jl      short loc_406C5A
-	R(MOV(eax, 0));	// 8070 mov     eax, 0
-loc_406c5a:
+	R(MOV(res, 0x12345678));	// 8122 mov     res, 12345678h
+	R(MOV(*(raddr(ds,ebp+val)), 1));	// 8123 mov     [ebp+val], 1
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovll)));	// 8124 mov     dword ptr [esp+4], offset aCmovll ; "cmovll"
+	R(CMP(ebx, ebx));	// 8125 cmp     ebx, ebx
+	R(CMOVL(edi, *(dd*)(raddr(ds,ebp+val))));	// 8126 cmovl   edi, [ebp+val]
 #undef res
-#define res eax	// 8073 res = eax
-	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aJl)));	// 8074 mov     dword ptr [esp+4], offset aJl ; "jl"
-	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8075 mov     [esp+8], res
-	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 8076 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
+#define res edi	// 8127 res = edi
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 8128 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8129 mov     [esp+8], res
 __disp = kprintf;
 	R(CALL(__disp));	// 8077 call    printf
-	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aJle)));	// 8078 mov     dword ptr [esp+4], offset aJle ; "jle"
-	R(MOV(eax, 1));	// 8079 mov     eax, 1
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovlw)));	// 8131 mov     dword ptr [esp+4], offset aCmovlw ; "cmovlw"
 	R(CMP(ebx, ebx));	// 8080 cmp     ebx, ebx
-		R(JLE(loc_406cf8));	// 8081 jle     short loc_406CF8
-	R(MOV(eax, 0));	// 8082 mov     eax, 0
-loc_406cf8:
-#undef res
-#define res eax	// 8085 res = eax
-	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 8086 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
-	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8087 mov     [esp+8], res
+	R(CMOVL(di, bx));	// 8133 cmovl   di, bx
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 8134 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8135 mov     [esp+8], res
 __disp = kprintf;
 	R(CALL(__disp));	// 8088 call    printf
-	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aJle)));	// 8089 mov     dword ptr [esp+4], offset aJle ; "jle"
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aJl)));	// 8137 mov     dword ptr [esp+4], offset aJl ; "jl"
 	R(MOV(eax, 1));	// 8090 mov     eax, 1
 	R(CMP(ebx, esi));	// 8091 cmp     ebx, esi
-		R(JLE(loc_406d8e));	// 8092 jle     short loc_406D8E
+		R(JL(loc_406bcf));	// 8140 jl      short loc_406BCF
 	R(MOV(eax, 0));	// 8093 mov     eax, 0
-loc_406d8e:
-#undef res
-#define res eax	// 8096 res = eax
+loc_406bcf:
 	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 8097 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
-	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8098 mov     [esp+8], res
+	R(MOV(*(dd*)(raddr(ds,esp+8)), eax));	// 8145 mov     [esp+8], eax
 __disp = kprintf;
 	R(CALL(__disp));	// 8099 call    printf
-	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aJle)));	// 8100 mov     dword ptr [esp+4], offset aJle ; "jle"
-	R(MOV(eax, 1));	// 8101 mov     eax, 1
-	R(CMP(ebx, edi));	// 8102 cmp     ebx, edi
-		R(JLE(loc_406e24));	// 8103 jle     short loc_406E24
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aSetl)));	// 8147 mov     dword ptr [esp+4], offset aSetl ; "setl"
 	R(MOV(eax, 0));	// 8104 mov     eax, 0
-loc_406e24:
-#undef res
-#define res eax	// 8107 res = eax
+	R(CMP(ebx, esi));	// 8149 cmp     ebx, esi
+	R(SETL(al));	// 8150 setl    al
 	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 8108 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
-	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8109 mov     [esp+8], res
+	R(MOV(*(dd*)(raddr(ds,esp+8)), eax));	// 8152 mov     [esp+8], eax
 __disp = kprintf;
 	R(CALL(__disp));	// 8110 call    printf
-	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aJge)));	// 8111 mov     dword ptr [esp+4], offset aJge ; "jge"
-	R(MOV(eax, 1));	// 8112 mov     eax, 1
-	R(CMP(ebx, ebx));	// 8113 cmp     ebx, ebx
-		R(JGE(loc_406eba));	// 8114 jge     short loc_406EBA
-	R(MOV(eax, 0));	// 8115 mov     eax, 0
-loc_406eba:
+	R(MOV(res, 0x12345678));	// 8154 mov     res, 12345678h
+	R(MOV(*(raddr(ds,ebp+val)), 1));	// 8155 mov     [ebp+val], 1
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovll)));	// 8156 mov     dword ptr [esp+4], offset aCmovll ; "cmovll"
+	R(CMP(ebx, esi));	// 8157 cmp     ebx, esi
+	R(CMOVL(edi, *(dd*)(raddr(ds,ebp+val))));	// 8158 cmovl   edi, [ebp+val]
 #undef res
-#define res eax	// 8118 res = eax
-	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 8119 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
-	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8120 mov     [esp+8], res
+#define res edi	// 8159 res = edi
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 8160 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8161 mov     [esp+8], res
 __disp = kprintf;
 	R(CALL(__disp));	// 8121 call    printf
-	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aJge)));	// 8122 mov     dword ptr [esp+4], offset aJge ; "jge"
-	R(MOV(eax, 1));	// 8123 mov     eax, 1
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovlw)));	// 8163 mov     dword ptr [esp+4], offset aCmovlw ; "cmovlw"
 	R(CMP(ebx, esi));	// 8124 cmp     ebx, esi
-		R(JGE(loc_406f50));	// 8125 jge     short loc_406F50
-	R(MOV(eax, 0));	// 8126 mov     eax, 0
-loc_406f50:
-#undef res
-#define res eax	// 8129 res = eax
-	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 8130 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
-	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8131 mov     [esp+8], res
+	R(CMOVL(di, bx));	// 8165 cmovl   di, bx
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 8166 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8167 mov     [esp+8], res
 __disp = kprintf;
 	R(CALL(__disp));	// 8132 call    printf
-	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aJge)));	// 8133 mov     dword ptr [esp+4], offset aJge ; "jge"
+	R(OR(res, 0x0FFFFFFFF));	// 8169 or      res, 0FFFFFFFFh
 	R(MOV(eax, 1));	// 8134 mov     eax, 1
-	R(CMP(edi, ebx));	// 8135 cmp     edi, ebx
-		R(JGE(loc_406fe6));	// 8136 jge     short loc_406FE6
+	R(CMP(ebx, edi));	// 8171 cmp     ebx, edi
+		R(JL(loc_406c5a));	// 8172 jl      short loc_406C5A
 	R(MOV(eax, 0));	// 8137 mov     eax, 0
-loc_406fe6:
+loc_406c5a:
 #undef res
 #define res eax	// 8140 res = eax
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aJl)));	// 8177 mov     dword ptr [esp+4], offset aJl ; "jl"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8178 mov     [esp+8], res
 	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 8141 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
-	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8142 mov     [esp+8], res
 __disp = kprintf;
 	R(CALL(__disp));	// 8143 call    printf
-	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aJg)));	// 8144 mov     dword ptr [esp+4], offset aJg ; "jg"
-	R(MOV(eax, 1));	// 8145 mov     eax, 1
-	R(CMP(ebx, ebx));	// 8146 cmp     ebx, ebx
-		R(JG(loc_40707c));	// 8147 jg      short loc_40707C
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aSetl)));	// 8181 mov     dword ptr [esp+4], offset aSetl ; "setl"
 	R(MOV(eax, 0));	// 8148 mov     eax, 0
-loc_40707c:
+	R(CMP(ebx, edi));	// 8183 cmp     ebx, edi
+	R(SETL(al));	// 8184 setl    al
 #undef res
 #define res eax	// 8151 res = eax
 	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 8152 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
-	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8153 mov     [esp+8], res
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8187 mov     [esp+8], res
 __disp = kprintf;
 	R(CALL(__disp));	// 8154 call    printf
-	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aJg)));	// 8155 mov     dword ptr [esp+4], offset aJg ; "jg"
-	R(MOV(eax, 1));	// 8156 mov     eax, 1
-	R(CMP(ebx, esi));	// 8157 cmp     ebx, esi
-		R(JG(loc_407112));	// 8158 jg      short loc_407112
-	R(MOV(eax, 0));	// 8159 mov     eax, 0
-loc_407112:
-#undef res
-#define res eax	// 8162 res = eax
-	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 8163 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
-	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8164 mov     [esp+8], res
+	R(MOV(*(raddr(ds,ebp+val)), 1));	// 8189 mov     [ebp+val], 1
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovll)));	// 8190 mov     dword ptr [esp+4], offset aCmovll ; "cmovll"
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 8191 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+	R(MOV(edx, 0x12345678));	// 8192 mov     edx, 12345678h
+	R(CMP(ebx, edi));	// 8193 cmp     ebx, edi
+	R(CMOVL(edx, *(dd*)(raddr(ds,ebp+val))));	// 8194 cmovl   edx, [ebp+val]
+#undef res_0
+#define res_0 edx	// 8195 res_0 = edx
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res_0));	// 8196 mov     [esp+8], res_0
+	R(MOV(*(dd*)(raddr(ds,ebp+var_2C)), res_0));	// 8197 mov     [ebp+var_2C], res_0
 __disp = kprintf;
 	R(CALL(__disp));	// 8165 call    printf
-	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aJg)));	// 8166 mov     dword ptr [esp+4], offset aJg ; "jg"
-	R(MOV(eax, 1));	// 8167 mov     eax, 1
+	R(MOV(edx, *(dd*)(raddr(ds,ebp+var_2C))));	// 8199 mov     edx, [ebp+var_2C]
 	R(CMP(ebx, edi));	// 8168 cmp     ebx, edi
-		R(JG(loc_4071a8));	// 8169 jg      short loc_4071A8
-	R(MOV(eax, 0));	// 8170 mov     eax, 0
-loc_4071a8:
-#undef res
-#define res eax	// 8173 res = eax
-	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 8174 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
-	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8175 mov     [esp+8], res
+	R(CMOVL(dx, bx));	// 8201 cmovl   dx, bx
+#undef res_0
+#define res_0 edx	// 8202 res_0 = edx
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovlw)));	// 8203 mov     dword ptr [esp+4], offset aCmovlw ; "cmovlw"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res_0));	// 8204 mov     [esp+8], res_0
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 8205 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
 __disp = kprintf;
 	R(CALL(__disp));	// 8176 call    printf
-	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aJb)));	// 8177 mov     dword ptr [esp+4], offset aJb ; "jb"
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aJle)));	// 8207 mov     dword ptr [esp+4], offset aJle ; "jle"
 	R(MOV(eax, 1));	// 8178 mov     eax, 1
 	R(CMP(ebx, ebx));	// 8179 cmp     ebx, ebx
-		R(JC(loc_40723e));	// 8180 jb      short loc_40723E
+		R(JLE(loc_406cf8));	// 8210 jle     short loc_406CF8
 	R(MOV(eax, 0));	// 8181 mov     eax, 0
-loc_40723e:
+loc_406cf8:
 #undef res
 #define res eax	// 8184 res = eax
 	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 8185 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
-	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8186 mov     [esp+8], res
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8216 mov     [esp+8], res
 __disp = kprintf;
 	R(CALL(__disp));	// 8187 call    printf
-	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aSetb)));	// 8188 mov     dword ptr [esp+4], offset aSetb ; "setb"
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aSetle)));	// 8218 mov     dword ptr [esp+4], offset aSetle ; "setle"
 	R(MOV(eax, 0));	// 8189 mov     eax, 0
 	R(CMP(ebx, ebx));	// 8190 cmp     ebx, ebx
-	R(SETB(al))	// 8191 setb    al
-#undef res
-#define res eax	// 8192 res = eax
-	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 8193 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
-	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8194 mov     [esp+8], res
-__disp = kprintf;
-	R(CALL(__disp));	// 8195 call    printf
-	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aJb)));	// 8196 mov     dword ptr [esp+4], offset aJb ; "jb"
-	R(MOV(eax, 1));	// 8197 mov     eax, 1
-	R(CMP(ebx, esi));	// 8198 cmp     ebx, esi
-		R(JC(loc_4072d4));	// 8199 jb      short loc_4072D4
-	R(MOV(eax, 0));	// 8200 mov     eax, 0
-loc_4072d4:
-#undef res
-#define res eax	// 8203 res = eax
-	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 8204 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
-	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8205 mov     [esp+8], res
-__disp = kprintf;
-	R(CALL(__disp));	// 8206 call    printf
-	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aSetb)));	// 8207 mov     dword ptr [esp+4], offset aSetb ; "setb"
-	R(MOV(eax, 0));	// 8208 mov     eax, 0
-	R(CMP(ebx, esi));	// 8209 cmp     ebx, esi
-	R(SETB(al))	// 8210 setb    al
+	R(SETLE(al));	// 8221 setle   al
 #undef res
 #define res eax	// 8211 res = eax
 	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 8212 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
-	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8213 mov     [esp+8], res
-__disp = kprintf;
-	R(CALL(__disp));	// 8214 call    printf
-	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aJb)));	// 8215 mov     dword ptr [esp+4], offset aJb ; "jb"
-	R(MOV(eax, 1));	// 8216 mov     eax, 1
-	R(CMP(ebx, edi));	// 8217 cmp     ebx, edi
-		R(JC(loc_40736a));	// 8218 jb      short loc_40736A
-	R(MOV(eax, 0));	// 8219 mov     eax, 0
-loc_40736a:
-#undef res
-#define res eax	// 8222 res = eax
-	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 8223 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
 	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8224 mov     [esp+8], res
 __disp = kprintf;
-	R(CALL(__disp));	// 8225 call    printf
-	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aSetb)));	// 8226 mov     dword ptr [esp+4], offset aSetb ; "setb"
-	R(MOV(eax, 0));	// 8227 mov     eax, 0
-	R(CMP(ebx, edi));	// 8228 cmp     ebx, edi
-	R(SETB(al))	// 8229 setb    al
-#undef res
-#define res eax	// 8230 res = eax
-	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 8231 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
-	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8232 mov     [esp+8], res
+	R(CALL(__disp));	// 8214 call    printf
+	R(MOV(*(raddr(ds,ebp+val)), 1));	// 8226 mov     [ebp+val], 1
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovlel)));	// 8227 mov     dword ptr [esp+4], offset aCmovlel ; "cmovlel"
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 8228 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+	R(MOV(edx, 0x12345678));	// 8229 mov     edx, 12345678h
+	R(CMP(ebx, ebx));	// 8230 cmp     ebx, ebx
+	R(CMOVLE(edx, *(dd*)(raddr(ds,ebp+val))));	// 8231 cmovle  edx, [ebp+val]
+#undef res_1
+#define res_1 edx	// 8232 res_1 = edx
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res_1));	// 8233 mov     [esp+8], res_1
+	R(MOV(*(dd*)(raddr(ds,ebp+var_2C)), res_1));	// 8234 mov     [ebp+var_2C], res_1
 __disp = kprintf;
 	R(CALL(__disp));	// 8233 call    printf
-	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aJbe)));	// 8234 mov     dword ptr [esp+4], offset aJbe ; "jbe"
-	R(MOV(eax, 1));	// 8235 mov     eax, 1
+	R(MOV(edx, *(dd*)(raddr(ds,ebp+var_2C))));	// 8236 mov     edx, [ebp+var_2C]
 	R(CMP(ebx, ebx));	// 8236 cmp     ebx, ebx
-		R(JBE(loc_407400));	// 8237 jbe     short loc_407400
-	R(MOV(eax, 0));	// 8238 mov     eax, 0
-loc_407400:
-#undef res
-#define res eax	// 8241 res = eax
-	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 8242 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
-	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8243 mov     [esp+8], res
+	R(CMOVLE(dx, bx));	// 8238 cmovle  dx, bx
+#undef res_1
+#define res_1 edx	// 8239 res_1 = edx
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovlew)));	// 8240 mov     dword ptr [esp+4], offset aCmovlew ; "cmovlew"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res_1));	// 8241 mov     [esp+8], res_1
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 8242 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
 __disp = kprintf;
 	R(CALL(__disp));	// 8244 call    printf
-	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aJbe)));	// 8245 mov     dword ptr [esp+4], offset aJbe ; "jbe"
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aJle)));	// 8244 mov     dword ptr [esp+4], offset aJle ; "jle"
 	R(MOV(eax, 1));	// 8246 mov     eax, 1
 	R(CMP(ebx, esi));	// 8247 cmp     ebx, esi
-		R(JBE(loc_407496));	// 8248 jbe     short loc_407496
+		R(JLE(loc_406d8e));	// 8247 jle     short loc_406D8E
 	R(MOV(eax, 0));	// 8249 mov     eax, 0
-loc_407496:
+loc_406d8e:
 #undef res
 #define res eax	// 8252 res = eax
 	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 8253 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
-	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8254 mov     [esp+8], res
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8253 mov     [esp+8], res
 __disp = kprintf;
 	R(CALL(__disp));	// 8255 call    printf
-	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aJbe)));	// 8256 mov     dword ptr [esp+4], offset aJbe ; "jbe"
-	R(MOV(eax, 1));	// 8257 mov     eax, 1
-	R(CMP(ebx, edi));	// 8258 cmp     ebx, edi
-		R(JBE(loc_40752c));	// 8259 jbe     short loc_40752C
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aSetle)));	// 8255 mov     dword ptr [esp+4], offset aSetle ; "setle"
 	R(MOV(eax, 0));	// 8260 mov     eax, 0
-loc_40752c:
+	R(CMP(ebx, esi));	// 8257 cmp     ebx, esi
+	R(SETLE(al));	// 8258 setle   al
 #undef res
 #define res eax	// 8263 res = eax
 	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 8264 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
-	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8265 mov     [esp+8], res
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8261 mov     [esp+8], res
 __disp = kprintf;
 	R(CALL(__disp));	// 8266 call    printf
-	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aJae)));	// 8267 mov     dword ptr [esp+4], offset aJae ; "jae"
-	R(MOV(eax, 1));	// 8268 mov     eax, 1
-	R(CMP(ebx, ebx));	// 8269 cmp     ebx, ebx
-		R(JNC(loc_4075c2));	// 8270 jnb     short loc_4075C2
-	R(MOV(eax, 0));	// 8271 mov     eax, 0
-loc_4075c2:
-#undef res
-#define res eax	// 8274 res = eax
-	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 8275 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
-	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8276 mov     [esp+8], res
-__disp = kprintf;
-	R(CALL(__disp));	// 8277 call    printf
+	R(MOV(*(raddr(ds,ebp+val)), 1));	// 8263 mov     [ebp+val], 1
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovlel)));	// 8264 mov     dword ptr [esp+4], offset aCmovlel ; "cmovlel"
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 8265 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+	R(MOV(edx, 0x12345678));	// 8266 mov     edx, 12345678h
+	R(CMP(ebx, esi));	// 8267 cmp     ebx, esi
+	R(CMOVLE(edx, *(dd*)(raddr(ds,ebp+val))));	// 8268 cmovle  edx, [ebp+val]
+#undef res_2
+#define res_2 edx	// 8269 res_2 = edx
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res_2));	// 8270 mov     [esp+8], res_2
+	R(MOV(*(dd*)(raddr(ds,ebp+var_2C)), res_2));	// 8271 mov     [ebp+var_2C], res_2
 __disp = kprintf;
 	R(CALL(__disp));	// 8278 call    printf
-	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aJae)));	// 8279 mov     dword ptr [esp+4], offset aJae ; "jae"
-	R(MOV(eax, 1));	// 8280 mov     eax, 1
+	R(MOV(edx, *(dd*)(raddr(ds,ebp+var_2C))));	// 8273 mov     edx, [ebp+var_2C]
 	R(CMP(ebx, esi));	// 8281 cmp     ebx, esi
-		R(JNC(loc_407658));	// 8282 jnb     short loc_407658
-	R(MOV(eax, 0));	// 8283 mov     eax, 0
-loc_407658:
-#undef res
-#define res eax	// 8286 res = eax
-	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 8287 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
-	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8288 mov     [esp+8], res
+	R(CMOVLE(dx, bx));	// 8275 cmovle  dx, bx
+#undef res_2
+#define res_2 edx	// 8276 res_2 = edx
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovlew)));	// 8277 mov     dword ptr [esp+4], offset aCmovlew ; "cmovlew"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res_2));	// 8278 mov     [esp+8], res_2
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 8279 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
 __disp = kprintf;
 	R(CALL(__disp));	// 8289 call    printf
-	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aJae)));	// 8290 mov     dword ptr [esp+4], offset aJae ; "jae"
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aJle)));	// 8281 mov     dword ptr [esp+4], offset aJle ; "jle"
 	R(MOV(eax, 1));	// 8291 mov     eax, 1
 	R(CMP(ebx, edi));	// 8292 cmp     ebx, edi
-		R(JNC(loc_4076ee));	// 8293 jnb     short loc_4076EE
+		R(JLE(loc_406e24));	// 8284 jle     short loc_406E24
 	R(MOV(eax, 0));	// 8294 mov     eax, 0
-loc_4076ee:
+loc_406e24:
 #undef res
 #define res eax	// 8297 res = eax
 	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 8298 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
-	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8299 mov     [esp+8], res
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8290 mov     [esp+8], res
 __disp = kprintf;
 	R(CALL(__disp));	// 8300 call    printf
-	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aJa)));	// 8301 mov     dword ptr [esp+4], offset aJa ; "ja"
-	R(MOV(eax, 1));	// 8302 mov     eax, 1
-	R(CMP(ebx, ebx));	// 8303 cmp     ebx, ebx
-		R(JA(loc_407784));	// 8304 ja      short loc_407784
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aSetle)));	// 8292 mov     dword ptr [esp+4], offset aSetle ; "setle"
 	R(MOV(eax, 0));	// 8305 mov     eax, 0
-loc_407784:
+	R(CMP(ebx, edi));	// 8294 cmp     ebx, edi
+	R(SETLE(al));	// 8295 setle   al
 #undef res
 #define res eax	// 8308 res = eax
 	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 8309 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
-	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8310 mov     [esp+8], res
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8298 mov     [esp+8], res
 __disp = kprintf;
 	R(CALL(__disp));	// 8311 call    printf
-	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aJa)));	// 8312 mov     dword ptr [esp+4], offset aJa ; "ja"
-	R(MOV(eax, 1));	// 8313 mov     eax, 1
-	R(CMP(ebx, esi));	// 8314 cmp     ebx, esi
-		R(JA(loc_40781a));	// 8315 ja      short loc_40781A
-	R(MOV(eax, 0));	// 8316 mov     eax, 0
-loc_40781a:
-#undef res
-#define res eax	// 8319 res = eax
-	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 8320 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
-	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8321 mov     [esp+8], res
+	R(MOV(*(raddr(ds,ebp+val)), 1));	// 8300 mov     [ebp+val], 1
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovlel)));	// 8301 mov     dword ptr [esp+4], offset aCmovlel ; "cmovlel"
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 8302 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+	R(MOV(edx, 0x12345678));	// 8303 mov     edx, 12345678h
+	R(CMP(ebx, edi));	// 8304 cmp     ebx, edi
+	R(CMOVLE(edx, *(dd*)(raddr(ds,ebp+val))));	// 8305 cmovle  edx, [ebp+val]
+#undef res_3
+#define res_3 edx	// 8306 res_3 = edx
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res_3));	// 8307 mov     [esp+8], res_3
+	R(MOV(*(dd*)(raddr(ds,ebp+var_2C)), res_3));	// 8308 mov     [ebp+var_2C], res_3
 __disp = kprintf;
 	R(CALL(__disp));	// 8322 call    printf
-	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aJa)));	// 8323 mov     dword ptr [esp+4], offset aJa ; "ja"
-	R(MOV(eax, 1));	// 8324 mov     eax, 1
+	R(MOV(edx, *(dd*)(raddr(ds,ebp+var_2C))));	// 8310 mov     edx, [ebp+var_2C]
 	R(CMP(ebx, edi));	// 8325 cmp     ebx, edi
-		R(JA(loc_4078b0));	// 8326 ja      short loc_4078B0
-	R(MOV(eax, 0));	// 8327 mov     eax, 0
-loc_4078b0:
-#undef res
-#define res eax	// 8330 res = eax
-	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 8331 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
-	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8332 mov     [esp+8], res
+	R(CMOVLE(dx, bx));	// 8312 cmovle  dx, bx
+#undef res_3
+#define res_3 edx	// 8313 res_3 = edx
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovlew)));	// 8314 mov     dword ptr [esp+4], offset aCmovlew ; "cmovlew"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res_3));	// 8315 mov     [esp+8], res_3
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 8316 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
 __disp = kprintf;
 	R(CALL(__disp));	// 8333 call    printf
-	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aJs)));	// 8334 mov     dword ptr [esp+4], offset aJs ; "js"
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aJge)));	// 8318 mov     dword ptr [esp+4], offset aJge ; "jge"
 	R(MOV(eax, 1));	// 8335 mov     eax, 1
-	R(CMP(esi, ebx));	// 8336 cmp     esi, ebx
-		R(JS(loc_407e46));	// 8337 js      short loc_407E46
+	R(CMP(ebx, ebx));	// 8320 cmp     ebx, ebx
+		R(JGE(loc_406eba));	// 8321 jge     short loc_406EBA
 	R(MOV(eax, 0));	// 8338 mov     eax, 0
-loc_407e46:
+loc_406eba:
 #undef res
 #define res eax	// 8341 res = eax
 	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 8342 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
-	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8343 mov     [esp+8], res
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8327 mov     [esp+8], res
+__disp = kprintf;
+	R(CALL(__disp));	// 8328 call    printf
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aSetge)));	// 8329 mov     dword ptr [esp+4], offset aSetge ; "setge"
+	R(MOV(eax, 0));	// 8330 mov     eax, 0
+	R(CMP(ebx, ebx));	// 8331 cmp     ebx, ebx
+	R(SETNL(al));	// 8332 setnl   al
+#undef res
+#define res eax	// 8333 res = eax
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 8334 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8335 mov     [esp+8], res
+__disp = kprintf;
+	R(CALL(__disp));	// 8336 call    printf
+	R(MOV(*(raddr(ds,ebp+val)), 1));	// 8337 mov     [ebp+val], 1
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovgel)));	// 8338 mov     dword ptr [esp+4], offset aCmovgel ; "cmovgel"
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 8339 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+	R(MOV(edx, 0x12345678));	// 8340 mov     edx, 12345678h
+	R(CMP(ebx, ebx));	// 8341 cmp     ebx, ebx
+	R(CMOVGE(edx, *(dd*)(raddr(ds,ebp+val))));	// 8342 cmovge  edx, [ebp+val]
+#undef res_4
+#define res_4 edx	// 8343 res_4 = edx
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res_4));	// 8344 mov     [esp+8], res_4
+	R(MOV(*(dd*)(raddr(ds,ebp+var_2C)), res_4));	// 8345 mov     [ebp+var_2C], res_4
+__disp = kprintf;
+	R(CALL(__disp));	// 8346 call    printf
+	R(MOV(edx, *(dd*)(raddr(ds,ebp+var_2C))));	// 8347 mov     edx, [ebp+var_2C]
+	R(CMP(ebx, ebx));	// 8348 cmp     ebx, ebx
+	R(CMOVGE(dx, bx));	// 8349 cmovge  dx, bx
+#undef res_4
+#define res_4 edx	// 8350 res_4 = edx
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovgew)));	// 8351 mov     dword ptr [esp+4], offset aCmovgew ; "cmovgew"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res_4));	// 8352 mov     [esp+8], res_4
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 8353 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+__disp = kprintf;
+	R(CALL(__disp));	// 8354 call    printf
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aJge)));	// 8355 mov     dword ptr [esp+4], offset aJge ; "jge"
+	R(MOV(eax, 1));	// 8356 mov     eax, 1
+	R(CMP(ebx, esi));	// 8357 cmp     ebx, esi
+		R(JGE(loc_406f50));	// 8358 jge     short loc_406F50
+	R(MOV(eax, 0));	// 8359 mov     eax, 0
+loc_406f50:
+#undef res
+#define res eax	// 8362 res = eax
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 8363 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8364 mov     [esp+8], res
+__disp = kprintf;
+	R(CALL(__disp));	// 8365 call    printf
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aSetge)));	// 8366 mov     dword ptr [esp+4], offset aSetge ; "setge"
+	R(MOV(eax, 0));	// 8367 mov     eax, 0
+	R(CMP(ebx, esi));	// 8368 cmp     ebx, esi
+	R(SETNL(al));	// 8369 setnl   al
+#undef res
+#define res eax	// 8370 res = eax
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 8371 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8372 mov     [esp+8], res
+__disp = kprintf;
+	R(CALL(__disp));	// 8373 call    printf
+	R(MOV(*(raddr(ds,ebp+val)), 1));	// 8374 mov     [ebp+val], 1
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovgel)));	// 8375 mov     dword ptr [esp+4], offset aCmovgel ; "cmovgel"
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 8376 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+	R(MOV(edx, 0x12345678));	// 8377 mov     edx, 12345678h
+	R(CMP(ebx, esi));	// 8378 cmp     ebx, esi
+	R(CMOVGE(edx, *(dd*)(raddr(ds,ebp+val))));	// 8379 cmovge  edx, [ebp+val]
+#undef res_5
+#define res_5 edx	// 8380 res_5 = edx
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res_5));	// 8381 mov     [esp+8], res_5
+	R(MOV(*(dd*)(raddr(ds,ebp+var_2C)), res_5));	// 8382 mov     [ebp+var_2C], res_5
+__disp = kprintf;
+	R(CALL(__disp));	// 8383 call    printf
+	R(MOV(edx, *(dd*)(raddr(ds,ebp+var_2C))));	// 8384 mov     edx, [ebp+var_2C]
+	R(CMP(ebx, esi));	// 8385 cmp     ebx, esi
+	R(CMOVGE(dx, bx));	// 8386 cmovge  dx, bx
+#undef res_5
+#define res_5 edx	// 8387 res_5 = edx
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovgew)));	// 8388 mov     dword ptr [esp+4], offset aCmovgew ; "cmovgew"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res_5));	// 8389 mov     [esp+8], res_5
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 8390 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+__disp = kprintf;
+	R(CALL(__disp));	// 8391 call    printf
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aJge)));	// 8392 mov     dword ptr [esp+4], offset aJge ; "jge"
+	R(MOV(eax, 1));	// 8393 mov     eax, 1
+	R(CMP(edi, ebx));	// 8394 cmp     edi, ebx
+		R(JGE(loc_406fe6));	// 8395 jge     short loc_406FE6
+	R(MOV(eax, 0));	// 8396 mov     eax, 0
+loc_406fe6:
+#undef res
+#define res eax	// 8399 res = eax
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 8400 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8401 mov     [esp+8], res
+__disp = kprintf;
+	R(CALL(__disp));	// 8402 call    printf
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aSetge)));	// 8403 mov     dword ptr [esp+4], offset aSetge ; "setge"
+	R(MOV(eax, 0));	// 8404 mov     eax, 0
+	R(CMP(edi, ebx));	// 8405 cmp     edi, ebx
+	R(SETNL(al));	// 8406 setnl   al
+#undef res
+#define res eax	// 8407 res = eax
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 8408 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8409 mov     [esp+8], res
+__disp = kprintf;
+	R(CALL(__disp));	// 8410 call    printf
+	R(MOV(*(raddr(ds,ebp+val)), 1));	// 8411 mov     [ebp+val], 1
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovgel)));	// 8412 mov     dword ptr [esp+4], offset aCmovgel ; "cmovgel"
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 8413 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+	R(MOV(edx, 0x12345678));	// 8414 mov     edx, 12345678h
+	R(CMP(edi, ebx));	// 8415 cmp     edi, ebx
+	R(CMOVGE(edx, *(dd*)(raddr(ds,ebp+val))));	// 8416 cmovge  edx, [ebp+val]
+#undef res_6
+#define res_6 edx	// 8417 res_6 = edx
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res_6));	// 8418 mov     [esp+8], res_6
+	R(MOV(*(dd*)(raddr(ds,ebp+var_2C)), res_6));	// 8419 mov     [ebp+var_2C], res_6
+__disp = kprintf;
+	R(CALL(__disp));	// 8420 call    printf
+	R(MOV(edx, *(dd*)(raddr(ds,ebp+var_2C))));	// 8421 mov     edx, [ebp+var_2C]
+	R(CMP(edi, ebx));	// 8422 cmp     edi, ebx
+	R(CMOVGE(dx, bx));	// 8423 cmovge  dx, bx
+#undef res_6
+#define res_6 edx	// 8424 res_6 = edx
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovgew)));	// 8425 mov     dword ptr [esp+4], offset aCmovgew ; "cmovgew"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res_6));	// 8426 mov     [esp+8], res_6
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 8427 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+__disp = kprintf;
+	R(CALL(__disp));	// 8428 call    printf
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aJg)));	// 8429 mov     dword ptr [esp+4], offset aJg ; "jg"
+	R(MOV(eax, 1));	// 8430 mov     eax, 1
+	R(CMP(ebx, ebx));	// 8431 cmp     ebx, ebx
+		R(JG(loc_40707c));	// 8432 jg      short loc_40707C
+	R(MOV(eax, 0));	// 8433 mov     eax, 0
+loc_40707c:
+#undef res
+#define res eax	// 8436 res = eax
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 8437 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8438 mov     [esp+8], res
+__disp = kprintf;
+	R(CALL(__disp));	// 8439 call    printf
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aSetg)));	// 8440 mov     dword ptr [esp+4], offset aSetg ; "setg"
+	R(MOV(eax, 0));	// 8441 mov     eax, 0
+	R(CMP(ebx, ebx));	// 8442 cmp     ebx, ebx
+	R(SETNLE(al));	// 8443 setnle  al
+#undef res
+#define res eax	// 8444 res = eax
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 8445 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8446 mov     [esp+8], res
+__disp = kprintf;
+	R(CALL(__disp));	// 8447 call    printf
+	R(MOV(*(raddr(ds,ebp+val)), 1));	// 8448 mov     [ebp+val], 1
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovgl)));	// 8449 mov     dword ptr [esp+4], offset aCmovgl ; "cmovgl"
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 8450 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+	R(MOV(edx, 0x12345678));	// 8451 mov     edx, 12345678h
+	R(CMP(ebx, ebx));	// 8452 cmp     ebx, ebx
+	R(CMOVG(edx, *(dd*)(raddr(ds,ebp+val))));	// 8453 cmovg   edx, [ebp+val]
+#undef res_7
+#define res_7 edx	// 8454 res_7 = edx
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res_7));	// 8455 mov     [esp+8], res_7
+	R(MOV(*(dd*)(raddr(ds,ebp+var_2C)), res_7));	// 8456 mov     [ebp+var_2C], res_7
+__disp = kprintf;
+	R(CALL(__disp));	// 8457 call    printf
+	R(MOV(edx, *(dd*)(raddr(ds,ebp+var_2C))));	// 8458 mov     edx, [ebp+var_2C]
+	R(CMP(ebx, ebx));	// 8459 cmp     ebx, ebx
+	R(CMOVG(dx, bx));	// 8460 cmovg   dx, bx
+#undef res_7
+#define res_7 edx	// 8461 res_7 = edx
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovgw)));	// 8462 mov     dword ptr [esp+4], offset aCmovgw ; "cmovgw"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res_7));	// 8463 mov     [esp+8], res_7
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 8464 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+__disp = kprintf;
+	R(CALL(__disp));	// 8465 call    printf
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aJg)));	// 8466 mov     dword ptr [esp+4], offset aJg ; "jg"
+	R(MOV(eax, 1));	// 8467 mov     eax, 1
+	R(CMP(ebx, esi));	// 8468 cmp     ebx, esi
+		R(JG(loc_407112));	// 8469 jg      short loc_407112
+	R(MOV(eax, 0));	// 8470 mov     eax, 0
+loc_407112:
+#undef res
+#define res eax	// 8473 res = eax
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 8474 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8475 mov     [esp+8], res
+__disp = kprintf;
+	R(CALL(__disp));	// 8476 call    printf
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aSetg)));	// 8477 mov     dword ptr [esp+4], offset aSetg ; "setg"
+	R(MOV(eax, 0));	// 8478 mov     eax, 0
+	R(CMP(ebx, esi));	// 8479 cmp     ebx, esi
+	R(SETNLE(al));	// 8480 setnle  al
+#undef res
+#define res eax	// 8481 res = eax
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 8482 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8483 mov     [esp+8], res
+__disp = kprintf;
+	R(CALL(__disp));	// 8484 call    printf
+	R(MOV(*(raddr(ds,ebp+val)), 1));	// 8485 mov     [ebp+val], 1
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovgl)));	// 8486 mov     dword ptr [esp+4], offset aCmovgl ; "cmovgl"
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 8487 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+	R(MOV(edx, 0x12345678));	// 8488 mov     edx, 12345678h
+	R(CMP(ebx, esi));	// 8489 cmp     ebx, esi
+	R(CMOVG(edx, *(dd*)(raddr(ds,ebp+val))));	// 8490 cmovg   edx, [ebp+val]
+#undef res_8
+#define res_8 edx	// 8491 res_8 = edx
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res_8));	// 8492 mov     [esp+8], res_8
+	R(MOV(*(dd*)(raddr(ds,ebp+var_2C)), res_8));	// 8493 mov     [ebp+var_2C], res_8
+__disp = kprintf;
+	R(CALL(__disp));	// 8494 call    printf
+	R(MOV(edx, *(dd*)(raddr(ds,ebp+var_2C))));	// 8495 mov     edx, [ebp+var_2C]
+	R(CMP(ebx, esi));	// 8496 cmp     ebx, esi
+	R(CMOVG(dx, bx));	// 8497 cmovg   dx, bx
+#undef res_8
+#define res_8 edx	// 8498 res_8 = edx
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovgw)));	// 8499 mov     dword ptr [esp+4], offset aCmovgw ; "cmovgw"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res_8));	// 8500 mov     [esp+8], res_8
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 8501 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+__disp = kprintf;
+	R(CALL(__disp));	// 8502 call    printf
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aJg)));	// 8503 mov     dword ptr [esp+4], offset aJg ; "jg"
+	R(MOV(eax, 1));	// 8504 mov     eax, 1
+	R(CMP(ebx, edi));	// 8505 cmp     ebx, edi
+		R(JG(loc_4071a8));	// 8506 jg      short loc_4071A8
+	R(MOV(eax, 0));	// 8507 mov     eax, 0
+loc_4071a8:
+#undef res
+#define res eax	// 8510 res = eax
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 8511 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8512 mov     [esp+8], res
+__disp = kprintf;
+	R(CALL(__disp));	// 8513 call    printf
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aSetg)));	// 8514 mov     dword ptr [esp+4], offset aSetg ; "setg"
+	R(MOV(eax, 0));	// 8515 mov     eax, 0
+	R(CMP(ebx, edi));	// 8516 cmp     ebx, edi
+	R(SETNLE(al));	// 8517 setnle  al
+#undef res
+#define res eax	// 8518 res = eax
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 8519 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8520 mov     [esp+8], res
+__disp = kprintf;
+	R(CALL(__disp));	// 8521 call    printf
+	R(MOV(*(raddr(ds,ebp+val)), 1));	// 8522 mov     [ebp+val], 1
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovgl)));	// 8523 mov     dword ptr [esp+4], offset aCmovgl ; "cmovgl"
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 8524 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+	R(MOV(edx, 0x12345678));	// 8525 mov     edx, 12345678h
+	R(CMP(ebx, edi));	// 8526 cmp     ebx, edi
+	R(CMOVG(edx, *(dd*)(raddr(ds,ebp+val))));	// 8527 cmovg   edx, [ebp+val]
+#undef res_9
+#define res_9 edx	// 8528 res_9 = edx
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res_9));	// 8529 mov     [esp+8], res_9
+	R(MOV(*(dd*)(raddr(ds,ebp+var_2C)), res_9));	// 8530 mov     [ebp+var_2C], res_9
+__disp = kprintf;
+	R(CALL(__disp));	// 8531 call    printf
+	R(MOV(edx, *(dd*)(raddr(ds,ebp+var_2C))));	// 8532 mov     edx, [ebp+var_2C]
+	R(CMP(ebx, edi));	// 8533 cmp     ebx, edi
+	R(CMOVG(dx, bx));	// 8534 cmovg   dx, bx
+#undef res_9
+#define res_9 edx	// 8535 res_9 = edx
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovgw)));	// 8536 mov     dword ptr [esp+4], offset aCmovgw ; "cmovgw"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res_9));	// 8537 mov     [esp+8], res_9
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 8538 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+__disp = kprintf;
+	R(CALL(__disp));	// 8539 call    printf
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aJb)));	// 8540 mov     dword ptr [esp+4], offset aJb ; "jb"
+	R(MOV(eax, 1));	// 8541 mov     eax, 1
+	R(CMP(ebx, ebx));	// 8542 cmp     ebx, ebx
+		R(JC(loc_40723e));	// 8543 jb      short loc_40723E
+	R(MOV(eax, 0));	// 8544 mov     eax, 0
+loc_40723e:
+#undef res
+#define res eax	// 8547 res = eax
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 8548 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8549 mov     [esp+8], res
+__disp = kprintf;
+	R(CALL(__disp));	// 8550 call    printf
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aSetb)));	// 8551 mov     dword ptr [esp+4], offset aSetb ; "setb"
+	R(MOV(eax, 0));	// 8552 mov     eax, 0
+	R(CMP(ebx, ebx));	// 8553 cmp     ebx, ebx
+	R(SETB(al))	// 8554 setb    al
+#undef res
+#define res eax	// 8555 res = eax
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 8556 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8557 mov     [esp+8], res
+__disp = kprintf;
+	R(CALL(__disp));	// 8558 call    printf
+	R(MOV(*(raddr(ds,ebp+val)), 1));	// 8559 mov     [ebp+val], 1
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovbl)));	// 8560 mov     dword ptr [esp+4], offset aCmovbl ; "cmovbl"
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 8561 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+	R(MOV(edx, 0x12345678));	// 8562 mov     edx, 12345678h
+	R(CMP(ebx, ebx));	// 8563 cmp     ebx, ebx
+	R(CMOVB(edx, *(dd*)(raddr(ds,ebp+val))));	// 8564 cmovb   edx, [ebp+val]
+#undef res_10
+#define res_10 edx	// 8565 res_10 = edx
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res_10));	// 8566 mov     [esp+8], res_10
+	R(MOV(*(dd*)(raddr(ds,ebp+var_2C)), res_10));	// 8567 mov     [ebp+var_2C], res_10
+__disp = kprintf;
+	R(CALL(__disp));	// 8568 call    printf
+	R(MOV(edx, *(dd*)(raddr(ds,ebp+var_2C))));	// 8569 mov     edx, [ebp+var_2C]
+	R(CMP(ebx, ebx));	// 8570 cmp     ebx, ebx
+	R(CMOVB(dx, bx));	// 8571 cmovb   dx, bx
+#undef res_10
+#define res_10 edx	// 8572 res_10 = edx
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovbw)));	// 8573 mov     dword ptr [esp+4], offset aCmovbw ; "cmovbw"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res_10));	// 8574 mov     [esp+8], res_10
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 8575 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+__disp = kprintf;
+	R(CALL(__disp));	// 8576 call    printf
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aJb)));	// 8577 mov     dword ptr [esp+4], offset aJb ; "jb"
+	R(MOV(eax, 1));	// 8578 mov     eax, 1
+	R(CMP(ebx, esi));	// 8579 cmp     ebx, esi
+		R(JC(loc_4072d4));	// 8580 jb      short loc_4072D4
+	R(MOV(eax, 0));	// 8581 mov     eax, 0
+loc_4072d4:
+#undef res
+#define res eax	// 8584 res = eax
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 8585 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8586 mov     [esp+8], res
+__disp = kprintf;
+	R(CALL(__disp));	// 8587 call    printf
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aSetb)));	// 8588 mov     dword ptr [esp+4], offset aSetb ; "setb"
+	R(MOV(eax, 0));	// 8589 mov     eax, 0
+	R(CMP(ebx, esi));	// 8590 cmp     ebx, esi
+	R(SETB(al))	// 8591 setb    al
+#undef res
+#define res eax	// 8592 res = eax
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 8593 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8594 mov     [esp+8], res
+__disp = kprintf;
+	R(CALL(__disp));	// 8595 call    printf
+	R(MOV(*(raddr(ds,ebp+val)), 1));	// 8596 mov     [ebp+val], 1
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovbl)));	// 8597 mov     dword ptr [esp+4], offset aCmovbl ; "cmovbl"
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 8598 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+	R(MOV(edx, 0x12345678));	// 8599 mov     edx, 12345678h
+	R(CMP(ebx, esi));	// 8600 cmp     ebx, esi
+	R(CMOVB(edx, *(dd*)(raddr(ds,ebp+val))));	// 8601 cmovb   edx, [ebp+val]
+#undef res_11
+#define res_11 edx	// 8602 res_11 = edx
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res_11));	// 8603 mov     [esp+8], res_11
+	R(MOV(*(dd*)(raddr(ds,ebp+var_2C)), res_11));	// 8604 mov     [ebp+var_2C], res_11
+__disp = kprintf;
+	R(CALL(__disp));	// 8605 call    printf
+	R(MOV(edx, *(dd*)(raddr(ds,ebp+var_2C))));	// 8606 mov     edx, [ebp+var_2C]
+	R(CMP(ebx, esi));	// 8607 cmp     ebx, esi
+	R(CMOVB(dx, bx));	// 8608 cmovb   dx, bx
+#undef res_11
+#define res_11 edx	// 8609 res_11 = edx
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovbw)));	// 8610 mov     dword ptr [esp+4], offset aCmovbw ; "cmovbw"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res_11));	// 8611 mov     [esp+8], res_11
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 8612 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+__disp = kprintf;
+	R(CALL(__disp));	// 8613 call    printf
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aJb)));	// 8614 mov     dword ptr [esp+4], offset aJb ; "jb"
+	R(MOV(eax, 1));	// 8615 mov     eax, 1
+	R(CMP(ebx, edi));	// 8616 cmp     ebx, edi
+		R(JC(loc_40736a));	// 8617 jb      short loc_40736A
+	R(MOV(eax, 0));	// 8618 mov     eax, 0
+loc_40736a:
+#undef res
+#define res eax	// 8621 res = eax
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 8622 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8623 mov     [esp+8], res
+__disp = kprintf;
+	R(CALL(__disp));	// 8624 call    printf
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aSetb)));	// 8625 mov     dword ptr [esp+4], offset aSetb ; "setb"
+	R(MOV(eax, 0));	// 8626 mov     eax, 0
+	R(CMP(ebx, edi));	// 8627 cmp     ebx, edi
+	R(SETB(al))	// 8628 setb    al
+#undef res
+#define res eax	// 8629 res = eax
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 8630 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8631 mov     [esp+8], res
+__disp = kprintf;
+	R(CALL(__disp));	// 8632 call    printf
+	R(MOV(*(raddr(ds,ebp+val)), 1));	// 8633 mov     [ebp+val], 1
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovbl)));	// 8634 mov     dword ptr [esp+4], offset aCmovbl ; "cmovbl"
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 8635 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+	R(MOV(edx, 0x12345678));	// 8636 mov     edx, 12345678h
+	R(CMP(ebx, edi));	// 8637 cmp     ebx, edi
+	R(CMOVB(edx, *(dd*)(raddr(ds,ebp+val))));	// 8638 cmovb   edx, [ebp+val]
+#undef res_12
+#define res_12 edx	// 8639 res_12 = edx
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res_12));	// 8640 mov     [esp+8], res_12
+	R(MOV(*(dd*)(raddr(ds,ebp+var_2C)), res_12));	// 8641 mov     [ebp+var_2C], res_12
+__disp = kprintf;
+	R(CALL(__disp));	// 8642 call    printf
+	R(MOV(edx, *(dd*)(raddr(ds,ebp+var_2C))));	// 8643 mov     edx, [ebp+var_2C]
+	R(CMP(ebx, edi));	// 8644 cmp     ebx, edi
+	R(CMOVB(dx, bx));	// 8645 cmovb   dx, bx
+#undef res_12
+#define res_12 edx	// 8646 res_12 = edx
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovbw)));	// 8647 mov     dword ptr [esp+4], offset aCmovbw ; "cmovbw"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res_12));	// 8648 mov     [esp+8], res_12
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 8649 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+__disp = kprintf;
+	R(CALL(__disp));	// 8650 call    printf
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aJbe)));	// 8651 mov     dword ptr [esp+4], offset aJbe ; "jbe"
+	R(MOV(eax, 1));	// 8652 mov     eax, 1
+	R(CMP(ebx, ebx));	// 8653 cmp     ebx, ebx
+		R(JBE(loc_407400));	// 8654 jbe     short loc_407400
+	R(MOV(eax, 0));	// 8655 mov     eax, 0
+loc_407400:
+#undef res
+#define res eax	// 8658 res = eax
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 8659 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8660 mov     [esp+8], res
+__disp = kprintf;
+	R(CALL(__disp));	// 8661 call    printf
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aSetbe)));	// 8662 mov     dword ptr [esp+4], offset aSetbe ; "setbe"
+	R(MOV(eax, 0));	// 8663 mov     eax, 0
+	R(CMP(ebx, ebx));	// 8664 cmp     ebx, ebx
+	R(SETBE(al));	// 8665 setbe   al
+#undef res
+#define res eax	// 8666 res = eax
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 8667 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8668 mov     [esp+8], res
+__disp = kprintf;
+	R(CALL(__disp));	// 8669 call    printf
+	R(MOV(*(raddr(ds,ebp+val)), 1));	// 8670 mov     [ebp+val], 1
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovbel)));	// 8671 mov     dword ptr [esp+4], offset aCmovbel ; "cmovbel"
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 8672 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+	R(MOV(edx, 0x12345678));	// 8673 mov     edx, 12345678h
+	R(CMP(ebx, ebx));	// 8674 cmp     ebx, ebx
+	R(CMOVBE(edx, *(dd*)(raddr(ds,ebp+val))));	// 8675 cmovbe  edx, [ebp+val]
+#undef res_13
+#define res_13 edx	// 8676 res_13 = edx
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res_13));	// 8677 mov     [esp+8], res_13
+	R(MOV(*(dd*)(raddr(ds,ebp+var_2C)), res_13));	// 8678 mov     [ebp+var_2C], res_13
+__disp = kprintf;
+	R(CALL(__disp));	// 8679 call    printf
+	R(MOV(edx, *(dd*)(raddr(ds,ebp+var_2C))));	// 8680 mov     edx, [ebp+var_2C]
+	R(CMP(ebx, ebx));	// 8681 cmp     ebx, ebx
+	R(CMOVBE(dx, bx));	// 8682 cmovbe  dx, bx
+#undef res_13
+#define res_13 edx	// 8683 res_13 = edx
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovbew)));	// 8684 mov     dword ptr [esp+4], offset aCmovbew ; "cmovbew"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res_13));	// 8685 mov     [esp+8], res_13
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 8686 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+__disp = kprintf;
+	R(CALL(__disp));	// 8687 call    printf
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aJbe)));	// 8688 mov     dword ptr [esp+4], offset aJbe ; "jbe"
+	R(MOV(eax, 1));	// 8689 mov     eax, 1
+	R(CMP(ebx, esi));	// 8690 cmp     ebx, esi
+		R(JBE(loc_407496));	// 8691 jbe     short loc_407496
+	R(MOV(eax, 0));	// 8692 mov     eax, 0
+loc_407496:
+#undef res
+#define res eax	// 8695 res = eax
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 8696 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8697 mov     [esp+8], res
+__disp = kprintf;
+	R(CALL(__disp));	// 8698 call    printf
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aSetbe)));	// 8699 mov     dword ptr [esp+4], offset aSetbe ; "setbe"
+	R(MOV(eax, 0));	// 8700 mov     eax, 0
+	R(CMP(ebx, esi));	// 8701 cmp     ebx, esi
+	R(SETBE(al));	// 8702 setbe   al
+#undef res
+#define res eax	// 8703 res = eax
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 8704 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8705 mov     [esp+8], res
+__disp = kprintf;
+	R(CALL(__disp));	// 8706 call    printf
+	R(MOV(*(raddr(ds,ebp+val)), 1));	// 8707 mov     [ebp+val], 1
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovbel)));	// 8708 mov     dword ptr [esp+4], offset aCmovbel ; "cmovbel"
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 8709 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+	R(MOV(edx, 0x12345678));	// 8710 mov     edx, 12345678h
+	R(CMP(ebx, esi));	// 8711 cmp     ebx, esi
+	R(CMOVBE(edx, *(dd*)(raddr(ds,ebp+val))));	// 8712 cmovbe  edx, [ebp+val]
+#undef res_14
+#define res_14 edx	// 8713 res_14 = edx
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res_14));	// 8714 mov     [esp+8], res_14
+	R(MOV(*(dd*)(raddr(ds,ebp+var_2C)), res_14));	// 8715 mov     [ebp+var_2C], res_14
+__disp = kprintf;
+	R(CALL(__disp));	// 8716 call    printf
+	R(MOV(edx, *(dd*)(raddr(ds,ebp+var_2C))));	// 8717 mov     edx, [ebp+var_2C]
+	R(CMP(ebx, esi));	// 8718 cmp     ebx, esi
+	R(CMOVBE(dx, bx));	// 8719 cmovbe  dx, bx
+#undef res_14
+#define res_14 edx	// 8720 res_14 = edx
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovbew)));	// 8721 mov     dword ptr [esp+4], offset aCmovbew ; "cmovbew"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res_14));	// 8722 mov     [esp+8], res_14
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 8723 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+__disp = kprintf;
+	R(CALL(__disp));	// 8724 call    printf
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aJbe)));	// 8725 mov     dword ptr [esp+4], offset aJbe ; "jbe"
+	R(MOV(eax, 1));	// 8726 mov     eax, 1
+	R(CMP(ebx, edi));	// 8727 cmp     ebx, edi
+		R(JBE(loc_40752c));	// 8728 jbe     short loc_40752C
+	R(MOV(eax, 0));	// 8729 mov     eax, 0
+loc_40752c:
+#undef res
+#define res eax	// 8732 res = eax
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 8733 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8734 mov     [esp+8], res
+__disp = kprintf;
+	R(CALL(__disp));	// 8735 call    printf
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aSetbe)));	// 8736 mov     dword ptr [esp+4], offset aSetbe ; "setbe"
+	R(MOV(eax, 0));	// 8737 mov     eax, 0
+	R(CMP(ebx, edi));	// 8738 cmp     ebx, edi
+	R(SETBE(al));	// 8739 setbe   al
+#undef res
+#define res eax	// 8740 res = eax
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 8741 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8742 mov     [esp+8], res
+__disp = kprintf;
+	R(CALL(__disp));	// 8743 call    printf
+	R(MOV(*(raddr(ds,ebp+val)), 1));	// 8744 mov     [ebp+val], 1
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovbel)));	// 8745 mov     dword ptr [esp+4], offset aCmovbel ; "cmovbel"
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 8746 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+	R(MOV(edx, 0x12345678));	// 8747 mov     edx, 12345678h
+	R(CMP(ebx, edi));	// 8748 cmp     ebx, edi
+	R(CMOVBE(edx, *(dd*)(raddr(ds,ebp+val))));	// 8749 cmovbe  edx, [ebp+val]
+#undef res_15
+#define res_15 edx	// 8750 res_15 = edx
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res_15));	// 8751 mov     [esp+8], res_15
+	R(MOV(*(dd*)(raddr(ds,ebp+var_2C)), res_15));	// 8752 mov     [ebp+var_2C], res_15
+__disp = kprintf;
+	R(CALL(__disp));	// 8753 call    printf
+	R(MOV(edx, *(dd*)(raddr(ds,ebp+var_2C))));	// 8754 mov     edx, [ebp+var_2C]
+	R(CMP(ebx, edi));	// 8755 cmp     ebx, edi
+	R(CMOVBE(dx, bx));	// 8756 cmovbe  dx, bx
+#undef res_15
+#define res_15 edx	// 8757 res_15 = edx
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovbew)));	// 8758 mov     dword ptr [esp+4], offset aCmovbew ; "cmovbew"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res_15));	// 8759 mov     [esp+8], res_15
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 8760 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+__disp = kprintf;
+	R(CALL(__disp));	// 8761 call    printf
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aJae)));	// 8762 mov     dword ptr [esp+4], offset aJae ; "jae"
+	R(MOV(eax, 1));	// 8763 mov     eax, 1
+	R(CMP(ebx, ebx));	// 8764 cmp     ebx, ebx
+		R(JNC(loc_4075c2));	// 8765 jnb     short loc_4075C2
+	R(MOV(eax, 0));	// 8766 mov     eax, 0
+loc_4075c2:
+#undef res
+#define res eax	// 8769 res = eax
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 8770 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8771 mov     [esp+8], res
+__disp = kprintf;
+	R(CALL(__disp));	// 8772 call    printf
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aSetae)));	// 8773 mov     dword ptr [esp+4], offset aSetae ; "setae"
+	R(MOV(eax, 0));	// 8774 mov     eax, 0
+	R(CMP(ebx, ebx));	// 8775 cmp     ebx, ebx
+	R(SETNB(al));	// 8776 setnb   al
+#undef res
+#define res eax	// 8777 res = eax
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 8778 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8779 mov     [esp+8], res
+__disp = kprintf;
+	R(CALL(__disp));	// 8780 call    printf
+	R(MOV(*(raddr(ds,ebp+val)), 1));	// 8781 mov     [ebp+val], 1
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovael)));	// 8782 mov     dword ptr [esp+4], offset aCmovael ; "cmovael"
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 8783 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+	R(MOV(edx, 0x12345678));	// 8784 mov     edx, 12345678h
+	R(CMP(ebx, ebx));	// 8785 cmp     ebx, ebx
+	R(CMOVNB(edx, *(dd*)(raddr(ds,ebp+val))));	// 8786 cmovnb  edx, [ebp+val]
+#undef res_16
+#define res_16 edx	// 8787 res_16 = edx
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res_16));	// 8788 mov     [esp+8], res_16
+	R(MOV(*(dd*)(raddr(ds,ebp+var_2C)), res_16));	// 8789 mov     [ebp+var_2C], res_16
+__disp = kprintf;
+	R(CALL(__disp));	// 8790 call    printf
+	R(MOV(edx, *(dd*)(raddr(ds,ebp+var_2C))));	// 8791 mov     edx, [ebp+var_2C]
+	R(CMP(ebx, ebx));	// 8792 cmp     ebx, ebx
+	R(CMOVNB(dx, bx));	// 8793 cmovnb  dx, bx
+#undef res_16
+#define res_16 edx	// 8794 res_16 = edx
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovaew)));	// 8795 mov     dword ptr [esp+4], offset aCmovaew ; "cmovaew"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res_16));	// 8796 mov     [esp+8], res_16
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 8797 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+__disp = kprintf;
+	R(CALL(__disp));	// 8798 call    printf
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aJae)));	// 8799 mov     dword ptr [esp+4], offset aJae ; "jae"
+	R(MOV(eax, 1));	// 8800 mov     eax, 1
+	R(CMP(ebx, esi));	// 8801 cmp     ebx, esi
+		R(JNC(loc_407658));	// 8802 jnb     short loc_407658
+	R(MOV(eax, 0));	// 8803 mov     eax, 0
+loc_407658:
+#undef res
+#define res eax	// 8806 res = eax
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 8807 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8808 mov     [esp+8], res
+__disp = kprintf;
+	R(CALL(__disp));	// 8809 call    printf
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aSetae)));	// 8810 mov     dword ptr [esp+4], offset aSetae ; "setae"
+	R(MOV(eax, 0));	// 8811 mov     eax, 0
+	R(CMP(ebx, esi));	// 8812 cmp     ebx, esi
+	R(SETNB(al));	// 8813 setnb   al
+#undef res
+#define res eax	// 8814 res = eax
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 8815 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8816 mov     [esp+8], res
+__disp = kprintf;
+	R(CALL(__disp));	// 8817 call    printf
+	R(MOV(*(raddr(ds,ebp+val)), 1));	// 8818 mov     [ebp+val], 1
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovael)));	// 8819 mov     dword ptr [esp+4], offset aCmovael ; "cmovael"
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 8820 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+	R(MOV(edx, 0x12345678));	// 8821 mov     edx, 12345678h
+	R(CMP(ebx, esi));	// 8822 cmp     ebx, esi
+	R(CMOVNB(edx, *(dd*)(raddr(ds,ebp+val))));	// 8823 cmovnb  edx, [ebp+val]
+#undef res_17
+#define res_17 edx	// 8824 res_17 = edx
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res_17));	// 8825 mov     [esp+8], res_17
+	R(MOV(*(dd*)(raddr(ds,ebp+var_2C)), res_17));	// 8826 mov     [ebp+var_2C], res_17
+__disp = kprintf;
+	R(CALL(__disp));	// 8827 call    printf
+	R(MOV(edx, *(dd*)(raddr(ds,ebp+var_2C))));	// 8828 mov     edx, [ebp+var_2C]
+	R(CMP(ebx, esi));	// 8829 cmp     ebx, esi
+	R(CMOVNB(dx, bx));	// 8830 cmovnb  dx, bx
+#undef res_17
+#define res_17 edx	// 8831 res_17 = edx
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovaew)));	// 8832 mov     dword ptr [esp+4], offset aCmovaew ; "cmovaew"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res_17));	// 8833 mov     [esp+8], res_17
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 8834 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+__disp = kprintf;
+	R(CALL(__disp));	// 8835 call    printf
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aJae)));	// 8836 mov     dword ptr [esp+4], offset aJae ; "jae"
+	R(MOV(eax, 1));	// 8837 mov     eax, 1
+	R(CMP(ebx, edi));	// 8838 cmp     ebx, edi
+		R(JNC(loc_4076ee));	// 8839 jnb     short loc_4076EE
+	R(MOV(eax, 0));	// 8840 mov     eax, 0
+loc_4076ee:
+#undef res
+#define res eax	// 8843 res = eax
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 8844 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8845 mov     [esp+8], res
+__disp = kprintf;
+	R(CALL(__disp));	// 8846 call    printf
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aSetae)));	// 8847 mov     dword ptr [esp+4], offset aSetae ; "setae"
+	R(MOV(eax, 0));	// 8848 mov     eax, 0
+	R(CMP(ebx, edi));	// 8849 cmp     ebx, edi
+	R(SETNB(al));	// 8850 setnb   al
+#undef res
+#define res eax	// 8851 res = eax
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 8852 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8853 mov     [esp+8], res
+__disp = kprintf;
+	R(CALL(__disp));	// 8854 call    printf
+	R(MOV(*(raddr(ds,ebp+val)), 1));	// 8855 mov     [ebp+val], 1
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovael)));	// 8856 mov     dword ptr [esp+4], offset aCmovael ; "cmovael"
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 8857 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+	R(MOV(edx, 0x12345678));	// 8858 mov     edx, 12345678h
+	R(CMP(ebx, edi));	// 8859 cmp     ebx, edi
+	R(CMOVNB(edx, *(dd*)(raddr(ds,ebp+val))));	// 8860 cmovnb  edx, [ebp+val]
+#undef res_18
+#define res_18 edx	// 8861 res_18 = edx
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res_18));	// 8862 mov     [esp+8], res_18
+	R(MOV(*(dd*)(raddr(ds,ebp+var_2C)), res_18));	// 8863 mov     [ebp+var_2C], res_18
+__disp = kprintf;
+	R(CALL(__disp));	// 8864 call    printf
+	R(MOV(edx, *(dd*)(raddr(ds,ebp+var_2C))));	// 8865 mov     edx, [ebp+var_2C]
+	R(CMP(ebx, edi));	// 8866 cmp     ebx, edi
+	R(CMOVNB(dx, bx));	// 8867 cmovnb  dx, bx
+#undef res_18
+#define res_18 edx	// 8868 res_18 = edx
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovaew)));	// 8869 mov     dword ptr [esp+4], offset aCmovaew ; "cmovaew"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res_18));	// 8870 mov     [esp+8], res_18
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 8871 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+__disp = kprintf;
+	R(CALL(__disp));	// 8872 call    printf
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aJa)));	// 8873 mov     dword ptr [esp+4], offset aJa ; "ja"
+	R(MOV(eax, 1));	// 8874 mov     eax, 1
+	R(CMP(ebx, ebx));	// 8875 cmp     ebx, ebx
+		R(JA(loc_407784));	// 8876 ja      short loc_407784
+	R(MOV(eax, 0));	// 8877 mov     eax, 0
+loc_407784:
+#undef res
+#define res eax	// 8880 res = eax
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 8881 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8882 mov     [esp+8], res
+__disp = kprintf;
+	R(CALL(__disp));	// 8883 call    printf
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aSeta)));	// 8884 mov     dword ptr [esp+4], offset aSeta ; "seta"
+	R(MOV(eax, 0));	// 8885 mov     eax, 0
+	R(CMP(ebx, ebx));	// 8886 cmp     ebx, ebx
+	R(SETNBE(al));	// 8887 setnbe  al
+#undef res
+#define res eax	// 8888 res = eax
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 8889 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8890 mov     [esp+8], res
+__disp = kprintf;
+	R(CALL(__disp));	// 8891 call    printf
+	R(MOV(*(raddr(ds,ebp+val)), 1));	// 8892 mov     [ebp+val], 1
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmoval)));	// 8893 mov     dword ptr [esp+4], offset aCmoval ; "cmoval"
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 8894 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+	R(MOV(edx, 0x12345678));	// 8895 mov     edx, 12345678h
+	R(CMP(ebx, ebx));	// 8896 cmp     ebx, ebx
+	R(CMOVA(edx, *(dd*)(raddr(ds,ebp+val))));	// 8897 cmova   edx, [ebp+val]
+#undef res_19
+#define res_19 edx	// 8898 res_19 = edx
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res_19));	// 8899 mov     [esp+8], res_19
+	R(MOV(*(dd*)(raddr(ds,ebp+var_2C)), res_19));	// 8900 mov     [ebp+var_2C], res_19
+__disp = kprintf;
+	R(CALL(__disp));	// 8901 call    printf
+	R(MOV(edx, *(dd*)(raddr(ds,ebp+var_2C))));	// 8902 mov     edx, [ebp+var_2C]
+	R(CMP(ebx, ebx));	// 8903 cmp     ebx, ebx
+	R(CMOVA(dx, bx));	// 8904 cmova   dx, bx
+#undef res_19
+#define res_19 edx	// 8905 res_19 = edx
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovaw)));	// 8906 mov     dword ptr [esp+4], offset aCmovaw ; "cmovaw"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res_19));	// 8907 mov     [esp+8], res_19
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 8908 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+__disp = kprintf;
+	R(CALL(__disp));	// 8909 call    printf
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aJa)));	// 8910 mov     dword ptr [esp+4], offset aJa ; "ja"
+	R(MOV(eax, 1));	// 8911 mov     eax, 1
+	R(CMP(ebx, esi));	// 8912 cmp     ebx, esi
+		R(JA(loc_40781a));	// 8913 ja      short loc_40781A
+	R(MOV(eax, 0));	// 8914 mov     eax, 0
+loc_40781a:
+#undef res
+#define res eax	// 8917 res = eax
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 8918 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8919 mov     [esp+8], res
+__disp = kprintf;
+	R(CALL(__disp));	// 8920 call    printf
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aSeta)));	// 8921 mov     dword ptr [esp+4], offset aSeta ; "seta"
+	R(MOV(eax, 0));	// 8922 mov     eax, 0
+	R(CMP(ebx, esi));	// 8923 cmp     ebx, esi
+	R(SETNBE(al));	// 8924 setnbe  al
+#undef res
+#define res eax	// 8925 res = eax
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 8926 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8927 mov     [esp+8], res
+__disp = kprintf;
+	R(CALL(__disp));	// 8928 call    printf
+	R(MOV(*(raddr(ds,ebp+val)), 1));	// 8929 mov     [ebp+val], 1
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmoval)));	// 8930 mov     dword ptr [esp+4], offset aCmoval ; "cmoval"
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 8931 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+	R(MOV(edx, 0x12345678));	// 8932 mov     edx, 12345678h
+	R(CMP(ebx, esi));	// 8933 cmp     ebx, esi
+	R(CMOVA(edx, *(dd*)(raddr(ds,ebp+val))));	// 8934 cmova   edx, [ebp+val]
+#undef res_20
+#define res_20 edx	// 8935 res_20 = edx
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res_20));	// 8936 mov     [esp+8], res_20
+	R(MOV(*(dd*)(raddr(ds,ebp+var_2C)), res_20));	// 8937 mov     [ebp+var_2C], res_20
+__disp = kprintf;
+	R(CALL(__disp));	// 8938 call    printf
+	R(MOV(edx, *(dd*)(raddr(ds,ebp+var_2C))));	// 8939 mov     edx, [ebp+var_2C]
+	R(CMP(ebx, esi));	// 8940 cmp     ebx, esi
+	R(CMOVA(dx, bx));	// 8941 cmova   dx, bx
+#undef res_20
+#define res_20 edx	// 8942 res_20 = edx
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovaw)));	// 8943 mov     dword ptr [esp+4], offset aCmovaw ; "cmovaw"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res_20));	// 8944 mov     [esp+8], res_20
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 8945 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+__disp = kprintf;
+	R(CALL(__disp));	// 8946 call    printf
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aJa)));	// 8947 mov     dword ptr [esp+4], offset aJa ; "ja"
+	R(MOV(eax, 1));	// 8948 mov     eax, 1
+	R(CMP(ebx, edi));	// 8949 cmp     ebx, edi
+		R(JA(loc_4078b0));	// 8950 ja      short loc_4078B0
+	R(MOV(eax, 0));	// 8951 mov     eax, 0
+loc_4078b0:
+#undef res
+#define res eax	// 8954 res = eax
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 8955 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8956 mov     [esp+8], res
+__disp = kprintf;
+	R(CALL(__disp));	// 8957 call    printf
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aSeta)));	// 8958 mov     dword ptr [esp+4], offset aSeta ; "seta"
+	R(MOV(eax, 0));	// 8959 mov     eax, 0
+	R(CMP(ebx, edi));	// 8960 cmp     ebx, edi
+	R(SETNBE(al));	// 8961 setnbe  al
+#undef res
+#define res eax	// 8962 res = eax
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 8963 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8964 mov     [esp+8], res
+__disp = kprintf;
+	R(CALL(__disp));	// 8965 call    printf
+	R(MOV(*(raddr(ds,ebp+val)), 1));	// 8966 mov     [ebp+val], 1
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmoval)));	// 8967 mov     dword ptr [esp+4], offset aCmoval ; "cmoval"
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 8968 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+	R(MOV(edx, 0x12345678));	// 8969 mov     edx, 12345678h
+	R(CMP(ebx, edi));	// 8970 cmp     ebx, edi
+	R(CMOVA(edx, *(dd*)(raddr(ds,ebp+val))));	// 8971 cmova   edx, [ebp+val]
+#undef res_21
+#define res_21 edx	// 8972 res_21 = edx
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res_21));	// 8973 mov     [esp+8], res_21
+	R(MOV(*(dd*)(raddr(ds,ebp+var_2C)), res_21));	// 8974 mov     [ebp+var_2C], res_21
+__disp = kprintf;
+	R(CALL(__disp));	// 8975 call    printf
+	R(MOV(edx, *(dd*)(raddr(ds,ebp+var_2C))));	// 8976 mov     edx, [ebp+var_2C]
+	R(CMP(ebx, edi));	// 8977 cmp     ebx, edi
+	R(CMOVA(dx, bx));	// 8978 cmova   dx, bx
+#undef res_21
+#define res_21 edx	// 8979 res_21 = edx
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovaw)));	// 8980 mov     dword ptr [esp+4], offset aCmovaw ; "cmovaw"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res_21));	// 8981 mov     [esp+8], res_21
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 8982 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+__disp = kprintf;
+	R(CALL(__disp));	// 8983 call    printf
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aJp)));	// 8984 mov     dword ptr [esp+4], offset aJp ; "jp"
+	R(MOV(eax, 1));	// 8985 mov     eax, 1
+	R(CMP(ebx, ebx));	// 8986 cmp     ebx, ebx
+		R(JP(loc_407946));	// 8987 jp      short loc_407946
+	R(MOV(eax, 0));	// 8988 mov     eax, 0
+loc_407946:
+#undef res
+#define res eax	// 8991 res = eax
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 8992 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8993 mov     [esp+8], res
+__disp = kprintf;
+	R(CALL(__disp));	// 8994 call    printf
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aSetp)));	// 8995 mov     dword ptr [esp+4], offset aSetp ; "setp"
+	R(MOV(eax, 0));	// 8996 mov     eax, 0
+	R(CMP(ebx, ebx));	// 8997 cmp     ebx, ebx
+	R(SETP(al));	// 8998 setp    al
+#undef res
+#define res eax	// 8999 res = eax
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 9000 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 9001 mov     [esp+8], res
+__disp = kprintf;
+	R(CALL(__disp));	// 9002 call    printf
+	R(MOV(*(raddr(ds,ebp+val)), 1));	// 9003 mov     [ebp+val], 1
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovpl)));	// 9004 mov     dword ptr [esp+4], offset aCmovpl ; "cmovpl"
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 9005 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+	R(MOV(edx, 0x12345678));	// 9006 mov     edx, 12345678h
+	R(CMP(ebx, ebx));	// 9007 cmp     ebx, ebx
+	R(CMOVP(edx, *(dd*)(raddr(ds,ebp+val))));	// 9008 cmovp   edx, [ebp+val]
+#undef res_22
+#define res_22 edx	// 9009 res_22 = edx
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res_22));	// 9010 mov     [esp+8], res_22
+	R(MOV(*(dd*)(raddr(ds,ebp+var_2C)), res_22));	// 9011 mov     [ebp+var_2C], res_22
+__disp = kprintf;
+	R(CALL(__disp));	// 9012 call    printf
+	R(MOV(edx, *(dd*)(raddr(ds,ebp+var_2C))));	// 9013 mov     edx, [ebp+var_2C]
+	R(CMP(ebx, ebx));	// 9014 cmp     ebx, ebx
+	R(CMOVP(dx, bx));	// 9015 cmovp   dx, bx
+#undef res_22
+#define res_22 edx	// 9016 res_22 = edx
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovpw)));	// 9017 mov     dword ptr [esp+4], offset aCmovpw ; "cmovpw"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res_22));	// 9018 mov     [esp+8], res_22
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 9019 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+__disp = kprintf;
+	R(CALL(__disp));	// 9020 call    printf
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aJp)));	// 9021 mov     dword ptr [esp+4], offset aJp ; "jp"
+	R(MOV(eax, 1));	// 9022 mov     eax, 1
+	R(CMP(ebx, esi));	// 9023 cmp     ebx, esi
+		R(JP(loc_4079dc));	// 9024 jp      short loc_4079DC
+	R(MOV(eax, 0));	// 9025 mov     eax, 0
+loc_4079dc:
+#undef res
+#define res eax	// 9028 res = eax
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 9029 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 9030 mov     [esp+8], res
+__disp = kprintf;
+	R(CALL(__disp));	// 9031 call    printf
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aSetp)));	// 9032 mov     dword ptr [esp+4], offset aSetp ; "setp"
+	R(MOV(eax, 0));	// 9033 mov     eax, 0
+	R(CMP(ebx, esi));	// 9034 cmp     ebx, esi
+	R(SETP(al));	// 9035 setp    al
+#undef res
+#define res eax	// 9036 res = eax
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 9037 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 9038 mov     [esp+8], res
+__disp = kprintf;
+	R(CALL(__disp));	// 9039 call    printf
+	R(MOV(*(raddr(ds,ebp+val)), 1));	// 9040 mov     [ebp+val], 1
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovpl)));	// 9041 mov     dword ptr [esp+4], offset aCmovpl ; "cmovpl"
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 9042 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+	R(MOV(edx, 0x12345678));	// 9043 mov     edx, 12345678h
+	R(CMP(ebx, esi));	// 9044 cmp     ebx, esi
+	R(CMOVP(edx, *(dd*)(raddr(ds,ebp+val))));	// 9045 cmovp   edx, [ebp+val]
+#undef res_23
+#define res_23 edx	// 9046 res_23 = edx
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res_23));	// 9047 mov     [esp+8], res_23
+	R(MOV(*(dd*)(raddr(ds,ebp+var_2C)), res_23));	// 9048 mov     [ebp+var_2C], res_23
+__disp = kprintf;
+	R(CALL(__disp));	// 9049 call    printf
+	R(MOV(edx, *(dd*)(raddr(ds,ebp+var_2C))));	// 9050 mov     edx, [ebp+var_2C]
+	R(CMP(ebx, esi));	// 9051 cmp     ebx, esi
+	R(CMOVP(dx, bx));	// 9052 cmovp   dx, bx
+#undef res_23
+#define res_23 edx	// 9053 res_23 = edx
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovpw)));	// 9054 mov     dword ptr [esp+4], offset aCmovpw ; "cmovpw"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res_23));	// 9055 mov     [esp+8], res_23
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 9056 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+__disp = kprintf;
+	R(CALL(__disp));	// 9057 call    printf
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aJnp)));	// 9058 mov     dword ptr [esp+4], offset aJnp ; "jnp"
+	R(MOV(eax, 1));	// 9059 mov     eax, 1
+	R(CMP(ebx, ebx));	// 9060 cmp     ebx, ebx
+		R(JNP(loc_407a72));	// 9061 jnp     short loc_407A72
+	R(MOV(eax, 0));	// 9062 mov     eax, 0
+loc_407a72:
+#undef res
+#define res eax	// 9065 res = eax
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 9066 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 9067 mov     [esp+8], res
+__disp = kprintf;
+	R(CALL(__disp));	// 9068 call    printf
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aSetnp)));	// 9069 mov     dword ptr [esp+4], offset aSetnp ; "setnp"
+	R(MOV(eax, 0));	// 9070 mov     eax, 0
+	R(CMP(ebx, ebx));	// 9071 cmp     ebx, ebx
+	R(SETNP(al));	// 9072 setnp   al
+#undef res
+#define res eax	// 9073 res = eax
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 9074 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 9075 mov     [esp+8], res
+__disp = kprintf;
+	R(CALL(__disp));	// 9076 call    printf
+	R(MOV(*(raddr(ds,ebp+val)), 1));	// 9077 mov     [ebp+val], 1
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovnpl)));	// 9078 mov     dword ptr [esp+4], offset aCmovnpl ; "cmovnpl"
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 9079 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+	R(MOV(edx, 0x12345678));	// 9080 mov     edx, 12345678h
+	R(CMP(ebx, ebx));	// 9081 cmp     ebx, ebx
+	R(CMOVNP(edx, *(dd*)(raddr(ds,ebp+val))));	// 9082 cmovnp  edx, [ebp+val]
+#undef res_24
+#define res_24 edx	// 9083 res_24 = edx
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res_24));	// 9084 mov     [esp+8], res_24
+	R(MOV(*(dd*)(raddr(ds,ebp+var_2C)), res_24));	// 9085 mov     [ebp+var_2C], res_24
+__disp = kprintf;
+	R(CALL(__disp));	// 9086 call    printf
+	R(MOV(edx, *(dd*)(raddr(ds,ebp+var_2C))));	// 9087 mov     edx, [ebp+var_2C]
+	R(CMP(ebx, ebx));	// 9088 cmp     ebx, ebx
+	R(CMOVNP(dx, bx));	// 9089 cmovnp  dx, bx
+#undef res_24
+#define res_24 edx	// 9090 res_24 = edx
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovnpw)));	// 9091 mov     dword ptr [esp+4], offset aCmovnpw ; "cmovnpw"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res_24));	// 9092 mov     [esp+8], res_24
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 9093 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+__disp = kprintf;
+	R(CALL(__disp));	// 9094 call    printf
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aJnp)));	// 9095 mov     dword ptr [esp+4], offset aJnp ; "jnp"
+	R(MOV(eax, 1));	// 9096 mov     eax, 1
+	R(CMP(ebx, esi));	// 9097 cmp     ebx, esi
+		R(JNP(loc_407b08));	// 9098 jnp     short loc_407B08
+	R(MOV(eax, 0));	// 9099 mov     eax, 0
+loc_407b08:
+#undef res
+#define res eax	// 9102 res = eax
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 9103 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 9104 mov     [esp+8], res
+__disp = kprintf;
+	R(CALL(__disp));	// 9105 call    printf
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aSetnp)));	// 9106 mov     dword ptr [esp+4], offset aSetnp ; "setnp"
+	R(MOV(eax, 0));	// 9107 mov     eax, 0
+	R(CMP(ebx, esi));	// 9108 cmp     ebx, esi
+	R(SETNP(al));	// 9109 setnp   al
+#undef res
+#define res eax	// 9110 res = eax
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 9111 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 9112 mov     [esp+8], res
+__disp = kprintf;
+	R(CALL(__disp));	// 9113 call    printf
+	R(MOV(*(raddr(ds,ebp+val)), 1));	// 9114 mov     [ebp+val], 1
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovnpl)));	// 9115 mov     dword ptr [esp+4], offset aCmovnpl ; "cmovnpl"
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 9116 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+	R(MOV(edx, 0x12345678));	// 9117 mov     edx, 12345678h
+	R(CMP(ebx, esi));	// 9118 cmp     ebx, esi
+	R(CMOVNP(edx, *(dd*)(raddr(ds,ebp+val))));	// 9119 cmovnp  edx, [ebp+val]
+#undef res_25
+#define res_25 edx	// 9120 res_25 = edx
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res_25));	// 9121 mov     [esp+8], res_25
+	R(MOV(*(dd*)(raddr(ds,ebp+var_2C)), res_25));	// 9122 mov     [ebp+var_2C], res_25
+__disp = kprintf;
+	R(CALL(__disp));	// 9123 call    printf
+	R(MOV(edx, *(dd*)(raddr(ds,ebp+var_2C))));	// 9124 mov     edx, [ebp+var_2C]
+	R(CMP(ebx, esi));	// 9125 cmp     ebx, esi
+	R(CMOVNP(dx, bx));	// 9126 cmovnp  dx, bx
+#undef res_25
+#define res_25 edx	// 9127 res_25 = edx
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovnpw)));	// 9128 mov     dword ptr [esp+4], offset aCmovnpw ; "cmovnpw"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res_25));	// 9129 mov     [esp+8], res_25
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 9130 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+__disp = kprintf;
+	R(CALL(__disp));	// 9131 call    printf
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aJo)));	// 9132 mov     dword ptr [esp+4], offset aJo ; "jo"
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 9133 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
+	R(MOV(eax, 0x7FFFFFFF));	// 9134 mov     eax, 7FFFFFFFh
+	R(MOV(eax, 1));	// 9135 mov     eax, 1
+	R(CMP(eax, esi));	// 9136 cmp     eax, esi
+		R(JO(loc_407baa));	// 9137 jo      short loc_407BAA
+	R(MOV(eax, 0));	// 9138 mov     eax, 0
+loc_407baa:
+#undef res
+#define res eax	// 9141 res = eax
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 9142 mov     [esp+8], res
+__disp = kprintf;
+	R(CALL(__disp));	// 9143 call    printf
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aSeto)));	// 9144 mov     dword ptr [esp+4], offset aSeto ; "seto"
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 9145 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
+	R(MOV(eax, 0x7FFFFFFF));	// 9146 mov     eax, 7FFFFFFFh
+	R(MOV(eax, 0));	// 9147 mov     eax, 0
+	R(CMP(eax, esi));	// 9148 cmp     eax, esi
+	R(SETO(al));	// 9149 seto    al
+#undef res
+#define res eax	// 9150 res = eax
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 9151 mov     [esp+8], res
+__disp = kprintf;
+	R(CALL(__disp));	// 9152 call    printf
+	R(MOV(*(raddr(ds,ebp+val)), 1));	// 9153 mov     [ebp+val], 1
+	R(MOV(eax, 0x7FFFFFFF));	// 9154 mov     eax, 7FFFFFFFh
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovol)));	// 9155 mov     dword ptr [esp+4], offset aCmovol ; "cmovol"
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 9156 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+	R(MOV(edx, 0x12345678));	// 9157 mov     edx, 12345678h
+	R(CMP(eax, esi));	// 9158 cmp     eax, esi
+	R(CMOVO(edx, *(dd*)(raddr(ds,ebp+val))));	// 9159 cmovo   edx, [ebp+val]
+#undef res_26
+#define res_26 edx	// 9160 res_26 = edx
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res_26));	// 9161 mov     [esp+8], res_26
+	R(MOV(*(dd*)(raddr(ds,ebp+var_2C)), res_26));	// 9162 mov     [ebp+var_2C], res_26
+__disp = kprintf;
+	R(CALL(__disp));	// 9163 call    printf
+	R(MOV(edx, *(dd*)(raddr(ds,ebp+var_2C))));	// 9164 mov     edx, [ebp+var_2C]
+	R(MOV(eax, 0x7FFFFFFF));	// 9165 mov     eax, 7FFFFFFFh
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovow)));	// 9166 mov     dword ptr [esp+4], offset aCmovow ; "cmovow"
+	R(CMP(eax, esi));	// 9167 cmp     eax, esi
+	R(CMOVO(dx, bx));	// 9168 cmovo   dx, bx
+#undef res_26
+#define res_26 edx	// 9169 res_26 = edx
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 9170 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res_26));	// 9171 mov     [esp+8], res_26
+__disp = kprintf;
+	R(CALL(__disp));	// 9172 call    printf
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aJo)));	// 9173 mov     dword ptr [esp+4], offset aJo ; "jo"
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 9174 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
+	R(MOV(eax, 0x7FFFFFFF));	// 9175 mov     eax, 7FFFFFFFh
+	R(MOV(eax, 1));	// 9176 mov     eax, 1
+	R(CMP(eax, edi));	// 9177 cmp     eax, edi
+		R(JO(loc_407c54));	// 9178 jo      short loc_407C54
+	R(MOV(eax, 0));	// 9179 mov     eax, 0
+loc_407c54:
+#undef res
+#define res eax	// 9182 res = eax
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 9183 mov     [esp+8], res
+__disp = kprintf;
+	R(CALL(__disp));	// 9184 call    printf
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aSeto)));	// 9185 mov     dword ptr [esp+4], offset aSeto ; "seto"
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 9186 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
+	R(MOV(eax, 0x7FFFFFFF));	// 9187 mov     eax, 7FFFFFFFh
+	R(MOV(eax, 0));	// 9188 mov     eax, 0
+	R(CMP(eax, edi));	// 9189 cmp     eax, edi
+	R(SETO(al));	// 9190 seto    al
+#undef res
+#define res eax	// 9191 res = eax
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 9192 mov     [esp+8], res
+__disp = kprintf;
+	R(CALL(__disp));	// 9193 call    printf
+	R(MOV(*(raddr(ds,ebp+val)), 1));	// 9194 mov     [ebp+val], 1
+	R(MOV(eax, 0x7FFFFFFF));	// 9195 mov     eax, 7FFFFFFFh
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovol)));	// 9196 mov     dword ptr [esp+4], offset aCmovol ; "cmovol"
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 9197 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+	R(MOV(edx, 0x12345678));	// 9198 mov     edx, 12345678h
+	R(CMP(eax, edi));	// 9199 cmp     eax, edi
+	R(CMOVO(edx, *(dd*)(raddr(ds,ebp+val))));	// 9200 cmovo   edx, [ebp+val]
+#undef res_27
+#define res_27 edx	// 9201 res_27 = edx
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res_27));	// 9202 mov     [esp+8], res_27
+	R(MOV(*(dd*)(raddr(ds,ebp+var_2C)), res_27));	// 9203 mov     [ebp+var_2C], res_27
+__disp = kprintf;
+	R(CALL(__disp));	// 9204 call    printf
+	R(MOV(edx, *(dd*)(raddr(ds,ebp+var_2C))));	// 9205 mov     edx, [ebp+var_2C]
+	R(MOV(eax, 0x7FFFFFFF));	// 9206 mov     eax, 7FFFFFFFh
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovow)));	// 9207 mov     dword ptr [esp+4], offset aCmovow ; "cmovow"
+	R(CMP(eax, edi));	// 9208 cmp     eax, edi
+	R(CMOVO(dx, bx));	// 9209 cmovo   dx, bx
+#undef res_27
+#define res_27 edx	// 9210 res_27 = edx
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 9211 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res_27));	// 9212 mov     [esp+8], res_27
+__disp = kprintf;
+	R(CALL(__disp));	// 9213 call    printf
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aJno)));	// 9214 mov     dword ptr [esp+4], offset aJno ; "jno"
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 9215 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
+	R(MOV(eax, 0x7FFFFFFF));	// 9216 mov     eax, 7FFFFFFFh
+	R(MOV(eax, 1));	// 9217 mov     eax, 1
+	R(CMP(eax, esi));	// 9218 cmp     eax, esi
+		R(JNO(loc_407cfe));	// 9219 jno     short loc_407CFE
+	R(MOV(eax, 0));	// 9220 mov     eax, 0
+loc_407cfe:
+#undef res
+#define res eax	// 9223 res = eax
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 9224 mov     [esp+8], res
+__disp = kprintf;
+	R(CALL(__disp));	// 9225 call    printf
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aSetno)));	// 9226 mov     dword ptr [esp+4], offset aSetno ; "setno"
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 9227 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
+	R(MOV(eax, 0x7FFFFFFF));	// 9228 mov     eax, 7FFFFFFFh
+	R(MOV(eax, 0));	// 9229 mov     eax, 0
+	R(CMP(eax, esi));	// 9230 cmp     eax, esi
+	R(SETNO(al));	// 9231 setno   al
+#undef res
+#define res eax	// 9232 res = eax
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 9233 mov     [esp+8], res
+__disp = kprintf;
+	R(CALL(__disp));	// 9234 call    printf
+	R(MOV(*(raddr(ds,ebp+val)), 1));	// 9235 mov     [ebp+val], 1
+	R(MOV(eax, 0x7FFFFFFF));	// 9236 mov     eax, 7FFFFFFFh
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovnol)));	// 9237 mov     dword ptr [esp+4], offset aCmovnol ; "cmovnol"
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 9238 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+	R(MOV(edx, 0x12345678));	// 9239 mov     edx, 12345678h
+	R(CMP(eax, esi));	// 9240 cmp     eax, esi
+	R(CMOVNO(edx, *(dd*)(raddr(ds,ebp+val))));	// 9241 cmovno  edx, [ebp+val]
+#undef res_28
+#define res_28 edx	// 9242 res_28 = edx
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res_28));	// 9243 mov     [esp+8], res_28
+	R(MOV(*(dd*)(raddr(ds,ebp+var_2C)), res_28));	// 9244 mov     [ebp+var_2C], res_28
+__disp = kprintf;
+	R(CALL(__disp));	// 9245 call    printf
+	R(MOV(edx, *(dd*)(raddr(ds,ebp+var_2C))));	// 9246 mov     edx, [ebp+var_2C]
+	R(MOV(eax, 0x7FFFFFFF));	// 9247 mov     eax, 7FFFFFFFh
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovnow)));	// 9248 mov     dword ptr [esp+4], offset aCmovnow ; "cmovnow"
+	R(CMP(eax, esi));	// 9249 cmp     eax, esi
+	R(CMOVNO(dx, bx));	// 9250 cmovno  dx, bx
+#undef res_28
+#define res_28 edx	// 9251 res_28 = edx
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 9252 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res_28));	// 9253 mov     [esp+8], res_28
+__disp = kprintf;
+	R(CALL(__disp));	// 9254 call    printf
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aJno)));	// 9255 mov     dword ptr [esp+4], offset aJno ; "jno"
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 9256 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
+	R(MOV(eax, 0x7FFFFFFF));	// 9257 mov     eax, 7FFFFFFFh
+	R(MOV(eax, 1));	// 9258 mov     eax, 1
+	R(CMP(eax, edi));	// 9259 cmp     eax, edi
+		R(JNO(loc_407da8));	// 9260 jno     short loc_407DA8
+	R(MOV(eax, 0));	// 9261 mov     eax, 0
+loc_407da8:
+#undef res
+#define res eax	// 9264 res = eax
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 9265 mov     [esp+8], res
+__disp = kprintf;
+	R(CALL(__disp));	// 9266 call    printf
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aSetno)));	// 9267 mov     dword ptr [esp+4], offset aSetno ; "setno"
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 9268 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
+	R(MOV(eax, 0x7FFFFFFF));	// 9269 mov     eax, 7FFFFFFFh
+	R(MOV(eax, 0));	// 9270 mov     eax, 0
+	R(CMP(eax, edi));	// 9271 cmp     eax, edi
+	R(SETNO(al));	// 9272 setno   al
+#undef res
+#define res eax	// 9273 res = eax
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 9274 mov     [esp+8], res
+__disp = kprintf;
+	R(CALL(__disp));	// 9275 call    printf
+	R(MOV(*(raddr(ds,ebp+val)), 1));	// 9276 mov     [ebp+val], 1
+	R(MOV(eax, 0x7FFFFFFF));	// 9277 mov     eax, 7FFFFFFFh
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovnol)));	// 9278 mov     dword ptr [esp+4], offset aCmovnol ; "cmovnol"
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 9279 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+	R(MOV(edx, 0x12345678));	// 9280 mov     edx, 12345678h
+	R(CMP(eax, edi));	// 9281 cmp     eax, edi
+	R(CMOVNO(edx, *(dd*)(raddr(ds,ebp+val))));	// 9282 cmovno  edx, [ebp+val]
+#undef res_29
+#define res_29 edx	// 9283 res_29 = edx
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res_29));	// 9284 mov     [esp+8], res_29
+	R(MOV(*(dd*)(raddr(ds,ebp+var_2C)), res_29));	// 9285 mov     [ebp+var_2C], res_29
+__disp = kprintf;
+	R(CALL(__disp));	// 9286 call    printf
+	R(MOV(edx, *(dd*)(raddr(ds,ebp+var_2C))));	// 9287 mov     edx, [ebp+var_2C]
+	R(MOV(eax, 0x7FFFFFFF));	// 9288 mov     eax, 7FFFFFFFh
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovnow)));	// 9289 mov     dword ptr [esp+4], offset aCmovnow ; "cmovnow"
+	R(CMP(eax, edi));	// 9290 cmp     eax, edi
+	R(CMOVNO(dx, bx));	// 9291 cmovno  dx, bx
+#undef res_29
+#define res_29 edx	// 9292 res_29 = edx
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 9293 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res_29));	// 9294 mov     [esp+8], res_29
+__disp = kprintf;
+	R(CALL(__disp));	// 9295 call    printf
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aJs)));	// 9296 mov     dword ptr [esp+4], offset aJs ; "js"
+	R(MOV(eax, 1));	// 9297 mov     eax, 1
+	R(CMP(esi, ebx));	// 9298 cmp     esi, ebx
+		R(JS(loc_407e46));	// 9299 js      short loc_407E46
+	R(MOV(eax, 0));	// 9300 mov     eax, 0
+loc_407e46:
+#undef res
+#define res eax	// 9303 res = eax
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 9304 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 9305 mov     [esp+8], res
+__disp = kprintf;
+	R(CALL(__disp));	// 9306 call    printf
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aSets)));	// 9307 mov     dword ptr [esp+4], offset aSets ; "sets"
+	R(MOV(eax, 0));	// 9308 mov     eax, 0
+	R(CMP(esi, ebx));	// 9309 cmp     esi, ebx
+	R(SETS(al));	// 9310 sets    al
+#undef res
+#define res eax	// 9311 res = eax
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 9312 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 9313 mov     [esp+8], res
+__disp = kprintf;
+	R(CALL(__disp));	// 9314 call    printf
+	R(MOV(*(raddr(ds,ebp+val)), 1));	// 9315 mov     [ebp+val], 1
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovsl)));	// 9316 mov     dword ptr [esp+4], offset aCmovsl ; "cmovsl"
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 9317 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+	R(MOV(edx, 0x12345678));	// 9318 mov     edx, 12345678h
+	R(CMP(esi, ebx));	// 9319 cmp     esi, ebx
+	R(CMOVS(edx, *(dd*)(raddr(ds,ebp+val))));	// 9320 cmovs   edx, [ebp+val]
+#undef res_30
+#define res_30 edx	// 9321 res_30 = edx
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res_30));	// 9322 mov     [esp+8], res_30
+	R(MOV(*(dd*)(raddr(ds,ebp+var_2C)), res_30));	// 9323 mov     [ebp+var_2C], res_30
+__disp = kprintf;
+	R(CALL(__disp));	// 9324 call    printf
+	R(MOV(edx, *(dd*)(raddr(ds,ebp+var_2C))));	// 9325 mov     edx, [ebp+var_2C]
+	R(CMP(esi, ebx));	// 9326 cmp     esi, ebx
+	R(CMOVS(dx, bx));	// 9327 cmovs   dx, bx
+#undef res_30
+#define res_30 edx	// 9328 res_30 = edx
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovsw)));	// 9329 mov     dword ptr [esp+4], offset aCmovsw ; "cmovsw"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res_30));	// 9330 mov     [esp+8], res_30
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 9331 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+__disp = kprintf;
+	R(CALL(__disp));	// 9332 call    printf
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aJs)));	// 9333 mov     dword ptr [esp+4], offset aJs ; "js"
+	R(MOV(eax, 1));	// 9334 mov     eax, 1
+	R(CMP(esi, edi));	// 9335 cmp     esi, edi
+		R(JS(loc_407edc));	// 9336 js      short loc_407EDC
+	R(MOV(eax, 0));	// 9337 mov     eax, 0
+loc_407edc:
+#undef res
+#define res eax	// 9340 res = eax
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 9341 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 9342 mov     [esp+8], res
+__disp = kprintf;
+	R(CALL(__disp));	// 9343 call    printf
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aSets)));	// 9344 mov     dword ptr [esp+4], offset aSets ; "sets"
+	R(MOV(eax, 0));	// 9345 mov     eax, 0
+	R(CMP(esi, edi));	// 9346 cmp     esi, edi
+	R(SETS(al));	// 9347 sets    al
+#undef res
+#define res eax	// 9348 res = eax
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 9349 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 9350 mov     [esp+8], res
+__disp = kprintf;
+	R(CALL(__disp));	// 9351 call    printf
+	R(MOV(*(raddr(ds,ebp+val)), 1));	// 9352 mov     [ebp+val], 1
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovsl)));	// 9353 mov     dword ptr [esp+4], offset aCmovsl ; "cmovsl"
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 9354 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+	R(MOV(edx, 0x12345678));	// 9355 mov     edx, 12345678h
+	R(CMP(esi, edi));	// 9356 cmp     esi, edi
+	R(CMOVS(edx, *(dd*)(raddr(ds,ebp+val))));	// 9357 cmovs   edx, [ebp+val]
+#undef res_31
+#define res_31 edx	// 9358 res_31 = edx
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res_31));	// 9359 mov     [esp+8], res_31
+	R(MOV(*(dd*)(raddr(ds,ebp+var_2C)), res_31));	// 9360 mov     [ebp+var_2C], res_31
+__disp = kprintf;
+	R(CALL(__disp));	// 9361 call    printf
+	R(MOV(edx, *(dd*)(raddr(ds,ebp+var_2C))));	// 9362 mov     edx, [ebp+var_2C]
+	R(CMP(esi, edi));	// 9363 cmp     esi, edi
+	R(CMOVS(dx, bx));	// 9364 cmovs   dx, bx
+#undef res_31
+#define res_31 edx	// 9365 res_31 = edx
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovsw)));	// 9366 mov     dword ptr [esp+4], offset aCmovsw ; "cmovsw"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res_31));	// 9367 mov     [esp+8], res_31
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 9368 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
 __disp = kprintf;
 	R(CALL(__disp));	// 8344 call    printf
 	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aJs)));	// 8345 mov     dword ptr [esp+4], offset aJs ; "js"
@@ -7835,7 +9074,39 @@ loc_407f72:
 #undef res
 #define res eax	// 8352 res = eax
 	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 8353 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
-	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8354 mov     [esp+8], res
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 9379 mov     [esp+8], res
+__disp = kprintf;
+	R(CALL(__disp));	// 9380 call    printf
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aSets)));	// 9381 mov     dword ptr [esp+4], offset aSets ; "sets"
+	R(MOV(eax, 0));	// 9382 mov     eax, 0
+	R(CMP(esi, esi));	// 9383 cmp     esi, esi
+	R(SETS(al));	// 9384 sets    al
+#undef res
+#define res eax	// 9385 res = eax
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 9386 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 9387 mov     [esp+8], res
+__disp = kprintf;
+	R(CALL(__disp));	// 9388 call    printf
+	R(MOV(*(raddr(ds,ebp+val)), 1));	// 9389 mov     [ebp+val], 1
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovsl)));	// 9390 mov     dword ptr [esp+4], offset aCmovsl ; "cmovsl"
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 9391 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+	R(MOV(edx, 0x12345678));	// 9392 mov     edx, 12345678h
+	R(CMP(esi, esi));	// 9393 cmp     esi, esi
+	R(CMOVS(edx, *(dd*)(raddr(ds,ebp+val))));	// 9394 cmovs   edx, [ebp+val]
+#undef res_32
+#define res_32 edx	// 9395 res_32 = edx
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res_32));	// 9396 mov     [esp+8], res_32
+	R(MOV(*(dd*)(raddr(ds,ebp+var_2C)), res_32));	// 9397 mov     [ebp+var_2C], res_32
+__disp = kprintf;
+	R(CALL(__disp));	// 9398 call    printf
+	R(MOV(edx, *(dd*)(raddr(ds,ebp+var_2C))));	// 9399 mov     edx, [ebp+var_2C]
+	R(CMP(esi, esi));	// 9400 cmp     esi, esi
+	R(CMOVS(dx, bx));	// 9401 cmovs   dx, bx
+#undef res_32
+#define res_32 edx	// 9402 res_32 = edx
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovsw)));	// 9403 mov     dword ptr [esp+4], offset aCmovsw ; "cmovsw"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res_32));	// 9404 mov     [esp+8], res_32
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 9405 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
 __disp = kprintf;
 	R(CALL(__disp));	// 8355 call    printf
 	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aJns)));	// 8356 mov     dword ptr [esp+4], offset aJns ; "jns"
@@ -7847,7 +9118,39 @@ loc_408008:
 #undef res
 #define res eax	// 8363 res = eax
 	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 8364 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
-	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8365 mov     [esp+8], res
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 9416 mov     [esp+8], res
+__disp = kprintf;
+	R(CALL(__disp));	// 9417 call    printf
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aSetns)));	// 9418 mov     dword ptr [esp+4], offset aSetns ; "setns"
+	R(MOV(eax, 0));	// 9419 mov     eax, 0
+	R(CMP(esi, ebx));	// 9420 cmp     esi, ebx
+	R(SETNS(al));	// 9421 setns   al
+#undef res
+#define res eax	// 9422 res = eax
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 9423 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 9424 mov     [esp+8], res
+__disp = kprintf;
+	R(CALL(__disp));	// 9425 call    printf
+	R(MOV(*(raddr(ds,ebp+val)), 1));	// 9426 mov     [ebp+val], 1
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovnsl)));	// 9427 mov     dword ptr [esp+4], offset aCmovnsl ; "cmovnsl"
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 9428 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+	R(MOV(edx, 0x12345678));	// 9429 mov     edx, 12345678h
+	R(CMP(esi, ebx));	// 9430 cmp     esi, ebx
+	R(CMOVNS(edx, *(dd*)(raddr(ds,ebp+val))));	// 9431 cmovns  edx, [ebp+val]
+#undef res_33
+#define res_33 edx	// 9432 res_33 = edx
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res_33));	// 9433 mov     [esp+8], res_33
+	R(MOV(*(dd*)(raddr(ds,ebp+var_2C)), res_33));	// 9434 mov     [ebp+var_2C], res_33
+__disp = kprintf;
+	R(CALL(__disp));	// 9435 call    printf
+	R(MOV(edx, *(dd*)(raddr(ds,ebp+var_2C))));	// 9436 mov     edx, [ebp+var_2C]
+	R(CMP(esi, ebx));	// 9437 cmp     esi, ebx
+	R(CMOVNS(dx, bx));	// 9438 cmovns  dx, bx
+#undef res_33
+#define res_33 edx	// 9439 res_33 = edx
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovnsw)));	// 9440 mov     dword ptr [esp+4], offset aCmovnsw ; "cmovnsw"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res_33));	// 9441 mov     [esp+8], res_33
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 9442 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
 __disp = kprintf;
 	R(CALL(__disp));	// 8366 call    printf
 	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aJns)));	// 8367 mov     dword ptr [esp+4], offset aJns ; "jns"
@@ -7859,7 +9162,40 @@ loc_40809e:
 #undef res
 #define res eax	// 8374 res = eax
 	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 8375 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
-	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8376 mov     [esp+8], res
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 9453 mov     [esp+8], res
+__disp = kprintf;
+	R(CALL(__disp));	// 9454 call    printf
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aSetns)));	// 9455 mov     dword ptr [esp+4], offset aSetns ; "setns"
+	R(MOV(eax, 0));	// 9456 mov     eax, 0
+	R(CMP(esi, edi));	// 9457 cmp     esi, edi
+	R(SETNS(al));	// 9458 setns   al
+#undef res
+#define res eax	// 9459 res = eax
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 9460 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 9461 mov     [esp+8], res
+__disp = kprintf;
+	R(CALL(__disp));	// 9462 call    printf
+	R(MOV(*(raddr(ds,ebp+val)), 1));	// 9463 mov     [ebp+val], 1
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovnsl)));	// 9464 mov     dword ptr [esp+4], offset aCmovnsl ; "cmovnsl"
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 9465 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+	R(MOV(edx, 0x12345678));	// 9466 mov     edx, 12345678h
+	R(CMP(esi, edi));	// 9467 cmp     esi, edi
+	R(CMOVNS(edx, *(dd*)(raddr(ds,ebp+val))));	// 9468 cmovns  edx, [ebp+val]
+#undef res_34
+#define res_34 edx	// 9469 res_34 = edx
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res_34));	// 9470 mov     [esp+8], res_34
+	R(MOV(*(dd*)(raddr(ds,ebp+var_2C)), res_34));	// 9471 mov     [ebp+var_2C], res_34
+__disp = kprintf;
+	R(CALL(__disp));	// 9472 call    printf
+	R(MOV(edx, *(dd*)(raddr(ds,ebp+var_2C))));	// 9473 mov     edx, [ebp+var_2C]
+	R(CMP(esi, edi));	// 9474 cmp     esi, edi
+	R(CMOVNS(dx, bx));	// 9475 cmovns  dx, bx
+#undef res_34
+#define res_34 edx	// 9476 res_34 = edx
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovnsw)));	// 9477 mov     dword ptr [esp+4], offset aCmovnsw ; "cmovnsw"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res_34));	// 9478 mov     [esp+8], res_34
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 9479 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+	R(MOV(edi, 0x12345678));	// 9480 mov     edi, 12345678h
 __disp = kprintf;
 	R(CALL(__disp));	// 8377 call    printf
 	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aJns)));	// 8378 mov     dword ptr [esp+4], offset aJns ; "jns"
@@ -7871,7 +9207,34 @@ loc_408139:
 #undef res
 #define res eax	// 8385 res = eax
 	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 8386 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
-	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 8387 mov     [esp+8], res
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 9491 mov     [esp+8], res
+__disp = kprintf;
+	R(CALL(__disp));	// 9492 call    printf
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aSetns)));	// 9493 mov     dword ptr [esp+4], offset aSetns ; "setns"
+	R(MOV(eax, 0));	// 9494 mov     eax, 0
+	R(CMP(esi, esi));	// 9495 cmp     esi, esi
+	R(SETNS(al));	// 9496 setns   al
+#undef res
+#define res eax	// 9497 res = eax
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sD)));	// 9498 mov     dword ptr [esp], offset a10sD ; "%-10s %d\n"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 9499 mov     [esp+8], res
+__disp = kprintf;
+	R(CALL(__disp));	// 9500 call    printf
+	R(MOV(*(raddr(ds,ebp+val)), 1));	// 9501 mov     [ebp+val], 1
+	R(CMP(esi, esi));	// 9502 cmp     esi, esi
+	R(CMOVNS(edi, *(dd*)(raddr(ds,ebp+val))));	// 9503 cmovns  edi, [ebp+val]
+#undef res
+#define res edi	// 9504 res = edi
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovnsl)));	// 9505 mov     dword ptr [esp+4], offset aCmovnsl ; "cmovnsl"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 9506 mov     [esp+8], res
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 9507 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+__disp = kprintf;
+	R(CALL(__disp));	// 9508 call    printf
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aCmovnsw)));	// 9509 mov     dword ptr [esp+4], offset aCmovnsw ; "cmovnsw"
+	R(CMP(esi, esi));	// 9510 cmp     esi, esi
+	R(CMOVNS(di, bx));	// 9511 cmovns  di, bx
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sR08lx)));	// 9512 mov     dword ptr [esp], offset a10sR08lx ; "%-10s R=%08lx\n"
+	R(MOV(*(dd*)(raddr(ds,esp+8)), res));	// 9513 mov     [esp+8], res
 __disp = kprintf;
 	R(CALL(__disp));	// 8388 call    printf
 	R(ADD(esp, 0x3C));	// 8389 add     esp, 3Ch
@@ -7906,7 +9269,7 @@ loc_4081d5:
 #undef ecx_0_0
 #define ecx_0_0 ecx	// 8426 ecx_0_0 = ecx
 	R(MOV(ebx, edi));	// 8427 mov     ebx, edi
-	R(MOV(*(dd*)(raddr(ds,esp+8)), ecx_0_0));	// 8428 mov     [esp+8], ecx_0_0
+	R(MOV(*(dd*)(raddr(ds,esp+8)), ecx_0_0));	// 9554 mov     [esp+8], ecx_0_0
 	R(MOV(*(dd*)(raddr(ds,esp+0x0C)), 0));	// 8429 mov     dword ptr [esp+0Ch], 0
 	R(TEST(ebx, ebx));	// 8430 test    ebx, ebx
 	R(MOV(eax, 1));	// 8431 mov     eax, 1
@@ -7916,9 +9279,9 @@ loc_4081f6:
 #undef res
 #define res eax	// 8436 res = eax
 	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aJcxz)));	// 8437 mov     dword ptr [esp+4], offset aJcxz ; "jcxz"
-	R(MOV(*(dd*)(raddr(ds,esp+0x10)), res));	// 8438 mov     [esp+10h], res
+	R(MOV(*(dd*)(raddr(ds,esp+0x10)), res));	// 9564 mov     [esp+10h], res
 	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sEcx08lxZfLd)));	// 8439 mov     dword ptr [esp], offset a10sEcx08lxZfLd ; "%-10s ECX=%08lx ZF=%ld r=%d\n"
-	R(MOV(*(dd*)(raddr(ds,ebp+ecx_0)), ecx_0_0));	// 8440 mov     [ebp+ecx_0], ecx_0_0
+	R(MOV(*(dd*)(raddr(ds,ebp+ecx_0)), ecx_0_0));	// 9566 mov     [ebp+ecx_0], ecx_0_0
 __disp = kprintf;
 	R(CALL(__disp));	// 8441 call    printf
 	R(MOV(ecx, *(dd*)(raddr(ds,ebp+ecx_0))));	// 8442 mov     ecx, [ebp+ecx_0]
@@ -7932,7 +9295,7 @@ loc_408229:
 #undef res
 #define res eax	// 8451 res = eax
 	R(MOV(*(dd*)(raddr(ds,esp+8)), ecx));	// 8452 mov     [esp+8], ecx
-	R(MOV(*(dd*)(raddr(ds,esp+0x10)), res));	// 8453 mov     [esp+10h], res
+	R(MOV(*(dd*)(raddr(ds,esp+0x10)), res));	// 9579 mov     [esp+10h], res
 	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aJcxz)));	// 8454 mov     dword ptr [esp+4], offset aJcxz ; "jcxz"
 	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sEcx08lxZfLd)));	// 8455 mov     dword ptr [esp], offset a10sEcx08lxZfLd ; "%-10s ECX=%08lx ZF=%ld r=%d\n"
 	R(INC(i));	// 8456 inc     i
@@ -7951,9 +9314,42 @@ loc_408252:
 #undef ecx_0_0
 #define ecx_0_0 ecx	// 8467 ecx_0_0 = ecx
 	R(MOV(ebx, edi));	// 8468 mov     ebx, edi
+	R(MOV(*(dd*)(raddr(ds,esp+8)), ecx_0_0));	// 9595 mov     [esp+8], ecx_0_0
+	R(MOV(*(dd*)(raddr(ds,esp+0x0C)), 0));	// 9596 mov     dword ptr [esp+0Ch], 0
+	R(TEST(ebx, ebx));	// 9597 test    ebx, ebx
+	R(MOV(eax, 1));	// 9598 mov     eax, 1
+		R(LOOPW(loc_408273));	// 9599 loopw   loc_408273
+	R(MOV(eax, 0));	// 9600 mov     eax, 0
+loc_408273:
+#undef res
+#define res eax	// 9603 res = eax
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aLoopw)));	// 9604 mov     dword ptr [esp+4], offset aLoopw ; "loopw"
+	R(MOV(*(dd*)(raddr(ds,esp+0x10)), res));	// 9605 mov     [esp+10h], res
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sEcx08lxZfLd)));	// 9606 mov     dword ptr [esp], offset a10sEcx08lxZfLd ; "%-10s ECX=%08lx ZF=%ld r=%d\n"
+	R(MOV(*(dd*)(raddr(ds,ebp+ecx_0)), ecx_0_0));	// 9607 mov     [ebp+ecx_0], ecx_0_0
+__disp = kprintf;
+	R(CALL(__disp));	// 9608 call    printf
+	R(MOV(ecx, *(dd*)(raddr(ds,ebp+ecx_0))));	// 9609 mov     ecx, [ebp+ecx_0]
+	ebx = 0;AFFECT_ZF(0); AFFECT_SF(ebx,0);	// 9610 xor     ebx, ebx
+	R(MOV(*(dd*)(raddr(ds,esp+0x0C)), edi));	// 9611 mov     [esp+0Ch], edi
+	R(TEST(ebx, ebx));	// 9612 test    ebx, ebx
+	R(MOV(eax, 1));	// 9613 mov     eax, 1
+		R(LOOPW(loc_4082a6));	// 9614 loopw   loc_4082A6
+	R(MOV(eax, 0));	// 9615 mov     eax, 0
+loc_4082a6:
+#undef res
+#define res eax	// 9618 res = eax
+	R(MOV(*(dd*)(raddr(ds,esp+8)), ecx));	// 9619 mov     [esp+8], ecx
+	R(MOV(*(dd*)(raddr(ds,esp+0x10)), res));	// 9620 mov     [esp+10h], res
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aLoopw)));	// 9621 mov     dword ptr [esp+4], offset aLoopw ; "loopw"
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sEcx08lxZfLd)));	// 9622 mov     dword ptr [esp], offset a10sEcx08lxZfLd ; "%-10s ECX=%08lx ZF=%ld r=%d\n"
+	R(INC(i));	// 9623 inc     i
+__disp = kprintf;
+	R(CALL(__disp));	// 9624 call    printf
 #undef i
 #define i esi	// 8469 i = esi
 	R(CMP(i, 4));	// 8470 cmp     i, 4
+		R(JNZ(loc_408252));	// 9627 jnz     short loc_408252
 	i = 0;AFFECT_ZF(0); AFFECT_SF(i,0);	// 8471 xor     i, i
 	R(MOV(edi, 1));	// 8472 mov     edi, 1
 loc_4082cf:
@@ -7963,9 +9359,42 @@ loc_4082cf:
 #undef ecx_0_0
 #define ecx_0_0 ecx	// 8477 ecx_0_0 = ecx
 	R(MOV(ebx, edi));	// 8478 mov     ebx, edi
+	R(MOV(*(dd*)(raddr(ds,esp+8)), ecx_0_0));	// 9636 mov     [esp+8], ecx_0_0
+	R(MOV(*(dd*)(raddr(ds,esp+0x0C)), 0));	// 9637 mov     dword ptr [esp+0Ch], 0
+	R(TEST(ebx, ebx));	// 9638 test    ebx, ebx
+	R(MOV(eax, 1));	// 9639 mov     eax, 1
+		R(LOOPWE(loc_4082f0));	// 9640 loopwe  loc_4082F0
+	R(MOV(eax, 0));	// 9641 mov     eax, 0
+loc_4082f0:
+#undef res
+#define res eax	// 9644 res = eax
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aLoopzw)));	// 9645 mov     dword ptr [esp+4], offset aLoopzw ; "loopzw"
+	R(MOV(*(dd*)(raddr(ds,esp+0x10)), res));	// 9646 mov     [esp+10h], res
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sEcx08lxZfLd)));	// 9647 mov     dword ptr [esp], offset a10sEcx08lxZfLd ; "%-10s ECX=%08lx ZF=%ld r=%d\n"
+	R(MOV(*(dd*)(raddr(ds,ebp+ecx_0)), ecx_0_0));	// 9648 mov     [ebp+ecx_0], ecx_0_0
+__disp = kprintf;
+	R(CALL(__disp));	// 9649 call    printf
+	R(MOV(ecx, *(dd*)(raddr(ds,ebp+ecx_0))));	// 9650 mov     ecx, [ebp+ecx_0]
+	ebx = 0;AFFECT_ZF(0); AFFECT_SF(ebx,0);	// 9651 xor     ebx, ebx
+	R(MOV(*(dd*)(raddr(ds,esp+0x0C)), edi));	// 9652 mov     [esp+0Ch], edi
+	R(TEST(ebx, ebx));	// 9653 test    ebx, ebx
+	R(MOV(eax, 1));	// 9654 mov     eax, 1
+		R(LOOPWE(loc_408323));	// 9655 loopwe  loc_408323
+	R(MOV(eax, 0));	// 9656 mov     eax, 0
+loc_408323:
+#undef res
+#define res eax	// 9659 res = eax
+	R(MOV(*(dd*)(raddr(ds,esp+8)), ecx));	// 9660 mov     [esp+8], ecx
+	R(MOV(*(dd*)(raddr(ds,esp+0x10)), res));	// 9661 mov     [esp+10h], res
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aLoopzw)));	// 9662 mov     dword ptr [esp+4], offset aLoopzw ; "loopzw"
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sEcx08lxZfLd)));	// 9663 mov     dword ptr [esp], offset a10sEcx08lxZfLd ; "%-10s ECX=%08lx ZF=%ld r=%d\n"
+	R(INC(i));	// 9664 inc     i
+__disp = kprintf;
+	R(CALL(__disp));	// 9665 call    printf
 #undef i
 #define i esi	// 8479 i = esi
 	R(CMP(i, 4));	// 8480 cmp     i, 4
+		R(JNZ(loc_4082cf));	// 9668 jnz     short loc_4082CF
 	i = 0;AFFECT_ZF(0); AFFECT_SF(i,0);	// 8481 xor     i, i
 	R(MOV(edi, 1));	// 8482 mov     edi, 1
 loc_40834c:
@@ -7975,9 +9404,42 @@ loc_40834c:
 #undef ecx_0_0
 #define ecx_0_0 ecx	// 8487 ecx_0_0 = ecx
 	R(MOV(ebx, edi));	// 8488 mov     ebx, edi
+	R(MOV(*(dd*)(raddr(ds,esp+8)), ecx_0_0));	// 9677 mov     [esp+8], ecx_0_0
+	R(MOV(*(dd*)(raddr(ds,esp+0x0C)), 0));	// 9678 mov     dword ptr [esp+0Ch], 0
+	R(TEST(ebx, ebx));	// 9679 test    ebx, ebx
+	R(MOV(eax, 1));	// 9680 mov     eax, 1
+		R(LOOPWNE(loc_40836d));	// 9681 loopwne loc_40836D
+	R(MOV(eax, 0));	// 9682 mov     eax, 0
+loc_40836d:
+#undef res
+#define res eax	// 9685 res = eax
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aLoopnzw)));	// 9686 mov     dword ptr [esp+4], offset aLoopnzw ; "loopnzw"
+	R(MOV(*(dd*)(raddr(ds,esp+0x10)), res));	// 9687 mov     [esp+10h], res
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sEcx08lxZfLd)));	// 9688 mov     dword ptr [esp], offset a10sEcx08lxZfLd ; "%-10s ECX=%08lx ZF=%ld r=%d\n"
+	R(MOV(*(dd*)(raddr(ds,ebp+ecx_0)), ecx_0_0));	// 9689 mov     [ebp+ecx_0], ecx_0_0
+__disp = kprintf;
+	R(CALL(__disp));	// 9690 call    printf
+	R(MOV(ecx, *(dd*)(raddr(ds,ebp+ecx_0))));	// 9691 mov     ecx, [ebp+ecx_0]
+	ebx = 0;AFFECT_ZF(0); AFFECT_SF(ebx,0);	// 9692 xor     ebx, ebx
+	R(MOV(*(dd*)(raddr(ds,esp+0x0C)), edi));	// 9693 mov     [esp+0Ch], edi
+	R(TEST(ebx, ebx));	// 9694 test    ebx, ebx
+	R(MOV(eax, 1));	// 9695 mov     eax, 1
+		R(LOOPWNE(loc_4083a0));	// 9696 loopwne loc_4083A0
+	R(MOV(eax, 0));	// 9697 mov     eax, 0
+loc_4083a0:
+#undef res
+#define res eax	// 9700 res = eax
+	R(MOV(*(dd*)(raddr(ds,esp+8)), ecx));	// 9701 mov     [esp+8], ecx
+	R(MOV(*(dd*)(raddr(ds,esp+0x10)), res));	// 9702 mov     [esp+10h], res
+	R(MOV(*(dd*)(raddr(ds,esp+4)), offset(_rdata,aLoopnzw)));	// 9703 mov     dword ptr [esp+4], offset aLoopnzw ; "loopnzw"
+	R(MOV(*(dd*)(raddr(ds,esp)), offset(_rdata,a10sEcx08lxZfLd)));	// 9704 mov     dword ptr [esp], offset a10sEcx08lxZfLd ; "%-10s ECX=%08lx ZF=%ld r=%d\n"
+	R(INC(i));	// 9705 inc     i
+__disp = kprintf;
+	R(CALL(__disp));	// 9706 call    printf
 #undef i
 #define i esi	// 8489 i = esi
 	R(CMP(i, 4));	// 8490 cmp     i, 4
+		R(JNZ(loc_40834c));	// 9709 jnz     short loc_40834C
 	i = 0;AFFECT_ZF(0); AFFECT_SF(i,0);	// 8491 xor     i, i
 	R(MOV(edi, 1));	// 8492 mov     edi, 1
 loc_4083c9:
@@ -13739,7 +15201,7 @@ loc_40d571:
 	R(CMP(ebx, offset(initcall,unk_40F064)));	// 13558 cmp     ebx, offset unk_40F064
 		R(JZ(loc_40d581));	// 13559 jz      short loc_40D581
 	R(ADD(ebx, 2));	// 13560 add     ebx, 4
-__disp = (_offsets) *(dw*)(raddr(ds,ebx-2));
+__disp = reinterpret_cast<_offsets>(*(dw*)(raddr(ds,ebx-2)));
 	R(CALL(__disp));	// 13561 call    dword ptr [ebx-4]
 		R(JMP(loc_40d571));	// 13562 jmp     short loc_40D571
 loc_40d581:

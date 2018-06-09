@@ -187,13 +187,13 @@ class proc:
 			cl = getattr(op, '_' + cmd.lower())
 		except AttributeError:
 			print cmd
-			if re.match(r"scas[bwd]|cmps[bwd]|movs[bwd]|xlat|lods[bwd]|stos[bwd]|aad|repne|repe|rep|std|stc|cld|clc|cli|cbw|cwde|cwd|cdq|sti|cmc|pushf|popf|nop|pushad|popad|popa|pusha|das|aaa|aas|aam", cmd.lower()) is not None:
+			if re.match(r"scas[bwd]|cmps[bwd]|movs[bwd]|xlat|lods[bwd]|stos[bwd]|aad|repne|repe|rep|std|stc|cld|clc|cli|cbw|cwde|cwd|cdq|sti|cmc|pushf|popf|nop|pushad|popad|popa|pusha|das|aaa|aas|aam|finit|fsin|fldz", cmd.lower()) is not None:
 				cl = getattr(op, '_instruction0')
-			elif re.match(r"dec|inc|pop|push|int|neg|div|idiv|mul|setb|setnz|setz|not|lods|cmpxchg8b|bswap", cmd.lower()) is not None:
+			elif re.match(r"dec|inc|pop|push|int|neg|div|idiv|mul|set[a-z]+|not|lods|cmpxchg8b|bswap|fistp|fmul|fadd", cmd.lower()) is not None:
 				cl = getattr(op, '_instruction1')
-			elif re.match(r"j.*|loop.*", cmd.lower()) is not None:
+			elif re.match(r"j[a-z]+|loop.*", cmd.lower()) is not None:
 				cl = getattr(op, '_jump')
-			elif re.match(r"xchg|cmp|movsx|movzx|mov|or|xor|and|add|adc|sbb|rol|ror|sub|shl|shr|test|in|out|lea|lds|les|lfs|lgs|sar|btr|bts|btc|bt|movs|xadd", cmd.lower()) is not None:
+			elif re.match(r"xchg|cmp|movsx|movzx|mov|or|xor|and|add|adc|sbb|rol|ror|sub|shl|shr|test|in|out|lea|lds|les|lfs|lgs|sar|btr|bts|btc|bt|movs|xadd|cmov[a-z]+", cmd.lower()) is not None:
 				cl = getattr(op, '_instruction2')
 			elif re.match(r"shrd|shld", cmd.lower()) is not None:
 				cl = getattr(op, '_instruction3')

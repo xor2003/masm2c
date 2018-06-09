@@ -13593,7 +13593,7 @@ sub_40D5C0      proc near
                 push    ebp
                 mov     ebp, esp
                 pop     ebp
-                jmp     sub_401090
+;                jmp     sub_401090
 ; } // starts at 40D5C0
 sub_40D5C0      endp
 
@@ -13646,14 +13646,14 @@ unk_40E008      db    0                 ; DATA XREF: test_loop+11↑o
                 db    1
                 db    0
 ; float64u s_nan
-s_nan           float64u <-1.797693134862316e308>
+;s_nan           float64u <-1.797693134862316e308>
 ; float64u q_nan
-q_nan           float64u <-2.696539702293474e308>
+;q_nan           float64u <-2.696539702293474e308>
                                         ; DATA XREF: test_floats+AC↑r
                                         ; test_floats+CC↑r ...
                 align 20h
 ; per_process_cxx_malloc _cygwin_cxx_malloc
-__cygwin_cxx_malloc per_process_cxx_malloc <0>
+;__cygwin_cxx_malloc per_process_cxx_malloc <0>
                                         ; DATA XREF: _cygwin_crt0_common@8+DA↑r
                                         ; _cygwin_crt0_common@8:loc_40D194↑r ...
 unk_40E060      db    0                 ; DATA XREF: _cygwin_crt0_common@8+19C↑o
@@ -30647,7 +30647,7 @@ storedHandle    dd ?                    ; DATA XREF: __dllMain+15↑r
                 align 10h
 ; Function-local static variable
 ; per_process_0 u
-uu               per_process_0 <?>       ; DATA XREF: cygwin_attach_dll+C↑o
+;uu               per_process_0 <?>       ; DATA XREF: cygwin_attach_dll+C↑o
                                         ; cygwin_attach_dll+23↑o
                 align 20h
 ; HMODULE hLibModule

@@ -12,7 +12,7 @@
 #include <assert.h>
 #include <stdbool.h>
 
-#include <curses.h>
+#include "curses.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -58,7 +58,7 @@ extern "C" {
 #define STOSW STOS(2,2)
 #else
 #define STOSB STOS(1,0)
-#define STOSW {if (es!=0xB800) {STOS(2,0);} else {attron(COLOR_PAIR(ah)); mvaddch(edi/160, (edi/2)%80, al); /*attroff(COLOR_PAIR(ah))*/;di+=2;refresh();}}
+#define STOSW {if (es!=0xB800) {STOS(2,0);} else {/*attron(COLOR_PAIR(ah));*/ mvaddch(edi/160, (edi/2)%80, al|COLOR_PAIR(ah)); /*attroff(COLOR_PAIR(ah))*/;di+=2;refresh();}}
 #define STOSD STOS(4,0)
 #endif
 
@@ -107,7 +107,7 @@ extern "C" {
 
 #if defined(_PROTECTED_MODE)
 #if _BITS == 32
-#define raddr(segment,offset) ((db *)offset)
+#define raddr(segment,offset) (reinterpret_cast<db *>(offset))
 #else
 #define raddr(segment,offset) ((db *)&m+(db)(offset)+selectors[segment])
 #endif
@@ -235,7 +235,9 @@ typedef union registry16Bits
 	stackPointer-=sizeof(a); memcpy (&a, &stack[stackPointer], sizeof (a));}
 #define PUSH(a) {stackPointer-=sizeof(a); memcpy (&m.stack[stackPointer], &a, sizeof (a));  assert(stackPointer>8);}
 */
-#define PUSH(a) {dd t=a;stackPointer-=sizeof(a); memcpy (raddr(ss,stackPointer), &t, sizeof (a));  assert((raddr(ss,stackPointer) - ((db*)&m.stack))>8);}
+#define PUSH(a) {dd t=a;stackPointer-=sizeof(a); \
+		memcpy (raddr(ss,stackPointer), &t, sizeof (a)); \
+		assert((raddr(ss,stackPointer) - ((db*)&m.stack))>8);}
 
 #define POP(a) { memcpy (&a, raddr(ss,stackPointer), sizeof (a));stackPointer+=sizeof(a);}
 
@@ -565,6 +567,42 @@ int8_t asm2C_IN(int16_t data);
 #define SCASW log_debug("unimplemented\n");
 #define SHLD(a,b,c) log_debug("unimplemented\n");
 #define XADD(a,b) log_debug("unimplemented\n");
+#define CMOVA(a,b) log_debug("unimplemented\n");
+#define CMOVB(a,b) log_debug("unimplemented\n");
+#define CMOVBE(a,b) log_debug("unimplemented\n");
+#define CMOVG(a,b) log_debug("unimplemented\n");
+#define CMOVGE(a,b) log_debug("unimplemented\n");
+#define CMOVL(a,b) log_debug("unimplemented\n");
+#define CMOVLE(a,b) log_debug("unimplemented\n");
+#define CMOVNB(a,b) log_debug("unimplemented\n");
+#define CMOVNO(a,b) log_debug("unimplemented\n");
+#define CMOVNP(a,b) log_debug("unimplemented\n");
+#define CMOVNS(a,b) log_debug("unimplemented\n");
+#define CMOVNZ(a,b) log_debug("unimplemented\n");
+#define CMOVO(a,b) log_debug("unimplemented\n");
+#define CMOVP(a,b) log_debug("unimplemented\n");
+#define CMOVS(a,b) log_debug("unimplemented\n");
+#define CMOVZ(a,b) log_debug("unimplemented\n");
+#define JNO(x) log_debug("unimplemented\n");
+#define JNP(x) log_debug("unimplemented\n");
+#define JO(x) log_debug("unimplemented\n");
+#define JP(x) log_debug("unimplemented\n");
+#define LOOPW(x) log_debug("unimplemented\n");
+#define LOOPWE(x) log_debug("unimplemented\n");
+#define LOOPWNE(x) log_debug("unimplemented\n");
+#define SETBE(x) log_debug("unimplemented\n");
+#define SETL(x) log_debug("unimplemented\n");
+#define SETLE(x) log_debug("unimplemented\n");
+#define SETNB(x) log_debug("unimplemented\n");
+#define SETNBE(x) log_debug("unimplemented\n");
+#define SETNL(x) log_debug("unimplemented\n");
+#define SETNLE(x) log_debug("unimplemented\n");
+#define SETNO(x) log_debug("unimplemented\n");
+#define SETNP(x) log_debug("unimplemented\n");
+#define SETNS(x) log_debug("unimplemented\n");
+#define SETO(x) log_debug("unimplemented\n");
+#define SETP(x) log_debug("unimplemented\n");
+#define SETS(x) log_debug("unimplemented\n");
 // ---------
 
 #ifdef __LIBSDL2__

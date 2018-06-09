@@ -83,12 +83,13 @@ class cpp:
 #include "asm.c"
 #include \"%s\"
 
-void mainproc(int _i, dd eax_, dd ebx_, dd ecx_, dd edx_, dd esi_, dd edi_, dd ebp_);
+void mainproc(_offsets _i, dd eax_, dd ebx_, dd ecx_, dd edx_, dd esi_, dd edi_, dd ebp_);
 
 int main()
 {
   /* We expect ram_top as Kbytes, so convert to paragraphs */
   mcb_init(seg_offset(heap), (HEAP_SIZE / 1024) * 64 - first_mcb - 1, MCB_LAST);
+  esp = ((dd)(db*)&m.stack[STACK_SIZE - 4]);
 
 initscr();
  cbreak();
@@ -931,7 +932,7 @@ R(MOV(cs, seg_offset(_text)));	// mov cs,_TEXT
 				self.body += "int %s() {\ngoto %s;\n" %(self.function_name_remapping[name], self.context.entry_point);
 			else:
 				self.body += """
-void %s(int _i, dd eax_, dd ebx_, dd ecx_, dd edx_, dd esi_, dd edi_, dd ebp_){
+void %s(_offsets _i, dd eax_, dd ebx_, dd ecx_, dd edx_, dd esi_, dd edi_, dd ebp_){
 __disp=_i;
 if (__disp==kbegin) goto %s;
 else goto __dispatch_call;
@@ -1127,6 +1128,7 @@ else goto __dispatch_call;
 			#n += 1
 
 		data_head += '''
+			db stack[STACK_SIZE];
 			db heap[HEAP_SIZE];
 		''';
 

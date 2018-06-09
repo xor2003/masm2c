@@ -77,7 +77,8 @@
 
 #define __init_call	__attribute__ ((unused,__section__ ("initcall")))
 
-#define CC_MASK (CC_C | CC_P | CC_Z | CC_S | CC_O | CC_A)
+//#define CC_MASK (CC_C | CC_P | CC_Z | CC_S | CC_O | CC_A)
+#define CC_MASK (CC_C | CC_Z | CC_S)
 
 #if defined(__x86_64__)
 static inline long i2l(long v)
@@ -138,7 +139,8 @@ static inline long i2l(long v)
 #include "test-i386.h"
 
 #undef CC_MASK
-#define CC_MASK (CC_C | CC_P | CC_Z | CC_S | CC_O)
+//#define CC_MASK (CC_C | CC_P | CC_Z | CC_S | CC_O)
+#define CC_MASK (CC_C | CC_Z | CC_S)
 
 #define OP shl
 #include "test-i386-shift.h"
@@ -510,6 +512,7 @@ void test_loop(void)
 #ifdef TEST_P4_FLAGS
 #define CC_MASK (CC_C | CC_P | CC_Z | CC_S | CC_O | CC_A)
 #else
+//#define CC_MASK (CC_O | CC_C)
 #define CC_MASK (CC_O | CC_C)
 #endif
 
@@ -2973,7 +2976,7 @@ int main(int argc, char **argv)
     test_mul();
     test_jcc();
     test_loop();
-//    test_floats();
+    test_floats();
 #if !defined(__x86_64__)
     test_bcd();
 #endif

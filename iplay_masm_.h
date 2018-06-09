@@ -3487,7 +3487,7 @@ dw off_245C8;
 dw off_245CA;
 dw off_245CC;
 dw off_245CE;
-dw _savesp_245D0;
+dd _savesp_245D0;
 dw _word_245D2;
 dw _word_245D4;
 dw _word_245D6;
@@ -4463,8 +4463,9 @@ db _byte_3150C[2044];
 db _byte_31D08[6144];
 db _byte_33508[4104];
  db dummy1691[8]; // padding
- db seg004[16]; // segment seg004
-db _byte_34510[4096];
+// db seg004[16]; // segment seg004
+//db _byte_34510[4096];
+db stack[STACK_SIZE];
 
 			db heap[HEAP_SIZE];
 		};

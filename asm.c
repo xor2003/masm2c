@@ -1,5 +1,5 @@
 #include "asm.h"
-#include "test-i386.h"
+#include "iplay_masm_.h"
 
 #include <time.h>
 
@@ -963,39 +963,41 @@ moveToBackGround:
 return ;//(executionFinished == 0);
 }
 
-#include <curses.h>
 void realtocurs()
 {
-/*
-    if(can_change_color())
+
+//    if(can_change_color())
     for(int colorNumber=0;colorNumber<16; colorNumber++)
 	{
-	short red   = ( ((colorNumber & 4)>>1) + ((colorNumber & 8)>>3)) /3;
-	short green = ( ((colorNumber & 2))    + ((colorNumber & 8)>>3)) /3;
-	short blue  = ( ((colorNumber & 1)<<1) + ((colorNumber & 8)>>3)) /3;
+	short red   =  (510*((colorNumber & 4)>>2) + 255*((colorNumber & 8)>>3))/3;
+	short green =  (510*((colorNumber & 2)>>1)    + 255*((colorNumber & 8)>>3))/3;
+	short blue  =  (510*((colorNumber & 1)) + 255*((colorNumber & 8)>>3))/3;
 	if (colorNumber == 6) green >>= 1;
-	init_color(colorNumber, red,green,blue);
+//	init_color(colorNumber, red,green,blue);
+	printw("color %d, r %x, g %x, b %x\n",colorNumber, red,green,blue);
 	}
+getch();
 
     for( int b=0;b<16; b++)
 {
        for( int f=0;f<16; f++)
         {
-           if(b !=0 && f !=0)
+//           if(b !=0 && f !=0)
 	                init_pair((b<<4)+f, f, b);
         }
 }
-*/
 
+
+/*
 static short realtocurs[16] =
 {
     COLOR_BLACK, COLOR_BLUE, COLOR_GREEN, COLOR_CYAN, COLOR_RED,
     COLOR_MAGENTA, COLOR_YELLOW, COLOR_WHITE, 
-    COLOR_BLACK, COLOR_BLUE, COLOR_GREEN, COLOR_CYAN, COLOR_RED,
-    COLOR_MAGENTA, COLOR_YELLOW, COLOR_WHITE
+//    COLOR_BLACK, COLOR_BLUE, COLOR_GREEN, COLOR_CYAN, COLOR_RED,
+//    COLOR_MAGENTA, COLOR_YELLOW, COLOR_WHITE
 
-//    COLOR_BLACK + 8, COLOR_BLUE + 8, COLOR_GREEN + 8, COLOR_CYAN + 8, COLOR_RED + 8,
-//    COLOR_MAGENTA + 8, COLOR_YELLOW + 8, COLOR_WHITE + 8
+    COLOR_BLACK + 8, COLOR_BLUE + 8, COLOR_GREEN + 8, COLOR_CYAN + 8, COLOR_RED + 8,
+    COLOR_MAGENTA + 8, COLOR_YELLOW + 8, COLOR_WHITE + 8
 
 };
     for( int b=0;b<16; b++)
@@ -1006,6 +1008,6 @@ static short realtocurs[16] =
                 init_pair((b<<4)+f, realtocurs[f], realtocurs[b]);
         }
 }
-
+*/
 
 }
