@@ -1940,6 +1940,7 @@ kloc_1c7ca = 0x1893,
 kloc_1c7cc = 0x1894,
 k_mouse_1c7cf = 0x1895,
 kloc_1c7e9 = 0x1896,
+k_int8old = 0x1897,
 } _offsets;
 
 struct __attribute__((__packed__)) Memory{
@@ -4466,6 +4467,7 @@ db _byte_33508[4104];
 // db seg004[16]; // segment seg004
 //db _byte_34510[4096];
 db stack[STACK_SIZE];
+db int8stack[STACK_SIZE];
 
 			db heap[HEAP_SIZE];
 		};

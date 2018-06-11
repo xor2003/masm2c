@@ -1,6 +1,7 @@
 _text segment byte public 'CODE' use16
 _start:
 label1:
+		mov	es:[di+8], eax
 
 myoffs		dw offset label2
 		dw offset label3

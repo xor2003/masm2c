@@ -2,121 +2,98 @@
 #include "iplay_masm_.h"
 
 #include <time.h>
+#include <thread>
 
-//#include <algorithm> 
-
-//#define __packed  __attribute__((packed))
 struct __attribute__((__packed__)) Memory;
 extern struct Memory m;
 
 /* https://commons.wikimedia.org/wiki/File:Table_of_x86_Registers_svg.svg */
-//uint64_t r##Z##x; \
 
 #define REGDEF_hl(Z)   \
-static uint32_t e##Z##x; \
-static uint16_t& Z##x = *(uint16_t *)& e##Z##x; \
-static uint8_t& Z##l = *(uint8_t *)& e##Z##x; \
-static uint8_t& Z##h = *(((uint8_t *)& e##Z##x)+1); 
-
-/*
-//#define eax r_eax._eax
-//#define ax r_eax._ax
-//#define ah r_eax._dw._ah
-//#define al r_eax._dw._al
-
-#define ebx r_ebx._ebx
-#define bx r_ebx._bx
-#define bh r_ebx._dw._bh
-#define bl r_ebx._dw._bl
-
-#define ecx r_ecx._ecx
-#define cx r_ecx._cx
-#define ch r_ecx._dw._ch
-#define cl r_ecx._dw._cl
-
-#define edx r_edx._edx
-#define dx r_edx._dx
-#define dh r_edx._dw._dh
-#define dl r_edx._dw._dl
-
-
-#define esp r_esp._esp
-#define sp r_esp._sp
-
-#define ebp r_ebp._ebp
-#define bp r_ebp._bp
-
-#define esi r_esi._esi
-#define si r_esi._si
-
-#define edi r_edi._edi
-#define di r_edi._di
-
-#define REGDEF_l(Z)  \
-    union __packed {        \
-        uint64_t _r##Z;      \
-        uint32_t _e##Z;      \
-        uint16_t _##Z;         \
-        uint8_t  _##Z##l;      \
-    } r_e##Z;
-
-#define REGDEF_nol(Z)  \
-    union __packed {        \
-        uint64_t r##Z;      \
-        uint32_t e##Z;      \
-        uint16_t Z;         \
-    } r_e##Z;
-
-#define REGDEF_bwd(Z)  \
-    union __packed {        \
-        uint64_t r##Z;      \
-        uint32_t r##Z##d;   \
-        uint16_t r##Z##w;   \
-        uint8_t  r##Z##b;   \
-    } r_e##Z;
-*/
-
-//uint64_t r##Z; \
+uint32_t& e##Z##x = _state->e##Z##x; \
+uint16_t& Z##x = *(uint16_t *)& e##Z##x; \
+uint8_t& Z##l = *(uint8_t *)& e##Z##x; \
+uint8_t& Z##h = *(((uint8_t *)& e##Z##x)+1); 
 
 #define REGDEF_l(Z) \
-static uint32_t e##Z ; \
-static uint16_t& Z = *(uint16_t *)& e##Z ; \
-static uint8_t&  Z##l = *(uint8_t *)& e##Z ;
+uint32_t& e##Z = _state->e##Z; \
+uint16_t& Z = *(uint16_t *)& e##Z ; \
+uint8_t&  Z##l = *(uint8_t *)& e##Z ;
 
 #define REGDEF_nol(Z) \
-static uint32_t e##Z ; \
-static uint16_t& Z = *(uint16_t *)& e##Z ;
+uint32_t& e##Z = _state->e##Z; \
+uint16_t& Z = *(uint16_t *)& e##Z ;
 
 //struct uc_x86_state {
-dd barrier1=0;
-
-    REGDEF_hl(a);
-    REGDEF_hl(b);
-    REGDEF_hl(c);
-    REGDEF_hl(d);
-
-    REGDEF_l(si);
-    REGDEF_l(di);
-    REGDEF_l(sp);
-    REGDEF_l(bp);
-
-    REGDEF_nol(ip);
 //    REGDEF_nol(flags);
 //};
 
+struct _STATE{
+dd eax;
+dd ebx;
+dd ecx;
+dd edx;
+dd esi;
+dd edi;
+dd esp;
+dd ebp;
+dd eip;
+
+dw cs;         
+dw ds;         
+dw es;         
+dw fs;         
+dw gs;         
+dw ss;         
+                      
+bool CF;       
+bool PF;       
+bool AF;       
+bool ZF;       
+bool SF;       
+bool DF;       
+bool OF;       
+db _indent; 
+char _str[256];
+};
+
+#define X86_REGREF \
+    REGDEF_hl(a);     \
+    REGDEF_hl(b);     \
+    REGDEF_hl(c);     \
+    REGDEF_hl(d);     \
+                      \
+    REGDEF_l(si);     \
+    REGDEF_l(di);     \
+    REGDEF_l(sp);     \
+    REGDEF_l(bp);     \
+                      \
+    REGDEF_nol(ip);   \
+                      \
+dw& cs = _state->cs;         \
+dw& ds = _state->ds;         \
+dw& es = _state->es;         \
+dw& fs = _state->fs;         \
+dw& gs = _state->gs;         \
+dw& ss = _state->ss;         \
+                      \
+bool& CF = _state->CF;       \
+bool& PF = _state->PF;       \
+bool& AF = _state->AF;       \
+bool& ZF = _state->ZF;       \
+bool& SF = _state->SF;       \
+bool& DF = _state->DF;       \
+bool& OF = _state->OF;       \
+dd& stackPointer = _state->esp;\
+_offsets __disp; \
+dw _source;
+
+/*
 #undef REGDEF_hl
 #undef REGDEF_l
 #undef REGDEF_bwd
 #undef REGDEF_nol
 
-static dw cs;
-static dw ds;
-static dw es;
-static dw fs;
-static dw gs;
-static dw ss;
-
-/*
 struct __fl
 {
 	bool _CF:1;
@@ -143,28 +120,16 @@ static struct __fl __eflags;
 #define DF __eflags._DF
 #define SF __eflags._SF
 */
-static bool CF;
-static bool PF;
-static bool AF;
-static bool ZF;
-static bool SF;
-static bool DF;
-static bool OF;
-
-dd barrier2=0;
 
 db vgaPalette[256*3];
 dd selectorsPointer;
 dd selectors[NB_SELECTORS];
-//dd stackPointer;
-dd& stackPointer = esp;
-//db stack[STACK_SIZE];
+
 dd heapPointer;
 db vgaRamPaddingBefore[VGARAM_SIZE];
 db vgaRam[VGARAM_SIZE];
 db vgaRamPaddingAfter[VGARAM_SIZE];
 db* diskTransferAddr = 0;
-_offsets __disp; //for dispatching calls
 #include "memmgr.c"
 
 static const uint32_t MASK[]={0, 0xff, 0xffff, 0xffffff, 0xffffffff};
@@ -187,7 +152,7 @@ void log_error(const char *fmt, ...) {
 #ifdef __LIBRETRO__
 	log_cb(RETRO_LOG_ERROR,"%s",formatted_string);
 #else
-	if (logDebug!=NULL) { fprintf(logDebug,"%s",formatted_string); } else { printf("%s",formatted_string); }
+	if (logDebug!=NULL) { fprintf(logDebug,"%s",formatted_string); fflush(logDebug);} else { printf("%s",formatted_string); }
 #endif
 }
 void log_debug(const char *fmt, ...) {
@@ -200,7 +165,7 @@ void log_debug(const char *fmt, ...) {
 #ifdef __LIBRETRO__
 	log_cb(RETRO_LOG_DEBUG,"%s",formatted_string);
 #else
-	if (logDebug!=NULL) { fprintf(logDebug,"%s",formatted_string); } else { printf("%s",formatted_string); }
+	if (logDebug!=NULL) { fprintf(logDebug,"%s",formatted_string); fflush(logDebug); } else { printf("%s",formatted_string); }
 #endif
 #endif
 }
@@ -214,7 +179,7 @@ void log_info(const char *fmt, ...) {
 #ifdef __LIBRETRO__
 	log_cb(RETRO_LOG_INFO,"%s",formatted_string);
 #else
-	if (logDebug!=NULL) { fprintf(logDebug,"%s",formatted_string); } else { printf("%s",formatted_string); }
+	if (logDebug!=NULL) { fprintf(logDebug,"%s",formatted_string); fflush(logDebug); } else { printf("%s",formatted_string); }
 #endif
 }
 
@@ -239,7 +204,9 @@ void checkIfVgaRamEmpty() {
 	(void) vgaram_empty;
 }
 
-void stackDump() {
+void stackDump(_STATE* _state) {
+X86_REGREF
+
 	log_debug("is_little_endian()=%d\n",isLittle);
 	log_debug("sizeof(dd)=%zu\n",sizeof(dd));
 	log_debug("sizeof(dd *)=%zu\n",sizeof(dd *));
@@ -436,7 +403,8 @@ void asm2C_init() {
 }
 
 
-void asm2C_INT(int a) {
+void asm2C_INT(_STATE* _state, int a) {
+X86_REGREF
 	static FILE * file;
 	int i;
 /*
@@ -464,7 +432,7 @@ void asm2C_INT(int a) {
 		}
 		case 0x13: {
 			log_debug2("Switch to VGA\n");
-			stackDump();
+			stackDump(_state);
 			return;
 		}
 		}
@@ -521,6 +489,18 @@ void asm2C_INT(int a) {
 		case 0x1A: // Set disk transfer addr
 		{
 			diskTransferAddr=(db *)realAddress(dx,ds);
+			return;
+		}
+		case 0x25: // Set disk transfer addr
+		{
+			*(dw *)realAddress(al*4,0)=dx;
+			*(dw *)realAddress(al*4+2,0)=ds;
+			return;
+		}
+		case 0x35: // Set disk transfer addr
+		{
+			bx=*(dw *)realAddress(al*4,0);
+			es=*(dw *)realAddress(al*4+2,0);
 			return;
 		}
 		case 0x2c:
@@ -747,7 +727,7 @@ void asm2C_INT(int a) {
 		}
 		case 0x4c:
 		{
-			stackDump();
+			stackDump(_state);
 			jumpToBackGround = 1;
 			executionFinished = 1;
 			exitCode = al;
@@ -938,9 +918,10 @@ void asm2C_INT(int a) {
 	log_debug("Error DOSInt 0x%x ah:0x%x al:0x%x: bx:0x%x not supported.\n",a,ah,al,bx);
 }
 
-jmp_buf jmpbuffer;
+//jmp_buf jmpbuffer;
 void * dest;
 void * src;
+/*
 void program() {
 int i;
 #ifdef INCLUDEMAIN
@@ -962,7 +943,7 @@ executionFinished = 1;
 moveToBackGround:
 return ;//(executionFinished == 0);
 }
-
+*/
 void realtocurs()
 {
 
@@ -974,9 +955,9 @@ void realtocurs()
 	short blue  =  (510*((colorNumber & 1)) + 255*((colorNumber & 8)>>3))/3;
 	if (colorNumber == 6) green >>= 1;
 //	init_color(colorNumber, red,green,blue);
-	printw("color %d, r %x, g %x, b %x\n",colorNumber, red,green,blue);
+//	printw("color %d, r %x, g %x, b %x\n",colorNumber, red,green,blue);
 	}
-getch();
+//getch();
 
     for( int b=0;b<16; b++)
 {
@@ -1011,3 +992,33 @@ static short realtocurs[16] =
 */
 
 }
+
+int init(_STATE* state);
+void mainproc(_offsets _i, _STATE* state);
+
+int main()
+{
+  _STATE state;
+  _STATE* _state=&state;
+  X86_REGREF
+  
+  /* We expect ram_top as Kbytes, so convert to paragraphs */
+  mcb_init(seg_offset(heap), (HEAP_SIZE / 1024) * 64 - first_mcb - 1, MCB_LAST);
+
+  R(MOV(ss, seg_offset(stack)));	// mov cs,_TEXT
+#if _BITS == 32
+  esp = ((dd)(db*)&m.stack[STACK_SIZE - 4]);
+#else
+  esp=0;
+  sp = STACK_SIZE - 4;
+  es=0;
+ *(dw*)(raddr(0,0x408)) = 0x378; //LPT
+#endif
+
+
+	init(_state);
+
+	mainproc(kbegin, _state);
+	return(0);
+}
+

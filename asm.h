@@ -249,34 +249,57 @@ typedef union registry16Bits
 #define AFFECT_SF(f, a) {SF=( (a)&(1 << sizeof(f)*8 - 1) );}
 #define ISNEGATIVE(f,a) ( (a) & (1 << (sizeof(f)*8-1)) )
 
-// TODO: add missings affected flags on CMP
-#define CMP(a,b) {AFFECT_ZF( ((a)& MASK[sizeof(a)]) !=((b)& MASK[sizeof(a)]) ); \
-		AFFECT_CF((a)<(b)); \
-		AFFECT_SF(a, (a)-(b) );}
+#define CMP(a,b) {dd t=(a-b)& MASK[sizeof(a)]; \
+		AFFECT_CF((t)>(a)); \
+		AFFECT_ZF(t); \
+		AFFECT_SF(a,t);}
+
 #define OR(a,b) {a=a|b; \
 		AFFECT_ZF(a); \
-		AFFECT_SF(a,a)}
+		AFFECT_SF(a,a); \
+		AFFECT_CF(0);}
+
 #define XOR(a,b) {a=a^b; \
 		AFFECT_ZF(a); \
-		AFFECT_SF(a,a)}
+		AFFECT_SF(a,a) \
+		AFFECT_CF(0);}
+
 #define AND(a,b) {a=a&b; \
+		AFFECT_ZF(a); \
+		AFFECT_SF(a,a) \
+		AFFECT_CF(0);}
+
+#define NEG(a) {AFFECT_CF((a)!=0); \
+		a=-a;\
 		AFFECT_ZF(a); \
 		AFFECT_SF(a,a)}
 
-#define NEG(a) {AFFECT_CF((a)!=0); \
-		a=-a;}
 #define TEST(a,b) {AFFECT_ZF((a)&(b)); \
 		AFFECT_CF(0); \
 		AFFECT_SF(a,(a)&(b))}
 
-#define SHR(a,b) {a=a>>b;}
-#define SHL(a,b) {a=a<<b;}
-#define ROR(a,b) {CF=((a)>>(shiftmodule(a,b)-1))&1;a=((a)>>(shiftmodule(a,b)) | a<<(sizeof(a)*8-(shiftmodule(a,b))));}
-#define ROL(a,b) {CF=((a)>>(sizeof(a)*8-(shiftmodule(a,b))))&1;a=(((a)<<(shiftmodule(a,b))) | (a)>>(sizeof(a)*8-(shiftmodule(a,b))));}
+#define SHR(a,b) {if (b) {CF=(a>>(b-1))&1;\
+		a=a>>b;\
+		AFFECT_ZF(a);\
+		AFFECT_SF(a,a)}}
 
-#define SHRD(a,b,c) {int shift = c&(2*bitsizeof(a)-1); \
+#define SHL(a,b) {if (b) {CF=(a) & (1 << (sizeof(a)*8-b));\
+		a=a<<b;\
+		AFFECT_ZF(a);\
+		AFFECT_SF(a,a)}}
+
+#define ROR(a,b) {CF=((a)>>(shiftmodule(a,b)-1))&1;\
+		a=((a)>>(shiftmodule(a,b)) | a<<(sizeof(a)*8-(shiftmodule(a,b))));}
+
+#define ROL(a,b) {CF=((a)>>(sizeof(a)*8-(shiftmodule(a,b))))&1;\
+		a=(((a)<<(shiftmodule(a,b))) | (a)>>(sizeof(a)*8-(shiftmodule(a,b))));}
+
+#define SHRD(a,b,c) {/*TODO CF=(a) & (1 << (sizeof(f)*8-b));*/ \
+			int shift = c&(2*bitsizeof(a)-1); \
 			dd a1=a>>shift; \
-			a=a1 | ( (b& ((1<<shift)-1) ) << (bitsizeof(a)-shift) );} //TODO optimize
+			a=a1 | ( (b& ((1<<shift)-1) ) << (bitsizeof(a)-shift) ); \
+		AFFECT_ZF(a);\
+		AFFECT_SF(a,a)} //TODO optimize
 
 #define SAR(a,b) {bool sign = (a & (1 << (sizeof(a)*8-1)))!=0; int shift = (bitsizeof(a)-b);shift = shift>0?shift:0;\
 	dd sigg=shift<(bitsizeof(a))?( (sign?-1:0)<<shift):0; a = b>bitsizeof(a)?0:a; a=sigg | (a >> b);}  // TODO optimize
@@ -306,30 +329,38 @@ typedef union registry16Bits
 
 #define AAD {al = al + (ah * 10) & 0xFF; ah = 0;} //TODO
 
-#define ADD(a,b) {dd t=(a+b)& MASK[sizeof(a)];AFFECT_CF((t)<(a)); \
+#define ADD(a,b) {dd t=(a+b)& MASK[sizeof(a)]; \
+		AFFECT_CF((t)<(a)); \
 		a=t; \
 		AFFECT_ZF(a); \
 		AFFECT_SF(a,a);}
 
-#define SUB(a,b) {dd t=(a-b)& MASK[sizeof(a)];AFFECT_CF((t)>(a)); \
+#define SUB(a,b) {dd t=(a-b)& MASK[sizeof(a)]; \
+		AFFECT_CF((t)>(a)); \
 		a=t; \
 		AFFECT_ZF(a); \
 		AFFECT_SF(a,a);}
 
-#define ADC(a,b) {dd t=(a+b+CF)& MASK[sizeof(a)];AFFECT_CF((t)<(a)); \
+#define ADC(a,b) {dd t=(a+b+CF)& MASK[sizeof(a)]; \
+		AFFECT_CF((t)<(a)); \
 		a=t; \
 		AFFECT_ZF(a); \
-		AFFECT_SF(a,a);} //TODO
-#define SBB(a,b) {dd t=(a-b-CF)& MASK[sizeof(a)];AFFECT_CF((t)>(a)); \
+		AFFECT_SF(a,a);}
+
+#define SBB(a,b) {dd t=(a-b-CF)& MASK[sizeof(a)]; \
+		AFFECT_CF((t)>(a)); \
 		a=t; \
 		AFFECT_ZF(a); \
 		AFFECT_SF(a,a);} 
 
 // TODO: should affects OF, SF, ZF, AF, and PF
 #define INC(a) {a+=1; \
-		AFFECT_ZF(a);}
+		AFFECT_ZF(a);\
+		AFFECT_SF(a,a);} 
+
 #define DEC(a) {a-=1; \
-		AFFECT_ZF(a);}
+		AFFECT_ZF(a);\
+		AFFECT_SF(a,a);} 
 
 #define IMUL1_1(a) {ax=(int16_t)((int8_t)al)*((int8_t)(a));}
 #define IMUL1_2(a) {int32_t t=(int32_t)((int16_t)ax)*((int16_t)(a));ax=t;dx=t>>16;}
@@ -472,7 +503,7 @@ typedef union registry16Bits
 
 // JMP - Unconditional Jump
 #define JMP(label) GOTOLABEL(label)
-#define GOTOLABEL(a) goto a
+#define GOTOLABEL(a) {_source=__LINE__;goto a;}
 
 
 #define CLD DF=0
@@ -482,15 +513,16 @@ typedef union registry16Bits
 #define CLC CF=0 //TODO
 #define CMC CF ^= 1 //TODO
 
-void stackDump();
+struct _STATE;
+void stackDump(_STATE* state);
 void hexDump (void *addr, int len);
-void asm2C_INT(int a);
+void asm2C_INT(_STATE* state, int a);
 void asm2C_init();
 void asm2C_printOffsets(unsigned int offset);
 
 // directjeu nosetjmp,2
 // directmenu
-#define INT(a) asm2C_INT(a); TESTJUMPTOBACKGROUND
+#define INT(a) asm2C_INT(_state,a); TESTJUMPTOBACKGROUND
 
 #define TESTJUMPTOBACKGROUND  //if (jumpToBackGround) CALL(moveToBackGround);
 
@@ -539,13 +571,14 @@ int8_t asm2C_IN(int16_t data);
  		POP(jmpbuffer); stackPointer-=2; longjmp(jmpbuffer, 0);}
 */
 #define CALL(label) \
-	{ PUSH(eip);\
-	mainproc(label,eax, ebx, ecx, edx,  esi, edi,  ebp); \
+	{ PUSH(eip); ++_state->_indent;log_spaces(_state->_str,_state->_indent);\
+	mainproc(label, _state); \
 	}
 
-#define RET {POP(eip);return;}
+#define RET {POP(eip);--_state->_indent;log_spaces(_state->_str,_state->_indent);return;}
 
 #define RETN RET
+#define IRET RET
 #define RETF {dw tt=0; POP(tt); RET;}
 
 // ---------unimplemented
@@ -558,7 +591,7 @@ int8_t asm2C_IN(int16_t data);
 #define CMPSD log_debug("unimplemented\n");
 #define CMPSW log_debug("unimplemented\n");
 #define CMPXCHG log_debug("unimplemented\n");
-#define CMPXCHG8B(a) log_debug("unimplemented\n");
+#define CMPXCHG8B(a) log_debug("unimplemented\n"); // not in dosbox
 #define DAA log_debug("unimplemented\n");
 #define DAS log_debug("unimplemented\n");
 #define RCL(a,b) log_debug("unimplemented\n");
@@ -567,7 +600,8 @@ int8_t asm2C_IN(int16_t data);
 #define SCASW log_debug("unimplemented\n");
 #define SHLD(a,b,c) log_debug("unimplemented\n");
 #define XADD(a,b) log_debug("unimplemented\n");
-#define CMOVA(a,b) log_debug("unimplemented\n");
+
+#define CMOVA(a,b) log_debug("unimplemented\n"); // not in dosbox
 #define CMOVB(a,b) log_debug("unimplemented\n");
 #define CMOVBE(a,b) log_debug("unimplemented\n");
 #define CMOVG(a,b) log_debug("unimplemented\n");
@@ -583,6 +617,7 @@ int8_t asm2C_IN(int16_t data);
 #define CMOVP(a,b) log_debug("unimplemented\n");
 #define CMOVS(a,b) log_debug("unimplemented\n");
 #define CMOVZ(a,b) log_debug("unimplemented\n");
+
 #define JNO(x) log_debug("unimplemented\n");
 #define JNP(x) log_debug("unimplemented\n");
 #define JO(x) log_debug("unimplemented\n");
@@ -622,8 +657,18 @@ void log_debug(const char *fmt, ...);
 void log_info(const char *fmt, ...);
 void log_debug2(const char *fmt, ...);
 
+void log_spaces(char * s, int n) 
+{ 
+	memset(s, ' ', n); 
+	*(s+n) = 0; 
+}
+
 #if DEBUG==2
-    #define R(a) log_debug("l:%d:%s\n",__LINE__,#a); a
+    #define R(a) {log_debug("l:%d:%s%s\n",__LINE__,_state->_str,#a);}; a
+#elif DEBUG>=3
+    #define R(a) {log_debug("l:%x:%d:%s%s eax: %x ebx: %x ecx: %x edx: %x ebp: %x ds: %x esi: %x es: %x edi: %x\n",std::this_thread::get_id(),__LINE__,_state->_str,#a, \
+eax, ebx, ecx, edx, ebp, ds, esi, es, edi);} \
+	a 
 #else
     #define R(a) a
 #endif

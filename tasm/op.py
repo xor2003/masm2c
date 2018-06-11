@@ -497,7 +497,7 @@ class _iret(baseop):
 	def __init__(self, arg):
 		pass
 	def visit(self, visitor):
-		visitor._ret()
+		visitor._iret()
 #		raise Unsupported("interrupt return")
 
 class _cbw(baseop):

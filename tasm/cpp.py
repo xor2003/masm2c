@@ -83,39 +83,8 @@ class cpp:
 #include "asm.c"
 #include \"%s\"
 
-void mainproc(_offsets _i, dd eax_, dd ebx_, dd ecx_, dd edx_, dd esi_, dd edi_, dd ebp_);
-
-int main()
+int init()
 {
-  /* We expect ram_top as Kbytes, so convert to paragraphs */
-  mcb_init(seg_offset(heap), (HEAP_SIZE / 1024) * 64 - first_mcb - 1, MCB_LAST);
-  esp = ((dd)(db*)&m.stack[STACK_SIZE - 4]);
-
-initscr();
- cbreak();
-    noecho();
-    keypad(stdscr, TRUE);
-
-    if (!has_colors())
-    {
-//	endwin();
-	printf("\\nUnable to use colors\\n");
-//	return 1;
-    }
-
-    start_color();
-
-realtocurs();
-
-//move(4,5);
-// attron(COLOR_PAIR(0x45));
-//	printw("Hello pam pam");
-// attroff(COLOR_PAIR(0x45));
-
-	refresh();
-
-R(MOV(cs, seg_offset(_text)));	// mov cs,_TEXT
-	mainproc(kbegin,eax, ebx, ecx, edx,  esi, edi,  ebp);
 	return(0);
 }
 //namespace %s {
@@ -422,7 +391,9 @@ R(MOV(cs, seg_offset(_text)));	// mov cs,_TEXT
 			reg = m.group(1)
 			plus = m.group(3)
 			if plus is not None and plus != ']':
+				seg_prefix = self.seg_prefix
 				plus = self.expand(plus)
+				self.seg_prefix = seg_prefix
 			else:
 				plus = ""
 			match_id = False
@@ -607,6 +578,9 @@ R(MOV(cs, seg_offset(_text)));	// mov cs,_TEXT
 
 	def _ret(self):
 		self.body += "\tR(RETN);\n"
+
+	def _iret(self):
+		self.body += "\tR(IRET);\n"
 
 	def _retf(self):
 		self.body += "\tR(RETF);\n"
@@ -1042,7 +1016,7 @@ else goto __dispatch_call;
 		for o in offsets:
 			print o
 			self.fd.write("case k%s: \tgoto %s;\n" %o)
-		self.fd.write("default: log_debug(\"Jump/call to nothere %d\\n\", __disp);stackDump(); abort();\n")
+		self.fd.write("default: log_error(\"Jump/call to nothere %d\\n\", __disp);stackDump(); abort();\n")
 		self.fd.write("};\n}\n")
 
 		data_impl += "\nMemory m = {\n"
