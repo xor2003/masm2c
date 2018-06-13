@@ -7,6 +7,7 @@
 #include "asm.c"
 #include "iplay_masm_.h"
 #include <thread>         // std::thread
+#include <time.h>
 
 extern "C"
 {
@@ -74,8 +75,8 @@ if (m._word_14F6C == 0)
 	R(PUSH(fs));	// 8936 push	fs
 	R(PUSH(gs));	// 8937 push	gs
 */
-_STATE state;
-_STATE* _state=&state;
+static _STATE state;
+static _STATE* _state=&state;
 X86_REGREF
 	R(MOV(ax, seg_offset(seg003)));	// 8938 mov	ax, seg003
 	R(MOV(ds, ax));	// 8939 mov	ds, ax
@@ -84,7 +85,7 @@ X86_REGREF
 	R(MOV(*(dw*)(raddr(cs,offset(_text,_word_14F6C))), ax));	// 8941 mov	cs:[_word_14F6C], ax
 //log_error("timer_int_end _word_14F6C = %x",m._word_14F6C);
 	R(STI);	// 8942 sti
-		mainproc(ksub_16c69, _state);
+		CALL(ksub_16c69);
 /*
 	R(POP(gs));	// 8944 pop	gs
 	R(POP(fs));	// 8945 pop	fs
@@ -124,7 +125,7 @@ while(true)
 		{
 
 			CALL(static_cast<_offsets>(bx));
-std::this_thread::sleep_for(std::chrono::microseconds(5));
+std::this_thread::sleep_for(std::chrono::microseconds(1));
 		}
 	}
 }
@@ -136,9 +137,10 @@ X86_REGREF
 logDebug=fopen("iplay_masm_.log","w");
 
 initscr();
- cbreak();
-    noecho();
-    keypad(stdscr, TRUE);
+resize_term(25, 80);
+ cbreak(); // put keys directly to program
+    noecho(); // do not echo
+    keypad(stdscr, TRUE); // provide keypad buttons
 
     if (!has_colors())
     {
@@ -150,11 +152,13 @@ initscr();
 realtocurs();
 
 	refresh();
-
-  strcpy( ((char*)&m)+0x80, "\x09aryx.s3m\x0D");
+   	
+//  strcpy( ((char*)&m)+0x80, "\x09aryx.s3m\x0D");
 
 R(MOV(cs, seg_offset(_text)));	// mov cs,_TEXT
-/*
+
+
+/*---------------------------
 	//Init
 	if(SDL_Init(SDL_INIT_AUDIO | SDL_INIT_TIMER)) {  
 		printf( "Could not initialize SDL - %s\n", SDL_GetError()); 
@@ -176,7 +180,7 @@ R(MOV(cs, seg_offset(_text)));	// mov cs,_TEXT
 
 
 //	while(1)
-{
+//{
 
 //		if (fread(pcm_buffer, 1, pcm_buffer_size, fp) != pcm_buffer_size){
 //			// Loop
@@ -184,7 +188,7 @@ R(MOV(cs, seg_offset(_text)));	// mov cs,_TEXT
 //			fread(pcm_buffer, 1, pcm_buffer_size, fp);
 //			data_count=0;
 //		}
-*/
+-------------------------------*/
 		//Set audio buffer (PCM data)
 		audio_chunk = (Uint8 *) pcm_buffer; 
 		//Audio buffer length
@@ -7037,6 +7041,7 @@ loc_14f95:
  // Procedure _covox_on() start
 _covox_on:
 	R(CALL(k_configure_timer));	// 9021 call	_configure_timer
+//SDL_PauseAudio(0);
 	R(RETN);	// 9022 retn
  // Procedure _covox_timer_int() start
 _covox_timer_int:
@@ -7050,7 +7055,7 @@ _covox_timer_int:
 
         R(MOV(dx,m._word_14FC8));
 
-mvhline(0,0,'*'| COLOR_PAIR(7),al/5);mvhline(0,al/5,' ',80-al/5);
+//mvhline(0,0,'*'| COLOR_PAIR(7),al/5);mvhline(0,al/5,' ',80-al/5);
 	R(OUT(dx, al));	// 9047 out	dx, al		; Printer Data Latch:
 
 	R(MOV(al, 0x20));	// 9049 mov	al, 20h	; ' '
@@ -7059,13 +7064,13 @@ mvhline(0,0,'*'| COLOR_PAIR(7),al/5);mvhline(0,al/5,' ',80-al/5);
 	R(POP(dx));	// 9053 pop	dx
 	R(POP(ax));	// 9054 pop	ax
 	cs=seg_offset(_text);
-attrset(COLOR_PAIR(7));
-mvprintw(1,0,"_word_14FC5 %d", m._word_14FC5);
+//attrset(COLOR_PAIR(7));
+//mvprintw(1,0,"_word_14FC5 %d", m._word_14FC5);
 	R(INC(*(dw*)(raddr(cs,offset(_text,_word_14FC5)))));	// 9055 inc	cs:[_word_14FC5]
 		R(JZ(loc_14fe3));	// 9056 jz	short loc_14FE3
 	cs=seg_offset(_text);
-attrset(COLOR_PAIR(7));
-mvprintw(2,0,"_word_14F6C %d", m._word_14F6C);
+//attrset(COLOR_PAIR(7));
+//mvprintw(2,0,"_word_14F6C %d", m._word_14F6C);
 	R(DEC(*(dw*)(raddr(cs,offset(_text,_word_14F6C)))));	// 9057 dec	cs:[_word_14F6C]
 		R(JZ(_timer_int_end));	// 9058 jz	near ptr _timer_int_end
 	R(IRET);	// 9059 iret
@@ -12715,7 +12720,8 @@ loc_19212:
 		//R(JC(loc_19256));	// 17183 jb	short loc_19256
 	R(CALL(k_callsubx));	// 17184 call	_callsubx
 		R(JC(loc_19256));	// 17185 jb	short loc_19256
-  strcpy( ((char*)&m._buffer_1DB6C), "aryx.s3m");
+  strcpy( ((char*)&m._buffer_1DB6C), ((char*)&m)+0x81);
+  *( ((char*)&m._buffer_1DB6C)+ strlen( ((char*)&m)+0x81))='\0';
 
 	R(CALL(k_readallmoules));	// 17186 call	_readallmoules
 		R(JC(loc_19250));	// 17187 jb	short loc_19250
@@ -13247,7 +13253,8 @@ loc_19848:
 	R(PUSH(es));	// 17820 push	es
 	dx = 0;AFFECT_ZF(0); AFFECT_SF(dx,0);	// 17821 xor	dx, dx
 	R(MOV(es, dx));	// 17822 mov	es, dx
-	R(MOV(edx, *(dd*)(raddr(es,0x46C))));	// 17824 mov	edx, es:[46Ch]
+//	R(MOV(edx, *(dd*)(raddr(es,0x46C))));	// 17824 mov	edx, es:[46Ch]
+	edx=time(0)*18.20648193359375;
 	R(CMP(edx, m._dword_1DE88));	// 17825 cmp	edx, _dword_1DE88
 		R(JZ(loc_1987c));	// 17826 jz	short loc_1987C
 	R(MOV(m._dword_1DE88, edx));	// 17827 mov	_dword_1DE88, edx
@@ -13327,9 +13334,10 @@ loc_19903:
 	R(MOV(al, *(raddr(fs,si))));	// 17938 mov	al, fs:[si]
 	R(OR(al, al));	// 17939 or	al, al
 		R(JZ(loc_19914));	// 17940 jz	short loc_19914	; " " fill the space after file	names
-	R(MOV(*(dw*)(raddr(es,di)), ax));	// 17941 mov	es:[di], ax
+//	R(MOV(*(dw*)(raddr(es,di)), ax));	// 17941 mov	es:[di], ax
+R(STOSW);
 	R(INC(si));	// 17942 inc	si
-	R(ADD(di, 2));	// 17943 add	di, 2
+//	R(ADD(di, 2));	// 17943 add	di, 2
 	R(DEC(cx));	// 17944 dec	cx
 		R(JNZ(loc_19903));	// 17945 jnz	short loc_19903
 loc_19914:
@@ -14409,7 +14417,8 @@ loc_1a3c5:
 	R(PUSH(es));	// 19273 push	es
 	dx = 0;AFFECT_ZF(0); AFFECT_SF(dx,0);	// 19274 xor	dx, dx
 	R(MOV(es, dx));	// 19275 mov	es, dx
-	R(MOV(edx, *(dd*)(raddr(es,0x46C))));	// 19277 mov	edx, es:[46Ch]
+//	R(MOV(edx, *(dd*)(raddr(es,0x46C))));	// 19277 mov	edx, es:[46Ch]
+	edx=time(0)*18.20648193359375;
 	R(CMP(edx, m._dword_1DE88));	// 19278 cmp	edx, _dword_1DE88
 		R(JZ(loc_1a3f6));	// 19279 jz	short loc_1A3F6
 	R(MOV(m._dword_1DE88, edx));	// 19280 mov	_dword_1DE88, edx
@@ -14859,9 +14868,10 @@ loc_1a886:
 	R(MOV(cx, 4));	// 19846 mov	cx, 4
 loc_1a8eb:
 	R(MOV(al, *(raddr(ds,si))));	// 19849 mov	al, [si]
-	R(MOV(*(dw*)(raddr(es,di)), ax));	// 19850 mov	es:[di], ax
+//	R(MOV(*(dw*)(raddr(es,di)), ax));	// 19850 mov	es:[di], ax
+R(STOSW);
 	R(INC(si));	// 19851 inc	si
-	R(ADD(di, 2));	// 19852 add	di, 2
+//	R(ADD(di, 2));	// 19852 add	di, 2
 	R(DEC(cx));	// 19853 dec	cx
 		R(JNZ(loc_1a8eb));	// 19854 jnz	short loc_1A8EB
 	R(RETN);	// 19855 retn
@@ -14907,7 +14917,10 @@ loc_1a951:
 	R(MOV(*(dw*)(raddr(es,di)), ax));	// 19905 mov	es:[di], ax
 	R(MOV(*(dw*)(raddr(es,di+4)), ax));	// 19906 mov	es:[di+4], ax
 	R(ADD(di, 6));	// 19907 add	di, 6
-	R(MOVZX(si, *(raddr(fs,bx+0x35))));	// 19908 movzx	si, byte ptr fs:[bx+35h]
+	R(MOV(*(dw*)(raddr(es,di)), ax));	// 19905 mov	es:[di], ax
+	R(MOV(*(dw*)(raddr(ds,di+4)), ax));	// 19906 mov	es:[di+4], ax
+	R(ADD(di, 6));	// 19907 add	di, 6
+	R(MOVZX(si, *(raddr(ds,bx+0x35))));	// 19908 movzx	si, byte ptr fs:[bx+35h]
 	R(MOV(al, ' '));	// 19909 mov	al, ' '
 	R(TEST(si, 0x0F));	// 19910 test	si, 0Fh
 		R(JZ(loc_1a975));	// 19911 jz	short loc_1A975
@@ -14920,10 +14933,13 @@ loc_1a975:
 	R(AND(si, 0x0F));	// 19919 and	si, 0Fh
 	R(SHL(si, 1));	// 19920 shl	si, 1
 	R(MOV(al, *(raddr(ds,offset(dseg,_notes)+si))));	// 19921 mov	al, byte ptr [_notes+si]	; "  C-C#D-D#E-F-F#G-G#A-A#B-"
-	R(MOV(*(dw*)(raddr(es,di)), ax));	// 19922 mov	es:[di], ax
+//	R(MOV(*(dw*)(raddr(es,di)), ax));	// 19922 mov	es:[di], ax
+R(STOSW);
 	R(MOV(al, *(raddr(ds,(offset(dseg,_notes)+1)+si))));	// 19923 mov	al, byte ptr [(_notes+1)+si]
-	R(MOV(*(dw*)(raddr(es,di+2)), ax));	// 19924 mov	es:[di+2], ax
-	R(ADD(di, 8));	// 19925 add	di, 8
+//	R(MOV(*(dw*)(raddr(es,di+2)), ax));	// 19924 mov	es:[di+2], ax
+R(STOSW);
+//	R(ADD(di, 8));	// 19925 add	di, 8
+	R(ADD(di, 4));	// 19925 add	di, 8
 	R(TEST(*(raddr(fs,bx+0x17)), 1));	// 19926 test	byte ptr fs:[bx+17h], 1
 		R(JNZ(loc_1a9ad));	// 19927 jnz	short loc_1A9AD
 	R(MOV(si, offset(dseg,_aMute)));	// 19928 mov	si, offset _aMute ; "<Mute>		  "
@@ -17147,8 +17163,9 @@ _text_1bf69:
 		R(JZ(_n1_movepos));	// 22570 jz	short _n1_movepos
 	R(CMP(al, 2));	// 22571 cmp	al, 2
 		R(JZ(_n2_setcolor));	// 22572 jz	short _n2_setcolor
-	R(MOV(*(dw*)(raddr(es,di)), ax));	// 22573 mov	es:[di], ax
-	R(ADD(di, 2));	// 22574 add	di, 2
+//	R(MOV(*(dw*)(raddr(es,di)), ax));	// 22573 mov	es:[di], ax
+//	R(ADD(di, 2));	// 22574 add	di, 2
+R(STOSW);
 		R(JMP(_text_1bf69));	// 22575 jmp	short _text_1BF69
 _n2_setcolor:
 LODSB;	// 22580 lodsb

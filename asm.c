@@ -426,13 +426,31 @@ X86_REGREF
 		switch(ax)
 		{
 		case 0x03: {
+			resize_term(25, 80);
 			clear();
+			refresh();
 			log_debug2("Switch to text mode\n");
 			return;
 		}
 		case 0x13: {
 			log_debug2("Switch to VGA\n");
 			stackDump(_state);
+			return;
+		}
+		case 0x83: {
+			resize_term(25, 80);
+			refresh();
+			log_debug2("Switch to text mode\n");
+			return;
+		}
+		case 0x1111: {
+			resize_term(30, 80);
+			refresh();
+			return;
+		}
+		case 0x1112: {
+			resize_term(50, 80);
+			refresh();
 			return;
 		}
 		}
@@ -996,7 +1014,7 @@ static short realtocurs[16] =
 int init(_STATE* state);
 void mainproc(_offsets _i, _STATE* state);
 
-int main()
+int main(int argc, char *argv[])
 {
   _STATE state;
   _STATE* _state=&state;
@@ -1017,6 +1035,15 @@ int main()
 
 
 	init(_state);
+
+  if (argc >= 2)
+  {
+	db s = strlen(argv[1]);
+	*(((char*)&m)+0x80)=s+1;
+	  strcpy( ((char*)&m)+0x81, argv[1]);
+	*(((dw*)&m)+0x81+s)=0xD;
+
+  }
 
 	mainproc(kbegin, _state);
 	return(0);
