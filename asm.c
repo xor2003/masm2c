@@ -4,7 +4,7 @@
 #include <time.h>
 #include <thread>
 
-struct __attribute__((__packed__)) Memory;
+struct /*__attribute__((__packed__))*/ Memory;
 extern struct Memory m;
 
 /* https://commons.wikimedia.org/wiki/File:Table_of_x86_Registers_svg.svg */

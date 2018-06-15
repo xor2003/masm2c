@@ -1971,7 +1971,7 @@ dw _word_14BBB;
 db dummy13;
 dw _word_14CEB;
 dd _int8addr;
-dw _word_14F6C;
+dw audio_len;
 dw _timer_word_14F6E;
 db _byte_14F70;
 db _byte_14F71;

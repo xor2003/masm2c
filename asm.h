@@ -58,7 +58,7 @@ extern "C" {
 #define STOSW STOS(2,2)
 #else
 #define STOSB STOS(1,0)
-#define STOSW {if (es>=0xB800) {dd t=(((es-0xb800)<<4)+di)>>1;/*attron(COLOR_PAIR(ah));*/ mvaddch(t/80, t%80, al|COLOR_PAIR(ah)); /*attroff(COLOR_PAIR(ah))*/;di+=2;refresh();} else {STOS(2,0);}}
+#define STOSW {if (es>=0xB800) {STOS(2,0);} else {attron(COLOR_PAIR(ah)); mvaddch(edi/160, (edi/2)%80, al); /*attroff(COLOR_PAIR(ah))*/;edi+=2;refresh();}}
 #define STOSD STOS(4,0)
 #endif
 
@@ -95,7 +95,8 @@ extern "C" {
 #define STOSW STOS(2,2)
 #else
 #define STOSB STOS(1,0)
-#define STOSW {if (es!=0xB800) {STOS(2,0);} else {attron(COLOR_PAIR(ah)); mvaddch(di/160, (di/2)%80, al); /*attroff(COLOR_PAIR(ah))*/;di+=2;refresh();}}
+//#define STOSW {if (es!=0xB800) {STOS(2,0);} else {dd t=(di>>1);attron(COLOR_PAIR(ah)); mvaddch(t/80, t%80, al); /*attroff(COLOR_PAIR(ah))*/;di+=2;refresh();}}
+#define STOSW {if (es!=0xB800) {STOS(2,0);} else {di+=2;}}
 #define STOSD STOS(4,0)
 #endif
 

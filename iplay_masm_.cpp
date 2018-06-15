@@ -6,12 +6,12 @@
 
 #include "asm.c"
 #include "iplay_masm_.h"
-#include <thread>         // std::thread
+//#include <thread>         // std::thread
 #include <time.h>
 
 extern "C"
 {
-#include "sdl/SDL.h"
+#include "SDL.h"
 };
 
 
@@ -20,7 +20,7 @@ extern "C"
 //|-----------|-------------|
 //chunk-------pos---len-----|
 static  Uint8  *audio_chunk; 
-static  Uint32  audio_len; 
+//static  Uint32  audio_len; 
 static  Uint8  *audio_pos; 
 
 	//For YUV420P
@@ -35,39 +35,66 @@ static  Uint8  *audio_pos;
  * 
 */ 
 void  fill_audio(void *udata,Uint8 *stream,int len){ 
+	log_debug("fill_audio()\n");
 	//SDL 2.0
-	SDL_memset(stream, 0, len);
-	if(audio_len==0)		/*  Only  play  if  we  have  data  left  */ 
+	SDL_memset(stream, 0x80, len);
+	if(m.audio_len==0)		/*  Only  play  if  we  have  data  left  */ 
 			return; 
-	len=(len>audio_len?audio_len:len);	/*  Mix  as  much  data  as  possible  */ 
+	if (pcm_buffer == 0)
+			return;
+//	len=1;
+	len=(len>m.audio_len?m.audio_len:len);	/*  Mix  as  much  data  as  possible  */ 
+
+	log_debug("m._word_14FC5=%x,m._word_14FC5 + len=%x\n",m._word_14FC5,(m._word_14FC5 + len)&0xffff);
+if ((dd)(m._word_14FC5&0xffff) > (dd)((m._word_14FC5 + len)&0xffff))
+	{
+	len = 0x10000-m._word_14FC5;
+	log_debug("len=%d\n",len);
+	}
+
+	log_debug("audio_pos=%x,len=%d\n",audio_pos,len);
+
+//	for (int i=0;i<len;i++) *(audio_pos+i) ^= 0x80;
+	
+	hexDump(audio_pos,len);
 
 	SDL_MixAudio(stream,audio_pos,len,SDL_MIX_MAXVOLUME);
 	audio_pos += len; 
-	audio_len -= len; 
+	log_debug("audio_pos=%x\n",audio_pos);
+//	m.audio_len -= len; 
 
+	log_debug("m._word_14FC5=%x\n",m._word_14FC5);
 	m._word_14FC5 += len;	// 9055 inc	cs:[_word_14FC5]
+	log_debug("m._word_14FC5=%x\n",m._word_14FC5);
 	if (m._word_14FC5==0)
 		goto loc_14fe3_;
 
-	m._word_14F6C -= 1;
-	if (m._word_14F6C == 0)
+	log_debug("m.audio_len=%d\n",m.audio_len);
+	m.audio_len -= len;
+	log_debug("m.audio_len=%d\n",m.audio_len);
+	if (m.audio_len == 0)
 		goto _timer_int_end_;
+	return;
 loc_14fe3_:
+	log_debug("m._word_14FC5=%x\n",m._word_14FC5);
 	m._word_14FC5= 0x0F000;	// 9063 mov	cs:[_word_14FC5], 0F000h
-	if(audio_len==0)		/*  Only  play  if  we  have  data  left  */ 
-	{
-		audio_len =pcm_buffer_size;
+	log_debug("m._word_14FC5=%x\n",m._word_14FC5);
 		audio_pos =pcm_buffer;
+	log_debug("audio_pos=%x\n",audio_pos);
 
-		printf("Now Playing %10d Bytes data.\n",data_count);
-		data_count+=pcm_buffer_size;
-	}
+	log_debug("m.audio_len=%d\n",m.audio_len);
+	m.audio_len -= len;
+	log_debug("m.audio_len=%d\n",m.audio_len);
+	if (m.audio_len == 0)
+		goto _timer_int_end_;
+	return;
 
-	m._word_14F6C -= 1;
+//	m.audio_len -= 1;
 _timer_int_end_:
-if (m._word_14F6C == 0)
-	if (m._byte_14F70)
+	log_debug("m._byte_14F70=%x\n",m._byte_14F70);
+	if (m._byte_14F70 != 0)
   {
+	log_debug("_timer_int_end\n");
 /*
 	R(PUSHAD);	// 8933 pushad
 	R(PUSH(ds));	// 8934 push	ds
@@ -78,14 +105,23 @@ if (m._word_14F6C == 0)
 static _STATE state;
 static _STATE* _state=&state;
 X86_REGREF
+
+R(MOV(cs, seg_offset(_text)));	// mov cs,_TEXT
+
+  R(MOV(ss, seg_offset(int8stack)));	// mov cs,_TEXT
+  esp=0;
+  sp = STACK_SIZE - 4;
+
 	R(MOV(ax, seg_offset(seg003)));	// 8938 mov	ax, seg003
 	R(MOV(ds, ax));	// 8939 mov	ds, ax
+	R(MOV(es, ax));	// 8939 mov	ds, ax
 	R(MOV(ax, m._word_245E4));	// 8940 mov	ax, _word_245E4
-	R(MOV(cs, seg_offset(_text)));	// mov cs,_TEXT
-	R(MOV(*(dw*)(raddr(cs,offset(_text,_word_14F6C))), ax));	// 8941 mov	cs:[_word_14F6C], ax
-//log_error("timer_int_end _word_14F6C = %x",m._word_14F6C);
+	R(MOV(m.audio_len, ax));	// 8941 mov	cs:[audio_len], ax
+	log_debug("m.audio_len=%d\n",m.audio_len);
+//log_error("timer_int_end audio_len = %x",m.audio_len);
 	R(STI);	// 8942 sti
 		CALL(ksub_16c69);
+	log_debug("m._word_14FC5=%x\n",m._word_14FC5);
 /*
 	R(POP(gs));	// 8944 pop	gs
 	R(POP(fs));	// 8945 pop	fs
@@ -93,10 +129,15 @@ X86_REGREF
 	R(POP(ds));	// 8947 pop	ds
 	R(POPAD);	// 8948 popad
 */
+	return;
   }
+//loc_14f3c:
+	m.audio_len = 1;//pcm_buffer_size;
+	log_debug("m.audio_len=%d\n",m.audio_len);
 
 } 
 
+/*
 std::thread int8_thread;
 void int8_thread_proc()
 {
@@ -129,6 +170,7 @@ std::this_thread::sleep_for(std::chrono::microseconds(1));
 		}
 	}
 }
+*/
 
 int init(_STATE* _state)
 {
@@ -158,7 +200,7 @@ realtocurs();
 R(MOV(cs, seg_offset(_text)));	// mov cs,_TEXT
 
 
-/*---------------------------
+//---------------------------
 	//Init
 	if(SDL_Init(SDL_INIT_AUDIO | SDL_INIT_TIMER)) {  
 		printf( "Could not initialize SDL - %s\n", SDL_GetError()); 
@@ -166,18 +208,22 @@ R(MOV(cs, seg_offset(_text)));	// mov cs,_TEXT
 	}
 	//SDL_AudioSpec
 	SDL_AudioSpec wanted_spec;
-	wanted_spec.freq = 8000; 
+	wanted_spec.freq = 44100; 
 	wanted_spec.format = AUDIO_U8; 
 	wanted_spec.channels = 1; 
 	wanted_spec.silence = 0; 
 	wanted_spec.samples = 4096;
 	wanted_spec.callback = fill_audio; 
+	SDL_AudioSpec obtained_spec;
 
-	if (SDL_OpenAudio(&wanted_spec, NULL)<0){ 
+	if (SDL_OpenAudio(&wanted_spec, &obtained_spec)<0){ 
 		printf("can't open audio.\n"); 
 		return -1; 
 	} 
 
+	assert(obtained_spec.format == wanted_spec.format);
+	assert(obtained_spec.channels == wanted_spec.channels);
+	assert(obtained_spec.freq == wanted_spec.freq);
 
 //	while(1)
 //{
@@ -188,11 +234,11 @@ R(MOV(cs, seg_offset(_text)));	// mov cs,_TEXT
 //			fread(pcm_buffer, 1, pcm_buffer_size, fp);
 //			data_count=0;
 //		}
--------------------------------*/
+/*-------------------------------*/
 		//Set audio buffer (PCM data)
 		audio_chunk = (Uint8 *) pcm_buffer; 
 		//Audio buffer length
-		audio_len =0;//pcm_buffer_size;
+		m.audio_len =0;//pcm_buffer_size;
 		audio_pos = audio_chunk;
 		//Play
 //		SDL_PauseAudio(0);
@@ -201,8 +247,8 @@ R(MOV(cs, seg_offset(_text)));	// mov cs,_TEXT
 //	}
 
 	*(dw *)realAddress(8*4,0)=k_int8old;
-    int8_thread = std::thread(int8_thread_proc);
-	int8_thread.detach();
+//    int8_thread = std::thread(int8_thread_proc);
+//	int8_thread.detach();
 
 
 	return 0;
@@ -4844,6 +4890,9 @@ _set_timer_int:
 	R(MOV(ebx, 0x1000));	// 5711 mov	ebx, 1000h	; bytes
 	R(PUSH(dx));	// 5712 push	dx		; dx = subrouting offset
 	R(CALL(k_memalloc));	// 5713 call	_memalloc
+pcm_buffer = raddr(ax,0);
+		m.audio_len =pcm_buffer_size;
+		audio_pos =pcm_buffer;
 	R(POP(dx));	// 5714 pop	dx
 		R(JC(locret_12fb3));	// 5715 jb	short locret_12FB3
 	R(MOV(*(dw*)(raddr(ds,offset(seg003,_dma_buf_pointer))), 0));	// 5716 mov	word ptr [_dma_buf_pointer], 0
@@ -4880,7 +4929,7 @@ _configure_timer:
 	R(CALL(k_set_timer));	// 5759 call	_set_timer
 	R(MOV(*(raddr(cs,offset(_text,_byte_14F70))), 1));	// 5760 mov	cs:[_byte_14F70], 1
 	R(MOV(ax, m._word_245E4));	// 5761 mov	ax, _word_245E4
-	R(MOV(*(dw*)(raddr(cs,offset(_text,_word_14F6C))), ax));	// 5762 mov	cs:[_word_14F6C], ax
+	R(MOV(*(dw*)(raddr(cs,offset(_text,audio_len))), ax));	// 5762 mov	cs:[audio_len], ax
 	R(POPF);	// 5763 popf
 	R(RETN);	// 5764 retn
  // Procedure _memfill8080() start
@@ -4890,7 +4939,7 @@ _memfill8080:
 	ax = 0;AFFECT_ZF(0); AFFECT_SF(ax,0);	// 5775 xor	ax, ax
 	R(CALL(k_set_timer));	// 5776 call	_set_timer
 	R(MOV(*(raddr(cs,offset(_text,_byte_14F70))), 0));	// 5777 mov	cs:[_byte_14F70], 0
-	R(MOV(*(dw*)(raddr(cs,offset(_text,_word_14F6C))), 1));	// 5778 mov	cs:[_word_14F6C], 1
+	R(MOV(*(dw*)(raddr(cs,offset(_text,audio_len))), 1));	// 5778 mov	cs:[audio_len], 1
 	R(MOV(es, *(dw*)(raddr(ds,offset(seg003,_dma_buf_pointer)+2))));	// 5779 mov	es, word ptr [_dma_buf_pointer+2]
 	di = 0;AFFECT_ZF(0); AFFECT_SF(di,0);	// 5781 xor	di, di
 	R(MOV(cx, 0x400));	// 5782 mov	cx, 400h
@@ -6013,7 +6062,7 @@ loc_13d36:
 	R(MOV(m._word_245EE, ax));	// 7379 mov	_word_245EE, ax
 	R(MOV(ax, m._word_245E8));	// 7380 mov	ax, _word_245E8
 	R(MOV(m._word_245E4, ax));	// 7381 mov	_word_245E4, ax
-	R(MOV(*(dw*)(raddr(cs,offset(_text,_word_14F6C))), ax));	// 7382 mov	cs:[_word_14F6C], ax
+	R(MOV(*(dw*)(raddr(cs,offset(_text,audio_len))), ax));	// 7382 mov	cs:[audio_len], ax
 	R(RETN);	// 7383 retn
 loc_13d4b:
 	R(CALL(ksub_13d95));	// 7387 call	sub_13D95
@@ -6986,7 +7035,7 @@ _timer_int_end:
 	R(MOV(ax, seg_offset(seg003)));	// 8938 mov	ax, seg003
 	R(MOV(ds, ax));	// 8939 mov	ds, ax
 	R(MOV(ax, m._word_245E4));	// 8940 mov	ax, _word_245E4
-	R(MOV(*(dw*)(raddr(cs,offset(_text,_word_14F6C))), ax));	// 8941 mov	cs:[_word_14F6C], ax
+	R(MOV(*(dw*)(raddr(cs,offset(_text,audio_len))), ax));	// 8941 mov	cs:[audio_len], ax
 	R(STI);	// 8942 sti
 	R(CALL(ksub_16c69));	// 8943 call	sub_16C69
 	R(POP(gs));	// 8944 pop	gs
@@ -6996,7 +7045,7 @@ _timer_int_end:
 	R(POPAD);	// 8948 popad
 	R(IRET);	// 8949 iret
 loc_14f3c:
-	R(MOV(*(dw*)(raddr(cs,offset(_text,_word_14F6C))), 1));	// 8953 mov	cs:[_word_14F6C], 1
+	R(MOV(*(dw*)(raddr(cs,offset(_text,audio_len))), 1));	// 8953 mov	cs:[audio_len], 1
 	cs=seg_offset(_text);
 __disp = static_cast<_offsets>(*(dd*)(raddr(cs,offset(_text,_int8addr))));
 		R(JMP(__dispatch_call));	// 8954 jmp	cs:[_int8addr]
@@ -7041,7 +7090,7 @@ loc_14f95:
  // Procedure _covox_on() start
 _covox_on:
 	R(CALL(k_configure_timer));	// 9021 call	_configure_timer
-//SDL_PauseAudio(0);
+SDL_PauseAudio(0);
 	R(RETN);	// 9022 retn
  // Procedure _covox_timer_int() start
 _covox_timer_int:
@@ -7055,7 +7104,7 @@ _covox_timer_int:
 
         R(MOV(dx,m._word_14FC8));
 
-//mvhline(0,0,'*'| COLOR_PAIR(7),al/5);mvhline(0,al/5,' ',80-al/5);
+mvhline(0,0,'*'| COLOR_PAIR(7),al/5);mvhline(0,al/5,' ',80-al/5);
 	R(OUT(dx, al));	// 9047 out	dx, al		; Printer Data Latch:
 
 	R(MOV(al, 0x20));	// 9049 mov	al, 20h	; ' '
@@ -7064,20 +7113,20 @@ _covox_timer_int:
 	R(POP(dx));	// 9053 pop	dx
 	R(POP(ax));	// 9054 pop	ax
 	cs=seg_offset(_text);
-//attrset(COLOR_PAIR(7));
-//mvprintw(1,0,"_word_14FC5 %d", m._word_14FC5);
+attrset(COLOR_PAIR(7));
+mvprintw(10,0,"_word_14FC5 %d", m._word_14FC5);
 	R(INC(*(dw*)(raddr(cs,offset(_text,_word_14FC5)))));	// 9055 inc	cs:[_word_14FC5]
 		R(JZ(loc_14fe3));	// 9056 jz	short loc_14FE3
 	cs=seg_offset(_text);
-//attrset(COLOR_PAIR(7));
-//mvprintw(2,0,"_word_14F6C %d", m._word_14F6C);
-	R(DEC(*(dw*)(raddr(cs,offset(_text,_word_14F6C)))));	// 9057 dec	cs:[_word_14F6C]
+attrset(COLOR_PAIR(7));
+mvprintw(11,0,"audio_len %d", m.audio_len);
+	R(DEC(*(dw*)(raddr(cs,offset(_text,audio_len)))));	// 9057 dec	cs:[audio_len]
 		R(JZ(_timer_int_end));	// 9058 jz	near ptr _timer_int_end
 	R(IRET);	// 9059 iret
 loc_14fe3:
 	R(MOV(*(dw*)(raddr(cs,offset(_text,_word_14FC5))), 0x0F000));	// 9063 mov	cs:[_word_14FC5], 0F000h
 	cs=seg_offset(_text);
-	R(DEC(*(dw*)(raddr(cs,offset(_text,_word_14F6C)))));	// 9064 dec	cs:[_word_14F6C]
+	R(DEC(*(dw*)(raddr(cs,offset(_text,audio_len)))));	// 9064 dec	cs:[audio_len]
 		R(JZ(_timer_int_end));	// 9065 jz	near ptr _timer_int_end
 	R(IRET);	// 9066 iret
  // Procedure _covox_off() start
@@ -7143,13 +7192,13 @@ loc_15047:
 	R(ADD(*(dw*)(raddr(cs,offset(_text,_word_15056))), 2));	// 9172 add	cs:[_word_15056], 2
 		R(JC(loc_1507e));	// 9173 jb	short loc_1507E
 	cs=seg_offset(_text);
-	R(DEC(*(dw*)(raddr(cs,offset(_text,_word_14F6C)))));	// 9174 dec	cs:[_word_14F6C]
+	R(DEC(*(dw*)(raddr(cs,offset(_text,audio_len)))));	// 9174 dec	cs:[audio_len]
 		R(JZ(_timer_int_end));	// 9175 jz	near ptr _timer_int_end
 	R(IRET);	// 9176 iret
 loc_1507e:
 	R(MOV(*(dw*)(raddr(cs,offset(_text,_word_15056))), 0x0F000));	// 9180 mov	cs:[_word_15056], 0F000h
 	cs=seg_offset(_text);
-	R(DEC(*(dw*)(raddr(cs,offset(_text,_word_14F6C)))));	// 9181 dec	cs:[_word_14F6C]
+	R(DEC(*(dw*)(raddr(cs,offset(_text,audio_len)))));	// 9181 dec	cs:[audio_len]
 		R(JZ(_timer_int_end));	// 9182 jz	near ptr _timer_int_end
 	R(IRET);	// 9183 iret
  // Procedure _stereo_sndoff() start
@@ -7235,7 +7284,7 @@ loc_1513c:
 	R(OUT(0x20, al));	// 9297 out	20h, al		; Interrupt controller,	8259A.
 	R(POP(ax));	// 9298 pop	ax
 	cs=seg_offset(_text);
-	R(DEC(*(dw*)(raddr(cs,offset(_text,_word_14F6C)))));	// 9299 dec	cs:[_word_14F6C]
+	R(DEC(*(dw*)(raddr(cs,offset(_text,audio_len)))));	// 9299 dec	cs:[audio_len]
 		R(JZ(_timer_int_end));	// 9300 jz	near ptr _timer_int_end
 	R(IRET);	// 9301 iret
 loc_1514e:
@@ -7292,13 +7341,13 @@ _pcspeaker_interrupt:
 	R(INC(*(dw*)(raddr(cs,offset(_text,_word_151A3)))));	// 9400 inc	cs:[_word_151A3]
 		R(JZ(loc_151c9));	// 9401 jz	short loc_151C9
 	cs=seg_offset(_text);
-	R(DEC(*(dw*)(raddr(cs,offset(_text,_word_14F6C)))));	// 9402 dec	cs:[_word_14F6C]
+	R(DEC(*(dw*)(raddr(cs,offset(_text,audio_len)))));	// 9402 dec	cs:[audio_len]
 		R(JZ(_timer_int_end));	// 9403 jz	near ptr _timer_int_end
 	R(IRET);	// 9404 iret
 loc_151c9:
 	R(MOV(*(dw*)(raddr(cs,offset(_text,_word_151A3))), 0x0F000));	// 9408 mov	cs:[_word_151A3], 0F000h
 	cs=seg_offset(_text);
-	R(DEC(*(dw*)(raddr(cs,offset(_text,_word_14F6C)))));	// 9409 dec	cs:[_word_14F6C]
+	R(DEC(*(dw*)(raddr(cs,offset(_text,audio_len)))));	// 9409 dec	cs:[audio_len]
 		R(JZ(_timer_int_end));	// 9410 jz	near ptr _timer_int_end
 	R(IRET);	// 9411 iret
  // Procedure _pcspeaker_off() start
@@ -20011,7 +20060,7 @@ Memory m = {
 186, // dummy13
 558, // _word_14CEB
 0, // _int8addr
-0, // _word_14F6C
+0, // audio_len
 0, // _timer_word_14F6E
 0, // _byte_14F70
 0, // _byte_14F71
@@ -21260,7 +21309,7 @@ offset(dseg,_aGeneralMidi), // dummy531
 {'C','l','o','s','e',' ','t','h','i','s',' ','D','O','S',' ','s','e','s','s','i','o','n',' ','f','i','r','s','t',' ','w','i','t','h',' ','t','h','e',' ','\"','E','X','I','T','\"',' ','c','o','m','m','a','n','d','.','\r','\n'}, // dummy911
 10, // dummy912
 {'(','P','r','e','s','s',' ','a','n','y',' ','k','e','y',' ','t','o',' ','c','o','n','t','i','n','u','e',')','$'}, // dummy913
-"IPLAY.CFG", // _sIplay_cfg
+"iplay.cfg", // _sIplay_cfg
 {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // _buffer_1DB6C
 0, // _buffer_1DBEC
 0, // dummy914
