@@ -5809,7 +5809,7 @@ loc_1302C::				; CODE XREF: sub_13017+Bj
 		mov	_word_24600, 0
 
 loc_13038::				; CODE XREF: sub_13017+2Aj
-		call	sub_16C69
+		call	prepare_samples
 		cmp	_word_24600, 800h
 		jbe	short loc_13038
 		retn
@@ -8861,7 +8861,7 @@ loc_14E79::				; CODE XREF: _proaud_14700+774j
 		cmp	ax, 800h
 		jb	short loc_14E8C
 		push	dx
-		call	sub_16C69
+		call	prepare_samples
 		pop	ax
 		add	ax, 10h
 		jmp	short loc_14E6E
@@ -8940,7 +8940,7 @@ _timer_int_end proc far	; CODE XREF: _covox_timer_int+22j
 		mov	ax, _word_245E4
 		mov	cs:[_word_14F6C], ax
 		sti
-		call	sub_16C69
+		call	prepare_samples
 		pop	gs
 		pop	fs
 		pop	es
@@ -9898,8 +9898,8 @@ sub_154F4 endp
 ; =============== S U B	R O U T	I N E =======================================
 
 
-sub_15577 proc near		; CODE XREF: sub_16C69:loc_16CB9p
-					; sub_16C69+58Ap ...
+sub_15577 proc near		; CODE XREF: prepare_samples:loc_16CB9p
+					; prepare_samples+58Ap ...
 
 ; FUNCTION CHUNK AT 57F2 SIZE 000000C0 BYTES
 ; FUNCTION CHUNK AT 58C0 SIZE 00000021 BYTES
@@ -11161,8 +11161,8 @@ loc_15F81::				; CODE XREF: sub_15577+B21j
 ; =============== S U B	R O U T	I N E =======================================
 
 
-sub_1609F proc near		; CODE XREF: sub_16C69+4Bp
-					; sub_16C69+594p ...
+sub_1609F proc near		; CODE XREF: prepare_samples+4Bp
+					; prepare_samples+594p ...
 
 ; FUNCTION CHUNK AT 55A8 SIZE 0000024A BYTES
 ; FUNCTION CHUNK AT 60E0 SIZE 00000297 BYTES
@@ -12555,7 +12555,7 @@ locret_16C68::				; CODE XREF: sub_1609F:loc_16C20j
 ; =============== S U B	R O U T	I N E =======================================
 
 
-sub_16C69 proc near		; CODE XREF: sub_13017:loc_13038p
+prepare_samples proc near		; CODE XREF: sub_13017:loc_13038p
 					; _proaud_14700+783p ...
 
 ; FUNCTION CHUNK AT 71D3 SIZE 0000008C BYTES
@@ -12573,14 +12573,14 @@ sub_16C69 proc near		; CODE XREF: sub_13017:loc_13038p
 		mov	ax, _word_245EC
 		mov	_word_245EE, ax
 
-loc_16C88::				; CODE XREF: sub_16C69+Ej
+loc_16C88::				; CODE XREF: prepare_samples+Ej
 		mov	_byte_24682, 0
 		cmp	_byte_24623, 1
 		jz	loc_171D3
 		mov	si, offset _volume_25908
 		mov	cx, _word_245D4
 
-loc_16C9D::				; CODE XREF: sub_16C69+59j
+loc_16C9D::				; CODE XREF: prepare_samples+59j
 		cmp	byte ptr [si+1Dh], 0
 		jnz	short loc_16CBE
 		push	cx
@@ -12593,14 +12593,14 @@ loc_16C9D::				; CODE XREF: sub_16C69+59j
 		jmp	short loc_16CBC
 ; ---------------------------------------------------------------------------
 
-loc_16CB9::				; CODE XREF: sub_16C69+44j
+loc_16CB9::				; CODE XREF: prepare_samples+44j
 		call	sub_15577
 
-loc_16CBC::				; CODE XREF: sub_16C69+4Ej
+loc_16CBC::				; CODE XREF: prepare_samples+4Ej
 		pop	si
 		pop	cx
 
-loc_16CBE::				; CODE XREF: sub_16C69+38j
+loc_16CBE::				; CODE XREF: prepare_samples+38j
 		add	si, 50h	; 'P'
 		dec	cx
 		jnz	short loc_16C9D
@@ -12622,21 +12622,21 @@ loc_16CBE::				; CODE XREF: sub_16C69+38j
 		xor	di, di
 		jcxz	short loc_16CEE
 
-loc_16CEB::				; CODE XREF: sub_16C69+71j
+loc_16CEB::				; CODE XREF: prepare_samples+71j
 		call	sub_16CF6
 
-loc_16CEE::				; CODE XREF: sub_16C69+80j
+loc_16CEE::				; CODE XREF: prepare_samples+80j
 		mov	_word_24600, di
 		call	_ems_restore_mapctx
 		retn
-sub_16C69 endp
+prepare_samples endp
 
 
 ; =============== S U B	R O U T	I N E =======================================
 
 
-sub_16CF6 proc near		; CODE XREF: sub_16C69+7Ap
-					; sub_16C69:loc_16CEBp
+sub_16CF6 proc near		; CODE XREF: prepare_samples+7Ap
+					; prepare_samples:loc_16CEBp
 		cmp	_byte_24625, 1
 		jz	loc_16E24
 		mov	bx, cx
@@ -13223,13 +13223,13 @@ locret_171D2::				; CODE XREF: sub_16CF6+30Ej
 sub_16CF6 endp
 
 ; ---------------------------------------------------------------------------
-; START	OF FUNCTION CHUNK FOR sub_16C69
+; START	OF FUNCTION CHUNK FOR prepare_samples
 
-loc_171D3::				; CODE XREF: sub_16C69+29j
+loc_171D3::				; CODE XREF: prepare_samples+29j
 		mov	cx, _word_245D4
 		mov	si, offset _volume_25908
 
-loc_171DA::				; CODE XREF: sub_16C69+5B7j
+loc_171DA::				; CODE XREF: prepare_samples+5B7j
 		push	cx
 		push	si
 		cmp	byte ptr [si+1Dh], 0
@@ -13243,13 +13243,13 @@ loc_171DA::				; CODE XREF: sub_16C69+5B7j
 		jmp	short loc_1721A
 ; ---------------------------------------------------------------------------
 
-loc_171F8::				; CODE XREF: sub_16C69+588j
+loc_171F8::				; CODE XREF: prepare_samples+588j
 		or	_byte_24682, 1
 		call	sub_1609F
 		jmp	short loc_1721A
 ; ---------------------------------------------------------------------------
 
-loc_17202::				; CODE XREF: sub_16C69+57Dj
+loc_17202::				; CODE XREF: prepare_samples+57Dj
 		mov	di, [off_245E2]
 		test	_byte_24682, 2
 		jz	short loc_17212
@@ -13257,12 +13257,12 @@ loc_17202::				; CODE XREF: sub_16C69+57Dj
 		jmp	short loc_1721A
 ; ---------------------------------------------------------------------------
 
-loc_17212::				; CODE XREF: sub_16C69+5A2j
+loc_17212::				; CODE XREF: prepare_samples+5A2j
 		or	_byte_24682, 2
 		call	sub_1609F
 
-loc_1721A::				; CODE XREF: sub_16C69+577j
-					; sub_16C69+58Dj ...
+loc_1721A::				; CODE XREF: prepare_samples+577j
+					; prepare_samples+58Dj ...
 		pop	si
 		pop	cx
 		add	si, 50h	; 'P'
@@ -13289,20 +13289,20 @@ loc_1721A::				; CODE XREF: sub_16C69+577j
 		xor	di, di
 		jcxz	short loc_17257
 
-loc_17254::				; CODE XREF: sub_16C69+5DAj
+loc_17254::				; CODE XREF: prepare_samples+5DAj
 		call	sub_1725F
 
-loc_17257::				; CODE XREF: sub_16C69+5E9j
+loc_17257::				; CODE XREF: prepare_samples+5E9j
 		mov	_word_24600, di
 		call	_ems_restore_mapctx
 		retn
-; END OF FUNCTION CHUNK	FOR sub_16C69
+; END OF FUNCTION CHUNK	FOR prepare_samples
 
 ; =============== S U B	R O U T	I N E =======================================
 
 
-sub_1725F proc near		; CODE XREF: sub_16C69+5E3p
-					; sub_16C69:loc_17254p
+sub_1725F proc near		; CODE XREF: prepare_samples+5E3p
+					; prepare_samples:loc_17254p
 		cmp	_byte_24625, 1
 		jz	loc_17441
 		or	si, 1
@@ -13933,9 +13933,9 @@ locret_177EE::				; CODE XREF: sub_1609F+1582j
 		retn
 ; END OF FUNCTION CHUNK	FOR sub_1609F
 ; ---------------------------------------------------------------------------
-; START	OF FUNCTION CHUNK FOR sub_16C69
+; START	OF FUNCTION CHUNK FOR prepare_samples
 
-_lc_16bit::				; CODE XREF: sub_16C69+5BEj
+_lc_16bit::				; CODE XREF: prepare_samples+5BEj
 		mov	di, _word_24600
 		mov	cx, _word_245E4
 		mov	si, offset _chrin
@@ -13954,20 +13954,20 @@ _lc_16bit::				; CODE XREF: sub_16C69+5BEj
 		xor	di, di
 		jcxz	short loc_1781C
 
-loc_17819::				; CODE XREF: sub_16C69+B9Fj
+loc_17819::				; CODE XREF: prepare_samples+B9Fj
 		call	sub_17824
 
-loc_1781C::				; CODE XREF: sub_16C69+BAEj
+loc_1781C::				; CODE XREF: prepare_samples+BAEj
 		mov	_word_24600, di
 		call	_ems_restore_mapctx
 		retn
-; END OF FUNCTION CHUNK	FOR sub_16C69
+; END OF FUNCTION CHUNK	FOR prepare_samples
 
 ; =============== S U B	R O U T	I N E =======================================
 
 
-sub_17824 proc near		; CODE XREF: sub_16C69+BA8p
-					; sub_16C69:loc_17819p
+sub_17824 proc near		; CODE XREF: prepare_samples+BA8p
+					; prepare_samples:loc_17819p
 		cmp	_byte_24625, 1
 		jz	loc_17A58
 		mov	bx, cx
@@ -25102,19 +25102,19 @@ _word_245DC	dw 0			; DATA XREF: sub_13623+12Dw
 _freq_245DE	dw 0			; DATA XREF: _mod_1024A+40r
 					; __2stm_module+26w ...
 off_245E0	dw offset _chrin		; DATA XREF: sub_12DA8+E9w
-					; sub_16C69+57Fr
+					; prepare_samples+57Fr
 off_245E2	dw offset _myin		; DATA XREF: sub_12DA8+EFw
-					; sub_16C69:loc_17202r
+					; prepare_samples:loc_17202r
 _word_245E4	dw 0			; DATA XREF: _configure_timer+18r
 					; sub_13CF6+4Dw ...
 _word_245E8	dw 0			; DATA XREF: sub_12DA8+5Aw
 					; sub_12DA8+F9w ...
 _word_245EA	dw 0			; DATA XREF: sub_13CF6:loc_13D36w
-					; sub_16C69+13r
+					; prepare_samples+13r
 _word_245EC	dw 0			; DATA XREF: sub_13CF6+44w
-					; sub_16C69+19r
+					; prepare_samples+19r
 _word_245EE	dw 0			; DATA XREF: sub_13CF6+47w
-					; sub_16C69+Aw	...
+					; prepare_samples+Aw	...
 _word_245F0	dw 0			; DATA XREF: _clean_11C43+21w
 					; sub_1265D+46r ...
 _word_245F2	dw 0			; DATA XREF: _mod_n_t_module+12Dr
@@ -25310,8 +25310,8 @@ _play_state	db 0			; DATA XREF: _getset_playstate+Bw
 _snd_init	db 0			; DATA XREF: sub_12D05+Br
 					; _snd_initialzer ...
 _snd_set_flag	db 0			; DATA XREF: sub_12DA8+60w _snd_on+7r ...
-_byte_24682	db 0			; DATA XREF: sub_16C69:loc_16C88w
-					; sub_16C69+3Fr ...
+_byte_24682	db 0			; DATA XREF: prepare_samples:loc_16C88w
+					; prepare_samples+3Fr ...
 _byte_24683	db 0			; DATA XREF: sub_154F4+6w
 					; sub_1609F:loc_15698r	...
 _dword_24684	dd 0			; DATA XREF: _alloc_dma_bufw

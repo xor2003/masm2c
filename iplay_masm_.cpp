@@ -24,7 +24,7 @@ static  Uint8  *audio_chunk;
 static  Uint8  *audio_pos; 
 
 	//For YUV420P
-	int pcm_buffer_size=4096;
+	const int pcm_buffer_size=512;
 	unsigned char *pcm_buffer=0; //(char *)malloc(pcm_buffer_size);
 	long long int data_count=0;
 
@@ -34,59 +34,64 @@ static  Uint8  *audio_pos;
  * len: The length (in bytes) of the audio buffer 
  * 
 */ 
-void  fill_audio(void *udata,Uint8 *stream,int len){ 
-	log_debug("fill_audio()\n");
+//const int mymax = 0x0f000+pcm_buffer_size;
+
+void  fill_audio(void *udata,Uint8 *stream,int need_len){ 
+	log_debug("fill_audio(len=%d)\n", need_len);
 	//SDL 2.0
-	SDL_memset(stream, 0x80, len);
-	if(m.audio_len==0)		/*  Only  play  if  we  have  data  left  */ 
-			return; 
+	SDL_memset(stream, 0x0, need_len);
 	if (pcm_buffer == 0)
 			return;
+	if(m.audio_len==0)		/*  Only  play  if  we  have  data  left  */ 
+			return; 
+_try_again:
+	int len = need_len;
+
+	len=(len>m.audio_len?m.audio_len:len);	//  Mix  as  much  data  as  possible  
 //	len=1;
-	len=(len>m.audio_len?m.audio_len:len);	/*  Mix  as  much  data  as  possible  */ 
 
 	log_debug("m._word_14FC5=%x,m._word_14FC5 + len=%x\n",m._word_14FC5,(m._word_14FC5 + len)&0xffff);
-if ((dd)(m._word_14FC5&0xffff) > (dd)((m._word_14FC5 + len)&0xffff))
+
+if ((dd)(m._word_14FC5 & 0xffff) > (dd)((m._word_14FC5 + len) & 0xffff) )
 	{
-	len = 0x10000-m._word_14FC5;
-	log_debug("len=%d\n",len);
+		len = 0x10000-m._word_14FC5;
+		log_debug("len=%d\n",len);
 	}
 
 	log_debug("audio_pos=%x,len=%d\n",audio_pos,len);
 
 //	for (int i=0;i<len;i++) *(audio_pos+i) ^= 0x80;
 	
-	hexDump(audio_pos,len);
+//	hexDump(audio_pos,len);
 
 	SDL_MixAudio(stream,audio_pos,len,SDL_MIX_MAXVOLUME);
+	stream += len;
+	need_len -= len;
+
+//	hexDump(stream,len);
 	audio_pos += len; 
 	log_debug("audio_pos=%x\n",audio_pos);
-//	m.audio_len -= len; 
 
 	log_debug("m._word_14FC5=%x\n",m._word_14FC5);
 	m._word_14FC5 += len;	// 9055 inc	cs:[_word_14FC5]
 	log_debug("m._word_14FC5=%x\n",m._word_14FC5);
-	if (m._word_14FC5==0)
-		goto loc_14fe3_;
+	if (m._word_14FC5 >= 0x10000 || m._word_14FC5==0)
+	{
+	//	log_debug("m._word_14FC5=%x\n",m._word_14FC5);
+		m._word_14FC5=0x0f000;	// 9063 mov	cs:[_word_14FC5], 0F000h
+		log_debug("m._word_14FC5=%x\n",m._word_14FC5);
+			audio_pos =pcm_buffer;
+		log_debug("audio_pos=%x\n",audio_pos);
+	}
 
 	log_debug("m.audio_len=%d\n",m.audio_len);
 	m.audio_len -= len;
 	log_debug("m.audio_len=%d\n",m.audio_len);
 	if (m.audio_len == 0)
 		goto _timer_int_end_;
-	return;
-loc_14fe3_:
-	log_debug("m._word_14FC5=%x\n",m._word_14FC5);
-	m._word_14FC5= 0x0F000;	// 9063 mov	cs:[_word_14FC5], 0F000h
-	log_debug("m._word_14FC5=%x\n",m._word_14FC5);
-		audio_pos =pcm_buffer;
-	log_debug("audio_pos=%x\n",audio_pos);
 
-	log_debug("m.audio_len=%d\n",m.audio_len);
-	m.audio_len -= len;
-	log_debug("m.audio_len=%d\n",m.audio_len);
-	if (m.audio_len == 0)
-		goto _timer_int_end_;
+	if (need_len) goto _try_again;
+
 	return;
 
 //	m.audio_len -= 1;
@@ -118,9 +123,18 @@ R(MOV(cs, seg_offset(_text)));	// mov cs,_TEXT
 	R(MOV(ax, m._word_245E4));	// 8940 mov	ax, _word_245E4
 	R(MOV(m.audio_len, ax));	// 8941 mov	cs:[audio_len], ax
 	log_debug("m.audio_len=%d\n",m.audio_len);
+/*
+	m._word_14FC5= 0x0F000;	// 9063 mov	cs:[_word_14FC5], 0F000h
+	log_debug("m._word_14FC5=%x\n",m._word_14FC5);
+		audio_pos =pcm_buffer;
+	log_debug("audio_pos=%x\n",audio_pos);
+*/
 //log_error("timer_int_end audio_len = %x",m.audio_len);
 	R(STI);	// 8942 sti
-		CALL(ksub_16c69);
+//	hexDump(pcm_buffer,0x1000);
+		CALL(kprepare_samples);
+//	hexDump(pcm_buffer,0x1000);
+//	hexDump(audio_pos,len);
 	log_debug("m._word_14FC5=%x\n",m._word_14FC5);
 /*
 	R(POP(gs));	// 8944 pop	gs
@@ -129,6 +143,8 @@ R(MOV(cs, seg_offset(_text)));	// mov cs,_TEXT
 	R(POP(ds));	// 8947 pop	ds
 	R(POPAD);	// 8948 popad
 */
+	if (need_len) goto _try_again;
+
 	return;
   }
 //loc_14f3c:
@@ -212,7 +228,7 @@ R(MOV(cs, seg_offset(_text)));	// mov cs,_TEXT
 	wanted_spec.format = AUDIO_U8; 
 	wanted_spec.channels = 1; 
 	wanted_spec.silence = 0; 
-	wanted_spec.samples = 4096;
+	wanted_spec.samples = pcm_buffer_size;
 	wanted_spec.callback = fill_audio; 
 	SDL_AudioSpec obtained_spec;
 
@@ -4964,7 +4980,7 @@ loc_1302c:
 		R(JNZ(loc_1301e));	// 5808 jnz	short loc_1301E
 	R(MOV(m._word_24600, 0));	// 5809 mov	_word_24600, 0
 loc_13038:
-	R(CALL(ksub_16c69));	// 5812 call	sub_16C69
+	R(CALL(kprepare_samples));	// 5812 call	prepare_samples
 	R(CMP(m._word_24600, 0x800));	// 5813 cmp	_word_24600, 800h
 		R(JBE(loc_13038));	// 5814 jbe	short loc_13038
 	R(RETN);	// 5815 retn
@@ -6983,7 +6999,7 @@ loc_14e79:
 	R(CMP(ax, 0x800));	// 8861 cmp	ax, 800h
 		R(JC(loc_14e8c));	// 8862 jb	short loc_14E8C
 	R(PUSH(dx));	// 8863 push	dx
-	R(CALL(ksub_16c69));	// 8864 call	sub_16C69
+	R(CALL(kprepare_samples));	// 8864 call	prepare_samples
 	R(POP(ax));	// 8865 pop	ax
 	R(ADD(ax, 0x10));	// 8866 add	ax, 10h
 		R(JMP(loc_14e6e));	// 8867 jmp	short loc_14E6E
@@ -7037,7 +7053,7 @@ _timer_int_end:
 	R(MOV(ax, m._word_245E4));	// 8940 mov	ax, _word_245E4
 	R(MOV(*(dw*)(raddr(cs,offset(_text,audio_len))), ax));	// 8941 mov	cs:[audio_len], ax
 	R(STI);	// 8942 sti
-	R(CALL(ksub_16c69));	// 8943 call	sub_16C69
+	R(CALL(kprepare_samples));	// 8943 call	prepare_samples
 	R(POP(gs));	// 8944 pop	gs
 	R(POP(fs));	// 8945 pop	fs
 	R(POP(es));	// 8946 pop	es
@@ -9625,8 +9641,8 @@ loc_16c66:
 		R(JNZ(loc_16c22));	// 12549 jnz	short loc_16C22
 locret_16c68:
 	R(RETN);	// 12552 retn
- // Procedure sub_16c69() start
-sub_16c69:
+ // Procedure prepare_samples() start
+prepare_samples:
 	R(CALL(k_ems_save_mapctx));	// 12564 call	_ems_save_mapctx
 	R(CLD);	// 12565 cld
 	R(MOV(ax, m._word_245E8));	// 12566 mov	ax, _word_245E8
@@ -13468,9 +13484,10 @@ loc_199d4:
 	R(MOV(al, *(raddr(fs,si))));	// 18032 mov	al, fs:[si]
 	R(OR(al, al));	// 18033 or	al, al
 		R(JZ(loc_199e7));	// 18034 jz	short loc_199E7
-	R(MOV(*(dw*)(raddr(es,di)), ax));	// 18035 mov	es:[di], ax
+//	R(MOV(*(dw*)(raddr(es,di)), ax));	// 18035 mov	es:[di], ax
+R(STOSW);
 	R(INC(si));	// 18036 inc	si
-	R(ADD(di, 2));	// 18037 add	di, 2
+//	R(ADD(di, 2));	// 18037 add	di, 2
 	R(CMP(si, 0x30));	// 18038 cmp	si, 30h	; '0'
 		R(JC(loc_199d4));	// 18039 jb	short loc_199D4
 loc_199e7:
@@ -14698,8 +14715,10 @@ loc_1a645:
 	R(CALLF(ksub_1265d));	// 19604 call	sub_1265D
 	R(POP(es));	// 19605 pop	es
 	R(POP(di));	// 19606 pop	di
-	R(MOV(*(dw*)(raddr(es,di)), 0x7F20));	// 19607 mov	word ptr es:[di], 7F20h
-	R(ADD(di, 2));	// 19608 add	di, 2		; videoptr
+//	R(MOV(*(dw*)(raddr(es,di)), 0x7F20));	// 19607 mov	word ptr es:[di], 7F20h
+//	R(ADD(di, 2));	// 19608 add	di, 2		; videoptr
+ax=0x7f20;
+R(STOSW);
 	R(MOVZX(si, dh));	// 19609 movzx	si, dh
 	R(AND(si, 0x60));	// 19610 and	si, 1100000b
 	R(SHR(si, 3));	// 19611 shr	si, 3
@@ -14859,7 +14878,8 @@ loc_1a7cc:
 	R(MOV(ah, 0x78));	// 19784 mov	ah, 78h	; 'x'
 loc_1a83e:
 	R(MOV(al, 0x0FE));	// 19787 mov	al, 0FEh ; '?'
-	R(MOV(*(dw*)(raddr(es,di)), ax));	// 19788 mov	es:[di], ax
+//	R(MOV(*(dw*)(raddr(es,di)), ax));	// 19788 mov	es:[di], ax
+R(STOSW);
 	R(LES(di, m._videopoint_shiftd));	// 19789 les	di, _videopoint_shiftd
 	R(ADD(di, 0x238));	// 19790 add	di, 238h
 	R(MOV(ah, 0x7C));	// 19791 mov	ah, 7Ch	; '|'
@@ -14868,7 +14888,8 @@ loc_1a83e:
 	R(MOV(ah, 0x78));	// 19794 mov	ah, 78h	; 'x'
 loc_1a856:
 	R(MOV(al, 0x0FE));	// 19797 mov	al, 0FEh ; '?'
-	R(MOV(*(dw*)(raddr(es,di)), ax));	// 19798 mov	es:[di], ax
+//	R(MOV(*(dw*)(raddr(es,di)), ax));	// 19798 mov	es:[di], ax
+R(STOSW);
 	R(LES(di, m._videopoint_shiftd));	// 19799 les	di, _videopoint_shiftd
 	R(ADD(di, 0x2D8));	// 19800 add	di, 2D8h
 	R(MOV(ah, 0x7C));	// 19801 mov	ah, 7Ch	; '|'
@@ -14877,7 +14898,8 @@ loc_1a856:
 	R(MOV(ah, 0x78));	// 19804 mov	ah, 78h	; 'x'
 loc_1a86e:
 	R(MOV(al, 0x0FE));	// 19807 mov	al, 0FEh ; '?'
-	R(MOV(*(dw*)(raddr(es,di)), ax));	// 19808 mov	es:[di], ax
+//	R(MOV(*(dw*)(raddr(es,di)), ax));	// 19808 mov	es:[di], ax
+R(STOSW);
 	R(LES(di, m._videopoint_shiftd));	// 19809 les	di, _videopoint_shiftd
 	R(ADD(di, 0x378));	// 19810 add	di, 378h	; interp text offset
 	R(MOV(ah, 0x7C));	// 19811 mov	ah, 7Ch	; '|'
@@ -14886,7 +14908,9 @@ loc_1a86e:
 	R(MOV(ah, 0x78));	// 19814 mov	ah, 78h	; 'x'
 loc_1a886:
 	R(MOV(al, 0x0FE));	// 19817 mov	al, 0FEh ; '?'
-	R(MOV(*(dw*)(raddr(es,di)), ax));	// 19818 mov	es:[di], ax
+//	R(MOV(*(dw*)(raddr(es,di)), ax));	// 19818 mov	es:[di], ax
+R(STOSW);
+di-=2;
 	R(MOV(si, offset(dseg,_buffer_1DC6C)));	// 19819 mov	si, offset _buffer_1DC6C
 	R(IMUL3_2(ax,m._word_1DE6A,100));	// 19820 imul	ax, _word_1DE6A, 100
 	R(MOV(al, ah));	// 19821 mov	al, ah
@@ -14961,14 +14985,25 @@ loc_1a947:
 		R(JZ(loc_1a951));	// 19899 jz	short loc_1A951
 	R(MOV(ah, 0x7E));	// 19900 mov	ah, 7Eh	; '~'
 loc_1a951:
-	R(MOV(*(dw*)(raddr(es,di+2)), ax));	// 19903 mov	es:[di+2], ax
-	R(MOV(al, ' '));	// 19904 mov	al, ' '
-	R(MOV(*(dw*)(raddr(es,di)), ax));	// 19905 mov	es:[di], ax
-	R(MOV(*(dw*)(raddr(es,di+4)), ax));	// 19906 mov	es:[di+4], ax
-	R(ADD(di, 6));	// 19907 add	di, 6
-	R(MOV(*(dw*)(raddr(es,di)), ax));	// 19905 mov	es:[di], ax
-	R(MOV(*(dw*)(raddr(ds,di+4)), ax));	// 19906 mov	es:[di+4], ax
-	R(ADD(di, 6));	// 19907 add	di, 6
+{
+db t1=al;
+	al=' ';
+	R(STOSW);
+al=t1;
+}
+	R(STOSW);
+	al=' ';
+	R(STOSW);
+//	R(MOV(*(dw*)(raddr(es,di+2)), ax));	// 19903 mov	es:[di+2], ax
+//	R(MOV(al, ' '));	// 19904 mov	al, ' '
+//	R(MOV(*(dw*)(raddr(es,di)), ax));	// 19905 mov	es:[di], ax
+//	R(MOV(*(dw*)(raddr(es,di+4)), ax));	// 19906 mov	es:[di+4], ax
+//	R(ADD(di, 6));	// 19907 add	di, 6
+//	R(MOV(*(dw*)(raddr(es,di)), ax));	// 19905 mov	es:[di], ax
+//	R(MOV(*(dw*)(raddr(ds,di+4)), ax));	// 19906 mov	es:[di+4], ax
+R(STOSW);
+	R(ADD(di, 2));	// 19907 add	di, 6
+R(STOSW);
 	R(MOVZX(si, *(raddr(ds,bx+0x35))));	// 19908 movzx	si, byte ptr fs:[bx+35h]
 	R(MOV(al, ' '));	// 19909 mov	al, ' '
 	R(TEST(si, 0x0F));	// 19910 test	si, 0Fh
@@ -14978,7 +15013,10 @@ loc_1a951:
 	R(ADD(al, '0'));	// 19914 add	al, '0'
 loc_1a975:
 	R(MOV(ah, 0x7F));	// 19917 mov	ah, 7Fh	; ''
-	R(MOV(*(dw*)(raddr(es,di+4)), ax));	// 19918 mov	es:[di+4], ax
+di+=4;
+R(STOSW);
+di-=6;
+//	R(MOV(*(dw*)(raddr(es,di+4)), ax));	// 19918 mov	es:[di+4], ax
 	R(AND(si, 0x0F));	// 19919 and	si, 0Fh
 	R(SHL(si, 1));	// 19920 shl	si, 1
 	R(MOV(al, *(raddr(ds,offset(dseg,_notes)+si))));	// 19921 mov	al, byte ptr [_notes+si]	; "  C-C#D-D#E-F-F#G-G#A-A#B-"
@@ -15227,9 +15265,10 @@ _txt_1abae:
 	R(MOV(cx, 0x16));	// 20205 mov	cx, 16h
 loc_1abb3:
 	R(MOV(al, *(raddr(fs,si))));	// 20208 mov	al, fs:[si]
-	R(MOV(*(dw*)(raddr(es,di)), ax));	// 20209 mov	es:[di], ax
+//	R(MOV(*(dw*)(raddr(es,di)), ax));	// 20209 mov	es:[di], ax
+	R(STOSW);
 	R(INC(si));	// 20210 inc	si
-	R(ADD(di, 2));	// 20211 add	di, 2
+//	R(ADD(di, 2));	// 20211 add	di, 2
 	R(DEC(cx));	// 20212 dec	cx
 		R(JNZ(loc_1abb3));	// 20213 jnz	short loc_1ABB3
 	R(RETN);	// 20214 retn
@@ -16999,11 +17038,21 @@ loc_1bd95:
 		R(JZ(loc_1bd9f));	// 22305 jz	short loc_1BD9F
 	R(MOV(ah, 0x7E));	// 22306 mov	ah, 7Eh	; '~'
 loc_1bd9f:
-	R(MOV(*(dw*)(raddr(es,di+2)), ax));	// 22309 mov	es:[di+2], ax
-	R(MOV(al, 0x20));	// 22310 mov	al, 20h	; ' '
-	R(MOV(*(dw*)(raddr(es,di)), ax));	// 22311 mov	es:[di], ax
-	R(MOV(*(dw*)(raddr(es,di+4)), ax));	// 22312 mov	es:[di+4], ax
-	R(ADD(di, 6));	// 22313 add	di, 6
+{
+db t2=al;
+	al=' ';
+	R(STOSW);
+	al=t2;
+}
+	R(STOSW);
+	al=' ';
+	R(STOSW);
+
+//	R(MOV(*(dw*)(raddr(es,di+2)), ax));	// 22309 mov	es:[di+2], ax
+//	R(MOV(al, 0x20));	// 22310 mov	al, 20h	; ' '
+//	R(MOV(*(dw*)(raddr(es,di)), ax));	// 22311 mov	es:[di], ax
+//	R(MOV(*(dw*)(raddr(es,di+4)), ax));	// 22312 mov	es:[di+4], ax
+//	R(ADD(di, 6));	// 22313 add	di, 6
 	R(MOV(si, offset(dseg,_buffer_1)));	// 22314 mov	si, offset _buffer_1 ; 2800h
 	R(MOV(eax, 0x0C4C4C4C4));	// 22315 mov	eax, 0C4C4C4C4h
 	R(MOV(*(dw*)(raddr(ds,si)), 0x2020));	// 22316 mov	word ptr [si], 2020h
@@ -17069,8 +17118,9 @@ _hex_1be39:
 		R(JBE(loc_1be43));	// 22383 jbe	short loc_1BE43
 	R(ADD(al, 7));	// 22384 add	al, 7
 loc_1be43:
-	R(MOV(*(dw*)(raddr(es,di)), ax));	// 22387 mov	es:[di], ax
-	R(ADD(di, 2));	// 22388 add	di, 2
+//	R(MOV(*(dw*)(raddr(es,di)), ax));	// 22387 mov	es:[di], ax
+//	R(ADD(di, 2));	// 22388 add	di, 2
+R(STOSW);
 	R(RETN);	// 22389 retn
  // Procedure _message_1be77() start
 _message_1be77:
@@ -20021,7 +20071,7 @@ case ksub_1415e: 	goto sub_1415e;
 case ksub_154f4: 	goto sub_154f4;
 case ksub_15577: 	goto sub_15577;
 case ksub_1609f: 	goto sub_1609f;
-case ksub_16c69: 	goto sub_16c69;
+case kprepare_samples: 	goto prepare_samples;
 case ksub_16cf6: 	goto sub_16cf6;
 case ksub_1725f: 	goto sub_1725f;
 case ksub_17824: 	goto sub_17824;
