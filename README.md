@@ -14,12 +14,12 @@ Key features:
 Other code used: ASM2C (x86 instruction emulation), tasm_recover (from SCUMMVM project; highly modified), QEMU x86 test suit, FreeDOS memory manager.
 License: GPL2.
 Sure ASM2C is better but it written on swift and less instructions supported, also only protected mode.
+TODO: add FPU instructions support.
 
 Inertia Player 1.22
 =============
 Famous reverse engenerred MOD, S3M player.
-Currently platform DOS, SDL (you can run it in DOSBOX)
+Currently platform DOS (ASM), SDL (C)
 There is source code for MASM, TASM Ideal and Nasm, gcc which can be built and running
 
 TODO: fix sound on SDL, finish porting.
-TODO: add FPU instructions support.
