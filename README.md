@@ -2,9 +2,12 @@ MASM x86 to C translator and Inertia Player 1.22 source code.
 ==============
 Translator may be used to port your DOS assembler code to SDL C.
 Dos binary 16real/32protected bit -> IDA Pro (disassembly) -> export assembler (masm format) -> Tasmx to compile (dosbox debugger to fix) -> MASM Converter -> C SDL source.
+
+Key features:
+- Segment memory model and 16bit offsets.
 - Most of x86 instructions (except FPU) are supported (well tested with QEMU tests).
-- flags: Carry, Zero, Sign are supported for most of instructions.
-- Some Int 10h, 21h interrupts are supported.
+- flags: Carry, Zero, Sign are supported for most of x86 instructions.
+- Some BIOS/DOS Int 10h, 21h interrupts are supported.
   Also DOS memory manager and stack.
 - CGA text mode is supported using Curses (PDcurses or NCurses).
 
