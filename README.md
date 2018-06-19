@@ -1,7 +1,8 @@
 MASM x86 to C translator and Inertia Player 1.22 source code.
 ==============
-Translator may be used to port your DOS assembler code to SDL C.
-Dos binary 16real/32protected bit -> IDA Pro (disassembly) -> export assembler (masm format) -> Tasmx to compile (dosbox debugger to fix) -> MASM Converter -> C SDL source.
+Translator may be used to port your DOS assembler code to SDL C. Since there is no working decompiler for 16 bit DOS code yet.
+Your porting path:
+DOS binary 16 bit real or 32 bit protected modes -> IDA Pro (disassembly) -> export assembler (masm format) -> Tasmx to compile (dosbox debugger to fix) -> MASM Converter -> C SDL source.
 
 Key features:
 - Segment memory model and 16bit offsets.
@@ -11,7 +12,9 @@ Key features:
   Also DOS memory manager and stack.
 - CGA text mode is supported using Curses (PDcurses or NCurses).
 
-Other code used: ASM2C (x86 instruction emulation), tasm_recover (from SCUMMVM project; highly modified), QEMU x86 test suit, FreeDOS memory manager.
+Other code reused: ASM2C (x86 instruction emulation), tasm-recover (from SCUMMVM project; highly modified), QEMU x86 test suit, FreeDOS memory manager.
+
+To translate execute: tasm-recover masm_source.asm
 License: GPL2.
 Sure ASM2C is better but it written on swift and less instructions supported, also only protected mode.
 TODO: add FPU instructions support.
