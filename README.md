@@ -1,4 +1,4 @@
-MASM x86 to C translator and Inertia Player 1.22 source code.
+MASM x86 to C translator 0.8 and Inertia Player 1.22 source code.
 ==============
 Translator may be used to port your DOS assembler code to SDL C. Since there is no working decompiler for 16 bit DOS code yet.
 Your porting path:
@@ -17,7 +17,7 @@ Other code reused: ASM2C (x86 instruction emulation), tasm-recover (from SCUMMVM
 To translate execute: tasm-recover masm_source.asm
 License: GPL2.
 Sure ASM2C is better but it written on swift and less instructions supported, also only protected mode.
-TODO: add FPU instructions support.
+TODO: add FPU instructions support, VGA 320x200x256 support, keyboard?
 
 Inertia Player 1.22
 =============
