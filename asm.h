@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include <stdbool.h>
+//#include <pthread.h>
 
 #include "curses.h"
 
@@ -94,8 +95,23 @@ extern "C" {
 #define STOSB STOS(1,3)
 #define STOSW STOS(2,2)
 #else
-#define STOSB STOS(1,0)
-#define STOSW {if (es!=0xB800) {STOS(2,0);} else {dd t=(di>>1);attron(COLOR_PAIR(ah)); mvaddch(t/80, t%80, al); /*attroff(COLOR_PAIR(ah))*/;di+=2;refresh();}}
+#define STOSB { \
+	if (es==0xa000)\
+		{ \
+SDL_SetRenderDrawColor(renderer, vgaPalette[3*al+2], vgaPalette[3*al+1], vgaPalette[3*al], 255); \
+        SDL_RenderDrawPoint(renderer, di%320, di/320); \
+    SDL_RenderPresent(renderer); \
+    di+=1;} \
+	else \
+		{STOS(1,0);} \
+	}
+
+#define STOSW { \
+	if (es==0xB800)  \
+		{dd t=(di>>1);attrset(COLOR_PAIR(ah)); mvaddch(t/80, t%80, al); /*attroff(COLOR_PAIR(ah))*/;di+=2;refresh();} \
+	else \
+		{STOS(2,0);} \
+	}
 //#define STOSW {if (es!=0xB800) {STOS(2,0);} else {di+=2;}}
 #define STOSD STOS(4,0)
 #endif
@@ -426,7 +442,11 @@ typedef union registry16Bits
 #define JNA(label) if (CF || ZF) GOTOLABEL(label)
 #define JBE(label) JNA(label)
 
-#define MOV(dest,src) dest = src
+#if DEBUG >= 3
+#define MOV(dest,src) {log_debug("%x <= (%x)\n",&dest, src); dest = src;}
+#else
+#define MOV(dest,src) {dest = src;}
+#endif
 
 #define LFS(dest,src) dest = src; fs= *(dw*)((db*)&(src) + sizeof(dest))
 #define LES(dest,src) dest = src; es = *(dw*)((db*)&(src) + sizeof(dest))
@@ -667,8 +687,8 @@ void log_spaces(char * s, int n)
 #if DEBUG==2
     #define R(a) {log_debug("l:%d:%s%s\n",__LINE__,_state->_str,#a);}; a
 #elif DEBUG>=3
-    #define R(a) {log_debug("l:%x:%d:%s%s eax: %x ebx: %x ecx: %x edx: %x ebp: %x ds: %x esi: %x es: %x edi: %x\n",std::this_thread::get_id(),__LINE__,_state->_str,#a, \
-eax, ebx, ecx, edx, ebp, ds, esi, es, edi);} \
+    #define R(a) {log_debug("l:%x:%d:%s%s eax: %x ebx: %x ecx: %x edx: %x ebp: %x ds: %x esi: %x es: %x edi: %x fs: %x\n",0/*pthread_self()*/,__LINE__,_state->_str,#a, \
+eax, ebx, ecx, edx, ebp, ds, esi, es, edi, fs);} \
 	a 
 #else
     #define R(a) a

@@ -65,12 +65,13 @@ if ((dd)(m._word_14FC5 & 0xffff) > (dd)((m._word_14FC5 + len) & 0xffff) )
 //	hexDump(audio_pos,len);
 
 	SDL_MixAudio(stream,audio_pos,len,SDL_MIX_MAXVOLUME);
+memset(audio_pos,len,0);
 	stream += len;
 	need_len -= len;
 
 //	hexDump(stream,len);
 	audio_pos += len; 
-	log_debug("audio_pos=%x\n",audio_pos);
+//	log_debug("audio_pos=%x\n",audio_pos);
 
 	log_debug("m._word_14FC5=%x\n",m._word_14FC5);
 	m._word_14FC5 += len;	// 9055 inc	cs:[_word_14FC5]
@@ -81,7 +82,7 @@ if ((dd)(m._word_14FC5 & 0xffff) > (dd)((m._word_14FC5 + len) & 0xffff) )
 		m._word_14FC5=0x0f000;	// 9063 mov	cs:[_word_14FC5], 0F000h
 		log_debug("m._word_14FC5=%x\n",m._word_14FC5);
 			audio_pos =pcm_buffer;
-		log_debug("audio_pos=%x\n",audio_pos);
+//		log_debug("audio_pos=%x\n",audio_pos);
 	}
 
 	log_debug("m.audio_len=%d\n",m.audio_len);
@@ -194,6 +195,8 @@ X86_REGREF
 
 logDebug=fopen("iplay_masm_.log","w");
 
+memset(m._vlm_byte_table,0x8200,0);
+
 initscr();
 resize_term(25, 80);
  cbreak(); // put keys directly to program
@@ -208,6 +211,7 @@ resize_term(25, 80);
 //        printw("COLORS = %d", COLORS); getch();
 
 realtocurs();
+					curs_set(0);
 
 	refresh();
    	
@@ -275,6 +279,8 @@ R(MOV(cs, seg_offset(_text)));	// mov cs,_TEXT
 
 void mainproc(_offsets _i, _STATE* _state){
 X86_REGREF
+
+void* sss=0;
 
 log_debug(">> Entering proc %x\n",_i);
 __disp=_i;
@@ -3971,7 +3977,7 @@ _volume_prep:
 loc_126f0:
 	R(PUSH(dx));	// 4535 push	dx
 	R(PUSH(si));	// 4536 push	si
-	R(CALL(k_volume_prepare_waves));	// 4537 call	_volume_prepare_waves
+	R(CALL(k_update_sound_cyclic_buffer));	// 4537 call	_update_sound_cyclic_buffer
 	R(POP(si));	// 4538 pop	si
 	R(POP(dx));	// 4539 pop	dx
 	R(ADD(si, 0x50));	// 4540 add	si, 50h	; 'P'
@@ -4120,8 +4126,8 @@ sub_1281a:
 	dl = 0;AFFECT_ZF(0); AFFECT_SF(dl,0);	// 4709 xor	dl, dl
 	R(SHR(eax, 0x10));	// 4710 shr	eax, 10h
 		R(JMP(loc_12898));	// 4711 jmp	short loc_12898
- // Procedure _volume_prepare_waves() start
-_volume_prepare_waves:
+ // Procedure _update_sound_cyclic_buffer() start
+_update_sound_cyclic_buffer:
 	R(TEST(*(raddr(ds,si+0x17)), 1));	// 4719 test	byte ptr [si+17h], 1
 		R(JZ(_memclean));	// 4720 jz	_memclean
 	R(TEST(m._sndflags_24622, 1));	// 4721 test	_sndflags_24622, 1
@@ -4212,6 +4218,7 @@ loc_12913:
 loc_1291a:
 	R(SHR(ecx, 16));	// 4815 shr	ecx, 16
 loc_1291e:
+sss=raddr(fs,si);
 	eax = 0;AFFECT_ZF(0); AFFECT_SF(eax,0);	// 4818 xor	eax, eax
 loc_12921:
 	R(MOV(al, *(raddr(fs,si))));	// 4821 mov	al, fs:[si]
@@ -4343,6 +4350,7 @@ loc_12921:
 	R(DEC(cx));	// 4947 dec	cx
 		R(JNZ(loc_12921));	// 4948 jnz	loc_12921
 locret_12a55:
+hexDump(sss,128);
 	R(RETN);	// 4952 retn
  // Procedure _memclean() start
 _memclean:
@@ -14999,11 +15007,6 @@ al=t1;
 //	R(MOV(*(dw*)(raddr(es,di)), ax));	// 19905 mov	es:[di], ax
 //	R(MOV(*(dw*)(raddr(es,di+4)), ax));	// 19906 mov	es:[di+4], ax
 //	R(ADD(di, 6));	// 19907 add	di, 6
-//	R(MOV(*(dw*)(raddr(es,di)), ax));	// 19905 mov	es:[di], ax
-//	R(MOV(*(dw*)(raddr(ds,di+4)), ax));	// 19906 mov	es:[di+4], ax
-R(STOSW);
-	R(ADD(di, 2));	// 19907 add	di, 6
-R(STOSW);
 	R(MOVZX(si, *(raddr(ds,bx+0x35))));	// 19908 movzx	si, byte ptr fs:[bx+35h]
 	R(MOV(al, ' '));	// 19909 mov	al, ' '
 	R(TEST(si, 0x0F));	// 19910 test	si, 0Fh
@@ -15028,7 +15031,7 @@ R(STOSW);
 //	R(ADD(di, 8));	// 19925 add	di, 8
 	R(ADD(di, 4));	// 19925 add	di, 8
 	R(TEST(*(raddr(fs,bx+0x17)), 1));	// 19926 test	byte ptr fs:[bx+17h], 1
-		R(JNZ(loc_1a9ad));	// 19927 jnz	short loc_1A9AD
+		R(JNZ(put_sample_name));	// 19927 jnz	short put_sample_name
 	R(MOV(si, offset(dseg,_aMute)));	// 19928 mov	si, offset _aMute ; "<Mute>		  "
 	R(MOV(ah, 0x7F));	// 19929 mov	ah, 7Fh	; ''
 	R(TEST(*(raddr(fs,bx+0x17)), 2));	// 19930 test	byte ptr fs:[bx+17h], 2
@@ -15038,7 +15041,7 @@ loc_1a9a5:
 loc_1a9a8:
 	R(CALL(k_put_message));	// 19937 call	_put_message
 		R(JMP(loc_1a9c2));	// 19938 jmp	short loc_1A9C2
-loc_1a9ad:
+put_sample_name:
 	R(MOVZX(eax, *(raddr(fs,bx+2))));	// 19942 movzx	eax, byte ptr fs:[bx+2]
 	R(DEC(ax));	// 19943 dec	ax
 		R(JS(loc_1a9a5));	// 19944 js	short loc_1A9A5
@@ -15135,7 +15138,8 @@ loc_1aa88:
 		R(JA(_volume_medium));	// 20050 ja	short _volume_medium
 	R(MOV(cx, si));	// 20051 mov	cx, si
 _volume_medium:
-	R(MOV(ax, 0x7A16));	// 20054 mov	ax, 7A16h
+//	R(MOV(ax, 0x7A16));	// 20054 mov	ax, 7A16h
+	R(MOV(ax, 0x7A2D));	// 20054 mov	ax, 7A16h
 	R(CLD);	// 20055 cld
 	REP	// 0 rep
 STOSW;	// 0 stosw
@@ -15157,7 +15161,8 @@ STOSW;	// 0 stosw
 STOSW;	// 0 stosw
 _volume_endstr:
 	R(MOV(cx, dx));	// 20074 mov	cx, dx
-	R(MOV(ax, 0x7816));	// 20075 mov	ax, 7816h
+//	R(MOV(ax, 0x7816));	// 20075 mov	ax, 7816h
+	R(MOV(ax, 0x782D));	// 20075 mov	ax, 7816h
 	REP	// 0 rep
 STOSW;	// 0 stosw
 loc_1aacb:
@@ -17272,23 +17277,30 @@ LODSB;	// 22580 lodsb
 		R(JMP(_text_1bf69));	// 22582 jmp	short _text_1BF69
 locret_1bf85:
 	R(RETN);	// 22586 retn
+/*
 loc_1bf86:
-STOSW;	// 22593 stosw
+R(STOSW);	// 22593 stosw
+*/
  // Procedure _put_message() start
 _put_message:
+{
+	int s=strlen((const char *)raddr(ds,si));
+	dd t=(di>>1);
+	attrset(COLOR_PAIR(ah)); 
+	mvaddstr(t/80, t%80, (const char *)raddr(ds,si) ); 
+	si+=s;
+	di+=s*2;
+	refresh();
+}
+	R(RETN);	// 22608 retn
+/*
 	R(CLD);	// 22604 cld
 LODSB;	// 22605 lodsb
 	R(OR(al, al));	// 22606 or	al, al
 		R(JNZ(loc_1bf86));	// 22607 jnz	short loc_1BF86
 	R(RETN);	// 22608 retn
- // Procedure _put_message2() start
-_put_message2:
-STOSW;	// 22617 stosw
-	R(CLD);	// 22618 cld
-	R(LODS(*(raddr(fs,si)),1));	// 22619 lods	byte ptr fs:[si]
-	R(OR(al, al));	// 22620 or	al, al
-		R(JNZ(_put_message2));	// 22621 jnz	short _put_message2
-	R(RETN);	// 22622 retn
+*/
+
  // Procedure _loadcfg() start
 _loadcfg:
 	R(MOV(dx, offset(dseg,_sIplay_cfg)));	// 22630 mov	dx, offset _sIplay_cfg ;	"C:\\IPLAY.CFG"
@@ -18437,7 +18449,6 @@ case k_pcspeaker_off: 	goto _pcspeaker_off;
 case k_pcspeaker_on: 	goto _pcspeaker_on;
 case k_psm_module: 	goto _psm_module;
 case k_put_message: 	goto _put_message;
-case k_put_message2: 	goto _put_message2;
 case k_read2buffer: 	goto _read2buffer;
 case k_read_module: 	goto _read_module;
 case k_read_sndsettings: 	goto _read_sndsettings;
@@ -18518,7 +18529,7 @@ case k_volume_endstr: 	goto _volume_endstr;
 case k_volume_higher: 	goto _volume_higher;
 case k_volume_medium: 	goto _volume_medium;
 case k_volume_prep: 	goto _volume_prep;
-case k_volume_prepare_waves: 	goto _volume_prepare_waves;
+case k_update_sound_cyclic_buffer: 	goto _update_sound_cyclic_buffer;
 case k_write_scr: 	goto _write_scr;
 case k_writemixersb: 	goto _writemixersb;
 case k_writesb: 	goto _writesb;
@@ -19754,7 +19765,7 @@ case kloc_1a951: 	goto loc_1a951;
 case kloc_1a975: 	goto loc_1a975;
 case kloc_1a9a5: 	goto loc_1a9a5;
 case kloc_1a9a8: 	goto loc_1a9a8;
-case kloc_1a9ad: 	goto loc_1a9ad;
+case kput_sample_name: 	goto put_sample_name;
 case kloc_1a9c2: 	goto loc_1a9c2;
 case kloc_1aa17: 	goto loc_1aa17;
 case kloc_1aa1a: 	goto loc_1aa1a;
@@ -19931,7 +19942,7 @@ case kloc_1bf31: 	goto loc_1bf31;
 case kloc_1bf3a: 	goto loc_1bf3a;
 case kloc_1bf53: 	goto loc_1bf53;
 case kloc_1bf57: 	goto loc_1bf57;
-case kloc_1bf86: 	goto loc_1bf86;
+//case kloc_1bf86: 	goto loc_1bf86;
 case kloc_1bfc9: 	goto loc_1bfc9;
 case kloc_1bfd9: 	goto loc_1bfd9;
 case kloc_1bfe3: 	goto loc_1bfe3;

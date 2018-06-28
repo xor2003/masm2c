@@ -242,6 +242,7 @@ stopIt:                        /* reached from FIRST_FIT on match */
   foundSeg->m_psp = 1; //cu_psp;     /* the new block is for current process */
   foundSeg->m_name[0] = '\0';
 
+memset(((char*)foundSeg)+16,(foundSeg->m_size)*16,0);
   *para = FP_SEG(foundSeg);
   return SUCCESS;
 }
