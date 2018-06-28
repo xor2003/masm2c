@@ -1,1 +1,1 @@
-"C:\MinGW\bin\g++.exe" -mno-ms-bitfields iplay_masm_.cpp pdcurses.lib  -o iplay_masm -O0  -Wno-multichar   -lgdi32 -lcomdlg32  -I\MinGW\include\SDL2 -lmingw32 -lSDL2main -lSDL2
+"C:\MinGW\bin\g++.exe" -mno-ms-bitfields iplay_masm_.cpp pdcurses.lib  -o iplay_masm -O0  -Wno-multichar   -lgdi32 -lcomdlg32  -I\MinGW\include\SDL2 -lmingw32 -lSDL2main -lSDL2 -ggdb

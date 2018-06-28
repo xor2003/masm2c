@@ -83,10 +83,6 @@ class cpp:
 #include "asm.c"
 #include \"%s\"
 
-int init()
-{
-	return(0);
-}
 //namespace %s {
 """ %(banner, header, namespace))
 		self.expr_size = 0
@@ -906,7 +902,31 @@ int init()
 				self.body += "int %s() {\ngoto %s;\n" %(self.function_name_remapping[name], self.context.entry_point);
 			else:
 				self.body += """
-void %s(_offsets _i, dd eax_, dd ebx_, dd ecx_, dd edx_, dd esi_, dd edi_, dd ebp_){
+int init(_STATE* _state)
+{
+X86_REGREF
+
+initscr();
+resize_term(25, 80);
+ cbreak(); // put keys directly to program
+    noecho(); // do not echo
+    keypad(stdscr, TRUE); // provide keypad buttons
+
+    if (!has_colors())
+    {
+	printw("Unable to use colors");
+    }
+	start_color();
+
+	realtocurs();
+	curs_set(0);
+
+	refresh();
+	return(0);
+}
+
+void %s(_offsets _i, _STATE* _state){
+X86_REGREF
 __disp=_i;
 if (__disp==kbegin) goto %s;
 else goto __dispatch_call;
@@ -1016,7 +1036,7 @@ else goto __dispatch_call;
 		for o in offsets:
 			print o
 			self.fd.write("case k%s: \tgoto %s;\n" %o)
-		self.fd.write("default: log_error(\"Jump/call to nothere %d\\n\", __disp);stackDump(); abort();\n")
+		self.fd.write("default: log_error(\"Jump/call to nothere %d\\n\", __disp);stackDump(_state); abort();\n")
 		self.fd.write("};\n}\n")
 
 		data_impl += "\nMemory m = {\n"

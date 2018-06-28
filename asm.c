@@ -1,5 +1,9 @@
 #include "asm.h"
-#include "iplay_masm_.h"
+#include "snow.h"
+//#include "iplay_masm_.h"
+
+#include <SDL.h>
+#include <assert.h>
 
 #include <time.h>
 #include <thread>
@@ -121,6 +125,8 @@ static struct __fl __eflags;
 #define SF __eflags._SF
 */
 
+    SDL_Renderer *renderer;
+    SDL_Window *window;
 db vgaPalette[256*3];
 dd selectorsPointer;
 dd selectors[NB_SELECTORS];
@@ -184,7 +190,7 @@ void log_info(const char *fmt, ...) {
 }
 
 void log_debug2(const char *fmt, ...) {
-#if DEBUG==2
+#if DEBUG>=2
 	char formatted_string[MAX_FMT_SIZE];
 	va_list argptr;
 	va_start(argptr,fmt);
@@ -423,35 +429,67 @@ X86_REGREF
 	switch(a) {
 	case 0x10:
 	{
-		switch(ax)
+		switch(ah)
 		{
-		case 0x03: {
-			resize_term(25, 80);
-			clear();
-			refresh();
-			log_debug2("Switch to text mode\n");
-			return;
+		case 0: { // set mode
+			switch(al)
+			{
+			case 0x03: {
+				resize_term(25, 80);
+				clear();
+				refresh();
+				log_debug2("Switch to text mode\n");
+				return;
+			}
+			case 0x83: {
+				resize_term(25, 80);
+				refresh();
+				log_debug2("Switch to text mode\n");
+				return;
+			}
+			case 0x13: {
+				log_debug2("Switch to VGA\n");
+				SDL_Init(SDL_INIT_VIDEO);
+				SDL_CreateWindowAndRenderer(320, 200, 0, &window, &renderer);
+				SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+				SDL_RenderClear(renderer);
+			        SDL_RenderPresent(renderer); 
+				//stackDump(_state);
+				return;
+			}
+			}
+			break;
 		}
-		case 0x13: {
-			log_debug2("Switch to VGA\n");
-			stackDump(_state);
-			return;
+		case 0x02: { // set cursor
+				int y,x;
+				getmaxyx(stdscr,y,x);
+				if (dh >= y || dl >= x)
+				{
+					curs_set(0);
+				}
+				else
+				{
+//					curs_set(1);
+					move(dh, dl);
+					refresh();
+				}
+				return;
 		}
-		case 0x83: {
-			resize_term(25, 80);
-			refresh();
-			log_debug2("Switch to text mode\n");
-			return;
-		}
-		case 0x1111: {
-			resize_term(30, 80);
-			refresh();
-			return;
-		}
-		case 0x1112: {
-			resize_term(50, 80);
-			refresh();
-			return;
+		case 0x11: {        //set charset size
+			switch(al)
+			{
+			case 0x11: {
+				resize_term(30, 80);
+				refresh();
+				return;
+			}
+			case 0x12: {
+				resize_term(50, 80);
+				refresh();
+				return;
+			}
+			}
+			break;
 		}
 		}
 		break;
