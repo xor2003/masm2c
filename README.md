@@ -1,4 +1,4 @@
-MASM x86 to C translator 0.8 and Inertia Player 1.22 source code.
+MASM x86 to C translator 0.8
 ==============
 Translator may be used to port your DOS assembler code to SDL C. Since there is no working decompiler for 16 bit DOS code yet.
 Your porting path:
@@ -19,7 +19,11 @@ License: GPL2.
 Sure ASM2C is better but it written on swift and less instructions supported, also only protected mode.
 TODO: add FPU instructions support, VGA 320x200x256 support, keyboard?
 
-Inertia Player 1.22
+Execute to convert asm to C:
+masm-recover <some.asm>
+Some source code update required.
+
+Inertia Player 1.22 source code
 =============
 Famous reverse engenerred MOD, S3M player.
 Currently platform DOS (ASM), SDL (C)
