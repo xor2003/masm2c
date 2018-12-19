@@ -2,7 +2,7 @@ MASM x86 to C translator 0.8
 ==============
 Translator may be used to port your DOS assembler code to SDL C. Since there is no working decompiler for 16 bit DOS code yet.
 Your porting path:
-DOS binary 16 bit real or 32 bit protected modes -> IDA Pro (disassembly) -> export assembler (masm format) -> Tasmx to compile (dosbox debugger to fix) -> MASM Converter -> C SDL source.
+DOS binary 16 bit real or 32 bit protected modes -> IDA Pro (disassembly) -> export assembler (masm format) -> Tasmx to compile (dosbox debugger to fix) -> this MASM to C translator -> C SDL source.
 
 Key features:
 - Segment memory model and 16bit offsets.
