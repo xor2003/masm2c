@@ -21,6 +21,7 @@ Sure ASM2C is better but it written on swift and less instructions supported, al
 TODO: add FPU instructions support, VGA 320x200x256 support, keyboard?
 
 Execute to convert asm to C:
+
 masm-recover <some.asm>
 
 (Some small resulting source code modification will be also required to build)
