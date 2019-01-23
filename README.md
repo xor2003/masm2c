@@ -14,14 +14,16 @@ Key features:
 
 Other code reused: ASM2C (x86 instruction emulation), tasm-recover (from SCUMMVM project; highly modified), QEMU x86 test suit, FreeDOS memory manager.
 
-To translate execute: tasm-recover masm_source.asm
 License: GPL2.
+
 Sure ASM2C is better but it written on swift and less instructions supported, also only protected mode.
+
 TODO: add FPU instructions support, VGA 320x200x256 support, keyboard?
 
 Execute to convert asm to C:
 masm-recover <some.asm>
-Some source code update required.
+
+(Some small resulting source code modification will be also required to build)
 
 Inertia Player 1.22 source code
 =============
