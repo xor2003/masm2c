@@ -230,7 +230,7 @@ typedef union registry16Bits
 
 #define VGARAM_SIZE 320*200
 #define STACK_SIZE 1024*10
-#define HEAP_SIZE 1024*1024 - 16 - STACK_SIZE
+#define HEAP_SIZE 640*1024 - 16 - STACK_SIZE
 #define NB_SELECTORS 128
 
 

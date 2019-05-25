@@ -1,6 +1,6 @@
 #include "asm.h"
-#include "snow.h"
-//#include "iplay_masm_.h"
+//#include "snow.h"
+#include "iplay_masm_.h"
 
 #include <SDL.h>
 #include <assert.h>
