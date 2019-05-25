@@ -399,7 +399,7 @@ kloc_1263d = 0x128e,
 kloc_12644 = 0x128f,
 kloc_12655 = 0x1290,
 kloc_1265b = 0x1291,
-ksub_1265d = 0x1292,
+krender_1265d = 0x1292,
 ksub_126a9 = 0x1293,
 k_volume_prep = 0x1294,
 kloc_126f0 = 0x1295,
@@ -429,10 +429,10 @@ klocret_12a55 = 0x12ac,
 k_memclean = 0x12ad,
 k_volume_12a66 = 0x12ae,
 kloc_12a73 = 0x12af,
-k_change_volume = 0x12b0,
+k_getset_volume = 0x12b0,
 kloc_12a98 = 0x12b1,
 kloc_12aa9 = 0x12b2,
-k_change_amplif = 0x12b3,
+k_getset_amplif = 0x12b3,
 kloc_12acb = 0x12b4,
 kloc_12ace = 0x12b5,
 k_get_playsettings = 0x12b6,
@@ -524,7 +524,7 @@ ksub_13429 = 0x130b,
 kloc_13471 = 0x130c,
 klocret_13498 = 0x130d,
 kloc_13499 = 0x130e,
-ksub_135ca = 0x130f,
+ksub_3_135ca = 0x130f,
 kloc_135d3 = 0x1310,
 kloc_135e0 = 0x1311,
 kloc_135f2 = 0x1312,
@@ -547,7 +547,7 @@ kloc_137ce = 0x1322,
 ksub_137d5 = 0x1323,
 kloc_137f0 = 0x1324,
 klocret_13812 = 0x1325,
-ksub_13813 = 0x1326,
+kchanl_2_eff_13813 = 0x1326,
 ksub_13826 = 0x1327,
 kloc_13848 = 0x1328,
 kloc_13863 = 0x1329,
@@ -704,7 +704,7 @@ kloc_14090 = 0x13bf,
 kloc_140a2 = 0x13c0,
 klocret_140b2 = 0x13c1,
 kloc_140b3 = 0x13c2,
-ksub_140b6 = 0x13c3,
+kprepare_channels_1_140b6 = 0x13c3,
 kloc_140d8 = 0x13c4,
 klocret_140e5 = 0x13c5,
 kloc_140e6 = 0x13c6,
@@ -844,7 +844,7 @@ k_midi_154de = 0x144b,
 ksub_154f4 = 0x144c,
 kloc_15525 = 0x144d,
 k_lc_inerpol_disabld = 0x144e,
-ksub_15577 = 0x144f,
+kchanel_15577 = 0x144f,
 kloc_155a8 = 0x1450,
 kloc_155b8 = 0x1451,
 kloc_155c8 = 0x1452,
@@ -907,7 +907,7 @@ kloc_15f52 = 0x148a,
 kloc_15f65 = 0x148b,
 kloc_15f78 = 0x148c,
 kloc_15f81 = 0x148d,
-ksub_1609f = 0x148e,
+kchanel_1609f = 0x148e,
 kloc_160d0 = 0x148f,
 kloc_160e0 = 0x1490,
 kloc_160f0 = 0x1491,
@@ -1001,7 +1001,7 @@ kloc_16cbc = 0x14e8,
 kloc_16cbe = 0x14e9,
 kloc_16ceb = 0x14ea,
 kloc_16cee = 0x14eb,
-ksub_16cf6 = 0x14ec,
+kchanel_16cf6 = 0x14ec,
 kloc_16d0b = 0x14ed,
 kloc_16d16 = 0x14ee,
 kloc_16d21 = 0x14ef,
@@ -1497,7 +1497,7 @@ kloc_19e5e = 0x16d8,
 kloc_19eba = 0x16d9,
 kloc_19ec7 = 0x16da,
 kloc_19ecc = 0x16db,
-k_keyb_19efd = 0x16dc,
+k_keyb_screen_loop = 0x16dc,
 kloc_19f6c = 0x16dd,
 kloc_1a042 = 0x16de,
 k_l_1a044 = 0x16df,
@@ -3490,7 +3490,7 @@ dw off_245CC;
 dw off_245CE;
 dd _savesp_245D0;
 dw _word_245D2;
-dw _word_245D4;
+dw _mod_channels_number;
 dw _word_245D6;
 dw _word_245D8;
 dw _word_245DA;
@@ -3511,7 +3511,7 @@ dw _word_245F8;
 dw _word_245FA;
 dw _volume_245FC;
 dw _amplification;
-dw _word_24600;
+dw _samples_outoffs_24600;
 dw _word_24602;
 dw _interrupt_mask;
 dw _old_intprocoffset;
@@ -3535,9 +3535,9 @@ db _byte_2461F;
 db _byte_24620;
 db _byte_24621;
 db _sndflags_24622;
-db _byte_24623;
+db _is_stereo;
 db _bit_mode;
-db _byte_24625;
+db _high_amplif;
 dw _gravis_port;
 db _byte_24628;
 db _byte_24629;
@@ -4337,7 +4337,7 @@ db dummy1630;
 db dummy1631;
 db dummy1632;
 db dummy1633;
-db _volume_25908[2560];
+db _channels_25908[32*80]; // 32 channels
 db _myout[6336];
 dd _dword_27BC8;
 dd _dword_27BCC;
