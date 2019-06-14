@@ -56,7 +56,7 @@ db mem_access_mode=0;   /* memory allocation scheme             */
 #define mcbFreeable(mcbp) \
 	((mcbp)->m_type == MCB_NORMAL || (mcbp)->m_type == MCB_LAST)
 
-#define para2far(seg) ( (mcb *)((db *)&m + (seg<<4)) ) //(seg<<4)
+#define para2far(seg) ( (mcb *)((db *)&m + ((seg)<<4)) ) //(seg<<4)
 
 typedef mcb * mcb_p;
 
@@ -242,7 +242,7 @@ stopIt:                        /* reached from FIRST_FIT on match */
   foundSeg->m_psp = 1; //cu_psp;     /* the new block is for current process */
   foundSeg->m_name[0] = '\0';
 
-memset(((char*)foundSeg)+16,(foundSeg->m_size)*16,0);
+memset(((char*)foundSeg)+16,0,(foundSeg->m_size)*16);
   *para = FP_SEG(foundSeg);
   return SUCCESS;
 }

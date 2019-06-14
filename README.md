@@ -30,7 +30,15 @@ masm-recover <some.asm>
 Inertia Player 1.22 source code
 =============
 Famous reverse engenerred MOD, S3M player.
-Currently platform DOS (ASM), SDL (C)
+Currently platform DOS (ASM), SDL2 (C++)
 There is source code for MASM, TASM Ideal and Nasm, gcc which can be built and running
 
-TODO: fix sound on SDL, finish porting.
+TODO: fix sound on SDL, finish porting (keyboard, graphics mode,...)
+
+To build Inertia for SDL:
+1. get PDCurses or other curses library+headers, SDL2, mingw32
+2. build_mingw.bat
+3. execute:
+iplay_masm.exe HACKER4.S3M 
+
+

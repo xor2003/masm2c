@@ -443,11 +443,20 @@ typedef union registry16Bits
 #define JBE(label) JNA(label)
 
 #if DEBUG >= 3
-#define MOV(dest,src) {log_debug("%x <= (%x)\n",&dest, src); dest = src;}
+#define MOV(dest,src) {log_debug("%x := (%x)\n",&dest, src); dest = src;}
 #else
 #define MOV(dest,src) {dest = src;}
 #endif
-
+/*
+#if DEBUG >= 3
+#define MOV(dest,src) {log_debug("%x := (%x)\n",&dest, src); MOV_(&dest,src);}
+#else
+#define MOV(dest,src) {MOV_(&dest,src);}
+#endif
+template <class D, class S>
+void MOV_(D* dest, const S& src)
+{ *dest = static_cast<D>(src); }
+*/
 #define LFS(dest,src) dest = src; fs= *(dw*)((db*)&(src) + sizeof(dest))
 #define LES(dest,src) dest = src; es = *(dw*)((db*)&(src) + sizeof(dest))
 #define LGS(dest,src) dest = src; gs = *(dw*)((db*)&(src) + sizeof(dest))
