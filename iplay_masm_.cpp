@@ -3036,7 +3036,7 @@ _ems_init:
 	R(MOV(ax, 8));	// 3339 mov	ax, 8
 		R(JNZ(loc_11e00));	// 3340 jnz	short loc_11E00
 	R(MOV(m._ems_handle, dx));	// 3341 mov	_ems_handle, dx
-	R(MOV(m._ems_enabled, 1));	// 3342 mov	_ems_enabled, 1
+//x0r	R(MOV(m._ems_enabled, 1));	// 3342 mov	_ems_enabled, 1
 	R(MOV(m._ems_log_pagenum, 0));	// 3343 mov	_ems_log_pagenum, 0
 	ax = 0;AFFECT_ZF(0); AFFECT_SF(ax,0);	// 3344 xor	ax, ax
 	R(CLC);	// 3345 clc
