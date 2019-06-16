@@ -6,19 +6,18 @@
 #include <stdarg.h>
 #include <string.h>
 #include <math.h>
-#include <setjmp.h>
+//#include <setjmp.h>
 #include <stddef.h>
-#include <stdio.h>
+#include <cstdio>
 #include <assert.h>
 #include <stdbool.h>
-//#include <pthread.h>
 
 #include "curses.h"
-
+/*
 #ifdef __cplusplus
 extern "C" {
 #endif
-
+*/
 #if defined(_WIN32) || defined(__INTEL_COMPILER)
 #define INLINE __inline
 #elif defined(__STDC_VERSION__) && __STDC_VERSION__>=199901L
@@ -254,7 +253,7 @@ typedef union registry16Bits
 */
 #define PUSH(a) {dd t=a;stackPointer-=sizeof(a); \
 		memcpy (raddr(ss,stackPointer), &t, sizeof (a)); \
-		assert((raddr(ss,stackPointer) - ((db*)&m.stack))>8);}
+		}
 
 #define POP(a) { memcpy (&a, raddr(ss,stackPointer), sizeof (a));stackPointer+=sizeof(a);}
 
@@ -263,7 +262,7 @@ typedef union registry16Bits
 #define AFFECT_CF(a) {CF=(a);}
 //#define ISNEGATIVE(a) (a & (1 << (sizeof(a)*8-1)))
 //#define AFFECT_SF(a) {SF=ISNEGATIVE(a);}
-#define AFFECT_SF(f, a) {SF=( (a)&(1 << sizeof(f)*8 - 1) );}
+#define AFFECT_SF(f, a) {SF=( (a)&(1 << (sizeof(f)*8 - 1)) );}
 #define ISNEGATIVE(f,a) ( (a) & (1 << (sizeof(f)*8-1)) )
 
 #define CMP(a,b) {dd t=(a-b)& MASK[sizeof(a)]; \
@@ -533,8 +532,11 @@ void MOV_(D* dest, const S& src)
 
 // JMP - Unconditional Jump
 #define JMP(label) GOTOLABEL(label)
-#define GOTOLABEL(a) {_source=__LINE__;goto a;}
-
+#define GOTOLABEL(a) { \
+   __asm__ volatile ( \
+         "jmp " #a );}
+#define L(a) { __asm__ volatile ( a ); }
+//#define L(a) { int volatile x=0;  __asm__ __volatile__ ("" : "=r"(x)); if(x) {__asm__ volatile ( a : "=r"(x) : : "memory");} }
 
 #define CLD DF=0
 #define STD DF=1
@@ -552,7 +554,7 @@ void asm2C_printOffsets(unsigned int offset);
 
 // directjeu nosetjmp,2
 // directmenu
-#define INT(a) asm2C_INT(_state,a); TESTJUMPTOBACKGROUND
+#define INT(a) asm2C_INT(0,a); TESTJUMPTOBACKGROUND
 
 #define TESTJUMPTOBACKGROUND  //if (jumpToBackGround) CALL(moveToBackGround);
 
@@ -601,11 +603,11 @@ int8_t asm2C_IN(int16_t data);
  		POP(jmpbuffer); stackPointer-=2; longjmp(jmpbuffer, 0);}
 */
 #define CALL(label) \
-	{ PUSH(eip); ++_state->_indent;log_spaces(_state->_str,_state->_indent);\
-	mainproc(label, _state); \
+	{ \
+	label(); \
 	}
 
-#define RET {POP(eip);--_state->_indent;log_spaces(_state->_str,_state->_indent);return;}
+#define RET {int volatile x=0; {if (x==0) return;}}
 
 #define RETN RET
 #define IRET RET
@@ -694,9 +696,9 @@ void log_spaces(char * s, int n)
 }
 
 #if DEBUG==2
-    #define R(a) {log_debug("l:%d:%s%s\n",__LINE__,_state->_str,#a);}; a
+    #define R(a) {log_debug("l:%d:%s%s\n",__LINE__,_str,#a);}; a
 #elif DEBUG>=3
-    #define R(a) {log_debug("l:%x:%d:%s%s eax: %x ebx: %x ecx: %x edx: %x ebp: %x ds: %x esi: %x es: %x edi: %x fs: %x\n",0/*pthread_self()*/,__LINE__,_state->_str,#a, \
+    #define R(a) {log_debug("l:%x:%d:%s%s eax: %x ebx: %x ecx: %x edx: %x ebp: %x ds: %x esi: %x es: %x edi: %x fs: %x\n",0/*pthread_self()*/,__LINE__,_str,#a, \
 eax, ebx, ecx, edx, ebp, ds, esi, es, edi, fs);} \
 	a 
 #else
@@ -720,9 +722,9 @@ bool is_little_endian();
 			   (((uint32_t)(x) & 0xff000000) >> 24)   \
 			   ))
 #endif
-
+/*
 #ifdef __cplusplus
 }
 #endif
-
+*/
 #endif

@@ -25,7 +25,7 @@ import op
 class proc:
 	last_addr = 0xc000
 	
-	def __init__(self, name):
+	def __init__(self, name, line_number=0, far=False):
 		self.name = name
 		self.calls = []
 		self.stmts = []
@@ -34,6 +34,9 @@ class proc:
 		self.__label_re = re.compile(r'^([\S@]+)::?(.*)$')
 		self.offset = proc.last_addr
 		proc.last_addr += 4
+		self.line_number = 0
+		self.line_number = line_number
+		self.far = far
 
 	def add_label(self, label, proc, line_number=0):
 		self.stmts.append(op.label(label, proc, line_number=line_number))
@@ -160,7 +163,7 @@ class proc:
 		#self.optimize_sequence(op._movsw);
 	
 	def add(self, stmt, line_number=0):
-#		print stmt
+		#print stmt
 		#comment = stmt.find(';')
 		#comments = ""
 		#if comment >= 0:
@@ -181,12 +184,12 @@ class proc:
 		
 		#s = stmt.split(None)
 		s = [stmt.replace("\x00", " ") for stmt in re.sub('["\'].+?["\']', lambda m: m.group(0).replace(" ", "\x00"), stmt).split()]
-
 		cmd = s[0]
+		#print cmd
 		try:
 			cl = getattr(op, '_' + cmd.lower())
 		except AttributeError:
-			print cmd
+			#print cmd
 			if re.match(r"scas[bwd]|cmps[bwd]|movs[bwd]|xlat|lods[bwd]|stos[bwd]|aad|repne|repe|rep|std|stc|cld|clc|cli|cbw|cwde|cwd|cdq|sti|cmc|pushf|popf|nop|pushad|popad|popa|pusha|das|aaa|aas|aam|finit|fsin|fldz", cmd.lower()) is not None:
 				cl = getattr(op, '_instruction0')
 			elif re.match(r"dec|inc|pop|push|int|neg|div|idiv|mul|set[a-z]+|not|lods|cmpxchg8b|bswap|fistp|fmul|fadd", cmd.lower()) is not None:
@@ -202,12 +205,16 @@ class proc:
 			
 		#print "args %s" %s[1:]
 		arg = " ".join(s[1:]) if len(s) > 1 else str()
+		#print cmd
+		#print arg
 		o = cl(arg)
 		#o.comments = comments
 		o.command = str(line_number) + " " + command
 		o.cmd = cmd.lower()
 		#o.line_number = line_number
 #		print "~~~" + o.command + o.comments
+		#print self
+		#print o
 		self.stmts.append(o)
 
 	def add_equ(self, label, value, line_number=0):
@@ -227,7 +234,7 @@ class proc:
 		for i in self.stmts:
 			r.append(i.__str__())
 		return "\n".join(r)
-
+	
 	def visit(self, visitor, skip = 0):
 		for i in xrange(skip, len(self.stmts)):
 			self.stmts[i].visit(visitor)

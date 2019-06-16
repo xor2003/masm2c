@@ -14,18 +14,15 @@ extern struct Memory m;
 /* https://commons.wikimedia.org/wiki/File:Table_of_x86_Registers_svg.svg */
 
 #define REGDEF_hl(Z)   \
-uint32_t& e##Z##x = _state->e##Z##x; \
 uint16_t& Z##x = *(uint16_t *)& e##Z##x; \
 uint8_t& Z##l = *(uint8_t *)& e##Z##x; \
 uint8_t& Z##h = *(((uint8_t *)& e##Z##x)+1); 
 
 #define REGDEF_l(Z) \
-uint32_t& e##Z = _state->e##Z; \
 uint16_t& Z = *(uint16_t *)& e##Z ; \
 uint8_t&  Z##l = *(uint8_t *)& e##Z ;
 
 #define REGDEF_nol(Z) \
-uint32_t& e##Z = _state->e##Z; \
 uint16_t& Z = *(uint16_t *)& e##Z ;
 
 //struct uc_x86_state {
@@ -33,6 +30,7 @@ uint16_t& Z = *(uint16_t *)& e##Z ;
 //};
 
 struct _STATE{
+/*
 dd eax;
 dd ebx;
 dd ecx;
@@ -59,9 +57,11 @@ bool DF;
 bool OF;       
 db _indent; 
 char _str[256];
+*/
 };
+#define X86_REGREF 
 
-#define X86_REGREF \
+#define _X86_REGREF \
     REGDEF_hl(a);     \
     REGDEF_hl(b);     \
     REGDEF_hl(c);     \
@@ -74,23 +74,39 @@ char _str[256];
                       \
     REGDEF_nol(ip);   \
                       \
-dw& cs = _state->cs;         \
-dw& ds = _state->ds;         \
-dw& es = _state->es;         \
-dw& fs = _state->fs;         \
-dw& gs = _state->gs;         \
-dw& ss = _state->ss;         \
                       \
-bool& CF = _state->CF;       \
-bool& PF = _state->PF;       \
-bool& AF = _state->AF;       \
-bool& ZF = _state->ZF;       \
-bool& SF = _state->SF;       \
-bool& DF = _state->DF;       \
-bool& OF = _state->OF;       \
-dd& stackPointer = _state->esp;\
+dd& stackPointer = esp;\
 _offsets __disp; \
 dw _source;
+
+dd eax;
+dd ebx;
+dd ecx;
+dd edx;
+dd esi;
+dd edi;
+dd esp;
+dd ebp;
+dd eip;
+
+dw cs;         
+dw ds;         
+dw es;         
+dw fs;         
+dw gs;         
+dw ss;         
+                      
+bool CF;       
+bool PF;       
+bool AF;       
+bool ZF;       
+bool SF;       
+bool DF;       
+bool OF;       
+db _indent; 
+char _str[256];
+
+_X86_REGREF
 
 /*
 #undef REGDEF_hl
@@ -218,7 +234,7 @@ X86_REGREF
 	log_debug("sizeof(dd *)=%zu\n",sizeof(dd *));
 	log_debug("sizeof(dw)=%zu\n",sizeof(dw));
 	log_debug("sizeof(db)=%zu\n",sizeof(db));
-	log_debug("sizeof(jmp_buf)=%zu\n",sizeof(jmp_buf));
+//	log_debug("sizeof(jmp_buf)=%zu\n",sizeof(jmp_buf));
 //	log_debug("sizeof(mem)=%zu\n",sizeof(m));
 	log_debug("eax: %x\n",READDD(eax));
 //	hexDump(&eax,sizeof(dd));
@@ -1083,7 +1099,8 @@ int main(int argc, char *argv[])
 
   }
 
-	mainproc(kbegin, _state);
+//	mainproc(kbegin, _state); //x0r
+        _start();
 	return(0);
 }
 

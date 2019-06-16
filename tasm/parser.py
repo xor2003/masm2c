@@ -491,22 +491,54 @@ class parser:
 					#print "~~name: %s" %name
 					if not (name.lower() in self.skip_binary_data):
 						print "offset %s -> %s" %(name, "&m." + name.lower() + " - &m." + self.segment)
+
+						if self.proc is None:
+							print "Label %s was outside the procedure" %name
+							label_proc_name = 's'+name
+							#print "New proc name %s" %label_proc_name
+							self.create_proc(label_proc_name, "", "")
 						if self.proc is not None:
 							self.proc.add_label(name, proc)
 							#self.set_offset(name, ("&m." + name.lower() + " - &m." + self.segment, self.proc, len(self.proc.stmts)))
 							self.set_offset(name, ("&m." + name.lower() + " - &m." + self.segment, self.proc, self.offset_id))
+							
 							farb = False
 							if far == 'far':
 								farb = True
-							self.set_global(name, op.label(name, proc, line_number=self.offset_id, far=farb))
+							
+							self.set_global(name, op.label(name, proc, far=farb, line_number=self.offset_id))
 							self.offset_id += 1
 						else:
-							print "Label %s is outside the procedure" %name
+							print "!!! Label %s is outside the procedure" %name
 						skipping_binary_data = False
 					else:
 						print "skipping binary data for %s" % (name,)
 						skipping_binary_data = True
 
+	def create_proc(self, cmd0l, cmd1l, far):
+					name = cmd0l
+
+					if self.proc is not None:
+						print "will add jmp"
+						self.proc.add("jmp %s" %name, line_number=self.line_number)
+
+					farb = False
+					if far == 'far':
+						farb = True
+					self.proc = proc(name, line_number=self.offset_id, far=far)
+					self.proc_list.append(name)
+
+					print "proc %s, %s #%d" %(name, far, self.offset_id)
+					print "proc %s offset -> %s" %(name, "&m." + name.lower() + " - &m." + self.segment)
+					self.set_offset(name, ("&m." + name.lower() + " - &m." + self.segment, self.proc, self.offset_id))
+					self.proc.add_label(name, proc, line_number=self.offset_id)
+					self.set_global(name, self.proc)
+
+					#self.set_global(name, op.label(name, proc, line_number=self.offset_id, far=farb))
+					self.offset_id += 1
+
+					#'''
+					#self.add_label(cmd0l, far=far, proc = True)
 
 	def parse(self, fname):
 		print "opening file %s..." %(fname)
@@ -600,17 +632,16 @@ class parser:
 			if len(cmd) >= 2:
 				cmd1l = cmd[1].lower()
 				if cmd1l == 'proc':
-					cmd2l = ""
+					far = ""
 					if len(cmd) >= 3:
-						cmd2l = cmd[2].lower()
-					'''
-					name = cmd0l
-					self.proc = proc(name)
-					print "procedure %s, #%d" %(name, len(self.proc_list))
-					self.proc_list.append(name)
-					self.set_global(name, self.proc)
-					'''
-					self.add_label(cmd0l, far=cmd2l, proc = True)
+						far = cmd[2].lower()
+
+					self.create_proc(cmd0l, cmd1l, far)
+					farb = False
+					if far == 'far':
+						farb = True
+					#self.set_global(cmd0l, op.label(cmd0l, proc, line_number=self.offset_id-1, far=farb))
+
 					continue
 				elif cmd1l == 'segment':
 					name = cmd0l
@@ -618,7 +649,7 @@ class parser:
 
 					binary_width = 1
 					offset = int(len(self.binary_data)/16)
-					print "segement %s %x" %(name, offset)
+					print "segment %s %x" %(name, offset)
 					self.cur_seg_offset = 16
 
 					num = (0x10 - (len(self.binary_data) & 0xf)) & 0xf
@@ -640,12 +671,14 @@ class parser:
 					self.h_data.append(" db " + name + "["+ str(num) + "]; // segment " + name + "\n")
 
 					self.set_global(name, op.var(binary_width, offset, issegment = True))
+					''' Single proc
 					if self.proc == None:
 						name = "mainproc"
 						self.proc = proc(name)
 						#print "procedure %s, #%d" %(name, len(self.proc_list))
 						self.proc_list.append(name)
 						self.set_global(name, self.proc)
+					'''
 					continue
 
 				elif cmd1l == 'ends':

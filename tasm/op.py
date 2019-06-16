@@ -342,6 +342,7 @@ class _jge(basejmp):
 
 class _jmp(basejmp):
 	def __init__(self, label):
+		print label
 		self.label = self.parse_arg(label)
 	def visit(self, visitor):
 		visitor._jmp(self.label)
@@ -531,7 +532,7 @@ class _clc(baseop):
 		visitor._clc()
 
 class label(baseop):
-	def __init__(self, name, proc, line_number=0, far=False):
+	def __init__(self, name, proc, far=False, line_number=0):
 		self.name = name
 		self.line_number = line_number
 		self.far = far

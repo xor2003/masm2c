@@ -116,17 +116,21 @@ class cpp:
 			print "expand_cb exception on name = %s" %name
 			return name_original
 			
-		#print g
+		print g
 		if isinstance(g, op.const):
 			print "it is const"
 			#value = self.expand_equ(g.value)
 			print "equ: %s -> %s" %(name, self.expand_equ(g.value))
 		elif isinstance(g, proc.proc):
 			print "it is proc"
-			if self.indirection != -1:
-				print "proc %s offset %s" %(str(proc.proc), str(g.offset))
-				raise Exception("invalid proc label usage")
+			#print g, g.name, g.far, g.line_number
+			#if self.indirection != -1:
+			#	print "proc %s offset %s %d" %(str(proc.proc), str(g.offset), self.indirection)
+			#	raise Exception("invalid proc label usage")
 			value = str(g.offset)
+			if self.indirection == 0 or self.indirection == 1:
+				value = "k" + g.name
+			print "it is proc %s indir %d" %(value, self.indirection)
 			self.indirection = 0
 		elif isinstance(g, op.var):
 			print "it is var "+str(g.size)
@@ -337,6 +341,7 @@ class cpp:
 		m = prog.match(expr)
 		if m is not None:
 			indirection -= 1
+			#print "offset~indir %d" %indirection
 			size = 2 # x0r dos 16 bit
 			expr = m.group(1).strip()
 			self.current_size = 0
@@ -502,12 +507,21 @@ class cpp:
 		if name in self.blacklist:
 			jump_proc = True
 
-		if self.context.has_global(name) :
+		if self.context.has_global(name):
+			#print "jump_to_label(%s) has global" %name
 			hasglobal = True
 			g = self.context.get_global(name)
 			if isinstance(g, proc_module.proc):
 				jump_proc = True
-
+		'''
+		if self.context.has_global("p"+name):
+			print "found proc-label %s" %name
+			name = "p"+name
+			hasglobal = True
+			g = self.context.get_global(name)
+			if isinstance(g, proc_module.proc):
+				jump_proc = True
+		'''
 		if jump_proc:
 			if name in self.function_name_remapping:
 				return "%s" %self.function_name_remapping[name]
@@ -520,7 +534,7 @@ class cpp:
 			## x0r return "goto %s" %self.resolve_label(name)
 			if not hasglobal:
 				name = self.expand(name, destination = True)
-				self.body += "__disp = " + name + ";\n"
+				self.body += "__disp=(_offsets)" + name + ";\n"
 				name = "__dispatch_call";
 			else:
 				if isinstance(g, op.label) and g.far:
@@ -536,9 +550,11 @@ class cpp:
 			return name
 
 	def _label(self, name, proc):
-		if proc:
-			self.body += " // Procedure %s() start\n" %(name)
-		self.body += "%s:\n" %self.mangle_label(name)
+		#if proc:
+		#	self.body += " // Procedure %s() start\n" %(name)
+		#if proc:
+		#	self.body += "p"
+		self.body += 'L("%s:")\n' %self.mangle_label(name)
 
 	def schedule(self, name):
 		name = name.lower()
@@ -552,14 +568,16 @@ class cpp:
 		#dst = self.expand(name, destination = True)
 		dst = self.jump_to_label(name)
 		if dst!="__dispatch_call":
-			dst="k"+dst
+			if self.far:
+				self.body += "\tPUSH(cs);R(CALL(%s));\n" %(dst)
+			else:
+				self.body += "\tR(CALL(%s));\n" %(dst)
 		else:
-			dst="__disp"
+			if self.far:
+				self.body += "\tPUSH(cs);R(DispatchProc(__disp,_state));\n"
+			else:
+				self.body += "\tR(DispatchProc(__disp,_state));\n" 
 
-		if self.far:
-			self.body += "\tR(CALLF(%s));\n" %(dst)
-		else:
-			self.body += "\tR(CALL(%s));\n" %(dst)
 		'''
 		name = name.lower()
 		if self.is_register(name):
@@ -866,7 +884,7 @@ class cpp:
 		self.body += "\tR(CMC);\n"
 
 	def __proc(self, name, def_skip = 0):
-		print "__print(%s)" %name
+		print "cpp::__proc(%s)" %name
 		#traceback.print_stack(file=sys.stdout)
 		try:
 			skip = def_skip
@@ -902,35 +920,13 @@ class cpp:
 				self.body += "int %s() {\ngoto %s;\n" %(self.function_name_remapping[name], self.context.entry_point);
 			else:
 				self.body += """
-int init(_STATE* _state)
-{
-X86_REGREF
-
-initscr();
-resize_term(25, 80);
- cbreak(); // put keys directly to program
-    noecho(); // do not echo
-    keypad(stdscr, TRUE); // provide keypad buttons
-
-    if (!has_colors())
-    {
-	printw("Unable to use colors");
-    }
-	start_color();
-
-	realtocurs();
-	curs_set(0);
-
-	refresh();
-	return(0);
-}
 
 void %s(_offsets _i, _STATE* _state){
 X86_REGREF
-__disp=_i;
-if (__disp==kbegin) goto %s;
-else goto __dispatch_call;
-""" %(name, self.context.entry_point);
+""" %(name); #, self.context.entry_point
+
+			if self.proc.far:
+				self.body += " // far\n"
 
 			print name
 			self.proc.optimize()
@@ -964,7 +960,7 @@ else goto __dispatch_call;
 				self.proc.optimize(keep_labels=[label])
 				self.proc.visit(self, start)
 			'''
-			# self.body += "}\n"; # x0r function end
+			self.body += "}\n"; # x0r function end
 			if name not in self.skip_output:
 				self.translated.insert(0, self.body)
 			self.proc = None
@@ -991,11 +987,23 @@ else goto __dispatch_call;
 		fd.write("//} // End of namespace  %s\n" %self.namespace)
 		fd.close()
 
+	def write_declarations(self, procs):
+		self.hd.write("//namespace %s {\n" %self.namespace)
+		for p in procs:
+			if p in self.function_name_remapping:
+				self.hd.write("void %sContext::%s() {\n\t::error(\"%s\");\n}\n\n" %(self.namespace, self.function_name_remapping[p], self.function_name_remapping[p]))
+			else:
+				self.hd.write("void %s(_offsets _i, _STATE* _state);\n" %p)
+
+		self.hd.write("void DispatchProc(_offsets i, _STATE* _state);\n");
+		self.hd.write("//} // End of namespace  %s\n" %self.namespace)
+
 
 	def generate(self, start):
 		#print self.prologue()
 		#print context
 		self.proc_queue.append(start)
+		procs = self.procs
 		while len(self.proc_queue):
 			name = self.proc_queue.pop()
 			if name in self.failed or name in self.proc_done:
@@ -1025,7 +1033,13 @@ else goto __dispatch_call;
 		n = 0
 		comment = str()
 
-		self.fd.write("\nreturn;\n__dispatch_call:\nswitch (__disp) {\n")
+		self.fd.write("""
+void DispatchProc(_offsets i, _STATE* _state){
+X86_REGREF
+__disp=i;
+L("__dispatch_call:")
+switch (__disp) {
+		""")
 		offsets = []
 		for k, v in self.context.get_globals().items():
 			k = re.sub(r'[^A-Za-z0-9_]', '_', k)
@@ -1035,7 +1049,7 @@ else goto __dispatch_call;
 		offsets = sorted(offsets, key=lambda t: t[1])
 		for o in offsets:
 			print o
-			self.fd.write("case k%s: \tgoto %s;\n" %o)
+			self.fd.write('case k%s: \t{__asm__ volatile ("jmp %s" );}\n' %o)
 		self.fd.write("default: log_error(\"Jump/call to nothere %d\\n\", __disp);stackDump(_state); abort();\n")
 		self.fd.write("};\n}\n")
 
@@ -1107,13 +1121,17 @@ else goto __dispatch_call;
 				pass #offsets.append((k.capitalize(), self.expand_equ(v.value))) #fixme: try to save all constants here
 			elif isinstance(v, op.label):
 				offsets.append((k.lower(), hex(v.line_number)))
+			elif isinstance(v, proc.proc):
+				offsets.append((k.lower(), hex(v.line_number)))
 
 		offsets = sorted(offsets, key=lambda t: t[1])
+		self.hd.write("kdummy = 1,\n")
 		self.hd.write("kbegin = 0x1001,\n")
 		for o in offsets:
 			self.hd.write("k%s = %s,\n" %o)
 		self.hd.write("} _offsets;\n")
 
+		self.write_declarations(procs)
 
 		data_head = "\nstruct __attribute__((__packed__)) Memory{\n"
 		for v in hdata_bin:
