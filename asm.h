@@ -13,11 +13,21 @@
 #include <stdbool.h>
 
 #include "curses.h"
-/*
+
+
+#define VGARAM_SIZE 320*200
+#define STACK_SIZE 1024*10
+//#define HEAP_SIZE 1024*640 - 16 - STACK_SIZE
+#define HEAP_SIZE 1024*1024 - 16 - STACK_SIZE
+
+#define NB_SELECTORS 128
+
 #ifdef __cplusplus
-extern "C" {
+//extern "C" {
 #endif
-*/
+
+static const uint32_t MASK[]={0, 0xff, 0xffff, 0xffffff, 0xffffffff};
+
 #if defined(_WIN32) || defined(__INTEL_COMPILER)
 #define INLINE __inline
 #elif defined(__STDC_VERSION__) && __STDC_VERSION__>=199901L
@@ -30,7 +40,7 @@ extern "C" {
 
 #if _BITS == 32
 
-#define MOVSS(a) {src=realAddress(esi,ds); dest=realAddress(edi,es); \
+#define MOVSS(a) {void * dest;void * src;src=realAddress(esi,ds); dest=realAddress(edi,es); \
 		memmove(dest,src,a); edi+=a; esi+=a; }
 #define STOS(a,b) {memcpy (realAddress(edi,es), ((db *)&eax)+b, a); edi+=a;}
 
@@ -40,13 +50,13 @@ extern "C" {
 #define XLAT {al = *raddr(ds,ebx+al);}
 #define CMPS(a) \
 	{  \
-			src=realAddress(esi,ds); dest=realAddress(edi,es); \
+			void * dest;void * src;src=realAddress(esi,ds); dest=realAddress(edi,es); \
 			AFFECT_ZF( (*(char*)dest-*(char*)src) ); edi+=a; esi+=a; \
 	}
 
 #define SCASB \
 	{  \
-			dest=realAddress(edi,es); \
+			void * dest;dest=realAddress(edi,es); \
 			AFFECT_ZF( ( (*(char*)dest)-al) ); edi+=1; \
 	}
 
@@ -67,7 +77,7 @@ extern "C" {
 #define LOOPNE(label) --ecx; if (ecx!=0 && !ZF) GOTOLABEL(label) //TODO
 
 #else
-#define MOVSS(a) {src=realAddress(si,ds); dest=realAddress(di,es); \
+#define MOVSS(a) {void * dest;void * src;src=realAddress(si,ds); dest=realAddress(di,es); \
 		memmove(dest,src,a); di+=a; si+=a; }
 #define STOS(a,b) {memcpy (realAddress(di,es), ((db *)&eax)+b, a); di+=a;}
 
@@ -77,13 +87,13 @@ extern "C" {
 #define XLAT {al = *raddr(ds,bx+al);}
 #define CMPS(a) \
 	{  \
-			src=realAddress(si,ds); dest=realAddress(di,es); \
+			void * dest;void * src;src=realAddress(si,ds); dest=realAddress(di,es); \
 			AFFECT_ZF( (*(char*)dest-*(char*)src) ); di+=a; si+=a; \
 	}
 
 #define SCASB \
 	{  \
-			dest=realAddress(di,es); \
+			void * dest;dest=realAddress(di,es); \
 			AFFECT_ZF( ( (*(char*)dest)-al) ); di+=1; \
 	}
 
@@ -227,10 +237,6 @@ typedef union registry16Bits
 } registry16Bits;
 
 
-#define VGARAM_SIZE 320*200
-#define STACK_SIZE 1024*10
-#define HEAP_SIZE 640*1024 - 16 - STACK_SIZE
-#define NB_SELECTORS 128
 
 
 //#define PUSHAD memcpy (&m.stack[m.stackPointer], &m.eax.dd.val, sizeof (dd)*8); m.stackPointer+=sizeof(dd)*8; assert(m.stackPointer<STACK_SIZE)
@@ -442,7 +448,7 @@ typedef union registry16Bits
 #define JBE(label) JNA(label)
 
 #if DEBUG >= 3
-#define MOV(dest,src) {log_debug("%x := (%x)\n",&dest, src); dest = src;}
+#define MOV(dest,src) {log_debug("%s := %x\n",#dest, src); dest = src;}
 #else
 #define MOV(dest,src) {dest = src;}
 #endif
@@ -689,17 +695,13 @@ void log_debug(const char *fmt, ...);
 void log_info(const char *fmt, ...);
 void log_debug2(const char *fmt, ...);
 
-void log_spaces(char * s, int n) 
-{ 
-	memset(s, ' ', n); 
-	*(s+n) = 0; 
-}
+const char* log_spaces(int n);
 
 #if DEBUG==2
-    #define R(a) {log_debug("l:%d:%s%s\n",__LINE__,_str,#a);}; a
+    #define R(a) {log_debug("l:%s%d:%s\n",_str,__LINE__,#a);}; a
 #elif DEBUG>=3
-    #define R(a) {log_debug("l:%x:%d:%s%s eax: %x ebx: %x ecx: %x edx: %x ebp: %x ds: %x esi: %x es: %x edi: %x fs: %x\n",0/*pthread_self()*/,__LINE__,_str,#a, \
-eax, ebx, ecx, edx, ebp, ds, esi, es, edi, fs);} \
+    #define R(a) {log_debug("l:%s%x:%d:%s eax: %x ebx: %x ecx: %x edx: %x ebp: %x ds: %x esi: %x es: %x edi: %x fs: %x esp: %x\n",_str,0/*pthread_self()*/,__LINE__,#a, \
+eax, ebx, ecx, edx, ebp, ds, esi, es, edi, fs, esp);} \
 	a 
 #else
     #define R(a) a
@@ -722,9 +724,15 @@ bool is_little_endian();
 			   (((uint32_t)(x) & 0xff000000) >> 24)   \
 			   ))
 #endif
-/*
+
+void realtocurs();
+
+struct SDL_Renderer;
+extern SDL_Renderer *renderer;
+extern db vgaPalette[256*3];
+
 #ifdef __cplusplus
-}
+//}
 #endif
-*/
+
 #endif

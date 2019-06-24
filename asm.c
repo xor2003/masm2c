@@ -2,11 +2,11 @@
 //#include "snow.h"
 #include "iplay_masm_.h"
 
-#include <SDL.h>
+#include <SDL2/SDL.h>
 #include <assert.h>
 
 #include <time.h>
-#include <thread>
+//#include <thread>
 
 struct /*__attribute__((__packed__))*/ Memory;
 extern struct Memory m;
@@ -152,9 +152,9 @@ db vgaRamPaddingBefore[VGARAM_SIZE];
 db vgaRam[VGARAM_SIZE];
 db vgaRamPaddingAfter[VGARAM_SIZE];
 db* diskTransferAddr = 0;
-#include "memmgr.c"
+#include "memmgr.h"
 
-static const uint32_t MASK[]={0, 0xff, 0xffff, 0xffffff, 0xffffffff};
+//static const uint32_t MASK[]={0, 0xff, 0xffff, 0xffffff, 0xffffffff};
 
 bool isLittle;
 bool jumpToBackGround;
@@ -991,8 +991,7 @@ X86_REGREF
 }
 
 //jmp_buf jmpbuffer;
-void * dest;
-void * src;
+
 /*
 void program() {
 int i;
@@ -1016,6 +1015,15 @@ moveToBackGround:
 return ;//(executionFinished == 0);
 }
 */
+
+const char* log_spaces(int n) 
+{ 
+ static const char s[]="                                                                                          ";
+//	memset(s, ' ', n); 
+//	*(s+n) = 0; 
+  return s+(88-n);
+}
+
 void realtocurs()
 {
 
@@ -1087,6 +1095,8 @@ int main(int argc, char *argv[])
  *(dw*)(raddr(0,0x408)) = 0x378; //LPT
 #endif
 
+	eax = 0x0ffff;
+	ebx=ecx=edx=ebp=esi=edi=DF=0;
 
 	init(_state);
 
