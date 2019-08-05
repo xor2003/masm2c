@@ -1,3 +1,5 @@
+from __future__ import print_function
+from __future__ import absolute_import
 # ScummVM - Graphic Adventure Engine
 #
 # ScummVM is the legal property of its developers, whose names
@@ -19,10 +21,13 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #
 
+from builtins import str
+from builtins import range
+from builtins import object
 import re
-import op
+from . import op
 
-class proc:
+class proc(object):
         last_addr = 0xc000
         
         def __init__(self, name, line_number=0, far=False):
@@ -47,7 +52,7 @@ class proc:
                         self.labels.remove(label)
                 except:
                         pass
-                for i in xrange(len(self.stmts)):
+                for i in range(len(self.stmts)):
                         if isinstance(self.stmts[i], op.label) and self.stmts[i].name == label:
                                 self.stmts[i] = op._nop(None)
                                 return
@@ -71,7 +76,7 @@ class proc:
 
                         n = j - i
                         if n > 1:
-                                print "Eliminate consequtive storage instructions at %u-%u" %(i, j)
+                                print("Eliminate consequtive storage instructions at %u-%u" %(i, j))
                                 for k in range(i+1,j):
                                         stmts[k] = op._nop(None)
                                 stmts[i].repeat = n
@@ -93,10 +98,10 @@ class proc:
                 return
         
         def optimize(self, keep_labels=[]):
-                print "optimizing..."
+                print("optimizing...")
                 #trivial simplifications
                 while len(self.stmts) and isinstance(self.stmts[-1], op.label):
-                        print "stripping last label"
+                        print("stripping last label")
                         self.stmts.pop()
                 '''
                 #mark labels that directly precede a ret
@@ -173,7 +178,7 @@ class proc:
 
                 r = self.__label_re.search(stmt)
                 if r is not None:
-                        print "add label %s" %r.group(1)
+                        print("add label %s" %r.group(1))
                         #label
                         self.add_label(r.group(1).lower())
                         #print "remains: %s" %r.group(2)
@@ -236,7 +241,7 @@ class proc:
                 return "\n".join(r)
         
         def visit(self, visitor, skip = 0):
-                for i in xrange(skip, len(self.stmts)):
+                for i in range(skip, len(self.stmts)):
                         self.stmts[i].visit(visitor)
                         try: # trying to add command and comment
                                 visitor.body = visitor.body[:-1] + "\t// " + self.stmts[i].command + "\n"
