@@ -20829,7 +20829,7 @@ db dummy20075;
  db dummy20076[12]; // padding
 
 db stack[STACK_SIZE];
-			db heap[HEAP_SIZE];
+			db heap;//[HEAP_SIZE];
 
 		};
 

@@ -38,10 +38,10 @@ import sys
 #sys.settrace(tracefunc)
 
 p = parser(skip_binary_data = [
-	# These data blobs are not output
-	# dreamweb.asm
-#	'characterset1',
-	])
+        # These data blobs are not output
+        # dreamweb.asm
+#       'characterset1',
+        ])
 p.strip_path = 3
 name = sys.argv[1]
 context = p.parse(name)
@@ -51,18 +51,18 @@ p.link()
 
 m = re.match(r'.*?([A-Za-z90-9_\.-]+)\.asm', name.lower())
 if m is not None:
-	name = m.group(1).strip()
+        name = m.group(1).strip()
 
 generator = cpp(context, name, blacklist = [
-	# These functions are not processed
+        # These functions are not processed
 
-#	'aboutturn',
-	], skip_output = [
-	# These functions are processed but not output
-	], skip_dispatch_call = True, skip_addr_constants = True,
-	header_omit_blacklisted = True,
-	function_name_remapping = {
-	# This remaps the function naming at output for readability
-#	'_moduleread' : '_moduleread',
-	})
+#       'aboutturn',
+        ], skip_output = [
+        # These functions are processed but not output
+        ], skip_dispatch_call = True, skip_addr_constants = True,
+        header_omit_blacklisted = True,
+        function_name_remapping = {
+        # This remaps the function naming at output for readability
+#       '_moduleread' : '_moduleread',
+        })
 generator.generate('mainproc') #start routine
