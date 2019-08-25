@@ -26,9 +26,6 @@
 /* Cambridge, MA 02139, USA.                                    */
 /****************************************************************/
 
-struct Memory;
-extern Memory m;
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -38,10 +35,14 @@ extern "C" {
 typedef uint8_t db;
 typedef uint16_t dw;
 
+struct Memory;
+extern Memory m;
 
 
 //#define MK_FP(seg,ofs)      (&(raddr(seg,ofs))) //  ( (ULONG(seg)<<4)+(UWORD)(ofs) )
+#ifndef __BORLANDC__
 #define FP_SEG(fp)           ( (  ((uint8_t*)(fp)) - ((uint8_t*)(&m)) )>>4)// ( (UWORD) ((fp)>>4) )
+#endif
 //#define FP_OFF(fp)            ( (UWORD) (fp) )
 #define SUCCESS 0
 //#define NULL 0

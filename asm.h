@@ -1,29 +1,58 @@
 #ifndef __asm_h__
 #define __asm_h__
 
-#include <stdint.h>
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
 #include <math.h>
-//#include <setjmp.h>
+#include <setjmp.h>
 #include <stddef.h>
-#include <cstdio>
+#include <stdio.h>
 #include <assert.h>
+
+#ifndef __BORLANDC__
+ #include <stdint.h>
 #include <stdbool.h>
+ #define MYPACKED __attribute__((__packed__))
+ #define MYINT_ENUM : int
+#else
+ typedef unsigned long uint32_t;
+ typedef long int32_t;
+ typedef unsigned short int uint16_t;
+ typedef short int int16_t;
+ typedef unsigned char uint8_t;
+ typedef char int8_t;
+ struct uint64_t
+ {
+	long a;
+	long b;
+ };
 
-#include "curses.h"
+ #define MYPACKED
+ #define MYINT_ENUM
+#endif
+//#include <pthread.h>
+
+typedef uint8_t db;
+typedef uint16_t dw;
+typedef uint32_t dd;
+typedef uint64_t dq;
 
 
-#define VGARAM_SIZE 320*200
-#define STACK_SIZE 1024*10
-//#define HEAP_SIZE 1024*640 - 16 - STACK_SIZE
-#define HEAP_SIZE 1024*1024 - 16 - STACK_SIZE
+#define VGARAM_SIZE (320*200)
+
+#ifdef __BORLANDC__
+ #define STACK_SIZE 4096
+ #define HEAP_SIZE 1024
+#else
+ #define STACK_SIZE (1024*64-16)
+ #define HEAP_SIZE (1024*1024 - 16 - STACK_SIZE)
+#endif
 
 #define NB_SELECTORS 128
 
 #ifdef __cplusplus
-//extern "C" {
+extern "C" {
 #endif
 
 static const uint32_t MASK[]={0, 0xff, 0xffff, 0xffffff, 0xffffffff};
@@ -38,8 +67,49 @@ static const uint32_t MASK[]={0, 0xff, 0xffff, 0xffffff, 0xffffffff};
 #define INLINE
 #endif
 
+#if defined(_PROTECTED_MODE)
 #if _BITS == 32
+  #define raddr(segment,offset) (reinterpret_cast<db *>(offset))
+ #else
+  #define raddr(segment,offset) ((db *)&m+(db)(offset)+selectors[segment])
+ #endif
+#else
+ #ifdef __BORLANDC__
+  #include <dos.h>
+  #define raddr(segment,offset) ((db __far *) (( ((unsigned long)segment) <<16) + offset))
+ #else
+  #define raddr(segment,offset) (((db *)&m + (segment<<4) + offset ))
+ #endif
+#endif
 
+#define realAddress(offset, segment) raddr(segment,offset)
+
+#if _BITS == 32
+ #define offset(segment,name) ((dd)(db*)&m.name)
+#else
+ #ifdef __BORLANDC__
+  #define offset(segment,name) (offsetof(type_##segment,name))
+ #else
+ #define offset(segment,name) offsetof(struct Memory,name)-offsetof(struct Memory,segment)
+#endif
+#endif
+
+#ifdef __BORLANDC__
+// #define seg_offset(segment) (FP_SEG(&segment))
+// #define seg_offset(segment) ((unsigned)(void __seg *)(&segment))
+ #define seg_offset(segment) ( ( ((unsigned long)(void __far*)(&segment)) >> 16) + ( ((unsigned int)(void __far*)(&segment)) >> 4) )
+ #define SEGALIGN far
+#else
+ #define SEGALIGN // __attribute__ (( align ))
+#define seg_offset(segment) ((offsetof(struct Memory,segment))>>4)
+#endif
+// DJGPP
+#define MASK_LINEAR(addr)     (((size_t)addr) & 0x000FFFFF)
+#define RM_TO_LINEAR(addr)    (((((size_t)addr) & 0xFFFF0000) >> 12) + (((size_t)addr) & 0xFFFF))
+#define RM_OFFSET(addr)       (((size_t)addr) & 0xF)
+#define RM_SEGMENT(addr)      ((((size_t)addr) >> 4) & 0xFFFF)
+
+#if _BITS == 32
 #define MOVSS(a) {void * dest;void * src;src=realAddress(esi,ds); dest=realAddress(edi,es); \
 		memmove(dest,src,a); edi+=a; esi+=a; }
 #define STOS(a,b) {memcpy (realAddress(edi,es), ((db *)&eax)+b, a); edi+=a;}
@@ -72,11 +142,14 @@ static const uint32_t MASK[]={0, 0xff, 0xffff, 0xffffff, 0xffffffff};
 #define STOSD STOS(4,0)
 #endif
 
+ #define INSB {db a = asm2C_IN(dx);*realAddress(edi,es)=a;edi+=1;}
+ #define INSW {dw a = asm2C_INW(dx);*realAddress(edi,es)=a;edi+=2;}
+
 #define LOOP(label) DEC(ecx); JNZ(label)
 #define LOOPE(label) --ecx; if (ecx!=0 && ZF) GOTOLABEL(label) //TODO
 #define LOOPNE(label) --ecx; if (ecx!=0 && !ZF) GOTOLABEL(label) //TODO
 
-#else
+#else // 16 bit
 #define MOVSS(a) {void * dest;void * src;src=realAddress(si,ds); dest=realAddress(di,es); \
 		memmove(dest,src,a); di+=a; si+=a; }
 #define STOS(a,b) {memcpy (realAddress(di,es), ((db *)&eax)+b, a); di+=a;}
@@ -104,6 +177,9 @@ static const uint32_t MASK[]={0, 0xff, 0xffff, 0xffffff, 0xffffffff};
 #define STOSB STOS(1,3)
 #define STOSW STOS(2,2)
 #else
+
+ //SDL2 VGA
+  #if SDL_MAJOR_VERSION == 2
 #define STOSB { \
 	if (es==0xa000)\
 		{ \
@@ -114,6 +190,11 @@ SDL_SetRenderDrawColor(renderer, vgaPalette[3*al+2], vgaPalette[3*al+1], vgaPale
 	else \
 		{STOS(1,0);} \
 	}
+  #else
+   #define STOSB { \
+		{STOS(1,0);} \
+	}
+  #endif
 
 #define STOSW { \
 	if (es==0xB800)  \
@@ -130,32 +211,6 @@ SDL_SetRenderDrawColor(renderer, vgaPalette[3*al+2], vgaPalette[3*al+1], vgaPale
 #define LOOPNE(label) --cx; if (cx!=0 && !ZF) GOTOLABEL(label) //TODO
 
 #endif
-
-#if defined(_PROTECTED_MODE)
-#if _BITS == 32
-#define raddr(segment,offset) (reinterpret_cast<db *>(offset))
-#else
-#define raddr(segment,offset) ((db *)&m+(db)(offset)+selectors[segment])
-#endif
-#else
-#define raddr(segment,offset) (((db *)&m + offset + (segment<<4) ))
-
-#endif
-
-#define realAddress(offset, segment) raddr(segment,offset)
-#if _BITS == 32
-#define offset(segment,name) ((dd)(db*)&m.name)
-#else
-#define offset(segment,name) offsetof(struct Memory,name)-offsetof(struct Memory,segment)
-#endif
-#define seg_offset(segment) ((offsetof(struct Memory,segment))>>4)
-
-
-
-typedef uint8_t db;
-typedef uint16_t dw;
-typedef uint32_t dd;
-typedef uint64_t dq;
 
 #ifdef MSB_FIRST
 typedef struct dblReg {
@@ -257,21 +312,28 @@ typedef union registry16Bits
 	stackPointer-=sizeof(a); memcpy (&a, &stack[stackPointer], sizeof (a));}
 #define PUSH(a) {stackPointer-=sizeof(a); memcpy (&m.stack[stackPointer], &a, sizeof (a));  assert(stackPointer>8);}
 */
+#ifdef DEBUG
 #define PUSH(a) {dd t=a;stackPointer-=sizeof(a); \
 		memcpy (raddr(ss,stackPointer), &t, sizeof (a)); \
-		}
+		assert((raddr(ss,stackPointer) - ((db*)&m.stack))>8);log_debug("after push %x\n",stackPointer);}
+
+ #define POP(a) { log_debug("before pop %x\n",stackPointer);memcpy (&a, raddr(ss,stackPointer), sizeof (a));stackPointer+=sizeof(a);}
+#else
+ #define PUSH(a) {dd t=a;stackPointer-=sizeof(a); \
+		memcpy (raddr(ss,stackPointer), &t, sizeof (a));}
 
 #define POP(a) { memcpy (&a, raddr(ss,stackPointer), sizeof (a));stackPointer+=sizeof(a);}
+#endif
 
 
 #define AFFECT_ZF(a) {ZF=((a)==0);}
 #define AFFECT_CF(a) {CF=(a);}
 //#define ISNEGATIVE(a) (a & (1 << (sizeof(a)*8-1)))
 //#define AFFECT_SF(a) {SF=ISNEGATIVE(a);}
-#define AFFECT_SF(f, a) {SF=( (a)&(1 << (sizeof(f)*8 - 1)) );}
+#define AFFECT_SF(f, a) {SF=( (a)&(1 << sizeof(f)*8 - 1) );}
 #define ISNEGATIVE(f,a) ( (a) & (1 << (sizeof(f)*8-1)) )
 
-#define CMP(a,b) {dd t=(a-b)& MASK[sizeof(a)]; \
+#define CMP(a,b) {dd t=((a)-(b))& MASK[sizeof(a)]; \
 		AFFECT_CF((t)>(a)); \
 		AFFECT_ZF(t); \
 		AFFECT_SF(a,t);}
@@ -462,13 +524,13 @@ template <class D, class S>
 void MOV_(D* dest, const S& src)
 { *dest = static_cast<D>(src); }
 */
-#define LFS(dest,src) dest = src; fs= *(dw*)((db*)&(src) + sizeof(dest))
-#define LES(dest,src) dest = src; es = *(dw*)((db*)&(src) + sizeof(dest))
-#define LGS(dest,src) dest = src; gs = *(dw*)((db*)&(src) + sizeof(dest))
-#define LDS(dest,src) dest = src; ds = *(dw*)((db*)&(src) + sizeof(dest))
+#define LFS(dest,src) {dest = src; fs= *(dw*)((db*)&(src) + sizeof(dest));}
+#define LES(dest,src) {dest = src; es = *(dw*)((db*)&(src) + sizeof(dest));}
+#define LGS(dest,src) {dest = src; gs = *(dw*)((db*)&(src) + sizeof(dest));}
+#define LDS(dest,src) {dest = src; ds = *(dw*)((db*)&(src) + sizeof(dest));}
 
 #define MOVZX(dest,src) dest = src
-#define MOVSX(dest,src) if (ISNEGATIVE(src,src)) { dest = ((-1 ^ (( 1 << (sizeof(src)*8) )-1)) | src ); } else { dest = src; }
+#define MOVSX(dest,src) {if (ISNEGATIVE(src,src)) { dest = ((-1 ^ (( 1 << (sizeof(src)*8) )-1)) | src ); } else { dest = src; }}
 
 #define bitsizeof(dest) (8*sizeof(dest))
 #define shiftmodule(dest,bit) (bit&(bitsizeof(dest)-1))
@@ -489,8 +551,8 @@ void MOV_(D* dest, const S& src)
 
 
 #define CMPSB CMPS(1)
-#define CBW ah = ((int8_t)al) < 0?-1:0 // TODO
-#define CWD dx = ((int16_t)ax) < 0?-1:0
+#define CBW {ah = ((int8_t)al) < 0?-1:0;} // TODO
+#define CWD {dx = ((int16_t)ax) < 0?-1:0;}
 #define CWDE {*(((dw*)&eax)+1) = ((int16_t)ax) < 0?-1:0;}
 
 // MOVSx (DF FLAG not implemented)
@@ -538,11 +600,7 @@ void MOV_(D* dest, const S& src)
 
 // JMP - Unconditional Jump
 #define JMP(label) GOTOLABEL(label)
-#define GOTOLABEL(a) { \
-   __asm__ volatile ( \
-         "jmp " #a );}
-#define L(a) { __asm__ volatile ( a ); }
-//#define L(a) { int volatile x=0;  __asm__ __volatile__ ("" : "=r"(x)); if(x) {__asm__ volatile ( a : "=r"(x) : : "memory");} }
+
 
 #define CLD DF=0
 #define STD DF=1
@@ -552,15 +610,15 @@ void MOV_(D* dest, const S& src)
 #define CMC CF ^= 1 //TODO
 
 struct _STATE;
-void stackDump(_STATE* state);
+void stackDump();
 void hexDump (void *addr, int len);
-void asm2C_INT(_STATE* state, int a);
+void asm2C_INT(int a);
 void asm2C_init();
 void asm2C_printOffsets(unsigned int offset);
 
 // directjeu nosetjmp,2
 // directmenu
-#define INT(a) asm2C_INT(0,a); TESTJUMPTOBACKGROUND
+#define INT(a) asm2C_INT(a); TESTJUMPTOBACKGROUND
 
 #define TESTJUMPTOBACKGROUND  //if (jumpToBackGround) CALL(moveToBackGround);
 
@@ -569,8 +627,6 @@ void asm2C_OUT(int16_t address, int data);
 int8_t asm2C_IN(int16_t data);
 #define IN(a,b) a = asm2C_IN(b); TESTJUMPTOBACKGROUND
 
-#define STI // TODO: STI not implemented
-#define CLI // TODO: STI not implemented
 //#define PUSHF {dd t = CF+(ZF<<1)+(DF<<2)+(SF<<3); PUSH(t);}
 //#define POPF {dd t; POP(t); CF=t&1; ZF=(t>>1)&1; DF=(t>>2)&1; SF=(t>>3)&1;}
 
@@ -609,15 +665,36 @@ int8_t asm2C_IN(int16_t data);
  		POP(jmpbuffer); stackPointer-=2; longjmp(jmpbuffer, 0);}
 */
 #define CALL(label) \
-	{ \
-	label(); \
+	{ dw tt='xy'; PUSH(tt); \
+	  log_debug("after call %x\n",stackPointer); \
+	  ++_indent;_str=log_spaces(_indent);\
+	  label(0); \
 	}
 
-#define RET {int volatile x=0; {if (x==0) return;}}
+#define RET {log_debug("before ret %x\n",stackPointer); dw tt=0; POP(tt); if (tt!='xy') {log_error("Stack corrupted.\n");exit(1);} \
+	log_debug("after ret %x\n",stackPointer); \
+	--_indent;_str=log_spaces(_indent);return;}
+
+#define RETF {log_debug("before retf %x\n",stackPointer); dw tt=0; POP(tt); if (tt!='xy') {log_error("Stack corrupted.\n");exit(1);} \
+	dw tmpp;POP(tmpp); \
+	log_debug("after retf %x\n",stackPointer); \
+	--_indent;_str=log_spaces(_indent);return;}
 
 #define RETN RET
-#define IRET RET
-#define RETF {dw tt=0; POP(tt); RET;}
+
+#ifdef __BORLANDC__
+ #define L(x) __asm {x }
+ #define IRET __asm {iret }
+ #define GOTOLABEL(a) {_source=__LINE__;__asm jmp a;}
+ #define STI __sti__
+ #define CLI __cli__
+#else
+ #define L(x) x
+ #define IRET RETF
+ #define GOTOLABEL(a) {_source=__LINE__;goto a;}
+ #define STI // TODO: STI not implemented
+ #define CLI // TODO: STI not implemented
+#endif
 
 // ---------unimplemented
 #define AAA log_debug("unimplemented\n");
@@ -700,9 +777,15 @@ const char* log_spaces(int n);
 #if DEBUG==2
     #define R(a) {log_debug("l:%s%d:%s\n",_str,__LINE__,#a);}; a
 #elif DEBUG>=3
+ #ifndef __BORLANDC__
     #define R(a) {log_debug("l:%s%x:%d:%s eax: %x ebx: %x ecx: %x edx: %x ebp: %x ds: %x esi: %x es: %x edi: %x fs: %x esp: %x\n",_str,0/*pthread_self()*/,__LINE__,#a, \
 eax, ebx, ecx, edx, ebp, ds, esi, es, edi, fs, esp);} \
 	a 
+#else
+    #define R(a) {log_debug("l:%s%x:%d:%s eax: %lx ebx: %lx ecx: %lx edx: %lx ebp: %lx ds: %x esi: %lx es: %x edi: %lx fs: %x esp: %lx\n",_str,0/*pthread_self()*/,__LINE__,#a, \
+eax, ebx, ecx, edx, ebp, ds, esi, es, edi, fs, esp);} \
+	a 
+ #endif
 #else
     #define R(a) a
 #endif
@@ -724,15 +807,148 @@ bool is_little_endian();
 			   (((uint32_t)(x) & 0xff000000) >> 24)   \
 			   ))
 #endif
+/*
+#ifndef __BORLANDC__
+enum  _offsets : int;
+#else
+typedef dw  _offsets;
+#endif
+*/
+typedef dw  _offsets;
+
+struct _STATE{
+dd eax;
+dd ebx;
+dd ecx;
+dd edx;
+dd esi;
+dd edi;
+dd esp;
+dd ebp;
+dd eip;
+
+dw cs;         
+dw ds;         
+dw es;         
+dw fs;         
+dw gs;         
+dw ss;         
+                      
+bool CF;       
+bool PF;       
+bool AF;       
+bool ZF;       
+bool SF;       
+bool DF;       
+bool OF;       
+db _indent; 
+const char *_str;
+};
+
+#define REGDEF_hl(Z)   \
+uint32_t e##Z##x=0;
+
+#define REGDEF_l(Z) \
+uint32_t e##Z=0;
+
+#define REGDEF_nol(Z) \
+uint32_t e##Z=0; 
+
+#define X86_REGREF \
+    REGDEF_hl(a);     \
+    REGDEF_hl(b);     \
+    REGDEF_hl(c);     \
+    REGDEF_hl(d);     \
+                      \
+    REGDEF_l(si);     \
+    REGDEF_l(di);     \
+    REGDEF_l(sp);     \
+    REGDEF_l(bp);     \
+                      \
+    REGDEF_nol(ip);   \
+                      \
+dw cs;         \
+dw ds;         \
+dw es;         \
+dw fs;         \
+dw gs;         \
+dw ss;         \
+                      \
+bool CF;       \
+bool PF;       \
+bool AF;       \
+bool ZF;       \
+bool SF;       \
+bool DF;       \
+bool OF;       \
+_offsets __disp=0; \
+dw _source=0; \
+db _indent=0; \
+const char *_str=0;
+
+#define EREGDEF_hl(Z)   \
+extern uint32_t e##Z##x; \
+uint16_t& Z##x = *(uint16_t *)& e##Z##x; \
+uint8_t& Z##l = *(uint8_t *)& e##Z##x; \
+uint8_t& Z##h = *(((uint8_t *)& e##Z##x)+1); 
+
+#define EREGDEF_l(Z) \
+extern uint32_t e##Z; \
+uint16_t& Z = *(uint16_t *)& e##Z ; \
+uint8_t&  Z##l = *(uint8_t *)& e##Z ;
+
+#define EREGDEF_nol(Z) \
+extern uint32_t e##Z; \
+uint16_t& Z = *(uint16_t *)& e##Z ;
+
+#define X86_EREGREF \
+    EREGDEF_hl(a);     \
+    EREGDEF_hl(b);     \
+    EREGDEF_hl(c);     \
+    EREGDEF_hl(d);     \
+                      \
+    EREGDEF_l(si);     \
+    EREGDEF_l(di);     \
+    EREGDEF_l(sp);     \
+    EREGDEF_l(bp);     \
+                      \
+    EREGDEF_nol(ip);   \
+                      \
+extern dw cs;         \
+extern dw ds;         \
+extern dw es;         \
+extern dw fs;         \
+extern dw gs;         \
+extern dw ss;         \
+                      \
+extern bool CF;       \
+extern bool PF;       \
+extern bool AF;       \
+extern bool ZF;       \
+extern bool SF;       \
+extern bool DF;       \
+extern bool OF;       \
+dd& stackPointer = esp;\
+extern _offsets __disp; \
+extern dw _source; \
+extern db _indent; \
+extern const char *_str;
+
 
 void realtocurs();
+dw getscan();
 
-struct SDL_Renderer;
-extern SDL_Renderer *renderer;
+// SDL2 VGA
+//struct SDL_Renderer;
+extern struct SDL_Renderer *renderer;
+
 extern db vgaPalette[256*3];
 
+//extern chtype vga_to_curses[256];
+#include "memmgr.h"
+
 #ifdef __cplusplus
-//}
+}
 #endif
 
 #endif

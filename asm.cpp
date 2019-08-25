@@ -1,112 +1,42 @@
 #include "asm.h"
-//#include "snow.h"
-#include "iplay_masm_.h"
 
-#include <SDL2/SDL.h>
+struct /*__attribute__((__packed__))*/ Memory;
+extern Memory m;
+
+#ifndef __BORLANDC__
+ #ifndef __DJGPP__
+  #include <SDL/SDL.h>
+ #endif
+// #include <thread>
+#endif
+
+#ifdef __DJGPP__
+ #include <pc.h>
+ #include <dos.h>
+ #include <dpmi.h>
+ #include <go32.h>
+ #include <sys/farptr.h>
+#endif
+
+#ifdef __BORLANDC__
+ #include <dos.h>
+#endif
+
 #include <assert.h>
 
 #include <time.h>
-//#include <thread>
 
-struct /*__attribute__((__packed__))*/ Memory;
-extern struct Memory m;
+#include <curses.h>
+
 
 /* https://commons.wikimedia.org/wiki/File:Table_of_x86_Registers_svg.svg */
 
-#define REGDEF_hl(Z)   \
-uint16_t& Z##x = *(uint16_t *)& e##Z##x; \
-uint8_t& Z##l = *(uint8_t *)& e##Z##x; \
-uint8_t& Z##h = *(((uint8_t *)& e##Z##x)+1); 
-
-#define REGDEF_l(Z) \
-uint16_t& Z = *(uint16_t *)& e##Z ; \
-uint8_t&  Z##l = *(uint8_t *)& e##Z ;
-
-#define REGDEF_nol(Z) \
-uint16_t& Z = *(uint16_t *)& e##Z ;
 
 //struct uc_x86_state {
 //    REGDEF_nol(flags);
 //};
 
-struct _STATE{
-/*
-dd eax;
-dd ebx;
-dd ecx;
-dd edx;
-dd esi;
-dd edi;
-dd esp;
-dd ebp;
-dd eip;
 
-dw cs;         
-dw ds;         
-dw es;         
-dw fs;         
-dw gs;         
-dw ss;         
-                      
-bool CF;       
-bool PF;       
-bool AF;       
-bool ZF;       
-bool SF;       
-bool DF;       
-bool OF;       
-db _indent; 
-char _str[256];
-*/
-};
-#define X86_REGREF 
-
-#define _X86_REGREF \
-    REGDEF_hl(a);     \
-    REGDEF_hl(b);     \
-    REGDEF_hl(c);     \
-    REGDEF_hl(d);     \
-                      \
-    REGDEF_l(si);     \
-    REGDEF_l(di);     \
-    REGDEF_l(sp);     \
-    REGDEF_l(bp);     \
-                      \
-    REGDEF_nol(ip);   \
-                      \
-                      \
-dd& stackPointer = esp;\
-_offsets __disp; \
-dw _source;
-
-dd eax;
-dd ebx;
-dd ecx;
-dd edx;
-dd esi;
-dd edi;
-dd esp;
-dd ebp;
-dd eip;
-
-dw cs;         
-dw ds;         
-dw es;         
-dw fs;         
-dw gs;         
-dw ss;         
-                      
-bool CF;       
-bool PF;       
-bool AF;       
-bool ZF;       
-bool SF;       
-bool DF;       
-bool OF;       
-db _indent; 
-char _str[256];
-
-_X86_REGREF
 
 /*
 #undef REGDEF_hl
@@ -140,19 +70,24 @@ static struct __fl __eflags;
 #define DF __eflags._DF
 #define SF __eflags._SF
 */
-
+// SDL2 VGA
+#if SDL_MAJOR_VERSION == 2
     SDL_Renderer *renderer;
     SDL_Window *window;
+
+db vgaRamPaddingBefore[VGARAM_SIZE];
+db vgaRam[VGARAM_SIZE];
+db vgaRamPaddingAfter[VGARAM_SIZE];
+#endif
+
 db vgaPalette[256*3];
 dd selectorsPointer;
 dd selectors[NB_SELECTORS];
 
 dd heapPointer;
-db vgaRamPaddingBefore[VGARAM_SIZE];
-db vgaRam[VGARAM_SIZE];
-db vgaRamPaddingAfter[VGARAM_SIZE];
-db* diskTransferAddr = 0;
-#include "memmgr.h"
+struct find_t;
+struct find_t * diskTransferAddr = 0;
+//#include "memmgr.c"
 
 //static const uint32_t MASK[]={0, 0xff, 0xffff, 0xffffff, 0xffffffff};
 
@@ -174,7 +109,8 @@ void log_error(const char *fmt, ...) {
 #ifdef __LIBRETRO__
 	log_cb(RETRO_LOG_ERROR,"%s",formatted_string);
 #else
-	if (logDebug!=NULL) { fprintf(logDebug,"%s",formatted_string); fflush(logDebug);} else { printf("%s",formatted_string); }
+	if (logDebug!=NULL) { fprintf(logDebug,"%s",formatted_string); fflush(logDebug);};
+	{ printf("%s",formatted_string); }
 #endif
 }
 void log_debug(const char *fmt, ...) {
@@ -217,6 +153,7 @@ void log_debug2(const char *fmt, ...) {
 }
 
 void checkIfVgaRamEmpty() {
+#if SDL_MAJOR_VERSION == 2
 	int i;
 	int vgaram_empty = 1;
 	for(i = 0; i < VGARAM_SIZE; i++)
@@ -224,10 +161,13 @@ void checkIfVgaRamEmpty() {
 			vgaram_empty = 0;
 	log_debug("vgaram_empty : %s\n", vgaram_empty ? "true" : "false");
 	(void) vgaram_empty;
+#endif
 }
 
-void stackDump(_STATE* _state) {
-X86_REGREF
+X86_EREGREF
+
+void stackDump() {
+//X86_REGREF
 
 	log_debug("is_little_endian()=%d\n",isLittle);
 	log_debug("sizeof(dd)=%zu\n",sizeof(dd));
@@ -253,9 +193,11 @@ X86_REGREF
 	hexDump((void *) realAddress(edi,es),50);
 	log_debug("fs: %d -> %p\n",fs,(void *) realAddress(0,fs));
 	log_debug("gs: %d -> %p\n",gs,(void *) realAddress(0,gs));
-	log_debug("adress heap: %p\n",(void *) &m.heap);
+//	log_debug("adress heap: %p\n",(void *) &m.heap);
+#if SDL_MAJOR_VERSION == 2
 	log_debug("adress vgaRam: %p\n",(void *) &vgaRam);
 	log_debug("first pixels vgaRam: %x\n",*vgaRam);
+#endif
 	log_debug("flags: ZF = %d\n",ZF);
 	log_debug("top stack=%d\n",stackPointer);
 	checkIfVgaRamEmpty();
@@ -313,6 +255,9 @@ void hexDump (void *addr, int len) {
 }
 
 void asm2C_OUT(int16_t address, int data) {
+#if defined( __DJGPP__ ) || defined( __BORLANDC__ )
+	outportb(address, data);
+#else
 	static int indexPalette = 0;
 	switch(address) {
 	case 0x3c8:
@@ -330,9 +275,13 @@ void asm2C_OUT(int16_t address, int data) {
 		log_debug("unknown OUT %d,%d\n",address, data);
 		break;
 	}
+#endif
 }
 
 int8_t asm2C_IN(int16_t address) {
+#if defined( __DJGPP__ ) || defined( __BORLANDC__ )
+	return inportb(address);
+#else
 	static bool vblTick = 1;
 	switch(address) {
 	case 0x3DA:
@@ -349,6 +298,21 @@ int8_t asm2C_IN(int16_t address) {
 		log_error("Unknown IN %d\n",address);
 		return 0;
 	}
+#endif
+}
+
+uint16_t asm2C_INW(uint16_t address) {
+#if defined( __DJGPP__ ) || defined( __BORLANDC__ )
+	return inport(address);
+#else
+	switch(address) {
+	case 0x3DA:
+		break;
+	default:
+		log_error("Unknown INW %d\n",address);
+		return 0;
+	}
+#endif
 }
 
 bool is_little_endian_real_check() {
@@ -382,6 +346,7 @@ bool is_little_endian()
 }
 
 
+#ifndef __BORLANDC__ //TODO
 //#if !CYGWIN
   #include <sys/time.h>
 double realElapsedTime(void) {              // returns 0 first time called
@@ -392,6 +357,7 @@ double realElapsedTime(void) {              // returns 0 first time called
    //     t0 = tv;
     return ((tv.tv_sec /*- t0.tv_sec*/ + (tv.tv_usec /* - t0.tv_usec*/)) / 1000000.) * 18.;
 }
+#endif
 /*
 #else
 #include <windows.h>
@@ -409,6 +375,94 @@ double realElapsedTime(void) {              // granularity about 50 microsecs
 }
 #endif
 */
+void call_dos_realint(int a)
+{
+
+#ifdef __DJGPP__
+X86_REGREF
+	log_debug2("call_dos_realint %x ax=%x bx=%x cx=%x dx=%x\n",a,ax,bx,cx,dx);
+__dpmi_regs _dpmi_reg;
+   _dpmi_reg.x.ax = ax;
+   _dpmi_reg.x.bx = bx;
+   _dpmi_reg.x.cx = cx;
+   _dpmi_reg.x.dx = dx;
+   _dpmi_reg.x.si = si;
+   _dpmi_reg.x.di = di;
+   _dpmi_reg.x.bp = bp;
+   _dpmi_reg.x.ds = ds;
+   _dpmi_reg.x.es = es;
+   __dpmi_int(a, &_dpmi_reg);
+   ds = _dpmi_reg.x.ds;
+   es = _dpmi_reg.x.es;
+   ax = _dpmi_reg.x.ax;
+   bx = _dpmi_reg.x.bx;
+   cx = _dpmi_reg.x.cx;
+   dx = _dpmi_reg.x.dx;
+   si = _dpmi_reg.x.si;
+   di = _dpmi_reg.x.di;
+   bp = _dpmi_reg.x.bp;
+#endif   
+#ifdef __BORLANDC__
+	log_debug2("call_dos_realint %x ax=%x bx=%x cx=%x dx=%x\n",a,ax,bx,cx,dx);
+     union REGS _dpmi_reg;
+struct SREGS sr;
+   _dpmi_reg.x.ax = ax;
+   _dpmi_reg.x.bx = bx;
+   _dpmi_reg.x.cx = cx;
+   _dpmi_reg.x.dx = dx;
+   _dpmi_reg.x.si = si;
+   _dpmi_reg.x.di = di;
+//   _dpmi_reg.x.bp = bp;
+   sr.ds = ds;
+   sr.es = es;
+   int86x(a, &_dpmi_reg, &_dpmi_reg, &sr);
+   ds = sr.ds;
+   es = sr.es;
+   ax = _dpmi_reg.x.ax;
+   bx = _dpmi_reg.x.bx;
+   cx = _dpmi_reg.x.cx;
+   dx = _dpmi_reg.x.dx;
+   si = _dpmi_reg.x.si;
+   di = _dpmi_reg.x.di;
+//   bp = _dpmi_reg.x.bp;
+   CF |= _doserrno;
+#endif   
+
+
+}
+
+void call_dos_protint(int a)
+{
+#ifdef __DJGPP__
+X86_REGREF
+// int21h: 9, 39h, 3Ah, 3Bh, 3Ch, 3Dh, 3Fh, 40h, 41h, 43h, 47h, 56h
+	log_debug2("call_dos_protint %x eax=%x ebx=%x ecx=%x edx=%x\n",a,eax,ebx,ecx,edx);
+     union REGS _dpmi_reg;
+   _dpmi_reg.d.eax = eax;
+   _dpmi_reg.d.ebx = ebx;
+   _dpmi_reg.d.ecx = ecx;
+   _dpmi_reg.d.edx = (dd)raddr(ds,dx);
+   _dpmi_reg.d.esi = esi;
+   _dpmi_reg.d.edi = (dd)raddr(es,di);//edi;
+   _dpmi_reg.d.ebp = ebp;
+   _dpmi_reg.d.ebx = ebx;
+
+   int86(a, &_dpmi_reg, &_dpmi_reg);
+
+   eax = _dpmi_reg.d.eax;
+   ebx = _dpmi_reg.d.ebx;
+   ecx = _dpmi_reg.d.ecx;
+//   edx = _dpmi_reg.d.edx;
+   esi = _dpmi_reg.d.esi;
+   edi = _dpmi_reg.d.edi;
+   ebx = _dpmi_reg.d.ebx;
+   ebp = _dpmi_reg.d.ebp;
+   CF = _dpmi_reg.d.cflag&1;
+#endif   
+
+}
+
+
 void asm2C_init() {
 	isLittle=is_little_endian();
 #ifdef MSB_FIRST
@@ -424,23 +478,20 @@ void asm2C_init() {
 	log_debug2("asm2C_init is_little_endian:%d\n",isLittle);
 }
 
-
-void asm2C_INT(_STATE* _state, int a) {
-X86_REGREF
+void asm2C_INT(int a) {
+//X86_REGREF
 	static FILE * file;
 	int i;
-/*
-	db ah=READDBh(eax);
-	db al=READDBl(eax);
-	dw ax=READDW(eax);
-	dw bx=READDW(ebx);
-	dw cx=READDW(ecx);
-	dw dx=READDW(edx);
-*/
 	CF = 0;
 	int rc;
 #define SUCCESS         0       /* Function was successful      */
-	log_debug2("asm2C_INT ah=%x al=%x ax=%x bx=%x cx=%x dx=%x\n",ah,al,ax,bx,cx,dx);
+
+#ifdef __BORLANDC__
+        call_dos_realint(a);
+#endif
+
+	log_debug2("INT %x ax=%x bx=%x cx=%x dx=%x\n",a,ax,bx,cx,dx);
+
 
 	switch(a) {
 	case 0x10:
@@ -465,11 +516,18 @@ X86_REGREF
 			}
 			case 0x13: {
 				log_debug2("Switch to VGA\n");
+#ifdef __DJGPP__
+        call_dos_realint(a);
+#endif
+
+#if SDL_MAJOR_VERSION == 2
+
 				SDL_Init(SDL_INIT_VIDEO);
 				SDL_CreateWindowAndRenderer(320, 200, 0, &window, &renderer);
 				SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
 				SDL_RenderClear(renderer);
 			        SDL_RenderPresent(renderer); 
+#endif
 				//stackDump(_state);
 				return;
 			}
@@ -515,9 +573,13 @@ X86_REGREF
 		switch(ah) {
 		    case 0x02:  /* GET REAL-TIME CLOCK TIME (AT,XT286,PS) */
 		         {
-        	    struct tm* loctime;
+#ifdef __DJGPP__
+        call_dos_realint(a);
+#else
 
 		        
+#ifndef __BORLANDC__  //TODO
+        	    struct tm* loctime;
 		    struct timeval curtime;
 	            gettimeofday(&curtime, NULL);
     
@@ -529,6 +591,8 @@ X86_REGREF
 
 	            ch = (loctime->tm_hour);
 		    dl = 0;
+#endif
+#endif
 			break;
 			}
 
@@ -537,6 +601,40 @@ X86_REGREF
 		break;
 	}
 	case 0x21:
+
+#ifdef __DJGPP__
+		switch(ah)
+		{
+			case 0x9:
+			case 0x19:
+			case 0x1A:
+			case 0x39:
+			case 0x3A:
+			case 0x3B:
+			case 0x3C:
+			case 0x3D:
+			case 0x3E:
+			case 0x3F:
+			case 0x40:
+			case 0x41:
+			case 0x43:
+			case 0x4e:
+			case 0x4f:
+//			case 0x47:
+//			case 0x56:
+			case 0x58:
+			{
+			call_dos_protint(0x21);
+			return;
+			}
+			case 0x42:
+			{
+		        call_dos_realint(a);
+			}
+			default:
+				break;
+		}
+#endif
 		switch(ah)
 		{
 		case 0x9:
@@ -549,18 +647,35 @@ X86_REGREF
 		}
 		case 0xe: // select disk
 		{
+#ifdef __DJGPP__
+//        call_dos_realint(_state, a);
+     unsigned int _drives;
+     _dos_setdrive(dl+1, &_drives);
+     al = _drives;
+#else
 			al=1;
+#endif
+			return;
+		}
+		case 0x11: // search fcb
+		case 0x12: // search fcb
+		{
+			al=0xff;
 			return;
 		}
 		case 0x19: // Get default disk
 		{
+#ifdef __DJGPP__
+        call_dos_realint(a);
+#else
 			// def disk is C:
 			al=0x2;
+#endif
 			return;
 		}
 		case 0x1A: // Set disk transfer addr
 		{
-			diskTransferAddr=(db *)realAddress(dx,ds);
+			diskTransferAddr=(find_t *)realAddress(dx,ds);
 			return;
 		}
 		case 0x25: // Set disk transfer addr
@@ -575,14 +690,29 @@ X86_REGREF
 			es=*(dw *)realAddress(al*4+2,0);
 			return;
 		}
+		case 0x2a:
+		case 0x2b:
+		case 0x2d:
+		{
+#ifdef __DJGPP__
+        call_dos_realint(a);
+			return;
+#endif
+			break;
+		}
 		case 0x2c:
 		{
+#ifdef __DJGPP__
+        call_dos_realint(a);
+			return;
+#else
 			//MOV(8,8,READDBh(edx),(db)2);
 			// TOFIX
 			dh=0x2;
 			return;
+#endif
 		}
-		case 0x3d:
+		case 0x3d: //open
 		{
 			char fileName[1000];
 			if (path!=NULL) {
@@ -612,7 +742,7 @@ X86_REGREF
 			// TODO
 			return;
 		}
-		case 0x3e:
+		case 0x3e: //close
 		{
 			// bx: file handle to close
 			//TOFIX
@@ -626,7 +756,7 @@ X86_REGREF
 			file=NULL;
 			return;
 		}
-		case 0x3f:
+		case 0x3f: // read
 		{
 			/*
 			   [Index]AH = 3Fh - "READ" - READ FROM FILE OR DEVICE
@@ -758,13 +888,6 @@ X86_REGREF
 	return;
 			break;
 		}
-		case 0x4E: // find first matching file
-		{
-			// cur dir is root
-			log_debug2("Find first file %s\n",(void *) (db *) realAddress(dx, ds));
-			strcpy((char*)diskTransferAddr+0x1e,"HACKER4.S3M");
-			return;
-		}
       /* Free memory */
     case 0x49:
       if ((rc = DosMemFree(es - 1)) < SUCCESS)
@@ -792,14 +915,32 @@ X86_REGREF
 	CF=(rc!=SUCCESS);
 	return;
       break;
+		case 0x4E: // find first matching file
+		{
+			// cur dir is root
+			log_debug2("Find first file %s\n",(void *) (db *) realAddress(dx, ds));
+#ifdef __DJGPP__
+     CF = _dos_findfirst((const char *) raddr(ds, dx), cx,
+                                 diskTransferAddr);
+#else
+			strcpy((char*)diskTransferAddr+0x1e,"HACKER4.S3M");
+#endif
+			return;
+		}
 		case 0x4F: // find next matching file
 		{
+			// cur dir is root
+			log_debug2("Find next file %s\n",(void *) (db *) realAddress(dx, ds));
+#ifdef __DJGPP__
+     CF = _dos_findnext(diskTransferAddr);
+#else
 			CF=1;
+#endif
 			return;
 		}
 		case 0x4c:
 		{
-			stackDump(_state);
+			stackDump();
 			jumpToBackGround = 1;
 			executionFinished = 1;
 			exitCode = al;
@@ -809,6 +950,10 @@ X86_REGREF
 		}
 		case 0x58: // mem allocation policy
 		{
+#ifdef __DJGPP__
+        call_dos_realint(a);
+			return;
+#endif
 			return;
 		}
 		default:
@@ -983,7 +1128,19 @@ X86_REGREF
 		}
 		break;
 */
+	case 0x33: // mouse not implemented yet
+	{
+#ifdef __DJGPP__
+        call_dos_realint(a);
+			return;
+#endif
+		break;
+	}
 	default:
+#ifdef __DJGPP__
+        call_dos_realint(a);
+			return;
+#endif
 		break;
 	}
 	CF = 1;
@@ -1022,6 +1179,178 @@ const char* log_spaces(int n)
 //	memset(s, ' ', n); 
 //	*(s+n) = 0; 
   return s+(88-n);
+}
+
+dw getscan()
+{
+ dw o=0;
+ int chr = getch();
+ o = chr;
+//if (ch==ERR) return(0);
+
+//log_debug(">> %x\n",ch);
+
+ switch (chr)
+{
+case ERR: {o=0;break;}
+
+case 0x31: {o=0x2;break;}
+case 0x32: {o=0x3;break;}
+case 0x33: {o=0x4;break;}
+case 0x34: {o=0x5;break;}
+case 0x35: {o=0x6;break;}
+case 0x36: {o=0x7;break;}
+case 0x37: {o=0x8;break;}
+case 0x38: {o=0x9;break;}
+case 0x39: {o=0xa;break;}
+case 0x30: {o=0xb;break;}
+
+case KEY_F(1): {o=0x3B;break;}
+case KEY_F(2): {o=0x3C;break;}
+case KEY_F(3): {o=0x3D;break;}
+case KEY_F(4): {o=0x3E;break;}
+case KEY_F(5): {o=0x3F;break;}
+case KEY_F(6): {o=0x40;break;}
+case KEY_F(7): {o=0x41;break;}
+case KEY_F(8): {o=0x42;break;}
+case KEY_F(9): {o=0x43;break;}
+case KEY_F(10): {o=0x44;break;}
+case KEY_LEFT: {o=0xe04B;break;}
+case KEY_B2: {o=0x4C;break;}
+case KEY_RIGHT: {o=0xe04D;break;}
+case KEY_END: {o=0x4F;break;}
+case KEY_DOWN: {o=0xe050;break;}
+case KEY_NPAGE: {o=0xe051;break;}
+case KEY_IC: {o=0xe052;break;}
+case KEY_DC: {o=0xe053;break;}
+case KEY_F(13): {o=0x54;break;}
+case KEY_F(14): {o=0x55;break;}
+case KEY_F(15): {o=0x56;break;}
+case KEY_F(11): {o=0x57;break;}
+case KEY_F(12): {o=0x58;break;}
+case KEY_F(18): {o=0x59;break;}
+case KEY_F(19): {o=0x5A;break;}
+case KEY_F(20): {o=0x5B;break;}
+case KEY_F(21): {o=0x5C;break;}
+case KEY_F(22): {o=0x5D;break;}
+case KEY_F(25): {o=0x5E;break;}
+case KEY_F(26): {o=0x5F;break;}
+case KEY_F(27): {o=0x60;break;}
+case KEY_F(28): {o=0x61;break;}
+case KEY_F(29): {o=0x62;break;}
+case KEY_F(30): {o=0x63;break;}
+case KEY_F(31): {o=0x64;break;}
+case KEY_F(32): {o=0x65;break;}
+case KEY_F(33): {o=0x66;break;}
+case KEY_F(34): {o=0x67;break;}
+case KEY_F(37): {o=0x68;break;}
+case KEY_F(38): {o=0x69;break;}
+case KEY_F(39): {o=0x6A;break;}
+case KEY_F(40): {o=0x6B;break;}
+case KEY_F(41): {o=0x6C;break;}
+case KEY_F(42): {o=0x6D;break;}
+case KEY_F(43): {o=0x6E;break;}
+case KEY_F(44): {o=0x6F;break;}
+case KEY_F(45): {o=0x70;break;}
+case KEY_F(46): {o=0x71;break;}
+case KEY_BTAB: {o=0xF;break;}
+case KEY_HOME: {o=0xe047;break;}
+case KEY_UP: {o=0xe048;break;}
+case KEY_PPAGE: {o=0xe049;break;}
+case KEY_F(23): {o=0x87;break;}
+case KEY_F(24): {o=0x88;break;}
+case KEY_F(35): {o=0x89;break;}
+case KEY_F(36): {o=0x8A;break;}
+case KEY_F(47): {o=0x8B;break;}
+case KEY_F(48): {o=0x8C;break;}
+#ifdef __PDCURSES__
+case ALT_ESC: {o=0x1;break;}
+case ALT_BKSP: {o=0xE;break;}
+case ALT_Q: {o=0x10;break;}
+case ALT_W: {o=0x11;break;}
+case ALT_E: {o=0x12;break;}
+case ALT_R: {o=0x13;break;}
+case ALT_T: {o=0x14;break;}
+case ALT_Y: {o=0x15;break;}
+case ALT_U: {o=0x16;break;}
+case ALT_I: {o=0x17;break;}
+case ALT_O: {o=0x18;break;}
+case ALT_P: {o=0x19;break;}
+case ALT_LBRACKET: {o=0x1A;break;}
+case ALT_RBRACKET: {o=0x1B;break;}
+case ALT_ENTER: {o=0x1C;break;}
+case ALT_A: {o=0x1E;break;}
+case ALT_S: {o=0x1F;break;}
+case ALT_D: {o=0x20;break;}
+case ALT_F: {o=0x21;break;}
+case ALT_G: {o=0x22;break;}
+case ALT_H: {o=0x23;break;}
+case ALT_J: {o=0x24;break;}
+case ALT_K: {o=0x25;break;}
+case ALT_L: {o=0x26;break;}
+case ALT_SEMICOLON: {o=0x27;break;}
+case ALT_FQUOTE: {o=0x28;break;}
+case ALT_BQUOTE: {o=0x29;break;}
+case ALT_BSLASH: {o=0x2B;break;}
+case ALT_Z: {o=0x2C;break;}
+case ALT_X: {o=0x2D;break;}
+case ALT_C: {o=0x2E;break;}
+case ALT_V: {o=0x2F;break;}
+case ALT_B: {o=0x30;break;}
+case ALT_N: {o=0x31;break;}
+case ALT_M: {o=0x32;break;}
+case ALT_COMMA: {o=0x33;break;}
+case ALT_STOP: {o=0x34;break;}
+case ALT_FSLASH: {o=0x35;break;}
+case ALT_PADSTAR: {o=0x37;break;}
+case ALT_PADMINUS: {o=0x4A;break;}
+case ALT_PADPLUS: {o=0x4E;break;}
+case CTL_LEFT: {o=0x73;break;}
+case CTL_RIGHT: {o=0x74;break;}
+case CTL_END: {o=0x75;break;}
+case CTL_PGDN: {o=0x76;break;}
+case CTL_HOME: {o=0x77;break;}
+case ALT_1: {o=0x78;break;}
+case ALT_2: {o=0x79;break;}
+case ALT_3: {o=0x7A;break;}
+case ALT_4: {o=0x7B;break;}
+case ALT_5: {o=0x7C;break;}
+case ALT_6: {o=0x7D;break;}
+case ALT_7: {o=0x7E;break;}
+case ALT_8: {o=0x7F;break;}
+case ALT_9: {o=0x80;break;}
+case ALT_0: {o=0x81;break;}
+case ALT_MINUS: {o=0x82;break;}
+case ALT_EQUAL: {o=0x83;break;}
+case CTL_PGUP: {o=0x84;break;}
+//case KEY_F(11): {o=0x85;break;}
+//case KEY_F(12): {o=0x86;break;}
+case CTL_UP: {o=0x8D;break;}
+case CTL_PADMINUS: {o=0x8E;break;}
+case CTL_PADCENTER: {o=0x8F;break;}
+case CTL_PADPLUS: {o=0x90;break;}
+case CTL_DOWN: {o=0x91;break;}
+case CTL_INS: {o=0x92;break;}
+case CTL_DEL: {o=0x93;break;}
+case CTL_TAB: {o=0x94;break;}
+case CTL_PADSLASH: {o=0x95;break;}
+case CTL_PADSTAR: {o=0x96;break;}
+case ALT_HOME: {o=0x97;break;}
+case ALT_UP: {o=0x98;break;}
+case ALT_PGUP: {o=0x99;break;}
+case ALT_LEFT: {o=0x9B;break;}
+case ALT_RIGHT: {o=0x9D;break;}
+case ALT_END: {o=0x9F;break;}
+case ALT_DOWN: {o=0xA0;break;}
+case ALT_PGDN: {o=0xA1;break;}
+case ALT_INS: {o=0xA2;break;}
+case ALT_DEL: {o=0xA3;break;}
+case ALT_PADSLASH: {o=0xA4;break;}
+case ALT_TAB: {o=0xA5;break;}
+case ALT_PADENTER: {o=0xA6;break;}
+#endif
+ }
+ return o;
 }
 
 void realtocurs()
@@ -1073,32 +1402,46 @@ static short realtocurs[16] =
 
 }
 
-int init(_STATE* state);
-void mainproc(_offsets _i, _STATE* state);
+/*
+"Programming for MS-DOS" (Ray Duncan)
+
+                  COM                            EXE
+                  ===                            ===
+CS:IP           PSP:0100H             Defined by program's END statement
+AL              00 if default FCB#1 has valid drive, FF if invalid drive
+AH              Ditto, FCB#2
+ Bill comment : FCB1 is filled from the first command argument, FCB2 from the
+    second. From DOS5 (or maybe DOS6 - it's a long time ago...) FCB1 was
+    left empty and FCB2 was filled from argument 1. AFAIAA, this was never
+    fixed. What effect it has on this claim (re AX contents) I'm not sure.
+
+DS              PSP                              PSP
+ES              PSP                              PSP
+SS              PSP                              Seg with STACK attribute
+SP              0FFFEH or top word in avail.     Size of STACK segment
+                 memory, whichever is least.
+
+From: "The MS-DOS Encyclopaedia" (also Duncan) - talking about .EXE files. There is no comment on this point when discussing .COM files.
+
+"The other processor registers (BX,CX,DX,BP,SI and DI) contain unknown values when the program receives control from MS-DOS."
+*/
+
+int init();
+void mainproc(_offsets _i);
+//void _start();
 
 int main(int argc, char *argv[])
 {
-  _STATE state;
-  _STATE* _state=&state;
-  X86_REGREF
+//  _STATE state;
+//  _STATE* _state=&state;
+  //X86_REGREF
   
-  /* We expect ram_top as Kbytes, so convert to paragraphs */
-  mcb_init(seg_offset(heap), (HEAP_SIZE / 1024) * 64 - first_mcb - 1, MCB_LAST);
-
-  R(MOV(ss, seg_offset(stack)));	// mov cs,_TEXT
-#if _BITS == 32
-  esp = ((dd)(db*)&m.stack[STACK_SIZE - 4]);
-#else
-  esp=0;
-  sp = STACK_SIZE - 4;
-  es=0;
- *(dw*)(raddr(0,0x408)) = 0x378; //LPT
-#endif
+	_indent=0;
 
 	eax = 0x0ffff;
 	ebx=ecx=edx=ebp=esi=edi=DF=0;
 
-	init(_state);
+	init();
 
   if (argc >= 2)
   {
@@ -1108,9 +1451,44 @@ int main(int argc, char *argv[])
 	*(((dw*)&m)+0x81+s)=0xD;
 
   }
-
-//	mainproc(kbegin, _state); //x0r
-        _start();
+	mainproc((_offsets) 0x1001);
+//	_start();
 	return(0);
+}
+
+chtype vga_to_curses[256];
+void prepare_cp437_to_curses()
+{
+for(size_t i=0; i<256; i++)
+	{ vga_to_curses[i] = i; }
+    vga_to_curses['\0'] = ' ';
+    vga_to_curses[0x04] = ACS_DIAMOND;
+    vga_to_curses[0x18] = ACS_UARROW;
+    vga_to_curses[0x19] = ACS_DARROW;
+    vga_to_curses[0x1a] = ACS_RARROW;
+    vga_to_curses[0x1b] = ACS_LARROW;
+    vga_to_curses[0x9c] = ACS_STERLING;
+    vga_to_curses[0xb0] = ACS_BOARD;
+    vga_to_curses[0xb1] = ACS_CKBOARD;
+    vga_to_curses[0xb3] = ACS_VLINE;
+    vga_to_curses[0xb4] = ACS_RTEE;
+    vga_to_curses[0xbf] = ACS_URCORNER;
+    vga_to_curses[0xc0] = ACS_LLCORNER;
+    vga_to_curses[0xc1] = ACS_BTEE;
+    vga_to_curses[0xc2] = ACS_TTEE;
+    vga_to_curses[0xc3] = ACS_LTEE;
+    vga_to_curses[0xc4] = ACS_HLINE;
+    vga_to_curses[0xc5] = ACS_PLUS;
+    vga_to_curses[0xce] = ACS_LANTERN;
+    vga_to_curses[0xd8] = ACS_NEQUAL;
+    vga_to_curses[0xd9] = ACS_LRCORNER;
+    vga_to_curses[0xda] = ACS_ULCORNER;
+    vga_to_curses[0xdb] = ACS_BLOCK;
+    vga_to_curses[0xe3] = ACS_PI;
+    vga_to_curses[0xf1] = ACS_PLMINUS;
+    vga_to_curses[0xf2] = ACS_GEQUAL;
+    vga_to_curses[0xf3] = ACS_LEQUAL;
+    vga_to_curses[0xf8] = ACS_DEGREE;
+    vga_to_curses[0xfe] = ACS_BULLET;
 }
 

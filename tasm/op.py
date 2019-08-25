@@ -1,4 +1,3 @@
-from __future__ import print_function
 from __future__ import absolute_import
 # ScummVM - Graphic Adventure Engine
 #
@@ -21,6 +20,7 @@ from __future__ import absolute_import
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #
 
+import logging
 from builtins import str
 from builtins import object
 import re
@@ -28,6 +28,22 @@ from . import lex
 
 #import traceback
 #import sys
+
+def logger(fn):
+    from functools import wraps
+    import inspect
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        log = logging.getLogger(fn.__name__)
+        #repr(traceback.extract_stack()),
+        log.debug('%s++____ %s %s' % (fn.__name__, str(args),str(kwargs)))
+
+        out = fn(*args, **kwargs)
+
+        log.debug("%s--'''' %s" % (fn.__name__,str(out)))
+        # Return the return value
+        return out
+    return wrapper
 
 class Unsupported(Exception):
         pass
@@ -90,7 +106,7 @@ class baseop(object):
 #               traceback.print_stack(file=sys.stdout)
                 return lex.parse_args(text)
                 #a, b = lex.parse_args(text)
-#               print "a %s b %s" %(a, b)
+#               logging.info "a %s b %s" %(a, b)
                 #return self.parse_arg(a), self.parse_arg(b)
         def __str__(self):
                 return str(self.__class__)
@@ -346,7 +362,6 @@ class _jge(basejmp):
 
 class _jmp(basejmp):
         def __init__(self, label):
-                print(label)
                 self.label = self.parse_arg(label)
         def visit(self, visitor):
                 visitor._jmp(self.label)
@@ -536,7 +551,7 @@ class _clc(baseop):
                 visitor._clc()
 
 class label(baseop):
-        def __init__(self, name, proc, far=False, line_number=0):
+        def __init__(self, name, proc, line_number=0, far=False):
                 self.name = name
                 self.line_number = line_number
                 self.far = far

@@ -1,4 +1,3 @@
-from __future__ import division
 from __future__ import print_function
 from __future__ import absolute_import
 # ScummVM - Graphic Adventure Engine
@@ -22,21 +21,38 @@ from __future__ import absolute_import
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #
 
+import logging
 from builtins import hex
-from builtins import chr
 from builtins import str
+from builtins import chr
 from builtins import range
 from builtins import object
-from past.utils import old_div
-import os, re
+from . import op
+import re, string
 from .proc import proc
 from . import lex
-import op, string
 
 import traceback
 import sys
 
+def logger(fn):
+    from functools import wraps
+    import inspect
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        log = logging.getLogger(fn.__name__)
+        #repr(traceback.extract_stack()),
+        log.debug('%s++____ %s %s' % (fn.__name__, str(args),str(kwargs)))
+
+        out = fn(*args, **kwargs)
+
+        log.debug("%s--'''' %s" % (fn.__name__,str(out)))
+        # Return the return value
+        return out
+    return wrapper
+
 class parser(object):
+        @logger
         def __init__(self, skip_binary_data = []):
                 self.skip_binary_data = skip_binary_data
                 self.strip_path = 0
@@ -48,7 +64,12 @@ class parser(object):
 
                 self.entry_point = ""
 
-                self.proc = None
+                #self.proc = None
+                nname = "mainproc"
+                self.proc = proc(nname)
+                self.proc_list.insert(0, nname)
+                print ("~~%s" %str(self.proc_list))
+                self.set_global(nname, self.proc)
 
                 self.binary_data = []
                 self.c_data = []
@@ -82,62 +103,70 @@ class parser(object):
                 #print "endif"
                 return self.__stack.pop()
 
+        @logger
         def set_global(self, name, value, elements = 1):
                 if len(name) == 0:
                         raise Exception("empty name is not allowed")
                 name = name.lower()
-                print("adding global %s -> %s" %(name, value))
+                logging.debug("adding global %s -> %s" %(name, value))
                 if name in self.__globals:
                         raise Exception("global %s was already defined", name)
                 value.elements = elements
                 self.__globals[name] = value
 
+        @logger
         def reset_global(self, name, value, elements = 1):
                 if len(name) == 0:
                         raise Exception("empty name is not allowed")
                 name = name.lower()
-                print("adding global %s -> %s" %(name, value))
+                logging.debug("adding global %s -> %s" %(name, value))
                 value.elements = elements
                 self.__globals[name] = value
 
+        @logger
         def get_global(self, name):
                 name = name.lower()
-                print("get_global(%s)" %name)
+                logging.debug("get_global(%s)" %name)
                 try:
                         g = self.__globals[name]
-                        print(g)
+                        logging.debug(g)
                 except KeyError:
-                        print("get_global KeyError %s" %(name))
+                        logging.debug("get_global KeyError %s" %(name))
                         raise KeyError
                 g.used = True
                 return g
 
+        @logger
         def get_globals(self):
                 return self.__globals
 
+        @logger
         def has_global(self, name):
                 name = name.lower()
                 return name in self.__globals
 
+        @logger
         def set_offset(self, name, value):
                 if len(name) == 0:
                         raise Exception("empty name is not allowed")
                 name = name.lower()
-                print("adding offset %s -> %s" %(name, value))
+                logging.debug("adding offset %s -> %s" %(name, value))
                 if name in self.__offsets:
                         raise Exception("offset %s was already defined", name)
                 self.__offsets[name] = value
 
+        @logger
         def get_offset(self, name):
                 name = name.lower()
                 return self.__offsets[name]
         
+        @logger
         def include(self, basedir, fname):
-                print("file: %s" %(fname))
+                logging.info("file: %s" %(fname))
                 #path = fname.split('\\')[self.strip_path:]
                 path = fname
                 #path = os.path.join(basedir, os.path.pathsep.join(path))
-                print("including %s" %(path))
+                logging.info("including %s" %(path))
                 
                 self.parse(path)
 
@@ -149,6 +178,7 @@ class parser(object):
                 value = self.__globals[stmt.lower()].value
                 return int(value)
         
+        @logger
         def expr_callback(self, match):
                 name = match.group(1).lower()
                 g = self.get_global(name)
@@ -157,6 +187,7 @@ class parser(object):
                 else:
                         return "0x%04x" %g.offset
         
+        @logger
         def eval_expr(self, expr):
                 n = 1
                 while n > 0:
@@ -165,24 +196,25 @@ class parser(object):
                 expr = expr.strip()
                 exprr = expr.lower()
                 if exprr[-1] == 'h':
-                        print("eval_expr: %s" %(expr))
+                        logging.debug("eval_expr: %s" %(expr))
                         expr = '0x'.expr[0:len(expr)-1]
-                        print("eval_expr: %s" %(expr))
+                        logging.debug("eval_expr: %s" %(expr))
 
                 if expr == '?':
                         return 0
                 try:
                         return eval(expr)
                 except SyntaxError:
-                        print("eval_expr SyntaxError ~%s~" %(expr))
+                        logging.debug("eval_expr SyntaxError ~%s~" %(expr))
                         return 0
                         
         
+        @logger
         def expand_globals(self, text):
                 return text
         
         def fix_dollar(self, v):
-                print("$ = %d" %self.cur_seg_offset)
+                logging.debug("$ = %d" %self.cur_seg_offset)
                 return re.sub(r'\$', "%d" %self.cur_seg_offset, v)
 
         def parse_int(self, v):
@@ -200,6 +232,7 @@ class parser(object):
                 return int(v)
 #               return v
         
+        @logger
         def convert_data_to_blob(self, width, data):
                 """ Generate blob data """
                 #print "COMPACTING %d %s" %(width, data)
@@ -254,10 +287,11 @@ class parser(object):
                 #print r
                 return r
 
+        @logger
         def convert_data(self, v,base): 
-                                        print("convert_data(%s)" %v)
+                                        logging.info("convert_data(%s)" %v)
                                         g = self.get_global(v)
-                                        print(g)
+                                        logging.debug(g)
                                         if isinstance(g, op.const):
                                                 v = int(g.value)
                                                 if v < 0: # negative values
@@ -268,12 +302,13 @@ class parser(object):
                                                 v = "k%s" %(g.name.lower())
                                         else:
                                                 v = g.offset
-                                        print(v)
+                                        logging.debug(v)
                                         return v
 
+        @logger
         def convert_data_to_c(self, label, width, data):
                 """ Generate C formated data """
-                print("convert_data_to_c %s %d %s" %(label, width, data))
+                logging.info("convert_data_to_c %s %d %s" %(label, width, data))
                 first = True
                 is_string = False
                 elements = 0
@@ -288,15 +323,15 @@ class parser(object):
                                         raise Exception("invalid string %s" %v)
                                 if width > 1:
                                         raise Exception("string with data width more than 1") #we could allow it :)
-                                v = string.replace(v, "''", "'")
+                                v = str.replace(v, "''", "'")
                                 for i in range(1, len(v) - 1):
                                         r.append(v[i])
 
                                 is_string = True
                                 continue
 
-                        print("is_string %d" %is_string)
-                        print("v ~%s~" %v)
+                        logging.debug("is_string %d" %is_string)
+                        logging.debug("v ~%s~" %v)
                         '''
                         if is_string and v.isdigit():
                                 v = "'\\" +str(hex(int(v)))[1:] + "'"
@@ -342,23 +377,23 @@ class parser(object):
                                 #traceback.print_stack(file=sys.stdout)
                                 #print "global/expr: ~%s~" %v
                                 vv = v.split()
-                                print(vv)
+                                logging.debug(vv)
                                 if vv[0] == "offset": # pointer
                                         data_ctype = "dw"
                                         #v = "&" + vv[1] + " - &" + self.segment        
                                         v = vv[1]
                                         #r.append(v);
 
-                                print("global/expr: ~%s~" %v)
+                                logging.debug("global/expr: ~%s~" %v)
                                 try:
-                                        v = string.replace(v, 'offset ', '')
+                                        v = str.replace(v, 'offset ', '')
                                         v = re.sub(r'@', "arb", v)
                                         v = self.convert_data(v,base)
                                 except KeyError:
-                                        print("unknown address %s" %(v))
-                                        print(self.c_data)
-                                        print(r)
-                                        print(len(self.c_data) + len(r))
+                                        logging.warning("unknown address %s" %(v))
+                                        logging.warning(self.c_data)
+                                        logging.warning(r)
+                                        logging.warning(len(self.c_data) + len(r))
                                         self.link_later.append((len(self.c_data) + len(r), v))
                                         v = 0
                 
@@ -383,7 +418,7 @@ class parser(object):
                 #               cur_data_type = 4 # array of numbers
 
                 #print "current data type = %d current data c type = %s" %(cur_data_type, data_ctype)
-                print("current data type = %d current data c type = %s" %(cur_data_type, data_ctype))
+                logging.debug("current data type = %d current data c type = %s" %(cur_data_type, data_ctype))
                 '''
                 #  if prev data type was set and data format has changed or data type has changed or there is a label or it was 0-term string or it was number
                 if (self.prev_data_type != 0 and (cur_data_type != self.prev_data_type or data_ctype != self.prev_data_ctype)) or len(label) or self.prev_data_type == 1 or self.prev_data_type == 3:
@@ -438,7 +473,7 @@ class parser(object):
 
                 elif cur_data_type == 2: # array of char
                                 vv = ""
-                                print(r)
+                                logging.debug(r)
                                 for i in range(1, len(r)):
                                             if isinstance(r[i], int):
                                                 if r[i] == 13:
@@ -484,30 +519,32 @@ class parser(object):
                 r.append(", // " + label + "\n")
                 rh.append(";\n")
 
-                print(r)
-                print(rh)
-                print("returning") 
+                logging.debug(r)
+                logging.debug(rh)
+                logging.info("returning") 
                 self.prev_data_type = cur_data_type
                 self.prev_data_ctype = data_ctype
                 self.data_started = True
                 return r, rh, elements
 
-        def add_label(self, name, far="", proc = False):
+        @logger
+        def add_label(self, name, far="", isproc = False):
                                 if self.visible():
                                         #name = m.group(1)
                                         #print "~name: %s" %name
                                         name = re.sub(r'@', "arb", name)
                                         #print "~~name: %s" %name
                                         if not (name.lower() in self.skip_binary_data):
-                                                print("offset %s -> %s" %(name, "&m." + name.lower() + " - &m." + self.segment))
-
+                                                logging.debug("offset %s -> %s" %(name, "&m." + name.lower() + " - &m." + self.segment))
+                                                
                                                 if self.proc is None:
-                                                        print("Label %s was outside the procedure" %name)
+                                                        logging.debug("Label %s was outside the procedure" %name)
                                                         label_proc_name = 's'+name
                                                         #print "New proc name %s" %label_proc_name
                                                         self.create_proc(label_proc_name, "", "")
                                                 if self.proc is not None:
-                                                        self.proc.add_label(name, proc)
+                                                        #print (vars(self.proc))
+                                                        self.proc.add_label(name, self.proc)
                                                         #self.set_offset(name, ("&m." + name.lower() + " - &m." + self.segment, self.proc, len(self.proc.stmts)))
                                                         self.set_offset(name, ("&m." + name.lower() + " - &m." + self.segment, self.proc, self.offset_id))
                                                         
@@ -515,33 +552,73 @@ class parser(object):
                                                         if far == 'far':
                                                                 farb = True
                                                         
-                                                        self.set_global(name, op.label(name, proc, far=farb, line_number=self.offset_id))
+                                                        self.set_global(name, op.label(name, self.proc, far=farb, line_number=self.offset_id))
                                                         self.offset_id += 1
                                                 else:
-                                                        print("!!! Label %s is outside the procedure" %name)
+                                                        logging.error("!!! Label %s is outside the procedure" %name)
                                                 skipping_binary_data = False
                                         else:
-                                                print("skipping binary data for %s" % (name,))
+                                                logging.info("skipping binary data for %s" % (name,))
                                                 skipping_binary_data = True
 
+        @logger
+        def create_segment(self, name):
+                                        binary_width = 1
+                                        offset = len(self.binary_data)//16
+                                        logging.debug("segment %s %x" %(name, offset))
+                                        self.cur_seg_offset = 16
+
+                                        num = (0x10 - (len(self.binary_data) & 0xf)) & 0xf
+                                        if num:
+                                                l = [ '0' ] * num
+                                                self.binary_data += l
+
+                                                self.dummy_enum += 1
+                                                labell = "dummy" + str(self.dummy_enum)
+
+                                                self.c_data.append("{"+ ",".join(l) +"}, // padding\n")
+                                                self.h_data.append(" db " + labell + "["+ str(num) + "]; // padding\n")
+
+                                        num = 0x10
+                                        l = [ '0' ] * num
+                                        self.binary_data += l
+
+                                        #self.c_data.append("{"+ ",".join(l) +"}, // segment " + name + "\n")
+                                        #self.h_data.append(" db " + name + "["+ str(num) + "]; // segment " + name + "\n")
+                                        self.c_data.append("};\ntype_"+name+" SEGALIGN "+name+" ={\n")
+                                        self.h_data.append("};\nstruct MYPACKED type_"+name + " {\n")
+
+                                        self.set_global(name, op.var(binary_width, offset, issegment = True))
+                                        '''
+                                        if self.proc == None:
+                                                name = "mainproc"
+                                                self.proc = proc(name)
+                                                #print "procedure %s, #%d" %(name, len(self.proc_list))
+                                                self.proc_list.append(name)
+                                                self.set_global(name, self.proc)
+                                        '''
+
+
+        @logger
         def create_proc(self, cmd0l, cmd1l, far):
                                         name = cmd0l
 
-                                        if self.proc is not None:
-                                                print("will add jmp")
-                                                self.proc.add("jmp %s" %name, line_number=self.line_number)
+                                        #if self.proc is not None:
+                                        #        logging.debug("will add jmp")
+                                        #        self.proc.add("jmp %s" %name, line_number=self.line_number)
 
                                         farb = False
                                         if far == 'far':
                                                 farb = True
                                         self.proc = proc(name, line_number=self.offset_id, far=far)
+                                        self.set_global(name, self.proc)
                                         self.proc_list.append(name)
 
-                                        print("proc %s, %s #%d" %(name, far, self.offset_id))
-                                        print("proc %s offset -> %s" %(name, "&m." + name.lower() + " - &m." + self.segment))
+                                        logging.debug("proc %s, %s #%d" %(name, far, self.offset_id))
+                                        logging.debug("proc %s offset -> %s" %(name, "&m." + name.lower() + " - &m." + self.segment))
                                         self.set_offset(name, ("&m." + name.lower() + " - &m." + self.segment, self.proc, self.offset_id))
-                                        self.proc.add_label(name, proc, line_number=self.offset_id)
-                                        self.set_global(name, self.proc)
+                                        #self.proc.add_label(name, proc, line_number=self.offset_id)
+                                        #self.set_global(name, self.proc)
 
                                         #self.set_global(name, op.label(name, proc, line_number=self.offset_id, far=farb))
                                         self.offset_id += 1
@@ -549,8 +626,9 @@ class parser(object):
                                         #'''
                                         #self.add_label(cmd0l, far=far, proc = True)
 
+        @logger
         def parse(self, fname):
-                print("opening file %s..." %(fname))
+                logging.info("opening file %s..." %(fname))
                 self.line_number = 0
                 skipping_binary_data = False
 
@@ -562,22 +640,23 @@ class parser(object):
                                                 self.dummy_enum += 1
                                                 labell = "dummy" + str(self.dummy_enum)
 
-                                                self.c_data.append("{0}, // padding\n")
-                                                self.h_data.append(" db " + labell + "["+ str(num) + "]; // protective\n")
+                                                #self.c_data.append("{0}, // padding\n")
+                                                #self.h_data.append(" db " + labell + "["+ str(num) + "]; // protective\n")
 
-                fd = open(fname, 'rb')
+                fd = open(fname, 'rt', encoding="cp1251")
                 for line in fd:
                         self.line_number += 1
+                        #line = line.decode("cp1251")
                         line = line.strip()
                         if len(line) == 0 or line[0] == ';' or line[0] == chr(0x1a):
                                 continue
 
-                        print("%d:      %s" %(self.line_number, line))
+                        logging.debug("%d:      %s" %(self.line_number, line))
 
                         m = re.match('([@\w]+)\s*::?', line)
                         if m is not None:
                                 line = m.group(1).strip()
-                                print(line)
+                                logging.debug(line)
                                 self.add_label(line)
                                 continue
 
@@ -587,6 +666,13 @@ class parser(object):
                         
                         cmd0 = str(cmd[0])
                         cmd0l = cmd0.lower()
+
+                        m = re.match('(\.\d86[pr]?)', line)
+                        if m is not None:
+                                line = m.group(1).strip()
+                                logging.debug(line)
+                                continue
+
                         if cmd0l == 'if':
                                 self.push_if(cmd[1])
                                 continue
@@ -605,7 +691,7 @@ class parser(object):
                         if cmd0l in ['db', 'dw', 'dd', 'dq']:
                                 arg = line[len(cmd0):].strip()
                                 if not skipping_binary_data:
-                                        print("%d:1: %s" %(self.cur_seg_offset, arg)) #fixme: COPYPASTE
+                                        logging.debug("%d:1: %s" %(self.cur_seg_offset, arg)) #fixme: COPYPASTE
                                         cmd0 = cmd0.lower()
                                         binary_width = {'b': 1, 'w': 2, 'd': 4, 'q': 8}[cmd0[1]]
                                         b = self.convert_data_to_blob(binary_width, lex.parse_args(arg))
@@ -623,11 +709,11 @@ class parser(object):
                                 #self.proc = None
                                 continue
                         elif cmd0l == 'ends':
-                                print("segement %s ends" %(self.segment))
-                                self.segment = ""
+                                logging.debug("segement %s ends" %(self.segment))
+                                self.segment = "default_seg"
                                 continue
                         elif cmd0l == 'assume':
-                                print("skipping: %s" %line)
+                                logging.info("skipping: %s" %line)
                                 continue
                         elif cmd0l in ['rep','repe','repne']:
                                 self.proc.add(cmd0l)
@@ -656,42 +742,11 @@ class parser(object):
                                         name = cmd0l
                                         self.segment = name
 
-                                        binary_width = 1
-                                        offset = int(old_div(len(self.binary_data),16))
-                                        print("segment %s %x" %(name, offset))
-                                        self.cur_seg_offset = 16
-
-                                        num = (0x10 - (len(self.binary_data) & 0xf)) & 0xf
-                                        if num:
-                                                l = [ '0' ] * num
-                                                self.binary_data += l
-
-                                                self.dummy_enum += 1
-                                                labell = "dummy" + str(self.dummy_enum)
-
-                                                self.c_data.append("{"+ ",".join(l) +"}, // padding\n")
-                                                self.h_data.append(" db " + labell + "["+ str(num) + "]; // padding\n")
-
-                                        num = 0x10
-                                        l = [ '0' ] * num
-                                        self.binary_data += l
-
-                                        self.c_data.append("{"+ ",".join(l) +"}, // segment " + name + "\n")
-                                        self.h_data.append(" db " + name + "["+ str(num) + "]; // segment " + name + "\n")
-
-                                        self.set_global(name, op.var(binary_width, offset, issegment = True))
-                                        ''' Single proc
-                                        if self.proc == None:
-                                                name = "mainproc"
-                                                self.proc = proc(name)
-                                                #print "procedure %s, #%d" %(name, len(self.proc_list))
-                                                self.proc_list.append(name)
-                                                self.set_global(name, self.proc)
-                                        '''
+                                        self.create_segment(name)
                                         continue
 
                                 elif cmd1l == 'ends':
-                                        print("segment %s ends" %(self.segment))
+                                        logging.debug("segment %s ends" %(self.segment))
                                         self.segment = ""
                                         continue
 
@@ -700,11 +755,11 @@ class parser(object):
                                 if cmd1l in ['equ','=']:
                                         if not (cmd0.lower() in self.skip_binary_data):
                                                 v = " ".join(cmd[2:])
-                                                print("value1 %s" %v)
+                                                logging.debug("value1 %s" %v)
                                                 vv = self.fix_dollar(v)
                                                 vv = " ".join(lex.parse_args(vv))
                                                 vv = vv.strip()
-                                                print("value2 %s" %vv)
+                                                logging.debug("value2 %s" %vv)
 
                                                 size = 0
                                                 m = re.match(r'byte\s+ptr\s+(.*)', vv)
@@ -721,26 +776,30 @@ class parser(object):
                                                 if m is not None:
                                                         vv = m.group(1).strip()
                                                         size = 2
-                                                '''
+
+                                                vv = re.sub(r'\b([0-9][a-fA-F0-9]*)h', '0x\\1', vv)
+
                                                 if cmd1l == 'equ':
                                                         self.set_global(cmd0, op.const(vv, size=size))
+                                                        self.get_global("mainproc").add_equ(cmd0, vv, line_number=self.line_number)
                                                 elif cmd1l == '=':
                                                         self.reset_global(cmd0, op.const(vv, size=size))
-                                                '''
-                                                self.proc.add_equ(cmd0.lower(), vv, line_number=self.line_number)
+                                                        self.proc.add_equ(cmd0, vv, line_number=self.line_number)
+                                                
+                                                #if self.proc is not None:
                                         else:
-                                                print("skipping binary data for %s" % (cmd0.lower(),))
+                                                logging.info("skipping binary data for %s" % (cmd0,))
                                                 skipping_binary_data = True
                                         continue
-                                elif cmd1l  in ['db', 'dw', 'dd', 'dq']:
+                                elif cmd1l  in ['db', 'dw', 'dd', 'dq', 'dt']:
                                         if not (cmd0.lower() in self.skip_binary_data):
                                                 name = cmd0
                                                 name = re.sub(r'@', "arb", name)
-                                                binary_width = {'b': 1, 'w': 2, 'd': 4, 'q': 8}[cmd1l[1]]
+                                                binary_width = {'b': 1, 'w': 2, 'd': 4, 'q': 8, 't': 10}[cmd1l[1]]
                                                 offset = self.cur_seg_offset
                                                 arg = line[len(cmd0l):].strip()
                                                 arg = arg[len(cmd1l):].strip()
-                                                print("%d: %s" %(offset, arg))
+                                                logging.debug("data value %s offset %d" %(arg, offset))
                                                 b = self.convert_data_to_blob(binary_width, lex.parse_args(arg))
                                                 self.binary_data += b
                                                 self.cur_seg_offset += len(b)
@@ -749,11 +808,11 @@ class parser(object):
                                                 self.c_data += c
                                                 self.h_data += h
                                                 
-                                                print("~size %d elements %d" %(binary_width, elements))
+                                                logging.debug("~size %d elements %d" %(binary_width, elements))
                                                 self.set_global(name, op.var(binary_width, offset, name=name,segment=self.segment), elements)
                                                 skipping_binary_data = False
                                         else:
-                                                print("skipping binary data for %s" % (cmd0l,))
+                                                logging.info("skipping binary data for %s" % (cmd0l,))
                                                 skipping_binary_data = True
                                         continue
 
@@ -778,11 +837,12 @@ class parser(object):
 
                 return self
 
+        @logger
         def link(self):
-                print("link()")
+                logging.debug("link()")
                 #print self.c_data
                 for addr, expr in self.link_later:
-                        print("addr %s expr %s" %(addr, expr))
+                        logging.debug("addr %s expr %s" %(addr, expr))
                         try:
                                 #v = self.eval_expr(expr)
                                 v = expr
@@ -790,10 +850,10 @@ class parser(object):
                                 #               v = 'k' + v
                                 v = self.convert_data(v,0x10000)
 
-                                print("link: patching %04x -> %s" %(addr, v))
+                                logging.debug("link: patching %04x -> %s" %(addr, v))
                         except:
-                                print("link: Exception %s" %expr)
+                                logging.warning("link: Exception %s" %expr)
                                 continue
-                        print("link: addr %s v %s" %(addr, v))
+                        logging.debug("link: addr %s v %s" %(addr, v))
                         self.c_data[addr] = str(v)
                 #print self.c_data

@@ -19,8 +19,25 @@ from __future__ import print_function
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #
-
+import logging
 from builtins import str
+
+def logger(fn):
+    from functools import wraps
+    import inspect
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        log = logging.getLogger(fn.__name__)
+        #repr(traceback.extract_stack()),
+        log.debug('%s++____ %s %s' % (fn.__name__, str(args),str(kwargs)))
+
+        out = fn(*args, **kwargs)
+
+        log.debug("%s--'''' %s" % (fn.__name__,str(out)))
+        # Return the return value
+        return out
+    return wrapper
+
 def parse_args(text):
         #print "parsing: [%s]" %text
         escape = False
@@ -40,7 +57,7 @@ def parse_args(text):
                         if not string:
                                 raise SyntaxError("escape found in no string: %s" %text);
         
-                        print("escaping[%s]" %c)
+                        logging.debug("escaping[%s]" %c)
                         escape = False
                         token += c
                         continue
@@ -73,5 +90,5 @@ def parse_args(text):
         return result
 
 def compile(width, data):
-        print(data)
+        logging.debug(data)
         return data

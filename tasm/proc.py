@@ -21,17 +21,35 @@ from __future__ import absolute_import
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #
 
+import logging
 from builtins import str
 from builtins import range
 from builtins import object
 import re
 from . import op
+def logger(fn):
+    from functools import wraps
+    import inspect
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        log = logging.getLogger(fn.__name__)
+        #repr(traceback.extract_stack()),
+        log.debug('%s++____ %s %s' % (fn.__name__, str(args),str(kwargs)))
+
+        out = fn(*args, **kwargs)
+
+        log.debug("%s--'''' %s" % (fn.__name__,str(out)))
+        # Return the return value
+        return out
+    return wrapper
 
 class proc(object):
         last_addr = 0xc000
         
+        @logger
         def __init__(self, name, line_number=0, far=False):
                 self.name = name
+                #print (name)
                 self.calls = []
                 self.stmts = []
                 self.labels = set()
@@ -43,10 +61,12 @@ class proc(object):
                 self.line_number = line_number
                 self.far = far
 
+        @logger
         def add_label(self, label, proc, line_number=0):
                 self.stmts.append(op.label(label, proc, line_number=line_number))
                 self.labels.add(label)
 
+        @logger
         def remove_label(self, label):
                 try:
                         self.labels.remove(label)
@@ -57,6 +77,7 @@ class proc(object):
                                 self.stmts[i] = op._nop(None)
                                 return
         
+        @logger
         def optimize_sequence(self, cls):
                 i = 0
                 stmts = self.stmts
@@ -76,7 +97,7 @@ class proc(object):
 
                         n = j - i
                         if n > 1:
-                                print("Eliminate consequtive storage instructions at %u-%u" %(i, j))
+                                logging.info("Eliminate consequtive storage instructions at %u-%u" %(i, j))
                                 for k in range(i+1,j):
                                         stmts[k] = op._nop(None)
                                 stmts[i].repeat = n
@@ -97,11 +118,12 @@ class proc(object):
                         i += 1
                 return
         
+        @logger
         def optimize(self, keep_labels=[]):
-                print("optimizing...")
+                logging.info("optimizing...")
                 #trivial simplifications
                 while len(self.stmts) and isinstance(self.stmts[-1], op.label):
-                        print("stripping last label")
+                        logging.info("stripping last label")
                         self.stmts.pop()
                 '''
                 #mark labels that directly precede a ret
@@ -112,7 +134,7 @@ class proc(object):
                         while j < len(self.stmts) and isinstance(self.stmts[j], (op.label, op._nop)):
                                 j += 1
                         if j == len(self.stmts) or isinstance(self.stmts[j], op._ret):
-                                print "Return label: %s" % (self.stmts[i].name,)
+                                logging.info "Return label: %s" % (self.stmts[i].name,)
                                 self.retlabels.add(self.stmts[i].name)
                 #merging push ax pop bx constructs
                 i = 0
@@ -127,9 +149,9 @@ class proc(object):
                                         movs.append(op._mov2(dst, src))
                                 if len(br) == 0:
                                         self.stmts.pop(i + 1)
-                                print "merging %d push-pops into movs" %(len(movs))
+                                logging.info "merging %d push-pops into movs" %(len(movs))
                                 for m in movs:
-                                        print "\t%s <- %s" %(m.dst, m.src)
+                                        logging.info "\t%s <- %s" %(m.dst, m.src)
                                 self.stmts[i + 1:i + 1] = movs
                                 if len(ar) == 0:
                                         self.stmts.pop(i)
@@ -140,16 +162,16 @@ class proc(object):
                 for s in list(self.stmts):
                         if not isinstance(s, op.label):
                                 continue
-                        print "checking label %s..." %s.name
+                        logging.info "checking label %s..." %s.name
                         used = s.name in keep_labels
                         if s.name not in self.retlabels:
                                 for j in self.stmts:
                                         if isinstance(j, op.basejmp) and j.label == s.name:
-                                                print "used"
+                                                logging.info "used"
                                                 used = True
                                                 break
                         if not used:
-                                print self.labels
+                                logging.info self.labels
                                 self.remove_label(s.name)
 
                 #removing duplicate rets and rets at end
@@ -167,6 +189,7 @@ class proc(object):
                 #self.optimize_sequence(op._movsb);
                 #self.optimize_sequence(op._movsw);
         
+        @logger
         def add(self, stmt, line_number=0):
                 #print stmt
                 #comment = stmt.find(';')
@@ -178,7 +201,7 @@ class proc(object):
 
                 r = self.__label_re.search(stmt)
                 if r is not None:
-                        print("add label %s" %r.group(1))
+                        logging.info("add label %s" %r.group(1))
                         #label
                         self.add_label(r.group(1).lower())
                         #print "remains: %s" %r.group(2)
@@ -189,13 +212,13 @@ class proc(object):
                 
                 #s = stmt.split(None)
                 s = [stmt.replace("\x00", " ") for stmt in re.sub('["\'].+?["\']', lambda m: m.group(0).replace(" ", "\x00"), stmt).split()]
+
                 cmd = s[0]
-                #print cmd
                 try:
                         cl = getattr(op, '_' + cmd.lower())
                 except AttributeError:
-                        #print cmd
-                        if re.match(r"scas[bwd]|cmps[bwd]|movs[bwd]|xlat|lods[bwd]|stos[bwd]|aad|repne|repe|rep|std|stc|cld|clc|cli|cbw|cwde|cwd|cdq|sti|cmc|pushf|popf|nop|pushad|popad|popa|pusha|das|aaa|aas|aam|finit|fsin|fldz", cmd.lower()) is not None:
+                        logging.info(cmd)
+                        if re.match(r"ins[bwd]|outs[bwd]|scas[bwd]|cmps[bwd]|movs[bwd]|xlat|lods[bwd]|stos[bwd]|aad|repne|repe|rep|std|stc|cld|clc|cli|cbw|cwde|cwd|cdq|sti|cmc|pushf|popf|nop|pushad|popad|popa|pusha|das|aaa|aas|aam|finit|fsin|fldz", cmd.lower()) is not None:
                                 cl = getattr(op, '_instruction0')
                         elif re.match(r"dec|inc|pop|push|int|neg|div|idiv|mul|set[a-z]+|not|lods|cmpxchg8b|bswap|fistp|fmul|fadd", cmd.lower()) is not None:
                                 cl = getattr(op, '_instruction1')
@@ -210,18 +233,15 @@ class proc(object):
                         
                 #print "args %s" %s[1:]
                 arg = " ".join(s[1:]) if len(s) > 1 else str()
-                #print cmd
-                #print arg
                 o = cl(arg)
                 #o.comments = comments
                 o.command = str(line_number) + " " + command
                 o.cmd = cmd.lower()
                 #o.line_number = line_number
-#               print "~~~" + o.command + o.comments
-                #print self
-                #print o
+#               logging.info "~~~" + o.command + o.comments
                 self.stmts.append(o)
 
+        @logger
         def add_equ(self, label, value, line_number=0):
                 
                 cl = getattr(op, '_equ')
@@ -229,17 +249,19 @@ class proc(object):
                 #print "args %s" %s[1:]
                 value = re.sub(r'\b([0-9][a-fA-F0-9]*)h', '0x\\1', value)
                 o = cl(label, value)
-                o.command = str(line_number) + " " + label + " = " + value
+                o.command = str(line_number) + " " + label + " equ " + value
                 o.cmd = o.command
-#               print "~~~" + o.command + o.comments
+#               logging.info "~~~" + o.command + o.comments
                 self.stmts.append(o)
         
+        @logger
         def __str__(self):
                 r = []
                 for i in self.stmts:
                         r.append(i.__str__())
                 return "\n".join(r)
         
+        @logger
         def visit(self, visitor, skip = 0):
                 for i in range(skip, len(self.stmts)):
                         self.stmts[i].visit(visitor)
