@@ -35,8 +35,8 @@ extern "C" {
 typedef uint8_t db;
 typedef uint16_t dw;
 
-struct Memory;
-extern Memory m;
+//struct Memory;
+extern struct Memory m;
 
 
 //#define MK_FP(seg,ofs)      (&(raddr(seg,ofs))) //  ( (ULONG(seg)<<4)+(UWORD)(ofs) )

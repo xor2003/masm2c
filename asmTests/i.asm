@@ -21,6 +21,9 @@ label2:
 		div	_word_245D4
 label3:
 		mov si, (offset _slider+10h)
+mov al,0
+mov ah,4ch                    ; AH=4Ch - Exit To DOS
+int 21h                       ; DOS INT 21h                     ; DOS INT 21h
 
 _text ends
 

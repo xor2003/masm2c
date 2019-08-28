@@ -59,9 +59,10 @@ class IndentFormatter(logging.Formatter):
     def format( self, rec ):
         stack = inspect.stack()
         rec.indent = ' '*(len(stack)-self.baseline)
-        rec.function = stack[8][3]
+        #rec.function = stack[8][3]
         out = logging.Formatter.format(self, rec)
-        del rec.indent; del rec.function
+        del rec.indent;
+        # del rec.function
         return out
 
 # USAGE:

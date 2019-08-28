@@ -33,7 +33,7 @@ from .proc import proc
 from . import lex
 
 import traceback
-import sys
+import sys, os
 
 def logger(fn):
     from functools import wraps
@@ -488,7 +488,7 @@ class parser(object):
                                                         #print "aaa"
                                                         r[i] = "\\" + r[i]
                                                 elif ord(r[i]) > 127: # \
-                                                        r[i] = hex(ord(r[i]))
+                                                        r[i] = hex(ord(r[i].encode('cp437', 'backslashreplace')))
                                                         r[i]='\\' + r[i][1:]
                                                 vv += "'" + r[i] + "'"
                                             if i != len(r)-1:
@@ -643,7 +643,7 @@ class parser(object):
                                                 #self.c_data.append("{0}, // padding\n")
                                                 #self.h_data.append(" db " + labell + "["+ str(num) + "]; // protective\n")
 
-                fd = open(fname, 'rt', encoding="cp1251")
+                fd = open(fname, 'rt', encoding="cp437")
                 for line in fd:
                         self.line_number += 1
                         #line = line.decode("cp1251")

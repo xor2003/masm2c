@@ -76,8 +76,8 @@ class cpp(object):
  *
  */
 """
-                self.fd = open(fname, "wt", encoding="cp1251")
-                self.hd = open(header, "wt", encoding="cp1251")
+                self.fd = open(fname, "wt", encoding="cp437")
+                self.hd = open(header, "wt", encoding="cp437")
                 hid = "TASMRECOVER_%s_STUBS_H__" %namespace.upper().replace('-','_')
                 self.hd.write("""#ifndef %s
 #define %s
@@ -337,6 +337,19 @@ class cpp(object):
                 seg = None
                 reg = True
 
+                ex = str.replace(expr, "\\\\", "\\")
+                m = re.match(r'\'(.+)\'$', ex)  # char constants
+                if m is not None:
+                        ex = m.group(1)
+                        if len(ex) == 4:
+                            expr = '0x'
+                            for i in range(0,4):
+                                #logging.debug("constant %s %d" %(ex,i))
+                                ss = str(hex(ord(ex[i])))
+                                #logging.debug("constant %s" %ss)
+                                expr += ss[2:]
+                        return expr
+
                 try:
                         g = self.context.get_global(expr)
                         logging.debug("found global %s" %expr)
@@ -351,6 +364,10 @@ class cpp(object):
                                         else:
                                                 s = {1: "*(db*)", 2: "*(dw*)", 4: "*(dd*)"}[size]
                                                 return s+"&"+g.segment++"." + expr
+                        if isinstance(g, op.const):
+                                logging.debug("it is equ")
+                                return self.expand(g.value)
+
                 except:
                         pass
 
@@ -367,7 +384,7 @@ class cpp(object):
 
                 m = re.match(r'seg\s+(.*?)$', expr)
                 if m is not None:
-                        return "data"
+                        return m.group(1)
 
                 expr = re.sub(r'\b([0-9][a-fA-F0-9]*)[Hh]', '0x\\1', expr) # convert hex
                 expr = re.sub(r'\b([0-1]+)[Bb]', parse_bin, expr) # convert binary
@@ -1046,10 +1063,9 @@ void %s(_offsets _i){
                 #print self.prologue()
                 #print context
                 cdata_bin = self.cdata_seg
-                data_impl = ""
+                data_impl = "db SEGALIGN stack[STACK_SIZE]={0};"
                 data_impl += "\nMemory m = {\n"
                 data_impl += """
-                {0}, // stack
                 {0}, // heap
                 """
                 #n = 0
@@ -1085,20 +1101,27 @@ resize_term(25, 80);
         curs_set(0);
 
         refresh();
+
+R(MOV(ss, seg_offset(stack)));
+#if _BITS == 16
+  esp=0;
+  sp = STACK_SIZE - 4;
+  es=0;
+#endif
+
 #ifndef __BORLANDC__
   log_debug("~~~ heap_size=%%d para=%%d heap_ofs=%%d", HEAP_SIZE, (HEAP_SIZE >> 4), seg_offset(heap) );
   /* We expect ram_top as Kbytes, so convert to paragraphs */
   mcb_init(seg_offset(heap), (HEAP_SIZE >> 4) - seg_offset(heap) - 1, MCB_LAST);
 
-  R(MOV(ss, seg_offset(stack)));
  #if _BITS == 32
   esp = ((dd)(db*)&m.stack[STACK_SIZE - 4]);
- #else
-  esp=0;
-  sp = STACK_SIZE - 4;
-  es=0;
+ #endif
+
+ #if _BITS == 16
  *(dw*)(raddr(0,0x408)) = 0x378; //LPT
  #endif
+
 #endif
 
         return(0);
@@ -1108,6 +1131,10 @@ resize_term(25, 80);
 
                 self.proc_queue.append(self.context.get_global(self.context.entry_point).proc.name)
                 self.proc_queue.append('mainproc')
+
+                logging.debug("will add call")
+                self.context.get_global('mainproc').add("call %s" %(self.context.get_global(self.context.entry_point).proc.name), line_number=1)
+
                 procs = self.procs
                 while len(self.proc_queue):
                         name = self.proc_queue.pop()
@@ -1138,7 +1165,7 @@ resize_term(25, 80);
                 self.fd.write("""
 void DispatchProc(_offsets i){
 __disp=i;
-L("__dispatch_call:")
+L(__dispatch_call:)
 switch (__disp) {
                 """)
                 offsets = []
@@ -1225,9 +1252,8 @@ switch (__disp) {
 
                 self.write_declarations(procs)
 
-                data_head = "\nstruct MYPACKED Memory{\n"
-                data_head += '''
-                        db stack[STACK_SIZE];
+                data_head = '''extern db MYPACKED stack[STACK_SIZE];
+                struct MYPACKED Memory{
                         db heap[HEAP_SIZE];
                 ''';
                 for v in hdata_bin:

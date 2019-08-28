@@ -12,10 +12,12 @@
 
 #ifndef __BORLANDC__
  #include <stdint.h>
-#include <stdbool.h>
+ #include <stdbool.h>
  #define MYPACKED __attribute__((__packed__))
  #define MYINT_ENUM : int
 #else
+
+#define _BITS 16
  typedef unsigned long uint32_t;
  typedef long int32_t;
  typedef unsigned short int uint16_t;
@@ -36,7 +38,9 @@
 typedef uint8_t db;
 typedef uint16_t dw;
 typedef uint32_t dd;
+#ifndef __BORLANDC__
 typedef uint64_t dq;
+#endif
 
 
 #define VGARAM_SIZE (320*200)
@@ -58,17 +62,17 @@ extern "C" {
 static const uint32_t MASK[]={0, 0xff, 0xffff, 0xffffff, 0xffffffff};
 
 #if defined(_WIN32) || defined(__INTEL_COMPILER)
-#define INLINE __inline
+ #define INLINE __inline
 #elif defined(__STDC_VERSION__) && __STDC_VERSION__>=199901L
-#define INLINE inline
+ #define INLINE inline
 #elif defined(__GNUC__)
-#define INLINE __inline__
+ #define INLINE __inline__
 #else
-#define INLINE
+ #define INLINE
 #endif
 
 #if defined(_PROTECTED_MODE)
-#if _BITS == 32
+ #if _BITS == 32
   #define raddr(segment,offset) (reinterpret_cast<db *>(offset))
  #else
   #define raddr(segment,offset) ((db *)&m+(db)(offset)+selectors[segment])
@@ -90,8 +94,8 @@ static const uint32_t MASK[]={0, 0xff, 0xffff, 0xffffff, 0xffffffff};
  #ifdef __BORLANDC__
   #define offset(segment,name) (offsetof(type_##segment,name))
  #else
- #define offset(segment,name) offsetof(struct Memory,name)-offsetof(struct Memory,segment)
-#endif
+  #define offset(segment,name) offsetof(struct Memory,name)-offsetof(struct Memory,segment)
+ #endif
 #endif
 
 #ifdef __BORLANDC__
@@ -101,7 +105,7 @@ static const uint32_t MASK[]={0, 0xff, 0xffff, 0xffffff, 0xffffffff};
  #define SEGALIGN far
 #else
  #define SEGALIGN // __attribute__ (( align ))
-#define seg_offset(segment) ((offsetof(struct Memory,segment))>>4)
+ #define seg_offset(segment) ((offsetof(struct Memory,segment))>>4)
 #endif
 // DJGPP
 #define MASK_LINEAR(addr)     (((size_t)addr) & 0x000FFFFF)
@@ -110,83 +114,83 @@ static const uint32_t MASK[]={0, 0xff, 0xffff, 0xffffff, 0xffffffff};
 #define RM_SEGMENT(addr)      ((((size_t)addr) >> 4) & 0xFFFF)
 
 #if _BITS == 32
-#define MOVSS(a) {void * dest;void * src;src=realAddress(esi,ds); dest=realAddress(edi,es); \
+ #define MOVSS(a) {void * dest;void * src;src=realAddress(esi,ds); dest=realAddress(edi,es); \
 		memmove(dest,src,a); edi+=a; esi+=a; }
-#define STOS(a,b) {memcpy (realAddress(edi,es), ((db *)&eax)+b, a); edi+=a;}
+ #define STOS(a,b) {memcpy (realAddress(edi,es), ((db *)&eax)+b, a); edi+=a;}
 
-#define REP ecx++;while (--ecx != 0)
-#define REPE AFFECT_ZF(0);ecx++;while (--ecx != 0 && ZF)
-#define REPNE AFFECT_ZF(1);ecx++;while (--ecx != 0 && !ZF)
-#define XLAT {al = *raddr(ds,ebx+al);}
-#define CMPS(a) \
+ #define REP ecx++;while (--ecx != 0)
+ #define REPE AFFECT_ZF(0);ecx++;while (--ecx != 0 && ZF)
+ #define REPNE AFFECT_ZF(1);ecx++;while (--ecx != 0 && !ZF)
+ #define XLAT {al = *raddr(ds,ebx+al);}
+ #define CMPS(a) \
 	{  \
 			void * dest;void * src;src=realAddress(esi,ds); dest=realAddress(edi,es); \
 			AFFECT_ZF( (*(char*)dest-*(char*)src) ); edi+=a; esi+=a; \
 	}
 
-#define SCASB \
+ #define SCASB \
 	{  \
 			void * dest;dest=realAddress(edi,es); \
 			AFFECT_ZF( ( (*(char*)dest)-al) ); edi+=1; \
 	}
 
-#define LODS(addr,s) {memcpy (((db *)&eax), &(addr), s);; esi+=s;} // TODO not always si!!!
-#define LODSS(a,b) {memcpy (((db *)&eax)+b, realAddress(esi,ds), a); esi+=a;}
+ #define LODS(addr,s) {memcpy (((db *)&eax), &(addr), s);; esi+=s;} // TODO not always si!!!
+ #define LODSS(a,b) {memcpy (((db *)&eax)+b, realAddress(esi,ds), a); esi+=a;}
 
-#ifdef MSB_FIRST
-#define STOSB STOS(1,3)
-#define STOSW STOS(2,2)
-#else
-#define STOSB STOS(1,0)
-#define STOSW {if (es>=0xB800) {STOS(2,0);} else {attron(COLOR_PAIR(ah)); mvaddch(edi/160, (edi/2)%80, al); /*attroff(COLOR_PAIR(ah))*/;edi+=2;refresh();}}
-#define STOSD STOS(4,0)
-#endif
+ #ifdef MSB_FIRST
+  #define STOSB STOS(1,3)
+  #define STOSW STOS(2,2)
+ #else
+  #define STOSB STOS(1,0)
+  #define STOSW {if (es>=0xB800) {STOS(2,0);} else {attron(COLOR_PAIR(ah)); mvaddch(edi/160, (edi/2)%80, al); /*attroff(COLOR_PAIR(ah))*/;edi+=2;refresh();}}
+  #define STOSD STOS(4,0)
+ #endif
 
  #define INSB {db a = asm2C_IN(dx);*realAddress(edi,es)=a;edi+=1;}
  #define INSW {dw a = asm2C_INW(dx);*realAddress(edi,es)=a;edi+=2;}
 
-#define LOOP(label) DEC(ecx); JNZ(label)
-#define LOOPE(label) --ecx; if (ecx!=0 && ZF) GOTOLABEL(label) //TODO
-#define LOOPNE(label) --ecx; if (ecx!=0 && !ZF) GOTOLABEL(label) //TODO
+ #define LOOP(label) DEC(ecx); JNZ(label)
+ #define LOOPE(label) --ecx; if (ecx!=0 && ZF) GOTOLABEL(label) //TODO
+ #define LOOPNE(label) --ecx; if (ecx!=0 && !ZF) GOTOLABEL(label) //TODO
 
 #else // 16 bit
-#define MOVSS(a) {void * dest;void * src;src=realAddress(si,ds); dest=realAddress(di,es); \
+ #define MOVSS(a) {void * dest;void * src;src=realAddress(si,ds); dest=realAddress(di,es); \
 		memmove(dest,src,a); di+=a; si+=a; }
-#define STOS(a,b) {memcpy (realAddress(di,es), ((db *)&eax)+b, a); di+=a;}
+ #define STOS(a,b) {memcpy (realAddress(di,es), ((db *)&eax)+b, a); di+=a;}
 
-#define REP cx++;while (--cx != 0)
-#define REPE AFFECT_ZF(0);cx++;while (--cx != 0 && ZF)
-#define REPNE AFFECT_ZF(1);cx++;while (--cx != 0 && !ZF)
-#define XLAT {al = *raddr(ds,bx+al);}
-#define CMPS(a) \
+ #define REP cx++;while (--cx != 0)
+ #define REPE AFFECT_ZF(0);cx++;while (--cx != 0 && ZF)
+ #define REPNE AFFECT_ZF(1);cx++;while (--cx != 0 && !ZF)
+ #define XLAT {al = *raddr(ds,bx+al);}
+ #define CMPS(a) \
 	{  \
 			void * dest;void * src;src=realAddress(si,ds); dest=realAddress(di,es); \
 			AFFECT_ZF( (*(char*)dest-*(char*)src) ); di+=a; si+=a; \
 	}
 
-#define SCASB \
+ #define SCASB \
 	{  \
 			void * dest;dest=realAddress(di,es); \
 			AFFECT_ZF( ( (*(char*)dest)-al) ); di+=1; \
 	}
 
-#define LODS(addr,s) {memcpy (((db *)&eax), &(addr), s);; si+=s;} // TODO not always si!!!
-#define LODSS(a,b) {memcpy (((db *)&eax)+b, realAddress(si,ds), a); si+=a;}
+ #define LODS(addr,s) {memcpy (((db *)&eax), &(addr), s);; si+=s;} // TODO not always si!!!
+ #define LODSS(a,b) {memcpy (((db *)&eax)+b, realAddress(si,ds), a); si+=a;}
 
-#ifdef MSB_FIRST
-#define STOSB STOS(1,3)
-#define STOSW STOS(2,2)
-#else
+ #ifdef MSB_FIRST
+  #define STOSB STOS(1,3)
+  #define STOSW STOS(2,2)
+ #else
 
  //SDL2 VGA
   #if SDL_MAJOR_VERSION == 2
-#define STOSB { \
+   #define STOSB { \
 	if (es==0xa000)\
 		{ \
-SDL_SetRenderDrawColor(renderer, vgaPalette[3*al+2], vgaPalette[3*al+1], vgaPalette[3*al], 255); \
-        SDL_RenderDrawPoint(renderer, di%320, di/320); \
-    SDL_RenderPresent(renderer); \
-    di+=1;} \
+	  SDL_SetRenderDrawColor(renderer, vgaPalette[3*al+2], vgaPalette[3*al+1], vgaPalette[3*al], 255); \
+          SDL_RenderDrawPoint(renderer, di%320, di/320); \
+  	  SDL_RenderPresent(renderer); \
+	  di+=1;} \
 	else \
 		{STOS(1,0);} \
 	}
@@ -196,15 +200,15 @@ SDL_SetRenderDrawColor(renderer, vgaPalette[3*al+2], vgaPalette[3*al+1], vgaPale
 	}
   #endif
 
-#define STOSW { \
+  #define STOSW { \
 	if (es==0xB800)  \
 		{dd t=(di>>1);attrset(COLOR_PAIR(ah)); mvaddch(t/80, t%80, al); /*attroff(COLOR_PAIR(ah))*/;di+=2;refresh();} \
 	else \
 		{STOS(2,0);} \
 	}
 //#define STOSW {if (es!=0xB800) {STOS(2,0);} else {di+=2;}}
-#define STOSD STOS(4,0)
-#endif
+  #define STOSD STOS(4,0)
+ #endif
 
 #define LOOP(label) DEC(cx); JNZ(label)
 #define LOOPE(label) --cx; if (cx!=0 && ZF) GOTOLABEL(label) //TODO
@@ -315,9 +319,9 @@ typedef union registry16Bits
 #ifdef DEBUG
 #define PUSH(a) {dd t=a;stackPointer-=sizeof(a); \
 		memcpy (raddr(ss,stackPointer), &t, sizeof (a)); \
-		assert((raddr(ss,stackPointer) - ((db*)&m.stack))>8);log_debug("after push %x\n",stackPointer);}
+		assert((raddr(ss,stackPointer) - ((db*)&stack))>8);log_debug("after push %x\n",stackPointer);}
 
- #define POP(a) { log_debug("before pop %x\n",stackPointer);memcpy (&a, raddr(ss,stackPointer), sizeof (a));stackPointer+=sizeof(a);}
+#define POP(a) { log_debug("before pop %x\n",stackPointer);memcpy (&a, raddr(ss,stackPointer), sizeof (a));stackPointer+=sizeof(a);}
 #else
  #define PUSH(a) {dd t=a;stackPointer-=sizeof(a); \
 		memcpy (raddr(ss,stackPointer), &t, sizeof (a));}
@@ -389,27 +393,6 @@ typedef union registry16Bits
 	dd sigg=shift<(bitsizeof(a))?( (sign?-1:0)<<shift):0; a = b>bitsizeof(a)?0:a; a=sigg | (a >> b);}  // TODO optimize
 //#define SAR(a,b) { a= ((int32_t)a)>>b;}  // TODO optimize
 
-#define READDDp(a) ((dd *) &m.a)
-#define READDWp(a) ((dw *) &m.a)
-#define READDBp(a) ((db *) &m.a)
-
-#define READDD(a) (a)
-
-#ifdef MSB_FIRST
-#define READDBhW(a) (*(((db *) &a)+0))
-#define READDBhD(a) (*(((db *) &a)+2))
-#define READDBlW(a) (*(((db *) &a)+1))
-#define READDBlD(a) (*(((db *) &a)+3))
-#else
-#define READDBhW(a) (*(((db *) &a)+1))
-#define READDBhD(a) (*(((db *) &a)+1))
-#define READDBlW(a) (*(((db *) &a)))
-#define READDBlD(a) (*(((db *) &a)))
-#endif
-
-#define READDW(a) (*((dw *) &m.a.dw.val))
-#define READDBh(a) (*((db *) &m.a.dbh.val))
-#define READDBl(a) (*((db *) &m.a.dbl.val))
 
 #define AAD {al = al + (ah * 10) & 0xFF; ah = 0;} //TODO
 
@@ -446,6 +429,7 @@ typedef union registry16Bits
 		AFFECT_ZF(a);\
 		AFFECT_SF(a,a);} 
 
+// #num_args _ #bytes
 #define IMUL1_1(a) {ax=(int16_t)((int8_t)al)*((int8_t)(a));}
 #define IMUL1_2(a) {int32_t t=(int32_t)((int16_t)ax)*((int16_t)(a));ax=t;dx=t>>16;}
 #define IMUL1_4(a) {int64_t t=(int64_t)((int32_t)eax)*((int32_t)(a));eax=t;edx=t>>32;}
@@ -510,9 +494,9 @@ typedef union registry16Bits
 #define JBE(label) JNA(label)
 
 #if DEBUG >= 3
-#define MOV(dest,src) {log_debug("%s := %x\n",#dest, src); dest = src;}
+ #define MOV(dest,src) {log_debug("%s := %x\n",#dest, src); dest = src;}
 #else
-#define MOV(dest,src) {dest = src;}
+ #define MOV(dest,src) {dest = src;}
 #endif
 /*
 #if DEBUG >= 3
@@ -543,11 +527,11 @@ void MOV_(D* dest, const S& src)
 // LEA - Load Effective Address
 #define LEA(dest,src) dest = src
 
-#define XCHG(dest,src) {dd t = (dd) dest; dest = src; src = t;}//std::swap(dest,src); //TODO
+#define XCHG(dest,src) {dd t = (dd) dest; dest = src; src = t;}//std::swap(dest,src); TODO
 
 
 #define MOVS(dest,src,s)  {dest=src; dest+=s; src+=s; }
-//                        {memmove(dest,src,s); dest+=s; src+=s; } \
+//                        {memmove(dest,src,s); dest+=s; src+=s; }
 
 
 #define CMPSB CMPS(1)
@@ -577,12 +561,13 @@ void MOV_(D* dest, const S& src)
 
 
 #ifdef MSB_FIRST
-#define LODSB LODSS(1,3)
-#define LODSW LODSS(2,2)
+ #define LODSB LODSS(1,3)
+ #define LODSW LODSS(2,2)
 #else
-#define LODSB LODSS(1,0)
-#define LODSW LODSS(2,0)
+ #define LODSB LODSS(1,0)
+ #define LODSW LODSS(2,0)
 #endif
+
 #define LODSD LODSS(4,0)
 
 /*
@@ -623,6 +608,7 @@ void asm2C_printOffsets(unsigned int offset);
 #define TESTJUMPTOBACKGROUND  //if (jumpToBackGround) CALL(moveToBackGround);
 
 void asm2C_OUT(int16_t address, int data);
+
 #define OUT(a,b) asm2C_OUT(a,b)
 int8_t asm2C_IN(int16_t data);
 #define IN(a,b) a = asm2C_IN(b); TESTJUMPTOBACKGROUND
@@ -683,11 +669,16 @@ int8_t asm2C_IN(int16_t data);
 #define RETN RET
 
 #ifdef __BORLANDC__
- #define L(x) __asm {x }
+ #define L(x) __asm { x }
  #define IRET __asm {iret }
- #define GOTOLABEL(a) {_source=__LINE__;__asm jmp a;}
- #define STI __sti__
- #define CLI __cli__
+ #define GOTOLABEL(a) {_source=__LINE__;\
+   asm {db 0eah};\
+   asm {dw OFFSET a};\
+   asm {dw SEG a};\
+}
+
+ #define STI __asm sti
+ #define CLI __asm cli
 #else
  #define L(x) x
  #define IRET RETF
@@ -781,7 +772,7 @@ const char* log_spaces(int n);
     #define R(a) {log_debug("l:%s%x:%d:%s eax: %x ebx: %x ecx: %x edx: %x ebp: %x ds: %x esi: %x es: %x edi: %x fs: %x esp: %x\n",_str,0/*pthread_self()*/,__LINE__,#a, \
 eax, ebx, ecx, edx, ebp, ds, esi, es, edi, fs, esp);} \
 	a 
-#else
+ #else
     #define R(a) {log_debug("l:%s%x:%d:%s eax: %lx ebx: %lx ecx: %lx edx: %lx ebp: %lx ds: %x esi: %lx es: %x edi: %lx fs: %x esp: %lx\n",_str,0/*pthread_self()*/,__LINE__,#a, \
 eax, ebx, ecx, edx, ebp, ds, esi, es, edi, fs, esp);} \
 	a 
@@ -793,14 +784,14 @@ eax, ebx, ecx, edx, ebp, ds, esi, es, edi, fs, esp);} \
 bool is_little_endian();
 
 #if defined(_MSC_VER)
-#define SWAP16 _byteswap_ushort
-#define SWAP32 _byteswap_ulong
+ #define SWAP16 _byteswap_ushort
+ #define SWAP32 _byteswap_ulong
 #else
-#define SWAP16(x) ((uint16_t)(                  \
+ #define SWAP16(x) ((uint16_t)(                  \
 			   (((uint16_t)(x) & 0x00ff) << 8)      | \
 			   (((uint16_t)(x) & 0xff00) >> 8)        \
 			   ))
-#define SWAP32(x) ((uint32_t)(           \
+ #define SWAP32(x) ((uint32_t)(           \
 			   (((uint32_t)(x) & 0x000000ff) << 24) | \
 			   (((uint32_t)(x) & 0x0000ff00) <<  8) | \
 			   (((uint32_t)(x) & 0x00ff0000) >>  8) | \

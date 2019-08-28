@@ -31,6 +31,7 @@ assume  cs:_TEXT,ds:_DATA
 
 _start proc near
 start: ;IGNORE
+MOV ds, _data
 
 mov al, 'Z' - 'A' +1
 
@@ -122,4 +123,4 @@ stackseg   segment para stack 'STACK' ;IGNORE
 db 1000h dup(?)
 stackseg   ends ;IGNORE
 
-end _start ;IGNORE
+end start ;IGNORE
