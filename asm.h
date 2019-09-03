@@ -29,6 +29,11 @@
 	long a;
 	long b;
  };
+ struct int64_t
+ {
+	long a;
+	long b;
+ };
 
  #define MYPACKED
  #define MYINT_ENUM
@@ -93,6 +98,7 @@ static const uint32_t MASK[]={0, 0xff, 0xffff, 0xffffff, 0xffffffff};
 #else
  #ifdef __BORLANDC__
   #define offset(segment,name) (offsetof(type_##segment,name))
+  //#define offset(segment,name) ((unsigned int)(void __far*)(&segment.name) - (unsigned int)(void __far*)(&segment)) 
  #else
   #define offset(segment,name) offsetof(struct Memory,name)-offsetof(struct Memory,segment)
  #endif
@@ -102,8 +108,11 @@ static const uint32_t MASK[]={0, 0xff, 0xffff, 0xffffff, 0xffffffff};
 // #define seg_offset(segment) (FP_SEG(&segment))
 // #define seg_offset(segment) ((unsigned)(void __seg *)(&segment))
  #define seg_offset(segment) ( ( ((unsigned long)(void __far*)(&segment)) >> 16) + ( ((unsigned int)(void __far*)(&segment)) >> 4) )
+// #define seg_offset(segment) (((unsigned long)(void __far*)(&segment)) >> 16)
+ #define SEGASSERT(segment) assert( (((unsigned int)(void __far*)(&segment))&0xf)==0);
  #define SEGALIGN far
 #else
+ #define SEGASSERT(segment)
  #define SEGALIGN // __attribute__ (( align ))
  #define seg_offset(segment) ((offsetof(struct Memory,segment))>>4)
 #endif

@@ -488,6 +488,7 @@ void asm2C_INT(int a) {
 
 #ifdef __BORLANDC__
         call_dos_realint(a);
+	return;
 #endif
 
 	log_debug2("INT %x ax=%x bx=%x cx=%x dx=%x\n",a,ax,bx,cx,dx);

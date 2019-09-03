@@ -237,7 +237,7 @@ class proc(object):
                 #o.comments = comments
                 o.command = str(line_number) + " " + command
                 o.cmd = cmd.lower()
-                #o.line_number = line_number
+                o.line_number = line_number
 #               logging.info "~~~" + o.command + o.comments
                 self.stmts.append(o)
 
@@ -255,6 +255,19 @@ class proc(object):
                 self.stmts.append(o)
         
         @logger
+        def add_assignment(self, label, value, line_number=0):
+                
+                cl = getattr(op, '_assignment')
+                        
+                #print "args %s" %s[1:]
+                value = re.sub(r'\b([0-9][a-fA-F0-9]*)h', '0x\\1', value)
+                o = cl(label, value)
+                o.command = str(line_number) + " " + label + " = " + value
+                o.cmd = o.command
+#               logging.info "~~~" + o.command + o.comments
+                self.stmts.append(o)
+        
+        @logger
         def __str__(self):
                 r = []
                 for i in self.stmts:
@@ -267,6 +280,7 @@ class proc(object):
                         self.stmts[i].visit(visitor)
                         try: # trying to add command and comment
                                 visitor.body = visitor.body[:-1] + "\t// " + self.stmts[i].command + "\n"
+                                logging.debug("command: %s" %(self.stmts[i].command))
                         except AttributeError:
                                 pass
 

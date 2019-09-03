@@ -56,7 +56,13 @@ class var(object):
                 self.segment = segment
                 self.issegment = issegment
 
-class const(object):
+class equ(object):
+        def __init__(self, value, size=0):
+                self.value = value
+                if size:
+                        self.size = size
+
+class assignment(object):
         def __init__(self, value, size=0):
                 self.value = value
                 if size:
@@ -130,12 +136,14 @@ class _rep(baseop):
 
 class _mov(baseop):
         def __init__(self, arg):
-                #print arg
+                #logging.debug("~~_mov arg=%s" %str(arg))
                 self.dst, self.src = self.split(arg)
-                #print self.dst, self.src
+                #logging.debug("~~ %s %s" %(str(self.dst), str(self.src)))
         def visit(self, visitor):
+                #logging.debug("~~_mov visit %s %s" %(str(self.dst), str(self.src)))
                 visitor._mov(self.dst, self.src)
         def __str__(self):
+                #logging.debug("~~_mov str %s %s" %(str(self.dst), str(self.src)))
                 return "mov(%s, %s)" %(self.dst, self.src)
 '''
 class _mov2(baseop):
@@ -908,4 +916,12 @@ class _equ(baseop):
         def __init__(self, dst, src):
                 self.dst, self.src = dst, src
         def visit(self, visitor):
+                logging.debug("~equ~ %s %s" %(self.dst, self.src))
                 visitor._equ(self.dst, self.src)
+
+class _assignment(baseop):
+        def __init__(self, dst, src):
+                self.dst, self.src = dst, src
+        def visit(self, visitor):
+                logging.debug("~ %s = %s" %(self.dst, self.src))
+                visitor._assignment(self.dst, self.src)

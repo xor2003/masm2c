@@ -182,7 +182,7 @@ class parser(object):
         def expr_callback(self, match):
                 name = match.group(1).lower()
                 g = self.get_global(name)
-                if isinstance(g, op.const):
+                if isinstance(g, op.equ) or isinstance(g, op.assignment):
                         return g.value
                 else:
                         return "0x%04x" %g.offset
@@ -292,7 +292,7 @@ class parser(object):
                                         logging.info("convert_data(%s)" %v)
                                         g = self.get_global(v)
                                         logging.debug(g)
-                                        if isinstance(g, op.const):
+                                        if isinstance(g, op.equ) or isinstance(g, op.assignment):
                                                 v = int(g.value)
                                                 if v < 0: # negative values
                                                         v += base
@@ -780,11 +780,11 @@ class parser(object):
                                                 vv = re.sub(r'\b([0-9][a-fA-F0-9]*)h', '0x\\1', vv)
 
                                                 if cmd1l == 'equ':
-                                                        self.set_global(cmd0, op.const(vv, size=size))
+                                                        #self.set_global(cmd0, op.equ(cmd0.lower(), size=size))
                                                         self.get_global("mainproc").add_equ(cmd0, vv, line_number=self.line_number)
                                                 elif cmd1l == '=':
-                                                        self.reset_global(cmd0, op.const(vv, size=size))
-                                                        self.proc.add_equ(cmd0, vv, line_number=self.line_number)
+                                                        #self.reset_global(cmd0, op.assignment(cmd0.lower(), size=size))
+                                                        self.proc.add_assignment(cmd0, vv, line_number=self.line_number)
                                                 
                                                 #if self.proc is not None:
                                         else:

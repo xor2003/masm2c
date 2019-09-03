@@ -143,11 +143,16 @@ class cpp(object):
                         return name_original
                         
                 #print g
-                if isinstance(g, op.const):
-                        logging.debug("it is const")
+                if isinstance(g, op.equ):
+                        logging.debug("it is equ")
                         value = name.upper()
                         #value = self.expand_equ(g.value)
                         logging.debug("equ: %s -> %s" %(name, value))
+                elif isinstance(g, op.assignment):
+                        logging.debug("it is assignment")
+                        value = name.upper()
+                        #value = self.expand_equ(g.value)
+                        logging.debug("assignment %s = %s" %(name, value))
                 elif isinstance(g, proc.proc):
                         logging.debug("it is proc")
                         '''
@@ -280,7 +285,7 @@ class cpp(object):
                         logging.debug('name = %s' %name)
                         try:
                                 g = self.context.get_global(name)
-                                if isinstance(g, op.const):
+                                if isinstance(g, op.equ) or isinstance(g, op.assignment):
                                         return self.get_size(g.value)
                                 logging.debug('get_size res %d' %g.size)
                                 return g.size
@@ -301,7 +306,7 @@ class cpp(object):
                 logging.debug("expand_equ_cb %s" %name)
                 try:
                         g = self.context.get_global(name)
-                        if isinstance(g, op.const):
+                        if isinstance(g, op.equ) or isinstance(g, op.assignment):
                                 return g.value
                         return str(g.offset)
                 except:
@@ -364,7 +369,7 @@ class cpp(object):
                                         else:
                                                 s = {1: "*(db*)", 2: "*(dw*)", 4: "*(dd*)"}[size]
                                                 return s+"&"+g.segment++"." + expr
-                        if isinstance(g, op.const):
+                        if isinstance(g, op.equ) or isinstance(g, op.assignment):
                                 logging.debug("it is equ")
                                 return self.expand(g.value)
 
@@ -1218,7 +1223,7 @@ switch (__disp) {
                         k = re.sub(r'[^A-Za-z0-9_]', '_', k)
                         if isinstance(v, op.var):
                                 pass #offsets.append((k.capitalize(), hex(v.offset)))
-                        elif isinstance(v, op.const):
+                        elif isinstance(v, op.equ) or isinstance(v, op.assignment):
                                 offsets.append((k.capitalize(), self.expand_equ(v.value))) #fixme: try to save all constants here
                         #elif isinstance(v, op.label):
                         #       offsets.append((k.capitalize(), hex(v.line_number)))
@@ -1236,7 +1241,7 @@ switch (__disp) {
                         k = re.sub(r'[^A-Za-z0-9_]', '_', k)
                         if isinstance(v, op.var):
                                 pass #offsets.append((k.capitalize(), hex(v.offset)))
-                        elif isinstance(v, op.const):
+                        elif isinstance(v, op.equ) or isinstance(v, op.assignment):
                                 pass #offsets.append((k.capitalize(), self.expand_equ(v.value))) #fixme: try to save all constants here
                         elif isinstance(v, op.label):
                                 offsets.append((k.lower(), hex(v.line_number)))
@@ -1459,5 +1464,8 @@ switch (__disp) {
                 self.c = self.expand(c)
                 self.body += "\tR(%s(%s, %s, %s));\n" %(cmd.upper(), self.a, self.b, self.c)
 
+        def _assignment(self, dst, src):
+                self.body += "#undef %s\n#define %s %s\n" %(dst.upper(), dst.upper(), self.expand(src))
+
         def _equ(self, dst, src):
-                self.body += "#undef %s\n#define %s %s\n" %(dst.upper(), dst.upper(), src)
+                self.body += "#define %s %s\n" %(dst.upper(), src)

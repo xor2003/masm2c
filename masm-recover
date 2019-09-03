@@ -70,7 +70,7 @@ formatter = IndentFormatter("%(filename)9s:%(lineno)4s%(indent)s%(funcName)s() %
 
 logger = logging.getLogger()
 handler = logging.FileHandler(name+'.log', 'w', 'utf-8')
-#handler.setFormatter(formatter)
+handler.setFormatter(formatter)
 logger.addHandler(handler)
 
 numeric_level = logging.DEBUG
