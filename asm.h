@@ -343,8 +343,8 @@ typedef union registry16Bits
 #define AFFECT_CF(a) {CF=(a);}
 //#define ISNEGATIVE(a) (a & (1 << (sizeof(a)*8-1)))
 //#define AFFECT_SF(a) {SF=ISNEGATIVE(a);}
-#define AFFECT_SF(f, a) {SF=( (a)&(1 << sizeof(f)*8 - 1) );}
-#define ISNEGATIVE(f,a) ( (a) & (1 << (sizeof(f)*8-1)) )
+#define AFFECT_SF(f, a) {SF=( (a)&(((dd)1) << sizeof(f)*8 - 1) );}
+#define ISNEGATIVE(f,a) ( (a) & (((dd)1) << (sizeof(f)*8-1)) )
 
 #define CMP(a,b) {dd t=((a)-(b))& MASK[sizeof(a)]; \
 		AFFECT_CF((t)>(a)); \
@@ -380,7 +380,7 @@ typedef union registry16Bits
 		AFFECT_ZF(a);\
 		AFFECT_SF(a,a)}}
 
-#define SHL(a,b) {if (b) {CF=(a) & (1 << (sizeof(a)*8-b));\
+#define SHL(a,b) {if (b) {CF=(a) & (((dd)1) << (sizeof(a)*8-b));\
 		a=a<<b;\
 		AFFECT_ZF(a);\
 		AFFECT_SF(a,a)}}
@@ -391,15 +391,15 @@ typedef union registry16Bits
 #define ROL(a,b) {CF=((a)>>(sizeof(a)*8-(shiftmodule(a,b))))&1;\
 		a=(((a)<<(shiftmodule(a,b))) | (a)>>(sizeof(a)*8-(shiftmodule(a,b))));}
 
-#define SHRD(a,b,c) {/*TODO CF=(a) & (1 << (sizeof(f)*8-b));*/ \
+#define SHRD(a,b,c) {/*TODO CF=(a) & (((dd)1) << (sizeof(f)*8-b));*/ \
 			int shift = c&(2*bitsizeof(a)-1); \
 			dd a1=a>>shift; \
 			a=a1 | ( (b& ((1<<shift)-1) ) << (bitsizeof(a)-shift) ); \
 		AFFECT_ZF(a);\
 		AFFECT_SF(a,a)} //TODO optimize
 
-#define SAR(a,b) {bool sign = (a & (1 << (sizeof(a)*8-1)))!=0; int shift = (bitsizeof(a)-b);shift = shift>0?shift:0;\
-	dd sigg=shift<(bitsizeof(a))?( (sign?-1:0)<<shift):0; a = b>bitsizeof(a)?0:a; a=sigg | (a >> b);}  // TODO optimize
+#define SAR(a,b) {bool sign = (a & (((dd)1) << (sizeof(a)*8-1)))!=0; int shift = (bitsizeof(a)-b);shift = shift>0?shift:0;\
+	dd sigg=shift<(bitsizeof(a))?( (sign?((dd)-1):0)<<shift):0; a = b>bitsizeof(a)?0:a; a=sigg | (a >> b);}  // TODO optimize
 //#define SAR(a,b) { a= ((int32_t)a)>>b;}  // TODO optimize
 
 
@@ -523,11 +523,11 @@ void MOV_(D* dest, const S& src)
 #define LDS(dest,src) {dest = src; ds = *(dw*)((db*)&(src) + sizeof(dest));}
 
 #define MOVZX(dest,src) dest = src
-#define MOVSX(dest,src) {if (ISNEGATIVE(src,src)) { dest = ((-1 ^ (( 1 << (sizeof(src)*8) )-1)) | src ); } else { dest = src; }}
+#define MOVSX(dest,src) {if (ISNEGATIVE(src,src)) { dest = (( ((dd)-1) ^ (( ((dd)1) << (sizeof(src)*8) )-1)) | src ); } else { dest = src; }}
 
 #define bitsizeof(dest) (8*sizeof(dest))
 #define shiftmodule(dest,bit) (bit&(bitsizeof(dest)-1))
-#define nthbit(dest,bit) (1 << shiftmodule(dest,bit))
+#define nthbit(dest,bit) (((dd)1) << shiftmodule(dest,bit))
 #define BT(dest,src) {CF = dest & nthbit(dest,src);} //TODO
 #define BTS(dest,src) {CF = dest & nthbit(dest,src); dest |= nthbit(dest,src);}
 #define BTC(dest,src) {CF = dest & nthbit(dest,src); dest ^= nthbit(dest,src);}
@@ -544,9 +544,9 @@ void MOV_(D* dest, const S& src)
 
 
 #define CMPSB CMPS(1)
-#define CBW {ah = ((int8_t)al) < 0?-1:0;} // TODO
-#define CWD {dx = ((int16_t)ax) < 0?-1:0;}
-#define CWDE {*(((dw*)&eax)+1) = ((int16_t)ax) < 0?-1:0;}
+#define CBW {ah = ((int8_t)al) < 0?((dd)-1):0;} // TODO
+#define CWD {dx = ((int16_t)ax) < 0?((dd)-1):0;}
+#define CWDE {*(((dw*)&eax)+1) = ((int16_t)ax) < 0?((dd)-1):0;}
 
 // MOVSx (DF FLAG not implemented)
 

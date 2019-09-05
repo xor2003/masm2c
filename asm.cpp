@@ -487,6 +487,7 @@ void asm2C_INT(int a) {
 #define SUCCESS         0       /* Function was successful      */
 
 #ifdef __BORLANDC__
+	log_debug("fileName=%s\n",(const char *) realAddress(dx, ds)); ///
         call_dos_realint(a);
 	return;
 #endif
