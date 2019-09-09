@@ -10,6 +10,7 @@ _TEXT   segment use32 dword public 'CODE' ;IGNORE
 assume  cs:_TEXT,ds:_DATA
 _start proc near
 start: ;IGNORE
+MOV ds, _data
 
 mov edx,0
 mov ecx,2
@@ -43,6 +44,10 @@ mov al,00h  ;ouverture du fichier pour lecture.
 mov ah,03dh
 int 21h
 jnc noerror
+
+pop ds es
+popad
+
 mov eax,1
 ret
 noerror:

@@ -21,11 +21,12 @@ assume  cs:_TEXT,ds:_DATA
 _start proc near
 
 start: ;IGNORE
+MOV ds, _data
 
 push ds
 pop es
 
-jmp finTest
+;jmp finTest
 
 mov esi,offset var1
 mov edi,offset var4

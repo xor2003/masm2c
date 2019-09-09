@@ -1,13 +1,15 @@
 _text segment byte public 'CODE' use16
 _start:
 label1:
+		xor bx,bx
 		mov	es:[di+8], eax
 
-myoffs		dw offset label2
+myoffs		dw offset label4
+		dw offset label2
 		dw offset label3
 		dw offset _myout
 		jmp	cs:[myoffs+bx]
-
+label4:
 		jmp	short $+2
 		mul cs:[_slider+di]
 		movzx cx, byte ptr [bx+4]
@@ -16,7 +18,7 @@ myoffs		dw offset label2
 		lea	si, _slider[eax+eax*2] ; "	JanFebMarAprMayJunJulAugSepOctNovDec"
 		jmp $+2
 		mov ax, offset label1
-		jmp label1
+		jmp label2
 label2:
 		div	_word_245D4
 label3:
@@ -39,7 +41,7 @@ _slider		db 'Ä\|/Ä\|/'           ; DATA XREF: _modules_search+7Fr
 
 _myout		db 18C0h dup(?)		; DATA XREF: _mod_1024A+3o
 
-_word_245D4	dw 0			; DATA XREF: _moduleread+81r
+_word_245D4	dw 1			; DATA XREF: _moduleread+81r
 seg003 ends
 
 ; ===========================================================================

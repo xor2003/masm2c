@@ -21,6 +21,7 @@ assume  cs:_TEXT,ds:_DATA
 _start proc near
 
 start: ;IGNORE
+MOV ds, _data
 
 taille_moire equ ((((2030080+64000*26)/4096)+1)*4096)-1
 

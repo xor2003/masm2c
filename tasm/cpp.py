@@ -232,6 +232,7 @@ class cpp(object):
 
         def get_size(self, expr):
                 expr = expr.strip()
+                origexpr = expr
                 logging.debug('get_size("%s")' %expr)
 
                 try:
@@ -286,7 +287,10 @@ class cpp(object):
                         try:
                                 g = self.context.get_global(name)
                                 if isinstance(g, op.equ) or isinstance(g, op.assignment):
-                                        return self.get_size(g.value)
+                                      if g.value != origexpr: # prevent loop
+                                         return self.get_size(g.value)
+                                      else:
+                                         return 0
                                 logging.debug('get_size res %d' %g.size)
                                 return g.size
                         except:
@@ -330,6 +334,7 @@ class cpp(object):
                 self.seg_prefix=""
 
                 expr = expr.strip()
+                origexpr = expr
 
                 expr = re.sub(r'^\(\s*(.*?)\s*\)$', '\\1', expr) # (expr)
                 logging.debug("wo curls "+expr)
@@ -1133,12 +1138,21 @@ R(MOV(ss, seg_offset(stack)));
 }
 
 """ %self.namespace)
+                start_proc=self.context.get_global(self.context.entry_point)
+                if isinstance(start_proc, proc.proc):
+                           start_proc=start_proc.name
+                           logging.debug("1start_proc %s" %str(start_proc))
+                elif isinstance(start_proc, op.label):
+                           start_proc=start_proc.proc.name
+                           logging.debug("2start_proc %s" %str(start_proc))
+                else:
+                           logging.debug("3start_proc %s" %str(start_proc))
 
-                self.proc_queue.append(self.context.get_global(self.context.entry_point).proc.name)
+                self.proc_queue.append(start_proc)
                 self.proc_queue.append('mainproc')
 
                 logging.debug("will add call")
-                self.context.get_global('mainproc').add("call %s" %(self.context.get_global(self.context.entry_point).proc.name), line_number=1)
+                self.context.get_global('mainproc').add("call %s" %(start_proc), line_number=1)
 
                 procs = self.procs
                 while len(self.proc_queue):

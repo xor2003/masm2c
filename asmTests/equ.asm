@@ -34,7 +34,6 @@ movzx eax, DDD
 cmp eax,6
 jne failure
 
-JMP exitLabel
 ;mov edx,offset exitLabel
 
 MOV al,0
@@ -54,6 +53,7 @@ mov eax, B
 cmp eax,3
 jne failure
 
+B = var1
 
 ret
 inceBX endp

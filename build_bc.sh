@@ -14,4 +14,4 @@ perl -i -pe 's!^\s*([a-z0-9_@]+)::?!$1::!' $1_build.asm
 ./uasm64 -Fl=$1.lst -Zi3 $1_build.asm | grep -vi warning
 cp --force $1_build.obj $1.obj
 #rm $1_build.*  2>/dev/null || true
-C:/inertia_player/BC5/BIN/ulink.exe -vv -s -Tde c0h.obj $1.obj asm.obj memmgr.obj,$1.exe,,gen.lib pdcurses.lib mathh.lib ch.lib | grep -vi -e warning -e defined
+C:/inertia_player/BC5/BIN/ulink.exe -vv -s -Tde c0h.obj $1.obj asm.obj memmgr.obj,$1.exe,,gen.lib pdcurses.lib mathh.lib ch.lib | grep -vi  warning | grep -vi defined

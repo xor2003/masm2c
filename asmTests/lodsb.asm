@@ -14,6 +14,7 @@ _TEXT   segment use32 dword public 'CODE' ;IGNORE
 assume  cs:_TEXT,ds:_DATA
 _start proc near
 start: ;IGNORE
+MOV ds, _data
 
 push ds
 pop es

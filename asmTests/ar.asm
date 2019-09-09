@@ -15,6 +15,9 @@ start: ;IGNORE
 cmp var1[1],2
 cmp var1[bx],2
 cmp var1[bx+si],2
+MOV al,0
+mov ah,4ch                    ; AH=4Ch - Exit To DOS
+int 21h
 
 _start endp
 

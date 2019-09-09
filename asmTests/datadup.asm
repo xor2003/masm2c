@@ -16,6 +16,7 @@ assume  cs:_TEXT,ds:_DATA
 
 _start proc near
 start: ;IGNORE
+MOV ds, _data
 
 cmp [var],5
 jne failure

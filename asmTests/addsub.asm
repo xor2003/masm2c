@@ -12,6 +12,7 @@ _DATA   ends ;IGNORE
 _TEXT   segment use32 dword public 'CODE' ;IGNORE
 assume  cs:_TEXT,ds:_DATA
 _start: ;IGNORE
+MOV ds, _data
 
 add word ptr [var5+2],50
 cmp word ptr [var5+2],50

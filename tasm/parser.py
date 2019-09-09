@@ -195,10 +195,10 @@ class parser(object):
                 #print "~%s~" %(expr)
                 expr = expr.strip()
                 exprr = expr.lower()
-                if exprr[-1] == 'h':
+                if exprr[-1] == 'h': #TODO boqdh BOQDH
                         logging.debug("eval_expr: %s" %(expr))
                         expr = '0x'.expr[0:len(expr)-1]
-                        logging.debug("eval_expr: %s" %(expr))
+                        #logging.debug("eval_expr: %s" %(expr))
 
                 if expr == '?':
                         return 0
@@ -308,7 +308,7 @@ class parser(object):
         @logger
         def convert_data_to_c(self, label, width, data):
                 """ Generate C formated data """
-                logging.info("convert_data_to_c %s %d %s" %(label, width, data))
+                logging.debug("convert_data_to_c %s %d %s" %(label, width, data))
                 first = True
                 is_string = False
                 elements = 0
@@ -387,6 +387,7 @@ class parser(object):
                                 logging.debug("global/expr: ~%s~" %v)
                                 try:
                                         v = str.replace(v, 'offset ', '')
+                                        v = str.replace(v, 'seg ', '')
                                         v = re.sub(r'@', "arb", v)
                                         v = self.convert_data(v,base)
                                 except KeyError:
@@ -521,7 +522,7 @@ class parser(object):
 
                 logging.debug(r)
                 logging.debug(rh)
-                logging.info("returning") 
+                logging.debug("returning") 
                 self.prev_data_type = cur_data_type
                 self.prev_data_ctype = data_ctype
                 self.data_started = True
@@ -667,7 +668,13 @@ class parser(object):
                         cmd0 = str(cmd[0])
                         cmd0l = cmd0.lower()
 
-                        m = re.match('(\.\d86[pr]?)', line)
+                        m = re.match('(\.\d86[prc]?)', line)
+                        if m is not None:
+                                line = m.group(1).strip()
+                                logging.debug(line)
+                                continue
+
+                        m = re.match('(\.model)', line)
                         if m is not None:
                                 line = m.group(1).strip()
                                 logging.debug(line)
@@ -709,7 +716,7 @@ class parser(object):
                                 #self.proc = None
                                 continue
                         elif cmd0l == 'ends':
-                                logging.debug("segement %s ends" %(self.segment))
+                                logging.debug("segment %s ends" %(self.segment))
                                 self.segment = "default_seg"
                                 continue
                         elif cmd0l == 'assume':
@@ -722,6 +729,12 @@ class parser(object):
                         elif cmd0l == 'end':
                                 if len(cmd) >= 2:
                                         self.entry_point = cmd[1].lower()
+                                continue
+                        elif cmd0l == '.code' or cmd0l == '.data' or cmd0l == '.stack':
+                                name = cmd0l[1:]
+                                self.segment = name
+
+                                self.create_segment(name)
                                 continue
                         
                         if len(cmd) >= 2:
