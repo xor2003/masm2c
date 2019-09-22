@@ -249,7 +249,7 @@ class parser(object):
                                         r.append(ord(v[i]))
                                 continue
                         
-                        m = re.match(r'(\w+)\s+dup\s*\((\s*\S+\s*)\)', v)
+                        m = re.match(r'([\w\*]+)\s+dup\s*\((\s*\S+\s*)\)', v, re.IGNORECASE)
                         if m is not None:
                                 #we should parse that
                                 n = self.parse_int(m.group(1))
@@ -340,7 +340,7 @@ class parser(object):
                         if is_string and v.isdigit():
                                 v = "'\\" +str(hex(int(v)))[1:] + "'"
                         '''
-                        m = re.match(r'(\w+)\s+dup\s*\((\s*\S+\s*)\)', v)
+                        m = re.match(r'([\w\*]+)\s+dup\s*\((\s*\S+\s*)\)', v, re.IGNORECASE)
                         if m is not None:
                                 #we should parse that
                                 n = self.parse_int(m.group(1))

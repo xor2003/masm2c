@@ -433,7 +433,9 @@ struct SREGS sr;
 //   _dpmi_reg.x.bp = bp;
    sr.ds = ds;
    sr.es = es;
+   _dpmi_reg.x.flags=0;
    int86x(a, &_dpmi_reg, &_dpmi_reg, &sr);
+
    ds = sr.ds;
    es = sr.es;
    ax = _dpmi_reg.x.ax;
@@ -442,8 +444,10 @@ struct SREGS sr;
    dx = _dpmi_reg.x.dx;
    si = _dpmi_reg.x.si;
    di = _dpmi_reg.x.di;
+
+   {MWORDSIZE t=_dpmi_reg.x.flags; CF=t&1;  PF=(t&4);AF=(t&0x10);ZF=(t&0x40);SF=(t&0x80);DF=(t&0x200);OF=(t&0x400);}
 //   bp = _dpmi_reg.x.bp;
-   CF |= _doserrno;
+//   CF |= _doserrno;
 #endif   
 
 

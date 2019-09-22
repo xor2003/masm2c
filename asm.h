@@ -114,8 +114,10 @@ static const uint32_t MASK[]={0, 0xff, 0xffff, 0xffffff, 0xffffffff};
 #define realAddress(offset, segment) raddr(segment,offset)
 
 #if _BITS == 32
+ typedef dd MWORDSIZE;
  #define offset(segment,name) ((dd)(db*)&m.name)
 #else
+ typedef dw MWORDSIZE;
  #if __BORLANDC__ || __DMC__
   #define offset(segment,name) (offsetof(type_##segment,name))
   //#define offset(segment,name) ((unsigned int)(void __far*)(&segment.name) - (unsigned int)(void __far*)(&segment)) 
@@ -645,8 +647,8 @@ int8_t asm2C_IN(int16_t data);
 //#define PUSHF {dd t = CF+(ZF<<1)+(DF<<2)+(SF<<3); PUSH(t);}
 //#define POPF {dd t; POP(t); CF=t&1; ZF=(t>>1)&1; DF=(t>>2)&1; SF=(t>>3)&1;}
 
-#define PUSHF {PUSH( (dd) ((CF?1:0)|(PF?4:0)|(AF?0x10:0)|(ZF?0x40:0)|(SF?0x80:0)|(DF?0x200:0)|(OF?0x400:0)) );}
-#define POPF {dd t; POP(t); CF=t&1;  PF=(t&4);AF=(t&0x10);ZF=(t&0x40);SF=(t&0x80);DF=(t&0x200);OF=(t&0x400);}
+#define PUSHF {PUSH( (MWORDSIZE) ((CF?1:0)|(PF?4:0)|(AF?0x10:0)|(ZF?0x40:0)|(SF?0x80:0)|(DF?0x200:0)|(OF?0x400:0)) );}
+#define POPF {MWORDSIZE t; POP(t); CF=t&1;  PF=(t&4);AF=(t&0x10);ZF=(t&0x40);SF=(t&0x80);DF=(t&0x200);OF=(t&0x400);}
 #define NOP
 
 /*
