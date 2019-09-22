@@ -3,10 +3,8 @@
 struct /*__attribute__((__packed__))*/ Memory;
 extern Memory m;
 
-#ifndef __BORLANDC__
- #ifndef __DJGPP__
+#if ! __BORLANDC__ && ! __DJGPP__ && ! __DMC__
   #include <SDL/SDL.h>
- #endif
 // #include <thread>
 #endif
 
@@ -18,7 +16,7 @@ extern Memory m;
  #include <sys/farptr.h>
 #endif
 
-#ifdef __BORLANDC__
+#if __BORLANDC__ || __DMC__
  #include <dos.h>
 #endif
 
@@ -258,6 +256,9 @@ void asm2C_OUT(int16_t address, int data) {
 #if defined( __DJGPP__ ) || defined( __BORLANDC__ )
 	outportb(address, data);
 #else
+ #if defined( __DMC__ )
+        _outp(address, data);
+ #else
 	static int indexPalette = 0;
 	switch(address) {
 	case 0x3c8:
@@ -275,6 +276,7 @@ void asm2C_OUT(int16_t address, int data) {
 		log_debug("unknown OUT %d,%d\n",address, data);
 		break;
 	}
+ #endif
 #endif
 }
 
@@ -282,6 +284,9 @@ int8_t asm2C_IN(int16_t address) {
 #if defined( __DJGPP__ ) || defined( __BORLANDC__ )
 	return inportb(address);
 #else
+ #if defined( __DMC__ )
+        return _inp(address);
+ #else
 	static bool vblTick = 1;
 	switch(address) {
 	case 0x3DA:
@@ -298,6 +303,7 @@ int8_t asm2C_IN(int16_t address) {
 		log_error("Unknown IN %d\n",address);
 		return 0;
 	}
+ #endif
 #endif
 }
 
@@ -305,13 +311,25 @@ uint16_t asm2C_INW(uint16_t address) {
 #if defined( __DJGPP__ ) || defined( __BORLANDC__ )
 	return inport(address);
 #else
+ #if defined( __DMC__ )
+        return _inpw(address);
+ #else
 	switch(address) {
 	case 0x3DA:
+		if (vblTick) {
+			vblTick = 0;
+			return 0;
+		} else {
+			vblTick = 1;
+			jumpToBackGround = 1;
+			return 8;
+		}
 		break;
 	default:
 		log_error("Unknown INW %d\n",address);
 		return 0;
 	}
+ #endif
 #endif
 }
 
@@ -346,7 +364,7 @@ bool is_little_endian()
 }
 
 
-#ifndef __BORLANDC__ //TODO
+#if ! __BORLANDC__ && ! __DMC__ //TODO
 //#if !CYGWIN
   #include <sys/time.h>
 double realElapsedTime(void) {              // returns 0 first time called
@@ -402,7 +420,7 @@ __dpmi_regs _dpmi_reg;
    di = _dpmi_reg.x.di;
    bp = _dpmi_reg.x.bp;
 #endif   
-#ifdef __BORLANDC__
+#if __BORLANDC__ || __DMC__
 	log_debug2("call_dos_realint %x ax=%x bx=%x cx=%x dx=%x\n",a,ax,bx,cx,dx);
      union REGS _dpmi_reg;
 struct SREGS sr;
@@ -486,8 +504,8 @@ void asm2C_INT(int a) {
 	int rc;
 #define SUCCESS         0       /* Function was successful      */
 
-#ifdef __BORLANDC__
-	log_debug("fileName=%s\n",(const char *) realAddress(dx, ds)); ///
+#if __BORLANDC__ || __DMC__
+//	log_debug("fileName=%s\n",(const char *) realAddress(dx, ds)); ///
         call_dos_realint(a);
 	return;
 #endif
@@ -580,7 +598,7 @@ void asm2C_INT(int a) {
 #else
 
 		        
-#ifndef __BORLANDC__  //TODO
+#if ! __BORLANDC__ && ! __DMC__ //TODO
         	    struct tm* loctime;
 		    struct timeval curtime;
 	            gettimeofday(&curtime, NULL);

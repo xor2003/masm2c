@@ -293,9 +293,13 @@ class parser(object):
                                         g = self.get_global(v)
                                         logging.debug(g)
                                         if isinstance(g, op.equ) or isinstance(g, op.assignment):
-                                                v = int(g.value)
-                                                if v < 0: # negative values
+                                                try:
+                                                  v = int(g.value)
+                                                  if v < 0: # negative values
                                                         v += base
+                                                except ValueError:
+                                                  logging.debug("equ is not an integer %s"%(g.value))
+                                                  v = g.value.upper()
                                         elif isinstance(g, op.var):
                                                 v = "offset(%s,%s)" %(g.segment, g.name)
                                         elif isinstance(g, op.label):
@@ -458,7 +462,9 @@ class parser(object):
                                 vv = "\""
                                 for i in range(1, len(r)-1):
                                         if isinstance(r[i], int):
-                                                if r[i] == 13:
+                                                if r[i] == 0:
+                                                        vv += r"\0"
+                                                elif r[i] == 13:
                                                         vv += r"\r"
                                                 elif r[i] == 10:
                                                         vv += r"\n"
@@ -587,7 +593,7 @@ class parser(object):
                                         #self.c_data.append("{"+ ",".join(l) +"}, // segment " + name + "\n")
                                         #self.h_data.append(" db " + name + "["+ str(num) + "]; // segment " + name + "\n")
                                         self.c_data.append("};\ntype_"+name+" SEGALIGN "+name+" ={\n")
-                                        self.h_data.append("};\nstruct MYPACKED type_"+name + " {\n")
+                                        self.h_data.append("};\nstruct MYPACKED SEGALIGN type_"+name + " {\n")
 
                                         self.set_global(name, op.var(binary_width, offset, issegment = True))
                                         '''
@@ -793,7 +799,7 @@ class parser(object):
                                                 vv = re.sub(r'\b([0-9][a-fA-F0-9]*)h', '0x\\1', vv)
 
                                                 if cmd1l == 'equ':
-                                                        #self.set_global(cmd0, op.equ(cmd0.lower(), size=size))
+                                                        self.set_global(cmd0, op.equ(cmd0.lower(), size=size))
                                                         self.get_global("mainproc").add_equ(cmd0, vv, line_number=self.line_number)
                                                 elif cmd1l == '=':
                                                         #self.reset_global(cmd0, op.assignment(cmd0.lower(), size=size))

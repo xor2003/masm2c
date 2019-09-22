@@ -12,11 +12,14 @@
 
 #ifndef __BORLANDC__
  #include <stdint.h>
- #include <stdbool.h>
- #define MYPACKED __attribute__((__packed__))
- #define MYINT_ENUM : int
-#else
+ #ifdef  __GCC__
+  #include <stdbool.h>
+  #define MYPACKED __attribute__((__packed__))
+  #define MYINT_ENUM : int
+ #endif
+#endif
 
+#ifdef __BORLANDC__
 #define _BITS 16
  typedef unsigned long uint32_t;
  typedef long int32_t;
@@ -26,15 +29,32 @@
  typedef char int8_t;
  struct uint64_t
  {
-	long a;
-	long b;
+	uint32_t a;
+	uint32_t b;
  };
  struct int64_t
  {
-	long a;
-	long b;
+	uint32_t a;
+	int32_t b;
  };
 
+ #define MYPACKED
+ #define MYINT_ENUM
+#endif
+
+#if __DMC__
+ #define _BITS 16
+ struct uint64_t
+ {
+	uint32_t a;
+	uint32_t b;
+ };
+ struct int64_t
+ {
+	uint32_t a;
+	int32_t b;
+ };
+//typedef int _Bool;
  #define MYPACKED
  #define MYINT_ENUM
 #endif
@@ -43,18 +63,18 @@
 typedef uint8_t db;
 typedef uint16_t dw;
 typedef uint32_t dd;
-#ifndef __BORLANDC__
+//#ifndef __BORLANDC__
 typedef uint64_t dq;
-#endif
+//#endif
 
 
 #define VGARAM_SIZE (320*200)
 
-#ifdef __BORLANDC__
+#if  __BORLANDC__  || __DMC__
  #define STACK_SIZE 4096
  #define HEAP_SIZE 1024
 #else
- #define STACK_SIZE (1024*64-16)
+ #define STACK_SIZE ((1024*64) -16)
  #define HEAP_SIZE (1024*1024 - 16 - STACK_SIZE)
 #endif
 
@@ -83,7 +103,7 @@ static const uint32_t MASK[]={0, 0xff, 0xffff, 0xffffff, 0xffffffff};
   #define raddr(segment,offset) ((db *)&m+(db)(offset)+selectors[segment])
  #endif
 #else
- #ifdef __BORLANDC__
+ #if __BORLANDC__ || __DMC__
   #include <dos.h>
   #define raddr(segment,offset) ((db __far *) (( ((unsigned long)segment) <<16) + offset))
  #else
@@ -96,7 +116,7 @@ static const uint32_t MASK[]={0, 0xff, 0xffff, 0xffffff, 0xffffffff};
 #if _BITS == 32
  #define offset(segment,name) ((dd)(db*)&m.name)
 #else
- #ifdef __BORLANDC__
+ #if __BORLANDC__ || __DMC__
   #define offset(segment,name) (offsetof(type_##segment,name))
   //#define offset(segment,name) ((unsigned int)(void __far*)(&segment.name) - (unsigned int)(void __far*)(&segment)) 
  #else
@@ -104,7 +124,7 @@ static const uint32_t MASK[]={0, 0xff, 0xffff, 0xffffff, 0xffffffff};
  #endif
 #endif
 
-#ifdef __BORLANDC__
+#if __BORLANDC__ || __DMC__
 // #define seg_offset(segment) (FP_SEG(&segment))
 // #define seg_offset(segment) ((unsigned)(void __seg *)(&segment))
  #define seg_offset(segment) ( ( ((unsigned long)(void __far*)(&segment)) >> 16) + ( ((unsigned int)(void __far*)(&segment)) >> 4) )
@@ -677,7 +697,7 @@ int8_t asm2C_IN(int16_t data);
 
 #define RETN RET
 
-#ifdef __BORLANDC__
+#if __BORLANDC__
  #define L(x) __asm { x }
  #define IRET __asm {iret }
  #define GOTOLABEL(a) {_source=__LINE__;\
@@ -689,11 +709,22 @@ int8_t asm2C_IN(int16_t data);
  #define STI __asm sti
  #define CLI __asm cli
 #else
+ #if __DMC__
  #define L(x) x
- #define IRET RETF
- #define GOTOLABEL(a) {_source=__LINE__;goto a;}
- #define STI // TODO: STI not implemented
- #define CLI // TODO: STI not implemented
+  #define IRET __asm {iret }
+ #define GOTOLABEL(a) {_source=__LINE__;\
+   goto a;\
+}
+
+  #define STI __asm sti
+  #define CLI __asm cli
+ #else
+  #define L(x) x
+  #define IRET RETF
+  #define GOTOLABEL(a) {_source=__LINE__;goto a;}
+  #define STI // TODO: STI not implemented
+  #define CLI // TODO: STI not implemented
+ #endif
 #endif
 
 // ---------unimplemented
@@ -777,7 +808,7 @@ const char* log_spaces(int n);
 #if DEBUG==2
     #define R(a) {log_debug("l:%s%d:%s\n",_str,__LINE__,#a);}; a
 #elif DEBUG>=3
- #ifndef __BORLANDC__
+ #if ! __BORLANDC__ && ! __DMC__
     #define R(a) {log_debug("l:%s%x:%d:%s eax: %x ebx: %x ecx: %x edx: %x ebp: %x ds: %x esi: %x es: %x edi: %x fs: %x esp: %x\n",_str,0/*pthread_self()*/,__LINE__,#a, \
 eax, ebx, ecx, edx, ebp, ds, esi, es, edi, fs, esp);} \
 	a 
@@ -846,13 +877,19 @@ const char *_str;
 };
 
 #define REGDEF_hl(Z)   \
-uint32_t e##Z##x=0;
+uint32_t e##Z##x=0; \
+uint16_t& Z##x = *(uint16_t *)& e##Z##x; \
+uint8_t& Z##l = *(uint8_t *)& e##Z##x; \
+uint8_t& Z##h = *(((uint8_t *)& e##Z##x)+1); 
 
 #define REGDEF_l(Z) \
-uint32_t e##Z=0;
+uint32_t e##Z=0; \
+uint16_t& Z = *(uint16_t *)& e##Z ; \
+uint8_t&  Z##l = *(uint8_t *)& e##Z ;
 
 #define REGDEF_nol(Z) \
-uint32_t e##Z=0; 
+uint32_t e##Z=0; \
+uint16_t& Z = *(uint16_t *)& e##Z ;
 
 #define X86_REGREF \
     REGDEF_hl(a);     \
@@ -881,6 +918,7 @@ bool ZF;       \
 bool SF;       \
 bool DF;       \
 bool OF;       \
+dd& stackPointer = esp;\
 _offsets __disp=0; \
 dw _source=0; \
 db _indent=0; \
@@ -888,18 +926,19 @@ const char *_str=0;
 
 #define EREGDEF_hl(Z)   \
 extern uint32_t e##Z##x; \
-uint16_t& Z##x = *(uint16_t *)& e##Z##x; \
-uint8_t& Z##l = *(uint8_t *)& e##Z##x; \
-uint8_t& Z##h = *(((uint8_t *)& e##Z##x)+1); 
+extern uint16_t& Z##x; \
+extern uint8_t& Z##l; \
+extern uint8_t& Z##h; 
 
 #define EREGDEF_l(Z) \
 extern uint32_t e##Z; \
-uint16_t& Z = *(uint16_t *)& e##Z ; \
-uint8_t&  Z##l = *(uint8_t *)& e##Z ;
+extern uint16_t& Z; \
+extern uint8_t&  Z##l;
 
 #define EREGDEF_nol(Z) \
 extern uint32_t e##Z; \
-uint16_t& Z = *(uint16_t *)& e##Z ;
+extern uint16_t& Z;
+
 
 #define X86_EREGREF \
     EREGDEF_hl(a);     \
@@ -928,7 +967,7 @@ extern bool ZF;       \
 extern bool SF;       \
 extern bool DF;       \
 extern bool OF;       \
-dd& stackPointer = esp;\
+extern dd& stackPointer;\
 extern _offsets __disp; \
 extern dw _source; \
 extern db _indent; \

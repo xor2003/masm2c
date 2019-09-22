@@ -375,7 +375,7 @@ class cpp(object):
                                                 s = {1: "*(db*)", 2: "*(dw*)", 4: "*(dd*)"}[size]
                                                 return s+"&"+g.segment++"." + expr
                         if isinstance(g, op.equ) or isinstance(g, op.assignment):
-                                logging.debug("it is equ")
+                                logging.debug("expand() it is equ %s = %s"%(g.name, g.value))
                                 return self.expand(g.value)
 
                 except:
@@ -396,7 +396,8 @@ class cpp(object):
                 if m is not None:
                         return m.group(1)
 
-                expr = re.sub(r'\b([0-9][a-fA-F0-9]*)[Hh]', '0x\\1', expr) # convert hex
+                expr = re.sub(r'\b([0-9][a-fA-F0-9]*)[Hh]\b', '0x\\1', expr) # convert hex
+                expr = re.sub(r'\b0+([0-9]+)\b', '\\1', expr) # remove leading zeroes from decimal
                 expr = re.sub(r'\b([0-1]+)[Bb]', parse_bin, expr) # convert binary
 
                 match_id = True
@@ -1045,7 +1046,7 @@ void %s(_offsets _i){
 
         @logger
         def write_stubs(self, fname, procs):
-                fd = open(fname, "wt")
+                fd = open(fname, "wt", encoding="cp437")
                 fd.write("//namespace %s {\n" %self.namespace)
                 for p in procs:
                         if p in self.function_name_remapping:
@@ -1119,7 +1120,7 @@ R(MOV(ss, seg_offset(stack)));
   es=0;
 #endif
 
-#ifndef __BORLANDC__
+#if ! __BORLANDC__ && ! __DMC__
   log_debug("~~~ heap_size=%%d para=%%d heap_ofs=%%d", HEAP_SIZE, (HEAP_SIZE >> 4), seg_offset(heap) );
   /* We expect ram_top as Kbytes, so convert to paragraphs */
   mcb_init(seg_offset(heap), (HEAP_SIZE >> 4) - seg_offset(heap) - 1, MCB_LAST);
@@ -1194,10 +1195,12 @@ switch (__disp) {
                                 offsets.append((k.lower(), k))
 
                 offsets = sorted(offsets, key=lambda t: t[1])
+                ''' x0r disable jmp table
                 for o in offsets:
                         logging.debug(o)
                         self.fd.write('case k%s: \t{GOTOLABEL(%s);}\n' %o)
                 self.fd.write("default: log_error(\"Jump/call to nothere %d\\n\", __disp);stackDump(); abort();\n")
+                '''
                 self.fd.write("};\n}\n")
 
                 '''
@@ -1243,8 +1246,8 @@ switch (__disp) {
                         #       offsets.append((k.capitalize(), hex(v.line_number)))
 
                 offsets = sorted(offsets, key=lambda t: t[1])
-                for o in offsets:
-                        self.fd.write("static const uint16_t k%s = %s;\n" %o)
+                #for o in offsets:
+                #        self.fd.write("static const uint16_t k%s = %s;\n" %o)
                 self.fd.write("\n")
 
 
@@ -1271,8 +1274,8 @@ switch (__disp) {
 
                 self.write_declarations(procs)
 
-                data_head = '''extern db MYPACKED stack[STACK_SIZE];
-                struct MYPACKED Memory{
+                data_head = '''extern db SEGALIGN stack[STACK_SIZE];
+                struct MYPACKED SEGALIGN Memory{
                         db heap[HEAP_SIZE];
                 ''';
                 for v in hdata_bin:
