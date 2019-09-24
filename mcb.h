@@ -31,22 +31,24 @@
 #ifndef __MCB_H__
 #define __MCB_H__
 
+#include "asm.h"
+/*
 #ifndef __BORLANDC__
-#include <stdint.h>
+ #include <stdint.h>
  #ifdef  __GCC__
   #include <stdbool.h>
-#define MYPACKED __attribute__((__packed__))
+  #define MYPACKED __attribute__((__packed__))
   #define MYINT_ENUM : int
  #endif
 #endif
 
 #ifdef __BORLANDC__
 #define _BITS 16
-typedef unsigned long uint32_t;
+ typedef unsigned long uint32_t;
  typedef long int32_t;
-typedef unsigned short int uint16_t;
-typedef short int int16_t;
-typedef unsigned char uint8_t;
+ typedef unsigned short int uint16_t;
+ typedef short int int16_t;
+ typedef unsigned char uint8_t;
  typedef char int8_t;
 
  #define MYPACKED
@@ -55,10 +57,10 @@ typedef unsigned char uint8_t;
 
 #if __DMC__
  #define _BITS 16
-//typedef int _Bool;
  #define MYPACKED
  #define MYINT_ENUM
 #endif
+*/
 
 typedef char BYTE;
 typedef uint16_t UWORD;

@@ -445,7 +445,7 @@ struct SREGS sr;
    si = _dpmi_reg.x.si;
    di = _dpmi_reg.x.di;
 
-   {MWORDSIZE t=_dpmi_reg.x.flags; CF=t&1;  PF=(t&4);AF=(t&0x10);ZF=(t&0x40);SF=(t&0x80);DF=(t&0x200);OF=(t&0x400);}
+   {dd t=_dpmi_reg.x.flags; CF=t&1;  PF=(t&4);AF=(t&0x10);ZF=(t&0x40);SF=(t&0x80);DF=(t&0x200);OF=(t&0x400);}
 //   bp = _dpmi_reg.x.bp;
 //   CF |= _doserrno;
 #endif   
@@ -654,6 +654,7 @@ void asm2C_INT(int a) {
 			case 0x42:
 			{
 		        call_dos_realint(a);
+			return;
 			}
 			default:
 				break;
@@ -976,7 +977,6 @@ void asm2C_INT(int a) {
 		{
 #ifdef __DJGPP__
         call_dos_realint(a);
-			return;
 #endif
 			return;
 		}

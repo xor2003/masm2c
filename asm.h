@@ -10,17 +10,21 @@
 #include <stdio.h>
 #include <assert.h>
 
-#ifndef __BORLANDC__
+#ifndef _SRC_BITS
+#define _SRC_BITS 16 // default is source for 16 real mode
+#endif
+
+#if __GCC__ || __DJGPP__
+ #define _TRG_BITS 32
+ #define _TRG_PROTECTED_MODE 1
  #include <stdint.h>
- #ifdef  __GCC__
-  #include <stdbool.h>
-  #define MYPACKED __attribute__((__packed__))
-  #define MYINT_ENUM : int
- #endif
+ #include <stdbool.h>
+ #define MYPACKED __attribute__((__packed__))
+ #define MYINT_ENUM : int
 #endif
 
 #ifdef __BORLANDC__
-#define _BITS 16
+#define _TRG_BITS 16
  typedef unsigned long uint32_t;
  typedef long int32_t;
  typedef unsigned short int uint16_t;
@@ -43,7 +47,8 @@
 #endif
 
 #if __DMC__
- #define _BITS 16
+ #define _TRG_BITS 16
+ #include <stdint.h>
  struct uint64_t
  {
 	uint32_t a;
@@ -63,14 +68,12 @@
 typedef uint8_t db;
 typedef uint16_t dw;
 typedef uint32_t dd;
-//#ifndef __BORLANDC__
 typedef uint64_t dq;
-//#endif
 
 
 #define VGARAM_SIZE (320*200)
 
-#if  __BORLANDC__  || __DMC__
+#if _TRG_BITS == 16
  #define STACK_SIZE 4096
  #define HEAP_SIZE 1024
 #else
@@ -81,7 +84,7 @@ typedef uint64_t dq;
 #define NB_SELECTORS 128
 
 #ifdef __cplusplus
-extern "C" {
+//extern "C" {
 #endif
 
 static const uint32_t MASK[]={0, 0xff, 0xffff, 0xffffff, 0xffffffff};
@@ -96,55 +99,50 @@ static const uint32_t MASK[]={0, 0xff, 0xffff, 0xffffff, 0xffffffff};
  #define INLINE
 #endif
 
-#if defined(_PROTECTED_MODE)
- #if _BITS == 32
-  #define raddr(segment,offset) (reinterpret_cast<db *>(offset))
- #else
-  #define raddr(segment,offset) ((db *)&m+(db)(offset)+selectors[segment])
- #endif
-#else
- #if __BORLANDC__ || __DMC__
+#if _TRG_BITS == 16
+// __BORLANDC__ || __DMC__  src 16 bit only, trg 16 (direct)
+ typedef dw TRGWORDSIZE;
   #include <dos.h>
   #define raddr(segment,offset) ((db __far *) (( ((unsigned long)segment) <<16) + offset))
- #else
-  #define raddr(segment,offset) (((db *)&m + (segment<<4) + offset ))
- #endif
-#endif
-
-#define realAddress(offset, segment) raddr(segment,offset)
-
-#if _BITS == 32
- typedef dd MWORDSIZE;
- #define offset(segment,name) ((dd)(db*)&m.name)
-#else
- typedef dw MWORDSIZE;
- #if __BORLANDC__ || __DMC__
   #define offset(segment,name) (offsetof(type_##segment,name))
   //#define offset(segment,name) ((unsigned int)(void __far*)(&segment.name) - (unsigned int)(void __far*)(&segment)) 
- #else
-  #define offset(segment,name) offsetof(struct Memory,name)-offsetof(struct Memory,segment)
- #endif
-#endif
-
-#if __BORLANDC__ || __DMC__
 // #define seg_offset(segment) (FP_SEG(&segment))
 // #define seg_offset(segment) ((unsigned)(void __seg *)(&segment))
  #define seg_offset(segment) ( ( ((unsigned long)(void __far*)(&segment)) >> 16) + ( ((unsigned int)(void __far*)(&segment)) >> 4) )
 // #define seg_offset(segment) (((unsigned long)(void __far*)(&segment)) >> 16)
  #define SEGASSERT(segment) assert( (((unsigned int)(void __far*)(&segment))&0xf)==0);
  #define SEGALIGN far
+
 #else
- #define SEGASSERT(segment)
- #define SEGALIGN // __attribute__ (( align ))
- #define seg_offset(segment) ((offsetof(struct Memory,segment))>>4)
+ typedef dd TRGWORDSIZE;
+ #if defined(_SRC_PROTECTED_MODE)
+  #if _SRC_BITS == 16 // src 16 bit prot, trg 32 bit prot * broken
+   #define raddr(segment,offset) ((db *)&m+(db)(offset)+selectors[segment])
+   #define offset(segment,name) offsetof(struct Memory,name)-offsetof(struct Memory,segment)
+  #else // 32bit prot src & trg (GCC)
+   #define raddr(segment,offset) (reinterpret_cast<db *>(offset)) // source address to target real address
+   #define offset(segment,name) ((dd)(db*)&m.name)
+   #define SEGASSERT(segment)
+   #define SEGALIGN // __attribute__ (( align ))
+   #define seg_offset(segment) ((offsetof(struct Memory,segment))>>4)
+  #endif
+ #else // trg 32bit prot, src real 16 bit (GCC main target)
+  #define raddr(segment,offset) (((db *)&m + (segment<<4) + offset ))
+  #define SEGASSERT(segment)
+  #define SEGALIGN // __attribute__ (( align ))
+  #define seg_offset(segment) ((offsetof(struct Memory,segment))>>4)
+ #endif
 #endif
+
+#define realAddress(offset, segment) raddr(segment,offset)
+
 // DJGPP
 #define MASK_LINEAR(addr)     (((size_t)addr) & 0x000FFFFF)
 #define RM_TO_LINEAR(addr)    (((((size_t)addr) & 0xFFFF0000) >> 12) + (((size_t)addr) & 0xFFFF))
 #define RM_OFFSET(addr)       (((size_t)addr) & 0xF)
 #define RM_SEGMENT(addr)      ((((size_t)addr) >> 4) & 0xFFFF)
 
-#if _BITS == 32
+#if _SRC_BITS == 32
  #define MOVSS(a) {void * dest;void * src;src=realAddress(esi,ds); dest=realAddress(edi,es); \
 		memmove(dest,src,a); edi+=a; esi+=a; }
  #define STOS(a,b) {memcpy (realAddress(edi,es), ((db *)&eax)+b, a); edi+=a;}
@@ -184,7 +182,7 @@ static const uint32_t MASK[]={0, 0xff, 0xffff, 0xffffff, 0xffffffff};
  #define LOOPE(label) --ecx; if (ecx!=0 && ZF) GOTOLABEL(label) //TODO
  #define LOOPNE(label) --ecx; if (ecx!=0 && !ZF) GOTOLABEL(label) //TODO
 
-#else // 16 bit
+#else // 16 bit src
  #define MOVSS(a) {void * dest;void * src;src=realAddress(si,ds); dest=realAddress(di,es); \
 		memmove(dest,src,a); di+=a; si+=a; }
  #define STOS(a,b) {memcpy (realAddress(di,es), ((db *)&eax)+b, a); di+=a;}
@@ -647,8 +645,8 @@ int8_t asm2C_IN(int16_t data);
 //#define PUSHF {dd t = CF+(ZF<<1)+(DF<<2)+(SF<<3); PUSH(t);}
 //#define POPF {dd t; POP(t); CF=t&1; ZF=(t>>1)&1; DF=(t>>2)&1; SF=(t>>3)&1;}
 
-#define PUSHF {PUSH( (MWORDSIZE) ((CF?1:0)|(PF?4:0)|(AF?0x10:0)|(ZF?0x40:0)|(SF?0x80:0)|(DF?0x200:0)|(OF?0x400:0)) );}
-#define POPF {MWORDSIZE t; POP(t); CF=t&1;  PF=(t&4);AF=(t&0x10);ZF=(t&0x40);SF=(t&0x80);DF=(t&0x200);OF=(t&0x400);}
+#define PUSHF {PUSH( (TRGWORDSIZE) ((CF?1:0)|(PF?4:0)|(AF?0x10:0)|(ZF?0x40:0)|(SF?0x80:0)|(DF?0x200:0)|(OF?0x400:0)) );}
+#define POPF {TRGWORDSIZE t; POP(t); CF=t&1;  PF=(t&4);AF=(t&0x10);ZF=(t&0x40);SF=(t&0x80);DF=(t&0x200);OF=(t&0x400);}
 #define NOP
 
 /*
@@ -989,7 +987,7 @@ extern db vgaPalette[256*3];
 #include "memmgr.h"
 
 #ifdef __cplusplus
-}
+//}
 #endif
 
 #endif

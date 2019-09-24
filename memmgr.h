@@ -25,9 +25,11 @@
 /* write to the Free Software Foundation, 675 Mass Ave,         */
 /* Cambridge, MA 02139, USA.                                    */
 /****************************************************************/
+#ifndef _MEMMGR_H_
+#define _MEMMGR_H_
 
 #ifdef __cplusplus
-extern "C" {
+//extern "C" {
 #endif
 
 #include "mcb.h"
@@ -126,5 +128,7 @@ static void mcb_init_copy(dw seg, dw size, mcb *near_mcb);
 void mcb_init(dw seg, dw size, BYTE type);
 
 #ifdef __cplusplus
-}
+//}
+#endif
+
 #endif
