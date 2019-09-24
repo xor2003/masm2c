@@ -33,13 +33,31 @@
 
 #ifndef __BORLANDC__
 #include <stdint.h>
+ #ifdef  __GCC__
+  #include <stdbool.h>
 #define MYPACKED __attribute__((__packed__))
-#else
-#define MYPACKED
+  #define MYINT_ENUM : int
+ #endif
+#endif
+
+#ifdef __BORLANDC__
+#define _BITS 16
 typedef unsigned long uint32_t;
+ typedef long int32_t;
 typedef unsigned short int uint16_t;
 typedef short int int16_t;
 typedef unsigned char uint8_t;
+ typedef char int8_t;
+
+ #define MYPACKED
+ #define MYINT_ENUM
+#endif
+
+#if __DMC__
+ #define _BITS 16
+//typedef int _Bool;
+ #define MYPACKED
+ #define MYINT_ENUM
 #endif
 
 typedef char BYTE;

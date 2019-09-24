@@ -308,12 +308,13 @@ int8_t asm2C_IN(int16_t address) {
 }
 
 uint16_t asm2C_INW(uint16_t address) {
-#if defined( __DJGPP__ ) || defined( __BORLANDC__ )
+#if defined( __BORLANDC__ )
 	return inport(address);
-#else
- #if defined( __DMC__ )
+#elif defined( __DJGPP__ )
+	return inportw(address);
+#elif defined( __DMC__ )
         return _inpw(address);
- #else
+#else
 	switch(address) {
 	case 0x3DA:
 		if (vblTick) {
@@ -329,7 +330,6 @@ uint16_t asm2C_INW(uint16_t address) {
 		log_error("Unknown INW %d\n",address);
 		return 0;
 	}
- #endif
 #endif
 }
 
