@@ -3,7 +3,7 @@ set OPT=-1- -d -Os -a16 -v -G -d -w-par -c -mh -M -IC:\inertia_player\BC5\INCLUD
 %CC% %OPT% asm.cpp
 rem %CC% %OPT% -S asm.cpp
 %CC% %OPT% memmgr.cpp
-C:\inertia_player\BC5\BIN\CPP.EXE  %OPT% memmgr.cpp
+rem C:\inertia_player\BC5\BIN\CPP.EXE  %OPT% memmgr.cpp
 rem C:\inertia_player\BC5\BIN\CPP.EXE  %OPT% %1.cpp
 rem %CC% %OPT% -S %1.cpp
 copy /y %1.cpp %1_build.cpp
