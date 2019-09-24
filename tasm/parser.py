@@ -593,7 +593,7 @@ class parser(object):
                                         #self.c_data.append("{"+ ",".join(l) +"}, // segment " + name + "\n")
                                         #self.h_data.append(" db " + name + "["+ str(num) + "]; // segment " + name + "\n")
                                         self.c_data.append("};\ntype_"+name+" SEGALIGN "+name+" ={\n")
-                                        self.h_data.append("};\nstruct MYPACKED SEGALIGN type_"+name + " {\n")
+                                        self.h_data.append("};\nstruct MYPACKED type_"+name + " {\n")
 
                                         self.set_global(name, op.var(binary_width, offset, issegment = True))
                                         '''

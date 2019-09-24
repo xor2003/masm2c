@@ -1275,7 +1275,7 @@ switch (__disp) {
                 self.write_declarations(procs)
 
                 data_head = '''extern db SEGALIGN stack[STACK_SIZE];
-                struct MYPACKED SEGALIGN Memory{
+                struct MYPACKED Memory{
                         db heap[HEAP_SIZE];
                 ''';
                 for v in hdata_bin:
