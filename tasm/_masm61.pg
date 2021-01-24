@@ -20,12 +20,12 @@ blockstatements: U_CONTINUE ifcexpr? linereminder | U_BREAK ifcexpr? linereminde
 bool: TRUE | FALSE ;
 brmacroarglist: '<' macroarglist '>';
 classname: STRING;
-commaidvararg: COMMAOEOL   LABEL? U_VARARG;
+commaidvararg: COMMAOEOL   LABEL? VARARG;
 commainvokelist: COMMAOEOL invokelist;
 commamodeloptlist: COMMA modeloptlist;
 commanonuniq: COMMA NONUNIQUE;
 commapagewidth: COMMA expr;
-commaparmidvararg: COMMAOEOL  LABEL U_VARARG;
+commaparmidvararg: COMMAOEOL  LABEL VARARG;
 commaparmlist: COMMAOEOL? parmlist;
 commaprotolist: COMMAOEOL  protolist;
 commatextlen: COMMA expr;
@@ -182,7 +182,10 @@ fordir: FOR | IRP ;
 forparm: LABEL dotdotforparmtype?;
 forparmtype: REQ | '=' textliteral;
 frameexpr: SEG LABEL | DGROUP ':' LABEL| segmentregister ':' LABEL| LABEL;
-generaldir: modeldir | segorderdir | namedir| includelibdir | commentdir| groupdir | assumedir| structdir | typedefdir| externdir | publicdir | commdir | prototypedir| equdir | assdir | textdir| contextdir | optiondir | processordir| radixdir | titledir | pagedir | listdir | crefdir | echodir| ifdir | errordir | includedir | macrodir | macrocall | macrorepeat | purgedir| macrowhile | macrofor | macroforc| aliasdir | recorddir;
+generaldir: modeldir | segorderdir | namedir| includelibdir | commentdir| groupdir | assumedir| structdir | typedefdir| externdir 
+| publicdir | commdir | prototypedir| equdir | assdir | textdir| contextdir | optiondir | processordir| radixdir | titledir 
+| pagedir | listdir | crefdir | echodir| ifdir | errordir | includedir | macrodir | macrocall | macrorepeat | purgedir| macrowhile 
+| macrofor | macroforc| aliasdir | recorddir | smartdir;
 groupdir : LABEL GROUP segidlist;
 idlist: LABEL+[COMMA];
 ifcexpr: U_IF cexpr;
@@ -329,7 +332,7 @@ untildir: U_UNTIL cexpr linereminder | U_UNTILCXZ cxzexpr?  linereminder;
 usesregs: USES allreglist;
 whileblock: U_WHILE cexpr linereminder blockstatements U_ENDW;
 WHITESPACECHARACTER: WS;
-
+smartdir: SMART | NOSMART;
 LAYOUT: LayoutItem | LAYOUT LayoutItem;
 LayoutItem: WS | EMPTY;
 terminals
@@ -854,6 +857,8 @@ SIZEOF: 'SIZEOF';
 SIZESTR: 'SIZESTR';
 SLDT: 'SLDT';
 SMALL: 'SMALL';
+SMART: 'SMART';
+NOSMART: 'NOSMART';
 SMSW: 'SMSW';
 SP: 'SP';
 SS: 'SS';
@@ -982,7 +987,6 @@ U_TFCOND: '.TFCOND';
 U_TYPE: '.TYPE';
 U_UNTIL: '.UNTIL';
 U_UNTILCXZ: '.UNTILCXZ';
-U_VARARG: ':VARARG';
 U_WHILE: '.WHILE';
 U_XALL: '.XALL';
 U_XCREF: '.XCREF';
