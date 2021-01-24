@@ -64,6 +64,7 @@ def read_asm_file(file_name):
 
 
 macroids = []
+structtags = []
 macroidre = re.compile(r'([A-Za-z@_\$\?][A-Za-z0-9@_\$\?]*)')
 
 
@@ -154,11 +155,32 @@ def macroid(head, s, pos):
     else:
         return None
 
+def structtag(head, s, pos):
+    mtch = macroidre.match(s[pos:])
+    if mtch:
+        result = mtch.group().lower()
+        # logging.debug ("matched ~^~" + result+"~^~")
+        if result in structtags:
+            logging.debug(" ~^~" + result + "~^~ in macroids")
+            return result
+        else:
+            return None
+    else:
+        return None
+
+def structinstance(context, nodes):
+    print("structinstance", str(nodes))
+    return Token('structinstance', nodes)
 
 def macrodir(_, nodes, name):
-    macroids.insert(0, name.lower())
-    logging.debug("macroid added ~~" + name + "~~")
+    macroids.insert(0, name.value.lower())
+    logging.debug("macroid added ~~" + name.value + "~~")
 
+def structdir(context, nodes, name, item):
+    print("structdir", str(nodes))
+    structtags.insert(0, name.value.lower())
+    logging.debug("structtag added ~~" + name.value + "~~")
+    return [] #Token('structdir', nodes) TODO ignore by now
 
 def datadir(context, nodes, label, type, values):
     if label:
@@ -169,6 +191,8 @@ def datadir(context, nodes, label, type, values):
 
     # if isinstance(values, list) and len(values) == 1:
     #    values = values[0]
+    if Token.find_and_call_tokens(nodes, 'structinstance'):
+        return []
 
     if isinstance(values, list):
         s = []
@@ -326,8 +350,9 @@ def LABEL(context, nodes):
 def STRING(context, nodes):
     return Token('STRING', nodes)
 
-
 actions = {
+    "structinstance": structinstance,
+    "structdir": structdir,
     "includedir": includedir,
     "instrprefix": instrprefix,
     "INTEGER": INTEGER,
@@ -369,7 +394,8 @@ actions = {
 }
 
 recognizers = {
-    'macroid': macroid
+    'macroid': macroid,
+    "structtag": structtag
 }
 
 
@@ -1086,13 +1112,13 @@ end startd
     def parse_include(self, line, file_name=None):
         parser = PGParser(self.__lex.grammar,
                                     actions=actions)  # , build_tree = True, call_actions_during_tree_build = True)
+        #    some_seg segment
+        #    some_seg ends
         result = parser.parse('''.model tiny
-    some_seg segment
         ''' + line + '''
-    some_seg ends
-        end start
+        end
         ''', file_name=file_name, extra=self)  # context = self.__pgcontext)
-        del self.__globals['some_seg']
+        #del self.__globals['some_seg']
         return result
 
     def datadir_action(self, name, type, args):

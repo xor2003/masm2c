@@ -241,66 +241,6 @@ class Cpp(object):
                 raise Exception("invalid indirection %d name '%s' size %u" % (self.__indirection, name, size))
         return value
 
-    def find_and_call_tokens(self, expr, lookfor, call=None):
-        l = []
-        if isinstance(expr, Token):
-            if expr.type == lookfor:
-                if call:
-                    expr.value = call(expr.value)
-                l.append(expr.value)
-
-            result = None
-            if not isinstance(expr.value, str):
-                result = self.find_and_call_tokens(expr.value, lookfor, call)
-            if result:
-                l = l + result
-        elif isinstance(expr, list):
-            for i in range(0, len(expr)):
-                result = self.find_and_call_tokens(expr[i], lookfor, call)
-                if result:
-                    l = l + result
-        if not l:
-            l = None
-        return l
-
-    def remove_squere_bracets(self, expr, index=0):
-        if isinstance(expr, Token):
-            index += 1
-            expr.value, _ = self.remove_squere_bracets(expr.value, index)
-            if expr.type == 'sqexpr':
-                expr = expr.value
-                if index != 1:
-                    expr = ['+', expr]
-            return expr, index
-        elif isinstance(expr, list):
-            for i in range(0, len(expr)):
-                expr[i], index = self.remove_squere_bracets(expr[i], index)
-        else:
-            index += 1
-        return expr, index
-
-    def remove_tokens(self, expr, lookfor):
-        if isinstance(expr, Token):
-            if expr.type in lookfor:
-                if isinstance(expr.value, str):
-                    expr = None
-                else:
-                    expr = expr.value
-                    expr = self.remove_tokens(expr, lookfor)
-                return expr
-            else:
-                expr.value = self.remove_tokens(expr.value, lookfor)
-                return expr
-        elif isinstance(expr, list):
-            l = []
-            for i in range(0, len(expr)):
-                result = self.remove_tokens(expr[i], lookfor)
-                if result:
-                    l.append(result)
-            if not l:
-                l = None
-            return l
-        return expr
 
     def get_size(self, expr):
         logging.debug('get_size("%s")' % expr)
@@ -308,13 +248,13 @@ class Cpp(object):
         #    expr = expr.strip()
         origexpr = expr
 
-        ptrdir = self.find_and_call_tokens(expr, 'ptrdir')
+        ptrdir = Token.find_and_call_tokens(expr, 'ptrdir')
         if ptrdir:
             value = ptrdir[0]
             # logging.debug('get_size res 1')
             return typetosize(value)
 
-        issqexpr = self.find_and_call_tokens(expr, 'sqexpr')
+        issqexpr = Token.find_and_call_tokens(expr, 'sqexpr')
         if issqexpr:
             return 0
 
@@ -361,7 +301,7 @@ class Cpp(object):
         if isinstance(expr, list):
             return max([self.get_size(i) for i in expr])
 
-        offsetdir = self.find_and_call_tokens(expr, 'offsetdir')
+        offsetdir = Token.find_and_call_tokens(expr, 'offsetdir')
         if offsetdir:
             return 2  # TODO 16 bit word size
 
@@ -615,34 +555,34 @@ class Cpp(object):
         # self.__expr_size = size
 
         # calculate the segment register
-        segoverride = self.find_and_call_tokens(expr, 'segoverride')
-        sqexpr = self.find_and_call_tokens(expr, 'sqexpr')
+        segoverride = Token.find_and_call_tokens(expr, 'segoverride')
+        sqexpr = Token.find_and_call_tokens(expr, 'sqexpr')
         if sqexpr:
             indirection = 1
         if segoverride:
             self.__seg_prefix = segoverride[0].value
-            expr = self.remove_tokens(expr, ['segmentregister'])
+            expr = Token.remove_tokens(expr, ['segmentregister'])
         else:
             if sqexpr:
-                regs = self.find_and_call_tokens(sqexpr, 'register')
+                regs = Token.find_and_call_tokens(sqexpr, 'register')
                 if regs and any([i in ['bp', 'ebp', 'sp', 'esp'] for i in regs]):  # TODO doublecheck
                     self.__seg_prefix = "ss"
 
-        offsetdir = self.find_and_call_tokens(expr, 'offsetdir')
+        offsetdir = Token.find_and_call_tokens(expr, 'offsetdir')
         if offsetdir:
             indirection = -1
             expr = offsetdir
 
-        ptrdir = self.find_and_call_tokens(expr, 'ptrdir')
+        ptrdir = Token.find_and_call_tokens(expr, 'ptrdir')
         if ptrdir:
             indirection = 1
 
         if ptrdir or offsetdir or segoverride:
-            expr = self.remove_tokens(expr, ['ptrdir', 'offsetdir', 'segoverride'])
+            expr = Token.remove_tokens(expr, ['ptrdir', 'offsetdir', 'segoverride'])
 
-        expr, _ = self.remove_squere_bracets(expr)
+        expr, _ = Token.remove_squere_bracets(expr)
 
-        islabel = self.find_and_call_tokens(expr, 'LABEL')
+        islabel = Token.find_and_call_tokens(expr, 'LABEL')
         if islabel and not offsetdir:
             for i in islabel:
                 res = self.get_var_size(i)
@@ -658,7 +598,7 @@ class Cpp(object):
 
         self.__indirection = indirection
         self.__current_size = size
-        self.find_and_call_tokens(expr, 'LABEL', self.convert_label)
+        Token.find_and_call_tokens(expr, 'LABEL', self.convert_label)
         indirection = self.__indirection
         if self.__current_size != 0:  # and (indirection != 1 or size == 0):
             size = self.__current_size
@@ -850,16 +790,16 @@ class Cpp(object):
         # name = re.sub(prog, '', name)
         indirection = -5
 
-        segoverride = self.find_and_call_tokens(name, 'segoverride')
+        segoverride = Token.find_and_call_tokens(name, 'segoverride')
         if segoverride:
             self.__seg_prefix = segoverride[0].value
-        #    name = self.remove_tokens(name, ['segoverride', 'segmentregister'])
+        #    name = Token.remove_tokens(name, ['segoverride', 'segmentregister'])
 
         if isinstance(name, Token) and name.type == 'register':
             name = name.value
             indirection = 0  # based register value
 
-        labeldir = self.find_and_call_tokens(name, 'LABEL')
+        labeldir = Token.find_and_call_tokens(name, 'LABEL')
         if labeldir:
             labeldir[0] = self.resolve_label(labeldir[0])
             if self.__context.has_global(labeldir[0]):
@@ -871,14 +811,14 @@ class Cpp(object):
             else:
                 name = labeldir[0]
 
-        ptrdir = self.find_and_call_tokens(name, 'ptrdir')
+        ptrdir = Token.find_and_call_tokens(name, 'ptrdir')
         if ptrdir:
             if ptrdir[0].lower() in ['near', 'far', 'short']:
                 indirection = -1  #
             else:
                 indirection = 1
 
-        sqexpr = self.find_and_call_tokens(name, 'sqexpr')
+        sqexpr = Token.find_and_call_tokens(name, 'sqexpr')
         if sqexpr:
             indirection = 1
 

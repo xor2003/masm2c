@@ -90,6 +90,10 @@ def includedir(context, nodes, name):
     print(str(name))
     return nodes
 
+def structdir(context, nodes, name, item):
+    print(str(nodes))
+    return nodes
+
 def asminstruction(context, nodes, instruction, args):
     global cur_segment
     global indirection
@@ -168,6 +172,7 @@ recognizers = {
 }
 
 actions = {
+    "structdir": structdir,
     "includedir": includedir,
     "instrprefix": instrprefix,
     "macrodir": macro_action,
