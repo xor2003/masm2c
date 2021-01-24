@@ -813,7 +813,7 @@ class Cpp(object):
 
         ptrdir = Token.find_and_call_tokens(name, 'ptrdir')
         if ptrdir:
-            if ptrdir[0].lower() in ['near', 'far', 'short']:
+            if any(isinstance(x, str) and x.lower() in ['near', 'far', 'short'] for x in ptrdir):
                 indirection = -1  #
             else:
                 indirection = 1
@@ -860,10 +860,9 @@ class Cpp(object):
                     self.__far = True  # make far calls to far procs
 
             if ptrdir:
-                ptrdir[0] = ptrdir[0].lower()
-                if ptrdir[0] == 'far':
+                if any(isinstance(x, str) and x.lower() == 'far' for x in ptrdir):
                     self.__far = True
-                elif ptrdir[0] == 'near':
+                elif any(isinstance(x, str) and x.lower() == 'near' for x in ptrdir):
                     self.__far = False
 
         return name

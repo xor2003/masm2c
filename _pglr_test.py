@@ -8,6 +8,7 @@ import parglare
 from parglare import Grammar
 
 macroids = []
+structtags = []
 macroidre = re.compile(r'([A-Za-z@_\$\?][A-Za-z@_\$\?0-9]*)')
 
 
@@ -27,6 +28,30 @@ def macroid(head, input, pos):
             return None
     else:
         return None
+
+
+def structtag(head, s, pos):
+    mtch = macroidre.match(s[pos:])
+    if mtch:
+        result = mtch.group().lower()
+        # logging.debug ("matched ~^~" + result+"~^~")
+        if result in structtags:
+            logging.debug(" ~^~" + result + "~^~ in macroids")
+            return result
+        else:
+            return None
+    else:
+        return None
+
+def structinstance(context, nodes):
+    print("structinstance", str(nodes))
+    return Token('structinstance', nodes)
+
+def structdir(context, nodes, name, item):
+    print("structdir", str(nodes))
+    structtags.insert(0, name.value.lower())
+    logging.debug("structtag added ~~" + name.value + "~~")
+    return [] #Token('structdir', nodes) TODO ignore by now
 
 
 class Token:
@@ -168,10 +193,12 @@ def INTEGER(context, nodes):
     return Token('INTEGER', nodes)
 
 recognizers = {
-    'macroid': macroid
+    'macroid': macroid,
+    "structtag": structtag
 }
 
 actions = {
+    "structinstance": structinstance,
     "structdir": structdir,
     "includedir": includedir,
     "instrprefix": instrprefix,

@@ -389,7 +389,7 @@ class _nop(baseop):
         pass
 
     def visit(self, visitor):
-        pass
+        return ""
 
 class label(baseop):
 

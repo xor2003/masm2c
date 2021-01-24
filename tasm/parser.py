@@ -10,6 +10,7 @@ from builtins import hex
 from builtins import object
 from builtins import range
 from builtins import str
+from copy import copy
 
 from parglare import Grammar, Parser as PGParser
 
@@ -406,11 +407,14 @@ class ParglareParser(object):
             logging.debug("Allocated ParglareParser instance")
 
             file_name = os.path.dirname(os.path.realpath(__file__)) + "/_masm61.pg"
-            cls._inst.grammar = Grammar.from_file(file_name, ignore_case=True, recognizers=recognizers)
+            cls._inst.or_grammar = Grammar.from_file(file_name, ignore_case=True, recognizers=recognizers)
             ## cls._inst.parser = PGParser(grammar, debug=True, debug_trace=True, actions=action.all)
             ## cls._inst.parser = PGParser(grammar, debug=True, actions=action.all)
-            cls._inst.parser = PGParser(cls._inst.grammar,
-                                        actions=actions)  # , build_tree = True, call_actions_during_tree_build = True)
+            cls._inst.or_parser = PGParser(cls._inst.or_grammar, actions=actions)  # , build_tree = True, call_actions_during_tree_build = True)
+
+            cls._inst.grammar = cls._inst.or_grammar
+            cls._inst.parser = copy(cls._inst.or_parser)
+            cls._inst.parser.grammar = cls._inst.grammar
 
         return cls._inst
 
@@ -1110,8 +1114,11 @@ end startd
         return result
 
     def parse_include(self, line, file_name=None):
-        parser = PGParser(self.__lex.grammar,
-                                    actions=actions)  # , build_tree = True, call_actions_during_tree_build = True)
+        #parser = PGParser(self.__lex.grammar,
+        #                            actions=actions)
+        grammar = self.__lex.or_grammar
+        parser = copy(self.__lex.or_parser)
+        parser.grammar = grammar
         #    some_seg segment
         #    some_seg ends
         result = parser.parse('''.model tiny
