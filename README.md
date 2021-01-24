@@ -80,3 +80,8 @@ Building Inertia for SDL from source:
 iplay_m_.exe HACKER4.S3M 
 
 Or just get prebuilt
+
+If you want to help me please send to:
+
+BTC: bc1qyaxs8dqn7mglp9w9zyvkfpz888x3aknr0jnsmx
+
