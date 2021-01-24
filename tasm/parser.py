@@ -940,26 +940,6 @@ class Parser:
         content = read_asm_file(file_name)
         return self.parse_file_inside(content, file_name=file_name)
 
-        '''
-            elif cmd0l == 'assume':
-                logging.info("skipping: %s" % line)
-                continue
-
-            if cmd0l == 'if':
-                self.action_if(line)
-                continue
-            elif cmd0l == 'else':
-                self.action_else()
-                continue
-            elif cmd0l == 'endif':
-                self.action_endif()
-                continue
-
-            elif cmd0l == 'include':
-                self.action_include(line)
-                continue
-    '''
-
     def tokenstostring(self, l):  # TODO remove
         if isinstance(l, str):
             return l
@@ -1098,7 +1078,7 @@ end startd
     default_seg segment
     push ''' + line + '''
     default_seg ends
-    end startd
+    end start
     ''').asminstruction.arg
         del self.__globals['default_seg']
         return result

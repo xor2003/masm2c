@@ -675,6 +675,7 @@ class Cpp(object):
 
         return expr
 
+        '''
         size = self.get_size(expr) if def_size == 0 else def_size  # calculate size if it not provided
 
         # self.__expr_size = size
@@ -821,6 +822,7 @@ class Cpp(object):
         else:
             raise Exception("invalid indirection %d" % indirection)
         return expr
+        '''
 
     def get_var_size(self, name):
         size = 0
@@ -835,31 +837,6 @@ class Cpp(object):
         name = re.sub(r'@', "arb", name)
 
         return name
-        # ????
-        if not name in self.proc.labels:
-            try:
-                offset, proc, pos = self.__context.get_offset(name)
-            except:
-                logging.debug("no label %s, trying procedure" % name)
-                try:
-                    proc = self.__context.get_global(name)
-                except:
-                    logging.warning("resolve_label exception " + name)
-                    return name
-
-                pos = 0
-                if not isinstance(proc, proc_module.Proc):
-                    raise CrossJump("cross-procedure jump to non label and non procedure %s" % (name))
-            self.proc.labels.add(name)
-            for i in range(0, len(self.__unbounded)):
-                u = self.__unbounded[i]
-                if u[1] == proc:
-                    if pos < u[2]:
-                        self.__unbounded[i] = (name, proc, pos)
-                return mangle_label(name)
-            self.__unbounded.append((name, proc, pos))
-
-        return mangle_label(name)
 
     def jump_to_label(self, name):
         logging.debug("jump_to_label(%s)" % name)
@@ -932,7 +909,7 @@ class Cpp(object):
         else:
             # TODO: name or self.resolve_label(name) or self.mangle_label(name)??
             if name in self.proc.retlabels:
-                return "return /* (%s) */" % (name)
+                return "return /* (%s) */" % name
             ## x0r return "goto %s" %self.resolve_label(name)
             if not hasglobal:
                 ##name = self.expand_old(name, destination=True)  # TODO
