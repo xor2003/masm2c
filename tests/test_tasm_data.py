@@ -5,7 +5,7 @@ from tasm import parser
 from tasm import cpp
 from tasm import op
 from tasm import proc
-from tasm import lex
+#from tasm import lex
 
 from builtins import chr
 from builtins import hex
@@ -29,7 +29,7 @@ import re
 from re import Scanner
 import re, string, os
 import sys
-import tasm.lex
+#import tasm.lex
 import tasm.op
 from tasm.op import label
 from tasm.op import var
@@ -44,7 +44,7 @@ import unittest
 class ParserTest(unittest.TestCase):
 
     def setUp(self):
-        self.parser = Parser([])
+        self.parser = Parser()
 
     def test_data_10010(self):
         self.assertEqual(self.parser.action_data(line="ASCII DB '00000000',0Dh,0Ah,'$' ; buffer for ASCII string"), ("{'0','0','0','0','0','0','0','0','\\r','\\n','$'}, // ascii\n", 'char ascii[11];\n', 11))

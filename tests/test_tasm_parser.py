@@ -5,7 +5,7 @@ from tasm import parser
 from tasm import cpp
 from tasm import op
 from tasm import proc
-from tasm import lex
+#from tasm import lex
 
 from builtins import chr
 from builtins import hex
@@ -29,7 +29,6 @@ import re
 from re import Scanner
 import re, string, os
 import sys
-import tasm.lex
 import tasm.op
 from tasm.op import label
 from tasm.op import var

@@ -104,6 +104,8 @@ def mangle_label(name):
     return re.sub(r'\$', '_tmp', name)
 
 
+
+
 class Cpp(object):
     def __init__(self, context, outfile="", skip_first=0, blacklist=[], skip_output=[], skip_dispatch_call=False,
                  skip_addr_constants=False, header_omit_blacklisted=False, function_name_remapping={}):

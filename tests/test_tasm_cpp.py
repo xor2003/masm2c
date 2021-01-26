@@ -22,7 +22,7 @@ class CppTest(unittest.TestCase):
         # mock_compile.return_value = <_sre.SRE_Pattern object at 0x0000000005B66830>
         # mock_match.return_value = None
         # mock_sub.return_value = u'doublequote+4'
-        p = Parser([])
+        p = Parser()
         p.set_global("_data", op.var(1, 0, issegment=True))
         cpp_instance = Cpp(p)
         self.assertEqual(cpp_instance.expand(expr=p.parse_arg(u"'Z' - 'A' +1"), def_size=1, destination=False), u"'Z'-'A'+1")
@@ -687,7 +687,7 @@ class CppTest(unittest.TestCase):
         # mock_get_global.return_value = var()
         mock_debug.return_value = None
 
-        p = Parser([])
+        p = Parser()
         cpp_instance = Cpp(p)
         self.assertEqual(cpp_instance.get_size(p.test_size(u"'Z' - 'A' +1")), 1)
         self.assertEqual(cpp_instance.get_size(p.test_size(u"'a'")), 1)
