@@ -125,7 +125,6 @@ def process(i):
 
 from tasm import op
 from tasm import proc
-from tasm import lex
 from tasm import parser
 from tasm import cpp
 
@@ -135,6 +134,6 @@ import auger
 import re
 
 if __name__ == "__main__":
-  with auger.magic([parser, lex, op, cpp, proc]):   # this is the new line and invokes Auger
+  with auger.magic([parser, op, cpp, proc]):   # this is the new line and invokes Auger
     main()
 '''
