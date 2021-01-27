@@ -11,7 +11,7 @@ import unittest
 
 
 class ParserTest(unittest.TestCase):
-    '''
+
     def test_convert_data_to_blob(self):
         parser_instance = Parser([])
         self.assertEqual(parser_instance.calculate_data_binary_size(width=1, data=["'00000000'", '0Dh', '0Ah', "'$'"]), 11)
@@ -375,7 +375,6 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(parser_instance.calculate_data_binary_size(width=1, data=['78h']), 1)
         self.assertEqual(parser_instance.calculate_data_binary_size(width=1, data=['20h']), 1)
         self.assertEqual(parser_instance.calculate_data_binary_size(width=1, data=['20h']), 1)
-        self.assertEqual(parser_instance.calculate_data_binary_size(width=1, data=['62h','dup','(',['0'],')']), 98)
         self.assertEqual(parser_instance.calculate_data_binary_size(width=1, data=['0FFh']), 1)
         self.assertEqual(parser_instance.calculate_data_binary_size(width=1, data=['14h']), 1)
         self.assertEqual(parser_instance.calculate_data_binary_size(width=1, data=['4Bh']), 1)
@@ -708,6 +707,7 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(parser_instance.calculate_data_binary_size(width=4, data=['offset var5']), 4)
         self.assertEqual(parser_instance.calculate_data_binary_size(width=4, data=['test2']), 4)
         #self.assertEqual(parser_instance.convert_data_to_blob(width=1,data=[u'2*2 dup (0,testEqu*2,2*2,3)']),[0, 0, 0, 0]))
+        self.assertEqual(parser_instance.calculate_data_binary_size(width=1, data=['62h','dup','(',['0'],')']), 98)
 
 
     @patch.object(logging, 'debug')
@@ -838,7 +838,7 @@ class ParserTest(unittest.TestCase):
 
         #parser_instance = Parser([])
         #self.assertEqual(parser_instance.convert_data_to_c(width=1,data=[u'2*2 dup (0,testEqu*2,2*2,3)']),[0, 0, 0, 0])
-    '''
+
 
     @patch.object(logging, 'debug')
     @patch.object(logging, 'info')
