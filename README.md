@@ -1,3 +1,6 @@
+
+|build-status| |coverage| |docs| |status| |license| |python-versions|
+
 MASM x86 to C translator 0.91
 ==============
 

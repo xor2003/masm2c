@@ -35,6 +35,8 @@ from masm2c.Token import Token
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #
+#from masm2c.parser import Parser
+
 
 class CrossJump(Exception):
     pass
@@ -59,21 +61,6 @@ def convert_number_to_c(expr):
     return expr
 
 
-def is_register(expr):
-    expr = expr.lower()
-    size = 0
-    if len(expr) == 2 and expr[0] in ['a', 'b', 'c', 'd'] and expr[1] in ['h', 'l']:
-        logging.debug('is reg res 1')
-        size = 1
-    elif expr in ['ax', 'bx', 'cx', 'dx', 'si', 'di', 'sp', 'bp', 'ds', 'cs', 'es', 'fs', 'gs', 'ss']:
-        logging.debug('is reg res 2')
-        size = 2
-    elif expr in ['eax', 'ebx', 'ecx', 'edx', 'esi', 'edi', 'esp', 'ebp']:
-        logging.debug('is reg res 4')
-        size = 4
-    return size
-
-
 def guess_int_size(v):
     size = 0
     if v < 0:
@@ -88,18 +75,7 @@ def guess_int_size(v):
     return size
 
 
-def typetosize(value):
-    value = value.lower()
-    try:
-        size = {'byte': 1, 'sbyte': 1, 'word': 2, 'sword': 2, 'small': 2, 'dword': 4, 'sdword': 4, \
-                'large': 4, 'fword': 6, 'qword': 8, 'tbyte': 10}[value]
-    except KeyError:
-        logging.debug("Cannot find size for %s" % value)
-        size = 0
-    return size
-
-
-def mangle_label(name):
+def mangle2_label(name):
     name = name.lower()
     return re.sub(r'\$', '_tmp', name)
 
@@ -254,7 +230,7 @@ class Cpp(object):
         if ptrdir:
             value = ptrdir[0]
             # logging.debug('get_size res 1')
-            return typetosize(value)
+            return self.__context.typetosize(value)
 
         issqexpr = Token.find_and_call_tokens(expr, 'sqexpr')
         if issqexpr:
@@ -272,7 +248,7 @@ class Cpp(object):
 
         if isinstance(expr, Token):
             if expr.type in ('register', 'segmentregister'):
-                return is_register(expr.value)
+                return self.__context.is_register(expr.value)
             elif expr.type == 'INTEGER':
                 try:
                     # v = self.__context.parse_int(expr.value)
@@ -774,12 +750,6 @@ class Cpp(object):
                 size = g.size
         return size
 
-    def resolve_label(self, name):
-        name = name.lower()
-        name = re.sub(r'@', "arb", name)
-
-        return name
-
     def jump_to_label(self, name):
         logging.debug("jump_to_label(%s)" % name)
         # name = name.strip()
@@ -803,7 +773,7 @@ class Cpp(object):
 
         labeldir = Token.find_and_call_tokens(name, 'LABEL')
         if labeldir:
-            labeldir[0] = self.resolve_label(labeldir[0])
+            labeldir[0] = mangle2_label(labeldir[0])
             if self.__context.has_global(labeldir[0]):
                 g = self.__context.get_global(labeldir[0])
                 if isinstance(g, op.var):
@@ -873,7 +843,7 @@ class Cpp(object):
         ret = ""
         if proc:
             ret += " // Procedure %s() start\n" % (name)
-        ret += "%s:\n" % mangle_label(name)
+        ret += "%s:\n" % mangle2_label(name)
         return ret
 
     def schedule(self, name):

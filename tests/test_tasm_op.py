@@ -1,17 +1,18 @@
 from __future__ import absolute_import
 from __future__ import print_function
 
-from tasm import cpp
+from masm2c import cpp
 import logging
 from mock import patch
-from tasm.parser import Parser, calculate_type_size
-from tasm.proc import Proc
+from masm2c.parser import Parser, calculate_type_size
+from masm2c.proc import Proc
 import traceback
 import unittest
 
 
 class ParserTest(unittest.TestCase):
 
+    '''
     def test_convert_data_to_blob(self):
         parser_instance = Parser([])
         self.assertEqual(parser_instance.calculate_data_binary_size(width=1, data=["'00000000'", '0Dh', '0Ah', "'$'"]), 11)
@@ -747,7 +748,7 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(parser_instance.convert_data_to_c(width=1,data=[[u'100', 'dup', '(',['1'],')']],label=u'var4'),(u'{1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}, // var4\n', u'db var4[100];\n', 100))
 
         parser_instance = Parser([])
-        self.assertEqual(parser_instance.convert_data_to_c(width=1,data=[u"'00000000'", u'0Dh', u'0Ah', u"'$'"],label=u'ASCII'),(u"{'0','0','0','0','0','0','0','0','\\r','\\n','$'}, // ASCII\n", u'char ASCII[11];\n', 2))
+        self.assertEqual(parser_instance.convert_data_to_c(width=1,data=[u"'00000000'", u'0Dh', u'0Ah', u"'$'"],label=u'ASCII'),(u"{'0','0','0','0','0','0','0','0','\\r','\\n','$'}, // ASCII\n", u'char ascii[11];\n', 2))
 
         parser_instance = Parser([])
         self.assertEqual(parser_instance.convert_data_to_c(width=1,data=[u'1'],label=u'var1'),(u'1, // var1\n', u'db var1;\n', 1))
@@ -838,7 +839,7 @@ class ParserTest(unittest.TestCase):
 
         #parser_instance = Parser([])
         #self.assertEqual(parser_instance.convert_data_to_c(width=1,data=[u'2*2 dup (0,testEqu*2,2*2,3)']),[0, 0, 0, 0])
-
+    '''
 
     @patch.object(logging, 'debug')
     @patch.object(logging, 'info')

@@ -254,7 +254,7 @@ class Proc(object):
         self.stmts.insert(0, o)
 
     def add_equ_(self, label, value, line_number):  # TODO Move it to parser
-        import cpp
+        from masm2c import cpp
         o1 = op._equ(label, value)
         # print "args %s" %s[1:]
         value = cpp.convert_number_to_c(value)
@@ -265,7 +265,7 @@ class Proc(object):
         return o1
 
     def add_assignment(self, label, value, line_number=0):
-        import cpp
+        from masm2c import cpp
         # print "args %s" %s[1:]
         logging.info(label + " " + value)
         value = cpp.convert_number_to_c(value)

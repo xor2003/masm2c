@@ -1,10 +1,10 @@
 from __future__ import absolute_import
 from __future__ import print_function
 
-from tasm import cpp
-from tasm import op
-from tasm.parser import Parser
-from tasm.proc import Proc
+from masm2c import cpp
+from masm2c import op
+from masm2c.parser import Parser
+from masm2c.proc import Proc
 import traceback
 import unittest
 

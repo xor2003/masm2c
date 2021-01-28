@@ -1211,3 +1211,35 @@ end startd
         logging.debug(str(result))
         return result
 
+
+    def mangle_label(self, name):
+        name = name.lower()
+        name = re.sub(r'@', "arb", name)
+
+        return name
+
+
+    def is_register(self, expr):
+        expr = expr.lower()
+        size = 0
+        if len(expr) == 2 and expr[0] in ['a', 'b', 'c', 'd'] and expr[1] in ['h', 'l']:
+            logging.debug('is reg res 1')
+            size = 1
+        elif expr in ['ax', 'bx', 'cx', 'dx', 'si', 'di', 'sp', 'bp', 'ds', 'cs', 'es', 'fs', 'gs', 'ss']:
+            logging.debug('is reg res 2')
+            size = 2
+        elif expr in ['eax', 'ebx', 'ecx', 'edx', 'esi', 'edi', 'esp', 'ebp']:
+            logging.debug('is reg res 4')
+            size = 4
+        return size
+
+
+    def typetosize(self, value):
+        value = value.lower()
+        try:
+            size = {'byte': 1, 'sbyte': 1, 'word': 2, 'sword': 2, 'small': 2, 'dword': 4, 'sdword': 4, \
+                    'large': 4, 'fword': 6, 'qword': 8, 'tbyte': 10}[value]
+        except KeyError:
+            logging.debug("Cannot find size for %s" % value)
+            size = 0
+        return size

@@ -1,11 +1,11 @@
 from __future__ import absolute_import
 from __future__ import print_function
 
-from tasm import op
-from tasm import cpp
+from masm2c import op
+from masm2c import cpp
 from mock import patch
-from tasm.cpp import Cpp, is_register, mangle_label
-from tasm.parser import Parser
+from masm2c.cpp import Cpp, mangle2_label
+from masm2c.parser import Parser
 import logging
 import unittest
 
@@ -1214,116 +1214,49 @@ class CppTest(unittest.TestCase):
     def test_is_register(self, mock_debug):
         mock_debug.return_value = None
         p = Parser([])
-        cpp_instance = Cpp(p)
-        self.assertEqual(is_register(expr=u'_data'), 0)
+        self.assertEqual(p.is_register(expr=u'_data'), 0)
 
-        p = Parser([])
-        cpp_instance = Cpp(p)
-        self.assertEqual(is_register(expr=u'offset var1'), 0)
+        self.assertEqual(p.is_register(expr=u'offset var1'), 0)
 
-        p = Parser([])
-        cpp_instance = Cpp(p)
-        self.assertEqual(is_register(expr=u'var1'), 0)
+        self.assertEqual(p.is_register(expr=u'var1'), 0)
 
-        p = Parser([])
-        cpp_instance = Cpp(p)
-        self.assertEqual(is_register(expr=u'cl'), 1)
+        self.assertEqual(p.is_register(expr=u'cl'), 1)
 
-        p = Parser([])
-        cpp_instance = Cpp(p)
-        self.assertEqual(is_register(expr=u'edx'), 4)
+        self.assertEqual(p.is_register(expr=u'edx'), 4)
 
-        p = Parser([])
-        cpp_instance = Cpp(p)
-        self.assertEqual(is_register(expr=u'[edi+1]'), 0)
+        self.assertEqual(p.is_register(expr=u'[edi+1]'), 0)
 
-        p = Parser([])
-        cpp_instance = Cpp(p)
-        self.assertEqual(is_register(expr=u'[doublequote+4]'), 0)
+        self.assertEqual(p.is_register(expr=u'[doublequote+4]'), 0)
 
-        p = Parser([])
-        cpp_instance = Cpp(p)
-        self.assertEqual(is_register(expr=u'dl'), 1)
+        self.assertEqual(p.is_register(expr=u'dl'), 1)
 
-        p = Parser([])
-        cpp_instance = Cpp(p)
-        self.assertEqual(is_register(expr=u'-12'), 0)
+        self.assertEqual(p.is_register(expr=u'-12'), 0)
 
-        p = Parser([])
-        cpp_instance = Cpp(p)
-        self.assertEqual(is_register(expr=u'teST2'), 0)
+        self.assertEqual(p.is_register(expr=u'teST2'), 0)
 
-        p = Parser([])
-        cpp_instance = Cpp(p)
-        self.assertEqual(is_register(expr=u'var3'), 0)
+        self.assertEqual(p.is_register(expr=u'var3'), 0)
 
-        p = Parser([])
-        cpp_instance = Cpp(p)
-        self.assertEqual(is_register(expr=u"'d'"), 0)
+        self.assertEqual(p.is_register(expr=u"'d'"), 0)
 
-        p = Parser([])
-        cpp_instance = Cpp(p)
-        self.assertEqual(is_register(expr=u'dx'), 2)
+        self.assertEqual(p.is_register(expr=u'dx'), 2)
 
-        p = Parser([])
-        cpp_instance = Cpp(p)
-        self.assertEqual(is_register(expr=u'esi'), 4)
+        self.assertEqual(p.is_register(expr=u'esi'), 4)
 
-        p = Parser([])
-        cpp_instance = Cpp(p)
-        self.assertEqual(is_register(expr=u'enddata'), 0)
+        self.assertEqual(p.is_register(expr=u'enddata'), 0)
 
-        p = Parser([])
-        cpp_instance = Cpp(p)
-        self.assertEqual(is_register(expr=u"'Z' - 'A' +1"), 0)
+        self.assertEqual(p.is_register(expr=u"'Z' - 'A' +1"), 0)
 
-        p = Parser([])
-        cpp_instance = Cpp(p)
-        self.assertEqual(is_register(expr=u'beginningdata'), 0)
+        self.assertEqual(p.is_register(expr=u'beginningdata'), 0)
 
-        p = Parser([])
-        cpp_instance = Cpp(p)
-        self.assertEqual(is_register(expr=u'al'), 1)
+        self.assertEqual(p.is_register(expr=u'al'), 1)
 
-        p = Parser([])
-        cpp_instance = Cpp(p)
-        self.assertEqual(is_register(expr=u'ebx'), 4)
+        self.assertEqual(p.is_register(expr=u'ebx'), 4)
 
-        p = Parser([])
-        cpp_instance = Cpp(p)
-        self.assertEqual(is_register(expr=u'offset var2'), 0)
+        self.assertEqual(p.is_register(expr=u'edi'), 4)
 
-        p = Parser([])
-        cpp_instance = Cpp(p)
-        self.assertEqual(is_register(expr=u'OFFSET ASCiI'), 0)
+        self.assertEqual(p.is_register(expr=u'ds'), 2)
 
-        p = Parser([])
-        cpp_instance = Cpp(p)
-        self.assertEqual(is_register(expr=u'bl'), 1)
-
-        p = Parser([])
-        cpp_instance = Cpp(p)
-        self.assertEqual(is_register(expr=u'OFFSET AsCii'), 0)
-
-        p = Parser([])
-        cpp_instance = Cpp(p)
-        self.assertEqual(is_register(expr=u'[edi]'), 0)
-
-        p = Parser([])
-        cpp_instance = Cpp(p)
-        self.assertEqual(is_register(expr=u'-13'), 0)
-
-        p = Parser([])
-        cpp_instance = Cpp(p)
-        self.assertEqual(is_register(expr=u'edi'), 4)
-
-        p = Parser([])
-        cpp_instance = Cpp(p)
-        self.assertEqual(is_register(expr=u'ds'), 2)
-
-        p = Parser([])
-        cpp_instance = Cpp(p)
-        self.assertEqual(is_register(expr=u'eax'), 4)
+        self.assertEqual(p.is_register(expr=u'eax'), 4)
 
     def test_convert_number(self):
         self.assertEqual(cpp.convert_number_to_c(expr=u"'Z' - 'A' +1"), u"'Z' - 'A' +1")
@@ -2084,9 +2017,9 @@ class CppTest(unittest.TestCase):
     def test_mangle_label(self):
         p = Parser([])
         cpp_instance = Cpp(p)
-        self.assertEqual(mangle_label(name='loc_40458F'), 'loc_40458f')
-        self.assertEqual(mangle_label(name=u'_start'), u'_start')
-        self.assertEqual(mangle_label(name=u'_st$art$'), u'_st_tmpart_tmp')
+        self.assertEqual(mangle2_label(name='loc_40458F'), 'loc_40458f')
+        self.assertEqual(mangle2_label(name=u'_start'), u'_start')
+        self.assertEqual(mangle2_label(name=u'_st$art$'), u'_st_tmpart_tmp')
 
 
 if __name__ == "__main__":

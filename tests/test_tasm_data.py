@@ -1,7 +1,7 @@
 from __future__ import absolute_import
 from __future__ import print_function
 
-from tasm.parser import Parser
+from masm2c.parser import Parser
 import traceback
 import unittest
 
