@@ -1093,7 +1093,8 @@ class Parser:
         default_seg ends
             end start
             ''').asminstruction.arg
-        except:
+        except Exception as e:
+            print(e)
             logging.error("Error2")
             pass
         del self.__globals['default_seg']
@@ -1107,7 +1108,8 @@ class Parser:
     default_seg ends
     end startd
     ''')
-        except:
+        except Exception as e:
+            print(e)
             logging.error("Error3")
             pass
         del self.__globals['default_seg']
@@ -1121,9 +1123,9 @@ class Parser:
         default_seg ends
         end start
         ''').asminstruction.arg
-        except:
+        except Exception as e:
+            print(e)
             logging.error("Error4")
-            pass
         del self.__globals['default_seg']
         return result
 
