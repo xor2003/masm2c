@@ -1,7 +1,7 @@
 
 |build-status| |coverage| |docs| |status| |license| |python-versions|
 
-MASM x86 to C translator 0.91
+MASM x86 to C translator
 ==============
 
 Portable MASM or Source-to-source_compiler https://en.wikipedia.org/wiki/Source-to-source_compiler
