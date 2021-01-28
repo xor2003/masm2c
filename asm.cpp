@@ -7,7 +7,9 @@ extern Memory m;
 
 #ifndef __BORLANDC__
  #ifndef __DJGPP__
-  #include <SDL2/SDL.h>
+  #ifndef NOSDL
+   #include <SDL2/SDL.h>
+  #endif
  #endif
 // #include <thread>
 #endif
@@ -69,13 +71,15 @@ static struct __fl __eflags;
 #define SF __eflags._SF
 */
 // SDL2 VGA
-#if SDL_MAJOR_VERSION == 2
+#ifndef NOSDL
+ #if SDL_MAJOR_VERSION == 2
     SDL_Renderer *renderer;
     SDL_Window *window;
 
 db vgaRamPaddingBefore[VGARAM_SIZE];
 db vgaRam[VGARAM_SIZE];
 db vgaRamPaddingAfter[VGARAM_SIZE];
+ #endif
 #endif
 
 //db vgaPalette[256*3];
@@ -151,7 +155,8 @@ void log_debug2(const char *fmt, ...) {
 }
 
 void checkIfVgaRamEmpty() {
-#if SDL_MAJOR_VERSION == 2
+#ifndef NOSDL
+ #if SDL_MAJOR_VERSION == 2
 	int i;
 	int vgaram_empty = 1;
 	for(i = 0; i < VGARAM_SIZE; i++)
@@ -159,6 +164,7 @@ void checkIfVgaRamEmpty() {
 			vgaram_empty = 0;
 	log_debug("vgaram_empty : %s\n", vgaram_empty ? "true" : "false");
 	(void) vgaram_empty;
+ #endif
 #endif
 }
 
@@ -190,9 +196,11 @@ X86_REGREF
 	log_debug("fs: %d -> %p\n",fs,(void *) realAddress(0,fs));
 	log_debug("gs: %d -> %p\n",gs,(void *) realAddress(0,gs));
 //	log_debug("adress heap: %p\n",(void *) &m.heap);
-#if SDL_MAJOR_VERSION == 2
+#ifndef NOSDL
+ #if SDL_MAJOR_VERSION == 2
 	log_debug("adress vgaRam: %p\n",(void *) &vgaRam);
 	log_debug("first pixels vgaRam: %x\n",*vgaRam);
+ #endif
 #endif
 	log_debug("flags: ZF = %d\n",ZF);
 	log_debug("top stack=%d\n",stackPointer);
@@ -487,13 +495,15 @@ X86_REGREF
         call_dos_realint(_state, a);
 #endif
 
-#if SDL_MAJOR_VERSION == 2
+#ifndef NOSDL
+ #if SDL_MAJOR_VERSION == 2
 
 				SDL_Init(SDL_INIT_VIDEO);
 				SDL_CreateWindowAndRenderer(320, 200, 0, &window, &renderer);
 				SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
 				SDL_RenderClear(renderer);
 			        SDL_RenderPresent(renderer); 
+ #endif
 #endif
 				//stackDump(_state);
 				return;

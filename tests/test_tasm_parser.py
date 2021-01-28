@@ -172,6 +172,8 @@ class ParserTest(unittest.TestCase):
             cls._inst.v = TestInitOnce()
         return cls._inst
 
+    def test_instr_09(self):
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov    ax, offset     failure')), u'\tR(MOV(ax, kfailure));\n')
 
     def test_instr_10(self):
         pass

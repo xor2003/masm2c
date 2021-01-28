@@ -132,7 +132,7 @@ class Cpp(object):
                 logging.debug("OFFSET = %s" % offset)
                 self.__indirection = 0
                 self.__used_data_offsets.add((name, offset))
-                return "offset_%s" % (name,)
+                return "k" + name
 
         try:
             g = self.__context.get_global(name)

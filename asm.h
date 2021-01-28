@@ -40,9 +40,11 @@ typedef uint16_t dw;
 typedef uint32_t dd;
 typedef uint64_t dq;
 
-#ifdef __LIBSDL2__
+#ifndef NOSDL
+ #ifdef __LIBSDL2__
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_mixer.h>
+ #endif
 #endif
 
 #ifdef __LIBRETRO__
@@ -236,7 +238,7 @@ static const uint32_t MASK[]={0, 0xff, 0xffff, 0xffffff, 0xffffffff};
  #else
 
  //SDL2 VGA
-  #if SDL_MAJOR_VERSION == 2
+  #if SDL_MAJOR_VERSION == 2 && !defined(NOSDL)
    #define STOSB { \
 	if (es==0xa000)\
 		{ \
