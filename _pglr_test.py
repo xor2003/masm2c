@@ -231,7 +231,7 @@ actions = {
 }
 
 
-file_name = os.path.dirname(os.path.realpath(__file__)) + "/tasm/_masm61.pg"
+file_name = os.path.dirname(os.path.realpath(__file__)) + "/masm2c/_masm61.pg"
 grammar = Grammar.from_file(file_name, ignore_case=True, recognizers=recognizers)
 
 from parglare import Parser
