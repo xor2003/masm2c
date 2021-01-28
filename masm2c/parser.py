@@ -1072,42 +1072,58 @@ class Parser:
         self.push_if(cmd[1])
 
     def action_code(self, line):
-        result = self.parse_args_new_data_('''.model tiny
-default_seg segment
-    ''' + line + '''
-default_seg ends
-    end start
-    ''').asminstruction
+        try:
+            result = self.parse_args_new_data_('''.model tiny
+    default_seg segment
+        ''' + line + '''
+    default_seg ends
+        end start
+        ''').asminstruction
+        except Exception as e:
+            print(e)
+            logging.error("Error1")
         del self.__globals['default_seg']
         return result
 
     def test_size(self, line):
-        result = self.parse_args_new_data_('''.model tiny
-    default_seg segment
-    push    ''' + line + '''
-    default_seg ends
-        end start
-        ''').asminstruction.arg
+        try:
+            result = self.parse_args_new_data_('''.model tiny
+        default_seg segment
+        push    ''' + line + '''
+        default_seg ends
+            end start
+            ''').asminstruction.arg
+        except:
+            logging.error("Error2")
+            pass
         del self.__globals['default_seg']
         return result
 
     def action_data(self, line):
-        result = self.parse_args_new_data_('''.model tiny
-default_seg segment
-''' + line + '''
-default_seg ends
-end startd
-''')
+        try:
+            result = self.parse_args_new_data_('''.model tiny
+    default_seg segment
+    ''' + line + '''
+    default_seg ends
+    end startd
+    ''')
+        except:
+            logging.error("Error3")
+            pass
         del self.__globals['default_seg']
         return result
 
     def parse_arg(self, line):
-        result = self.parse_args_new_data_('''.model tiny
-    default_seg segment
-    push ''' + line + '''
-    default_seg ends
-    end start
-    ''').asminstruction.arg
+        try:
+            result = self.parse_args_new_data_('''.model tiny
+        default_seg segment
+        push ''' + line + '''
+        default_seg ends
+        end start
+        ''').asminstruction.arg
+        except:
+            logging.error("Error4")
+            pass
         del self.__globals['default_seg']
         return result
 

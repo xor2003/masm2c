@@ -611,7 +611,7 @@ class Cpp(object):
 
         labeldir = Token.find_and_call_tokens(name, 'LABEL')
         if labeldir:
-            labeldir[0] = mangle2_label(labeldir[0])
+            labeldir[0] = self.__context.mangle_label(mangle2_label(labeldir[0]))
             if self.__context.has_global(labeldir[0]):
                 g = self.__context.get_global(labeldir[0])
                 if isinstance(g, op.var):
