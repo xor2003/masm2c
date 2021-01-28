@@ -159,7 +159,7 @@ class _sub(baseop):
     def __init__(self, arg):
         # print "text %s" %text
         #               traceback.print_stack(file=sys.stdout)
-        lex = parser.Parser()
+        #lex = parser.Parser()
         self.dst, self.src = arg
 
     def visit(self, visitor):
@@ -188,7 +188,7 @@ class _xor(baseop):
     def __init__(self, arg):
         # print "text %s" %text
         #               traceback.print_stack(file=sys.stdout)
-        lex = parser.Parser()
+        #lex = parser.Parser()
         self.dst, self.src = arg
 
     def visit(self, visitor):
@@ -408,7 +408,7 @@ class _lea(baseop):
     def __init__(self, arg):
         # print "text %s" %text
         #               traceback.print_stack(file=sys.stdout)
-        lex = parser.Parser()
+        #lex = parser.Parser()
         self.dst, self.src = arg
 
     def visit(self, visitor):
@@ -446,7 +446,7 @@ class _imul(baseop):
     def __init__(self, arg):
         # print "text %s" %text
         #               traceback.print_stack(file=sys.stdout)
-        lex = parser.Parser()
+        #lex = parser.Parser()
         self.arg = arg
 
     def visit(self, visitor):

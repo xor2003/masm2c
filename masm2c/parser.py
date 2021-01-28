@@ -43,8 +43,6 @@ from masm2c.Token import Token
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #
-# from lex import parse_line_data, parse_line_name_data
-
 
 def escape(s):
     if isinstance(s, list):
@@ -123,7 +121,7 @@ def make_token(context, nodes):
 def segoverride(context, nodes):
     # global cur_segment
     if isinstance(nodes[0], list):
-        cur_segment = nodes[0][-1]
+        #cur_segment = nodes[0][-1]
         return nodes[0][:-1] + [Token('segoverride', nodes[0][-1]), nodes[2]]
     # cur_segment = nodes[0] #!
     return [Token('segoverride', nodes[0]), nodes[2]]
@@ -463,7 +461,7 @@ class Parser:
         self.__dummy_enum = 0
         self.__segment = "default_seg"
 
-        self.__symbols = []
+        #self.__symbols = []
         self.__link_later = []
         # self.data_started = False
         # self.prev_data_type = 0
@@ -514,7 +512,7 @@ class Parser:
             self.__globals[name] = value
     '''
 
-    def get_global(self, name):
+    def get_global(self, name: str):
         name = name.lower()
         logging.debug("get_global(%s)" % name)
         try:
@@ -562,7 +560,7 @@ class Parser:
         else:
             return "0x%04x" % g.offset
 
-    def fix_dollar(self, v):
+    def replace_dollar_w_segoffst(self, v):
         logging.debug("$ = %d" % self.__cur_seg_offset)
         return re.sub(r'\$', "%d" % self.__cur_seg_offset, v)
 
@@ -650,7 +648,7 @@ class Parser:
     def convert_data_to_c(self, label, width, data):
         """ Generate C formated data """
         logging.debug("convert_data_to_c %s %d %s" % (label, width, data))
-        original_label = label
+        #original_label = label
         label = label.lower()
         is_string = False
         elements = 0
@@ -965,7 +963,6 @@ class Parser:
     def parse_file_lines(self, file_name, skipping_binary_data):
         content = read_asm_file(file_name)
         self.parse_args_new_data(content, file_name=file_name)
-        return
 
     def parse_include_file_lines(self, file_name):
         content = read_asm_file(file_name)
@@ -1149,7 +1146,7 @@ end startd
 
     def get_equ_value(self, v):
         logging.debug("%s" % v)
-        vv = self.fix_dollar(v)
+        vv = self.replace_dollar_w_segoffst(v)
         # ? vv = " ".join(self.parse_args(vv))
         vv = vv.strip()
         logging.debug("%s" % vv)

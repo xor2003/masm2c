@@ -39,7 +39,7 @@ class Proc(object):
     def __init__(self, name, far=False):
         self.name = name
         self.original_name = name
-        self.__calls = []
+        #self.__calls = []
         self.stmts = []
         self.labels = set()
         self.retlabels = set()
@@ -50,7 +50,7 @@ class Proc(object):
         self.used = False
 
     def add_label(self, label, proc, line_number=0):
-        self.stmts.append(op.label(label, proc, line_number=line_number))
+        self.stmts.append(op.label(label, proc=proc, line_number=line_number))
         self.labels.add(label)
 
     def remove_label(self, label):
@@ -180,7 +180,7 @@ class Proc(object):
         # if comment >= 0:
         #       comments = stmt[comment:]
         stmt = stmt.strip()
-        line = stmt
+        #line = stmt
 
         stmt = self.parse_extract_label(stmt)
 
@@ -198,7 +198,7 @@ class Proc(object):
         if r:
             logging.info("add label %s" % r.group(1))
             # label
-            self.add_label(r.group(1).lower())
+            self.add_label(r.group(1).lower(), self)
             # print "remains: %s" %r.group(2)
             stmt = r.group(2).strip()
         return stmt

@@ -289,7 +289,7 @@ int8_t asm2C_IN(int16_t address) {
 			jumpToBackGround = 1;
 			return 8;
 		}
-		break;
+		//break;
 	default:
 		log_error("Unknown IN %d\n",address);
 		return 0;
