@@ -1037,6 +1037,11 @@ enum  _offsets;
 */
 
 struct _STATE{
+       _STATE()
+       {_str="";
+        _indent=0;
+       }
+
 dd eax;
 dd ebx;
 dd ecx;
