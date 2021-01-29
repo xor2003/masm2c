@@ -1,4 +1,7 @@
 #!/bin/bash -ex
+
+exit 1
+
 > _result.log
 
 . ./_config.sh
