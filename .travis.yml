@@ -1,23 +1,23 @@
 matrix:
   include:
     - language: python
-        python:
+      python:
           - "3.5"
           - "3.9"
 
-        install:
+      install:
           - ./install-test.sh
 
-        script:
+      script:
           - ./runtests.sh
 
-        after_success:
+      after_success:
           - coveralls
 
     - language: cpp
-        compiler:
+      compiler:
           - clang
           - gcc
 
-        script:
+      script:
           - cd asmTests;./_tests.sh
