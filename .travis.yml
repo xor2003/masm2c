@@ -28,6 +28,8 @@ matrix:
           packages:
           - gcc-multilib
           - g++-multilib
+          - libncurses5-dev
+          - libncurses5
 
       before_install:
           - echo 'getconf _NPROCESSORS_ONLN'
