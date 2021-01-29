@@ -24,7 +24,7 @@ do
   n=$(echo $name| perl -pe 's!\.asm!!');
 #  (
 echo "Testing $n:"
-./_singletest.sh $n 2>&1 || fail $? 
+./_singletest.sh $n 2>&1 #|| fail $? 
 done | tee -a _result.log
 
 exit $result

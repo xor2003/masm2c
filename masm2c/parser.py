@@ -512,7 +512,7 @@ class Parser:
             self.__globals[name] = value
     '''
 
-    def get_global(self, name: str):
+    def get_global(self, name):
         name = name.lower()
         logging.debug("get_global(%s)" % name)
         try:
