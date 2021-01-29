@@ -1,13 +1,23 @@
-language: python
-python:
-    - "3.5"
-    - "3.9"
+matrix:
+  include:
+    - language: python
+        python:
+          - "3.5"
+          - "3.9"
 
-install:
-    - ./install-test.sh
+        install:
+          - ./install-test.sh
 
-script:
-    - ./runtests.sh
+        script:
+          - ./runtests.sh
 
-after_success:
-    - coveralls
+        after_success:
+          - coveralls
+
+    - language: cpp
+        compiler:
+          - clang
+          - gcc
+
+        script:
+          - cd asmTests;./_tests.sh

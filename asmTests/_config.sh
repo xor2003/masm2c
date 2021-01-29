@@ -1,6 +1,6 @@
 #!/bin/sh -ex
 
-export CXX="g++"
+#export CXX="g++"
 #SDL=$(pkg-config --cflags --libs sdl2)
 export SDL=-DNOSDL
 export CURSES=$(pkg-config --cflags --libs ncurses)

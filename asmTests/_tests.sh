@@ -1,4 +1,4 @@
-#!/bin/sh -ex
+#!/bin/bash -ex
 > _result.log
 
 . ./_config.sh
@@ -8,10 +8,13 @@ $CXX $OPT asm.cpp -c
 $CXX $OPT memmgr.cpp -c
 cd asmTests
 
+result=0
+
 fail()
 {
   echo "$n failed $1"
   #exit $1
+  result=$(( $result + 1 ))
 }
 
 ls *.asm | \
@@ -22,3 +25,5 @@ do
 echo "Testing $n:"
 ./_singletest.sh $n 2>&1 || fail $? 
 done | tee -a _result.log
+
+exit $result
