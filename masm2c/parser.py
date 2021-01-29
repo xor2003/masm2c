@@ -12,6 +12,7 @@ from builtins import range
 from builtins import str
 from copy import copy
 
+import parglare
 from parglare import Grammar, Parser as PGParser
 
 from masm2c import cpp
@@ -1136,13 +1137,20 @@ class Parser:
         grammar = self.__lex.or_grammar
         parser = copy(self.__lex.or_parser)
         parser.grammar = grammar
-        #    some_seg segment
-        #    some_seg ends
-        result = parser.parse('''.model tiny
-        ''' + line + '''
-        end
-        ''', file_name=file_name, extra=self)  # context = self.__pgcontext)
-        #del self.__globals['some_seg']
+        try:
+            result = parser.parse('''.model tiny
+            ''' + line + '''
+            end
+            ''', file_name=file_name, extra=self)  # context = self.__pgcontext)
+        except parglare.exceptions.ParseError:
+            result = parser.parse('''.model tiny
+            some_seg segment
+            ''' + line + '''
+            some_seg ends
+            end
+            ''', file_name=file_name, extra=self)  # context = self.__pgcontext)
+            del self.__globals['some_seg']
+
         return result
 
     def datadir_action(self, name, type, args):

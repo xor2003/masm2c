@@ -4,11 +4,12 @@
 #export OPT="-Og -mno-ms-bitfields -Wno-multichar -Wno-address-of-packed-member   -I. -I.. -L. -lmingw32 -mconsole   -ggdb3 -lSDL -lSDLmain -DDEBUG=3"
 
 #export PKG_CONFIG_PATH=/c/msys64/mingw32/lib/pkgconfig
-export CXX="g++ -m32"
+export CXX="g++"
 #SDL=$(pkg-config --cflags --libs sdl)
-SDL="-D_GNU_SOURCE=1 -Dmain=SDL_main -I/mingw/include/SDL -L/mingw/lib -lmingw32 -lSDLmain -lSDL -lmingw32 -lSDLmain -lSDL -lm -luser32 -lgdi32 -lwinmm -ldxguid"
+SDL="-DNOSDL"
+#SDL="-D_GNU_SOURCE=1 -Dmain=SDL_main -I/mingw/include/SDL -L/mingw/lib -lmingw32 -lSDLmain -lSDL -lmingw32 -lSDLmain -lSDL -lm -luser32 -lgdi32 -lwinmm -ldxguid"
 CURSES="-I/mingw/include/pdcurses -L/mingw/lib "
-export OPT="-Wno-narrowing -mno-ms-bitfields  -Wno-multichar $SDL $CURSES -D_GNU_SOURCE=1   -ggdb3 -O0 -I. -I.. -DDEBUG=3"
+export OPT="-m32 -Wno-narrowing -mno-ms-bitfields  -Wno-multichar $SDL $CURSES -D_GNU_SOURCE=1   -ggdb3 -O0 -I. -I.. -DDEBUG=3"
 #-D_DEFAULT_SOURCE -D_XOPEN_SOURCE=600 -DCHTYPE_16 
 #echo $OPT
 
