@@ -28,8 +28,8 @@ matrix:
           packages:
           - gcc-multilib
           - g++-multilib
-          - libncurses5-dev
-          - libncurses5
+          - libncurses5-dev:i386
+          - libncurses5:i386
 
       before_install:
           - echo 'getconf _NPROCESSORS_ONLN'
@@ -37,6 +37,6 @@ matrix:
           - lsb_release -r
 
       script:
-          - cd asmTests;./_tests.sh
+          - ./_binarytests.sh
 
       sudo: false
