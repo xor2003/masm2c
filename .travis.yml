@@ -16,7 +16,6 @@ matrix:
 
     - language: cpp
       compiler:
-          - clang
           - gcc
 
       cache:
