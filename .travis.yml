@@ -1,5 +1,3 @@
-dist: focal
-
 matrix:
   include:
     - language: python
@@ -17,6 +15,7 @@ matrix:
           - coveralls
 
     - language: cpp
+      dist: focal
       compiler:
           - gcc
 

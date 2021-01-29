@@ -4,10 +4,10 @@
  *
  */
 
-#include "loop.h"
+#include "pushpop.h"
 #include <curses.h>
 
-//namespace loop {
+//namespace pushpop {
 
 
 int init(struct _STATE* _state)
@@ -15,7 +15,7 @@ int init(struct _STATE* _state)
 X86_REGREF
 
 _state->_indent=0;
-logDebug=fopen("loop.log","w");
+logDebug=fopen("pushpop.log","w");
 ecx=0;
 
 initscr();
@@ -59,37 +59,46 @@ if (__disp==kbegin) goto start;
 else goto __dispatch_call;
  // Procedure start() start
 start:
-	edx = 0;AFFECT_ZF(0); AFFECT_SF(edx,0);	// 13 xor edx,edx
-	R(MOV(ecx, 10));	// 14 mov ecx,10
-toto:
-	R(INC(edx));	// 16 INC edx
-		R(LOOP(toto));	// 17 loop toto
-	R(CMP(edx, 10));	// 19 cmp edx,10
-		R(JNZ(failure));	// 20 jne failure
-	edx = 0;AFFECT_ZF(0); AFFECT_SF(edx,0);	// 22 xor edx,edx
-	R(MOV(ecx, 10));	// 23 mov ecx,10
-toto1:
-	R(INC(edx));	// 25 INC edx
-	eax = 0;AFFECT_ZF(0); AFFECT_SF(eax,0);	// 26 sub eax,eax
-		R(LOOPE(toto1));	// 27 loope toto1
-	R(CMP(edx, 10));	// 29 cmp edx,10
-		R(JNZ(failure));	// 30 jne failure
+	R(MOV(ebx, 2));	// 11 mov ebx,2
+	R(PUSH(ebx));	// 12 push ebx
+	R(POP(eax));	// 13 pop eax
+	R(CMP(eax, 2));	// 14 cmp eax,2
+		R(JNZ(failure));	// 15 jne failure
+	R(CMP(ebx, 2));	// 16 cmp ebx,2
+		R(JNZ(failure));	// 17 jne failure
+	R(MOV(eax, 1));	// 19 mov eax,1
+	R(MOV(ebx, 2));	// 20 mov ebx,2
+	R(MOV(ecx, 3));	// 21 mov ecx,3
+	R(MOV(edx, 4));	// 22 mov edx,4
+	R(MOV(esi, 6));	// 23 mov esi,6
+	R(MOV(edi, 8));	// 24 mov edi,8
+	R(MOV(ebp, 9));	// 25 mov ebp,9
+	R(PUSHAD);	// 27 pushad
+	eax = 0;AFFECT_ZF(0); AFFECT_SF(eax,0);	// 29 xor eax,eax
+	ecx = 0;AFFECT_ZF(0); AFFECT_SF(ecx,0);	// 30 xor ecx,ecx
+	ebx = 0;AFFECT_ZF(0); AFFECT_SF(ebx,0);	// 31 xor ebx,ebx
 	edx = 0;AFFECT_ZF(0); AFFECT_SF(edx,0);	// 32 xor edx,edx
-	R(MOV(ecx, 10));	// 33 mov ecx,10
-toto2:
-	R(INC(edx));	// 35 INC edx
-	eax = 0;AFFECT_ZF(0); AFFECT_SF(eax,0);	// 36 sub eax,eax
-	R(INC(eax));	// 37 inc eax
-		R(LOOPE(toto2));	// 38 loope toto2
-	R(CMP(edx, 1));	// 40 cmp edx,1
-		R(JNZ(failure));	// 41 jne failure
-	R(MOV(al, 0));	// 44 MOV al,0
-		R(JMP(exitlabel));	// 45 JMP exitLabel
+	esi = 0;AFFECT_ZF(0); AFFECT_SF(esi,0);	// 33 xor esi,esi
+	edi = 0;AFFECT_ZF(0); AFFECT_SF(edi,0);	// 34 xor edi,edi
+	ebp = 0;AFFECT_ZF(0); AFFECT_SF(ebp,0);	// 35 xor ebp,ebp
+	R(CMP(esi, 0));	// 37 cmp esi,0
+		R(JNZ(failure));	// 38 jne failure
+	R(CMP(edi, 0));	// 39 cmp edi,0
+		R(JNZ(failure));	// 40 jne failure
+	R(POPAD);	// 42 popad
+	R(CMP(ebp, 9));	// 47 cmp ebp,9
+		R(JNZ(failure));	// 48 jne failure
+	ecx = 0;AFFECT_ZF(0); AFFECT_SF(ecx,0);	// 51 xor ecx,ecx
+	R(MOV(ecx, 0x0a0000));	// 52 mov ecx,0a0000h
+	R(MOV(ebx, 0x0f222));	// 53 mov ebx,0f222h
+	R(CMP(ecx, 0x0af222));	// 56 cmp ecx,0af222h
+	R(MOV(al, 0));	// 59 MOV al,0
+		R(JMP(exitlabel));	// 60 JMP exitLabel
 failure:
-	R(MOV(al, 1));	// 47 mov al,1
+	R(MOV(al, 1));	// 62 mov al,1
 exitlabel:
-	R(MOV(ah, 0x4c));	// 49 mov ah,4ch
-	R(_INT(0x21));	// 50 int 21h
+	R(MOV(ah, 0x4c));	// 64 mov ah,4ch
+	R(_INT(0x21));	// 65 int 21h
 
 
 return;
@@ -98,9 +107,6 @@ switch (__disp) {
 case kexitlabel: 	goto exitlabel;
 case kfailure: 	goto failure;
 case kstart: 	goto start;
-case ktoto: 	goto toto;
-case ktoto1: 	goto toto1;
-case ktoto2: 	goto toto2;
 default: log_error("Jump/call to nothere %d\n", __disp);stackDump(_state); abort();
 };
 }

@@ -4,10 +4,10 @@
  *
  */
 
-#include "loop.h"
+#include "neg.h"
 #include <curses.h>
 
-//namespace loop {
+//namespace neg {
 
 
 int init(struct _STATE* _state)
@@ -15,7 +15,7 @@ int init(struct _STATE* _state)
 X86_REGREF
 
 _state->_indent=0;
-logDebug=fopen("loop.log","w");
+logDebug=fopen("neg.log","w");
 ecx=0;
 
 initscr();
@@ -59,37 +59,109 @@ if (__disp==kbegin) goto start;
 else goto __dispatch_call;
  // Procedure start() start
 start:
-	edx = 0;AFFECT_ZF(0); AFFECT_SF(edx,0);	// 13 xor edx,edx
-	R(MOV(ecx, 10));	// 14 mov ecx,10
-toto:
-	R(INC(edx));	// 16 INC edx
-		R(LOOP(toto));	// 17 loop toto
-	R(CMP(edx, 10));	// 19 cmp edx,10
-		R(JNZ(failure));	// 20 jne failure
-	edx = 0;AFFECT_ZF(0); AFFECT_SF(edx,0);	// 22 xor edx,edx
-	R(MOV(ecx, 10));	// 23 mov ecx,10
-toto1:
-	R(INC(edx));	// 25 INC edx
-	eax = 0;AFFECT_ZF(0); AFFECT_SF(eax,0);	// 26 sub eax,eax
-		R(LOOPE(toto1));	// 27 loope toto1
-	R(CMP(edx, 10));	// 29 cmp edx,10
-		R(JNZ(failure));	// 30 jne failure
-	edx = 0;AFFECT_ZF(0); AFFECT_SF(edx,0);	// 32 xor edx,edx
-	R(MOV(ecx, 10));	// 33 mov ecx,10
-toto2:
-	R(INC(edx));	// 35 INC edx
-	eax = 0;AFFECT_ZF(0); AFFECT_SF(eax,0);	// 36 sub eax,eax
-	R(INC(eax));	// 37 inc eax
-		R(LOOPE(toto2));	// 38 loope toto2
-	R(CMP(edx, 1));	// 40 cmp edx,1
-		R(JNZ(failure));	// 41 jne failure
-	R(MOV(al, 0));	// 44 MOV al,0
-		R(JMP(exitlabel));	// 45 JMP exitLabel
+	R(MOV(edx, 2));	// 12 mov edx,2
+	R(NEG(edx));	// 13 neg edx
+		R(JNC(failure));	// 14 jnC failure
+	R(CMP(edx, -2));	// 16 cmp edx,-2
+		R(JNZ(failure));	// 17 jne failure
+	ebx = 0;AFFECT_ZF(0); AFFECT_SF(ebx,0);	// 19 xor ebx,ebx
+	R(NEG(ebx));	// 20 neg ebx
+		R(JC(failure));	// 21 jc failure
+	R(MOV(eax, 0xffffffff));	// 23 mov eax,011111111111111111111111111111111b
+	R(NOT(eax));	// 24 not eax
+	R(CMP(eax, 0));	// 25 cmp eax,0
+		R(JNZ(failure));	// 26 jne failure
+	R(MOV(eax, 0));	// 28 mov eax,0
+	R(MOV(ax, 0xffff));	// 29 mov ax,01111111111111111b
+	R(NOT(ax));	// 30 not ax
+	R(CMP(eax, 0));	// 31 cmp eax,0
+		R(JNZ(failure));	// 32 jne failure
+	R(MOV(eax, 0));	// 34 mov eax,0
+	R(MOV(ax, 0xaaaa));	// 35 mov ax,01010101010101010b
+	R(NOT(ax));	// 36 not ax
+	R(CMP(eax, 0x5555));	// 37 cmp eax,0101010101010101b
+		R(JNZ(failure));	// 38 jne failure
+	R(MOV(eax, 0));	// 40 mov eax,0
+	R(CBW);	// 41 cbw
+	R(CMP(eax, 0));	// 42 cmp eax,0
+		R(JNZ(failure));	// 43 jne failure
+	R(MOV(eax, -5));	// 45 mov eax,-5
+	R(CBW);	// 46 cbw
+	R(CMP(eax, -5));	// 47 cmp eax,-5
+		R(JNZ(failure));	// 48 jne failure
+	R(MOV(eax, 0));	// 50 mov eax,0
+	R(MOV(al, -5));	// 51 mov al,-5
+	R(CBW);	// 52 cbw
+	R(CMP(ax, -5));	// 53 cmp ax,-5
+		R(JNZ(failure));	// 54 jne failure
+	R(MOV(eax, 0x0ffffff03));	// 56 mov eax,0ffffff03h
+	R(CBW);	// 57 cbw
+	R(CMP(eax, 0x0ffff0003));	// 58 cmp eax,0ffff0003h
+		R(JNZ(failure));	// 59 jne failure
+	R(MOV(eax, 0x0ffff00f3));	// 61 mov eax,0ffff00f3h
+	R(CBW);	// 62 cbw
+	R(CMP(eax, 0x0fffffff3));	// 63 cmp eax,0fffffff3h
+		R(JNZ(failure));	// 64 jne failure
+	R(MOV(eax, 0));	// 66 mov eax,0
+	R(MOV(edx, 0));	// 67 mov edx,0
+	R(CWD);	// 68 cwd
+	R(CMP(eax, 0));	// 69 cmp eax,0
+		R(JNZ(failure));	// 70 jne failure
+	R(CMP(edx, 0));	// 71 cmp edx,0
+		R(JNZ(failure));	// 72 jne failure
+	R(MOV(eax, -5));	// 74 mov eax,-5
+	R(MOV(edx, 0));	// 75 mov edx,0
+	R(CWD);	// 76 cwd
+	R(CMP(eax, -5));	// 77 cmp eax,-5
+		R(JNZ(failure));	// 78 jne failure
+	R(CMP(edx, 0x0ffff));	// 79 cmp edx,0ffffh
+		R(JNZ(failure));	// 80 jne failure
+	R(MOV(eax, 0x0ffffff03));	// 82 mov eax,0ffffff03h
+	R(MOV(edx, 0));	// 83 mov edx,0
+	R(CWD);	// 84 cwd
+	R(CMP(eax, 0x0ffffff03));	// 85 cmp eax,0ffffff03h
+		R(JNZ(failure));	// 86 jne failure
+	R(CMP(edx, 0x0ffff));	// 87 cmp edx,0ffffh
+		R(JNZ(failure));	// 88 jne failure
+	R(MOV(eax, 0x0ffff00f3));	// 90 mov eax,0ffff00f3h
+	R(MOV(edx, 0));	// 91 mov edx,0
+	R(CWD);	// 92 cwd
+	R(CMP(eax, 0x0ffff00f3));	// 93 cmp eax,0ffff00f3h
+		R(JNZ(failure));	// 94 jne failure
+	R(CMP(edx, 0));	// 95 cmp edx,0
+		R(JNZ(failure));	// 96 jne failure
+	R(MOV(eax, 0));	// 98 mov eax,0
+	R(CWDE);	// 99 cwde
+	R(CMP(eax, 0));	// 100 cmp eax,0
+		R(JNZ(failure));	// 101 jne failure
+	R(MOV(eax, -5));	// 103 mov eax,-5
+	R(CWDE);	// 104 cwde
+	R(CMP(eax, -5));	// 105 cmp eax,-5
+		R(JNZ(failure));	// 106 jne failure
+	R(MOV(eax, 0x0ffffff03));	// 108 mov eax,0ffffff03h
+	R(CWDE);	// 109 cwde
+	R(CMP(eax, 0x0ffffff03));	// 110 cmp eax,0ffffff03h
+		R(JNZ(failure));	// 111 jne failure
+	R(MOV(eax, 0x0ffff00f3));	// 113 mov eax,0ffff00f3h
+	R(CWDE);	// 114 cwde
+	R(CMP(eax, 0x000f3));	// 115 cmp eax,000f3h
+		R(JNZ(failure));	// 116 jne failure
+	R(CLC);	// 119 clc
+		R(JC(failure));	// 120 jc failure
+	R(STC);	// 122 stc
+		R(JNC(failure));	// 123 jnc failure
+	R(CLC);	// 125 clc
+	R(CMC);	// 126 cmc
+		R(JNC(failure));	// 127 jnc failure
+	R(CMC);	// 128 cmc
+		R(JC(failure));	// 129 jc failure
+	eax = 0;AFFECT_ZF(0); AFFECT_SF(eax,0);	// 131 xor eax,eax
+		R(JMP(exitlabel));	// 132 JMP exitLabel
 failure:
-	R(MOV(al, 1));	// 47 mov al,1
+	R(MOV(al, 1));	// 134 mov al,1
 exitlabel:
-	R(MOV(ah, 0x4c));	// 49 mov ah,4ch
-	R(_INT(0x21));	// 50 int 21h
+	R(MOV(ah, 0x4c));	// 136 mov ah,4ch
+	R(_INT(0x21));	// 137 int 21h
 
 
 return;
@@ -98,9 +170,6 @@ switch (__disp) {
 case kexitlabel: 	goto exitlabel;
 case kfailure: 	goto failure;
 case kstart: 	goto start;
-case ktoto: 	goto toto;
-case ktoto1: 	goto toto1;
-case ktoto2: 	goto toto2;
 default: log_error("Jump/call to nothere %d\n", __disp);stackDump(_state); abort();
 };
 }

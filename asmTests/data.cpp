@@ -55,14 +55,13 @@ resize_term(25, 80);
 void mainproc(_offsets _i, struct _STATE* _state){
 X86_REGREF
 __disp=_i;
-if (__disp==kbegin) goto _start;
+if (__disp==kbegin) goto start;
 else goto __dispatch_call;
 #define testEqu 3	// 0 0 testEqu equ 3
 #define TEST2 -13	// 0 0 TEST2 equ -13
 #define test3 1500	// 0 0 test3 equ 1500
 #define test1 ( 00 +38 * 3 ) * 320 +1 / 2 +33 * ( 3 -1 )	// 0 0 test1 equ ( 00 +38 * 3 ) * 320 +1 / 2 +33 * ( 3 -1 )
- // Procedure _start() start
-_start:
+ // Procedure start() start
 start:
 	R(MOV(ax, seg_offset(_data)));	// 37 MOV ax, _data
 	R(MOV(ds, ax));	// 38 MOV ds, ax
@@ -129,7 +128,6 @@ p2:
 return;
 __dispatch_call:
 switch (__disp) {
-case k_start: 	goto _start;
 case kexitlabel: 	goto exitlabel;
 case kfailure: 	goto failure;
 case kp1: 	goto p1;

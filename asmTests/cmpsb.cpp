@@ -55,10 +55,9 @@ resize_term(25, 80);
 void mainproc(_offsets _i, struct _STATE* _state){
 X86_REGREF
 __disp=_i;
-if (__disp==kbegin) goto _start;
+if (__disp==kbegin) goto start;
 else goto __dispatch_call;
- // Procedure _start() start
-_start:
+ // Procedure start() start
 start:
 	R(MOV(ax, seg_offset(_data)));	// 12 mov ax,_DATA
 	R(MOV(ds, ax));	// 13 mov ds,ax
@@ -102,7 +101,6 @@ exitlabel:
 return;
 __dispatch_call:
 switch (__disp) {
-case k_start: 	goto _start;
 case kexitlabel: 	goto exitlabel;
 case kfailure: 	goto failure;
 case kstart: 	goto start;

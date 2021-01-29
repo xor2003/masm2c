@@ -57,51 +57,50 @@ X86_REGREF
 __disp=_i;
 if (__disp==kbegin) goto start;
 else goto __dispatch_call;
- // Procedure _start() start
-_start:
+ // Procedure start() start
 start:
-	R(MOV(ds, seg_offset(_data)));	// 14 MOV ds, _data
-	R(MOV(al, 1));	// 16 MOV al,1
-	R(MOV(edi, offset(_data,var1)));	// 17 mov edi,offset var1
-	R(MOV(dl, *(raddr(ds,edi))));	// 18 mov dl,byte ptr [edi]
-	R(CMP(dl, 2));	// 19 cmp dl,2
-		R(JNZ(failure));	// 20 jne failure
-	R(MOV(al, 2));	// 22 MOV al,2
-	R(MOV(cl, 2));	// 23 mov cl,2
-	R(MOV(*(raddr(ds,edi)), cl));	// 24 mov ds:[edi],cl
-	R(MOV(dl, *(raddr(ds,edi))));	// 25 mov dl,byte ptr [edi]
-	R(CMP(dl, 2));	// 26 cmp dl,2
-		R(JNZ(failure));	// 27 jne failure
-	R(MOV(al, 3));	// 29 MOV al,3
-	R(MOV(edi, offset(_data,var1)));	// 30 mov edi,offset var1
-	R(MOV(dl, *(raddr(ds,edi+1))));	// 31 mov dl,[edi+1]
-	R(CMP(dl, 5));	// 32 cmp dl,5
-		R(JNZ(failure));	// 33 jne failure
-	R(MOV(al, 4));	// 35 MOV al,4
-	R(INC(*(raddr(ds,edi+1))));	// 36 inc byte ptr [edi+1]
-	R(CMP(*(raddr(ds,edi+1)), 6));	// 37 cmp byte ptr [edi+1],6
-		R(JNZ(failure));	// 38 jne failure
-	R(MOV(al, 5));	// 41 MOV al,5
-	R(MOV(edi, offset(_data,var2)));	// 42 mov edi,offset var2
-	R(MOV(dl, *(raddr(ds,edi))));	// 43 mov dl,[edi]
-	R(CMP(dl, 4));	// 44 cmp dl,4
-		R(JNZ(failure));	// 45 jne failure
-	R(MOV(al, 6));	// 47 MOV al,6
-	R(esi = offset(_data,var2));	// 48 lea esi,var2
-	R(CMP(edi, esi));	// 49 cmp edi,esi
-		R(JNZ(failure));	// 50 jne failure
-	R(MOV(al, 0));	// 52 MOV al,0
-		R(JMP(exitlabel));	// 54 JMP exitLabel
+	R(MOV(ax, seg_offset(_data)));	// 14 MOV ax, _data
+	R(MOV(ds, ax));	// 15 MOV ds, ax
+	R(MOV(al, 1));	// 17 MOV al,1
+	R(MOV(edi, offset(_data,var1)));	// 18 mov edi,offset var1
+	R(MOV(dl, *(raddr(ds,edi))));	// 19 mov dl,byte ptr [edi]
+	R(CMP(dl, 2));	// 20 cmp dl,2
+		R(JNZ(failure));	// 21 jne failure
+	R(MOV(al, 2));	// 23 MOV al,2
+	R(MOV(cl, 2));	// 24 mov cl,2
+	R(MOV(*(raddr(ds,edi)), cl));	// 25 mov ds:[edi],cl
+	R(MOV(dl, *(raddr(ds,edi))));	// 26 mov dl,byte ptr [edi]
+	R(CMP(dl, 2));	// 27 cmp dl,2
+		R(JNZ(failure));	// 28 jne failure
+	R(MOV(al, 3));	// 30 MOV al,3
+	R(MOV(edi, offset(_data,var1)));	// 31 mov edi,offset var1
+	R(MOV(dl, *(raddr(ds,edi+1))));	// 32 mov dl,[edi+1]
+	R(CMP(dl, 5));	// 33 cmp dl,5
+		R(JNZ(failure));	// 34 jne failure
+	R(MOV(al, 4));	// 36 MOV al,4
+	R(INC(*(raddr(ds,edi+1))));	// 37 inc byte ptr [edi+1]
+	R(CMP(*(raddr(ds,edi+1)), 6));	// 38 cmp byte ptr [edi+1],6
+		R(JNZ(failure));	// 39 jne failure
+	R(MOV(al, 5));	// 42 MOV al,5
+	R(MOV(edi, offset(_data,var2)));	// 43 mov edi,offset var2
+	R(MOV(dl, *(raddr(ds,edi))));	// 44 mov dl,[edi]
+	R(CMP(dl, 4));	// 45 cmp dl,4
+		R(JNZ(failure));	// 46 jne failure
+	R(MOV(al, 6));	// 48 MOV al,6
+	R(esi = offset(_data,var2));	// 49 lea esi,var2
+	R(CMP(edi, esi));	// 50 cmp edi,esi
+		R(JNZ(failure));	// 51 jne failure
+	R(MOV(al, 0));	// 53 MOV al,0
+		R(JMP(exitlabel));	// 55 JMP exitLabel
 failure:
 exitlabel:
-	R(MOV(ah, 0x4c));	// 58 mov ah,4ch
-	R(_INT(0x21));	// 59 int 21h
+	R(MOV(ah, 0x4c));	// 59 mov ah,4ch
+	R(_INT(0x21));	// 60 int 21h
 
 
 return;
 __dispatch_call:
 switch (__disp) {
-case k_start: 	goto _start;
 case kexitlabel: 	goto exitlabel;
 case kfailure: 	goto failure;
 case kstart: 	goto start;

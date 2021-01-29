@@ -12,10 +12,9 @@
 //namespace cmp {
 
 #define kbegin 0x1001
-#define k_start 0x1111
-#define kstart 0x1112
-#define kfailure 0x1113
-#define kexitlabel 0x1114
+#define kstart 0x1111
+#define kfailure 0x1112
+#define kexitlabel 0x1113
 
 struct MYPACKED Memory{
  db dummy1[4096]; // protective

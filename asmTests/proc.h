@@ -12,14 +12,13 @@
 //namespace proc {
 
 #define kbegin 0x1001
-#define k_start 0x1111
-#define kstart 0x1112
-#define kfailure 0x1113
-#define kexitlabel 0x1114
-#define kincebx 0x1115
-#define kok 0x1116
-#define kaincecx 0x1117
-#define kaincedx 0x1118
+#define kstart 0x1111
+#define kfailure 0x1112
+#define kexitlabel 0x1113
+#define kincebx 0x1114
+#define kok 0x1115
+#define kaincecx 0x1116
+#define kaincedx 0x1117
 
 struct MYPACKED Memory{
  db dummy1[4096]; // protective

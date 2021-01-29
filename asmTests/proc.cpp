@@ -4,10 +4,10 @@
  *
  */
 
-#include "loop.h"
+#include "proc.h"
 #include <curses.h>
 
-//namespace loop {
+//namespace proc {
 
 
 int init(struct _STATE* _state)
@@ -15,7 +15,7 @@ int init(struct _STATE* _state)
 X86_REGREF
 
 _state->_indent=0;
-logDebug=fopen("loop.log","w");
+logDebug=fopen("proc.log","w");
 ecx=0;
 
 initscr();
@@ -57,50 +57,61 @@ X86_REGREF
 __disp=_i;
 if (__disp==kbegin) goto start;
 else goto __dispatch_call;
+#define tWO 2	// 0 0 tWO equ 2
  // Procedure start() start
 start:
-	edx = 0;AFFECT_ZF(0); AFFECT_SF(edx,0);	// 13 xor edx,edx
-	R(MOV(ecx, 10));	// 14 mov ecx,10
-toto:
-	R(INC(edx));	// 16 INC edx
-		R(LOOP(toto));	// 17 loop toto
-	R(CMP(edx, 10));	// 19 cmp edx,10
-		R(JNZ(failure));	// 20 jne failure
-	edx = 0;AFFECT_ZF(0); AFFECT_SF(edx,0);	// 22 xor edx,edx
-	R(MOV(ecx, 10));	// 23 mov ecx,10
-toto1:
-	R(INC(edx));	// 25 INC edx
-	eax = 0;AFFECT_ZF(0); AFFECT_SF(eax,0);	// 26 sub eax,eax
-		R(LOOPE(toto1));	// 27 loope toto1
-	R(CMP(edx, 10));	// 29 cmp edx,10
-		R(JNZ(failure));	// 30 jne failure
-	edx = 0;AFFECT_ZF(0); AFFECT_SF(edx,0);	// 32 xor edx,edx
-	R(MOV(ecx, 10));	// 33 mov ecx,10
-toto2:
-	R(INC(edx));	// 35 INC edx
-	eax = 0;AFFECT_ZF(0); AFFECT_SF(eax,0);	// 36 sub eax,eax
-	R(INC(eax));	// 37 inc eax
-		R(LOOPE(toto2));	// 38 loope toto2
-	R(CMP(edx, 1));	// 40 cmp edx,1
-		R(JNZ(failure));	// 41 jne failure
-	R(MOV(al, 0));	// 44 MOV al,0
-		R(JMP(exitlabel));	// 45 JMP exitLabel
+	eax = 0;AFFECT_ZF(0); AFFECT_SF(eax,0);	// 10 xor eax,eax
+	edx = 0;AFFECT_ZF(0); AFFECT_SF(edx,0);	// 11 xor edx,edx
+	ebx = 0;AFFECT_ZF(0); AFFECT_SF(ebx,0);	// 12 xor ebx,ebx
+	R(INC(ebx));	// 14 inc ebx
+	R(CALL(kincebx));	// 15 call incebx
+	R(INC(ecx));	// 16 inc ecx
+	R(INC(ecx));	// 17 inc ecx
+	R(CALL(kaincecx));	// 18 call aincecx
+	R(CMP(edx, 1));	// 20 cmp edx,1
+		R(JNZ(failure));	// 21 jne failure
+	R(CMP(ecx, 3));	// 23 cmp ecx,3
+		R(JNZ(failure));	// 24 jne failure
+	R(CMP(ebx, 3));	// 26 cmp ebx,3
+		R(JNZ(failure));	// 27 jne failure
+		R(JMP(exitlabel));	// 29 JMP exitLabel
+	R(MOV(al, 0));	// 32 MOV al,0
+		R(JMP(exitlabel));	// 33 JMP exitLabel
 failure:
-	R(MOV(al, 1));	// 47 mov al,1
+	R(MOV(al, 1));	// 35 mov al,1
 exitlabel:
-	R(MOV(ah, 0x4c));	// 49 mov ah,4ch
-	R(_INT(0x21));	// 50 int 21h
+	R(MOV(ah, 0x4c));	// 37 mov ah,4ch
+	R(_INT(0x21));	// 38 int 21h
+ // Procedure incebx() start
+incebx:
+	R(INC(ebx));	// 42 inc ebx
+	R(CMP(ebx, tWO));	// 43 cmp ebx,TWO
+		R(JZ(ok));	// 44 je ok
+	R(RETN);	// 45 ret
+ok:
+	R(INC(ebx));	// 47 inc ebx
+	R(RETN);	// 48 ret
+ // Procedure aincecx() start
+aincecx:
+	R(INC(ecx));	// 52 inc ecx
+	R(CALL(kaincedx));	// 53 call aincedx
+	R(RETN);	// 55 ret
+ // Procedure aincedx() start
+aincedx:
+	R(INC(edx));	// 59 inc edx
+	R(RETN);	// 60 ret
 
 
 return;
 __dispatch_call:
 switch (__disp) {
+case kaincecx: 	goto aincecx;
+case kaincedx: 	goto aincedx;
 case kexitlabel: 	goto exitlabel;
 case kfailure: 	goto failure;
+case kincebx: 	goto incebx;
+case kok: 	goto ok;
 case kstart: 	goto start;
-case ktoto: 	goto toto;
-case ktoto1: 	goto toto1;
-case ktoto2: 	goto toto2;
 default: log_error("Jump/call to nothere %d\n", __disp);stackDump(_state); abort();
 };
 }

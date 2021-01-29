@@ -12,17 +12,16 @@
 //namespace vbl {
 
 #define kbegin 0x1001
-#define k_start 0x1111
-#define kstart 0x1112
-#define karbvbl12 0x1113
-#define karbvbl22 0x1114
-#define kdffd 0x1115
-#define karbvbl1 0x1116
-#define karbvbl2 0x1117
-#define kfailure 0x1118
-#define kexitlabel 0x1119
-#define kaffpal 0x111a
-#define karbarbsaaccvaaaax 0x111b
+#define kstart 0x1111
+#define karbvbl12 0x1112
+#define karbvbl22 0x1113
+#define kdffd 0x1114
+#define karbvbl1 0x1115
+#define karbvbl2 0x1116
+#define kfailure 0x1117
+#define kexitlabel 0x1118
+#define kaffpal 0x1119
+#define karbarbsaaccvaaaax 0x111a
 
 struct MYPACKED Memory{
  db dummy1[4096]; // protective

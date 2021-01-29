@@ -12,13 +12,12 @@
 //namespace loop {
 
 #define kbegin 0x1001
-#define k_start 0x1111
-#define kstart 0x1112
-#define ktoto 0x1113
-#define ktoto1 0x1114
-#define ktoto2 0x1115
-#define kfailure 0x1116
-#define kexitlabel 0x1117
+#define kstart 0x1111
+#define ktoto 0x1112
+#define ktoto1 0x1113
+#define ktoto2 0x1114
+#define kfailure 0x1115
+#define kexitlabel 0x1116
 
 struct MYPACKED Memory{
  db dummy1[4096]; // protective

@@ -1,7 +1,7 @@
 .386p
 
 _DATA   segment use16 word public 'DATA' ;IGNORE
-_msg    db 'Hello World From Protected Mode!',10,13,'$'
+_msg    db 'Hello World From Protected Mode!',10,13,'$',0
 
 _DATA   ends ;IGNORE
 
@@ -13,9 +13,10 @@ start proc near
 
 sti                             ; Set The Interrupt Flag
 cld                             ; Clear The Direction Flag
-
+push _data
+pop ds
 mov ah,9                        ; AH=09h - Print DOS Message
-mov edx,offset _msg             ; DS:EDX -> $ Terminated String
+mov dx,offset _msg             ; DS:EDX -> $ Terminated String
 int 21h                         ; DOS INT 21h
 
 ; weird test...

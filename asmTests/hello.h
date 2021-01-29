@@ -12,16 +12,15 @@
 //namespace hello {
 
 #define kbegin 0x1001
-#define k_start 0x1111
-#define kstart 0x1112
-#define kfailure 0x1113
-#define kexitlabel 0x1114
+#define kstart 0x1111
+#define kfailure 0x1112
+#define kexitlabel 0x1113
 
 struct MYPACKED Memory{
  db dummy1[4096]; // protective
  db _data[16]; // segment _data
-char _msg[35];
- db dummy2[13]; // padding
+char _msg[36];
+ db dummy2[12]; // padding
  db _text[16]; // segment _text
  db stackseg[16]; // segment stackseg
 db dummy3[4096];

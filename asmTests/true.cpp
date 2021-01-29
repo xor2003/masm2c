@@ -4,10 +4,10 @@
  *
  */
 
-#include "errorlvl.h"
+#include "true.h"
 #include <curses.h>
 
-//namespace errorlvl {
+//namespace true {
 
 
 int init(struct _STATE* _state)
@@ -15,7 +15,7 @@ int init(struct _STATE* _state)
 X86_REGREF
 
 _state->_indent=0;
-logDebug=fopen("errorlvl.log","w");
+logDebug=fopen("true.log","w");
 ecx=0;
 
 initscr();
@@ -59,16 +59,8 @@ if (__disp==kbegin) goto start;
 else goto __dispatch_call;
  // Procedure start() start
 start:
-	R(MOV(ah, 0x4D));	// 6 MOV     AH,4Dh
-	R(_INT(0x21));	// 7 INT     21h
-	R(PUSH(ax));	// 8 push	ax
-	R(MOV(dl, al));	// 9 MOV     DL,AL
-	R(ADD(dl, 0x30));	// 10 ADD     DL,30h
-	R(MOV(ah, 02));	// 11 MOV     AH,02
-	R(_INT(0x21));	// 12 INT     21h
-	R(POP(ax));	// 13 pop	ax
-	R(MOV(ah, 0x4C));	// 14 MOV     AH,4Ch
-	R(_INT(0x21));	// 15 INT     21h
+	R(MOV(ax, 0x4C00));	// 5 MOV     AX,4C00h
+	R(_INT(0x21));	// 6 INT     21h
 
 
 return;

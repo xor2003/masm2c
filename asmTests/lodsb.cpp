@@ -57,8 +57,7 @@ X86_REGREF
 __disp=_i;
 if (__disp==kbegin) goto start;
 else goto __dispatch_call;
- // Procedure _start() start
-_start:
+ // Procedure start() start
 start:
 	R(MOV(ax, seg_offset(_data)));	// 18 mov ax,_DATA
 	R(MOV(ds, ax));	// 19 mov ds,ax
@@ -93,7 +92,6 @@ exitlabel:
 return;
 __dispatch_call:
 switch (__disp) {
-case k_start: 	goto _start;
 case kexitlabel: 	goto exitlabel;
 case kfailure: 	goto failure;
 case kstart: 	goto start;
