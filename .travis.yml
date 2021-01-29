@@ -19,5 +19,23 @@ matrix:
           - clang
           - gcc
 
+      cache:
+            apt: true
+
+      addons:
+        apt:
+          sources:
+          - ubuntu-toolchain-r-test
+          packages:
+          - gcc-multilib
+          - g++-multilib
+
+      before_install:
+          - echo 'getconf _NPROCESSORS_ONLN'
+          - lsb_release -c
+          - lsb_release -r
+
       script:
           - cd asmTests;./_tests.sh
+
+      sudo: false
