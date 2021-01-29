@@ -24,8 +24,6 @@ matrix:
 
       addons:
         apt:
-          sources:
-          - ubuntu-toolchain-r-test
           packages:
           - gcc-multilib
           - g++-multilib
