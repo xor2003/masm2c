@@ -187,7 +187,7 @@ def datadir(context, nodes, label, type, values):
         label = label.value
     else:
         label = ""
-    label = re.sub(r'@', "arb", label)
+    label = context.extra.mangle_label(label)
 
     # if isinstance(values, list) and len(values) == 1:
     #    values = values[0]
@@ -632,6 +632,7 @@ class Parser:
 
     def get_global_value(self, v, base):
         logging.debug("get_global_value(%s)" % v)
+        v = self.mangle_label(v)
         g = self.get_global(v)
         logging.debug(g)
         if isinstance(g, op._equ) or isinstance(g, op._assignment):
@@ -721,7 +722,7 @@ class Parser:
                 try:
                     v = v[1]
                     data_ctype = "dw"  # TODO for 16 bit only
-                    v = re.sub(r'@', "arb", v)
+                    v = self.mangle_label(v)
                     v = self.get_global_value(v, base)
                 except KeyError:
                     logging.warning("unknown address %s" % v)
@@ -878,9 +879,9 @@ class Parser:
         # if self.visible():
         # name = m.group(1)
         # logging.debug "~name: %s" %name
-        name = re.sub(r'@', "arb", name)
+        name = self.mangle_label(name)
         # logging.debug "~~name: %s" %name
-        if not (name.lower() in self.__skip_binary_data):
+        if not (name in self.__skip_binary_data):
             logging.debug("offset %s -> %s" % (name, "&m." + name.lower() + " - &m." + self.__segment))
             '''
             if self.proc is None:
@@ -1227,14 +1228,15 @@ class Parser:
         return result
 
 
-    def mangle_label(self, name):
+    @staticmethod
+    def mangle_label(name):
         name = name.lower()
         name = re.sub(r'@', "arb", name)
 
         return name
 
-
-    def is_register(self, expr):
+    @staticmethod
+    def is_register(expr):
         expr = expr.lower()
         size = 0
         if len(expr) == 2 and expr[0] in ['a', 'b', 'c', 'd'] and expr[1] in ['h', 'l']:
@@ -1248,8 +1250,8 @@ class Parser:
             size = 4
         return size
 
-
-    def typetosize(self, value):
+    @staticmethod
+    def typetosize(value):
         value = value.lower()
         try:
             size = {'byte': 1, 'sbyte': 1, 'word': 2, 'sword': 2, 'small': 2, 'dword': 4, 'sdword': 4, \

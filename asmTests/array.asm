@@ -15,7 +15,7 @@ sti                             ; Set The Interrupt Flag
 cld                             ; Clear The Direction Flag
 
 MOV ds, _data
-
+mov al,1
 cmp var1[1],2
 cmp var1[bx],2
 cmp var1[bx+si],2
@@ -23,43 +23,51 @@ cmp var1[bx+si],2
 cmp var1,2
 jne failure
 
+mov al,2
 cmp [var1],2
 jne failure
 
 ;JMP exitLabel
 
 
+mov al,3
 cmp [var1+1],5
 jne failure
 
 
-
+mov al,4
 cmp [var2],4
 jne failure
 
+mov al,5
 cmp [var2+2],6
 jne failure
 
+mov al,6
 cmp [var3],11
 jne failure
 
+mov al,7
 cmp [var3+3*4],4000000
 jne failure
 
+mov al,8
 cmp var3+3*4,4000000
 jne failure
 
+mov al,9
 mov ebp,3*4
-cmp [var3+ebp],4000000
+cmp ds:[var3+ebp],4000000
 jne failure
 
-cmp var3+ebp,4000000
+mov al,10
+cmp ds:var3+ebp,4000000
 jne failure
 
 MOV al,0
 JMP exitLabel
 failure:
-mov al,1
+;mov al,1
 exitLabel:
 mov ah,4ch                    ; AH=4Ch - Exit To DOS
 int 21h                       ; DOS INT 21h

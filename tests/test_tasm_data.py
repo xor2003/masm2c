@@ -16,6 +16,10 @@ class ParserTest(unittest.TestCase):
     def setUp(self):
         self.parser = Parser()
 
+    def test_data_10011(self):
+        self.parser.action_label(far=False, name='@df@@@@8', isproc=False)
+        self.assertEqual(self.parser.action_data(line="dw @df@@@@8"), ('karbdfarbarbarbarb8, // dummy1\n', 'dw dummy1;\n', 2))
+
     def test_data_10010(self):
         self.assertEqual(self.parser.action_data(line="ASCII DB '00000000',0Dh,0Ah,'$' ; buffer for ASCII string"), ("{'0','0','0','0','0','0','0','0','\\r','\\n','$'}, // ascii\n", 'char ascii[11];\n', 11))
 

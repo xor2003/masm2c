@@ -13,32 +13,38 @@ _start proc near
 start: ;IGNORE
 MOV ds, _data
 
+MOV al,1
 mov edi,offset var1
-mov byte ptr dl,[edi]
+mov dl,byte ptr [edi]
 cmp dl,2
 jne failure
 
+MOV al,2
 mov cl,2
 mov ds:[edi],cl
-mov byte ptr dl,[edi]
+mov dl,byte ptr [edi]
 cmp dl,2
 jne failure
 
+MOV al,3
 mov edi,offset var1
 mov dl,[edi+1]
 cmp dl,5
 jne failure
 
+MOV al,4
 inc byte ptr [edi+1]
 cmp byte ptr [edi+1],6
 jne failure
 
 
+MOV al,5
 mov edi,offset var2
 mov dl,[edi]
 cmp dl,4
 jne failure
 
+MOV al,6
 lea esi,var2
 cmp edi,esi
 jne failure
@@ -47,7 +53,7 @@ MOV al,0
 
 JMP exitLabel
 failure:
-mov al,1
+;mov al,1
 exitLabel:
 mov ah,4ch                    ; AH=4Ch - Exit To DOS
 int 21h                       ; DOS INT 21h

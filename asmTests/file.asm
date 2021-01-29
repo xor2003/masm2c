@@ -19,14 +19,18 @@ lea edi,buffer
 mov ebx,5
 
 call load_raw
+cmp al,0
+jne failure
 
 xor eax,eax
 cmp dword ptr buffer,'tseT'
+mov al, 1
 jne failure
+mov al,0
 JMP exitLabel
 
 failure:
-mov al,1
+;mov al,1
 exitLabel:
 mov ah,4ch                    ; AH=4Ch - Exit To DOS
 int 21h                       ; DOS INT 21h
@@ -46,7 +50,10 @@ mov al,00h  ;ouverture du fichier pour lecture.
 mov ah,03dh
 int 21h
 jnc noerror
-mov eax,1
+pop ds
+pop es
+popad
+mov al,2
 ret
 noerror:
 
@@ -84,6 +91,7 @@ int 21h
 pop ds
 pop es
 popad
+mov al,0
 ret
 load_raw endp
 

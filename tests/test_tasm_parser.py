@@ -918,7 +918,7 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp var3+3*4,4000000')), u'\tR(CMP(*(raddr(ds,offset(_data,var3)+3*4)), 4000000));\n')
 
     def test_instr_2480(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp var3+ebp,4000000')), u'\tR(CMP(*(raddr(ds,offset(_data,var3)+ebp)), 4000000));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp var3+ebp,4000000')), u'\tR(CMP(*(raddr(ss,offset(_data,var3)+ebp)), 4000000));\n')
 
     def test_instr_2490(self):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp word ptr [var5+2],25')), u'\tR(CMP(*(dw*)(raddr(ds,offset(_data,var5)+2)), 25));\n')

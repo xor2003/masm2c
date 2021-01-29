@@ -36,6 +36,14 @@ from masm2c.Token import Token
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #
 #from masm2c.parser import Parser
+OFFSETDIR = 'offsetdir'
+LABEL = 'LABEL'
+PTRDIR = 'ptrdir'
+REGISTER = 'register'
+SEGMENTREGISTER = 'segmentregister'
+SEGOVERRIDE = 'segoverride'
+PTRDIR = 'ptrdir'
+SQEXPR = 'sqexpr'
 
 
 class CrossJump(Exception):
@@ -217,13 +225,13 @@ class Cpp(object):
         #    expr = expr.strip()
         origexpr = expr
 
-        ptrdir = Token.find_and_call_tokens(expr, 'ptrdir')
+        ptrdir = Token.find_and_call_tokens(expr, PTRDIR)
         if ptrdir:
             value = ptrdir[0]
             # logging.debug('get_size res 1')
             return self.__context.typetosize(value)
 
-        issqexpr = Token.find_and_call_tokens(expr, 'sqexpr')
+        issqexpr = Token.find_and_call_tokens(expr, SQEXPR)
         if issqexpr:
             return 0
 
@@ -371,34 +379,28 @@ class Cpp(object):
         # self.__expr_size = size
 
         # calculate the segment register
-        segoverride = Token.find_and_call_tokens(expr, 'segoverride')
-        sqexpr = Token.find_and_call_tokens(expr, 'sqexpr')
+        segoverride = Token.find_and_call_tokens(expr, SEGOVERRIDE)
+        sqexpr = Token.find_and_call_tokens(expr, SQEXPR)
         if sqexpr:
             indirection = 1
         if segoverride:
-            self.__seg_prefix = segoverride[0].value
-            expr = Token.remove_tokens(expr, ['segmentregister'])
-        else:
-            if sqexpr:
-                regs = Token.find_and_call_tokens(sqexpr, 'register')
-                if regs and any([i in ['bp', 'ebp', 'sp', 'esp'] for i in regs]):  # TODO doublecheck
-                    self.__seg_prefix = "ss"
+            expr = Token.remove_tokens(expr, [SEGMENTREGISTER])
 
-        offsetdir = Token.find_and_call_tokens(expr, 'offsetdir')
+        offsetdir = Token.find_and_call_tokens(expr, OFFSETDIR)
         if offsetdir:
             indirection = -1
             expr = offsetdir
 
-        ptrdir = Token.find_and_call_tokens(expr, 'ptrdir')
+        ptrdir = Token.find_and_call_tokens(expr, PTRDIR)
         if ptrdir:
             indirection = 1
 
         if ptrdir or offsetdir or segoverride:
-            expr = Token.remove_tokens(expr, ['ptrdir', 'offsetdir', 'segoverride'])
+            expr = Token.remove_tokens(expr, [PTRDIR, OFFSETDIR, SEGOVERRIDE])
 
         expr, _ = Token.remove_squere_bracets(expr)
 
-        islabel = Token.find_and_call_tokens(expr, 'LABEL')
+        islabel = Token.find_and_call_tokens(expr, LABEL)
         if islabel and not offsetdir:
             for i in islabel:
                 res = self.get_var_size(i)
@@ -407,14 +409,21 @@ class Cpp(object):
                      indirection = 1
                      break
 
+        if indirection == 1 and not segoverride:
+                regs = Token.find_and_call_tokens(expr, REGISTER)
+                if regs and any([i in ['bp', 'ebp', 'sp', 'esp'] for i in regs]):  # TODO doublecheck
+                    self.__seg_prefix = "ss"
+        if segoverride:
+            self.__seg_prefix = segoverride[0].value
+
         # for "label" or "[label]" get size
-        self.__isjustlabel = (isinstance(origexpr, Token) and origexpr.type == 'LABEL') \
-                             or (isinstance(origexpr, Token) and origexpr.type == 'sqexpr' and \
-                                 isinstance(origexpr.value, Token) and origexpr.value.type == 'LABEL')
+        self.__isjustlabel = (isinstance(origexpr, Token) and origexpr.type == LABEL) \
+                             or (isinstance(origexpr, Token) and origexpr.type == SQEXPR and \
+                                 isinstance(origexpr.value, Token) and origexpr.value.type == LABEL)
 
         self.__indirection = indirection
         self.__current_size = size
-        Token.find_and_call_tokens(expr, 'LABEL', self.convert_label)
+        Token.find_and_call_tokens(expr, LABEL, self.convert_label)
         indirection = self.__indirection
         if self.__current_size != 0:  # and (indirection != 1 or size == 0):
             size = self.__current_size
