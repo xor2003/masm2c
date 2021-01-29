@@ -1,7 +1,5 @@
 #!/bin/bash -ex
 
-exit 1
-
 > _result.log
 
 . ./_config.sh
@@ -25,9 +23,10 @@ ls *.asm | \
 while read name;
 do 
   n=$(echo $name| perl -pe 's!\.asm!!');
+  export n
 #  (
 echo "Testing $n:"
-./_singletest.sh $n 2>&1 #|| fail $? 
+./_singletest.sh $n 2>&1 || fail $? 
 done | tee -a _result.log
 
-#exit $result
+exit $result
