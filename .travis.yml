@@ -28,6 +28,7 @@ matrix:
           packages:
           - gcc-multilib
           - g++-multilib
+          - uasm
 
       before_install:
           - echo 'getconf _NPROCESSORS_ONLN'

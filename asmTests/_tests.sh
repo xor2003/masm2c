@@ -15,6 +15,7 @@ fail()
   echo "$n failed $1"
   #exit $1
   result=$(( $result + 1 ))
+  export result
 }
 
 ls *.asm | \
