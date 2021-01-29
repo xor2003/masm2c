@@ -1,6 +1,6 @@
 .386p
 
-_DATA   segment use32 dword public 'DATA' ;IGNORE
+_DATA   segment use16 word public 'DATA' ;IGNORE
 var1 db 2,5,6
 var2 dw 4,6,9
 var3 dd 11,-11,2,4000000

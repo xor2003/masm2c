@@ -1,13 +1,12 @@
 .386p
 
-_DATA   segment use32 dword public 'DATA' ;IGNORE
+_DATA   segment use16 word public 'DATA' ;IGNORE
 _DATA   ends ;IGNORE
 
-_TEXT   segment use32 dword public 'CODE' ;IGNORE
+_TEXT   segment use16 word public 'CODE' ;IGNORE
 assume  cs:_TEXT,ds:_DATA
 
 start proc near
-_start: ;IGNORE
 
 mov ebx,2
 push ebx
@@ -42,8 +41,8 @@ jne failure
 
 popad
 
- push  eax ebp  ebx
-pOp  ebx ebp    eax
+;push  eax ebp  ebx
+;pOp  ebx ebp    eax
 
 cmp ebp,9
 jne failure
@@ -52,10 +51,10 @@ jne failure
 xor ecx,ecx
 mov ecx,0a0000h
 mov ebx,0f222h
-push bx fs
-pop fs cx
+;push bx fs
+;pop fs cx
 cmp ecx,0af222h
-jne exitLabel
+;jne exitLabel
 
 MOV al,0
 JMP exitLabel
@@ -72,5 +71,5 @@ stackseg   segment para stack 'STACK' ;IGNORE
 db 1000h dup(?)
 stackseg   ends ;IGNORE
 
-end _start ;IGNORE
+end start ;IGNORE
 

@@ -1,6 +1,6 @@
 .386p
 
-_DATA   segment use32 dword public 'DATA' ;IGNORE
+_DATA   segment use16 word public 'DATA' ;IGNORE
 
 pal_jeu db 000,000,000,000,000,021,000,000,042,000,000,063,009,000,000,009
 db 000,021,009,000,042,009,000,063,018,000,000,018,000,021,018,000
@@ -53,10 +53,10 @@ db 042,054,063,063,063,063,000,063,063,021,063,063,042,063,063,063
 
 _DATA   ends ;IGNORE
 
-_TEXT   segment use32 dword public 'CODE' ;IGNORE
+_TEXT   segment use16 word public 'CODE' ;IGNORE
 assume  cs:_TEXT,ds:_DATA
-_start proc near
-start: ;IGNORE
+start proc near
+
 
 mov ax,13h
 int 10h
@@ -124,7 +124,7 @@ mov al,1
 exitLabel:
 mov ah,4ch                    ; AH=4Ch - Exit To DOS
 int 21h
-_start endp
+start endp
 
 affpal      proc near
 pushad

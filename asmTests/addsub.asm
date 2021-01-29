@@ -1,6 +1,6 @@
 .386p
 
-_DATA   segment use32 dword public 'DATA' ;IGNORE
+_DATA   segment use16 word public 'DATA' ;IGNORE
 var1 db 2,5,6
 var2 dw 4,6,9
 var3 dd 11,-11,2,4
@@ -9,9 +9,9 @@ var5 dd 10 dup (?)
 
 _DATA   ends ;IGNORE
 
-_TEXT   segment use32 dword public 'CODE' ;IGNORE
+_TEXT   segment use16 word public 'CODE' ;IGNORE
 assume  cs:_TEXT,ds:_DATA
-_start: ;IGNORE
+start proc near
 
 add word ptr [var5+2],50
 cmp word ptr [var5+2],50
@@ -70,10 +70,11 @@ exitLabel:
 mov ah,4ch                    ; AH=4Ch - Exit To DOS
 int 21h
 
+start endp
 _TEXT   ends ;IGNORE
 
 stackseg   segment para stack 'STACK' ;IGNORE
 db 1000h dup(?)
 stackseg   ends ;IGNORE
 
-end _start ;IGNORE
+end start ;IGNORE

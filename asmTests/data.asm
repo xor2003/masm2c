@@ -5,7 +5,7 @@ testEqu equ 3
 
 .386p
 
-_DATA   segment use32 dword public 'DATA' ;IGNORE
+_DATA   segment use16 word public 'DATA' ;IGNORE
 beginningdata db 4
 var1 db 2
 var2 dw 11
@@ -29,11 +29,11 @@ enddata db 4
 
 _DATA   ends ;IGNORE
 
-_TEXT   segment use32 dword public 'CODE' ;IGNORE
+_TEXT   segment use16 word public 'CODE' ;IGNORE
 assume  cs:_TEXT,ds:_DATA
 
-_start proc near
-start: ;IGNORE
+start proc near
+
 MOV ax, _data
 MOV ds, ax
 
@@ -86,7 +86,7 @@ mov al,1
 exitLabel:
 mov ah,4ch                    ; AH=4Ch - Exit To DOS
 int 21h                       ; DOS INT 21h
-_start endp
+start endp
 
 
 
@@ -127,4 +127,4 @@ stackseg   segment para stack 'STACK' ;IGNORE
 db 1000h dup(?)
 stackseg   ends ;IGNORE
 
-end _start ;IGNORE
+end start ;IGNORE

@@ -9,21 +9,20 @@ _DATA   ends ;IGNORE
 _TEXT   segment use16 word public 'CODE' ;IGNORE
 assume  cs:_TEXT,ds:_DATA
 start proc near
-_start: ;IGNORE
 
 mov ax,_DATA
 mov ds,ax
 
 mov ebp,32
-mov ax,4
-jmp [cs:table+ax]
+mov bx,4
+jmp [cs:jtable+bx]
 jmp failure
 mov ebp,30
 @df@@@@8:
 
 mov ebp,2
-mov ax,6
-call [cs:table+ax]
+mov bx,6
+call [cs:jtable+bx]
 jmp next
 mov ebp,31
 @df@@@@9:
@@ -191,7 +190,7 @@ mov ah,4ch                    ; AH=4Ch - Exit To DOS
 int 21h
 
 
-table   dw 0
+jtable   dw 0
 	dw offset failure
   dw @df@@@@8
   dw @df@@@@9

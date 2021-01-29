@@ -1,20 +1,21 @@
 .386p
 
-_DATA   segment use32 dword public 'DATA' ;IGNORE
+_DATA   segment use16 word public 'DATA' ;IGNORE
 var1 db 2,5,6
 var2 dw 4,6,9
 var3 dd 11,-11,2,4000000
 _DATA   ends ;IGNORE
 
-_TEXT   segment use32 dword public 'CODE' ;IGNORE
+_TEXT   segment use16 word public 'CODE' ;IGNORE
 assume  cs:_TEXT,ds:_DATA
-_start proc near
-start: ;IGNORE
+start proc near
+
 
 sti                             ; Set The Interrupt Flag
 cld                             ; Clear The Direction Flag
 
-MOV ds, _data
+MOV ax, _data
+MOV ds, ax
 mov al,1
 cmp var1[1],2
 cmp var1[bx],2
@@ -60,9 +61,9 @@ mov ebp,3*4
 cmp ds:[var3+ebp],4000000
 jne failure
 
-mov al,10
-cmp ds:var3+ebp,4000000
-jne failure
+;mov al,10
+;cmp ds:var3+ebp,4000000
+;jne failure
 
 MOV al,0
 JMP exitLabel
@@ -71,7 +72,7 @@ failure:
 exitLabel:
 mov ah,4ch                    ; AH=4Ch - Exit To DOS
 int 21h                       ; DOS INT 21h
-_start endp
+start endp
 
 _TEXT   ends ;IGNORE
 

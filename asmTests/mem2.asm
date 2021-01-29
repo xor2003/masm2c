@@ -1,6 +1,6 @@
 .386p
 
-_DATA   segment use32 dword public 'DATA' ;IGNORE
+_DATA   segment use16 word public 'DATA' ;IGNORE
 a db 1
 ;padding db 10241024 dup(?)
 
@@ -16,11 +16,11 @@ ASCII DB '00000000',0Dh,0Ah,'$' ; buffer for ASCII string
 
 _DATA   ends ;IGNORE
 
-_TEXT   segment use32 dword public 'CODE' ;IGNORE
+_TEXT   segment use16 word public 'CODE' ;IGNORE
 assume  cs:_TEXT,ds:_DATA
-_start proc near
+start proc near
 
-start: ;IGNORE
+
 
 taille_moire equ ((((2030080+64000*26)/4096)+1)*4096)-1
 
@@ -88,7 +88,7 @@ mov al,1
 exitLabel:
 mov ah,4ch                    ; AH=4Ch - Exit To DOS
 int 21h                       ; DOS INT 21h
-_start endp
+start endp
 
 _TEXT   ends ;IGNORE
 
@@ -96,4 +96,4 @@ stackseg   segment para stack 'STACK' ;IGNORE
 db 1000h dup(?)
 stackseg   ends ;IGNORE
 
-end _start ;IGNORE
+end start ;IGNORE

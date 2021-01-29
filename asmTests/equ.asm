@@ -1,17 +1,15 @@
 .386p
 
-_DATA   segment use32 dword public 'DATA' ;IGNORE
+_DATA   segment use16 word public 'DATA' ;IGNORE
 var1 db 6
      db 12
      db 12
      db 12
 _DATA   ends ;IGNORE
 
-_TEXT   segment use32 dword public 'CODE' ;IGNORE
+_TEXT   segment use16 word public 'CODE' ;IGNORE
 assume  cs:_TEXT,ds:_DATA
-_start proc near
-start:
-
+start proc near
 
 ;mov eax, E  TODO implement several passes
 ;cmp eax,1
@@ -46,7 +44,7 @@ failure::
 exitLabel:
 mov ah,4ch                    ; AH=4Ch - Exit To DOS
 int 21h
-_start endp
+start endp
 
 incebx proc near
 
@@ -68,4 +66,4 @@ stackseg   segment para stack 'STACK' ;IGNORE
 db 1000h dup(?) ;IGNORE
 stackseg   ends ;IGNORE
 
-end _start ;IGNORE
+end start ;IGNORE

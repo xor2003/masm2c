@@ -1,12 +1,11 @@
 .386p
 
-_DATA   segment use32 dword public 'DATA' ;IGNORE
+_DATA   segment use16 word public 'DATA' ;IGNORE
 _DATA   ends ;IGNORE
 
-_TEXT   segment use32 dword public 'CODE' ;IGNORE
+_TEXT   segment use16 word public 'CODE' ;IGNORE
 assume  cs:_TEXT,ds:_DATA
-_start proc near
-start:
+start proc near
 
 xor eax,eax
 xor edx,edx
@@ -37,7 +36,7 @@ mov al,1
 exitLabel:
 mov ah,4ch                    ; AH=4Ch - Exit To DOS
 int 21h
-_start endp
+start endp
 
 incebx proc near
 inc ebx
@@ -68,4 +67,4 @@ stackseg   segment para stack 'STACK' ;IGNORE
 db 1000h dup(?) ;IGNORE
 stackseg   ends ;IGNORE
 
-end _start ;IGNORE
+end start ;IGNORE

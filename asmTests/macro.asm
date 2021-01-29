@@ -1,6 +1,6 @@
 .386p
 
-_DATA   segment use32 dword public 'DATA' ;IGNORE
+_DATA   segment use16 word public 'DATA' ;IGNORE
 varMAC1 db 10 dup (5)
         db 10 dup (6)
 last_voice db 1
@@ -10,11 +10,11 @@ fx     dw 14 dup (0)
 
 _DATA   ends ;IGNORE
 
-_TEXT   segment use32 dword public 'CODE' ;IGNORE
+_TEXT   segment use16 word public 'CODE' ;IGNORE
 assume  cs:_TEXT,ds:_DATA
-_start proc near
+start proc near
 
-start: ;IGNORE
+
 
 
 
@@ -111,7 +111,7 @@ mov al,1
 exitLabel:
 mov ah,4ch                    ; AH=4Ch - Exit To DOS
 int 21h                       ; DOS INT 21h
-_start endp
+start endp
 
 _TEXT   ends ;IGNORE
 
@@ -119,4 +119,4 @@ stackseg   segment para stack 'STACK' ;IGNORE
 db 1000h dup(?)
 stackseg   ends ;IGNORE
 
-end _start ;IGNORE
+end start ;IGNORE

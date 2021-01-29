@@ -1,17 +1,18 @@
 .386p
 
-_DATA   segment use32 dword public 'DATA' ;IGNORE
+_DATA   segment use16 word public 'DATA' ;IGNORE
 var1 db 2
 var2 dw 11
 var3 dd 34
 _DATA   ends ;IGNORE
 
-_TEXT   segment use32 dword public 'CODE' ;IGNORE
+_TEXT   segment use16 word public 'CODE' ;IGNORE
 assume  cs:_TEXT,ds:_DATA
-_start proc near
-start: ;IGNORE
+start proc near
 
-mov ds, _data
+
+mov ax, _data
+mov ds, ax
 xor eax,eax
 INC eax
 CMP eax,1
@@ -53,7 +54,7 @@ mov al,1
 exitLabel:
 mov ah,4ch                    ; AH=4Ch - Exit To DOS
 int 21h
-_start endp
+start endp
 
 _TEXT   ends ;IGNORE
 

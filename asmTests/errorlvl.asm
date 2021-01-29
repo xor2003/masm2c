@@ -1,8 +1,8 @@
 _TEXT   segment use16 word public 'CODE' ;IGNORE
 assume  cs:_TEXT,ds:_TEXT,ss:_TEXT
 org 100h
-_start proc near
-start: ;IGNORE
+start proc near
+
 MOV     AH,4Dh
 INT     21h
 push	ax
@@ -13,8 +13,8 @@ INT     21h
 pop	ax
 MOV     AH,4Ch
 INT     21h
-_start endp
+start endp
 
 _TEXT   ends ;IGNORE
 
-end _start ;IGNORE
+end start ;IGNORE
