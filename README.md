@@ -10,6 +10,54 @@ Because of DOS segmentation model, etc)
 
 Translator generates pseudo assembler instruction which can be compiled with C compiler.
 
+The following example:
+
+```assembler
+_DATA   segment use16 word public 'DATA'
+_msg    db 'Hello World!',10,13,'$'
+
+_DATA   ends
+
+_TEXT   segment use16 word public 'CODE'
+  assume  cs:_TEXT,ds:_DATA
+start proc near
+
+sti                             ; Set The Interrupt Flag
+cld                             ; Clear The Direction Flag
+push _data
+pop ds
+mov ah,9                        ; AH=09h - Print DOS Message
+mov dx,offset _msg             ; DS:EDX -> $ Terminated String
+int 21h                         ; DOS INT 21h
+
+mov ax,4c00h                    ; AH=4Ch - Exit To DOS
+int 21h                       ; DOS INT 21h
+start endp
+
+_TEXT   ends
+```
+
+Converts to working:
+
+```c++
+start:
+	R(STI);	// 12 sti
+	R(CLD);	// 13 cld
+	R(PUSH(seg_offset(_data)));	// 14 push _data
+	R(POP(ds));	// 15 pop ds
+	R(MOV(ah, 9));	// 16 mov ah,9
+	R(MOV(dx, offset(_data,_msg)));	// 17 mov dx,offset _msg
+	R(_INT(0x21));	// 18 int 21h
+	R(MOV(ax, 0x4c00));	// 20 mov ax,4c00h
+	R(_INT(0x21));	// 21 int 21h
+
+struct Memory m = {
+{0}, // padding
+{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // segment _data
+{'H','e','l','l','o',' ','W','o','r','l','d','!','\n','\r','$'}, // _msg
+...
+```
+
 Your porting path:
 
 0. DOS binary 16 bit real or 32 bit protected modes -> 
