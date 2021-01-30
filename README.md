@@ -85,8 +85,9 @@ License: GPL2.
 Sure ASM2C have cleaner code but it written on Swift and less instructions supported, also only protected mode.
 
 TODO: 
-- equ out of segment/proceedure
+- structures support
 - macros support
+- equ out of segment/proceedure
 - full VGA/EGA
 - ~~better parser based on Masm EBNF~~
 - proper SB emulation or use DOSBOX as library
@@ -101,6 +102,8 @@ In other repo there are scripts which can help to convert DOSBOX run-time traces
 
 To build resulting disassembly I use uasm(jwasm)/masm6, link5/tlink. See uasm project \Samples\Dos\ for examples.
 
+Assembler source code for Stunts game https://github.com/xor2003/restunts
+Assembler source code for Tornado flight sim https://github.com/xor2003/tornado-dos-flightsim
 See list of DOS games with debug information http://bringerp.free.fr/forum/viewtopic.php?f=1&t=128
 
 How to run to convert your masm 16 bit source to C:
