@@ -82,13 +82,13 @@ flags: Carry, Zero, Sign are supported for most of x86 instructions.
 
 License: GPL2.
 
-Sure ASM2C have cleaner code and good parser but it written on Swift and less instructions supported, also only protected mode.
+Sure ASM2C have cleaner code but it written on Swift and less instructions supported, also only protected mode.
 
 TODO: 
 - equ out of segment/proceedure
 - macros support
 - full VGA/EGA
-- better parser based on Masm EBNF
+- ~~better parser based on Masm EBNF~~
 - proper SB emulation or use DOSBOX as library
 - better keyboard
 - add FPU instructions support (low priority)
@@ -96,7 +96,7 @@ TODO:
 Also to easier disassembling (exe to asm) need to collect run-time information from dosbox or other emulator to annotate IDA disassembly. Maybe modify dosbox debugger tracing mechanism to collect:
 - current instruction is code
 - access to memory (which segment), offset which segment
-- segement register value
+- segment register value
 In other repo there are scripts which can help to convert DOSBOX run-time traces into IDA annotations to simplify disassembly.
 
 To build resulting disassembly I use uasm(jwasm)/masm6, link5/tlink. See uasm project \Samples\Dos\ for examples.
