@@ -165,7 +165,7 @@ erroropt: U_ERR textitem? | U_ERRE expr opttext? | U_ERRNZ expr opttext? | U_ERR
 exitdir: U_EXIT expr?  linereminder;
 exitmdir: EXITM textitem? linereminder;
 exprlist: expr+[COMMA];
-exprspacelist: expr+[SPACE];
+exprspacelist: expr+;
 externdef: langtype?  LABEL altidq? ':' externtype;
 externdir: externkey externlist linereminder;
 externkey: EXTRN | EXTERN | EXTERNDEF ;
@@ -193,8 +193,9 @@ ifdir: ifstatement linereminder insegdir+ elseifblock? elsedirectivelist? ENDIF 
 ifstatement: IF expr| IFE expr| IFB textitem| IFNB textitem| IFDEF LABEL| IFNDEF LABEL| IFDIF textitem COMMA textitem| IFDIFI textitem COMMA textitem| IFIDN textitem COMMA textitem| IFIDNI textitem COMMA textitem| IF1 | IF2 ;
 includedir: INCLUDE name=filespec linereminder;
 includelibdir: INCLUDELIB filespec linereminder;
+dupdir: times=expr DUP '(' values=scalarinstlist ')';
 initvalue: expr {15,left}
-| '?'| expr  DUP '(' scalarinstlist ')'| floatnumber;
+| '?'| dupdir | floatnumber;
 insegdir: label=labeldef insegmentdir=insegmentdir | insegmentdir=insegmentdir;
 //insegdirlist: insegdir+;
 insegmentdir: instruction| datadir| controldir| startupdir| exitdir| offsetdir| labeldir| procdir  localdirlist? endpdir| procdir  localdirlist? insegdir+ endpdir| invokedir| generaldir | linereminder;

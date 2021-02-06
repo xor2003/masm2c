@@ -1,11 +1,12 @@
 from __future__ import absolute_import
 from __future__ import print_function
 
-from masm2c import cpp
+from masm2c import cpp, op
 import logging
 from mock import patch
 from masm2c.parser import Parser, calculate_type_size
 from masm2c.proc import Proc
+import masm2c.op
 import traceback
 import unittest
 
@@ -1203,6 +1204,8 @@ class ParserTest(unittest.TestCase):
         cpp_instance = cpp.Cpp(parser_instance)
         proc_instance = Proc('mainproc', False)
         cpp_instance.proc = proc_instance
+        parser_instance.set_global("_data", op.var(1, 0, issegment=True))
+        parser_instance.set_global("var1", op.var(size=1, offset=1, name="var1", segment="_data", elements=1))
         self.assertEqual(proc_instance.generate_c_cmd(cpp_instance, parser_instance.action_data(u'aaaa = 1')), '#undef aaaa\n#define aaaa 1\n')
 
         self.assertEqual(proc_instance.generate_c_cmd(cpp_instance, parser_instance.action_data(u'B = 1')), '#undef B\n#define B 1\n')

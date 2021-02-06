@@ -21,7 +21,6 @@ from masm2c import proc
 from masm2c import op
 from masm2c.Token import Token
 
-
 # from parglare.parser import Context as PGContext
 # action = get_collector()
 # ScummVM - Graphic Adventure Engine
@@ -44,6 +43,9 @@ from masm2c.Token import Token
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #
+INTEGERCNST = 'INTEGER'
+STRINGCNST = 'STRING'
+
 
 def escape(s):
     if isinstance(s, list):
@@ -53,15 +55,16 @@ def escape(s):
     else:
         return s.translate(s.maketrans({"\\": r"\\"})).replace("''", "'").replace('""', '"')
 
+
 def read_asm_file(file_name):
-        logging.info("opening file %s..." % file_name)
-        if sys.version_info >= (3, 0):
-            fd = open(file_name, 'rt', encoding="cp437")
-        else:
-            fd = open(file_name, 'rt')
-        content = fd.read()
-        fd.close()
-        return content
+    logging.info("opening file %s..." % file_name)
+    if sys.version_info >= (3, 0):
+        fd = open(file_name, 'rt', encoding="cp437")
+    else:
+        fd = open(file_name, 'rt')
+    content = fd.read()
+    fd.close()
+    return content
 
 
 macroids = []
@@ -70,14 +73,14 @@ macroidre = re.compile(r'([A-Za-z@_\$\?][A-Za-z0-9@_\$\?]*)')
 
 
 def get_line_number(context):
-    #old_line, old_col = parglare.pos_to_line_col(context.input_str, context.start_position)
+    # old_line, old_col = parglare.pos_to_line_col(context.input_str, context.start_position)
     new_line = context.input_str[: context.start_position].count('\n') + 1
-    #line_start_pos = context.input_str.rfind('\n', 0, context.start_position)
-    #if line_start_pos == -1:
+    # line_start_pos = context.input_str.rfind('\n', 0, context.start_position)
+    # if line_start_pos == -1:
     #    line_start_pos = 0
-    #new_col = context.start_position - line_start_pos - 1
-    #assert(old_line == new_line and old_col == new_col)
-    return  new_line
+    # new_col = context.start_position - line_start_pos - 1
+    # assert(old_line == new_line and old_col == new_col)
+    return new_line
 
 
 def get_raw(context):
@@ -99,30 +102,29 @@ def build_ast(nodes, type=''):
         return Node(name=nodes.symbol.name, type=type, keyword=nodes.symbol.keyword, value=nodes.value)
 '''
 
-'''
-def make_token(context, nodes):
-    if len(nodes) == 1 and context.production.rhs[0].name not in ('type'):
-        nodes = Token(context.production.rhs[0].name, nodes[0])
-    if context.production.rhs[0].name in ('type'):
-        nodes = nodes[0]
-    return nodes
-'''
-
 
 def make_token(context, nodes):
     if len(nodes) == 1 and context.production.rhs[0].name not in (
-    'type', 'e01', 'e02', 'e03', 'e04', 'e05', 'e06', 'e07', 'e08', 'e09', 'e10', 'e11'):
+            'type', 'e01', 'e02', 'e03', 'e04', 'e05', 'e06', 'e07', 'e08', 'e09', 'e10', 'e11'):
         nodes = Token(context.production.rhs[0].name, nodes[0])
     if context.production.rhs[0].name in (
-    'type', 'e01', 'e02', 'e03', 'e04', 'e05', 'e06', 'e07', 'e08', 'e09', 'e10', 'e11'):
+            'type', 'e01', 'e02', 'e03', 'e04', 'e05', 'e06', 'e07', 'e08', 'e09', 'e10', 'e11'):
         nodes = nodes[0]
     return nodes
+
+
+def expr(context, nodes):
+    return Token('expr', make_token(context, nodes))
+
+
+def dupdir(context, nodes, times, values):
+    return Token('dupdir', [times, values])
 
 
 def segoverride(context, nodes):
     # global cur_segment
     if isinstance(nodes[0], list):
-        #cur_segment = nodes[0][-1]
+        # cur_segment = nodes[0][-1]
         return nodes[0][:-1] + [Token('segoverride', nodes[0][-1]), nodes[2]]
     # cur_segment = nodes[0] #!
     return [Token('segoverride', nodes[0]), nodes[2]]
@@ -139,10 +141,6 @@ def INTEGER(context, nodes):
     return Token('INTEGER', cpp.convert_number_to_c(nodes))
 
 
-def expr(context, nodes):
-    return make_token(context, nodes)
-
-
 def macroid(head, s, pos):
     mtch = macroidre.match(s[pos:])
     if mtch:
@@ -155,6 +153,7 @@ def macroid(head, s, pos):
             return None
     else:
         return None
+
 
 def structtag(head, s, pos):
     mtch = macroidre.match(s[pos:])
@@ -169,57 +168,101 @@ def structtag(head, s, pos):
     else:
         return None
 
+
 def structinstance(context, nodes):
     print("structinstance", str(nodes))
     return Token('structinstance', nodes)
+
 
 def macrodir(_, nodes, name):
     macroids.insert(0, name.value.lower())
     logging.debug("macroid added ~~" + name.value + "~~")
 
+
 def structdir(context, nodes, name, item):
     print("structdir", str(nodes))
     structtags.insert(0, name.value.lower())
     logging.debug("structtag added ~~" + name.value + "~~")
-    return [] #Token('structdir', nodes) TODO ignore by now
+    return []  # Token('structdir', nodes) TODO ignore by now
+
+
+def calculate_data_size_new(size, values):
+    if isinstance(values, list):
+        return sum(calculate_data_size_new(size, x) for x in values)
+    elif isinstance(values, Token):
+        if values.type == 'expr':
+            if isinstance(values.value, Token) and values.value.type == STRINGCNST:
+                return calculate_data_size_new(size, values.value)
+            else:
+                return size
+        elif values.type == STRINGCNST:
+            return Parser.calculate_STRING_size(values.value)
+        elif values.type == 'dupdir':
+            return Parser.parse_int(escape(values.value[0])) * calculate_data_size_new(size, values.value[1])
+        else:
+            return size
+    elif isinstance(values, str):
+        if values == '?':
+            return size
+        return len(values)
+    else:
+        raise Exception('Unknown Token: ' + str(values))
+
+
+def remove_dupdir(values):
+    if isinstance(values, list):
+        return [remove_dupdir(x) for x in values]
+    elif isinstance(values, Token) and values.type == 'dupdir':
+        return Parser.parse_int(escape(values.value[0])) * remove_dupdir(values.value[1])
+    elif isinstance(values, str) and values == '?':
+        return 0
+    return values
+
 
 def datadir(context, nodes, label, type, values):
+    logging.debug("datadir " + str(nodes) + " ~~")
     if label:
         label = label.value
     else:
         label = ""
     label = context.extra.mangle_label(label)
 
-    # if isinstance(values, list) and len(values) == 1:
-    #    values = values[0]
     if Token.find_and_call_tokens(nodes, 'structinstance'):
         return []
+
+    binary_width = calculate_type_size(type)
+    size = calculate_data_size_new(binary_width, values)
+
+    #values = Token.remove_tokens(values, ['expr'])
+    '''
+    values = remove_dupdir(values) # temporary fix unittests
 
     if isinstance(values, list):
         s = []
         for x in values:
-            # if isinstance(x, list):
-            #    values = [i for i in values]
             if isinstance(x, Token):
                 s = s + [x.value]
-            else:  # if isinstance(x, str):
+            else:
                 s = s + [x]
         values = s
     elif isinstance(values, Token):
-        values = values.value
+        if values.type=='dupdir':
+            values = Parser.parse_int(escape(values.value[0])) * [values.value[1]]
+        else:
+            values = values.value
 
     values = escape(values)
-    # if isinstance(values, str):
-    #    values = [values]
+    '''
 
-    logging.debug("datadir " + str(nodes) + " ~~")
-    return context.extra.datadir_action(label.lower(), type, values)
+    return context.extra.datadir_action(label.lower(), type, values, size)
+
 
 def includedir(context, nodes, name):
-    #context.parser.input_str = context.input_str[:context.end_position] + '\n' + read_asm_file(name) \
-    #+ '\n' + context.input_str[context.end_position:]
+    # context.parser.input_str = context.input_str[:context.end_position] + '\n' + read_asm_file(name) \
+    # + '\n' + context.input_str[context.end_position:]
     result = context.extra.parse_include_file_lines(name)
     return result
+
 
 def segdir(context, nodes, type, name):
     logging.debug("segdir " + str(nodes) + " ~~")
@@ -273,7 +316,8 @@ def instrprefix(context, nodes):
     o.line = get_raw(context)
     o.line_number = get_line_number(context)
     context.extra.proc.stmts.append(o)
-    return []  # nodes
+    return []
+
 
 def asminstruction(context, nodes, instruction, args):
     logging.debug("instruction " + str(nodes) + " ~~")
@@ -294,7 +338,7 @@ def asminstruction(context, nodes, instruction, args):
 def enddir(context, nodes, label):
     logging.debug("end " + str(nodes) + " ~~")
     if label:
-        context.extra.entry_point = label.value.lower()
+        context.extra.entry_point = Token.find_and_call_tokens(label, 'LABEL')[0].lower()
     return nodes
 
 
@@ -327,18 +371,18 @@ def segmentregister(context, nodes):
 
 
 def sqexpr(context, nodes):
-    logging.debug("/~"+str(nodes)+"~\\")
+    logging.debug("/~" + str(nodes) + "~\\")
     res = nodes[1]
     return Token('sqexpr', res)
 
 
 def offsetdir(context, nodes):
-    logging.debug("offset /~"+str(nodes)+"~\\")
+    logging.debug("offset /~" + str(nodes) + "~\\")
     return Token('offsetdir', nodes[1])
 
 
 def segmdir(context, nodes):
-    logging.debug("offset /~"+str(nodes)+"~\\")
+    logging.debug("offset /~" + str(nodes) + "~\\")
     # global indirection
     # indirection = -1
     return Token('segmdir', nodes[1])
@@ -351,7 +395,9 @@ def LABEL(context, nodes):
 def STRING(context, nodes):
     return Token('STRING', nodes)
 
+
 actions = {
+    "dupdir": dupdir,
     "structinstance": structinstance,
     "structdir": structdir,
     "includedir": includedir,
@@ -382,7 +428,7 @@ actions = {
     "segoverride": segoverride,
     "sqexpr": sqexpr,
     "xordir": xordir,
-    "expr": make_token,
+    "expr": expr,
     "aexpr": make_token,
     "cexpr": make_token,
     "cxzexpr": make_token,
@@ -410,7 +456,8 @@ class ParglareParser(object):
             cls._inst.or_grammar = Grammar.from_file(file_name, ignore_case=True, recognizers=recognizers)
             ## cls._inst.parser = PGParser(grammar, debug=True, debug_trace=True, actions=action.all)
             ## cls._inst.parser = PGParser(grammar, debug=True, actions=action.all)
-            cls._inst.or_parser = PGParser(cls._inst.or_grammar, actions=actions)  # , build_tree = True, call_actions_during_tree_build = True)
+            cls._inst.or_parser = PGParser(cls._inst.or_grammar,
+                                           actions=actions)  # , build_tree = True, call_actions_during_tree_build = True)
 
             cls._inst.grammar = cls._inst.or_grammar
             cls._inst.parser = copy(cls._inst.or_parser)
@@ -462,7 +509,7 @@ class Parser:
         self.__dummy_enum = 0
         self.__segment = "default_seg"
 
-        #self.__symbols = []
+        # self.__symbols = []
         self.__link_later = []
         # self.data_started = False
         # self.prev_data_type = 0
@@ -479,7 +526,7 @@ class Parser:
         return True
 
     def push_if(self, text):
-        value = self.eval(text)
+        value = self.evall(text)
         # logging.debug "if %s -> %s" %(text, value)
         self.__stack.append(value)
 
@@ -545,9 +592,9 @@ class Parser:
     def get_offset(self, name):
         return self.__offsets[name.lower()]
 
-    def eval(self, stmt):
+    def evall(self, stmt):
         try:
-            return self.parse_int(stmt)
+            return Parser.parse_int(stmt)
         except:
             pass
         value = self.__globals[stmt.lower()].value
@@ -565,13 +612,14 @@ class Parser:
         logging.debug("$ = %d" % self.__cur_seg_offset)
         return re.sub(r'\$', "%d" % self.__cur_seg_offset, v)
 
-    def parse_int(self, v):
+    @staticmethod
+    def parse_int(v):
         # logging.debug "~1~ %s" %v
         if isinstance(v, list):
             vv = ""
             for i in v:
                 try:
-                    i = self.parse_int(i)
+                    i = Parser.parse_int(i)
                 except:
                     pass
                 vv += str(i)
@@ -600,36 +648,30 @@ class Parser:
         for v in data:
             # v = v.strip()
             if isinstance(v, str) and width == 1 and len(v) >= 2 and (v[0] in ["'", '"']) and v[-1] == v[0]:
-                v.replace("''", "'")
-                s += len(v) - 2
+                s += self.calculate_STRING_size(v)
                 continue
 
             if isinstance(v, list) and len(v) == 5 and v[1].lower() == 'dup':
                 # logging.error(v)
                 # we should parse that
-                n = self.parse_int(v[0])
+                n = Parser.parse_int(v[0])
                 '''
                 value = m.group(2)
                 value = value.strip()
                 if value == '?':
                     value = 0
                 else:
-                    value = self.parse_int(value)
+                    value = Parser.parse_int(value)
                 '''
                 s += n * width
                 continue
-            '''
-            try:
-                v = self.parse_int(v)
-            except:
-                try:
-                    g = self.get_global(v)
-                    v = g.offset
-                except:
-                    v = 0
-            '''
             s += width
         return s
+
+    @staticmethod
+    def calculate_STRING_size(v):
+        v = v.replace("\'\'", "'").replace('\"\"', '"')
+        return len(v) - 2
 
     def get_global_value(self, v, base):
         logging.debug("get_global_value(%s)" % v)
@@ -650,91 +692,16 @@ class Parser:
     def convert_data_to_c(self, label, width, data):
         """ Generate C formated data """
         logging.debug("convert_data_to_c %s %d %s" % (label, width, data))
-        #original_label = label
+        # original_label = label
         label = label.lower()
-        is_string = False
-        elements = 0
-        data_ctype = {1: 'db', 2: 'dw', 4: 'dd', 8: 'dq', 10: 'dt'}[width]
-        r = [""]
-        rh = []
+
+
+
+        elements, is_string, r = self.process_data_tokens(data, width)
+
         base = 1 << (8 * width)
-
-        for v in data:
-            # v = v.strip()
-            # check if there are strings
-            if isinstance(v, str) and width == 1 and len(v) >= 2 and (v[0] in ["'", '"']) and v[-1] == v[0]:
-                v.replace("''", "'")
-                res = []
-                for i in range(1, len(v) - 1):
-                    res.append(v[i])
-                r += res
-
-                is_string = True
-                continue
-
-            logging.debug("is_string %d" % is_string)
-            logging.debug("v ~%s~" % v)
-            '''
-            if is_string and v.isdigit():
-                    v = "'\\" +str(hex(int(v)))[1:] + "'"
-            '''
-
-            # check if dup
-            if isinstance(v, list) and len(v) == 5 and v[1].lower() == 'dup':
-                # we should parse that
-                group1 = v[0]
-                if isinstance(group1, list):
-                    group1 = "".join(group1)
-                values = v[3]
-                # value = value.strip()
-                n, res = self.action_dup(group1, values)
-                r += res
-                elements += n
-                continue
-
-            elements += 1
-            if isinstance(v, int) or isinstance(v, str):
-                try:  # just number or many
-                    v = v.strip()
-                    if v == '?':
-                        v = '0'
-                    v = self.parse_int(v)
-
-                    if v < 0:  # negative values
-                        v += base
-
-                except:
-                    # global name
-                    # traceback.print_stack(file=sys.stdout)
-                    # logging.debug "global/expr: ~%s~" %v
-                    try:
-                        v = self.get_global_value(v, base)
-                    except KeyError:
-                        v = 0
-
-            # vv = v.split()
-            # logging.warning(vv)
-            # if vv[0] == "offset":  # pointer
-            #    data_ctype = "dw" # TODO for 16 bit only
-            #    v = vv[1]
-
-            logging.debug("global/expr: ~%s~" % v)
-            if isinstance(v, list) and len(v) == 2 and v[0].lower() in ['offset', 'seg']:
-                try:
-                    v = v[1]
-                    data_ctype = "dw"  # TODO for 16 bit only
-                    v = self.mangle_label(v)
-                    v = self.get_global_value(v, base)
-                except KeyError:
-                    logging.warning("unknown address %s" % v)
-                    logging.warning(self.c_data)
-                    logging.warning(r)
-                    logging.warning(len(self.c_data) + len(r))
-                    self.__link_later.append((len(self.c_data) + len(r), v))
-                    v = 0
-
-            r.append(v)
-
+        data_ctype = {1: 'db', 2: 'dw', 4: 'dd', 8: 'dq', 10: 'dt'}[width]
+        rh = []
         # cur_data_type = 0
         if is_string:
             if len(r) >= 2 and r[-1] == 0:
@@ -757,10 +724,10 @@ class Parser:
         vc = ""
 
         if cur_data_type == 1:  # 0 terminated string
-            vh = "char " + label + "[" + str(len(r) - 1) + "]"
+            vh = "char " + label + "[" + str(len(r)) + "]"
 
         elif cur_data_type == 2:  # array string
-            vh = "char " + label + "[" + str(len(r) - 1) + "]"
+            vh = "char " + label + "[" + str(len(r)) + "]"
             vc = "{"
 
         elif cur_data_type == 3:  # number
@@ -772,63 +739,31 @@ class Parser:
 
         if cur_data_type == 1:  # string
             vv = "\""
-            for i in range(1, len(r) - 1):
-                if isinstance(r[i], int):
-                    if r[i] == 13:
-                        vv += r"\r"
-                    elif r[i] == 10:
-                        vv += r"\n"
-                    elif r[i] < 10:
-                        vv += "\\{:01x}".format(r[i])
-                    elif r[i] < 32:
-                        vv += "\\x{:02x}".format(r[i])
-                    else:
-                        vv += chr(r[i])
-                else:
-                    vv += r[i]
+            for i in range(0, len(r) - 1):
+                vv += self.convert_str(r[i])
             vv += "\""
             r = ["", vv]
 
         elif cur_data_type == 2:  # array of char
             vv = ""
             logging.debug(r)
-            for i in range(1, len(r)):
-                if isinstance(r[i], int):
-                    if r[i] == 13:
-                        vv += r"'\r'"
-                    elif r[i] == 10:
-                        vv += r"'\n'"
-                    else:
-                        vv += str(r[i])
-                elif isinstance(r[i], str):
-                    # logging.debug "~~ " + r[i] + str(ord(r[i]))
-                    if r[i] in ["\'", '\"', '\\']:
-                        r[i] = "\\" + r[i]
-                    elif ord(r[i]) > 127:
-                        r[i] = hex(ord(r[i].encode('cp437', 'backslashreplace')))
-                        r[i] = '\\' + r[i][1:]
-                    elif r[i] == '\0':
-                        r[i] = '\\0'
-                    vv += "'" + r[i] + "'"
+            for i in range(0, len(r)):
+                vv += self.convert_char(r[i])
                 if i != len(r) - 1:
                     vv += ","
             r = ["", vv]
 
         elif cur_data_type == 3:  # number
-            r[1] = str(r[1])
-            # r = []
-            # r.append(vv)
+            r[0] = str(r[0])
 
         elif cur_data_type == 4:  # array of numbers
             # vv = ""
-            for i in range(1, len(r)):
+            for i in range(0, len(r)):
                 r[i] = str(r[i])
-                if i != len(r) - 1:
+                if i != len(r) - 1 :
                     r[i] += ","
-            # r = []
-            # r.append(vv)
 
-        r[0] = vc
+        r.insert(0, vc)
         rh.insert(0, vh)
         # if it was array of numbers or array string
         if cur_data_type == 4 or cur_data_type == 2:
@@ -845,11 +780,128 @@ class Parser:
         rh = "".join(rh)
         return r, rh, elements
 
-    def action_dup(self, group1, values):
-        n = self.parse_int(group1)
+    def convert_char(self, c):
+        if isinstance(c, int) and c not in [10, 13]:
+            return str(c)
+        return "'" + self.convert_str(c) + "'"
+
+    def convert_str(self, c):
+        vvv = ""
+        if isinstance(c, int):
+            if c == 13:
+                vvv = r"\r"
+            elif c == 10:
+                vvv = r"\n"
+            elif c < 10:
+                vvv = "\\{:01x}".format(c)
+            elif c < 32:
+                vvv = "\\x{:02x}".format(c)
+            else:
+                vvv = chr(c)
+        elif isinstance(c, str):
+            # logging.debug "~~ " + r[i] + str(ord(r[i]))
+            if c in ["\'", '\"', '\\']:
+                vvv = "\\" + c
+            elif ord(c) > 127:
+                vvv = '\\' + hex(ord(c.encode('cp437', 'backslashreplace')))[1:]
+                #vvv = c
+            elif c == '\0':
+                vvv = '\\0'
+            else:
+                vvv = c
+            #vvv = "'" + vvv + "'"
+        return vvv
+
+    def process_data_tokens(self, v, width):
+        elements = 0
+        reslist = []
+        is_string = False
+        base = 1 << (8 * width)
+
+        if isinstance(v, list):
+            for vv in v:
+                ele, is_string2, rr2 = self.process_data_tokens(vv, width)
+                elements += ele
+                is_string |= is_string2
+                reslist += rr2
+        elif isinstance(v, Token):
+            if v.type in ['offsetdir', 'segmdir']:
+                elements, is_string, reslist = self.process_data_tokens(v.value, width)
+            elif v.type == 'expr':
+                el, is_string, res = self.process_data_tokens(v.value, width)
+                if not is_string and len(res) != 1:
+                    reslist = ["".join(str(x) for x in res)]
+                    elements = 1
+                else:
+                    reslist = res
+                    elements = el
+            elif v.type == 'STRING':
+                v = v.value
+                v = v.replace("\'\'", "'").replace('\"\"', '"')
+                res = []
+                for i in range(1, len(v) - 1):
+                    res.append(v[i])
+                reslist = res
+                elements = len(v) - 2
+                is_string = True
+
+            # check if dup
+            elif v.type == 'dupdir':
+                # we should parse that
+                repeat = Parser.parse_int(escape(v.value[0]))
+                values = self.process_data_tokens(v.value[1], width)[2]
+                elements, reslist = self.action_dup(repeat, values)
+
+
+            elif v.type == 'INTEGER':
+                elements += 1
+                try:  # just number or many
+                    v = v.value
+                    # if v == '?':
+                    #    v = '0'
+                    v = Parser.parse_int(v)
+
+                    if v < 0:  # negative values
+                        v += base
+
+                except:
+                    # global name
+                    # traceback.print_stack(file=sys.stdout)
+                    # logging.debug "global/expr: ~%s~" %v
+                    try:
+                        v = self.get_global_value(v, base)
+                    except KeyError:
+                        v = 0
+                reslist = [v]
+
+            # logging.debug("global/expr: ~%s~" % v)
+            elif v.type == 'LABEL':
+                elements = 1
+                try:
+                    v = v.value
+                    # width = 2  # TODO for 16 bit only
+                    v = self.mangle_label(v)
+                    v = self.get_global_value(v, base)
+                except KeyError:
+                    logging.warning("unknown address %s" % v)
+                    logging.warning(self.c_data)
+                    # logging.warning(r)
+                    # logging.warning(len(self.c_data) + len(r))
+                    # self.__link_later.append((len(self.c_data) + len(r), v))
+                    #v = 0
+                reslist = [v]
+        elif v == '?':
+            elements = 1
+            reslist = [0]
+        else:
+            elements = 1
+            reslist = [v]
+        return elements, is_string, reslist
+
+    def action_dup(self, n, values):
         res = []
         for i in range(0, n):
-            value = values[i % len(values)]
+          for value in values:
             if value == '?':
                 value = 0
             else:
@@ -857,17 +909,22 @@ class Parser:
                     val = ""
                     for v in value:
                         try:
-                            v = self.parse_int(v)
+                            v = Parser.parse_int(v)
                         except ValueError:
                             pass
                         val += str(v)
                     value = val
+                '''
                 else:
-                    value = self.parse_int(value)
+                    try:
+                        value = Parser.parse_int(str(value))
+                    except:
+                        value = str(value)
+                '''
             # logging.debug "n = %d value = %d" %(n, value)
 
             res.append(value)
-        return n, res
+        return n * len(values), res
 
     def action_label_(self, line, far=False, isproc=False):
         # logging.info(line)
@@ -1132,7 +1189,7 @@ class Parser:
         return result
 
     def parse_include(self, line, file_name=None):
-        #parser = PGParser(self.__lex.grammar,
+        # parser = PGParser(self.__lex.grammar,
         #                            actions=actions)
         grammar = self.__lex.or_grammar
         parser = copy(self.__lex.or_parser)
@@ -1153,11 +1210,11 @@ class Parser:
 
         return result
 
-    def datadir_action(self, name, type, args):
+    def datadir_action(self, name, type, args, size):
+        s = size
+        binary_width = calculate_type_size(type)
         offset = self.__cur_seg_offset
         logging.debug("data value %s offset %d" % (str(args), offset))
-        binary_width = calculate_type_size(type)
-        s = self.calculate_data_binary_size(binary_width, args)
         self.__binary_data_size += s
         self.__cur_seg_offset += s
         c, h, elements = self.convert_data_to_c(name, binary_width,
@@ -1235,13 +1292,10 @@ class Parser:
         logging.debug(str(result))
         return result
 
-
     @staticmethod
     def mangle_label(name):
         name = name.lower()
-        name = re.sub(r'@', "arb", name)
-
-        return name
+        return name.replace('@', "arb")
 
     @staticmethod
     def is_register(expr):

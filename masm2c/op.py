@@ -231,6 +231,10 @@ class _jnb(basejmp):
         return visitor._jnc(self.label)
 
 def flatten(S):
+    if isinstance(S, Token) and S.type == 'expr':
+        S = S.value
+        #if isinstance(S, list):
+        #    S =
     if not S:
         return S
     if isinstance(S[0], list):
@@ -252,6 +256,7 @@ def flattenpush(S): # TODO will work most of the time
 
 class _push(baseop):
     def __init__(self, arg):
+#        self.arg = Token.find_and_call_tokens(arg,'expr') #flattenpush(arg)
         self.arg = flattenpush(arg)
 
     def visit(self, visitor):

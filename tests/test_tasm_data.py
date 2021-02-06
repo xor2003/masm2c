@@ -9,9 +9,9 @@ from random import randint
 
 
 # Random order for tests runs. (Original is: -1 if x<y, 0 if x==y, 1 if x>y).
-unittest.TestLoader.sortTestMethodsUsing = lambda _, x, y: randint(-1, 1)
+#unittest.TestLoader.sortTestMethodsUsing = lambda _, x, y: randint(-1, 1)
 
-class ParserTest(unittest.TestCase):
+class ParserDataTest(unittest.TestCase):
 
     def setUp(self):
         self.parser = Parser()
@@ -867,7 +867,7 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(self.parser.action_data(line="_amplification	dw 100			; DATA XREF: _clean_11C43+83w"), ('100, // _amplification\n', 'dw _amplification;\n', 2))
 
     def test_data_12830(self):
-        self.assertEqual(self.parser.action_data(line="_asmprintf_tbl	dw offset _mysprintf_0_nop ; DATA XREF: _myasmsprintf+1Cr"), ('0, // _asmprintf_tbl\n', 'dw _asmprintf_tbl;\n', 2))
+        self.assertEqual(self.parser.action_data(line="_asmprintf_tbl	dw offset _mysprintf_0_nop ; DATA XREF: _myasmsprintf+1Cr"), ('_mysprintf_0_nop, // _asmprintf_tbl\n', 'dw _asmprintf_tbl;\n', 2))
 
     def test_data_12840(self):
         self.assertEqual(self.parser.action_data(line="_atop_title	dw 152h			; DATA XREF: _txt_draw_top_title+12o"), ('338, // _atop_title\n', 'dw _atop_title;\n', 2))
@@ -1054,7 +1054,11 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(self.parser.action_data(line="_flg_play_settings db 0			; DATA XREF: _keyb_screen_loop+2Fw"), ('0, // _flg_play_settings\n', 'db _flg_play_settings;\n', 1))
 
     def test_data_13450(self):
-        self.assertEqual(self.parser.action_data(line="_frameborder	db '      ██████╔╗╚╝═║┌┐└┘─│╓╖╙╜─║╒╕╘╛═│',0 ; DATA XREF: _draw_frame+3Do"), ('"      ██████╔╗╚╝═║┌┐└┘─│╓╖╙╜─║╒╕╘╛═│", // _frameborder\n', 'char _frameborder[37];\n', 37))
+        self.assertEqual(self.parser.action_data(line="_frameborder	db '      ██████╔╗╚╝═║┌┐└┘─│╓╖╙╜─║╒╕╘╛═│',0 ; DATA XREF: _draw_frame+3Do"), ('"      '
+ '\\xdb\\xdb\\xdb\\xdb\\xdb\\xdb\\xc9\\xbb\\xc8\\xbc\\xcd\\xba\\xda\\xbf\\xc0\\xd9\\xc4\\xb3\\xd6\\xb7\\xd3\\xbd\\xc4\\xba\\xd5\\xb8\\xd4\\xbe\\xcd\\xb3", '
+ '// _frameborder\n',
+ 'char _frameborder[37];\n',
+ 37))
 
     def test_data_13460(self):
         self.assertEqual(self.parser.action_data(line="_freq1		dw 22050		; DATA XREF: _volume_prepare_waves+48r"), ('22050, // _freq1\n', 'dw _freq1;\n', 2))
@@ -1262,7 +1266,12 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(self.parser.action_data(line="_segfsbx_1DE28	dd 0			; DATA XREF: _read_module+99w"), ('0, // _segfsbx_1de28\n', 'dd _segfsbx_1de28;\n', 4))
 
     def test_data_14140(self):
-        self.assertEqual(self.parser.action_data(line="_slider		db '─\|/─\|/'           ; DATA XREF: _modules_search+7Fr"), ("{'\\xc4','\\\\','\\\\','|','/','\\xc4','\\\\','\\\\','|','/'}, // _slider\n", 'char _slider[10];\n', 10))
+        #self.assertEqual(self.parser.action_data(line="_slider		db '─\|/─\|/'           ; DATA XREF: _modules_search+7Fr"), ("{'\\xc4','\\\\','\\\\','|','/','\\xc4','\\\\','\\\\','|','/'}, // _slider\n", 'char _slider[8];\n', 8))
+        self.assertEqual(
+            self.parser.action_data(line="_slider		db '─\|/─\|/'           ; DATA XREF: _modules_search+7Fr"),
+            ("{'\\xc4','\\\\','|','/','\\xc4','\\\\','|','/'}, // _slider\n",
+             'char _slider[8];\n',
+             8))
 
     def test_data_14150(self):
         self.assertEqual(self.parser.action_data(line="_snd_base_port	dw 0			; DATA XREF: _read_sndsettings+9r"), ('0, // _snd_base_port\n', 'dw _snd_base_port;\n', 2))
@@ -1643,7 +1652,7 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(self.parser.action_data(line="dd offset var5"),('offset(_data,var5), // dummy1\n','dw dummy1;\n', 4))
 
     def test_data_15400(self):
-        self.assertEqual(self.parser.action_data(line="dd unk_24453"), ('0, // dummy1\n', 'dd dummy1;\n', 4))
+        self.assertEqual(self.parser.action_data(line="dd unk_24453"), ('unk_24453, // dummy1\n', 'dd dummy1;\n', 4))
 
     def test_data_15410(self):
         self.assertEqual(self.parser.action_data(line="doublequote db 'ab''cd',\"e\""), ("{'a','b','\\'','c','d','e'}, // doublequote\n", 'char doublequote[6];\n', 6))
@@ -1703,7 +1712,7 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(self.parser.action_data(line="load_handle dd 0"), ('0, // load_handle\n', 'dd load_handle;\n', 4))
 
     def test_data_15590(self):
-        self.assertEqual(self.parser.action_data(line="myoffs		dw offset label2"), ('0, // myoffs\n', 'dw myoffs;\n', 2))
+        self.assertEqual(self.parser.action_data(line="myoffs		dw offset label2"), ('label2, // myoffs\n', 'dw myoffs;\n', 2))
 
     @unittest.skip("to check")
     def test_data_15600(self):
@@ -1792,7 +1801,12 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(self.parser.action_data(line="var2 db 5 dup (0)"), ('{0,0,0,0,0}, // var2\n', 'db var2[5];\n', 5))
 
     def test_data_15880(self):
-        self.assertEqual(self.parser.action_data(line="var3 db 5*5 dup (0,testEqu*2,2*2,3)"), ('{0,testEqu*2,2*2,3,0,testEqu*2,2*2,3,0,testEqu*2,2*2,3,0,testEqu*2,2*2,3,0,testEqu*2,2*2,3,0,testEqu*2,2*2,3,0}, // var3\n', 'db var3[25];\n', 25))
+        self.assertEqual(self.parser.action_data(line="var3 db 5*5 dup (0,testEqu*2,2*2*3,3)"),
+                         (
+                         '{0,testequ*2,2*2*3,3,0,testequ*2,2*2*3,3,0,testequ*2,2*2*3,3,0,testequ*2,2*2*3,3,0,testequ*2,2*2*3,3,0,testequ*2,2*2*3,3,0,testequ*2,2*2*3,3,0,testequ*2,2*2*3,3,0,testequ*2,2*2*3,3,0,testequ*2,2*2*3,3,0,testequ*2,2*2*3,3,0,testequ*2,2*2*3,3,0,testequ*2,2*2*3,3,0,testequ*2,2*2*3,3,0,testequ*2,2*2*3,3,0,testequ*2,2*2*3,3,0,testequ*2,2*2*3,3,0,testequ*2,2*2*3,3,0,testequ*2,2*2*3,3,0,testequ*2,2*2*3,3,0,testequ*2,2*2*3,3,0,testequ*2,2*2*3,3,0,testequ*2,2*2*3,3,0,testequ*2,2*2*3,3,0,testequ*2,2*2*3,3}, '
+                         '// var3\n',
+                         'db var3[100];\n',
+                         100))
 
     def test_data_15890(self):
         self.assertEqual(self.parser.action_data(line="var4 db 131"), ('131, // var4\n', 'db var4;\n', 1))

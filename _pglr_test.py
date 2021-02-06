@@ -197,14 +197,17 @@ recognizers = {
     "structtag": structtag
 }
 
+def expr(context, nodes):
+    return Token('expr', make_token(context, nodes))
+
 actions = {
+    "expr": expr,
     "structinstance": structinstance,
     "structdir": structdir,
     "includedir": includedir,
     "instrprefix": instrprefix,
     "macrodir": macro_action,
     "asminstruction": asminstruction,
-    "expr": make_token,
     "STRING": STRING,
     "LABEL": LABEL,
     "INTEGER": INTEGER,

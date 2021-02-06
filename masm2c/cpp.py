@@ -225,6 +225,8 @@ class Cpp(object):
         #    expr = expr.strip()
         origexpr = expr
 
+        expr = Token.remove_tokens(expr, ['expr'])
+
         ptrdir = Token.find_and_call_tokens(expr, PTRDIR)
         if ptrdir:
             value = ptrdir[0]
@@ -371,6 +373,8 @@ class Cpp(object):
 
     def expand(self, expr, def_size=0, destination=False, lea=False):
         logging.debug("EXPAND(expr:\"%s\")" % expr)
+
+        expr = Token.remove_tokens(expr, ['expr'])
         origexpr = expr
         self.__seg_prefix = "ds"
         self.__current_size = 0
@@ -599,6 +603,8 @@ class Cpp(object):
 
     def jump_to_label(self, name):
         logging.debug("jump_to_label(%s)" % name)
+        name = Token.remove_tokens(name, ['expr'])
+
         # name = name.strip()
         jump_proc = False
 
