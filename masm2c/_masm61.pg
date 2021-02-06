@@ -203,7 +203,9 @@ instrprefix: REP | REPE | REPZ | REPNE | REPNZ | LOCK ;
 
 asminstruction: instruction=instrprefix args=''?
 | instruction=mnemonic  args=exprlist?
-| instrprefix instruction=mnemonic  args=exprlist? | instruction=PUSH args=exprspacelist | instruction=POP args=exprspacelist;
+| instrprefix instruction=mnemonic  args=exprlist? 
+| instruction=PUSH args=allreglist {25}
+| instruction=POP args=allreglist {25};
 instruction: asminstruction=asminstruction linereminder;
 
 invokearg: anyregister '::' register| ADDR expr | expr;

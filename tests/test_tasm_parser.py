@@ -182,8 +182,8 @@ class ParserTest(unittest.TestCase):
     def test_instr_20(self):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('call dx')), u'\tR(CALL(__disp));\n')
 
-    def test_instr_30(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('pop     dword ptr [esp] eax edx')), u'\tR(POP(*(dd*)(raddr(ss,esp))));\n\tR(POP(eax));\n\tR(POP(edx));\n')
+    #def test_instr_30(self):
+    #    self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('pop     dword ptr [esp] eax edx')), u'\tR(POP(*(dd*)(raddr(ss,esp))));\n\tR(POP(eax));\n\tR(POP(edx));\n')
 
     def test_instr_40(self):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('pOp  ebx ebp    eax')), u'\tR(POP(ebx));\n\tR(POP(ebp));\n\tR(POP(eax));\n')
