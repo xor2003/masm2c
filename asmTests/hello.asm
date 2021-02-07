@@ -1,7 +1,7 @@
 .386p
 
 _DATA   segment use16 word public 'DATA' ;IGNORE
-_msg    db 'Hello World From Protected Mode!',10,13,'$',0
+_msg    db 'Hello World!',13,10,'$'
 
 _DATA   ends ;IGNORE
 

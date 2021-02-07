@@ -610,7 +610,7 @@ class Parser:
 
     def replace_dollar_w_segoffst(self, v):
         logging.debug("$ = %d" % self.__cur_seg_offset)
-        return re.sub(r'\$', "%d" % self.__cur_seg_offset, v)
+        return v.replace('$', str(self.__cur_seg_offset))
 
     @staticmethod
     def parse_int(v):
@@ -1037,13 +1037,14 @@ class Parser:
 
     def action_assign(self, name, value):
         name = name.value
-        value = self.tokenstostring(value)
-        vv = self.get_equ_value(value)
+        value = Token.remove_tokens(value,'expr')
+        #value = self.tokenstostring(value)
+        #value = self.get_equ_value(value)
         has_global = False
         if self.has_global(name):
             has_global = True
             name = self.get_global(name).original_name
-        o = self.proc.add_assignment(name, vv, line_number=self.line_number)
+        o = self.proc.add_assignment(name, value, line_number=self.line_number)
         if not has_global:
             self.set_global(name, o)
         self.proc.stmts.append(o)
@@ -1051,10 +1052,11 @@ class Parser:
 
     def action_equ(self, name, value):
         name = name.value
-        value = self.tokenstostring(value)
-        vv = self.get_equ_value(value)
+        value = Token.remove_tokens(value,'expr')
+        #value = self.tokenstostring(value)
+        #vv = self.get_equ_value(value)
         proc = self.get_global("mainproc")
-        o = proc.add_equ_(name, vv, line_number=self.line_number)
+        o = proc.add_equ_(name, value, line_number=self.line_number)
         self.set_global(name, o)
         proc.stmts.insert(0, o)
         return o
@@ -1141,6 +1143,7 @@ class Parser:
         except Exception as e:
             print(e)
             logging.error("Error1")
+            result = [str(e)]
         del self.__globals['default_seg']
         return result
 
@@ -1148,14 +1151,14 @@ class Parser:
         try:
             result = self.parse_args_new_data_('''.model tiny
         default_seg segment
-        push    ''' + line + '''
+        mov ax, ''' + line + '''
         default_seg ends
             end start
-            ''').asminstruction.arg
+            ''').asminstruction.src
         except Exception as e:
             print(e)
             logging.error("Error2")
-            pass
+            result = [str(e)]
         del self.__globals['default_seg']
         return result
 
@@ -1168,9 +1171,9 @@ class Parser:
     end startd
     ''')
         except Exception as e:
-            print(e)
+            print(str(e))
             logging.error("Error3")
-            pass
+            result = [str(e)]
         del self.__globals['default_seg']
         return result
 
@@ -1178,13 +1181,14 @@ class Parser:
         try:
             result = self.parse_args_new_data_('''.model tiny
         default_seg segment
-        push ''' + line + '''
+        mov ax, ''' + line + '''
         default_seg ends
         end start
-        ''').asminstruction.arg
+        ''').asminstruction.src
         except Exception as e:
             print(e)
             logging.error("Error4")
+            result = [str(e)]
         del self.__globals['default_seg']
         return result
 
@@ -1234,22 +1238,22 @@ class Parser:
         # ? vv = " ".join(self.parse_args(vv))
         vv = vv.strip()
         logging.debug("%s" % vv)
-        m = re.match(r'\bbyte\s+ptr\s+(.*)', vv)
+        m = re.match(r'\bbyte\s+(?:ptr)?\s*(.*)', vv)
         if m is not None:
             vv = m.group(1).strip()
-        m = re.match(r'\bdword\s+ptr\s+(.*)', vv)
+        m = re.match(r'\bdword\s+(?:ptr)?\s*(.*)', vv)
         if m is not None:
             vv = m.group(1).strip()
-        m = re.match(r'\bqword\s+ptr\s+(.*)', vv)
+        m = re.match(r'\bqword\s+(?:ptr)?\s*(.*)', vv)
         if m is not None:
             vv = m.group(1).strip()
-        m = re.match(r'\btword\s+ptr\s+(.*)', vv)
+        m = re.match(r'\btword\s+(?:ptr)?\s*(.*)', vv)
         if m is not None:
             vv = m.group(1).strip()
-        m = re.match(r'\bword\s+ptr\s+(.*)', vv)
+        m = re.match(r'\bword\s+(?:ptr)?\s*(.*)', vv)
         if m is not None:
             vv = m.group(1).strip()
-        vv = cpp.convert_number_to_c(vv)
+        #vv = cpp.convert_number_to_c(vv)
         return vv
 
     def link(self):

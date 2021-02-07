@@ -253,7 +253,7 @@ class Cpp(object):
             elif expr.type == 'INTEGER':
                 try:
                     # v = self.__context.parse_int(expr.value)
-                    v = eval(expr.value)
+                    v = eval(re.sub(r'^0+(?=\d)','',expr.value))
                     size = guess_int_size(v)
                     return size
                 except:
@@ -1304,4 +1304,4 @@ else goto __dispatch_call;
         return "#undef %s\n#define %s %s\n" % (dst, dst, self.expand(src))
 
     def _equ(self, dst, src):
-        return "#define %s %s\n" % (dst, src)
+        return "#define %s %s\n" % (dst, self.expand(src))

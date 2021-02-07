@@ -33,7 +33,7 @@ call incebx
 
 DDD = var1 ; actually it is address of var1
 movzx eax, DDD
-cmp eax,0
+cmp eax,6
 mov al,4
 jne failure
 

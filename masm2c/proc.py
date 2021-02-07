@@ -254,23 +254,19 @@ class Proc(object):
         self.stmts.insert(0, o)
 
     def add_equ_(self, label, value, line_number):  # TODO Move it to parser
-        from masm2c import cpp
+        logging.info(label + " " + str(value))
         o1 = op._equ(label, value)
-        # print "args %s" %s[1:]
-        value = cpp.convert_number_to_c(value)
-        # o1 = cl(label, value)
-        o1.line = str(line_number) + " " + label + " equ " + value
+        #value = cpp.convert_number_to_c(value)
+        o1.line = str(line_number) + " " + label + " equ " + str(value)
         o1.cmd = o1.line
         #               logging.info "~~~" + o.command + o.comments
         return o1
 
     def add_assignment(self, label, value, line_number=0):
-        from masm2c import cpp
-        # print "args %s" %s[1:]
-        logging.info(label + " " + value)
-        value = cpp.convert_number_to_c(value)
+        logging.info(label + " " + str(value))
+        #value = cpp.convert_number_to_c(value)
         o = op._assignment(label, value)
-        o.line = str(line_number) + " " + label + " = " + value
+        o.line = str(line_number) + " " + label + " = " + str(value)
         o.cmd = o.line
 
         #               logging.info "~~~" + o.command + o.comments

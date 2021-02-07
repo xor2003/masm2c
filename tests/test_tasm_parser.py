@@ -23,7 +23,7 @@ class TestInitOnce:
         self.cpp.proc = self.proc
 
         self.proc.add_assignment(line_number=0, label='B', value=u'1')
-        self.proc.add_assignment(line_number=0, label='DDD', value=u'var1')
+        self.proc.add_assignment(line_number=0, label='DDD', value=u'm.var1')
         self.proc.add_assignment(line_number=0, label='argc', value=u'8')
         self.proc.add_assignment(line_number=0, label='argv', value=u'0x0C')
         self.proc.add_assignment(line_number=0, label='eax_0', value=u'eax')
@@ -3020,7 +3020,7 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('movsx ecx,cx')), u'\tR(MOVSX(ecx, cx));\n')
 
     def test_instr_9480(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('movzx eax, DDD')), u'\tR(MOVZX(eax, m.DDD));\n')  # ERROR
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('movzx eax, DDD')), u'\tR(MOVZX(eax, DDD));\n')  # ERROR
 
     def test_instr_9490(self):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('movzx ecx,bx')), u'\tR(MOVZX(ecx, bx));\n')
