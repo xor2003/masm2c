@@ -14,7 +14,6 @@ import masm2c.proc as proc_module
 from masm2c import op
 from masm2c.Token import Token
 
-
 # ScummVM - Graphic Adventure Engine
 #
 # ScummVM is the legal property of its developers, whose names
@@ -35,14 +34,12 @@ from masm2c.Token import Token
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #
-#from masm2c.parser import Parser
 OFFSETDIR = 'offsetdir'
 LABEL = 'LABEL'
 PTRDIR = 'ptrdir'
 REGISTER = 'register'
 SEGMENTREGISTER = 'segmentregister'
 SEGOVERRIDE = 'segoverride'
-PTRDIR = 'ptrdir'
 SQEXPR = 'sqexpr'
 
 
@@ -56,7 +53,7 @@ def parse_bin(s):
     v = hex(int(b, 2))
     if sign:
         v = sign + v
-    # print "BINARY: %s -> %s" %(b, v)
+    # logging.debug("BINARY: %s -> %s" %(b, v))
     return v
 
 
@@ -88,8 +85,6 @@ def mangle2_label(name):
     return re.sub(r'\$', '_tmp', name)
 
 
-
-
 class Cpp(object):
     def __init__(self, context, outfile="", skip_first=0, blacklist=[], skip_output=None, skip_dispatch_call=False,
                  skip_addr_constants=False, header_omit_blacklisted=False, function_name_remapping=None):
@@ -113,14 +108,14 @@ class Cpp(object):
         self.__skip_output = skip_output
         self.__skip_dispatch_call = skip_dispatch_call
         self.__skip_addr_constants = skip_addr_constants
-        #self.__header_omit_blacklisted = header_omit_blacklisted
+        # self.__header_omit_blacklisted = header_omit_blacklisted
         self.__function_name_remapping = function_name_remapping
         self.__translated = list()  # []
         self.__proc_addr = []
         self.__used_data_offsets = set()
         self.__methods = []
         self.__temps_count = 0
-        #self.__pointer_flag = False
+        # self.__pointer_flag = False
         self.lea = False
         # self.__expr_size = 0
         self.__far = False
@@ -218,7 +213,6 @@ class Cpp(object):
                 raise Exception("invalid indirection %d name '%s' size %u" % (self.__indirection, name, size))
         return value
 
-
     def get_size(self, expr):
         logging.debug('get_size("%s")' % expr)
         # if isinstance(expr, string):
@@ -253,7 +247,7 @@ class Cpp(object):
             elif expr.type == 'INTEGER':
                 try:
                     # v = self.__context.parse_int(expr.value)
-                    v = eval(re.sub(r'^0+(?=\d)','',expr.value))
+                    v = eval(re.sub(r'^0+(?=\d)', '', expr.value))
                     size = guess_int_size(v)
                     return size
                 except:
@@ -302,7 +296,7 @@ class Cpp(object):
             return name
 
     def expand_equ(self, expr):
-        #n = 1
+        # n = 1
         logging.debug("expand_equ(%s)" % expr)
         # while n > 0:
         #       expr, n = re.subn(r'\b[a-zA-Z_][a-zA-Z0-9_]+\b', self.expand_equ_cb, expr)
@@ -409,14 +403,14 @@ class Cpp(object):
             for i in islabel:
                 res = self.get_var_size(i)
                 if res:
-                     size = res
-                     indirection = 1
-                     break
+                    size = res
+                    indirection = 1
+                    break
 
         if indirection == 1 and not segoverride:
-                regs = Token.find_and_call_tokens(expr, REGISTER)
-                if regs and any([i in ['bp', 'ebp', 'sp', 'esp'] for i in regs]):  # TODO doublecheck
-                    self.__seg_prefix = "ss"
+            regs = Token.find_and_call_tokens(expr, REGISTER)
+            if regs and any([i in ['bp', 'ebp', 'sp', 'esp'] for i in regs]):  # TODO doublecheck
+                self.__seg_prefix = "ss"
         if segoverride:
             self.__seg_prefix = segoverride[0].value
 
@@ -444,155 +438,6 @@ class Cpp(object):
 
         return expr
 
-        '''
-        size = self.get_size(expr) if def_size == 0 else def_size  # calculate size if it not provided
-
-        # self.__expr_size = size
-        # print "expr \"%s\" %d" %(expr, size)
-        indirection = 0
-        seg = None
-        reg = True
-
-        ex = expr
-        ex.replace("\\\\", "\\")
-
-        try:
-            g = self.__context.get_global(expr)
-            logging.debug("found global %s" % expr)
-            if not self.lea and isinstance(g, op.var):
-                logging.debug("it is not lea and it is var")
-                if g.issegment:
-                    return "seg_offset(%s)" % expr.lower()
-                else:
-                    if g.elements == 1:
-                        # traceback.print_stack(file=sys.stdout)
-                        return "m." + expr
-                    else:
-                        s = {1: "*(db*)", 2: "*(dw*)", 4: "*(dd*)"}[size]
-                        return s + "&m." + expr
-            if isinstance(g, op.equ) or isinstance(g, op.assignment):
-                logging.debug("it is equ")
-                return self.expand(g.value)
-
-        except:
-            pass
-
-        ex = expr
-        ex.replace("\\\\", "\\")
-        m = re.match(r'\'(.+)\'$', ex)  # char constants
-        if m:
-            return expr
-
-        m = re.match(r'seg\s+(.*?)$', expr)
-        if m:
-            return m.group(1)
-
-        expr = convert_number_to_c(expr)  # convert hex
-
-        match_id = True
-        # print "is it offset ~%s~" %expr
-        prog = re.compile(r'offset\s+(.*?)$', re.I)
-        m = prog.match(expr)
-        if m:
-            indirection -= 1
-            size = 2  # x0r dos 16 bit
-            expr = m.group(1).strip()
-            self.__current_size = 0
-            expr = re.sub(r'\b[a-zA-Z_][a-zA-Z0-9_]*\b', self.expand_cb, expr)  # parse each item
-            # expr = "offsetof(struct Mem,%s)" %expr
-
-            logging.debug("after it is offset ~%s~" % expr)
-            return expr
-
-        logging.debug("1:\"%s\")" % expr)
-        m = re.match(r'byte\s+ptr\s+(.*)', expr)
-        if m:
-            expr = m.group(1).strip()
-            size = 1
-
-        m = re.match(r'dword\s+ptr\s+(.*)', expr)
-        if m:
-            expr = m.group(1).strip()
-            size = 4
-
-        m = re.match(r'word\s+ptr\s+(.*)', expr)
-        if m:
-            expr = m.group(1).strip()
-            size = 2
-
-        logging.debug("2:\"%s\")" % expr)
-
-        m = re.match(r'\[(.*)\]$', expr)
-        if m:
-            indirection += 1
-            expr = m.group(1).strip()
-
-        m = re.match(r'(cs|ss|ds|es|fs|gs):(.*)', expr)
-        if m:
-            self.__seg_prefix = m.group(1)
-            expr = m.group(2).strip()
-            logging.debug("SEGMENT %s, remains: %s" % (self.__seg_prefix, expr))
-        else:
-            self.__seg_prefix = "ds"
-
-        m = re.match(r'\[(.*)\]$', expr)
-        if m:
-            indirection += 1
-            expr = m.group(1).strip()
-
-        m = re.match(r'(\[?e?([abcd][xhl])|si|di|bp|sp)([+-\]].*)?$', expr)  # var[bx+]
-        if m:
-            reg = m.group(1)
-            plus = m.group(3)
-            if plus and plus != ']':
-                seg_prefix = self.__seg_prefix
-                plus = self.expand(plus)
-                self.__seg_prefix = seg_prefix
-            else:
-                plus = ""
-            match_id = False
-            # print "COMMON_REG: ", reg, plus
-            expr = "%s%s" % (reg, plus)
-
-        logging.debug("~~ " + expr)
-        expr = re.sub(r'"(.)"', '\'\\1\'', expr)  # convert string
-        expr = re.sub(r'\[((0x)?[0-9][a-fA-F0-9]*)\]', '+\\1', expr)  # convert [num]
-
-        expr = re.sub(r'\[(((e?([abcd][xhl])|si|di|bp|sp)|([+-]))+)\]', '+\\1', expr)  # name[bs+si]
-        expr = re.sub(r'\[(e?([abcd][xhl])|si|di|bp|sp)', '+\\1', expr)  # name[bs+si]
-        expr = re.sub(r'\]', '', expr)  # name[bs+si]
-
-        if match_id:
-            expr = re.sub(r'\bbyte\s+ptr\s*', '', expr)
-            expr = re.sub(r'\b[dqt]word\s+ptr\s*', '', expr)
-            expr = re.sub(r'\bword\s+ptr\s*', '', expr)
-
-            logging.debug("EXPAND() BEFORE: %d %s" % (indirection, expr))
-            self.__indirection = indirection
-            self.__pointer_flag = False
-            self.__current_size = 0
-            expr = re.sub(r'(?<![\'\"])\b[a-zA-Z_][a-zA-Z0-9_]*\b(?![\'\"])', self.expand_cb, expr)  # parse each item
-            if size == 0 and self.__current_size != 0:
-                size = self.__current_size
-                # self.__expr_size = size
-            logging.debug("EXPAND() AFTER: %d %s" % (self.__indirection, expr))
-            # logging.debug("is a pointer %d __expr_size %d" % (self.__pointer_flag, self.__expr_size))
-            # self.__pointer_flag = False
-            indirection = self.__indirection
-            logging.debug("AFTER: %d %s" % (indirection, expr))
-            # traceback.print_stack(file=sys.stdout)
-
-        if indirection == 1:
-            expr = self.convert_sqbr_reference(expr, destination, size)
-        elif indirection == 0:
-            pass
-        elif indirection == -1:
-            expr = "&%s" % expr
-        else:
-            raise Exception("invalid indirection %d" % indirection)
-        return expr
-        '''
-
     def get_var_size(self, name):
         size = 0
         if self.__context.has_global(name):
@@ -609,7 +454,7 @@ class Cpp(object):
         jump_proc = False
 
         self.__far = False
-        #name_original = name
+        # name_original = name
 
         # prog = re.compile(r'^\s*(near|far|short)\s*(ptr)?\s*', re.I)  # x0r TODO
         # name = re.sub(prog, '', name)
@@ -1288,7 +1133,7 @@ else goto __dispatch_call;
             return "\t\tR(%s(%s));\n" % (cmd.upper(), label)
 
     def isrelativejump(self, label):
-        result = '$' in str(label) # skip j* $+2
+        result = '$' in str(label)  # skip j* $+2
         return result
 
     def _instruction2(self, cmd, dst, src):

@@ -92,7 +92,7 @@ TODO:
 - ~~better parser based on Masm EBNF~~
 - proper SB emulation or use DOSBOX as library
 - better keyboard
-- add FPU instructions support (low priority)
+- add FPU instructions support (may use linux 387 emulator)
 
 Also to easier disassembling (exe to asm) need to collect run-time information from dosbox or other emulator to annotate IDA disassembly. Maybe modify dosbox debugger tracing mechanism to collect:
 - current instruction is code
@@ -123,7 +123,7 @@ Famous reverse engenerred MOD, S3M player.
 Currently platform DOS (ASM), SDL2 (C)
 There is disassembled source code for MASM, Nasm, C which can be built and running
 
-TODO: finish sound supprt on SDL, finish porting (keyboard, graphics mode,...)
+TODO: finish sound support on SDL, finish porting (keyboard, graphics mode,...)
 
 Binary is available on releases page
 -------------------------------
