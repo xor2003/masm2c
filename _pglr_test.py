@@ -15,6 +15,7 @@ macroidre = re.compile(r'([A-Za-z@_\$\?][A-Za-z@_\$\?0-9]*)')
 def macro_action(context, nodes, name):
     macroids.insert(0, name.lower())
     print("added ~~" + name + "~~")
+    return nodes
 
 
 def macroid(head, input, pos):
@@ -29,31 +30,6 @@ def macroid(head, input, pos):
     else:
         return None
 
-
-def structtag(head, s, pos):
-    mtch = macroidre.match(s[pos:])
-    if mtch:
-        result = mtch.group().lower()
-        # logging.debug ("matched ~^~" + result+"~^~")
-        if result in structtags:
-            logging.debug(" ~^~" + result + "~^~ in macroids")
-            return result
-        else:
-            return None
-    else:
-        return None
-
-
-def structinstance(context, nodes):
-    print("structinstance", str(nodes))
-    return Token('structinstance', nodes)
-
-
-def structdir(context, nodes, name, item):
-    print("structdir", str(nodes))
-    structtags.insert(0, name.value.lower())
-    logging.debug("structtag added ~~" + name.value + "~~")
-    return []  # Token('structdir', nodes) TODO ignore by now
 
 
 class Token:
@@ -94,6 +70,7 @@ def make_token(context, nodes):
     if len(nodes) == 1 and context.production.rhs[0].name not in (
             'type', 'e01', 'e02', 'e03', 'e04', 'e05', 'e06', 'e07', 'e08', 'e09', 'e10', 'e11'):
         nodes = Token(context.production.rhs[0].name, nodes[0])
+        print("mt~"+str(nodes)+"~")
     if context.production.rhs[0].name in (
             'type', 'e01', 'e02', 'e03', 'e04', 'e05', 'e06', 'e07', 'e08', 'e09', 'e10', 'e11'):
         nodes = nodes[0]
@@ -123,11 +100,6 @@ def ptrdir(context, nodes):
 
 def includedir(context, nodes, name):
     print(str(name))
-    return nodes
-
-
-def structdir(context, nodes, name, item):
-    print(str(nodes))
     return nodes
 
 
@@ -226,8 +198,40 @@ recognizers = {
 def expr(context, nodes):
     return Token('expr', make_token(context, nodes))
 
+def structtag(head, s, pos):
+    mtch = macroidre.match(s[pos:])
+    if mtch:
+        result = mtch.group().lower()
+        # logging.debug ("matched ~^~" + result+"~^~")
+        if result in structtags:
+            logging.debug(" ~^~" + result + "~^~ in structtags")
+            return result
+        else:
+            return None
+    else:
+        return None
+
+def structdir(context, nodes, name, item):
+    print("structdir", str(nodes))
+    structtags.insert(0, name.value.lower())
+    print("structtag added ~~" + name.value + "~~")
+    return []  # Token('structdir', nodes) TODO ignore by now
+
+def structinstdir(context, nodes, label, type, values):
+    print("structinstdir" + str(label) + str(type) + str(values))
+    return nodes  # Token('structdir', nodes) TODO ignore by now
+
+
+def memberdir(context, nodes, variable, field):
+    result = Token('memberdir', [variable, field])
+    print(result)
+    return result
+
 
 actions = {
+    "field": make_token,
+    "memberdir": memberdir,
+    "structinstdir": structinstdir,
     "expr": expr,
     "structinstance": structinstance,
     "structdir": structdir,
@@ -267,7 +271,7 @@ from parglare import Parser
 
 # parser = Parser(grammar, debug=True, debug_trace=True, actions={"macrodir": macro_action})
 # parser = Parser(grammar, debug=True, actions={"macrodir": macro_action})
-# parser = Parser(grammar, debug=True, actions=actions, debug_colors=True)
+#parser = Parser(grammar, debug=True, actions=actions, debug_colors=True)
 parser = Parser(grammar, actions=actions)  # , build_tree=True, call_actions_during_tree_build=True)
 
 codeset = 'cp437'

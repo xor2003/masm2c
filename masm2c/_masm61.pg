@@ -48,7 +48,9 @@ crefdir: crefoption linereminder;
 crefoption: U_CREF | U_XCREF idlist? | U_NOCREF idlist? ;
 datadecl: DB | DW | DD | DF | DQ | DT | datatype;
 //datadir: LABEL? dataitem linereminder;
-datadir: label=LABEL? type=datadecl values=scalarinstlist linereminder|label=LABEL? type=structtag values=structinstlist linereminder|label=LABEL? type=LABEL values=recordinstlist linereminder;
+datadir: label=LABEL? type=datadecl values=scalarinstlist linereminder;
+structinstdir: label=LABEL? type=structtag values=structinstlist linereminder;
+recordinstdir: label=LABEL? type=LABEL values=recordinstlist linereminder;
 //dataitem: datadecl scalarinstlist| LABEL structinstlist| LABEL recordinstlist;
 datatype: BYTE | SBYTE | WORD | SWORD | DWORD | SDWORD | FWORD | QWORD | TBYTE | REAL4 | REAL8 | REAL10;
 decnumber: INTEGER;
@@ -96,6 +98,10 @@ xordir: e01 XOR e02;
 anddir: e02 AND e03;
 notdir: NOT e04;
 
+field: U_DOT e11;
+fieldlist: field+;
+memberdir: variable=e10 field=fieldlist;
+
 e01: ordir | xordir
 | e02;
 e02: anddir
@@ -125,7 +131,7 @@ e09: offsetdir
 | segoverride
 //| e09 ':' e10
 | e10;
-e10: e10 U_DOT e11
+e10: memberdir
 | e10 expr?
 | e11;
 e11: '(' expr ')'
@@ -198,7 +204,7 @@ initvalue: expr {15,left}
 | '?'| dupdir | floatnumber;
 insegdir: label=labeldef insegmentdir=insegmentdir | insegmentdir=insegmentdir;
 //insegdirlist: insegdir+;
-insegmentdir: instruction| datadir| controldir| startupdir| exitdir| offsetdir| labeldir| procdir  localdirlist? endpdir| procdir  localdirlist? insegdir+ endpdir| invokedir| generaldir | linereminder;
+insegmentdir: instruction| datadir| structinstdir| recordinstdir| controldir| startupdir| exitdir| offsetdir| labeldir| procdir  localdirlist? endpdir| procdir  localdirlist? insegdir+ endpdir| invokedir| generaldir | linereminder;
 instrprefix: REP | REPE | REPZ | REPNE | REPNZ | LOCK ;
 
 asminstruction: instruction=instrprefix args=''?
@@ -340,7 +346,7 @@ structdir: name=LABEL structhdr  expr?  commanonuniq? linereminder endsdir | nam
 structhdr: STRUC | STRUCT | UNION ;
 structinstance: '<'  fieldinitlist?  '>'| '{' linereminder?   fieldinitlist?   linereminder?  '}'| expr DUP '(' structinstlist ')';
 structinstlist: structinstance+[COMMAOEOL];
-structitem : datadir| generaldir| offsetdir| nestedstruct| linereminder;
+structitem : datadir| structinstdir| recordinstdir| generaldir| offsetdir| nestedstruct| linereminder;
 textdir: LABEL textmacrodir linereminder;
 textitem: textliteral| '%' expr| LABEL;
 textlist: textitem+[COMMAOEOL];

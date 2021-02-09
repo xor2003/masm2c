@@ -154,6 +154,9 @@ def macroid(head, s, pos):
     else:
         return None
 
+def macrodir(_, nodes, name):
+    macroids.insert(0, name.value.lower())
+    logging.debug("macroid added ~~" + name.value + "~~")
 
 def structtag(head, s, pos):
     mtch = macroidre.match(s[pos:])
@@ -161,30 +164,22 @@ def structtag(head, s, pos):
         result = mtch.group().lower()
         # logging.debug ("matched ~^~" + result+"~^~")
         if result in structtags:
-            logging.debug(" ~^~" + result + "~^~ in macroids")
+            logging.debug(" ~^~" + result + "~^~ in structtags")
             return result
         else:
             return None
     else:
         return None
 
-
-def structinstance(context, nodes):
-    print("structinstance", str(nodes))
-    return Token('structinstance', nodes)
-
-
-def macrodir(_, nodes, name):
-    macroids.insert(0, name.value.lower())
-    logging.debug("macroid added ~~" + name.value + "~~")
-
-
 def structdir(context, nodes, name, item):
-    print("structdir", str(nodes))
+    logging.debug("structdir", str(nodes))
     structtags.insert(0, name.value.lower())
     logging.debug("structtag added ~~" + name.value + "~~")
     return []  # Token('structdir', nodes) TODO ignore by now
 
+def structinstdir(context, nodes, label, type, values):
+    logging.debug("structinstdir" + str(label) + str(type) + str(values))
+    return nodes  # Token('structdir', nodes) TODO ignore by now
 
 def calculate_data_size_new(size, values):
     if isinstance(values, list):
@@ -395,10 +390,17 @@ def LABEL(context, nodes):
 def STRING(context, nodes):
     return Token('STRING', nodes)
 
+def memberdir(context, nodes, variable, field):
+    result = Token('memberdir', [variable, field])
+    logging.debug(result)
+    return result
 
 actions = {
+    "field": make_token,
+    "memberdir": memberdir,
+    "structinstdir": structinstdir,
     "dupdir": dupdir,
-    "structinstance": structinstance,
+    "structinstance": make_token,
     "structdir": structdir,
     "includedir": includedir,
     "instrprefix": instrprefix,
