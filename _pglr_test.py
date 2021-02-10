@@ -233,7 +233,7 @@ actions = {
     "memberdir": memberdir,
     "structinstdir": structinstdir,
     "expr": expr,
-    "structinstance": structinstance,
+    "structinstance": make_token,
     "structdir": structdir,
     "includedir": includedir,
     "instrprefix": instrprefix,

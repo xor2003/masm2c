@@ -362,7 +362,7 @@ class Cpp(object):
                         # logging.debug("constant %s" %ss)
                         expr.value += ss[2:]
 
-            return expr.value
+            return self.tokenstostring(expr.value)
         return expr
 
     def expand(self, expr, def_size=0, destination=False, lea=False):
@@ -904,7 +904,7 @@ else goto __dispatch_call;
         else:
             self.fd = open(fname, "wt")
             self.hd = open(header, "wt")
-        hid = "TASMRECOVER_%s_STUBS_H__" % self.__namespace.upper().replace('-', '_')
+        hid = "__M2C_%s_STUBS_H__" % self.__namespace.upper().replace('-', '_')
         self.hd.write("""#ifndef %s
 #define %s
 
@@ -1028,9 +1028,9 @@ else goto __dispatch_call;
                 offsets.append((k.lower(), hex(v.line_number)))
 
         offsets = sorted(offsets, key=lambda t: t[1])
-        self.hd.write("#define kbegin 0x1001\n")
+        self.hd.write("static const uint16_t kbegin = 0x1001;\n")
         for o in offsets:
-            self.hd.write(("#define k%s %s\n" % o))
+            self.hd.write(("static const uint16_t k%s = %s;\n" % o))
         # self.hd.write("};\n")
 
         data_head = "\nstruct MYPACKED Memory{\n"

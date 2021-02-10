@@ -259,9 +259,9 @@ def includedir(context, nodes, name):
     return result
 
 
-def segdir(context, nodes, type, name):
+def segdir(context, nodes, type):
     logging.debug("segdir " + str(nodes) + " ~~")
-    context.extra.action_simplesegment(type, name)
+    context.extra.action_simplesegment(type, '')  #TODO
     return nodes
 
 
@@ -482,8 +482,7 @@ def dump_object(value):
 
 
 def calculate_type_size(type):
-    binary_width = {'b': 1, 'w': 2, 'd': 4, 'q': 8, 't': 10}[type[1].lower()]
-    return binary_width
+    return Parser.typetosize(type)
 
 
 class Parser:
@@ -1320,10 +1319,18 @@ class Parser:
 
     @staticmethod
     def typetosize(value):
+        if not isinstance(value, str):
+            logging.error("Type is not a string TODO "+str(value)) # TODO add structures
+            return 0
         value = value.lower()
+        #DB | DW | DD | DF | DQ | DT | BYTE | SBYTE | WORD | SWORD | DWORD | SDWORD | FWORD | QWORD | TBYTE | REAL4 | REAL8 | REAL10
         try:
-            size = {'byte': 1, 'sbyte': 1, 'word': 2, 'sword': 2, 'small': 2, 'dword': 4, 'sdword': 4, \
-                    'large': 4, 'fword': 6, 'qword': 8, 'tbyte': 10}[value]
+            size = {'db': 1, 'byte': 1, 'sbyte': 1,
+                    'dw': 2, 'word': 2, 'sword': 2, 'small': 2,
+                    'dd': 4, 'dword': 4, 'sdword': 4, 'large': 4, 'real4': 4,
+                    'df': 6, 'fword': 6,
+                    'dq': 8, 'qword': 8, 'real8': 8,
+                    'dt': 10, 'tbyte': 10, 'real10': 10}[value]
         except KeyError:
             logging.debug("Cannot find size for %s" % value)
             size = 0
