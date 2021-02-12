@@ -1413,8 +1413,8 @@ int main(int argc, char *argv[])
   
 	_state->_indent=0;
 
-//	eax = 0x0ffff; is it for .exe?
-	eax=ebx=ecx=edx=ebp=esi=edi=DF=0;
+	eax=ebx=ecx=edx=ebp=esi=edi=DF=fs=gs=0; // according to ms-dos 6.22 debuger
+        cx=0xff; // dummy size of executable
 
 try{
 	init(_state);

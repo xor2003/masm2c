@@ -1203,6 +1203,7 @@ extern db vgaPalette[256*3];
 
 // ---------unimplemented
 #define UNIMPLEMENTED log_debug("unimplemented\n");
+/*
 #define CMPXCHG8B(a) UNIMPLEMENTED // not in dosbox
 #define CMOVA(a,b) UNIMPLEMENTED // not in dosbox
 #define CMOVB(a,b) UNIMPLEMENTED
@@ -1238,6 +1239,8 @@ extern db vgaPalette[256*3];
 #define LOOPW(x) UNIMPLEMENTED
 #define LOOPWE(x) UNIMPLEMENTED
 #define LOOPWNE(x) UNIMPLEMENTED
+*/
+
 #define STI UNIMPLEMENTED
 #define CLI UNIMPLEMENTED
 
