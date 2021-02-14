@@ -60,25 +60,28 @@ def parse_bin(s):
 def convert_number_to_c(expr, radix = 10):
     if expr == '?':
         return '0'
-    if re.match(r'^([+-]?)([0-8]+)[OoQq]$', expr):
-        radix = 8
-    elif re.match(r'^([+-]?)([0-9][0-9A-Fa-f]*)[Hh]$', expr):
-        radix = 16
-    elif re.match(r'^([+-]?)([0-9]+)[Dd]$', expr):
-        radix = 10
-    elif re.match(r'^([+-]?)([0-1]+)[Bb]$', expr):
-        radix = 2
+    try:
+        if re.match(r'^([+-]?)([0-8]+)[OoQq]$', expr):
+            radix = 8
+        elif re.match(r'^([+-]?)([0-9][0-9A-Fa-f]*)[Hh]$', expr):
+            radix = 16
+        elif re.match(r'^([+-]?)([0-9]+)[Dd]$', expr):
+            radix = 10
+        elif re.match(r'^([+-]?)([0-1]+)[Bb]$', expr):
+            radix = 2
 
-    if radix == 8:
-        expr = re.sub(r'^([+-]?)([0-8]+)[OoQq]?$', '\g<1>0\g<2>', expr)
-    elif radix == 16:
-        expr = re.sub(r'^([+-]?)([0-9][0-9A-Fa-f]*)[Hh]?$', '\g<1>0x\g<2>', expr)
-    elif radix == 10:
-        expr = re.sub(r'^([+-]?)([0-9]+)[Dd]?$', '\g<1>\g<2>', expr)
-    elif radix == 2:
-        expr = re.sub(r'^([+-]?)([0-1]+)[Bb]?$', parse_bin, expr)  # convert binary
-    else:
-        expr = str(int(expr, radix))
+        if radix == 8:
+            expr = re.sub(r'^([+-]?)([0-8]+)[OoQq]?$', '\g<1>0\g<2>', expr)
+        elif radix == 16:
+            expr = re.sub(r'^([+-]?)([0-9][0-9A-Fa-f]*)[Hh]?$', '\g<1>0x\g<2>', expr)
+        elif radix == 10:
+            expr = re.sub(r'^([+-]?)([0-9]+)[Dd]?$', '\g<1>\g<2>', expr)
+        elif radix == 2:
+            expr = re.sub(r'^([+-]?)([0-1]+)[Bb]?$', parse_bin, expr)  # convert binary
+        else:
+            expr = str(int(expr, radix))
+    except:
+        logging.error("Failed to parse number " + expr)
 
     return expr
 
