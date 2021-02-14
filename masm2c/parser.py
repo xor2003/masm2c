@@ -138,7 +138,7 @@ def ptrdir(context, nodes):
 
 
 def INTEGER(context, nodes):
-    return Token('INTEGER', cpp.convert_number_to_c(nodes))
+    return Token('INTEGER', cpp.convert_number_to_c(nodes, context.extra.radix))
 
 
 def macroid(head, s, pos):
@@ -395,7 +395,12 @@ def memberdir(context, nodes, variable, field):
     logging.debug(result)
     return result
 
+def radixdir(context, nodes, value):
+    context.extra.radix = value
+    return nodes
+
 actions = {
+    "radixdir": radixdir,
     "field": make_token,
     "memberdir": memberdir,
     "structinstdir": structinstdir,
@@ -519,6 +524,7 @@ class Parser:
         self.__lex = ParglareParser()
         self.used = False
         # self.__pgcontext = PGContext(extra = self)
+        self.radix = 10
 
     def visible(self):
         for i in self.__stack:

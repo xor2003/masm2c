@@ -57,12 +57,29 @@ def parse_bin(s):
     return v
 
 
-def convert_number_to_c(expr):
-    expr = re.sub(r'^([+-]?)([0-8]+)[OoQq]$', '\g<1>0\g<2>', expr)
-    expr = re.sub(r'^([+-]?)([0-9][0-9A-Fa-f]*)[Hh]$', '\g<1>0x\g<2>', expr)
-    # expr = re.sub(r'^([0-1]+)[BbYy]$', '0b\\1', expr)
-    expr = re.sub(r'^([+-]?)([0-9]+)[Dd]$', '\g<1>\g<2>', expr)
-    expr = re.sub(r'^([+-]?)([0-1]+)[Bb]', parse_bin, expr)  # convert binary
+def convert_number_to_c(expr, radix = 10):
+    if expr == '?':
+        return '0'
+    if re.match(r'^([+-]?)([0-8]+)[OoQq]$', expr):
+        radix = 8
+    elif re.match(r'^([+-]?)([0-9][0-9A-Fa-f]*)[Hh]$', expr):
+        radix = 16
+    elif re.match(r'^([+-]?)([0-9]+)[Dd]$', expr):
+        radix = 10
+    elif re.match(r'^([+-]?)([0-1]+)[Bb]$', expr):
+        radix = 2
+
+    if radix == 8:
+        expr = re.sub(r'^([+-]?)([0-8]+)[OoQq]?$', '\g<1>0\g<2>', expr)
+    elif radix == 16:
+        expr = re.sub(r'^([+-]?)([0-9][0-9A-Fa-f]*)[Hh]?$', '\g<1>0x\g<2>', expr)
+    elif radix == 10:
+        expr = re.sub(r'^([+-]?)([0-9]+)[Dd]?$', '\g<1>\g<2>', expr)
+    elif radix == 2:
+        expr = re.sub(r'^([+-]?)([0-1]+)[Bb]?$', parse_bin, expr)  # convert binary
+    else:
+        expr = str(int(expr, radix))
+
     return expr
 
 
@@ -425,10 +442,11 @@ class Cpp(object):
 
         memberdir =  Token.find_and_call_tokens(expr, 'memberdir')
         if memberdir and indirection == -1:
-            expr = expr[0].value
+            expr = memberdir[0]
+            label = Token.find_and_call_tokens(expr, 'LABEL')
             g = None
             try:
-                g = self.__context.get_global(expr[0].value)
+                g = self.__context.get_global(label[0])
                 if isinstance(g, op.var):
                     expr = ["offset(%s,%s" % (g.segment, g.name)]+expr[1:]+[')']
             except:

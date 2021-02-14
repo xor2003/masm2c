@@ -302,7 +302,7 @@ purgedir: PURGE macroidlist;
 qualifiedtype: distance? PTR qualifiedtype? | type;
 qualifier: PROTO protospec | qualifiedtype;
 quote: '\'' | '"';
-radixdir: U_RADIX expr linereminder;
+radixdir: U_RADIX value=expr linereminder;
 readonly: READONLY;
 oldrecordfieldlist: expr+[COMMA];
 recordconst_: '{' oldrecordfieldlist '}'| oldrecordinstance;
