@@ -400,12 +400,12 @@ class Cpp(object):
 
         islabel = Token.find_and_call_tokens(expr, LABEL)
         if islabel and not offsetdir:
-            for i in islabel:
-                res = self.get_var_size(i)
+                #for i in islabel:
+                res = self.get_var_size(islabel[0])
                 if res:
                     size = res
                     indirection = 1
-                    break
+                    #break
 
         if indirection == 1 and not segoverride:
             regs = Token.find_and_call_tokens(expr, REGISTER)
@@ -416,13 +416,27 @@ class Cpp(object):
 
         # for "label" or "[label]" get size
         self.__isjustlabel = (isinstance(origexpr, Token) and origexpr.type == LABEL) \
-                             or (isinstance(origexpr, Token) and origexpr.type == SQEXPR and \
-                                 isinstance(origexpr.value, Token) and origexpr.value.type == LABEL)
+                             or (isinstance(origexpr, Token) and origexpr.type == SQEXPR \
+                                 and isinstance(origexpr.value, Token) and origexpr.value.type == LABEL) \
+                            or (isinstance(origexpr, Token) and origexpr.type == 'memberdir')
 
-        self.__indirection = indirection
+
         self.__current_size = size
-        Token.find_and_call_tokens(expr, LABEL, self.convert_label)
-        indirection = self.__indirection
+
+        memberdir =  Token.find_and_call_tokens(expr, 'memberdir')
+        if memberdir and indirection == -1:
+            expr = expr[0].value
+            g = None
+            try:
+                g = self.__context.get_global(expr[0].value)
+                if isinstance(g, op.var):
+                    expr = ["offset(%s,%s" % (g.segment, g.name)]+expr[1:]+[')']
+            except:
+                pass
+        else:
+            self.__indirection = indirection
+            Token.find_and_call_tokens(expr, LABEL, self.convert_label)
+            indirection = self.__indirection
         if self.__current_size != 0:  # and (indirection != 1 or size == 0):
             size = self.__current_size
 
@@ -781,27 +795,6 @@ int init(struct _STATE* _state)
 {
 X86_REGREF
 
-_state->_indent=0;
-logDebug=fopen("%s.log","w");
-ecx=0;
-
-initscr();
-resize_term(25, 80);
- cbreak(); // put keys directly to program
-    noecho(); // do not echo
-    keypad(stdscr, TRUE); // provide keypad buttons
-
-    if (!has_colors())
-    {
-        printw("Unable to use colors");
-    }
-        start_color();
-
-        realtocurs();
-        curs_set(0);
-
-        refresh();
-
   log_debug("~~~ heap_size=%%d para=%%d heap_ofs=%%d", HEAP_SIZE, (HEAP_SIZE >> 4), seg_offset(heap) );
   /* We expect ram_top as Kbytes, so convert to paragraphs */
   mcb_init(seg_offset(heap), (HEAP_SIZE >> 4) - seg_offset(heap) - 1, MCB_LAST);
@@ -824,7 +817,7 @@ X86_REGREF
 __disp=_i;
 if (__disp==kbegin) goto %s;
 else goto __dispatch_call;
-""" % (self.__namespace, name, self.__context.entry_point)
+""" % (name, self.__context.entry_point)
 
             logging.info(name)
             self.proc.optimize()

@@ -19,14 +19,8 @@ class CppTest(unittest.TestCase):
 
 
     @patch.object(logging, 'debug')
-    # @patch.object(parser, 'get_global')
     def test_expand(self, mock_debug):
-        # mock_get_global.return_value = var()
         mock_debug.return_value = None
-        # mock___getattribute__.return_value = <built-in method lower of newstr object at 0x0000000005D43C48>
-        # mock_compile.return_value = <_sre.SRE_Pattern object at 0x0000000005B66830>
-        # mock_match.return_value = None
-        # mock_sub.return_value = u'doublequote+4'
         p = Parser()
         p.set_global("_data", op.var(1, 0, issegment=True))
         cpp_instance = Cpp(p)

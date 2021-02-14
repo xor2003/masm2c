@@ -81,7 +81,6 @@ class TestInitOnce:
         self.parser.set_global('a10seax08lxa08l', op.var(elements=2, name=u'a10sEax08lxA08l', offset=1, segment=u'_rdata', size=1))
         self.parser.set_global('ascii', op.var(elements=2, name=u'ASCII', offset=1, segment=u'_data', size=1))
         self.parser.set_global('axorw', op.var(name=u'aXorw', offset=1, segment=u'_rdata', size=1))
-        self.parser.set_global('b', op.var(name=u'b', offset=1, segment=u'_data', size=1))
         self.parser.set_global('beginningdata', op.var(name=u'beginningdata', offset=1, segment=u'_data', size=1))
         self.parser.set_global('buffer', op.var(elements=64000, name=u'buffer', offset=1, segment=u'_data', size=1))
         self.parser.set_global('byte_41411f', op.var(name=u'byte_41411F', offset=1, segment=u'_bss', size=1))
@@ -110,6 +109,7 @@ class TestInitOnce:
         self.parser.set_global('var3', op.var(elements=4, name=u'var3', offset=1, segment=u'_data', size=1))
         self.parser.set_global('var4', op.var(elements=100, name=u'var4', offset=1, segment=u'_data', size=1))
         self.parser.set_global('var5', op.var(elements=0, name=u'var5', offset=1, segment=u'_data', size=1))
+        self.parser.set_global('gameconfig', op.var(elements=1, name=u'gameconfig', offset=1, segment=u'_data', size=1))
         self.parser.action_label(far=False, name='@@saaccvaaaax', isproc=False)
         self.parser.action_label(far=False, name='@VBL1', isproc=False)
         self.parser.action_label(far=False, name='@VBL12', isproc=False)
@@ -175,9 +175,8 @@ class ParserTest(unittest.TestCase):
     def test_instr_09(self):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov    ax, offset     failure')), u'\tR(MOV(ax, kfailure));\n')
 
-    def test_instr_10(self):
-        pass
-        #self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, p.action_code('pop     small word ptr [esp]')), u'\tR(POP(small));\n\tR(POP(word));\n\tR(POP(ptr));\n\tR(POP(*(dw*)(raddr(ss,esp))));\n')
+    #def test_instr_10(self):
+    #    self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('pop     small word ptr [esp]')), u'\tR(POP(*(dw*)(raddr(ss,esp))));\n')
 
     def test_instr_20(self):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('call dx')), u'\tR(CALL(__disp));\n')
@@ -209,6 +208,7 @@ class ParserTest(unittest.TestCase):
     def test_instr_110(self):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp a,1')), u'\tR(CMP(*(raddr(ds,offset(_data,a))), 1));\n')
 
+    @unittest.skip("undefined behaviour")
     def test_instr_120(self):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [ebp+i+table], dl')), u'\tR(MOV(*(dw*)(raddr(ss,ebp+i+offset(_text,table))), dl));\n')
 
@@ -246,7 +246,7 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('INC edx')), u'\tR(INC(edx));\n')
 
     def test_instr_240(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp b,256+3')), u'\tR(CMP(m.b, 256+3));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp b,256+3')), u'\tR(CMP(b, 256+3));\n')
 
     def test_instr_250(self):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('call [cs:table+ax]')), '\tR(CALL(__disp));\n')
@@ -1443,7 +1443,7 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('lea edx,fileName')), u'\tR(edx = offset(_data,filename));\n')
 
     def test_instr_4230(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('lea esi,b')), u'\tR(esi = offset(_data,b));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('lea esi,b')), u'\tR(esi = b);\n')
 
     def test_instr_4240(self):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('lea esi,f')), u'\tR(esi = offset(_data,f));\n')
@@ -2739,12 +2739,10 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov eax, 0ffffffffh')), u'\tR(MOV(eax, 0x0ffffffff));\n')
 
     def test_instr_8550(self):
-        pass
-        # self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp,'',self.v.proc.add('mov eax, B')), u'\tR(MOV(eax, B));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov eax, B')), u'\tR(MOV(eax, B));\n')
 
     def test_instr_8560(self):
-        pass
-        # self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp,'',self.v.proc.add('mov eax, CC')), u'\tR(MOV(eax, CC));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov eax, CC')), u'\tR(MOV(eax, CC));\n')
 
     def test_instr_8570(self):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov eax,-1')), u'\tR(MOV(eax, -1));\n')
@@ -3574,17 +3572,17 @@ class ParserTest(unittest.TestCase):
     def test_instr_11320(self):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('pushf')), '\tR(PUSHF);\n')
 
+    @unittest.skip("it works but test broken. non masm")
     def test_instr_11330(self):
-        pass
-        # self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, p.action_code(u'rep')), '\tREP\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code(u'rep')), '\tREP\n')
 
+    @unittest.skip("it works but test broken. non masm")
     def test_instr_11340(self):
-        pass
-        # self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, p.action_code(u'repe')), '\tREPE\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code(u'repe')), '\tREPE\n')
 
+    @unittest.skip("it works but test broken. non masm")
     def test_instr_11350(self):
-        pass
-        # self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, p.action_code(u'repne')), '\tREPNE\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code(u'repne')), '\tREPNE\n')
 
     def test_instr_11360(self):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code(u'repne lodsb')), 'LODSB;\n')
@@ -3629,7 +3627,7 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov a,ah')), u'\tR(MOV(*(raddr(ds,offset(_data,a))), ah));\n')
 
     def test_instr_11500(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp b,256+3+65536')), u'\tR(CMP(m.b, 256+3+65536));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp b,256+3+65536')), u'\tR(CMP(b, 256+3+65536));\n')
 
     def test_instr_11510(self):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp var1,1')), u'\tR(CMP(m.var1, 1));\n')
@@ -3638,7 +3636,7 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp var1,al')), u'\tR(CMP(m.var1, al));\n')
 
     def test_instr_11530(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov b,ax')), u'\tR(MOV(m.b, ax));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov b,ax')), u'\tR(MOV(b, ax));\n')
 
     def test_instr_11540(self):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov dl,var1')), u'\tR(MOV(dl, m.var1));\n')
@@ -3647,6 +3645,12 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov ebx,g')), u'\tR(MOV(ebx, m.g));\n')
         #r=list(filter(lambda x: not x.used, p.get_globals().values()))
         #print([g.name for g in r])
+
+    def test_instr_11560(self):
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp gameconfig.game_opponenttype, 0')), u'\tR(CMP(m.gameconfig.game_opponenttype, 0));\n')
+
+    def test_instr_11570(self):
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     ax, offset gameconfig.game_trackname')), u'\tR(MOV(ax, offset(_data,gameconfig.game_trackname)));\n')
 
 
 if __name__ == "__main__":

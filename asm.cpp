@@ -1416,7 +1416,29 @@ int main(int argc, char *argv[])
 	eax=ebx=ecx=edx=ebp=esi=edi=DF=fs=gs=0; // according to ms-dos 6.22 debuger
         cx=0xff; // dummy size of executable
 
+
 try{
+_state->_indent=0;
+logDebug=fopen("asm.log","w");
+
+initscr();
+resize_term(25, 80);
+ cbreak(); // put keys directly to program
+    noecho(); // do not echo
+    keypad(stdscr, TRUE); // provide keypad buttons
+
+    if (!has_colors())
+    {
+        printw("Unable to use colors");
+    }
+        start_color();
+
+        realtocurs();
+        curs_set(0);
+
+        refresh();
+
+
 	init(_state);
 
   if (argc >= 2)
