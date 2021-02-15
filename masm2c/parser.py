@@ -70,6 +70,7 @@ def read_asm_file(file_name):
 macroids = []
 structtags = []
 macroidre = re.compile(r'([A-Za-z@_\$\?][A-Za-z0-9@_\$\?]*)')
+commentid = re.compile(r'COMMENT\s+([^ ]).*?\1[^\r\n]*', flags=re.DOTALL)
 
 
 def get_line_number(context):
@@ -141,6 +142,14 @@ def INTEGER(context, nodes):
     return Token('INTEGER', cpp.convert_number_to_c(nodes, context.extra.radix))
 
 
+def COMMENTKW(head, s, pos):
+    mtch = commentid.match(s[pos:])
+    if mtch:
+        return mtch.group(0)
+    else:
+        return None
+
+
 def macroid(head, s, pos):
     mtch = macroidre.match(s[pos:])
     if mtch:
@@ -154,9 +163,11 @@ def macroid(head, s, pos):
     else:
         return None
 
+
 def macrodir(_, nodes, name):
     macroids.insert(0, name.value.lower())
     logging.debug("macroid added ~~" + name.value + "~~")
+
 
 def structtag(head, s, pos):
     mtch = macroidre.match(s[pos:])
@@ -171,15 +182,18 @@ def structtag(head, s, pos):
     else:
         return None
 
+
 def structdir(context, nodes, name, item):
     logging.debug("structdir", str(nodes))
     structtags.insert(0, name.value.lower())
     logging.debug("structtag added ~~" + name.value + "~~")
     return []  # Token('structdir', nodes) TODO ignore by now
 
+
 def structinstdir(context, nodes, label, type, values):
     logging.debug("structinstdir" + str(label) + str(type) + str(values))
     return nodes  # Token('structdir', nodes) TODO ignore by now
+
 
 def calculate_data_size_new(size, values):
     if isinstance(values, list):
@@ -228,7 +242,7 @@ def datadir(context, nodes, label, type, values):
     binary_width = calculate_type_size(type)
     size = calculate_data_size_new(binary_width, values)
 
-    #values = Token.remove_tokens(values, ['expr'])
+    # values = Token.remove_tokens(values, ['expr'])
     '''
     values = remove_dupdir(values) # temporary fix unittests
 
@@ -261,7 +275,7 @@ def includedir(context, nodes, name):
 
 def segdir(context, nodes, type):
     logging.debug("segdir " + str(nodes) + " ~~")
-    context.extra.action_simplesegment(type, '')  #TODO
+    context.extra.action_simplesegment(type, '')  # TODO
     return nodes
 
 
@@ -390,14 +404,17 @@ def LABEL(context, nodes):
 def STRING(context, nodes):
     return Token('STRING', nodes)
 
+
 def memberdir(context, nodes, variable, field):
     result = Token('memberdir', [variable, field])
     logging.debug(result)
     return result
 
+
 def radixdir(context, nodes, value):
     context.extra.radix = value
     return nodes
+
 
 actions = {
     "radixdir": radixdir,
@@ -449,7 +466,8 @@ actions = {
 
 recognizers = {
     'macroid': macroid,
-    "structtag": structtag
+    "structtag": structtag,
+    "COMMENTKW": COMMENTKW
 }
 
 
@@ -702,8 +720,6 @@ class Parser:
         # original_label = label
         label = label.lower()
 
-
-
         elements, is_string, r = self.process_data_tokens(data, width)
 
         base = 1 << (8 * width)
@@ -767,7 +783,7 @@ class Parser:
             # vv = ""
             for i in range(0, len(r)):
                 r[i] = str(r[i])
-                if i != len(r) - 1 :
+                if i != len(r) - 1:
                     r[i] += ","
 
         r.insert(0, vc)
@@ -811,12 +827,12 @@ class Parser:
                 vvv = "\\" + c
             elif ord(c) > 127:
                 vvv = '\\' + hex(ord(c.encode('cp437', 'backslashreplace')))[1:]
-                #vvv = c
+                # vvv = c
             elif c == '\0':
                 vvv = '\\0'
             else:
                 vvv = c
-            #vvv = "'" + vvv + "'"
+            # vvv = "'" + vvv + "'"
         return vvv
 
     def process_data_tokens(self, v, width):
@@ -895,7 +911,7 @@ class Parser:
                     # logging.warning(r)
                     # logging.warning(len(self.c_data) + len(r))
                     # self.__link_later.append((len(self.c_data) + len(r), v))
-                    #v = 0
+                    # v = 0
                 reslist = [v]
         elif v == '?':
             elements = 1
@@ -908,29 +924,29 @@ class Parser:
     def action_dup(self, n, values):
         res = []
         for i in range(0, n):
-          for value in values:
-            if value == '?':
-                value = 0
-            else:
-                if isinstance(value, list):
-                    val = ""
-                    for v in value:
-                        try:
-                            v = Parser.parse_int(v)
-                        except ValueError:
-                            pass
-                        val += str(v)
-                    value = val
-                '''
+            for value in values:
+                if value == '?':
+                    value = 0
                 else:
-                    try:
-                        value = Parser.parse_int(str(value))
-                    except:
-                        value = str(value)
-                '''
-            # logging.debug "n = %d value = %d" %(n, value)
+                    if isinstance(value, list):
+                        val = ""
+                        for v in value:
+                            try:
+                                v = Parser.parse_int(v)
+                            except ValueError:
+                                pass
+                            val += str(v)
+                        value = val
+                    '''
+                    else:
+                        try:
+                            value = Parser.parse_int(str(value))
+                        except:
+                            value = str(value)
+                    '''
+                # logging.debug "n = %d value = %d" %(n, value)
 
-            res.append(value)
+                res.append(value)
         return n * len(values), res
 
     def action_label_(self, line, far=False, isproc=False):
@@ -1044,9 +1060,9 @@ class Parser:
 
     def action_assign(self, name, value):
         name = name.value
-        value = Token.remove_tokens(value,'expr')
-        #value = self.tokenstostring(value)
-        #value = self.get_equ_value(value)
+        value = Token.remove_tokens(value, 'expr')
+        # value = self.tokenstostring(value)
+        # value = self.get_equ_value(value)
         has_global = False
         if self.has_global(name):
             has_global = True
@@ -1059,9 +1075,9 @@ class Parser:
 
     def action_equ(self, name, value):
         name = name.value
-        value = Token.remove_tokens(value,'expr')
-        #value = self.tokenstostring(value)
-        #vv = self.get_equ_value(value)
+        value = Token.remove_tokens(value, 'expr')
+        # value = self.tokenstostring(value)
+        # vv = self.get_equ_value(value)
         proc = self.get_global("mainproc")
         o = proc.add_equ_(name, value, line_number=self.line_number)
         self.set_global(name, o)
@@ -1260,7 +1276,7 @@ class Parser:
         m = re.match(r'\bword\s+(?:ptr)?\s*(.*)', vv)
         if m is not None:
             vv = m.group(1).strip()
-        #vv = cpp.convert_number_to_c(vv)
+        # vv = cpp.convert_number_to_c(vv)
         return vv
 
     def link(self):
@@ -1326,10 +1342,10 @@ class Parser:
     @staticmethod
     def typetosize(value):
         if not isinstance(value, str):
-            logging.error("Type is not a string TODO "+str(value)) # TODO add structures
+            logging.error("Type is not a string TODO " + str(value))  # TODO add structures
             return 0
         value = value.lower()
-        #DB | DW | DD | DF | DQ | DT | BYTE | SBYTE | WORD | SWORD | DWORD | SDWORD | FWORD | QWORD | TBYTE | REAL4 | REAL8 | REAL10
+        # DB | DW | DD | DF | DQ | DT | BYTE | SBYTE | WORD | SWORD | DWORD | SDWORD | FWORD | QWORD | TBYTE | REAL4 | REAL8 | REAL10
         try:
             size = {'db': 1, 'byte': 1, 'sbyte': 1,
                     'dw': 2, 'word': 2, 'sword': 2, 'small': 2,
