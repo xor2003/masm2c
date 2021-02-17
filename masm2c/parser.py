@@ -186,6 +186,7 @@ def structtag(head, s, pos):
 def structdir(context, nodes, name, item):
     logging.debug("structdir", str(nodes))
     structtags.insert(0, name.value.lower())
+    context.extra.processingStructure = True
     logging.debug("structtag added ~~" + name.value + "~~")
     return []  # Token('structdir', nodes) TODO ignore by now
 
@@ -236,7 +237,8 @@ def datadir(context, nodes, label, type, values):
         label = ""
     label = context.extra.mangle_label(label)
 
-    if Token.find_and_call_tokens(nodes, 'structinstance'):
+    if Token.find_and_call_tokens(nodes, 'structinstance') or \
+            context.extra.processingStructure:
         return []
 
     binary_width = calculate_type_size(type)
@@ -287,7 +289,9 @@ def segmentdir(context, nodes, name):
 
 def endsdir(context, nodes, name):
     logging.debug("ends " + str(nodes) + " ~~")
-    context.extra.action_endseg()
+    if context.extra.processingStructure == False: # if it is not a structure then it is end of segment
+        context.extra.action_endseg()
+    context.extra.processingStructure = False
     return nodes
 
 
@@ -543,6 +547,7 @@ class Parser:
         self.used = False
         # self.__pgcontext = PGContext(extra = self)
         self.radix = 10
+        self.processingStructure = False
 
     def visible(self):
         for i in self.__stack:
