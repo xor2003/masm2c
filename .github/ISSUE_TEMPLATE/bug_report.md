@@ -25,6 +25,9 @@ A clear and concise description of what you expected to happen.
 
 **Please complete the following information:**
  - Bitness [e.g. 16]
+ - Mode [e.g. Protected or Real]
+ - Disassembler [e.g. IDA, re2 or None]
+ - Assembler [e.g. masm 6.1 or uasm, jwasm]
 
 **Additional context**
 Add any other context about the problem here.
