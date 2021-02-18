@@ -18,6 +18,11 @@ unittest.TestLoader.sortTestMethodsUsing = lambda _, x, y: randint(-1, 1)
 
 class ParserTest(unittest.TestCase):
 
+    def test_instructions_list(self):
+        masm_instr_list = ['aaa', 'aad', 'aam', 'aas', 'adc', 'add', 'and', 'call', 'cbw', 'clc', 'cld', 'cli', 'cmc', 'cmp', 'cmps', 'cmpsb', 'cmpsw', 'cmpxchg8b ', 'cwd', 'daa', 'das', 'dec', 'div', 'esc', 'hlt', 'idiv', 'imul', 'in', 'inc', 'int', 'into', 'iret', 'ja', 'jae', 'jb', 'jbe', 'jc', 'jcxz', 'je', 'jg', 'jge', 'jl', 'jle', 'jmp', 'jna', 'jnae', 'jnb', 'jnbe', 'jnc', 'jne', 'jng', 'jnge', 'jnl', 'jnle', 'jno', 'jnp', 'jns', 'jnz', 'jo', 'jp', 'jpe', 'jpo', 'js', 'jz', 'lahf', 'lds', 'lea', 'les', 'lods', 'lodsb', 'lodsw', 'loop', 'loope', 'loopew', 'loopne', 'loopnew', 'loopnz', 'loopnzw', 'loopw', 'loopz', 'loopzw', 'mov', 'movs', 'movsb', 'movsw', 'mul', 'neg', 'nop', 'not', 'or', 'out', 'pop', 'popf', 'push', 'pushf', 'rcl', 'rcr', 'ret', 'retf', 'retn', 'rol', 'ror', 'sahf', 'sal', 'sar', 'sbb', 'scas', 'scasb', 'scasw', 'shl', 'shr', 'stc', 'std', 'sti', 'stos', 'stosb', 'stosw', 'sub', 'test', 'wait', 'xchg', 'xlat', 'xlatb', 'xor', 'bound', 'enter', 'ins', 'insb', 'insw', 'leave', 'outs', 'outsb', 'outsw', 'popa', 'pusha', 'pushw', 'arpl', 'lar', 'lsl', 'sgdt', 'sidt', 'sldt', 'smsw', 'str', 'verr', 'verw', 'clts', 'lgdt', 'lidt', 'lldt', 'lmsw', 'ltr', 'bsf', 'bsr', 'bt', 'btc', 'btr', 'bts', 'cdq', 'cmpsd', 'cwde', 'insd', 'iretd', 'iretdf', 'iretf', 'jecxz', 'lfs', 'lgs', 'lodsd', 'loopd', 'looped', 'loopned', 'loopnzd', 'loopzd', 'lss', 'movsd', 'movsx', 'movzx', 'outsd', 'popad', 'popfd', 'pushad', 'pushd', 'pushfd', 'scasd', 'seta', 'setae', 'setb', 'setbe', 'setc', 'sete', 'setg', 'setge', 'setl', 'setle', 'setna', 'setnae', 'setnb', 'setnbe', 'setnc', 'setne', 'setng', 'setnge', 'setnl', 'setnle', 'setno', 'setnp', 'setns', 'setnz', 'seto', 'setp', 'setpe', 'setpo', 'sets', 'setz', 'shld', 'shrd', 'stosd', 'bswap', 'cmpxchg', 'invd', 'invlpg', 'wbinvd', 'xadd']
+        proc_instance = Proc('someproc')
+        [proc_instance.find_op_common_class(i, []) for i in masm_instr_list]
+
     @patch.object(logging, 'debug')
     @patch.object(logging, 'info')
     # @patch.object(parser, 'get_global')

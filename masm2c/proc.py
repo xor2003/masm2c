@@ -211,7 +211,7 @@ class Proc(object):
         return o
 
     def create_instruction_object(self, instruction, args=[]):
-        cl = self.find_op_class(instruction)
+        cl = self.find_op_class(instruction, args)
         # print "args %s" %s[1:]
         # arg = " ".join(args) if len(args) > 0 else ""
         o = cl(args)
@@ -220,32 +220,21 @@ class Proc(object):
         # logging.info("~1~2~ " + o.command + " ~ " + o.cmd)
         return o
 
-    def find_op_class(self, cmd):
+    def find_op_class(self, cmd, args):
         try:
             cl = getattr(op, '_' + cmd.lower())
         except AttributeError:
-            cl = self.find_op_common_class(cmd)
+            cl = self.find_op_common_class(cmd, args)
         return cl
 
-    def find_op_common_class(self, cmd):
+    def find_op_common_class(self, cmd, args):
         logging.debug(cmd)
-        if re.match(
-                r"^(ins[bwd]|outs[bwd]|scas[bwd]|cmps[bwd]|movs[bwd]|salc|xlatb?|lods[bwd]|stos[bwd]|aad|repne|repe|rep|std|stc|cld|clc|cli|cbw|cwde?|cdq|sti|cmc|pushf|popf|nop|pushad?|popad?|da[as]|aa[adsm]|finit|fsin|fldz|hlt|ret[nf]?|iret|leave)$",
-                cmd.lower()):
-            cl = getattr(op, '_instruction0')
-        elif re.match(
-                r"^(dec|inc|pop|push|int|neg|div|idiv|mul|set[a-z]+|not|lods|scas|stos|cmpxchg8b|bswap|fistp|fmul|fadd|org)$",
-                cmd.lower()):
-            cl = getattr(op, '_instruction1')
-        elif re.match(r"^(j[a-z]+|loop[a-z]*)$", cmd.lower()):
-            cl = getattr(op, '_jump')
-        elif re.match(
-                r"^(xchg|cmp|cmpxchg|mov[sz]x|mov|or|xor|and|ad[cd]|sbb|r[oc][lr]|sub|sh[lr]|test|in|out|lea|l[defg]s|sa[rl]|bt[rsc]?|movs|xadd|cmov[a-z]+|enter|bs[rf])$",
-                cmd.lower()):
-            cl = getattr(op, '_instruction2')
-        elif re.match(r"^(shrd|shld)$", cmd.lower()):
-            cl = getattr(op, '_instruction3')
-        else:
+        try:
+            if re.match(r"^(j[a-z]+|loop[a-z]*)$", cmd.lower()):
+                cl = getattr(op, '_jump')
+            else:
+                cl = getattr(op, '_instruction'+str(len(args)))
+        except:
             raise Exception("unknown command: " + cmd.lower())
         return cl
 
