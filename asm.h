@@ -1000,7 +1000,7 @@ int8_t asm2C_IN(int16_t data);
 #define BSWAP(op1)														\
 	op1 = (op1>>24)|((op1>>8)&0xFF00)|((op1<<8)&0xFF0000)|((op1<<24)&0xFF000000);
 
-
+#define RDTSC {dq t = realElapsedTime(); eax=t&0xffffffff; edx=(t>32)&0xffffffff;}
 
 #if DEBUG==2
     #define R(a) {log_debug("l:%s%d:%s\n",_state->_str,__LINE__,#a);}; a
