@@ -1242,6 +1242,25 @@ class Parser:
         # vv = cpp.convert_number_to_c(vv)
         return vv
 
+    def link(self):
+        logging.debug("link()")
+        # logging.debug self.c_data
+        for addr, expr in self.__link_later:
+            logging.debug("addr %s expr %s" % (addr, expr))
+            try:
+                # v = self.eval_expr(expr)
+                v = expr
+                # if self.has_global('k' + v):
+                #               v = 'k' + v
+                v = self.get_global_value(v, 0x10000)
+
+                logging.debug("link: patching %04x -> %s" % (addr, v))
+            except:
+                logging.warning("link: Exception %s" % expr)
+                continue
+            logging.debug("link: addr %s v %s" % (addr, v))
+            self.c_data[addr] = str(v)
+
     def parse_args_new_data_(self, text):
         # self.__pgcontext = PGContext(extra = self)
         self.__binary_data_size = 0
