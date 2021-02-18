@@ -66,7 +66,7 @@ def read_asm_file(file_name):
     return content
 
 
-macroids = []
+macroids = dict()
 structtags = []
 macroidre = re.compile(r'([A-Za-z@_\$\?][A-Za-z0-9@_\$\?]*)')
 commentid = re.compile(r'COMMENT\s+([^ ]).*?\1[^\r\n]*', flags=re.DOTALL)
@@ -149,13 +149,14 @@ def COMMENTKW(head, s, pos):
         return None
 
 
-def macroid(head, s, pos):
+def macroid(context, s, pos):
     mtch = macroidre.match(s[pos:])
     if mtch:
         result = mtch.group().lower()
         # logging.debug ("matched ~^~" + result+"~^~")
-        if result in macroids:
+        if result in macroids.keys():
             logging.debug(" ~^~" + result + "~^~ in macroids")
+            context.extra.proc.stmts += macroids[result]
             return result
         else:
             return None
@@ -163,10 +164,25 @@ def macroid(head, s, pos):
         return None
 
 
-def macrodir(_, nodes, name):
-    macroids.insert(0, name.value.lower())
+def macrodirhead(context, nodes, name):
+    #macroids.insert(0, name.value.lower())
+    context.extra.current_macro = []
+    context.extra.macro_name.append(name.value.lower())
     logging.debug("macroid added ~~" + name.value + "~~")
+    return nodes
 
+def repeatbegin(context, nodes, value):
+    context.extra.current_macro = []
+    context.extra.macro_name.append('') # TODO
+    logging.debug("repeatbegin")
+    return nodes
+
+def ENDM(context, nodes):
+    name = context.extra.macro_name.pop()
+    logging.debug("endm "+name)
+    macroids[name] = context.extra.current_macro
+    context.extra.current_macro = None
+    return nodes
 
 def structtag(head, s, pos):
     mtch = macroidre.match(s[pos:])
@@ -323,8 +339,6 @@ def instrprefix(context, nodes):
 
 def asminstruction(context, nodes, instruction, args):
     logging.debug("instruction " + str(nodes) + " ~~")
-    # if args:
-    #    args = [listtostring(i) for i in args] # TODO temporary workaround
     # args = build_ast(args)
     if not instruction:
         return nodes
@@ -333,7 +347,10 @@ def asminstruction(context, nodes, instruction, args):
     o = context.extra.proc.create_instruction_object(instruction, args)
     o.line = get_raw(context)
     o.line_number = get_line_number(context)
-    context.extra.proc.stmts.append(o)
+    if context.extra.current_macro == None:
+        context.extra.proc.stmts.append(o)
+    else:
+        context.extra.current_macro.append(o)
     return o
 
 
@@ -410,6 +427,8 @@ def radixdir(context, nodes, value):
 
 
 actions = {
+    "repeatbegin": repeatbegin,
+    "ENDM": ENDM,
     "radixdir": radixdir,
     "field": make_token,
     "memberdir": memberdir,
@@ -431,7 +450,7 @@ actions = {
     "endsdir": endsdir,
     "equdir": equdir,
     "labeldef": labeldef,
-    "macrodir": macrodir,
+    "macrodirhead": macrodirhead,
     "notdir": notdir,
     "offsetdir": offsetdir,
     "ordir": ordir,
@@ -537,6 +556,8 @@ class Parser:
         # self.__pgcontext = PGContext(extra = self)
         self.radix = 10
         self.processingStructure = False
+        self.current_macro = None
+        self.macro_name = []
 
     def visible(self):
         for i in self.__stack:
@@ -1218,6 +1239,7 @@ class Parser:
         # logging.debug("~~        self.assertEqual(parser_instance.parse_data_line_whole(line='"+str(line)+"'),"+str(("".join(c), "".join(h), offset2 - offset))+")")
         return c, h, s
 
+    '''
     def get_equ_value(self, v):
         logging.debug("%s" % v)
         vv = self.replace_dollar_w_segoffst(v)
@@ -1241,6 +1263,7 @@ class Parser:
             vv = m.group(1).strip()
         # vv = cpp.convert_number_to_c(vv)
         return vv
+    '''
 
     def link(self):
         logging.debug("link()")

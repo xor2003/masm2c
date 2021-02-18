@@ -231,13 +231,15 @@ macroarg: '%' expr| '%' LABEL '(' macroarglist ')'| STRING| '<' arbitrarytext '>
 macroarglist: macroarg+[COMMA];
 macrobody: locallist? macrostmtlist;
 macrocall: macroid  '(' macroarglist ')' | macroid macroarglist? linereminder;
-macrodir: name=LABEL MACRO macroparmlist?  linereminder macrobody ENDM linereminder;
+macrodirhead: name=LABEL MACRO macroparmlist?;
+macrodir: macrodirhead linereminder macrobody ENDM linereminder;
 macrofor: fordir forparm  COMMA '<' macroarglist '>' linereminder macrobody ENDM linereminder;
 macroforc: forcdir LABEL  COMMA textliteral linereminder macrobody ENDM linereminder;
 macroidlist: LABEL+[COMMA];
 macroparm: LABEL dotdotparmtype?;
 macroparmlist: macroparm+[COMMAOEOL];
-macrorepeat: repeatdir expr linereminder macrobody ENDM linereminder;
+macrorepeat: repeatbegin linereminder macrobody ENDM linereminder;
+repeatbegin: repeatdir value=expr;
 macrostmt: instruction | labeldef | directive| exitmdir| ':' LABEL linereminder| GOTO LABEL linereminder;
 macrostmtlist: macrostmt+;
 macrowhile: WHILE expr linereminder macrobody ENDM linereminder;
