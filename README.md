@@ -58,14 +58,6 @@ struct Memory m = {
 ...
 ```
 
-Your porting path:
-
-0. DOS binary 16 bit real or 32 bit protected modes -> 
-1. IDA Pro (disassembly) -> export assembler (masm format) -> 
-2. uasm to compile for dos (dosbox debugger to fix) -> 
-3. this MASM to C translator -> 
-4. C SDL source.
-
 Optionally you can compile output of masm2c (C code) for 32 bit plarform with optimization 
 and decompile to get cleaner C code without dead code like x86 flags update.
 
@@ -94,13 +86,11 @@ TODO:
 - better keyboard
 - add FPU instructions support (may use linux 387 emulator)
 
-Also to easier disassembling (exe to asm) need to collect run-time information from dosbox or other emulator to annotate IDA disassembly. Maybe modify dosbox debugger tracing mechanism to collect:
+For easier disassembling (exe to asm) you may need to collect run-time information from dosbox or other emulator to annotate IDA disassembly. Maybe modify dosbox debugger tracing mechanism to collect:
 - current instruction is code
 - access to memory (which segment), offset which segment
 - segment register value
 In other repo there are scripts which can help to convert DOSBOX run-time traces into IDA annotations to simplify disassembly.
-
-To build resulting disassembly I use uasm(jwasm)/masm6, link5/tlink. See uasm project \Samples\Dos\ for examples.
 
 Assembler source code for Stunts game https://github.com/xor2003/restunts
 
@@ -111,9 +101,11 @@ See list of DOS games with debug information http://bringerp.free.fr/forum/viewt
 How to run to convert your masm 16 bit source to C:
 -------------------------------
 
+First your code should be compilable with uasm(jwasm)/masm6, link5/tlink and working on DOS.
+
 masm2c.py <some.asm>
 
-(Some source code modification might also required to build)
+(Small source code modification might also be required to build)
 
 IDA Pro Free https://www.scummvm.org/news/20180331/
 
@@ -137,7 +129,7 @@ iplay_m_.exe HACKER4.S3M
 
 Or just get prebuilt
 
-If you want to help me please send to:
+If you want to help me please contribute or send BTC to:
 
 BTC: bc1qyaxs8dqn7mglp9w9zyvkfpz888x3aknr0jnsmx
 
