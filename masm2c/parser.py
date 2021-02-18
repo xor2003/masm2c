@@ -1,4 +1,3 @@
-from __future__ import absolute_import
 from __future__ import print_function
 
 import logging
@@ -217,16 +216,6 @@ def calculate_data_size_new(size, values):
         return len(values)
     else:
         raise Exception('Unknown Token: ' + str(values))
-
-
-def remove_dupdir(values):
-    if isinstance(values, list):
-        return [remove_dupdir(x) for x in values]
-    elif isinstance(values, Token) and values.type == 'dupdir':
-        return Parser.parse_int(escape(values.value[0])) * remove_dupdir(values.value[1])
-    elif isinstance(values, str) and values == '?':
-        return 0
-    return values
 
 
 def datadir(context, nodes, label, type, values):
@@ -622,22 +611,6 @@ class Parser:
     def get_offset(self, name):
         return self.__offsets[name.lower()]
 
-    def evall(self, stmt):
-        try:
-            return Parser.parse_int(stmt)
-        except:
-            pass
-        value = self.__globals[stmt.lower()].value
-        return int(value)
-
-    def expr_callback(self, match):
-        name = match.group(1).lower()
-        g = self.get_global(name)
-        if isinstance(g, op.equ) or isinstance(g, op.assignment):
-            return g.value
-        else:
-            return "0x%04x" % g.offset
-
     def replace_dollar_w_segoffst(self, v):
         logging.debug("$ = %d" % self.__cur_seg_offset)
         return v.replace('$', str(self.__cur_seg_offset))
@@ -954,13 +927,6 @@ class Parser:
                 res.append(value)
         return n * len(values), res
 
-    def action_label_(self, line, far=False, isproc=False):
-        # logging.info(line)
-        m = re.match('([@\w]+)\s*::?', line)
-        name = m.group(1).strip()
-        logging.debug(name)
-        self.action_label(name=name, far=far, isproc=isproc)
-
     def action_label(self, name, far=False, isproc=False):
         # if self.visible():
         # name = m.group(1)
@@ -1054,14 +1020,6 @@ class Parser:
     def parse_include_file_lines(self, file_name):
         content = read_asm_file(file_name)
         return self.parse_file_inside(content, file_name=file_name)
-
-    def tokenstostring(self, l):  # TODO remove
-        if isinstance(l, str):
-            return l
-        elif isinstance(l, list):
-            return " ".join([self.tokenstostring(i) for i in l])
-        elif isinstance(l, Token):
-            return l.value
 
     def action_assign(self, name, value):
         name = name.value
@@ -1283,26 +1241,6 @@ class Parser:
             vv = m.group(1).strip()
         # vv = cpp.convert_number_to_c(vv)
         return vv
-
-    def link(self):
-        logging.debug("link()")
-        # logging.debug self.c_data
-        for addr, expr in self.__link_later:
-            logging.debug("addr %s expr %s" % (addr, expr))
-            try:
-                # v = self.eval_expr(expr)
-                v = expr
-                # if self.has_global('k' + v):
-                #               v = 'k' + v
-                v = self.get_global_value(v, 0x10000)
-
-                logging.debug("link: patching %04x -> %s" % (addr, v))
-            except:
-                logging.warning("link: Exception %s" % expr)
-                continue
-            logging.debug("link: addr %s v %s" % (addr, v))
-            self.c_data[addr] = str(v)
-        # logging.debug self.c_data
 
     def parse_args_new_data_(self, text):
         # self.__pgcontext = PGContext(extra = self)
