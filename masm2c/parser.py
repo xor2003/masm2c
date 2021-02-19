@@ -164,7 +164,7 @@ def macroid(context, s, pos):
         return None
 
 
-def macrodirhead(context, nodes, name):
+def macrodirhead(context, nodes, name, parms):
     #macroids.insert(0, name.value.lower())
     context.extra.current_macro = []
     context.extra.macro_name.append(name.value.lower())

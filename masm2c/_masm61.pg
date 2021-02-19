@@ -231,7 +231,7 @@ macroarg: '%' expr| '%' LABEL '(' macroarglist ')'| STRING| '<' arbitrarytext '>
 macroarglist: macroarg+[COMMA];
 macrobody: locallist? macrostmtlist;
 macrocall: macroid  '(' macroarglist ')' | macroid macroarglist? linereminder;
-macrodirhead: name=LABEL MACRO macroparmlist?;
+macrodirhead: name=LABEL MACRO parms=macroparmlist?;
 macrodir: macrodirhead linereminder macrobody ENDM linereminder;
 macrofor: fordir forparm  COMMA '<' macroarglist '>' linereminder macrobody ENDM linereminder;
 macroforc: forcdir LABEL  COMMA textliteral linereminder macrobody ENDM linereminder;
