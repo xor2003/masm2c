@@ -714,7 +714,7 @@ class Cpp(object):
             p += "\tR(POP(%s));\n" % r
         return p
 
-    def _rep(self, arg):
+    def _rep(self):
         return "\tREP\n"
 
     def _cmpsb(self):
