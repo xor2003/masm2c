@@ -38,7 +38,7 @@ class Unsupported(Exception):
 class var(object):
 
     def __init__(self, size, offset, name="", segment="", issegment=False, elements=1):
-        #logging.debug("op.var(%d, %d, %s, %s, %s, %d)" %(size, offset, name, segment, issegment, elements))
+        # logging.debug("op.var(%d, %d, %s, %s, %s, %d)" %(size, offset, name, segment, issegment, elements))
         self.size = size
         self.offset = offset
         self.original_name = name
@@ -47,9 +47,10 @@ class var(object):
         self.issegment = issegment
         self.elements = elements
         self.used = False
-        #logging.debug("op.var(%s)" %(str(self.__dict__).replace('\n',' ')))
+        # logging.debug("op.var(%s)" %(str(self.__dict__).replace('\n',' ')))
 
 
+'''
 class equ(object):
     def __init__(self, value, size=0):
         self.value = value
@@ -105,32 +106,29 @@ class segment(object):
 
     def __str__(self):
         return "<segment %s>" % self.name
+'''
 
 
 class baseop(object):
-    cmd = ""
-    line = ""
-    line_number = 0
-    elements = 1
+    __slots__ = ["cmd", "line", "line_number", "elements", "args"]
+
+    def __init__(self):
+        self.cmd = ""
+        self.line = ""
+        self.line_number = 0
+        self.elements = 1
+        self.args = []
 
     # def __str__(self):
     #        return self.cmd+" "+self.command+" "+str(self.line_number)
 
-    def parse_arg(self, arg):
+    def get_first_arg(self, arg):
         # print "text %s" %text
         #               traceback.print_stack(file=sys.stdout)
         args = arg
         if len(args) > 0:
             return args[0]
         return ""
-
-    '''
-    def split(self, text):
-        # print "text %s" %text
-        #               traceback.print_stack(file=sys.stdout)
-        lex = parser.Parser()
-        return lex.parse_args(text)
-    '''
 
     def __str__(self):
         return str(self.__class__)
@@ -141,94 +139,92 @@ class basejmp(baseop):
 
 
 class _call(baseop):
-    def __init__(self, arg):
-        self.name = self.parse_arg(arg)
+    def __init__(self, args):
+        self.args = args
 
     def visit(self, visitor):
-        return visitor._call(self.name)
+        return visitor._call(*self.args)
+
 
 class _rep(baseop):
-    def __init__(self, arg):
-        self.arg = self.parse_arg(arg)
+    def __init__(self, args):
+        self.args = args
 
     def visit(self, visitor):
-        return visitor._rep(self.arg)
+        return visitor._rep(*self.args)
 
 
 class _sub(baseop):
-    def __init__(self, arg):
-        # print "text %s" %text
-        #               traceback.print_stack(file=sys.stdout)
-        #lex = parser.Parser()
-        self.dst, self.src = arg
+    def __init__(self, args):
+        self.args = args
 
     def visit(self, visitor):
-        return visitor._sub(self.dst, self.src)
+        return visitor._sub(*self.args)
+
 
 class _mul(baseop):
-    def __init__(self, arg):
-        # print "text %s" %text
-        #               traceback.print_stack(file=sys.stdout)
-        lex = parser.Parser()
-        self.arg = arg
+    def __init__(self, args):
+        self.args = args
 
     def visit(self, visitor):
-        return visitor._mul(self.arg)
+        return visitor._mul(self.args)  #
 
 
 class _div(baseop):
-    def __init__(self, arg):
-        self.arg = self.parse_arg(arg)
+    def __init__(self, args):
+        self.args = args
 
     def visit(self, visitor):
-        return visitor._div(self.arg)
+        return visitor._div(*self.args)
 
 
 class _xor(baseop):
-    def __init__(self, arg):
-        # print "text %s" %text
-        #               traceback.print_stack(file=sys.stdout)
-        #lex = parser.Parser()
-        self.dst, self.src = arg
+    def __init__(self, args):
+        self.args = args
 
     def visit(self, visitor):
-        return visitor._xor(self.dst, self.src)
+        return visitor._xor(*self.args)
+
 
 class _jne(basejmp):
-    def __init__(self, label):
-        self.label = self.parse_arg(label)
+    def __init__(self, args):
+        self.args = args
 
     def visit(self, visitor):
-        return visitor._jnz(self.label)
+        return visitor._jnz(*self.args)
+
 
 class _je(basejmp):
-    def __init__(self, label):
-        self.label = self.parse_arg(label)
+    def __init__(self, args):
+        self.args = args
 
     def visit(self, visitor):
-        return visitor._jz(self.label)
+        return visitor._jz(*self.args)
+
 
 class _jb(basejmp):
-    def __init__(self, label):
-        self.label = self.parse_arg(label)
+    def __init__(self, args):
+        self.args = args
 
     def visit(self, visitor):
-        return visitor._jc(self.label)
+        return visitor._jc(*self.args)
+
 
 class _jae(basejmp):
-    def __init__(self, label):
-        self.label = self.parse_arg(label)
+    def __init__(self, args):
+        self.args = args
 
     def visit(self, visitor):
-        return visitor._jnc(self.label)
+        return visitor._jnc(*self.args)
 
 
 class _jnb(basejmp):
-    def __init__(self, label):
-        self.label = self.parse_arg(label)
+    def __init__(self, args):
+        self.args = args
 
     def visit(self, visitor):
-        return visitor._jnc(self.label)
+        return visitor._jnc(*self.args)
+
 
 def flatten(S):
     '''
@@ -243,7 +239,8 @@ def flatten(S):
         return flatten(S[0]) + flatten(S[1:])
     return S[:1] + flatten(S[1:])
 
-def flattenpush(S): # TODO will work most of the time
+
+def flattenpush(S):  # TODO will work most of the time
     S = flatten(S)
     res = []
     ressec = []
@@ -256,28 +253,31 @@ def flattenpush(S): # TODO will work most of the time
         res.append(ressec)
     return res
 
+
 class _push(baseop):
     def __init__(self, arg):
-#        self.arg = Token.find_and_call_tokens(arg,'expr') #flattenpush(arg)
+        #        self.arg = Token.find_and_call_tokens(arg,'expr') #flattenpush(arg)
         if isinstance(arg, list) and len(arg) and isinstance(arg[0], Token) \
                 and arg[0].type in ['register', 'segmentregister']:
-            self.arg = arg
+            self.args = arg
         else:
-            self.arg = flattenpush(Token.remove_tokens(arg,'expr'))
+            self.args = flattenpush(Token.remove_tokens(arg, 'expr'))
 
     def visit(self, visitor):
-        return visitor._push(self.arg)
+        return visitor._push(self.args)
+
 
 class _pop(baseop):
     def __init__(self, arg):
         if isinstance(arg, list) and len(arg) and isinstance(arg[0], Token) \
                 and arg[0].type in ['register', 'segmentregister']:
-            self.arg = arg
+            self.args = arg
         else:
-            self.arg = flattenpush(Token.remove_tokens(arg,'expr'))
+            self.args = flattenpush(Token.remove_tokens(arg, 'expr'))
 
     def visit(self, visitor):
-        return visitor._pop(self.arg)
+        return visitor._pop(self.args)
+
 
 class _ret(baseop):
     def __init__(self, arg):
@@ -286,12 +286,14 @@ class _ret(baseop):
     def visit(self, visitor):
         return visitor._ret()
 
+
 class _retn(baseop):
     def __init__(self, arg):
         pass
 
     def visit(self, visitor):
         return visitor._ret()
+
 
 class _lodsb(baseop):
     def __init__(self, arg):
@@ -300,12 +302,14 @@ class _lodsb(baseop):
     def visit(self, visitor):
         return visitor._lodsb()
 
+
 class _scasb(baseop):
     def __init__(self, arg):
         pass
 
     def visit(self, visitor):
         return visitor._scasb()
+
 
 class _scasw(baseop):
     def __init__(self, arg):
@@ -314,12 +318,14 @@ class _scasw(baseop):
     def visit(self, visitor):
         return visitor._scasw()
 
+
 class _scasd(baseop):
     def __init__(self, arg):
         pass
 
     def visit(self, visitor):
         return visitor._scasd()
+
 
 class _cmpsb(baseop):
     def __init__(self, arg):
@@ -328,12 +334,14 @@ class _cmpsb(baseop):
     def visit(self, visitor):
         return visitor._cmpsb()
 
+
 class _lodsw(baseop):
     def __init__(self, arg):
         pass
 
     def visit(self, visitor):
         return visitor._lodsw()
+
 
 class _lodsd(baseop):
     def __init__(self, arg):
@@ -342,6 +350,7 @@ class _lodsd(baseop):
     def visit(self, visitor):
         return visitor._lodsd()
 
+
 class _stosd(baseop):
     def __init__(self, arg):
         self.repeat = 1
@@ -349,6 +358,7 @@ class _stosd(baseop):
 
     def visit(self, visitor):
         return visitor._stosd(self.repeat, self.clear_cx)
+
 
 class _stosw(baseop):
     def __init__(self, arg):
@@ -367,6 +377,7 @@ class _stosb(baseop):
     def visit(self, visitor):
         return visitor._stosb(self.repeat, self.clear_cx)
 
+
 class _movsw(baseop):
     def __init__(self, arg):
         self.repeat = 1
@@ -374,6 +385,7 @@ class _movsw(baseop):
 
     def visit(self, visitor):
         return visitor._movsw(self.repeat, self.clear_cx)
+
 
 class _movsd(baseop):
     def __init__(self, arg):
@@ -392,12 +404,14 @@ class _movsb(baseop):
     def visit(self, visitor):
         return visitor._movsb(self.repeat, self.clear_cx)
 
+
 class _int(baseop):
-    def __init__(self, arg):
-        self.dst = self.parse_arg(arg)
+    def __init__(self, args):
+        self.args = args
 
     def visit(self, visitor):
-        return visitor._int(self.dst)
+        return visitor._int(*self.args)
+
 
 class _nop(baseop):
     def __init__(self, arg):
@@ -405,6 +419,7 @@ class _nop(baseop):
 
     def visit(self, visitor):
         return ""
+
 
 class label(baseop):
 
@@ -419,77 +434,78 @@ class label(baseop):
     def visit(self, visitor):
         return visitor._label(self.name, self.proc)
 
+
 class _lea(baseop):
-    def __init__(self, arg):
-        # print "text %s" %text
-        #               traceback.print_stack(file=sys.stdout)
-        #lex = parser.Parser()
-        self.dst, self.src = arg
+    def __init__(self, args):
+        self.args = args
 
     def visit(self, visitor):
-        return visitor._lea(self.dst, self.src)
+        return visitor._lea(*self.args)
+
 
 class _repe(baseop):
-    def __init__(self, arg):
-        self.arg = self.parse_arg(arg)
+    def __init__(self, args):
+        self.args = args
 
     def visit(self, visitor):
-        return visitor._repe(self.arg)
+        return visitor._repe(*self.args)
+
 
 class _repne(baseop):
-    def __init__(self, arg):
-        self.arg = self.parse_arg(arg)
+    def __init__(self, args):
+        self.args = args
 
     def visit(self, visitor):
-        return visitor._repne(self.arg)
+        return visitor._repne(*self.args)
+
 
 class _jna(basejmp):
-    def __init__(self, label):
-        self.label = self.parse_arg(label)
+    def __init__(self, args):
+        self.args = args
 
     def visit(self, visitor):
-        return visitor._jbe(self.label)
+        return visitor._jbe(*self.args)
+
 
 class _jnbe(basejmp):
-    def __init__(self, label):
-        self.label = self.parse_arg(label)
+    def __init__(self, args):
+        self.args = args
 
     def visit(self, visitor):
-        return visitor._ja(self.label)
+        return visitor._ja(*self.args)
+
 
 class _imul(baseop):
-    def __init__(self, arg):
-        # print "text %s" %text
-        #               traceback.print_stack(file=sys.stdout)
-        #lex = parser.Parser()
-        self.arg = arg
+    def __init__(self, args):
+        self.args = args
 
     def visit(self, visitor):
-        return visitor._imul(self.arg)
+        return visitor._imul(self.args)  #
+
 
 class _movs(baseop):
-    def __init__(self, arg):
-        # print "text %s" %text
-        #               traceback.print_stack(file=sys.stdout)
-        lex = parser.Parser()
-        self.dst, self.src = arg
+    def __init__(self, args):
+        self.args = args
 
     def visit(self, visitor):
-        return visitor._movs(self.dst, self.src)
+        return visitor._movs(*self.args)
+
 
 class _lods(baseop):
-    def __init__(self, arg):
-        self.arg = self.parse_arg(arg)
+    def __init__(self, args):
+        self.args = args
 
     def visit(self, visitor):
-        return visitor._lods(self.arg)
+        return visitor._lods(*self.args)
+
 
 class _scas(baseop):
-    def __init__(self, arg):
-        self.arg = self.parse_arg(arg)
+    def __init__(self, args):
+        self.args = args
 
     def visit(self, visitor):
-        return visitor._scas(self.arg)
+        return visitor._scas(*self.args)
+
 
 class _leave(baseop):
     def __init__(self, arg):
@@ -498,12 +514,14 @@ class _leave(baseop):
     def visit(self, visitor):
         return visitor._leave()
 
+
 class _idiv(baseop):
-    def __init__(self, arg):
-        self.arg = self.parse_arg(arg)
+    def __init__(self, args):
+        self.args = args
 
     def visit(self, visitor):
-        return visitor._idiv(self.arg)
+        return visitor._idiv(*self.args)
+
 
 class _instruction0(baseop):
     def __init__(self, arg):
@@ -512,49 +530,52 @@ class _instruction0(baseop):
     def visit(self, visitor):
         return visitor._instruction0(self.cmd)
 
+
 class _instruction1(baseop):
-    def __init__(self, arg):
-        self.arg = self.parse_arg(arg)
+    def __init__(self, args):
+        self.args = args
 
     def visit(self, visitor):
-        return visitor._instruction1(self.cmd, self.arg)
+        return visitor._instruction1(self.cmd, *self.args)
+
 
 class _jump(baseop):
-    def __init__(self, arg):
-        self.arg = self.parse_arg(arg)
+    def __init__(self, args):
+        self.args = args
 
     def visit(self, visitor):
-        return visitor._jump(self.cmd, self.arg)
+        return visitor._jump(self.cmd, *self.args)
+
 
 class _instruction2(baseop):
-    def __init__(self, arg):
-        # print "text %s" %text
-        #               traceback.print_stack(file=sys.stdout)
-        lex = parser.Parser()
-        self.dst, self.src = arg
+    def __init__(self, args):
+        self.args = args
 
     def visit(self, visitor):
-        return visitor._instruction2(self.cmd, self.dst, self.src)
+        return visitor._instruction2(self.cmd, *self.args)
+
 
 class _instruction3(baseop):
-    def __init__(self, arg):
-        self.dst, self.src, self.c = arg
+    def __init__(self, args):
+        self.args = args
 
     def visit(self, visitor):
-        return visitor._instruction3(self.cmd, self.dst, self.src, self.c)
+        return visitor._instruction3(self.cmd, *self.args)
+
 
 class _equ(baseop):
-    def __init__(self, dst, src):
-        self.dst, self.src = dst, src
+    def __init__(self, args):
+        self.args = args
 
     def visit(self, visitor):
-        return visitor._equ(self.dst, self.src)
+        return visitor._equ(*self.args)
+
 
 class _assignment(baseop):
-    def __init__(self, dst, src):
-        self.dst, self.src = dst, src
+    def __init__(self, args):
+        self.args = args
         self.original_name = ''
 
     def visit(self, visitor):
-        logging.debug("~ %s = %s" % (self.dst, self.src))
-        return visitor._assignment(self.dst, self.src)
+        logging.debug("~ %s = %s" % (self.args[0], self.args[1]))
+        return visitor._assignment(*self.args)

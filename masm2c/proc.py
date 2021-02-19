@@ -130,7 +130,7 @@ class Proc(object):
 
     def add_equ_(self, label, value, line_number):  # TODO Move it to parser
         logging.info(label + " " + str(value))
-        o1 = op._equ(label, value)
+        o1 = op._equ([label, value])
         #value = cpp.convert_number_to_c(value)
         o1.line = str(line_number) + " " + label + " equ " + str(value)
         o1.cmd = o1.line
@@ -140,7 +140,7 @@ class Proc(object):
     def add_assignment(self, label, value, line_number=0):
         logging.info(label + " " + str(value))
         #value = cpp.convert_number_to_c(value)
-        o = op._assignment(label, value)
+        o = op._assignment([label, value])
         o.line = str(line_number) + " " + label + " = " + str(value)
         o.cmd = o.line
 

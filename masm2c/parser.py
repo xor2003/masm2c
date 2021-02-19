@@ -9,7 +9,7 @@ from builtins import hex
 from builtins import object
 from builtins import range
 from builtins import str
-from copy import copy
+from copy import copy, deepcopy
 
 import parglare
 from parglare import Grammar, Parser as PGParser
@@ -19,6 +19,7 @@ from masm2c.proc import Proc
 from masm2c import proc
 from masm2c import op
 from masm2c.Token import Token
+from masm2c.Macro import Macro
 
 # from parglare.parser import Context as PGContext
 # action = get_collector()
@@ -66,7 +67,7 @@ def read_asm_file(file_name):
     return content
 
 
-macroids = dict()
+macroses = dict()
 structtags = []
 macroidre = re.compile(r'([A-Za-z@_\$\?][A-Za-z0-9@_\$\?]*)')
 commentid = re.compile(r'COMMENT\s+([^ ]).*?\1[^\r\n]*', flags=re.DOTALL)
@@ -154,9 +155,8 @@ def macroid(context, s, pos):
     if mtch:
         result = mtch.group().lower()
         # logging.debug ("matched ~^~" + result+"~^~")
-        if result in macroids.keys():
+        if result in macroses.keys():
             logging.debug(" ~^~" + result + "~^~ in macroids")
-            context.extra.proc.stmts += macroids[result]
             return result
         else:
             return None
@@ -165,14 +165,14 @@ def macroid(context, s, pos):
 
 
 def macrodirhead(context, nodes, name, parms):
-    #macroids.insert(0, name.value.lower())
-    context.extra.current_macro = []
+    param_names = [i.lower() for i in Token.find_tokens(parms, 'LABEL')]
+    context.extra.current_macro = Macro(name.value.lower(), param_names)
     context.extra.macro_name.append(name.value.lower())
     logging.debug("macroid added ~~" + name.value + "~~")
     return nodes
 
 def repeatbegin(context, nodes, value):
-    context.extra.current_macro = []
+    context.extra.current_macro = Macro("", [], value)
     context.extra.macro_name.append('') # TODO
     logging.debug("repeatbegin")
     return nodes
@@ -180,8 +180,27 @@ def repeatbegin(context, nodes, value):
 def ENDM(context, nodes):
     name = context.extra.macro_name.pop()
     logging.debug("endm "+name)
-    macroids[name] = context.extra.current_macro
+    macroses[name] = context.extra.current_macro
     context.extra.current_macro = None
+    return nodes
+
+
+class Getmacroargval:
+
+    def __init__(self, d):
+        self.d = d
+
+    def __call__(self, token):
+        return self.d[token.value]
+
+def macrocall(context, nodes, name, args):
+    logging.debug("macrocall " + name + "~~")
+    macros = macroses[name]
+    c = Getmacroargval(dict(zip(macros.getparameters(), args)))
+    ins = deepcopy(macros.instructions)
+    for i in ins:
+        i.args = Token.find_and_replace_tokens(i.args, 'LABEL', c)
+    context.extra.proc.stmts += ins
     return nodes
 
 def structtag(head, s, pos):
@@ -242,7 +261,7 @@ def datadir(context, nodes, label, type, values):
         label = ""
     label = context.extra.mangle_label(label)
 
-    if Token.find_and_call_tokens(nodes, 'structinstance') or \
+    if Token.find_tokens(nodes, 'structinstance') or \
             context.extra.processingStructure:
         return []
 
@@ -350,14 +369,14 @@ def asminstruction(context, nodes, instruction, args):
     if context.extra.current_macro == None:
         context.extra.proc.stmts.append(o)
     else:
-        context.extra.current_macro.append(o)
+        context.extra.current_macro.instructions.append(o)
     return o
 
 
 def enddir(context, nodes, label):
     logging.debug("end " + str(nodes) + " ~~")
     if label:
-        context.extra.entry_point = Token.find_and_call_tokens(label, 'LABEL')[0].lower()
+        context.extra.entry_point = Token.find_tokens(label, 'LABEL')[0].lower()
     return nodes
 
 
@@ -427,6 +446,7 @@ def radixdir(context, nodes, value):
 
 
 actions = {
+    "macrocall": macrocall,
     "repeatbegin": repeatbegin,
     "ENDM": ENDM,
     "radixdir": radixdir,
@@ -1161,7 +1181,7 @@ class Parser:
         mov ax, ''' + line + '''
         default_seg ends
             end start
-            ''').asminstruction.src
+            ''').asminstruction.args[1]
         except Exception as e:
             print(e)
             logging.error("Error2")
@@ -1191,7 +1211,7 @@ class Parser:
         mov ax, ''' + line + '''
         default_seg ends
         end start
-        ''').asminstruction.src
+        ''').asminstruction.args[1]
         except Exception as e:
             print(e)
             logging.error("Error4")

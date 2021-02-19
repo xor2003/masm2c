@@ -142,7 +142,8 @@ class Cpp(object):
         self.body = ""
         self.__unbounded = []
 
-    def convert_label(self, name_original: str):
+    def convert_label(self, token):
+        name_original = token.value
         name = name_original.lower()
         logging.debug("expand_cb name = %s indirection = %u" % (name, self.__indirection))
 
@@ -155,13 +156,13 @@ class Cpp(object):
                 logging.debug("OFFSET = %s" % offset)
                 self.__indirection = 0
                 self.__used_data_offsets.add((name, offset))
-                return "k" + name
+                return Token('LABEL', "k" + name)
 
         try:
             g = self.__context.get_global(name)
         except:
             # logging.warning("expand_cb() global '%s' is missing" % name)
-            return name_original
+            return token
 
         # print g
         if isinstance(g, op._equ):
@@ -191,7 +192,6 @@ class Cpp(object):
             if g.issegment:
                 value = "seg_offset(%s)" % (name_original.lower())
                 self.__indirection = 0
-                return value
             else:
                 if g.elements == 1 and self.__isjustlabel and not self.lea and g.size == self.__current_size:
                     # traceback.print_stack(file=sys.stdout)
@@ -209,20 +209,6 @@ class Cpp(object):
             if size == 0:
                 raise Exception("invalid var '%s' size %u" % (name, size))
             if self.__indirection == 0 or self.__indirection == 1:  # x0r self.indirection == 1 ??
-                '''
-                                if (self.__expr_size != 0 and self.__expr_size != size) or g.elements > 1:
-                                        self.__pointer_flag = True
-                                        if self.lea == False:
-                                                value = "(db*)&m.%s" %(name_original)
-                                        else:
-                                                value = "offsetof(struct Mem,%s)" %(name_original)
-                                        logging.debug "value %s" %value
-                                else:
-                                        if self.lea == False:
-                                                value = "m." + name_original
-                                        else:
-                                                value = "offsetof(struct Mem,%s)" %(name_original)
-                                '''
                 value = "offsetof(struct Mem,%s)" % name_original
                 if self.__indirection == 1:
                     self.__indirection = 0
@@ -231,7 +217,7 @@ class Cpp(object):
                 self.__indirection = 0
             else:
                 raise Exception("invalid indirection %d name '%s' size %u" % (self.__indirection, name, size))
-        return value
+        return Token('LABEL', value)
 
     def get_size(self, expr):
         logging.debug('get_size("%s")' % expr)
@@ -241,13 +227,13 @@ class Cpp(object):
 
         expr = Token.remove_tokens(expr, ['expr'])
 
-        ptrdir = Token.find_and_call_tokens(expr, PTRDIR)
+        ptrdir = Token.find_tokens(expr, PTRDIR)
         if ptrdir:
             value = ptrdir[0]
             # logging.debug('get_size res 1')
             return self.__context.typetosize(value)
 
-        issqexpr = Token.find_and_call_tokens(expr, SQEXPR)
+        issqexpr = Token.find_tokens(expr, SQEXPR)
         if issqexpr:
             return 0
 
@@ -294,7 +280,7 @@ class Cpp(object):
         if isinstance(expr, list):
             return max([self.get_size(i) for i in expr])
 
-        offsetdir = Token.find_and_call_tokens(expr, 'offsetdir')
+        offsetdir = Token.find_tokens(expr, 'offsetdir')
         if offsetdir:
             return 2  # TODO 16 bit word size
 
@@ -397,19 +383,19 @@ class Cpp(object):
         # self.__expr_size = size
 
         # calculate the segment register
-        segoverride = Token.find_and_call_tokens(expr, SEGOVERRIDE)
-        sqexpr = Token.find_and_call_tokens(expr, SQEXPR)
+        segoverride = Token.find_tokens(expr, SEGOVERRIDE)
+        sqexpr = Token.find_tokens(expr, SQEXPR)
         if sqexpr:
             indirection = 1
         if segoverride:
             expr = Token.remove_tokens(expr, [SEGMENTREGISTER])
 
-        offsetdir = Token.find_and_call_tokens(expr, OFFSETDIR)
+        offsetdir = Token.find_tokens(expr, OFFSETDIR)
         if offsetdir:
             indirection = -1
             expr = offsetdir
 
-        ptrdir = Token.find_and_call_tokens(expr, PTRDIR)
+        ptrdir = Token.find_tokens(expr, PTRDIR)
         if ptrdir:
             indirection = 1
 
@@ -418,7 +404,7 @@ class Cpp(object):
 
         expr, _ = Token.remove_squere_bracets(expr)
 
-        islabel = Token.find_and_call_tokens(expr, LABEL)
+        islabel = Token.find_tokens(expr, LABEL)
         if islabel and not offsetdir:
                 #for i in islabel:
                 res = self.get_var_size(islabel[0])
@@ -428,7 +414,7 @@ class Cpp(object):
                     #break
 
         if indirection == 1 and not segoverride:
-            regs = Token.find_and_call_tokens(expr, REGISTER)
+            regs = Token.find_tokens(expr, REGISTER)
             if regs and any([i in ['bp', 'ebp', 'sp', 'esp'] for i in regs]):  # TODO doublecheck
                 self.__seg_prefix = "ss"
         if segoverride:
@@ -443,10 +429,10 @@ class Cpp(object):
 
         self.__current_size = size
 
-        memberdir =  Token.find_and_call_tokens(expr, 'memberdir')
+        memberdir =  Token.find_tokens(expr, 'memberdir')
         if memberdir and indirection == -1:
             expr = memberdir[0]
-            label = Token.find_and_call_tokens(expr, 'LABEL')
+            label = Token.find_tokens(expr, 'LABEL')
             g = None
             try:
                 g = self.__context.get_global(label[0])
@@ -456,7 +442,7 @@ class Cpp(object):
                 pass
         else:
             self.__indirection = indirection
-            Token.find_and_call_tokens(expr, LABEL, self.convert_label)
+            expr = Token.find_and_replace_tokens(expr, LABEL, self.convert_label)
             indirection = self.__indirection
         if self.__current_size != 0:  # and (indirection != 1 or size == 0):
             size = self.__current_size
@@ -495,7 +481,7 @@ class Cpp(object):
         # name = re.sub(prog, '', name)
         indirection = -5
 
-        segoverride = Token.find_and_call_tokens(name, 'segoverride')
+        segoverride = Token.find_tokens(name, 'segoverride')
         if segoverride:
             self.__seg_prefix = segoverride[0].value
         #    name = Token.remove_tokens(name, ['segoverride', 'segmentregister'])
@@ -504,7 +490,7 @@ class Cpp(object):
             name = name.value
             indirection = 0  # based register value
 
-        labeldir = Token.find_and_call_tokens(name, 'LABEL')
+        labeldir = Token.find_tokens(name, 'LABEL')
         if labeldir:
             labeldir[0] = self.__context.mangle_label(mangle2_label(labeldir[0]))
             if self.__context.has_global(labeldir[0]):
@@ -516,14 +502,14 @@ class Cpp(object):
             else:
                 name = labeldir[0]
 
-        ptrdir = Token.find_and_call_tokens(name, 'ptrdir')
+        ptrdir = Token.find_tokens(name, 'ptrdir')
         if ptrdir:
             if any(isinstance(x, str) and x.lower() in ['near', 'far', 'short'] for x in ptrdir):
                 indirection = -1  #
             else:
                 indirection = 1
 
-        sqexpr = Token.find_and_call_tokens(name, 'sqexpr')
+        sqexpr = Token.find_tokens(name, 'sqexpr')
         if sqexpr:
             indirection = 1
 
@@ -1020,10 +1006,10 @@ else goto __dispatch_call;
             k = re.sub(r'[^A-Za-z0-9_]', '_', k)
             if isinstance(v, op.var):
                 pass  # offsets.append((k.capitalize(), hex(v.offset)))
-            elif isinstance(v, op.equ) or isinstance(v, op.assignment):
-                offsets.append((k.capitalize(), self.expand_equ(v.value)))  # fixme: try to save all constants here
-            # elif isinstance(v, op.label):
-            #       offsets.append((k.capitalize(), hex(v.line_number)))
+            #elif isinstance(v, op.equ) or isinstance(v, op.assignment):
+            #    offsets.append((k.capitalize(), self.expand_equ(v.value)))  # fixme: try to save all constants here
+            ## elif isinstance(v, op.label):
+            ##       offsets.append((k.capitalize(), hex(v.line_number)))
 
         offsets = sorted(offsets, key=lambda t: t[1])
         for o in offsets:
@@ -1036,8 +1022,8 @@ else goto __dispatch_call;
             k = re.sub(r'[^A-Za-z0-9_]', '_', k)
             if isinstance(v, op.var):
                 pass  # offsets.append((k.capitalize(), hex(v.offset)))
-            elif isinstance(v, op.equ) or isinstance(v, op.assignment):
-                pass  # offsets.append((k.capitalize(), self.expand_equ(v.value))) #fixme: try to save all constants here
+            #elif isinstance(v, op.equ) or isinstance(v, op.assignment):
+            #    pass  # offsets.append((k.capitalize(), self.expand_equ(v.value))) #fixme: try to save all constants here
             elif isinstance(v, op.label):
                 offsets.append((k.lower(), hex(v.line_number)))
 

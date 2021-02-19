@@ -15,28 +15,37 @@ class Token:
         return "Token('%s', '%s')" % (self.type, self.value)
 
     @staticmethod
-    def find_and_call_tokens(expr, lookfor, call=None):
+    def find_tokens(expr, lookfor):
         l = []
         if isinstance(expr, Token):
             if expr.type == lookfor:
-                if call:
-                    expr.value = call(expr.value)
                 l.append(expr.value)
 
             result = None
             if not isinstance(expr.value, str):
-                result = Token.find_and_call_tokens(expr.value, lookfor, call)
+                result = Token.find_tokens(expr.value, lookfor)
             if result:
                 l = l + result
         elif isinstance(expr, list):
             for i in range(0, len(expr)):
-                result = Token.find_and_call_tokens(expr[i], lookfor, call)
+                result = Token.find_tokens(expr[i], lookfor)
                 if result:
                     l = l + result
         if not l:
             l = None
         return l
 
+    @staticmethod
+    def find_and_replace_tokens(expr, lookfor, call):
+        if isinstance(expr, Token):
+            if expr.type == lookfor:
+                if call:
+                    expr = call(expr)
+            elif not isinstance(expr.value, str):
+                expr.value = Token.find_and_replace_tokens(expr.value, lookfor, call)
+        elif isinstance(expr, list):
+            expr = [Token.find_and_replace_tokens(i, lookfor, call) for i in expr]
+        return expr
 
     @staticmethod
     def remove_squere_bracets(expr, index=0):

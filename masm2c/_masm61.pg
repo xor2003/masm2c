@@ -227,10 +227,11 @@ localdef: LOCAL idlist linereminder;
 localdir: LOCAL parmlist linereminder;
 localdirlist: localdir+;
 locallist: localdef+;
-macroarg: '%' expr| '%' LABEL '(' macroarglist ')'| STRING| '<' arbitrarytext '>' | arbitrarytext;
+macroarg: '%' expr| '%' LABEL '(' macroarglist ')'| '<' arbitrarytext '>' | arbitrarytext //| STRING
+| expr; // to remove
 macroarglist: macroarg+[COMMA];
 macrobody: locallist? macrostmtlist;
-macrocall: macroid  '(' macroarglist ')' | macroid macroarglist? linereminder;
+macrocall: name=macroid  '(' args=macroarglist ')' | name=macroid args=macroarglist? linereminder;
 macrodirhead: name=LABEL MACRO parms=macroparmlist?;
 macrodir: macrodirhead linereminder macrobody ENDM linereminder;
 macrofor: fordir forparm  COMMA '<' macroarglist '>' linereminder macrobody ENDM linereminder;
