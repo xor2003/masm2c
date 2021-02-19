@@ -1099,10 +1099,10 @@ else goto __dispatch_call;
         a, b = self.parse2(dst, src)
         return "MOVS(%s, %s, %d);\n" % (a, b, size)
 
-    def _repe(self, arg):
+    def _repe(self):
         return "\tREPE\n"
 
-    def _repne(self, arg):
+    def _repne(self):
         return "\tREPNE\n"
 
     def _lods(self, src):
