@@ -1,7 +1,7 @@
 
 [![Build Status](https://travis-ci.com/xor2003/masm2c.svg?branch=master)](https://travis-ci.com/xor2003/masm2c)
 
-MASM x86 to C translator
+MASM 16bit to C translator
 ==============
 
 Portable MASM or Source-to-source_compiler https://en.wikipedia.org/wiki/Source-to-source_compiler
