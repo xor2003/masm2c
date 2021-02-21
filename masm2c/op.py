@@ -29,7 +29,6 @@ from masm2c.Token import Token
 
 
 # import traceback
-# import sys
 
 class Unsupported(Exception):
     pass
@@ -122,14 +121,6 @@ class baseop(object):
     # def __str__(self):
     #        return self.cmd+" "+self.command+" "+str(self.line_number)
 
-    def get_first_arg(self, arg):
-        # print "text %s" %text
-        #               traceback.print_stack(file=sys.stdout)
-        args = arg
-        if len(args) > 0:
-            return args[0]
-        return ""
-
     def __str__(self):
         return str(self.__class__)
 
@@ -140,6 +131,7 @@ class basejmp(baseop):
 
 class _call(baseop):
     def __init__(self, args):
+        super().__init__()
         self.args = args
 
     def visit(self, visitor):
@@ -148,6 +140,7 @@ class _call(baseop):
 
 class _rep(baseop):
     def __init__(self, args):
+        super().__init__()
         self.args = args
 
     def visit(self, visitor):
@@ -156,6 +149,7 @@ class _rep(baseop):
 
 class _sub(baseop):
     def __init__(self, args):
+        super().__init__()
         self.args = args
 
     def visit(self, visitor):
@@ -164,6 +158,7 @@ class _sub(baseop):
 
 class _mul(baseop):
     def __init__(self, args):
+        super().__init__()
         self.args = args
 
     def visit(self, visitor):
@@ -172,6 +167,7 @@ class _mul(baseop):
 
 class _div(baseop):
     def __init__(self, args):
+        super().__init__()
         self.args = args
 
     def visit(self, visitor):
@@ -180,6 +176,7 @@ class _div(baseop):
 
 class _xor(baseop):
     def __init__(self, args):
+        super().__init__()
         self.args = args
 
     def visit(self, visitor):
@@ -188,6 +185,7 @@ class _xor(baseop):
 
 class _jne(basejmp):
     def __init__(self, args):
+        super().__init__()
         self.args = args
 
     def visit(self, visitor):
@@ -196,6 +194,7 @@ class _jne(basejmp):
 
 class _je(basejmp):
     def __init__(self, args):
+        super().__init__()
         self.args = args
 
     def visit(self, visitor):
@@ -204,6 +203,7 @@ class _je(basejmp):
 
 class _jb(basejmp):
     def __init__(self, args):
+        super().__init__()
         self.args = args
 
     def visit(self, visitor):
@@ -212,6 +212,7 @@ class _jb(basejmp):
 
 class _jae(basejmp):
     def __init__(self, args):
+        super().__init__()
         self.args = args
 
     def visit(self, visitor):
@@ -220,31 +221,26 @@ class _jae(basejmp):
 
 class _jnb(basejmp):
     def __init__(self, args):
+        super().__init__()
         self.args = args
 
     def visit(self, visitor):
         return visitor._jnc(*self.args)
 
 
-def flatten(S):
-    '''
-    if isinstance(S, Token) and S.type == 'expr':
-        S = S.value
-        if isinstance(S, list):
-            S =
-    '''
-    if not S:
-        return S
-    if isinstance(S[0], list):
-        return flatten(S[0]) + flatten(S[1:])
-    return S[:1] + flatten(S[1:])
+def flatten(s):
+    if not s:
+        return s
+    if isinstance(s[0], list):
+        return flatten(s[0]) + flatten(s[1:])
+    return s[:1] + flatten(s[1:])
 
 
-def flattenpush(S):  # TODO will work most of the time
-    S = flatten(S)
+def flattenpush(s):  # TODO will work most of the time
+    s = flatten(s)
     res = []
     ressec = []
-    for i in S:
+    for i in s:
         ressec.append(i)
         if isinstance(i, Token) and i.type in ['offset']:
             res.append(ressec)
@@ -256,6 +252,7 @@ def flattenpush(S):  # TODO will work most of the time
 
 class _push(baseop):
     def __init__(self, arg):
+        super().__init__()
         #        self.arg = Token.find_and_call_tokens(arg,'expr') #flattenpush(arg)
         if isinstance(arg, list) and len(arg) and isinstance(arg[0], Token) \
                 and arg[0].type in ['register', 'segmentregister']:
@@ -269,6 +266,7 @@ class _push(baseop):
 
 class _pop(baseop):
     def __init__(self, arg):
+        super().__init__()
         if isinstance(arg, list) and len(arg) and isinstance(arg[0], Token) \
                 and arg[0].type in ['register', 'segmentregister']:
             self.args = arg
@@ -281,6 +279,7 @@ class _pop(baseop):
 
 class _ret(baseop):
     def __init__(self, arg):
+        super().__init__()
         pass
 
     def visit(self, visitor):
@@ -289,6 +288,7 @@ class _ret(baseop):
 
 class _retn(baseop):
     def __init__(self, arg):
+        super().__init__()
         pass
 
     def visit(self, visitor):
@@ -297,6 +297,7 @@ class _retn(baseop):
 
 class _lodsb(baseop):
     def __init__(self, arg):
+        super().__init__()
         pass
 
     def visit(self, visitor):
@@ -305,6 +306,7 @@ class _lodsb(baseop):
 
 class _scasb(baseop):
     def __init__(self, arg):
+        super().__init__()
         pass
 
     def visit(self, visitor):
@@ -313,6 +315,7 @@ class _scasb(baseop):
 
 class _scasw(baseop):
     def __init__(self, arg):
+        super().__init__()
         pass
 
     def visit(self, visitor):
@@ -321,6 +324,7 @@ class _scasw(baseop):
 
 class _scasd(baseop):
     def __init__(self, arg):
+        super().__init__()
         pass
 
     def visit(self, visitor):
@@ -329,6 +333,7 @@ class _scasd(baseop):
 
 class _cmpsb(baseop):
     def __init__(self, arg):
+        super().__init__()
         pass
 
     def visit(self, visitor):
@@ -337,6 +342,7 @@ class _cmpsb(baseop):
 
 class _lodsw(baseop):
     def __init__(self, arg):
+        super().__init__()
         pass
 
     def visit(self, visitor):
@@ -345,6 +351,7 @@ class _lodsw(baseop):
 
 class _lodsd(baseop):
     def __init__(self, arg):
+        super().__init__()
         pass
 
     def visit(self, visitor):
@@ -353,6 +360,7 @@ class _lodsd(baseop):
 
 class _stosd(baseop):
     def __init__(self, arg):
+        super().__init__()
         self.repeat = 1
         self.clear_cx = False
 
@@ -362,6 +370,7 @@ class _stosd(baseop):
 
 class _stosw(baseop):
     def __init__(self, arg):
+        super().__init__()
         self.repeat = 1
         self.clear_cx = False
 
@@ -371,6 +380,7 @@ class _stosw(baseop):
 
 class _stosb(baseop):
     def __init__(self, arg):
+        super().__init__()
         self.repeat = 1
         self.clear_cx = False
 
@@ -380,6 +390,7 @@ class _stosb(baseop):
 
 class _movsw(baseop):
     def __init__(self, arg):
+        super().__init__()
         self.repeat = 1
         self.clear_cx = False
 
@@ -389,6 +400,7 @@ class _movsw(baseop):
 
 class _movsd(baseop):
     def __init__(self, arg):
+        super().__init__()
         self.repeat = 1
         self.clear_cx = False
 
@@ -398,6 +410,7 @@ class _movsd(baseop):
 
 class _movsb(baseop):
     def __init__(self, arg):
+        super().__init__()
         self.repeat = 1
         self.clear_cx = False
 
@@ -407,6 +420,7 @@ class _movsb(baseop):
 
 class _int(baseop):
     def __init__(self, args):
+        super().__init__()
         self.args = args
 
     def visit(self, visitor):
@@ -415,6 +429,7 @@ class _int(baseop):
 
 class _nop(baseop):
     def __init__(self, arg):
+        super().__init__()
         pass
 
     def visit(self, visitor):
@@ -424,6 +439,7 @@ class _nop(baseop):
 class label(baseop):
 
     def __init__(self, name, proc, line_number=0, far=False):
+        super().__init__()
         self.name = name
         self.original_name = name
         self.line_number = line_number
@@ -437,6 +453,7 @@ class label(baseop):
 
 class _lea(baseop):
     def __init__(self, args):
+        super().__init__()
         self.args = args
 
     def visit(self, visitor):
@@ -445,6 +462,7 @@ class _lea(baseop):
 
 class _repe(baseop):
     def __init__(self, args):
+        super().__init__()
         self.args = args
 
     def visit(self, visitor):
@@ -453,6 +471,7 @@ class _repe(baseop):
 
 class _repne(baseop):
     def __init__(self, args):
+        super().__init__()
         self.args = args
 
     def visit(self, visitor):
@@ -461,6 +480,7 @@ class _repne(baseop):
 
 class _jna(basejmp):
     def __init__(self, args):
+        super().__init__()
         self.args = args
 
     def visit(self, visitor):
@@ -469,6 +489,7 @@ class _jna(basejmp):
 
 class _jnbe(basejmp):
     def __init__(self, args):
+        super().__init__()
         self.args = args
 
     def visit(self, visitor):
@@ -477,6 +498,7 @@ class _jnbe(basejmp):
 
 class _imul(baseop):
     def __init__(self, args):
+        super().__init__()
         self.args = args
 
     def visit(self, visitor):
@@ -485,6 +507,7 @@ class _imul(baseop):
 
 class _movs(baseop):
     def __init__(self, args):
+        super().__init__()
         self.args = args
 
     def visit(self, visitor):
@@ -493,6 +516,7 @@ class _movs(baseop):
 
 class _lods(baseop):
     def __init__(self, args):
+        super().__init__()
         self.args = args
 
     def visit(self, visitor):
@@ -501,6 +525,7 @@ class _lods(baseop):
 
 class _scas(baseop):
     def __init__(self, args):
+        super().__init__()
         self.args = args
 
     def visit(self, visitor):
@@ -509,6 +534,7 @@ class _scas(baseop):
 
 class _leave(baseop):
     def __init__(self, arg):
+        super().__init__()
         pass
 
     def visit(self, visitor):
@@ -517,6 +543,7 @@ class _leave(baseop):
 
 class _idiv(baseop):
     def __init__(self, args):
+        super().__init__()
         self.args = args
 
     def visit(self, visitor):
@@ -525,6 +552,7 @@ class _idiv(baseop):
 
 class _instruction0(baseop):
     def __init__(self, arg):
+        super().__init__()
         pass
 
     def visit(self, visitor):
@@ -533,6 +561,7 @@ class _instruction0(baseop):
 
 class _instruction1(baseop):
     def __init__(self, args):
+        super().__init__()
         self.args = args
 
     def visit(self, visitor):
@@ -541,6 +570,7 @@ class _instruction1(baseop):
 
 class _jump(baseop):
     def __init__(self, args):
+        super().__init__()
         self.args = args
 
     def visit(self, visitor):
@@ -549,6 +579,7 @@ class _jump(baseop):
 
 class _instruction2(baseop):
     def __init__(self, args):
+        super().__init__()
         self.args = args
 
     def visit(self, visitor):
@@ -557,6 +588,7 @@ class _instruction2(baseop):
 
 class _instruction3(baseop):
     def __init__(self, args):
+        super().__init__()
         self.args = args
 
     def visit(self, visitor):
@@ -565,7 +597,9 @@ class _instruction3(baseop):
 
 class _equ(baseop):
     def __init__(self, args):
+        super().__init__()
         self.args = args
+        self.original_name = ''
 
     def visit(self, visitor):
         return visitor._equ(*self.args)
@@ -573,9 +607,9 @@ class _equ(baseop):
 
 class _assignment(baseop):
     def __init__(self, args):
+        super().__init__()
         self.args = args
         self.original_name = ''
 
     def visit(self, visitor):
-        logging.debug("~ %s = %s" % (self.args[0], self.args[1]))
         return visitor._assignment(*self.args)

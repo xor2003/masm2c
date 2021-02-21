@@ -111,7 +111,7 @@ void log_error(const char *fmt, ...) {
 #ifdef __LIBRETRO__
 	log_cb(RETRO_LOG_ERROR,"%s",formatted_string);
 #else
-	if (logDebug!=NULL) { fprintf(logDebug,"%s",formatted_string); fflush(logDebug);};
+	if (logDebug!=NULL) { fprintf(logDebug,"%s",formatted_string); fflush(logDebug);}
 	{ printf("%s",formatted_string); }
 #endif
 }
@@ -406,7 +406,7 @@ __dpmi_regs _dpmi_reg;
    si = _dpmi_reg.x.si;
    di = _dpmi_reg.x.di;
    bp = _dpmi_reg.x.bp;
-#endif   
+#endif
 
 }
 
@@ -437,7 +437,7 @@ X86_REGREF
    ebx = _dpmi_reg.d.ebx;
    ebp = _dpmi_reg.d.ebp;
    CF = _dpmi_reg.d.cflag&1;
-#endif   
+#endif
 
 }
 
@@ -502,7 +502,7 @@ X86_REGREF
 				SDL_CreateWindowAndRenderer(320, 200, 0, &window, &renderer);
 				SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
 				SDL_RenderClear(renderer);
-			        SDL_RenderPresent(renderer); 
+			        SDL_RenderPresent(renderer);
  #endif
 #endif
 				//stackDump(_state);
@@ -553,15 +553,15 @@ X86_REGREF
         call_dos_realint(_state, a);
 #else
 
-		        
+
 #ifndef __BORLANDC__  //TODO
         	    struct tm* loctime;
 		    struct timeval curtime;
 	            gettimeofday(&curtime, 0);
-    
+
  //           curtime.tv_sec += cmos.time_diff;
         	    loctime = localtime((time_t*)&curtime.tv_sec);
-	        	
+
         	    dh = (loctime->tm_sec);
 	            cl = (loctime->tm_min);
 
@@ -820,7 +820,7 @@ X86_REGREF
 		}
 		case 0x48:
 		{
-			
+
 			//   ;2.29 - Function 048h - Allocate Memory Block:
 			//   ;In:  AH     = 48h
 			//   ;  BX  = size of block in 16xbytes (must be non-zero)
@@ -1149,8 +1149,8 @@ return ;//(executionFinished == 0);
 }
 */
 
-const char* log_spaces(int n) 
-{ 
+const char* log_spaces(int n)
+{
  static const char s[]="                                                                                          ";
 //	memset(s, ' ', n); 
 //	*(s+n) = 0; 
@@ -1402,35 +1402,34 @@ From: "The MS-DOS Encyclopaedia" (also Duncan) - talking about .EXE files. There
 "The other processor registers (BX,CX,DX,BP,SI and DI) contain unknown values when the program receives control from MS-DOS."
 */
 
-int init(struct _STATE* state);
-void mainproc(_offsets _i, struct _STATE* state);
+int init(struct _STATE *state);
 
-int main(int argc, char *argv[])
-{
-  struct _STATE state;
-  struct _STATE* _state=&state;
-  X86_REGREF
-  
-	_state->_indent=0;
+void mainproc(_offsets _i, struct _STATE *state);
 
-	eax=ebx=ecx=edx=ebp=esi=edi=DF=fs=gs=0; // according to ms-dos 6.22 debuger
-        cx=0xff; // dummy size of executable
+int main(int argc, char *argv[]) {
+    struct _STATE state;
+    struct _STATE *_state = &state;
+    X86_REGREF
+
+    _state->_indent = 0;
+
+    eax = ebx = ecx = edx = ebp = esi = edi = DF = fs = gs = 0; // according to ms-dos 6.22 debuger
+    cx = 0xff; // dummy size of executable
 
 
-try{
-_state->_indent=0;
-logDebug=fopen("asm.log","w");
+    try {
+        _state->_indent = 0;
+        logDebug = fopen("asm.log", "w");
 
-initscr();
-resize_term(25, 80);
- cbreak(); // put keys directly to program
-    noecho(); // do not echo
-    keypad(stdscr, TRUE); // provide keypad buttons
+        initscr();
+        resize_term(25, 80);
+        cbreak(); // put keys directly to program
+        noecho(); // do not echo
+        keypad(stdscr, TRUE); // provide keypad buttons
 
-    if (!has_colors())
-    {
-        printw("Unable to use colors");
-    }
+        if (!has_colors()) {
+            printw("Unable to use colors");
+        }
         start_color();
 
         realtocurs();
@@ -1439,27 +1438,24 @@ resize_term(25, 80);
         refresh();
 
 
-	init(_state);
+        init(_state);
 
-  if (argc >= 2)
-  {
-	db s = strlen(argv[1]);
-	*(((char*)&m)+0x80)=s+1;
-	  strcpy( ((char*)&m)+0x81, argv[1]);
-	*(((dw*)&m)+0x81+s)=0xD;
+        if (argc >= 2) {
+            db s = strlen(argv[1]);
+            *(((char *) &m) + 0x80) = s + 1;
+            strcpy(((char *) &m) + 0x81, argv[1]);
+            *(((dw *) &m) + 0x81 + s) = 0xD;
 
-  }
-	mainproc((_offsets) 0x1001, _state);
-}
-catch (const std::exception& e)
-{
-   printf("std::exception& %s\n",e.what());
-}
-catch (...)
-{
-   printf("some exception\n");
-}
-	return(0);
+        }
+        mainproc((_offsets) 0x1001, _state);
+    }
+    catch (const std::exception &e) {
+        printf("std::exception& %s\n", e.what());
+    }
+    catch (...) {
+        printf("some exception\n");
+    }
+    return (0);
 }
 
 #ifdef _WIN32
@@ -1475,10 +1471,9 @@ int  WinMain(
 #endif
 
 chtype vga_to_curses[256];
-void prepare_cp437_to_curses()
-{
-for(size_t i=0; i<256; i++)
-	{ vga_to_curses[i] = i; }
+
+void prepare_cp437_to_curses() {
+    for (size_t i = 0; i < 256; i++) { vga_to_curses[i] = i; }
     vga_to_curses['\0'] = ' ';
     vga_to_curses[0x04] = ACS_DIAMOND;
     vga_to_curses[0x18] = ACS_UARROW;

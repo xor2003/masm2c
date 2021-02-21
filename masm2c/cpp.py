@@ -140,7 +140,7 @@ class Cpp(object):
         # self.__expr_size = 0
         self.__far = False
         self.body = ""
-        self.__unbounded = []
+        #self.__unbounded = []
 
     def convert_label(self, token):
         name_original = token.value
@@ -164,7 +164,6 @@ class Cpp(object):
             # logging.warning("expand_cb() global '%s' is missing" % name)
             return token
 
-        # print g
         if isinstance(g, op._equ):
             logging.debug("it is equ")
             value = g.original_name

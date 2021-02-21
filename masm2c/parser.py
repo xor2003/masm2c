@@ -143,6 +143,7 @@ def INTEGER(context, nodes):
 
 
 def COMMENTKW(head, s, pos):
+    # multiline comment
     mtch = commentid.match(s[pos:])
     if mtch:
         return mtch.group(0)
@@ -151,6 +152,7 @@ def COMMENTKW(head, s, pos):
 
 
 def macroid(context, s, pos):
+    # macro usage identifier
     mtch = macroidre.match(s[pos:])
     if mtch:
         result = mtch.group().lower()
@@ -165,6 +167,7 @@ def macroid(context, s, pos):
 
 
 def macrodirhead(context, nodes, name, parms):
+    # macro definition header
     param_names = [i.lower() for i in Token.find_tokens(parms, 'LABEL')]
     context.extra.current_macro = Macro(name.value.lower(), param_names)
     context.extra.macro_name.append(name.value.lower())
@@ -172,12 +175,14 @@ def macrodirhead(context, nodes, name, parms):
     return nodes
 
 def repeatbegin(context, nodes, value):
+    # start of repeat macro
     context.extra.current_macro = Macro("", [], value)
     context.extra.macro_name.append('') # TODO
     logging.debug("repeatbegin")
     return nodes
 
 def ENDM(context, nodes):
+    # macro definition end
     name = context.extra.macro_name.pop()
     logging.debug("endm "+name)
     macroses[name] = context.extra.current_macro
@@ -194,6 +199,7 @@ class Getmacroargval:
         return self.d[token.value]
 
 def macrocall(context, nodes, name, args):
+    # macro usage
     logging.debug("macrocall " + name + "~~")
     macros = macroses[name]
     c = Getmacroargval(dict(zip(macros.getparameters(), args)))
@@ -268,27 +274,6 @@ def datadir(context, nodes, label, type, values):
     binary_width = calculate_type_size(type)
     size = calculate_data_size_new(binary_width, values)
 
-    # values = Token.remove_tokens(values, ['expr'])
-    '''
-    values = remove_dupdir(values) # temporary fix unittests
-
-    if isinstance(values, list):
-        s = []
-        for x in values:
-            if isinstance(x, Token):
-                s = s + [x.value]
-            else:
-                s = s + [x]
-        values = s
-    elif isinstance(values, Token):
-        if values.type=='dupdir':
-            values = Parser.parse_int(escape(values.value[0])) * [values.value[1]]
-        else:
-            values = values.value
-
-    values = escape(values)
-    '''
-
     return context.extra.datadir_action(label.lower(), type, values, size)
 
 
@@ -333,12 +318,12 @@ def endpdir(context, nodes, name):
 
 def equdir(context, nodes, name, value):
     logging.debug("equdir " + str(nodes) + " ~~")
-    return context.extra.action_equ(name, value)
+    return context.extra.action_equ(name, value, get_raw(context), get_line_number(context))
 
 
 def assdir(context, nodes, name, value):
     logging.debug("assdir " + str(nodes) + " ~~")
-    return context.extra.action_assign(name, value)
+    return context.extra.action_assign(name, value, get_raw(context), get_line_number(context))
 
 
 def labeldef(context, nodes, name):
@@ -1062,7 +1047,7 @@ class Parser:
         content = read_asm_file(file_name)
         return self.parse_file_inside(content, file_name=file_name)
 
-    def action_assign(self, name, value):
+    def action_assign(self, name, value, raw, line_number):
         name = name.value
         value = Token.remove_tokens(value, 'expr')
         # value = self.tokenstostring(value)
@@ -1072,20 +1057,24 @@ class Parser:
             has_global = True
             name = self.get_global(name).original_name
         o = self.proc.add_assignment(name, value, line_number=self.line_number)
+        o.line = raw.rstrip()
+        o.line_number = line_number
         if not has_global:
             self.set_global(name, o)
         self.proc.stmts.append(o)
         return o
 
-    def action_equ(self, name, value):
+    def action_equ(self, name, value, raw, line_number):
         name = name.value
         value = Token.remove_tokens(value, 'expr')
         # value = self.tokenstostring(value)
         # vv = self.get_equ_value(value)
         proc = self.get_global("mainproc")
         o = proc.add_equ_(name, value, line_number=self.line_number)
+        o.line = raw.rstrip()
+        o.line_number = line_number
         self.set_global(name, o)
-        proc.stmts.insert(0, o)
+        proc.stmts.append(o)
         return o
 
     def action_segment(self, name):
