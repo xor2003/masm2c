@@ -548,7 +548,7 @@ class Parser:
         # self.data_started = False
         # self.prev_data_type = 0
         # self.prev_data_ctype = 0
-        self.line_number = 0
+        #self.line_number = 0
         self.__lex = ParglareParser()
         self.used = False
         # self.__pgcontext = PGContext(extra = self)
@@ -991,8 +991,7 @@ class Parser:
         '''
 
     def parse_file(self, fname):
-        self.line_number = 0
-        skipping_binary_data = False
+        #self.line_number = 0
         num = 0x1000
         if num:
             self.__binary_data_size += num
@@ -1002,7 +1001,10 @@ class Parser:
 
             self.c_data.append("{0}, // padding\n")
             self.h_data.append(" db " + labell + "[" + str(num) + "]; // protective\n")
+
+        skipping_binary_data = False
         self.parse_file_lines(fname, skipping_binary_data)
+
         num = (0x10 - (self.__binary_data_size & 0xf)) & 0xf
         if num:
             l = num * ['0']
@@ -1013,6 +1015,7 @@ class Parser:
 
             self.c_data.append("{" + ",".join(l) + "}, // padding\n")
             self.h_data.append(" db " + labell + "[" + str(num) + "]; // padding\n")
+
         return self
 
     def parse_file_lines(self, file_name, skipping_binary_data):
@@ -1032,7 +1035,7 @@ class Parser:
         if self.has_global(name):
             has_global = True
             name = self.get_global(name).original_name
-        o = self.proc.add_assignment(name, value, line_number=self.line_number)
+        o = self.proc.add_assignment(name, value, line_number=line_number)
         o.line = raw.rstrip()
         o.line_number = line_number
         if not has_global:
@@ -1046,7 +1049,7 @@ class Parser:
         # value = self.tokenstostring(value)
         # vv = self.get_equ_value(value)
         proc = self.get_global("mainproc")
-        o = proc.add_equ_(name, value, line_number=self.line_number)
+        o = proc.add_equ_(name, value, line_number=line_number)
         o.line = raw.rstrip()
         o.line_number = line_number
         self.set_global(name, o)
@@ -1083,6 +1086,7 @@ class Parser:
         type = type[1:] + name
         self.action_segment(type)
 
+    '''
     def action_prefix(self, line):
         cmd = line.split()
         cmd0 = str(cmd[0])
@@ -1097,6 +1101,7 @@ class Parser:
         o.line = " ".join(cmd[1:])
         o.line_number = self.line_number
         self.proc.stmts.append(o)
+    '''
 
     def action_endseg(self):
         logging.debug("segment %s ends" % self.__segment)
