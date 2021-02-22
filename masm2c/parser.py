@@ -274,7 +274,7 @@ def datadir(context, nodes, label, type, values):
     binary_width = Parser.typetosize(type)
     size = calculate_data_size_new(binary_width, values)
 
-    return context.extra.datadir_action(label.lower(), type, values, size)
+    return context.extra.datadir_action(label, type.lower(), values, size)
 
 
 def includedir(context, nodes, name):
@@ -714,16 +714,7 @@ class Parser:
         logging.debug(v)
         return v
 
-    def convert_data_to_c(self, label, width, data):
-        """ Generate C formated data """
-        logging.debug("convert_data_to_c %s %d %s" % (label, width, data))
-        # original_label = label
-        label = label.lower()
-
-        elements, is_string, r = self.process_data_tokens(data, width)
-
-        #base = 1 << (8 * width)
-        # cur_data_type = 0
+    def identify_data_internal_type(self, r, elements, is_string):
         if is_string:
             if len(r) >= 2 and r[-1] == 0:
                 cur_data_type = 1  # 0 terminated string
@@ -733,19 +724,17 @@ class Parser:
             cur_data_type = 3  # number
             if elements > 1:
                 cur_data_type = 4  # array of numbers
+        return cur_data_type
 
-
-        data_ctype = {1: 'db', 2: 'dw', 4: 'dd', 8: 'dq', 10: 'dt'}[width]
+    def produce_c_data(self, label, type, cur_data_type, r, elements):
+        data_ctype = type
         logging.debug("current data type = %d current data c type = %s" % (cur_data_type, data_ctype))
         rh = []
-
         if len(label) == 0:
             self.__dummy_enum += 1
             label = "dummy" + str(self.__dummy_enum)
-
         vh = ""
         vc = ""
-
         if cur_data_type == 1:  # 0 terminated string
             vh = "char " + label + "[" + str(len(r)) + "]"
 
@@ -759,7 +748,6 @@ class Parser:
         elif cur_data_type == 4:  # array
             vh = data_ctype + " " + label + "[" + str(elements) + "]"
             vc = "{"
-
         if cur_data_type == 1:  # string
             vv = "\""
             for i in range(0, len(r) - 1):
@@ -785,22 +773,18 @@ class Parser:
                 r[i] = str(r[i])
                 if i != len(r) - 1:
                     r[i] += ","
-
         r.insert(0, vc)
         rh.insert(0, vh)
         # if it was array of numbers or array string
         if cur_data_type == 4 or cur_data_type == 2:
             r.append("}")
-
         r.append(", // " + label + "\n")  # TODO can put original_label
         rh.append(";\n")
-
         logging.debug(r)
         logging.debug(rh)
-
         r = "".join(r)
         rh = "".join(rh)
-        return r, rh, elements
+        return r, rh
 
     def convert_char(self, c):
         if isinstance(c, int) and c not in [10, 13]:
@@ -1227,8 +1211,15 @@ class Parser:
         logging.debug("data value %s offset %d" % (str(args), offset))
         self.__binary_data_size += s
         self.__cur_seg_offset += s
-        c, h, elements = self.convert_data_to_c(name, binary_width,
-                                                args)
+        logging.debug("convert_data_to_c %s %d %s" % (name, binary_width, args))
+        # original_label = label
+
+        elements, is_string, r = self.process_data_tokens(args, binary_width)
+        cur_data_type = self.identify_data_internal_type(r, elements, is_string)
+        r, rh = self.produce_c_data(name, type, cur_data_type, r, elements)
+        result = r, rh, elements
+        c, h, elements = result
+
         self.c_data += c
         self.h_data += h
         logging.debug("~size %d elements %d" % (binary_width, elements))
