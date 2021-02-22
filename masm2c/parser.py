@@ -544,7 +544,7 @@ class Parser:
         self.__segment = "default_seg"
 
         # self.__symbols = []
-        self.__link_later = []
+        #self.__link_later = []
         # self.data_started = False
         # self.prev_data_type = 0
         # self.prev_data_ctype = 0
@@ -887,7 +887,7 @@ class Parser:
                     v = self.get_global_value(v, base)
                 except KeyError:
                     logging.warning("unknown address %s" % v)
-                    logging.warning(self.c_data)
+                    #logging.warning(self.c_data)
                     # logging.warning(r)
                     # logging.warning(len(self.c_data) + len(r))
                     # self.__link_later.append((len(self.c_data) + len(r), v))
@@ -1208,6 +1208,7 @@ class Parser:
 
         offset = self.__cur_seg_offset
         logging.debug("data value %s offset %d" % (str(args), offset))
+
         self.__binary_data_size += size
         self.__cur_seg_offset += size
         logging.debug("convert_data_to_c %s %d %s" % (label, binary_width, args))
@@ -1221,37 +1222,12 @@ class Parser:
         self.h_data += h
         logging.debug("~size %d elements %d" % (binary_width, elements))
         if label:
-            self.set_global(label.lower(), op.var(binary_width, offset, name=label,
+            self.set_global(label, op.var(binary_width, offset, name=label,
                                                   segment=self.__segment, elements=elements))
         # logging.debug("~~        self.assertEqual(parser_instance.parse_data_line_whole(line='"+str(line)+"'),"+str(("".join(c), "".join(h), offset2 - offset))+")")
         return c, h, size
 
     '''
-    def get_equ_value(self, v):
-        logging.debug("%s" % v)
-        vv = self.replace_dollar_w_segoffst(v)
-        # ? vv = " ".join(self.parse_args(vv))
-        vv = vv.strip()
-        logging.debug("%s" % vv)
-        m = re.match(r'\bbyte\s+(?:ptr)?\s*(.*)', vv)
-        if m is not None:
-            vv = m.group(1).strip()
-        m = re.match(r'\bdword\s+(?:ptr)?\s*(.*)', vv)
-        if m is not None:
-            vv = m.group(1).strip()
-        m = re.match(r'\bqword\s+(?:ptr)?\s*(.*)', vv)
-        if m is not None:
-            vv = m.group(1).strip()
-        m = re.match(r'\btword\s+(?:ptr)?\s*(.*)', vv)
-        if m is not None:
-            vv = m.group(1).strip()
-        m = re.match(r'\bword\s+(?:ptr)?\s*(.*)', vv)
-        if m is not None:
-            vv = m.group(1).strip()
-        # vv = cpp.convert_number_to_c(vv)
-        return vv
-    '''
-
     def link(self):
         logging.debug("link()")
         # logging.debug self.c_data
@@ -1270,6 +1246,7 @@ class Parser:
                 continue
             logging.debug("link: addr %s v %s" % (addr, v))
             self.c_data[addr] = str(v)
+    '''
 
     def parse_args_new_data_(self, text):
         # self.__pgcontext = PGContext(extra = self)

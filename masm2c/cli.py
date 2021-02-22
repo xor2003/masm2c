@@ -130,7 +130,7 @@ def process(i):
    ])
   p.strip_path = 3
   context = p.parse_file(name)
-  p.link()
+  #p.link()
 
   generator = Cpp(context, outfile = outname, blacklist = [
       # These functions are not processed
