@@ -271,7 +271,7 @@ def datadir(context, nodes, label, type, values):
             context.extra.processingStructure:
         return []
 
-    binary_width = calculate_type_size(type)
+    binary_width = Parser.typetosize(type)
     size = calculate_data_size_new(binary_width, values)
 
     return context.extra.datadir_action(label.lower(), type, values, size)
@@ -521,10 +521,6 @@ def dump_object(value):
     return stuff
 
 
-def calculate_type_size(type):
-    return Parser.typetosize(type)
-
-
 class Parser:
     def __init__(self, skip_binary_data=[]):
         self.__skip_binary_data = skip_binary_data
@@ -726,22 +722,22 @@ class Parser:
 
         elements, is_string, r = self.process_data_tokens(data, width)
 
-        base = 1 << (8 * width)
-        data_ctype = {1: 'db', 2: 'dw', 4: 'dd', 8: 'dq', 10: 'dt'}[width]
-        rh = []
+        #base = 1 << (8 * width)
         # cur_data_type = 0
         if is_string:
             if len(r) >= 2 and r[-1] == 0:
                 cur_data_type = 1  # 0 terminated string
             else:
                 cur_data_type = 2  # array string
-
         else:
             cur_data_type = 3  # number
             if elements > 1:
                 cur_data_type = 4  # array of numbers
 
+
+        data_ctype = {1: 'db', 2: 'dw', 4: 'dd', 8: 'dq', 10: 'dt'}[width]
         logging.debug("current data type = %d current data c type = %s" % (cur_data_type, data_ctype))
+        rh = []
 
         if len(label) == 0:
             self.__dummy_enum += 1
@@ -801,7 +797,6 @@ class Parser:
 
         logging.debug(r)
         logging.debug(rh)
-        logging.debug("returning")
 
         r = "".join(r)
         rh = "".join(rh)
@@ -1107,11 +1102,6 @@ class Parser:
         type = type[1:] + name
         self.action_segment(type)
 
-    def action_end(self, line):
-        cmd = line.split()
-        if len(cmd) >= 2:
-            self.entry_point = cmd[1].lower()
-
     def action_prefix(self, line):
         cmd = line.split()
         cmd0 = str(cmd[0])
@@ -1232,7 +1222,7 @@ class Parser:
 
     def datadir_action(self, name, type, args, size):
         s = size
-        binary_width = calculate_type_size(type)
+        binary_width = Parser.typetosize(type)
         offset = self.__cur_seg_offset
         logging.debug("data value %s offset %d" % (str(args), offset))
         self.__binary_data_size += s

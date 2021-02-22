@@ -4,9 +4,8 @@ from __future__ import print_function
 from masm2c import cpp, op
 import logging
 from mock import patch
-from masm2c.parser import Parser, calculate_type_size
+from masm2c.parser import Parser
 from masm2c.proc import Proc
-import traceback
 import unittest
 
 from random import randint
@@ -361,11 +360,11 @@ class ParserTest(unittest.TestCase):
 
     def test_calculate_data_size(self):
 
-        self.assertEqual(calculate_type_size(type='db'), 1)
-        self.assertEqual(calculate_type_size(type='dd'), 4)
-        self.assertEqual(calculate_type_size(type='dq'), 8)
-        self.assertEqual(calculate_type_size(type='dw'), 2)
-        self.assertEqual(calculate_type_size(type='dt'), 10)
+        self.assertEqual(Parser.typetosize('db'), 1)
+        self.assertEqual(Parser.typetosize('dd'), 4)
+        self.assertEqual(Parser.typetosize('dq'), 8)
+        self.assertEqual(Parser.typetosize('dw'), 2)
+        self.assertEqual(Parser.typetosize('dt'), 10)
 
     @patch.object(logging, 'debug')
     @patch.object(logging, 'info')
