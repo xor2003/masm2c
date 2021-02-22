@@ -261,20 +261,17 @@ def calculate_data_size_new(size, values):
 
 def datadir(context, nodes, label, type, values):
     logging.debug("datadir " + str(nodes) + " ~~")
-    if label:
-        label = label.value
-    else:
-        label = ""
-    label = context.extra.mangle_label(label)
 
     if Token.find_tokens(nodes, 'structinstance') or \
             context.extra.processingStructure:
         return []
 
-    binary_width = Parser.typetosize(type)
-    size = calculate_data_size_new(binary_width, values)
+    if label:
+        label = label.value
+    else:
+        label = ""
 
-    return context.extra.datadir_action(label, type.lower(), values, size)
+    return context.extra.datadir_action(label, type.lower(), values)
 
 
 def includedir(context, nodes, name):
@@ -1204,30 +1201,30 @@ class Parser:
 
         return result
 
-    def datadir_action(self, name, type, args, size):
-        s = size
+    def datadir_action(self, label, type, args):
+        label = self.mangle_label(label)
         binary_width = Parser.typetosize(type)
+        size = calculate_data_size_new(binary_width, args)
+
         offset = self.__cur_seg_offset
         logging.debug("data value %s offset %d" % (str(args), offset))
-        self.__binary_data_size += s
-        self.__cur_seg_offset += s
-        logging.debug("convert_data_to_c %s %d %s" % (name, binary_width, args))
+        self.__binary_data_size += size
+        self.__cur_seg_offset += size
+        logging.debug("convert_data_to_c %s %d %s" % (label, binary_width, args))
         # original_label = label
 
-        elements, is_string, r = self.process_data_tokens(args, binary_width)
-        cur_data_type = self.identify_data_internal_type(r, elements, is_string)
-        r, rh = self.produce_c_data(name, type, cur_data_type, r, elements)
-        result = r, rh, elements
-        c, h, elements = result
+        elements, is_string, array = self.process_data_tokens(args, binary_width)
+        data_internal_type = self.identify_data_internal_type(array, elements, is_string)
+        c, h = self.produce_c_data(label, type, data_internal_type, array, elements)
 
         self.c_data += c
         self.h_data += h
         logging.debug("~size %d elements %d" % (binary_width, elements))
-        if name:
-            self.set_global(name.lower(), op.var(binary_width, offset, name=name,
-                                                 segment=self.__segment, elements=elements))
+        if label:
+            self.set_global(label.lower(), op.var(binary_width, offset, name=label,
+                                                  segment=self.__segment, elements=elements))
         # logging.debug("~~        self.assertEqual(parser_instance.parse_data_line_whole(line='"+str(line)+"'),"+str(("".join(c), "".join(h), offset2 - offset))+")")
-        return c, h, s
+        return c, h, size
 
     '''
     def get_equ_value(self, v):
