@@ -118,8 +118,15 @@ class Cpp(object):
         self.__codeset = 'cp437'
         self.__context = context
         # self.data_seg = __context.binary_data
-        self.__cdata_seg = context.c_data
-        self.__hdata_seg = context.h_data
+
+        self.__cdata_seg = ""
+        self.__hdata_seg = ""
+        for i in context.segments.values():
+            for j in i.getdata():
+                c, h = self.produce_c_data(*j.getdata())
+                self.__cdata_seg += c
+                self.__hdata_seg += h
+
         self.__procs = context.proc_list
         self.__proc_queue = []
         self.__proc_done = []
@@ -1149,3 +1156,95 @@ else goto __dispatch_call;
 
     def _equ(self, dst, src):
         return "#define %s %s\n" % (dst, self.expand(src))
+
+    @staticmethod
+    def produce_c_data(label, type, cur_data_type, r, elements):
+        data_ctype = type
+        logging.debug("current data type = %d current data c type = %s" % (cur_data_type, data_ctype))
+        rh = []
+        vh = ""
+        vc = ""
+        if cur_data_type == 1:  # 0 terminated string
+            vh = "char " + label + "[" + str(len(r)) + "]"
+
+        elif cur_data_type == 2:  # array string
+            vh = "char " + label + "[" + str(len(r)) + "]"
+            vc = "{"
+
+        elif cur_data_type == 3:  # number
+            vh = data_ctype + " " + label
+
+        elif cur_data_type == 4:  # array
+            vh = data_ctype + " " + label + "[" + str(elements) + "]"
+            vc = "{"
+        if cur_data_type == 1:  # string
+            vv = "\""
+            for i in range(0, len(r) - 1):
+                vv += Cpp.convert_str(r[i])
+            vv += "\""
+            r = ["", vv]
+
+        elif cur_data_type == 2:  # array of char
+            vv = ""
+            logging.debug(r)
+            for i in range(0, len(r)):
+                vv += Cpp.convert_char(r[i])
+                if i != len(r) - 1:
+                    vv += ","
+            r = ["", vv]
+
+        elif cur_data_type == 3:  # number
+            r[0] = str(r[0])
+
+        elif cur_data_type == 4:  # array of numbers
+            # vv = ""
+            for i in range(0, len(r)):
+                r[i] = str(r[i])
+                if i != len(r) - 1:
+                    r[i] += ","
+        r.insert(0, vc)
+        rh.insert(0, vh)
+        # if it was array of numbers or array string
+        if cur_data_type == 4 or cur_data_type == 2:
+            r.append("}")
+        r.append(", // " + label + "\n")  # TODO can put original_label
+        rh.append(";\n")
+        logging.debug(r)
+        logging.debug(rh)
+        r = "".join(r)
+        rh = "".join(rh)
+        return r, rh
+
+    @staticmethod
+    def convert_char(c):
+        if isinstance(c, int) and c not in [10, 13]:
+            return str(c)
+        return "'" + Cpp.convert_str(c) + "'"
+
+    @staticmethod
+    def convert_str(c):
+        vvv = ""
+        if isinstance(c, int):
+            if c == 13:
+                vvv = r"\r"
+            elif c == 10:
+                vvv = r"\n"
+            elif c < 10:
+                vvv = "\\{:01x}".format(c)
+            elif c < 32:
+                vvv = "\\x{:02x}".format(c)
+            else:
+                vvv = chr(c)
+        elif isinstance(c, str):
+            # logging.debug "~~ " + r[i] + str(ord(r[i]))
+            if c in ["\'", '\"', '\\']:
+                vvv = "\\" + c
+            elif ord(c) > 127:
+                vvv = '\\' + hex(ord(c.encode('cp437', 'backslashreplace')))[1:]
+                # vvv = c
+            elif c == '\0':
+                vvv = '\\0'
+            else:
+                vvv = c
+            # vvv = "'" + vvv + "'"
+        return vvv

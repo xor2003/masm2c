@@ -15,6 +15,7 @@ import parglare
 from parglare import Grammar, Parser as PGParser
 
 from masm2c import cpp
+from masm2c.op import Segment
 from masm2c.proc import Proc
 from masm2c import proc
 from masm2c import op
@@ -138,11 +139,11 @@ def ptrdir(context, nodes):
         return [Token('ptrdir', nodes[0]), nodes[1]]
 
 
-def INTEGER(context, nodes):
+def integertok(context, nodes):
     return Token('INTEGER', cpp.convert_number_to_c(nodes, context.extra.radix))
 
 
-def COMMENTKW(head, s, pos):
+def commentkw(head, s, pos):
     # multiline comment
     mtch = commentid.match(s[pos:])
     if mtch:
@@ -181,7 +182,7 @@ def repeatbegin(context, nodes, value):
     logging.debug("repeatbegin")
     return nodes
 
-def ENDM(context, nodes):
+def endm(context, nodes):
     # macro definition end
     name = context.extra.macro_name.pop()
     logging.debug("endm "+name)
@@ -408,7 +409,7 @@ def segmdir(context, nodes):
     return Token('segmdir', nodes[1])
 
 
-def LABEL(context, nodes):
+def labeltok(context, nodes):
     return Token('LABEL', nodes)
 
 
@@ -430,7 +431,7 @@ def radixdir(context, nodes, value):
 actions = {
     "macrocall": macrocall,
     "repeatbegin": repeatbegin,
-    "ENDM": ENDM,
+    "ENDM": endm,
     "radixdir": radixdir,
     "field": make_token,
     "memberdir": memberdir,
@@ -440,8 +441,8 @@ actions = {
     "structdir": structdir,
     "includedir": includedir,
     "instrprefix": instrprefix,
-    "INTEGER": INTEGER,
-    "LABEL": LABEL,
+    "INTEGER": integertok,
+    "LABEL": labeltok,
     "STRING": STRING,
     "anddir": anddir,
     "asminstruction": asminstruction,
@@ -481,7 +482,7 @@ actions = {
 recognizers = {
     'macroid': macroid,
     "structtag": structtag,
-    "COMMENTKW": COMMENTKW
+    "COMMENTKW": commentkw
 }
 
 
@@ -520,15 +521,16 @@ def dump_object(value):
 
 class Parser:
     def __init__(self, skip_binary_data=[]):
-        self.__skip_binary_data = skip_binary_data
-        self.strip_path = 0
+        self.__label_to_skip = skip_binary_data
+
         self.__globals = {}
         self.__offsets = {}
         self.__offset_id = 0x1111
         self.__stack = []
-        self.proc_list = []
 
         self.entry_point = ""
+
+        self.proc_list = []
 
         # self.proc = None
         nname = "mainproc"
@@ -541,14 +543,12 @@ class Parser:
         self.h_data = []
         self.__cur_seg_offset = 0
         self.__c_dummy_label = 0
-        self.__segment = "default_seg"
 
-        # self.__symbols = []
-        #self.__link_later = []
-        # self.data_started = False
-        # self.prev_data_type = 0
-        # self.prev_data_ctype = 0
-        #self.line_number = 0
+        self.segments = dict()
+        self.__segment_name = "default_seg"
+        self.__segment = Segment(self.__segment_name, 0)
+        self.segments[self.__segment_name] = self.__segment
+
         self.__lex = ParglareParser()
         self.used = False
         # self.__pgcontext = PGContext(extra = self)
@@ -582,8 +582,7 @@ class Parser:
         value.original_name = name
         name = name.lower()
 
-        stuff = dump_object(value)
-        logging.debug("set_global(name='%s',value=%s)" % (name, stuff))
+        logging.debug("set_global(name='%s',value=%s)" % (name, dump_object(value)))
         if name in self.__globals:
             raise Exception("global %s was already defined", name)
         value.used = False
@@ -650,10 +649,9 @@ class Parser:
         # logging.debug "~2~ %s" %v
         if re.match(r'^[+-]?[0-9][0-9A-Fa-f]*[Hh]$', v):
             v = int(v[:-1], 16)
-            # logging.debug "~3~ %i" %v
         elif re.match(r'^[01]+[Bb]$', v):
             v = int(v[:-1], 2)
-            # logging.debug "~2~ %i" %v
+        #v = int(cpp.convert_number_to_c(v))
 
         try:
             vv = eval(v)
@@ -723,97 +721,6 @@ class Parser:
                 cur_data_type = 4  # array of numbers
         return cur_data_type
 
-    def produce_c_data(self, label, type, cur_data_type, r, elements):
-        data_ctype = type
-        logging.debug("current data type = %d current data c type = %s" % (cur_data_type, data_ctype))
-        rh = []
-        if len(label) == 0:
-            self.__c_dummy_label += 1
-            label = "dummy" + str(self.__c_dummy_label)
-        vh = ""
-        vc = ""
-        if cur_data_type == 1:  # 0 terminated string
-            vh = "char " + label + "[" + str(len(r)) + "]"
-
-        elif cur_data_type == 2:  # array string
-            vh = "char " + label + "[" + str(len(r)) + "]"
-            vc = "{"
-
-        elif cur_data_type == 3:  # number
-            vh = data_ctype + " " + label
-
-        elif cur_data_type == 4:  # array
-            vh = data_ctype + " " + label + "[" + str(elements) + "]"
-            vc = "{"
-        if cur_data_type == 1:  # string
-            vv = "\""
-            for i in range(0, len(r) - 1):
-                vv += self.convert_str(r[i])
-            vv += "\""
-            r = ["", vv]
-
-        elif cur_data_type == 2:  # array of char
-            vv = ""
-            logging.debug(r)
-            for i in range(0, len(r)):
-                vv += self.convert_char(r[i])
-                if i != len(r) - 1:
-                    vv += ","
-            r = ["", vv]
-
-        elif cur_data_type == 3:  # number
-            r[0] = str(r[0])
-
-        elif cur_data_type == 4:  # array of numbers
-            # vv = ""
-            for i in range(0, len(r)):
-                r[i] = str(r[i])
-                if i != len(r) - 1:
-                    r[i] += ","
-        r.insert(0, vc)
-        rh.insert(0, vh)
-        # if it was array of numbers or array string
-        if cur_data_type == 4 or cur_data_type == 2:
-            r.append("}")
-        r.append(", // " + label + "\n")  # TODO can put original_label
-        rh.append(";\n")
-        logging.debug(r)
-        logging.debug(rh)
-        r = "".join(r)
-        rh = "".join(rh)
-        return r, rh
-
-    def convert_char(self, c):
-        if isinstance(c, int) and c not in [10, 13]:
-            return str(c)
-        return "'" + self.convert_str(c) + "'"
-
-    def convert_str(self, c):
-        vvv = ""
-        if isinstance(c, int):
-            if c == 13:
-                vvv = r"\r"
-            elif c == 10:
-                vvv = r"\n"
-            elif c < 10:
-                vvv = "\\{:01x}".format(c)
-            elif c < 32:
-                vvv = "\\x{:02x}".format(c)
-            else:
-                vvv = chr(c)
-        elif isinstance(c, str):
-            # logging.debug "~~ " + r[i] + str(ord(r[i]))
-            if c in ["\'", '\"', '\\']:
-                vvv = "\\" + c
-            elif ord(c) > 127:
-                vvv = '\\' + hex(ord(c.encode('cp437', 'backslashreplace')))[1:]
-                # vvv = c
-            elif c == '\0':
-                vvv = '\\0'
-            else:
-                vvv = c
-            # vvv = "'" + vvv + "'"
-        return vvv
 
     def process_data_tokens(self, v, width):
         elements = 0
@@ -917,13 +824,6 @@ class Parser:
                                 pass
                             val += str(v)
                         value = val
-                    '''
-                    else:
-                        try:
-                            value = Parser.parse_int(str(value))
-                        except:
-                            value = str(value)
-                    '''
                 # logging.debug "n = %d value = %d" %(n, value)
 
                 res.append(value)
@@ -935,8 +835,8 @@ class Parser:
         # logging.debug "~name: %s" %name
         name = self.mangle_label(name)
         # logging.debug "~~name: %s" %name
-        if not (name in self.__skip_binary_data):
-            logging.debug("offset %s -> %s" % (name, "&m." + name.lower() + " - &m." + self.__segment))
+        if not (name in self.__label_to_skip):
+            logging.debug("offset %s -> %s" % (name, "&m." + name.lower() + " - &m." + self.__segment_name))
             '''
             if self.proc is None:
                     nname = "mainproc"
@@ -948,7 +848,7 @@ class Parser:
             if self.proc:
                 self.proc.add_label(name, isproc)
                 # self.set_offset(name, ("&m." + name.lower() + " - &m." + self.segment, self.proc, len(self.proc.stmts)))
-                self.set_offset(name, ("&m." + name.lower() + " - &m." + self.__segment, self.proc, self.__offset_id))
+                self.set_offset(name, ("&m." + name.lower() + " - &m." + self.__segment_name, self.proc, self.__offset_id))
                 self.set_global(name, op.label(name, proc.Proc, line_number=self.__offset_id, far=far))
                 self.__offset_id += 1
             else:
@@ -967,10 +867,13 @@ class Parser:
         #elf.c_data.append("{}, // segment " + name + "\n")
         #self.h_data.append(" db " + name + "[" + str(num) + "]; // segment " + name + "\n")
 
-        c, h = self.produce_c_data(name, 'db', 4, [], 0)
+        self.__segment = Segment(name, offset)
+        self.segments[name] = self.__segment
 
-        self.c_data += c
-        self.h_data += h
+        self.__segment.append(op.Data(name, 'db', 4, [], 0))
+        #c, h = self.produce_c_data(name, 'db', 4, [], 0)
+        #self.c_data += c
+        #self.h_data += h
 
         #self.__binary_data_size += num
         self.__cur_seg_offset = 0
@@ -988,10 +891,11 @@ class Parser:
 
             #self.c_data.append("{0}, // padding\n")
             #self.h_data.append(" db " + label + "[" + str(num) + "]; // padding\n")
-            c, h = self.produce_c_data(label, 'db', 4, num*[0], num)
 
-            self.c_data += c
-            self.h_data += h
+            self.__segment.append(op.Data(label, 'db', 4, num*[0], num))
+            #c, h = self.produce_c_data(label, 'db', 4, num*[0], num)
+            #self.c_data += c
+            #self.h_data += h
 
     def parse_file(self, fname):
         '''
@@ -1053,7 +957,7 @@ class Parser:
 
     def action_segment(self, name):
         name = name.lower()
-        self.__segment = name
+        self.__segment_name = name
         self.create_segment(name)
 
     def action_proc(self, name, type):
@@ -1099,8 +1003,8 @@ class Parser:
     '''
 
     def action_endseg(self):
-        logging.debug("segment %s ends" % self.__segment)
-        self.__segment = "default_seg"
+        logging.debug("segment %s ends" % self.__segment_name)
+        self.__segment_name = "default_seg"
 
     def action_include(self, name):
         logging.info("including %s" % name)
@@ -1216,14 +1120,21 @@ class Parser:
 
         elements, is_string, array = self.process_data_tokens(args, binary_width)
         data_internal_type = self.identify_data_internal_type(array, elements, is_string)
-        c, h = self.produce_c_data(label, type, data_internal_type, array, elements)
 
-        self.c_data += c
-        self.h_data += h
         logging.debug("~size %d elements %d" % (binary_width, elements))
         if label:
             self.set_global(label, op.var(binary_width, offset, name=label,
-                                                  segment=self.__segment, elements=elements))
+                                          segment=self.__segment_name, elements=elements))
+
+        if len(label) == 0:
+            self.__c_dummy_label += 1
+            label = "dummy" + str(self.__c_dummy_label)
+        self.__segment.append(op.Data(label, type, data_internal_type, array, elements))
+
+        c, h = cpp.Cpp.produce_c_data(label, type, data_internal_type, array, elements) # TO REMOVE
+        #self.c_data += c
+        #self.h_data += h
+
         # logging.debug("~~        self.assertEqual(parser_instance.parse_data_line_whole(line='"+str(line)+"'),"+str(("".join(c), "".join(h), offset2 - offset))+")")
         return c, h, size
 

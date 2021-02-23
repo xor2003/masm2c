@@ -128,7 +128,7 @@ def process(i):
       # dreamweb.asm
       #	'characterset1',
    ])
-  p.strip_path = 3
+  #p.strip_path = 3
   context = p.parse_file(name)
   #p.link()
 

@@ -48,6 +48,35 @@ class var(object):
         self.used = False
         # logging.debug("op.var(%s)" %(str(self.__dict__).replace('\n',' ')))
 
+class Segment:
+	#__slots__ = ['name', 'offset', '__data', 'original_name', 'used']
+
+    def __init__(self, name, offset):
+        # logging.debug("op.var(%d, %d, %s, %s, %s, %d)" %(size, offset, name, segment, issegment, elements))
+        self.name = name.lower()
+        self.offset = offset
+        self.original_name = name
+        self.used = False
+        self.__data = list()
+
+    def append(self, data):
+        self.__data.append(data)
+
+    def getdata(self):
+        return self.__data
+
+class Data:
+    __slots__ = ['label', 'type', 'data_internal_type', 'array', 'elements']
+
+    def __init__(self, label, type, data_internal_type, array, elements):
+        self.label = label
+        self.type = type
+        self.data_internal_type = data_internal_type
+        self.array = array
+        self.elements = elements
+
+    def getdata(self):
+        return self.label, self.type, self.data_internal_type, self.array, self.elements
 
 '''
 class equ(object):
