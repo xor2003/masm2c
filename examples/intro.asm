@@ -8,11 +8,11 @@ org 100h
     mov al,13h
     int 10h
 
-    push 0x8000
+    push 8000h
     pop ds
-    push 0x7000
+    push 7000h
     pop fs
-    push 0x6000
+    push 6000h
     pop gs
     push 0a000h
     pop es

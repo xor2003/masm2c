@@ -540,7 +540,7 @@ class Parser:
         self.c_data = []
         self.h_data = []
         self.__cur_seg_offset = 0
-        self.__dummy_enum = 0
+        self.__c_dummy_label = 0
         self.__segment = "default_seg"
 
         # self.__symbols = []
@@ -728,8 +728,8 @@ class Parser:
         logging.debug("current data type = %d current data c type = %s" % (cur_data_type, data_ctype))
         rh = []
         if len(label) == 0:
-            self.__dummy_enum += 1
-            label = "dummy" + str(self.__dummy_enum)
+            self.__c_dummy_label += 1
+            label = "dummy" + str(self.__c_dummy_label)
         vh = ""
         vc = ""
         if cur_data_type == 1:  # 0 terminated string
@@ -957,64 +957,59 @@ class Parser:
             logging.info("skipping binary data for %s" % (name,))
 
     def create_segment(self, name):
-        binary_width = 1
+        self.padding_segment_to_paragraph_boundary()
+
         offset = self.__binary_data_size // 16
         logging.debug("segment %s %x" % (name, offset))
-        self.__cur_seg_offset = 16
 
-        num = (0x10 - (self.__binary_data_size & 0xf)) & 0xf
-        if num:
-            l = ['0'] * num
-            self.__binary_data_size += num
+        binary_width = 0
+        #num = 0
+        #elf.c_data.append("{}, // segment " + name + "\n")
+        #self.h_data.append(" db " + name + "[" + str(num) + "]; // segment " + name + "\n")
 
-            self.__dummy_enum += 1
-            labell = "dummy" + str(self.__dummy_enum)
+        c, h = self.produce_c_data(name, 'db', 4, [], 0)
 
-            self.c_data.append("{" + ",".join(l) + "}, // padding\n")
-            self.h_data.append(" db " + labell + "[" + str(num) + "]; // padding\n")
+        self.c_data += c
+        self.h_data += h
 
-        num = 0x10
-        l = ['0'] * num
-        self.__binary_data_size += num
-
-        self.c_data.append("{" + ",".join(l) + "}, // segment " + name + "\n")
-        self.h_data.append(" db " + name + "[" + str(num) + "]; // segment " + name + "\n")
+        #self.__binary_data_size += num
+        self.__cur_seg_offset = 0
 
         self.set_global(name, op.var(binary_width, offset, name, issegment=True))
-        '''
-        if self.proc == None:
-                name = "mainproc"
-                self.proc = proc(name)
-                #logging.debug "procedure %s, #%d" %(name, len(self.proc_list))
-                self.proc_list.append(name)
-                self.set_global(name, self.proc)
-        '''
+
+    def padding_segment_to_paragraph_boundary(self):
+        num = (0x10 - (self.__binary_data_size & 0xf)) if (self.__binary_data_size & 0xf) else 0
+        if num:
+            self.__binary_data_size += num
+            self.__cur_seg_offset = 0
+
+            self.__c_dummy_label += 1
+            label = "dummy" + str(self.__c_dummy_label)
+
+            #self.c_data.append("{0}, // padding\n")
+            #self.h_data.append(" db " + label + "[" + str(num) + "]; // padding\n")
+            c, h = self.produce_c_data(label, 'db', 4, num*[0], num)
+
+            self.c_data += c
+            self.h_data += h
 
     def parse_file(self, fname):
-        #self.line_number = 0
+        '''
         num = 0x1000
         if num:
             self.__binary_data_size += num
 
-            self.__dummy_enum += 1
-            labell = "dummy" + str(self.__dummy_enum)
+            self.__c_dummy_label += 1
+            label = "dummy" + str(self.__c_dummy_label)
 
             self.c_data.append("{0}, // padding\n")
-            self.h_data.append(" db " + labell + "[" + str(num) + "]; // protective\n")
+            self.h_data.append(" db " + label + "[" + str(num) + "]; // protective\n")
+        '''
 
         skipping_binary_data = False
         self.parse_file_lines(fname, skipping_binary_data)
 
-        num = (0x10 - (self.__binary_data_size & 0xf)) & 0xf
-        if num:
-            l = num * ['0']
-            self.__binary_data_size += num
-
-            self.__dummy_enum += 1
-            labell = "dummy" + str(self.__dummy_enum)
-
-            self.c_data.append("{" + ",".join(l) + "}, // padding\n")
-            self.h_data.append(" db " + labell + "[" + str(num) + "]; // padding\n")
+        self.padding_segment_to_paragraph_boundary()
 
         return self
 
@@ -1256,7 +1251,7 @@ class Parser:
     def parse_args_new_data_(self, text):
         # self.__pgcontext = PGContext(extra = self)
         self.__binary_data_size = 0
-        self.__dummy_enum = 0  # one dummy number is used for "default_seg" creation
+        self.__c_dummy_label = 0  # one dummy number is used for "default_seg" creation
         return self.parse_file_insideseg(text)
 
     def parse_file_insideseg(self, text):

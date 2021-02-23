@@ -186,7 +186,7 @@ class Cpp(object):
             size = g.size
             if self.__current_size == 0:  # TODO check
                 self.__current_size = size
-            if size == 0:
+            if size == 0 and not g.issegment:
                 raise Exception("invalid var '%s' size %u" % (name, size))
             if g.issegment:
                 value = "seg_offset(%s)" % (name_original.lower())
