@@ -1161,6 +1161,7 @@ else goto __dispatch_call;
     def produce_c_data(label, type, cur_data_type, r, elements):
         data_ctype = type
         logging.debug("current data type = %d current data c type = %s" % (cur_data_type, data_ctype))
+        rc = [None] * len(r)
         rh = []
         vh = ""
         vc = ""
@@ -1177,12 +1178,13 @@ else goto __dispatch_call;
         elif cur_data_type == 4:  # array
             vh = data_ctype + " " + label + "[" + str(elements) + "]"
             vc = "{"
+
         if cur_data_type == 1:  # string
             vv = "\""
             for i in range(0, len(r) - 1):
                 vv += Cpp.convert_str(r[i])
             vv += "\""
-            r = ["", vv]
+            rc = ["", vv]
 
         elif cur_data_type == 2:  # array of char
             vv = ""
@@ -1191,29 +1193,29 @@ else goto __dispatch_call;
                 vv += Cpp.convert_char(r[i])
                 if i != len(r) - 1:
                     vv += ","
-            r = ["", vv]
+            rc = ["", vv]
 
         elif cur_data_type == 3:  # number
-            r[0] = str(r[0])
+            rc[0] = str(r[0])
 
         elif cur_data_type == 4:  # array of numbers
             # vv = ""
             for i in range(0, len(r)):
-                r[i] = str(r[i])
+                rc[i] = str(r[i])
                 if i != len(r) - 1:
-                    r[i] += ","
-        r.insert(0, vc)
+                    rc[i] += ","
+        rc.insert(0, vc)
         rh.insert(0, vh)
         # if it was array of numbers or array string
         if cur_data_type == 4 or cur_data_type == 2:
-            r.append("}")
-        r.append(", // " + label + "\n")  # TODO can put original_label
+            rc.append("}")
+        rc.append(", // " + label + "\n")  # TODO can put original_label
         rh.append(";\n")
-        logging.debug(r)
+        logging.debug(rc)
         logging.debug(rh)
-        r = "".join(r)
+        rc = "".join(rc)
         rh = "".join(rh)
-        return r, rh
+        return rc, rh
 
     @staticmethod
     def convert_char(c):

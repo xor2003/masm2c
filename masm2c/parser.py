@@ -10,6 +10,7 @@ from builtins import object
 from builtins import range
 from builtins import str
 from copy import copy, deepcopy
+import traceback
 
 import parglare
 from parglare import Grammar, Parser as PGParser
