@@ -16,6 +16,7 @@ import parglare
 from parglare import Grammar, Parser as PGParser
 
 from masm2c import cpp
+from masm2c.Struct import Struct
 from masm2c.op import Segment
 from masm2c.proc import Proc
 from masm2c import proc
@@ -70,8 +71,8 @@ def read_asm_file(file_name):
 
 
 macroses = dict()
-structtags = []
-macroidre = re.compile(r'([A-Za-z@_\$\?][A-Za-z0-9@_\$\?]*)')
+structures = dict()
+macronamere = re.compile(r'([A-Za-z@_\$\?][A-Za-z0-9@_\$\?]*)')
 commentid = re.compile(r'COMMENT\s+([^ ]).*?\1[^\r\n]*', flags=re.DOTALL)
 
 
@@ -153,14 +154,14 @@ def commentkw(head, s, pos):
         return None
 
 
-def macroid(context, s, pos):
+def macroname(context, s, pos):
     # macro usage identifier
-    mtch = macroidre.match(s[pos:])
+    mtch = macronamere.match(s[pos:])
     if mtch:
         result = mtch.group().lower()
         # logging.debug ("matched ~^~" + result+"~^~")
         if result in macroses.keys():
-            logging.debug(" ~^~" + result + "~^~ in macroids")
+            logging.debug(" ~^~" + result + "~^~ in macronames")
             return result
         else:
             return None
@@ -173,7 +174,7 @@ def macrodirhead(context, nodes, name, parms):
     param_names = [i.lower() for i in Token.find_tokens(parms, 'LABEL')]
     context.extra.current_macro = Macro(name.value.lower(), param_names)
     context.extra.macro_name.append(name.value.lower())
-    logging.debug("macroid added ~~" + name.value + "~~")
+    logging.debug("macroname added ~~" + name.value + "~~")
     return nodes
 
 def repeatbegin(context, nodes, value):
@@ -211,13 +212,13 @@ def macrocall(context, nodes, name, args):
     context.extra.proc.stmts += ins
     return nodes
 
-def structtag(head, s, pos):
-    mtch = macroidre.match(s[pos:])
+def structname(head, s, pos):
+    mtch = macronamere.match(s[pos:])
     if mtch:
         result = mtch.group().lower()
         # logging.debug ("matched ~^~" + result+"~^~")
-        if result in structtags:
-            logging.debug(" ~^~" + result + "~^~ in structtags")
+        if result in structures.keys():
+            logging.debug(" ~^~" + result + "~^~ in structnames")
             return result
         else:
             return None
@@ -225,13 +226,12 @@ def structtag(head, s, pos):
         return None
 
 
-def structdir(context, nodes, name, item):
-    logging.debug("structdir", str(nodes))
-    structtags.insert(0, name.value.lower())
-    context.extra.processingStructure = True
-    logging.debug("structtag added ~~" + name.value + "~~")
-    return []  # Token('structdir', nodes) TODO ignore by now
-
+def structdirhdr(context, nodes, name):
+    # structure definition header
+    context.extra.current_struct = Struct(name.value.lower())
+    context.extra.struct_name.append(name.value.lower())
+    logging.debug("structname added ~~" + name.value + "~~")
+    return nodes
 
 def structinstdir(context, nodes, label, type, values):
     logging.debug("structinstdir" + str(label) + str(type) + str(values))
@@ -264,16 +264,16 @@ def calculate_data_size_new(size, values):
 def datadir(context, nodes, label, type, values):
     logging.debug("datadir " + str(nodes) + " ~~")
 
-    if Token.find_tokens(nodes, 'structinstance') or \
-            context.extra.processingStructure:
-        return []
+    #if Token.find_tokens(nodes, 'structinstance') or \
+    #        context.extra.processingStructure:
+    #    return []
 
     if label:
         label = label.value
     else:
         label = ""
 
-    return context.extra.datadir_action(label, type.lower(), values)
+    return context.extra.datadir_action(label, type.lower(), values, len(context.extra.struct_name) != 0)
 
 
 def includedir(context, nodes, name):
@@ -297,9 +297,13 @@ def segmentdir(context, nodes, name):
 
 def endsdir(context, nodes, name):
     logging.debug("ends " + str(nodes) + " ~~")
-    if context.extra.processingStructure == False: # if it is not a structure then it is end of segment
+    if len(context.extra.struct_name): # if it is not a structure then it is end of segment
+        name = context.extra.struct_name.pop()
+        logging.debug("endstruct "+name)
+        structures[name] = context.extra.current_struct
+        context.extra.current_struct = None
+    else:
         context.extra.action_endseg()
-    context.extra.processingStructure = False
     return nodes
 
 
@@ -439,7 +443,7 @@ actions = {
     "structinstdir": structinstdir,
     "dupdir": dupdir,
     "structinstance": make_token,
-    "structdir": structdir,
+    "structdirhdr": structdirhdr,
     "includedir": includedir,
     "instrprefix": instrprefix,
     "INTEGER": integertok,
@@ -481,8 +485,8 @@ actions = {
 }
 
 recognizers = {
-    'macroid': macroid,
-    "structtag": structtag,
+    'macroname': macroname,
+    "structname": structname,
     "COMMENTKW": commentkw
 }
 
@@ -554,9 +558,13 @@ class Parser:
         self.used = False
         # self.__pgcontext = PGContext(extra = self)
         self.radix = 10
-        self.processingStructure = False
+
         self.current_macro = None
         self.macro_name = []
+
+        self.processingStructure = False
+        self.current_struct = None
+        self.struct_name = []
 
     def visible(self):
         for i in self.__stack:
@@ -858,7 +866,7 @@ class Parser:
             logging.info("skipping binary data for %s" % (name,))
 
     def create_segment(self, name):
-        self.padding_segment_to_paragraph_boundary()
+        self.align()
 
         offset = self.__binary_data_size // 16
         logging.debug("segment %s %x" % (name, offset))
@@ -871,7 +879,7 @@ class Parser:
         self.__segment = Segment(name, offset)
         self.segments[name] = self.__segment
 
-        self.__segment.append(op.Data(name, 'db', 4, [], 0))
+        self.__segment.append(op.Data(name, 'db', 4, [], 0, 0))
         #c, h = self.produce_c_data(name, 'db', 4, [], 0)
         #self.c_data += c
         #self.h_data += h
@@ -881,22 +889,15 @@ class Parser:
 
         self.set_global(name, op.var(binary_width, offset, name, issegment=True))
 
-    def padding_segment_to_paragraph_boundary(self):
-        num = (0x10 - (self.__binary_data_size & 0xf)) if (self.__binary_data_size & 0xf) else 0
+    def align(self, align_bound=0x10):
+        num = (align_bound - (self.__binary_data_size & (align_bound - 1))) if (self.__binary_data_size & (align_bound - 1)) else 0
         if num:
             self.__binary_data_size += num
-            self.__cur_seg_offset = 0
 
             self.__c_dummy_label += 1
             label = "dummy" + str(self.__c_dummy_label)
 
-            #self.c_data.append("{0}, // padding\n")
-            #self.h_data.append(" db " + label + "[" + str(num) + "]; // padding\n")
-
-            self.__segment.append(op.Data(label, 'db', 4, num*[0], num))
-            #c, h = self.produce_c_data(label, 'db', 4, num*[0], num)
-            #self.c_data += c
-            #self.h_data += h
+            self.__segment.append(op.Data(label, 'db', 4, num*[0], num, num))
 
     def parse_file(self, fname):
         '''
@@ -914,7 +915,7 @@ class Parser:
         skipping_binary_data = False
         self.parse_file_lines(fname, skipping_binary_data)
 
-        self.padding_segment_to_paragraph_boundary()
+        self.align()
 
         return self
 
@@ -1106,7 +1107,7 @@ class Parser:
 
         return result
 
-    def datadir_action(self, label, type, args):
+    def datadir_action(self, label, type, args, isstruct):
         label = self.mangle_label(label)
         binary_width = Parser.typetosize(type)
         size = calculate_data_size_new(binary_width, args)
@@ -1130,14 +1131,19 @@ class Parser:
         if len(label) == 0:
             self.__c_dummy_label += 1
             label = "dummy" + str(self.__c_dummy_label)
-        self.__segment.append(op.Data(label, type, data_internal_type, array, elements))
+        data = op.Data(label, type, data_internal_type, array, elements, size)
+        if isstruct:
+            self.current_struct.append(data)
+        else:
+            self.__segment.append(data)
 
-        c, h = cpp.Cpp.produce_c_data(label, type, data_internal_type, array, elements) # TO REMOVE
+
+        #c, h, size = cpp.Cpp.produce_c_data(data) # TO REMOVE
         #self.c_data += c
         #self.h_data += h
 
         # logging.debug("~~        self.assertEqual(parser_instance.parse_data_line_whole(line='"+str(line)+"'),"+str(("".join(c), "".join(h), offset2 - offset))+")")
-        return c, h, size
+        return data #c, h, size
 
     '''
     def link(self):

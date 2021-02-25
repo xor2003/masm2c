@@ -66,17 +66,18 @@ class Segment:
         return self.__data
 
 class Data:
-    __slots__ = ['label', 'type', 'data_internal_type', 'array', 'elements']
+    __slots__ = ['label', 'type', 'data_internal_type', 'array', 'elements', 'size']
 
-    def __init__(self, label, type, data_internal_type, array, elements):
+    def __init__(self, label, type, data_internal_type, array, elements, size):
         self.label = label
         self.type = type
         self.data_internal_type = data_internal_type
         self.array = array
         self.elements = elements
+        self.size = size
 
     def getdata(self):
-        return self.label, self.type, self.data_internal_type, self.array, self.elements
+        return self.label, self.type, self.data_internal_type, self.array, self.elements, self.size
 
 '''
 class equ(object):

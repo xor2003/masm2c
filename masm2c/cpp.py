@@ -123,7 +123,7 @@ class Cpp(object):
         self.__hdata_seg = ""
         for i in context.segments.values():
             for j in i.getdata():
-                c, h = self.produce_c_data(*j.getdata())
+                c, h, size = self.produce_c_data(j)
                 self.__cdata_seg += c
                 self.__hdata_seg += h
 
@@ -1158,7 +1158,8 @@ else goto __dispatch_call;
         return "#define %s %s\n" % (dst, self.expand(src))
 
     @staticmethod
-    def produce_c_data(label, type, cur_data_type, r, elements):
+    def produce_c_data(data):
+        label, type, cur_data_type, r, elements, size = data.getdata()
         data_ctype = type
         logging.debug("current data type = %d current data c type = %s" % (cur_data_type, data_ctype))
         rc = [None] * len(r)
@@ -1215,7 +1216,7 @@ else goto __dispatch_call;
         logging.debug(rh)
         rc = "".join(rc)
         rh = "".join(rh)
-        return rc, rh
+        return rc, rh, size
 
     @staticmethod
     def convert_char(c):
