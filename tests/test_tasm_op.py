@@ -359,12 +359,12 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(parser_instance.parse_int(v=u'0b'), 0)
 
     def test_calculate_data_size(self):
-
-        self.assertEqual(Parser.typetosize('db'), 1)
-        self.assertEqual(Parser.typetosize('dd'), 4)
-        self.assertEqual(Parser.typetosize('dq'), 8)
-        self.assertEqual(Parser.typetosize('dw'), 2)
-        self.assertEqual(Parser.typetosize('dt'), 10)
+        p = Parser()
+        self.assertEqual(p.typetosize('db'), 1)
+        self.assertEqual(p.typetosize('dd'), 4)
+        self.assertEqual(p.typetosize('dq'), 8)
+        self.assertEqual(p.typetosize('dw'), 2)
+        self.assertEqual(p.typetosize('dt'), 10)
 
     @patch.object(logging, 'debug')
     @patch.object(logging, 'info')

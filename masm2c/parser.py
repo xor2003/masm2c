@@ -71,7 +71,6 @@ def read_asm_file(file_name):
 
 
 macroses = dict()
-structures = dict()
 macronamere = re.compile(r'([A-Za-z@_\$\?][A-Za-z0-9@_\$\?]*)')
 commentid = re.compile(r'COMMENT\s+([^ ]).*?\1[^\r\n]*', flags=re.DOTALL)
 
@@ -212,13 +211,13 @@ def macrocall(context, nodes, name, args):
     context.extra.proc.stmts += ins
     return nodes
 
-def structname(head, s, pos):
+def structname(context, s, pos):
     mtch = macronamere.match(s[pos:])
     if mtch:
         result = mtch.group().lower()
         # logging.debug ("matched ~^~" + result+"~^~")
-        if result in structures.keys():
-            logging.debug(" ~^~" + result + "~^~ in structnames")
+        if result in context.extra.structures.keys():
+            logging.debug(" ~^~" + result + "~^~ in structures")
             return result
         else:
             return None
@@ -264,10 +263,6 @@ def calculate_data_size_new(size, values):
 def datadir(context, nodes, label, type, values):
     logging.debug("datadir " + str(nodes) + " ~~")
 
-    #if Token.find_tokens(nodes, 'structinstance') or \
-    #        context.extra.processingStructure:
-    #    return []
-
     if label:
         label = label.value
     else:
@@ -300,7 +295,7 @@ def endsdir(context, nodes, name):
     if len(context.extra.struct_name): # if it is not a structure then it is end of segment
         name = context.extra.struct_name.pop()
         logging.debug("endstruct "+name)
-        structures[name] = context.extra.current_struct
+        context.extra.structures[name] = context.extra.current_struct
         context.extra.current_struct = None
     else:
         context.extra.action_endseg()
@@ -562,9 +557,9 @@ class Parser:
         self.current_macro = None
         self.macro_name = []
 
-        self.processingStructure = False
         self.current_struct = None
         self.struct_name = []
+        self.structures = dict()
 
     def visible(self):
         for i in self.__stack:
@@ -1109,7 +1104,7 @@ class Parser:
 
     def datadir_action(self, label, type, args, isstruct):
         label = self.mangle_label(label)
-        binary_width = Parser.typetosize(type)
+        binary_width = self.typetosize(type)
         size = calculate_data_size_new(binary_width, args)
 
         offset = self.__cur_seg_offset
@@ -1206,9 +1201,10 @@ class Parser:
             size = 4
         return size
 
-    @staticmethod
-    def typetosize(value):
-        if not isinstance(value, str):
+    def typetosize(self, value):
+        if isinstance(value, Token) and value.value in self.structures.keys():
+            return self.structures[value.value].getsize()
+        elif not isinstance(value, str):
             logging.error("Type is not a string TODO " + str(value))  # TODO add structures
             return 0
         value = value.lower()

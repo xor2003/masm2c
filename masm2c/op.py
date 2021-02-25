@@ -79,6 +79,10 @@ class Data:
     def getdata(self):
         return self.label, self.type, self.data_internal_type, self.array, self.elements, self.size
 
+    def getsize(self):
+        return self.size
+
+
 '''
 class equ(object):
     def __init__(self, value, size=0):
