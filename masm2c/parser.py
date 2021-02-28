@@ -1208,8 +1208,8 @@ class Parser:
         return size
 
     def typetosize(self, value):
-        if isinstance(value, Token) and value.value in self.structures.keys():
-            return self.structures[value.value].getsize()
+        if isinstance(value, Token) and value.value.lower() in self.structures.keys():
+            return self.structures[value.value.lower()].getsize()
         elif not isinstance(value, str):
             logging.error("Type is not a string TODO " + str(value))  # TODO add structures
             return 0

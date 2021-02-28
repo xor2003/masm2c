@@ -58,7 +58,7 @@ class Token:
             else:
                 oldindex = index
                 expr.value, index = Token.remove_squere_bracets(expr.value, index)
-                if isinstance(expr.value, str):
+                if isinstance(expr.value, str) and not (expr.type == 'INTEGER' and expr.value[0] in ['-', '+']):
                     index = oldindex
                     index += 1
                     if index != 1:

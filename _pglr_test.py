@@ -7,23 +7,23 @@ import sys
 import parglare
 from parglare import Grammar
 
-macroids = []
-structtags = []
-macroidre = re.compile(r'([A-Za-z@_\$\?][A-Za-z@_\$\?0-9]*)')
-
+macronames = []
+structnames = []
+macronamere = re.compile(r'([A-Za-z@_\$\?][A-Za-z@_\$\?0-9]*)')
+commentid = re.compile(r'COMMENT\s+([^ ]).*?\1[^\r\n]*', flags=re.DOTALL)
 
 def macro_action(context, nodes, name):
-    macroids.insert(0, name.lower())
+    macronames.insert(0, name.lower())
     print("added ~~" + name + "~~")
     return nodes
 
 
-def macroid(head, input, pos):
-    mtch = macroidre.match(input[pos:])
+def macroname(head, input, pos):
+    mtch = macronamere.match(input[pos:])
     if mtch:
         result = mtch.group().lower()
-        if result in macroids:
-            print("matched ~^~" + result + "~^~ in macroids")
+        if result in macronames:
+            print("matched ~^~" + result + "~^~ in macronames")
             return result
         else:
             return None
@@ -189,22 +189,16 @@ def INTEGER(context, nodes):
     return Token('INTEGER', nodes)
 
 
-recognizers = {
-    'macroid': macroid,
-    "structtag": structtag
-}
-
-
 def expr(context, nodes):
     return Token('expr', make_token(context, nodes))
 
-def structtag(head, s, pos):
-    mtch = macroidre.match(s[pos:])
+def structname(head, s, pos):
+    mtch = macronamere.match(s[pos:])
     if mtch:
         result = mtch.group().lower()
         # logging.debug ("matched ~^~" + result+"~^~")
-        if result in structtags:
-            logging.debug(" ~^~" + result + "~^~ in structtags")
+        if result in structnames:
+            logging.debug(" ~^~" + result + "~^~ in structnames")
             return result
         else:
             return None
@@ -213,8 +207,8 @@ def structtag(head, s, pos):
 
 def structdir(context, nodes, name, item):
     print("structdir", str(nodes))
-    structtags.insert(0, name.value.lower())
-    print("structtag added ~~" + name.value + "~~")
+    structnames.insert(0, name.value.lower())
+    print("structname added ~~" + name.value + "~~")
     return []  # Token('structdir', nodes) TODO ignore by now
 
 def structinstdir(context, nodes, label, type, values):
@@ -227,6 +221,19 @@ def memberdir(context, nodes, variable, field):
     print(result)
     return result
 
+def commentkw(head, s, pos):
+    # multiline comment
+    mtch = commentid.match(s[pos:])
+    if mtch:
+        return mtch.group(0)
+    else:
+        return None
+
+recognizers = {
+    'macroname': macroname,
+    "structname": structname,
+    'COMMENTKW': commentkw
+}
 
 actions = {
     "field": make_token,
@@ -271,8 +278,8 @@ from parglare import Parser
 
 # parser = Parser(grammar, debug=True, debug_trace=True, actions={"macrodir": macro_action})
 # parser = Parser(grammar, debug=True, actions={"macrodir": macro_action})
-#parser = Parser(grammar, debug=True, actions=actions, debug_colors=True)
-parser = Parser(grammar, actions=actions)  # , build_tree=True, call_actions_during_tree_build=True)
+parser = Parser(grammar, debug=True, actions=actions, debug_colors=True)
+#parser = Parser(grammar, actions=actions)  # , build_tree=True, call_actions_during_tree_build=True)
 
 codeset = 'cp437'
 

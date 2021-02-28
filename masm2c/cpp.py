@@ -206,7 +206,9 @@ class Cpp(object):
         elif isinstance(g, op.label):
             value = "k" + g.name.lower()  # .capitalize()
         else:
-            size = g.size
+            if isinstance(g, op.Struct):
+                pass
+            size = g.getsize()
             if size == 0:
                 raise Exception("invalid var '%s' size %u" % (name, size))
             if self.__indirection == 0 or self.__indirection == 1:  # x0r self.indirection == 1 ??
@@ -665,7 +667,7 @@ class Cpp(object):
         p = ""
         for r in regs:
             if self.get_size(r):
-                self.__temps_count += 1
+                self.__temps_count += 2
                 r = self.expand(r)
                 p += "\tR(PUSH(%s));\n" % (r)
         return p
@@ -673,7 +675,7 @@ class Cpp(object):
     def _pop(self, regs):
         p = ""
         for r in regs:
-            self.__temps_count -= 1
+            self.__temps_count -= 2
             r = self.expand(r)
             p += "\tR(POP(%s));\n" % r
         return p

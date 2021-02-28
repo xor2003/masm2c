@@ -48,6 +48,9 @@ class var(object):
         self.used = False
         # logging.debug("op.var(%s)" %(str(self.__dict__).replace('\n',' ')))
 
+    def getsize(self):
+        return self.size
+
 class Segment:
 	#__slots__ = ['name', 'offset', '__data', 'original_name', 'used']
 
