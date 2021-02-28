@@ -114,7 +114,7 @@ class Cpp(object):
         self.__namespace = outfile
         self.__indirection = 0
         self.__current_size = 0
-        self.__seg_prefix = ""
+        self.__work_segment = ""
         self.__codeset = 'cp437'
         self.__context = context
 
@@ -200,7 +200,7 @@ class Cpp(object):
                     self.__indirection = 0
                 else:
                     value = "offset(%s,%s)" % (g.segment, g.name)
-                    if self.__seg_prefix == 'cs':
+                    if self.__work_segment == 'cs':
                         self.body += '\tcs=seg_offset(' + g.segment + ');\n'
             # ?self.__indirection = 1
         elif isinstance(g, op.label):
@@ -292,14 +292,14 @@ class Cpp(object):
     def convert_sqbr_reference(self, expr, destination, size, lea=False):
         if not lea or destination:
             if size == 1:
-                expr = "*(raddr(%s,%s))" % (self.__seg_prefix, expr)
+                expr = "*(raddr(%s,%s))" % (self.__work_segment, expr)
             elif size == 2:
-                expr = "*(dw*)(raddr(%s,%s))" % (self.__seg_prefix, expr)
+                expr = "*(dw*)(raddr(%s,%s))" % (self.__work_segment, expr)
             elif size == 4:
-                expr = "*(dd*)(raddr(%s,%s))" % (self.__seg_prefix, expr)
+                expr = "*(dd*)(raddr(%s,%s))" % (self.__work_segment, expr)
             else:
                 logging.debug("~%s~ @invalid size 0" % expr)
-                expr = "*(dw*)(raddr(%s,%s))" % (self.__seg_prefix, expr)
+                expr = "*(dw*)(raddr(%s,%s))" % (self.__work_segment, expr)
             logging.debug("expr: %s" % expr)
         return expr
 
@@ -328,7 +328,7 @@ class Cpp(object):
 
         expr = Token.remove_tokens(expr, ['expr'])
         origexpr = expr
-        self.__seg_prefix = "ds"
+        self.__work_segment = "ds"
         self.__current_size = 0
         indirection = 0
         size = self.get_size(expr) if def_size == 0 else def_size  # calculate size if it not provided
@@ -359,7 +359,7 @@ class Cpp(object):
 
         memberdir = Token.find_tokens(expr, 'memberdir')
         islabel = Token.find_tokens(expr, LABEL)
-        if islabel and not offsetdir:
+        if islabel and not offsetdir and not memberdir:
                 #for i in islabel:
                 res = self.get_var_size(islabel[0])
                 if res:
@@ -370,9 +370,9 @@ class Cpp(object):
         if indirection == 1 and not segoverride:
             regs = Token.find_tokens(expr, REGISTER)
             if regs and any([i in ['bp', 'ebp', 'sp', 'esp'] for i in regs]):  # TODO doublecheck
-                self.__seg_prefix = "ss"
+                self.__work_segment = "ss"
         if segoverride:
-            self.__seg_prefix = segoverride[0].value
+            self.__work_segment = segoverride[0].value
 
         # for "label" or "[label]" get size
         self.__isjustlabel = (isinstance(origexpr, Token) and origexpr.type == LABEL) \
@@ -385,7 +385,7 @@ class Cpp(object):
 
         if memberdir:
             expr = memberdir[0]
-            label = Token.find_tokens(expr, 'LABEL')
+            label = islabel
             g = None
             try:
                 g = self.__context.get_global(label[0])
@@ -393,7 +393,15 @@ class Cpp(object):
                     if indirection == -1:
                         expr = ["offset(%s,%s" % (g.segment, g.name)]+expr[1:]+[')']
                     elif indirection == 0:
-                        expr = ["m." + (",".join(label))]
+                        expr = ["m." + (".".join(label))]
+                    elif indirection == 1:
+                        registers = Token.find_tokens(expr, 'register')
+                        if not registers:
+                            register = []
+                        integers = Token.find_tokens(expr, 'INTEGER')
+                        if not integers:
+                            integers = []
+                        expr = ["(*(%s*)(raddr(%s,%s))).%s" % (label[0], self.__work_segment, "+".join(registers+integers), ".".join(label[1:]))]
             except:
                 pass
         else:
@@ -410,7 +418,7 @@ class Cpp(object):
 
         expr = self.tokenstostring(expr)
 
-        if indirection == 1:
+        if indirection == 1 and not memberdir:
             expr = self.convert_sqbr_reference(expr, destination, size, lea=lea)
 
         return expr
@@ -439,7 +447,7 @@ class Cpp(object):
 
         segoverride = Token.find_tokens(name, 'segoverride')
         if segoverride:
-            self.__seg_prefix = segoverride[0].value
+            self.__work_segment = segoverride[0].value
         #    name = Token.remove_tokens(name, ['segoverride', 'segmentregister'])
 
         if isinstance(name, Token) and name.type == 'register':
@@ -769,6 +777,7 @@ X86_REGREF
 __disp=_i;
 if (__disp==kbegin) goto %s;
 else goto __dispatch_call;
+mainproc_begin:
 """ % (name, self.__context.entry_point)
 
             logging.info(name)
@@ -1022,6 +1031,9 @@ else goto __dispatch_call;
         elif cur_data_type == 4:  # array
             vh = data_ctype + " " + label + "[" + str(elements) + "]"
             vc = "{"
+        elif cur_data_type == 5:  # struct
+            vh = data_ctype + " " + label
+            vc = "{"
 
         if cur_data_type == 1:  # string
             vv = "\""
@@ -1040,9 +1052,12 @@ else goto __dispatch_call;
             rc = ["", vv]
 
         elif cur_data_type == 3:  # number
-            rc[0] = str(r[0])
+            if len(r):
+                rc[0] = str(r[0])
+            else:
+                rc = ['']
 
-        elif cur_data_type == 4:  # array of numbers
+        elif cur_data_type in [4, 5]:  # array of numbers
             # vv = ""
             for i in range(0, len(r)):
                 rc[i] = str(r[i])
@@ -1051,7 +1066,7 @@ else goto __dispatch_call;
         rc.insert(0, vc)
         rh.insert(0, vh)
         # if it was array of numbers or array string
-        if cur_data_type == 4 or cur_data_type == 2:
+        if cur_data_type in [2, 4, 5]:
             rc.append("}")
         rc.append(", // " + label + "\n")  # TODO can put original_label
         rh.append(";\n")

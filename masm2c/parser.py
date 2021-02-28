@@ -534,7 +534,7 @@ class Parser:
         self.__offset_id = 0x1111
         self.__stack = []
 
-        self.entry_point = ""
+        self.entry_point = "mainproc_begin"
 
         self.proc_list = []
 
@@ -1231,7 +1231,7 @@ class Parser:
         s = self.structures[type]
         cpp = Cpp(self)
         args = [cpp.expand(i) for i in args]
-        d = op.Data(label, type, 4, args, 1, s.getsize())
+        d = op.Data(label, type, 5, args, 1, s.getsize())
         self.segment.append(d)
         self.set_global(label, op.var(s.getsize(), self.__cur_seg_offset, label))
         self.__cur_seg_offset += s.getsize()
