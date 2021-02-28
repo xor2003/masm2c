@@ -16,8 +16,8 @@ import parglare
 from parglare import Grammar, Parser as PGParser
 
 from masm2c import cpp
-from masm2c.Struct import Struct
-from masm2c.op import Segment
+from masm2c.cpp import Cpp
+from masm2c.op import Segment, Struct
 from masm2c.proc import Proc
 from masm2c import proc
 from masm2c import op
@@ -234,6 +234,11 @@ def structdirhdr(context, nodes, name):
 
 def structinstdir(context, nodes, label, type, values):
     logging.debug("structinstdir" + str(label) + str(type) + str(values))
+    args = Token.find_tokens(values, 'expr')
+    if args == None:
+        args = [0]
+    #args = Token.remove(args, 'INTEGER')
+    context.extra.add_structinstance(label.value, type, args)
     return nodes  # Token('structdir', nodes) TODO ignore by now
 
 
@@ -296,6 +301,7 @@ def endsdir(context, nodes, name):
         name = context.extra.struct_name.pop()
         logging.debug("endstruct "+name)
         context.extra.structures[name] = context.extra.current_struct
+        context.extra.set_global(name, context.extra.current_struct)
         context.extra.current_struct = None
     else:
         context.extra.action_endseg()
@@ -546,8 +552,8 @@ class Parser:
 
         self.segments = dict()
         self.__segment_name = "default_seg"
-        self.__segment = Segment(self.__segment_name, 0)
-        self.segments[self.__segment_name] = self.__segment
+        self.segment = Segment(self.__segment_name, 0)
+        self.segments[self.__segment_name] = self.segment
 
         self.__lex = ParglareParser()
         self.used = False
@@ -871,10 +877,10 @@ class Parser:
         #elf.c_data.append("{}, // segment " + name + "\n")
         #self.h_data.append(" db " + name + "[" + str(num) + "]; // segment " + name + "\n")
 
-        self.__segment = Segment(name, offset)
-        self.segments[name] = self.__segment
+        self.segment = Segment(name, offset)
+        self.segments[name] = self.segment
 
-        self.__segment.append(op.Data(name, 'db', 4, [], 0, 0))
+        self.segment.append(op.Data(name, 'db', 4, [], 0, 0))
         #c, h = self.produce_c_data(name, 'db', 4, [], 0)
         #self.c_data += c
         #self.h_data += h
@@ -892,7 +898,7 @@ class Parser:
             self.__c_dummy_label += 1
             label = "dummy" + str(self.__c_dummy_label)
 
-            self.__segment.append(op.Data(label, 'db', 4, num*[0], num, num))
+            self.segment.append(op.Data(label, 'db', 4, num * [0], num, num))
 
     def parse_file(self, fname):
         '''
@@ -1130,7 +1136,7 @@ class Parser:
         if isstruct:
             self.current_struct.append(data)
         else:
-            self.__segment.append(data)
+            self.segment.append(data)
 
 
         #c, h, size = cpp.Cpp.produce_c_data(data) # TO REMOVE
@@ -1220,3 +1226,13 @@ class Parser:
             logging.debug("Cannot find size for %s" % value)
             size = 0
         return size
+
+    def add_structinstance(self, label, type, args):
+        s = self.structures[type]
+        cpp = Cpp(self)
+        args = [cpp.expand(i) for i in args]
+        d = op.Data(label, type, 4, args, 1, s.getsize())
+        self.segment.append(d)
+        self.set_global(label, op.var(s.getsize(), self.__cur_seg_offset, label))
+        self.__cur_seg_offset += s.getsize()
+

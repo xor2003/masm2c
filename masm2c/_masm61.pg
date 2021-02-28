@@ -115,7 +115,7 @@ e05: e05 addop e06
 e06: e06 mulop e07
 | e06 shiftop e07
 | e07;
-e07: e07 addop e08
+e07: addop e08
 | e08;
 e08: HIGH e09
 | LOW e09
@@ -1040,8 +1040,8 @@ addop: /[+-]/;
 COMMENTKW: {prefer};
 //DELIMITER: /[^\t\n\rA-Za-z0-9 ]/;
 ENDOFLINE: /[\r\n]+[\t \r\n]*/;
-FLOAT: /[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?\b/;
-INTEGER: /[-+]?[0-9][0-9A-Fa-f]*[HOQTYhoqty]?\b/ {prefer};
+FLOAT: /[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?\b/;
+INTEGER: /[0-9][0-9A-Fa-f]*[HOQTYhoqty]?\b/ {prefer};
 WS: /([\t \b\v\f\x1a]+)|(\\;?[^\r\n]*[\r\n\t \b\v\f\x1a]+)/;
 SPACE: /[\t ]+/;
 Comment: /;[^\r\n]*/;

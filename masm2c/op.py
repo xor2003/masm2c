@@ -83,21 +83,23 @@ class Data:
         return self.size
 
 
+class Struct:
+    def __init__(self, name):
+        self.__name = name
+        self.__data = list()
+        self.__size = 0
+
+    def append(self, data):
+        self.__data.append(data)
+        self.__size += data.getsize()
+
+    def getdata(self):
+        return self.__data
+
+    def getsize(self):
+        return self.__size
+
 '''
-class equ(object):
-    def __init__(self, value, size=0):
-        self.value = value
-        if size:
-            self.size = size
-
-
-class assignment(object):
-    def __init__(self, value, size=0):
-        self.value = value
-        if size:
-            self.size = size
-
-
 class reg(object):
     def __init__(self, name):
         self.name = name
@@ -133,12 +135,6 @@ class glob(object):
         return "<global %s>" % self.name
 
 
-class segment(object):
-    def __init__(self, name):
-        self.name = name
-
-    def __str__(self):
-        return "<segment %s>" % self.name
 '''
 
 

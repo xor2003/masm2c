@@ -117,7 +117,6 @@ class Cpp(object):
         self.__seg_prefix = ""
         self.__codeset = 'cp437'
         self.__context = context
-        # self.data_seg = __context.binary_data
 
         self.__cdata_seg = ""
         self.__hdata_seg = ""
@@ -135,24 +134,20 @@ class Cpp(object):
         self.__skip_output = skip_output
         self.__skip_dispatch_call = skip_dispatch_call
         self.__skip_addr_constants = skip_addr_constants
-        # self.__header_omit_blacklisted = header_omit_blacklisted
         self.__function_name_remapping = function_name_remapping
         self.__translated = list()  # []
         self.__proc_addr = []
         self.__used_data_offsets = set()
         self.__methods = []
         self.__temps_count = 0
-        # self.__pointer_flag = False
         self.lea = False
-        # self.__expr_size = 0
         self.__far = False
         self.body = ""
-        #self.__unbounded = []
 
     def convert_label(self, token):
         name_original = token.value
         name = name_original.lower()
-        logging.debug("expand_cb name = %s indirection = %u" % (name, self.__indirection))
+        logging.debug("convert_label name = %s indirection = %u" % (name, self.__indirection))
 
         if self.__indirection == -1:
             try:
@@ -292,56 +287,7 @@ class Cpp(object):
 
         # if isinstance(expr, str):  # in ('+','-','*','(',')','/'):
         #    return 0
-
         return 0
-
-    def expand_equ_cb(self, match):
-        name = match.group(0).lower()
-        logging.debug("expand_equ_cb %s" % name)
-        try:
-            g = self.__context.get_global(name)
-            if isinstance(g, op.equ) or isinstance(g, op.assignment):
-                return g.value
-            return str(g.offset)
-        except:
-            logging.warning("some exception")
-            return name
-
-    def expand_equ(self, expr):
-        # n = 1
-        logging.debug("expand_equ(%s)" % expr)
-        # while n > 0:
-        #       expr, n = re.subn(r'\b[a-zA-Z_][a-zA-Z0-9_]+\b', self.expand_equ_cb, expr)
-        # while n > 0:
-        expr = re.sub(r'\b[a-zA-Z_][a-zA-Z0-9_]*\b', self.expand_equ_cb, expr)
-        expr = convert_number_to_c(expr)
-        return "(%s)" % expr
-
-    '''
-    def get_var_equ_value(self, expr, size):
-        result = None
-        try:
-            g = self.__context.get_global(expr)
-            logging.debug("found global %s" % expr)
-            if not self.lea and isinstance(g, op.var):
-                logging.debug("it is not lea and it is var")
-                if g.issegment:
-                    result = "seg_offset(%s)" % expr.lower()
-                else:
-                    if g.elements == 1:
-                        # traceback.print_stack(file=sys.stdout)
-                        result = "m." + expr
-                    else:
-                        s = {1: "*(db*)", 2: "*(dw*)", 4: "*(dd*)"}[size]
-                        result = s + "&m." + expr
-            if isinstance(g, op.equ) or isinstance(g, op.assignment):
-                logging.debug("it is equ")
-                result = self.expand(g.value)
-
-        except:
-            pass
-        return result
-    '''
 
     def convert_sqbr_reference(self, expr, destination, size, lea=False):
         if not lea or destination:
@@ -408,8 +354,10 @@ class Cpp(object):
         if ptrdir or offsetdir or segoverride:
             expr = Token.remove_tokens(expr, [PTRDIR, OFFSETDIR, SEGOVERRIDE])
 
-        expr, _ = Token.remove_squere_bracets(expr)
+        if sqexpr:
+            expr, _ = Token.remove_squere_bracets(expr)
 
+        memberdir = Token.find_tokens(expr, 'memberdir')
         islabel = Token.find_tokens(expr, LABEL)
         if islabel and not offsetdir:
                 #for i in islabel:
@@ -435,15 +383,17 @@ class Cpp(object):
 
         self.__current_size = size
 
-        memberdir =  Token.find_tokens(expr, 'memberdir')
-        if memberdir and indirection == -1:
+        if memberdir:
             expr = memberdir[0]
             label = Token.find_tokens(expr, 'LABEL')
             g = None
             try:
                 g = self.__context.get_global(label[0])
-                if isinstance(g, op.var):
-                    expr = ["offset(%s,%s" % (g.segment, g.name)]+expr[1:]+[')']
+                if isinstance(g, op.var) or isinstance(g, op.Struct):
+                    if indirection == -1:
+                        expr = ["offset(%s,%s" % (g.segment, g.name)]+expr[1:]+[')']
+                    elif indirection == 0:
+                        expr = ["m." + (",".join(label))]
             except:
                 pass
         else:
@@ -784,21 +734,10 @@ class Cpp(object):
                 self.proc.stmts = copy(src_proc.stmts)
                 self.proc.labels = copy(src_proc.labels)
                 self.proc.retlabels = copy(src_proc.retlabels)
-                # for p in xrange(skip, len(self.proc.stmts)):
-                #       s = self.proc.stmts[p]
-                #       if isinstance(s, op.basejmp):
-                #               o, p, s = self.__context.get_offset(s.label)
-                #               if p == src_proc and s < skip:
-                #                       skip = s
 
             self.__proc_addr.append((name, self.proc.offset))
             self.body = ""
-            '''
-                        if name in self.__function_name_remapping:
-                                self.body += "void %sContext::%s() {\n" %(self.namespace, self.__function_name_remapping[name]);
-                        else:
-                                self.body += "void %sContext::%s() {\n" %(self.namespace, name);
-                        '''
+
             if name in self.__function_name_remapping:
                 self.body += "int %s() {\ngoto %s;\n" % (
                     self.__function_name_remapping[name], self.__context.entry_point)
@@ -836,38 +775,11 @@ else goto __dispatch_call;
             self.proc.optimize()
             self.__unbounded = []
             self.proc.visit(self, skip)
-            '''
-                        #adding remaining labels:
-                        for i in xrange(0, len(self.__unbounded)):
-                                u = self.__unbounded[i]
-                                logging.info "UNBOUNDED: ", u
-                                proc = u[1]
-                                for p in xrange(u[2], len(proc.stmts)):
-                                        s = proc.stmts[p]
-                                        if isinstance(s, op.basejmp):
-                                                self.resolve_label(s.label)
 
-                        #adding statements
-                        #BIG FIXME: this is quite ugly to handle code analysis from the code generation. rewrite me!
-                        for label, proc, offset in self.__unbounded:
-                                self.body += "\tR(return);\n" #we need to return before calling code from the other proc
-                                self.body += "/*continuing to __unbounded code: %s from %s:%d-%d*/\n" %(label, proc.name, offset, len(proc.stmts))
-                                start = len(self.proc.stmts)
-                                self.proc.add_label(label)
-                                for s in proc.stmts[offset:]:
-                                        if isinstance(s, op.label):
-                                                self.proc.labels.add(s.name)
-                                        self.proc.stmts.append(s)
-                                self.proc.add("ret")
-                                logging.info "skipping %d instructions, todo: %d" %(start, len(self.proc.stmts) - start)
-                                logging.info "re-optimizing..."
-                                self.proc.optimize(keep_labels=[label])
-                                self.proc.visit(self, start)
-                        '''
-            # self.body += "}\n"; # x0r function end
             if name not in self.__skip_output:
                 self.__translated.insert(0, self.body)
             self.proc = None
+
             if self.__temps_count != 0:
                 logging.warning("temps count == %d at the exit of proc" % self.__temps_count)
             return True
@@ -877,44 +789,30 @@ else goto __dispatch_call;
         except:
             raise
 
-    def write_stubs(self, fname, procs):
-        if sys.version_info >= (3, 0):
-            fd = open(fname, "wt", encoding=self.__codeset)
-        else:
-            fd = open(fname, "wt")
-
-        fd.write("//namespace %s {\n" % self.__namespace)
-        for p in procs:
-            if p in self.__function_name_remapping:
-                fd.write("void %sContext::%s() {\n\t::error(\"%s\");\n}\n\n" % (
-                    self.__namespace, self.__function_name_remapping[p], self.__function_name_remapping[p]))
-            else:
-                fd.write("void %sContext::%s() {\n\t::error(\"%s\");\n}\n\n" % (self.__namespace, p, p))
-        fd.write("//} // End of namespace  %s\n" % self.__namespace)
-        fd.close()
-
     def generate(self, start):
-        # print self.prologue()
-        # print __context
         fname = self.__namespace.lower() + ".cpp"
         header = self.__namespace.lower() + ".h"
-        banner = """/* PLEASE DO NOT MODIFY THIS FILE. ALL CHANGES WILL BE LOST! LOOK FOR README FOR DETAILS */
-
-/* 
- *
- */
-"""
         if sys.version_info >= (3, 0):
             self.fd = open(fname, "wt", encoding=self.__codeset)
             self.hd = open(header, "wt", encoding=self.__codeset)
         else:
             self.fd = open(fname, "wt")
             self.hd = open(header, "wt")
+
+        banner = """/* PLEASE DO NOT MODIFY THIS FILE. ALL CHANGES WILL BE LOST! LOOK FOR README FOR DETAILS */
+
+/* 
+ *
+ */
+"""
+
         hid = "__M2C_%s_STUBS_H__" % self.__namespace.upper().replace('-', '_')
+
         self.hd.write("""#ifndef %s
 #define %s
 
 %s""" % (hid, hid, banner))
+
         self.fd.write("""%s
 #include \"%s\"
 #include <curses.h>
@@ -943,54 +841,30 @@ else goto __dispatch_call;
         self.fd.write("\n")
         self.fd.write("\n".join(self.__translated))
         self.fd.write("\n")
+
         logging.info(
             "%d ok, %d failed of %d, %3g%% translated" % (done, failed, done + failed, 100.0 * done / (done + failed)))
         logging.info("\n".join(self.__failed))
+
         # data_bin = self.data_seg
         cdata_bin = self.__cdata_seg
         hdata_bin = self.__hdata_seg
+
         data_impl = ""
-        n = 0
-        # comment = ""
 
-        self.fd.write("\nreturn;\n__dispatch_call:\nswitch (__disp) {\n")
-        offsets = []
-        for k, v in list(self.__context.get_globals().items()):
-            k = re.sub(r'[^A-Za-z0-9_]', '_', k)
-            if isinstance(v, op.label):
-                offsets.append((k.lower(), k))
+        self.fd.write("\nreturn;\n")
 
-        offsets = sorted(offsets, key=lambda t: t[1])
-        for o in offsets:
-            logging.debug(o)
-            self.fd.write("case k%s: \tgoto %s;\n" % o)
-        self.fd.write("default: log_error(\"Jump/call to nothere %d\\n\", __disp);stackDump(_state); abort();\n")
-        self.fd.write("};\n}\n")
+        self.produce_jump_table()
 
         data_impl += "\nstruct Memory m = {\n"
         for v in cdata_bin:
             # data_impl += "0x%02x, " %v
             data_impl += "%s" % v
-            n += 1
         data_impl += """
+                {0},
                 {0}
                 """
         data_impl += "};\n"
-        '''
-                data_impl += "\n\tuint8_t m[] = {\n\t\t"
-
-                for v in data_bin:
-                        data_impl += "0x%02x, " %v
-                        n += 1
-
-                        comment += chr(v) if (v >= 0x20 and v < 0x7f and v != ord('\\')) else "."
-                        if (n & 0xf) == 0:
-                                data_impl += "\n\t\t//0x%04x: %s\n\t\t" %(n - 16, comment)
-                                comment = str()
-                        #elif (n & 0x3) == 0:
-                        #       comment += " "
-                data_impl += "};\n\t//ds.assign(src, src + sizeof(src));\n"
-                '''
 
         self.hd.write(
             """\n#include "asm.h"
@@ -1000,99 +874,68 @@ else goto __dispatch_call;
 """
             % (self.__namespace))
 
-        if not self.__skip_addr_constants:
-            for name, addr in self.__proc_addr:
-                self.hd.write("static const uint16_t addr_%s = 0x%04x;\n" % (name, addr))
+        labeloffsets = self.produce_label_offsets()
+        self.hd.write(labeloffsets)
 
-        # for name,addr in self.__used_data_offsets:
-        #       self.hd.write("static const uint16_t offset_%s = 0x%04x;\n" %(name, addr))
+        structures = self.produce_structures()
+        self.hd.write(structures)
 
-        offsets = []
-        for k, v in list(self.__context.get_globals().items()):
-            k = re.sub(r'[^A-Za-z0-9_]', '_', k)
-            if isinstance(v, op.var):
-                pass  # offsets.append((k.capitalize(), hex(v.offset)))
-            #elif isinstance(v, op.equ) or isinstance(v, op.assignment):
-            #    offsets.append((k.capitalize(), self.expand_equ(v.value)))  # fixme: try to save all constants here
-            ## elif isinstance(v, op.label):
-            ##       offsets.append((k.capitalize(), hex(v.line_number)))
+        data = self.produce_data(hdata_bin)
+        self.hd.write(data)
 
-        offsets = sorted(offsets, key=lambda t: t[1])
-        for o in offsets:
-            self.fd.write("static const uint16_t k%s = %s;\n" % o)
-        self.fd.write("\n")
+        self.hd.write("//};\n\n//} // End of namespace DreamGen\n\n#endif\n")
+        self.hd.close()
 
+        self.fd.write(" %s\n" % data_impl)
+
+        self.fd.write("\n\n//} // End of namespace DreamGen\n")
+        self.fd.close()
+
+    def produce_label_offsets(self):
         # self.hd.write("\nenum _offsets MYINT_ENUM {\n")
         offsets = []
         for k, v in list(self.__context.get_globals().items()):
             k = re.sub(r'[^A-Za-z0-9_]', '_', k)
-            if isinstance(v, op.var):
-                pass  # offsets.append((k.capitalize(), hex(v.offset)))
-            #elif isinstance(v, op.equ) or isinstance(v, op.assignment):
-            #    pass  # offsets.append((k.capitalize(), self.expand_equ(v.value))) #fixme: try to save all constants here
-            elif isinstance(v, op.label):
+            if isinstance(v, op.label):
                 offsets.append((k.lower(), hex(v.line_number)))
-
         offsets = sorted(offsets, key=lambda t: t[1])
-        self.hd.write("static const uint16_t kbegin = 0x1001;\n")
+        labeloffsets = "static const uint16_t kbegin = 0x1001;\n"
         for o in offsets:
-            self.hd.write(("static const uint16_t k%s = %s;\n" % o))
-        # self.hd.write("};\n")
+            labeloffsets += "static const uint16_t k%s = %s;\n" % o
+        return labeloffsets
 
+    def produce_structures(self):
+        structures = "\n"
+        for name, v in self.__context.structures.items():
+            structures += "struct MYPACKED "+name+" {\n"
+            for member in v.getdata():
+                structures += "%s %s;\n" %(member.type, member.label)
+            structures += "};\n"
+        return structures
+
+    def produce_data(self, hdata_bin):
         data_head = "\nstruct MYPACKED Memory{\n"
-        for v in hdata_bin:
-            # data_impl += "0x%02x, " %v
-            data_head += "%s" % v
-            # n += 1
-
+        data_head += "".join(hdata_bin)
         data_head += '''
                         db stack[STACK_SIZE];
                         db heap[HEAP_SIZE];
                 '''
-
         data_head += "};\n"
-        self.hd.write(data_head)
+        return data_head
 
-        self.hd.write(
-            """
-//class %sContext {
-//public:
-//      %sContext() {}
-
-//      void _start();
-"""
-            % (self.__namespace, self.__namespace))
-        if not self.__skip_dispatch_call:
-            self.hd.write(
-                """     
-""")
-        '''
-                for p in set(self.__methods):
-                        if p in self.__blacklist:
-                                if self.__header_omit_blacklisted == False:
-                                        self.hd.write("\t//void %s();\n" %p)
-                        else:
-                                if p in self.__function_name_remapping:
-                                        self.hd.write("\tvoid %s();\n" %self.__function_name_remapping[p])
-                                else:
-                                        self.hd.write("\tvoid %s();\n" %p)
-                '''
-        self.hd.write("//};\n\n//} // End of namespace DreamGen\n\n#endif\n")
-        self.hd.close()
-
-        # self.fd.write("void %sContext::__start() { %s\t%s(); \n}\n" %(self.namespace, data_impl, start))
-        self.fd.write(" %s\n" % data_impl)
-
-        if not self.__skip_dispatch_call:
-            self.fd.write("\nvoid %sContext::__dispatch_call(uint16_t addr) {\n\tswitch(addr) {\n" % self.__namespace)
-            self.__proc_addr.sort(cmp=lambda x, y: x[1] - y[1])
-            for name, addr in self.__proc_addr:
-                self.fd.write("\t\tcase addr_%s: %s(); break;\n" % (name, name))
-            self.fd.write("\t\tdefault: ::error(\"invalid call to %04x dispatched\", (uint16_t)ax);")
-            self.fd.write("\n\t}\n}")
-
-        self.fd.write("\n\n//} // End of namespace DreamGen\n")
-        self.fd.close()
+    def produce_jump_table(self):
+        self.fd.write("__dispatch_call:\nswitch (__disp) {\n")
+        offsets = []
+        for k, v in list(self.__context.get_globals().items()):
+            k = re.sub(r'[^A-Za-z0-9_]', '_', k)
+            if isinstance(v, op.label):
+                offsets.append((k.lower(), k))
+        offsets = sorted(offsets, key=lambda t: t[1])
+        for o in offsets:
+            logging.debug(o)
+            self.fd.write("case k%s: \tgoto %s;\n" % o)
+        self.fd.write("default: log_error(\"Jump/call to nothere %d\\n\", __disp);stackDump(_state); abort();\n")
+        self.fd.write("};\n}\n")
 
     def _lea(self, dst, src):
         self.lea = True

@@ -40,6 +40,10 @@ typedef uint16_t dw;
 typedef uint32_t dd;
 typedef uint64_t dq;
 
+typedef db byte;
+typedef dw word;
+typedef dd dword;
+
 #ifndef NOSDL
  #ifdef __LIBSDL2__
 #include <SDL2/SDL.h>

@@ -48,20 +48,27 @@ class Token:
         return expr
 
     @staticmethod
-    def remove_squere_bracets(expr, index=0):
+    def remove_squere_bracets(expr, index=None):
+        if index == None:
+            index = 0
         if isinstance(expr, Token):
-            index += 1
-            expr.value, _ = Token.remove_squere_bracets(expr.value, index)
             if expr.type == SQEXPR:
                 expr = expr.value
-                if index != 1:
-                    expr = ['+', expr]
+                expr, index = Token.remove_squere_bracets(expr, index)
+            else:
+                oldindex = index
+                expr.value, index = Token.remove_squere_bracets(expr.value, index)
+                if isinstance(expr.value, str):
+                    index = oldindex
+                    index += 1
+                    if index != 1:
+                        expr = ['+', expr]
             return expr, index
         elif isinstance(expr, list):
             for i in range(0, len(expr)):
                 expr[i], index = Token.remove_squere_bracets(expr[i], index)
         else:
-            index += 1
+            index = 0
         return expr, index
 
 
