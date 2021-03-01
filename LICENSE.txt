@@ -1,8 +1,5 @@
-MASM x86 to C translator
-
-Masm2c is the legal property of its developers, whose names
-are too numerous to list here. Please refer to the COPYRIGHT
-file distributed with this source distribution.
+MASM 16bit assembler to C++ translator
+Copyright (C) 2021 X0R
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License

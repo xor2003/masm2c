@@ -210,8 +210,9 @@ instrprefix: REP | REPE | REPZ | REPNE | REPNZ | LOCK ;
 asminstruction: instruction=instrprefix args=''?
 | instruction=mnemonic  args=exprlist?
 | instrprefix instruction=mnemonic  args=exprlist? 
-| instruction=PUSH args=allreglist
-| instruction=POP args=allreglist;
+//| instruction=PUSH args=allreglist
+//| instruction=POP args=allreglist
+;
 instruction: asminstruction=asminstruction linereminder;
 
 invokearg: anyregister '::' register| ADDR expr | expr;
@@ -330,7 +331,7 @@ segalign: BYTE | WORD | DWORD | PARA | PAGE ;
 segattrib: PUBLIC | STACK | COMMON | MEMORY | AT expr| PRIVATE ;
 segdir: type=U_CODE LABEL? | type=U_DATA | type=U_DATA_| type=U_CONST | type=U_FARDATA LABEL? | type=U_FARDATA_ LABEL? | type=U_STACK expr?;
 segidlist : LABEL  COMMA segidlist | LABEL;
-segmentdef: segmentdir  endsdir|segmentdir  insegdir+  endsdir| simplesegdir  endsdir? | simplesegdir  insegdir+   endsdir? ;
+segmentdef: segmentdir  endsdir|segmentdir  insegdir+  endsdir| simplesegdir | simplesegdir  endsdir | simplesegdir  insegdir+   endsdir? ;
 segmentdir: name=LABEL SEGMENT segoptionlist?  linereminder;
 segmentregister: CS | DS | ES | FS | GS | SS;
 segoption: segalign| segro| segattrib| segsize| classname;

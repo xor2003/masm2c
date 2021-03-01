@@ -14,26 +14,6 @@ import masm2c.proc as proc_module
 from masm2c import op
 from masm2c.Token import Token
 
-# ScummVM - Graphic Adventure Engine
-#
-# ScummVM is the legal property of its developers, whose names
-# are too numerous to list here. Please refer to the COPYRIGHT
-# file distributed with this source distribution.
-#
-# This program is free software; you can redistribute it and/or
-# modify it under the terms of the GNU General Public License
-# as published by the Free Software Foundation; either version 2
-# of the License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
 OFFSETDIR = 'offsetdir'
 LABEL = 'LABEL'
 PTRDIR = 'ptrdir'
@@ -46,6 +26,10 @@ SQEXPR = 'sqexpr'
 class CrossJump(Exception):
     pass
 
+def check_int(s):
+    if s[0] in ('-', '+'):
+        return s[1:].isdigit()
+    return s.isdigit()
 
 def parse_bin(s):
     sign = s.group(1)
@@ -139,7 +123,7 @@ class Cpp(object):
         self.__proc_addr = []
         self.__used_data_offsets = set()
         self.__methods = []
-        self.__temps_count = 0
+        self.__pushpop_count = 0
         self.lea = False
         self.__far = False
         self.body = ""
@@ -583,8 +567,16 @@ class Cpp(object):
         src = self.expand(src, src_size)
         return dst, src
 
+    def _add(self, dst, src):
+        self.d, self.s = self.parse2(dst, src)
+        #if self.d in ['sp', 'esp'] and check_int(self.s):
+        #    self.__pushpop_count -= int(self.s)
+        return "\tR(ADD(%s, %s));\n" % (self.d, self.s)
+
     def _sub(self, dst, src):
         self.d, self.s = self.parse2(dst, src)
+        #if self.d in ['sp', 'esp'] and check_int(self.s):
+        #    self.__pushpop_count += int(self.s)
         if self.d == self.s:
             return "\t%s = 0;AFFECT_ZF(0); AFFECT_SF(%s,0);\n" % (self.d, self.d)
         else:
@@ -663,11 +655,12 @@ class Cpp(object):
         label = self.jump_to_label(label)
         return "\t\tR(JNC(%s));\n" % label
 
+    '''
     def _push(self, regs):
         p = ""
         for r in regs:
             if self.get_size(r):
-                self.__temps_count += 2
+                self.__pushpop_count += 2
                 r = self.expand(r)
                 p += "\tR(PUSH(%s));\n" % (r)
         return p
@@ -675,10 +668,11 @@ class Cpp(object):
     def _pop(self, regs):
         p = ""
         for r in regs:
-            self.__temps_count -= 2
+            self.__pushpop_count -= 2
             r = self.expand(r)
             p += "\tR(POP(%s));\n" % r
         return p
+    '''
 
     def _rep(self):
         return "\tREP\n"
@@ -732,7 +726,7 @@ class Cpp(object):
         # traceback.print_stack(file=sys.stdout)
         try:
             skip = def_skip
-            self.__temps_count = 0
+            self.__pushpop_count = 0
             self.temps_max = 0
             if self.__context.has_global(name):
                 self.proc = self.__context.get_global(name)
@@ -791,8 +785,8 @@ mainproc_begin:
                 self.__translated.insert(0, self.body)
             self.proc = None
 
-            if self.__temps_count != 0:
-                logging.warning("temps count == %d at the exit of proc" % self.__temps_count)
+            if self.__pushpop_count != 0:
+                logging.warning("push/pop balance = %d non zero at the exit of proc" % self.__pushpop_count)
             return True
         except (CrossJump, op.Unsupported) as e:
             logging.error("%s: ERROR: %s" % (name, e))
