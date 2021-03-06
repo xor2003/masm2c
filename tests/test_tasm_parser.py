@@ -23,7 +23,7 @@ class TestInitOnce:
         self.cpp.proc = self.proc
 
         self.proc.add_assignment(line_number=0, label='B', value=u'1')
-        self.proc.add_assignment(line_number=0, label='DDD', value=u'm.var1')
+        self.proc.add_assignment(line_number=0, label='DDD', value=u'm.singlebyte2')
         self.proc.add_assignment(line_number=0, label='argc', value=u'8')
         self.proc.add_assignment(line_number=0, label='argv', value=u'0x0C')
         self.proc.add_assignment(line_number=0, label='eax_0', value=u'eax')
@@ -70,7 +70,7 @@ class TestInitOnce:
         self.proc.add_equ(line_number=0, label='testEqu', value=u'1')
 
         self.parser.set_global("_data", op.var(1, 0, issegment=True))
-        self.parser.set_global("var1", op.var(size=1, offset=1, name="var1", segment="_data", elements=1))
+        self.parser.set_global("singlebyte2", op.var(size=1, offset=1, name="singlebyte2", segment="_data", elements=1))
         self.parser.set_global('_msg', op.var(elements=2, name=u'_msg', offset=1, segment=u'_data', size=1))
         # p.set_global('_msg', op.var(name=u'_msg', offset=1, segment=u'dseg', size=1))
         self.parser.set_global('_test_btc', op.var(name=u'_test_btc', offset=1, segment=u'initcall', size=4))
@@ -104,11 +104,11 @@ class TestInitOnce:
         self.parser.set_global('unk_40e008', op.var(name=u'unk_40E008', offset=1, segment=u'_data', size=1))
         self.parser.set_global('unk_40f064', op.var(name=u'unk_40F064', offset=1, segment=u'initcall', size=1))
         self.parser.set_global('var', op.var(elements=4, name=u'var', offset=1, segment=u'_data', size=1))
-        self.parser.set_global('var0', op.var(elements=10, name=u'var0', offset=1, segment=u'_data', size=1))
-        self.parser.set_global('var2', op.var(elements=3, name=u'var2', offset=1, segment=u'_data', size=2))
-        self.parser.set_global('var3', op.var(elements=1, name=u'var3', offset=1, segment=u'_data', size=1))
-        self.parser.set_global('var4', op.var(elements=100, name=u'var4', offset=1, segment=u'_data', size=1))
-        self.parser.set_global('var5', op.var(elements=0, name=u'var5', offset=1, segment=u'_data', size=1))
+        self.parser.set_global('bytearray2', op.var(elements=10, name=u'bytearray2', offset=1, segment=u'_data', size=1))
+        self.parser.set_global('wordarray', op.var(elements=3, name=u'wordarray', offset=1, segment=u'_data', size=2))
+        self.parser.set_global('singlebyte', op.var(elements=1, name=u'singlebyte', offset=1, segment=u'_data', size=1))
+        self.parser.set_global('bytearray', op.var(elements=100, name=u'bytearray', offset=1, segment=u'_data', size=1))
+        self.parser.set_global('singlequad', op.var(elements=1, name=u'singlequad', offset=1, segment=u'_data', size=4))
         self.parser.set_global('gameconfig', op.var(elements=1, name=u'gameconfig', offset=1, segment=u'_data', size=1))
         self.parser.action_label(far=False, name='@@saaccvaaaax', isproc=False)
         self.parser.action_label(far=False, name='@VBL1', isproc=False)
@@ -208,20 +208,20 @@ class ParserTest(unittest.TestCase):
     '''
 
     def test_instr_110(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp a,1')), u'\tR(CMP(*(raddr(ds,offset(_data,a))), 1));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp a,1')), u'\tR(CMP(*(m.a), 1));\n')
 
     @unittest.skip("undefined behaviour")
     def test_instr_120(self):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [ebp+i+table], dl')), u'\tR(MOV(*(dw*)(raddr(ss,ebp+i+offset(_text,table))), dl));\n')
 
     def test_instr_130(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('CMP [var2],1')), u'\tR(CMP(*(dw*)(raddr(ds,offset(_data,var2))), 1));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('CMP [wordarray],1')), u'\tR(CMP(*(m.wordarray), 1));\n')
 
     def test_instr_140(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('CMP [var2],13')), u'\tR(CMP(*(dw*)(raddr(ds,offset(_data,var2))), 13));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('CMP [wordarray],13')), u'\tR(CMP(*(m.wordarray), 13));\n')
 
     def test_instr_150(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('CMP [var3],35')), u'\tR(CMP(*(raddr(ds,offset(_data,var3))), 35));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('CMP [singlebyte],35')), u'\tR(CMP(m.singlebyte, 35));\n')
 
     def test_instr_160(self):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('CMP eax,133')), u'\tR(CMP(eax, 133));\n')
@@ -233,13 +233,13 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('CMP eax,3')), u'\tR(CMP(eax, 3));\n')
 
     def test_instr_190(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('INC [var1]')), u'\tR(INC(m.var1));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('INC [singlebyte2]')), u'\tR(INC(m.singlebyte2));\n')
 
     def test_instr_200(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('INC [var2]')), u'\tR(INC(*(dw*)(raddr(ds,offset(_data,var2)))));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('INC [wordarray]')), u'\tR(INC(*(m.wordarray)));\n')
 
     def test_instr_210(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('INC [var3]')), u'\tR(INC(*(raddr(ds,offset(_data,var3)))));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('INC [singlebyte]')), u'\tR(INC(m.singlebyte));\n')
 
     def test_instr_220(self):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('INC eax')), u'\tR(INC(eax));\n')
@@ -263,13 +263,13 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code("sub dl,'a'")), u"\tR(SUB(dl, 'a'));\n")
 
     def test_instr_290(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp var1[bx],2')), u'\tR(CMP(*(raddr(ds,offset(_data,var1)+bx)), 2));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp singlebyte2[bx],2')), u'\tR(CMP(*((&m.singlebyte2)+bx), 2));\n')
 
     def test_instr_300(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code("cmp [doublequote+4],'d'")), u"\tR(CMP(*(raddr(ds,offset(_data,doublequote)+4)), 'd'));\n")
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code("cmp [doublequote+4],'d'")), u"\tR(CMP(*((m.doublequote)+4), 'd'));\n")
 
     def test_instr_310(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code("cmp dword ptr buffer,'tseT'")), u'\tR(CMP(*(dd*)(raddr(ds,offset(_data,buffer))), 0x74736554));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code("cmp dword ptr buffer,'tseT'")), u'\tR(CMP(*(dd*)((m.buffer)), 0x74736554));\n')
 
     def test_instr_320(self):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code("mov ah,9            ; DS:DX->'$'-terminated string")), u'\tR(MOV(ah, 9));\n')
@@ -281,7 +281,7 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code("mov ecx,'dcba'")), u'\tR(MOV(ecx, 0x64636261));\n')
 
     def test_instr_350(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('CMP [var1],111')), u'\tR(CMP(m.var1, 111));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('CMP [singlebyte2],111')), u'\tR(CMP(m.singlebyte2, 111));\n')
 
     def test_instr_360(self):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('JA failure')), u'\t\tR(JA(failure));\n')
@@ -404,7 +404,7 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('add edi,14*320')), u'\tR(ADD(edi, 14*320));\n')
 
     def test_instr_760(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('add word ptr [var5+2],50')), u'\tR(ADD(*(dw*)(raddr(ds,offset(_data,var5)+2)), 50));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('add word ptr [singlequad+2],50')), u'\tR(ADD(*(dw*)(((db*)&m.singlequad)+2), 50));\n')
 
     def test_instr_770(self):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('and     ah, 0F7h')), u'\tR(AND(ah, 0x0F7));\n')
@@ -605,49 +605,49 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp     i, 4')), u'\tR(CMP(i, 4));\n')
 
     def test_instr_1430(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp [a],5')), u'\tR(CMP(*(raddr(ds,offset(_data,a))), 5));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp [a],5')), u'\tR(CMP(*(m.a), 5));\n')
 
     def test_instr_1440(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp [var+3],5')), u'\tR(CMP(*(raddr(ds,offset(_data,var)+3)), 5));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp [var+3],5')), u'\tR(CMP(*((m.var)+3), 5));\n')
 
     def test_instr_1450(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp [var+4],0')), u'\tR(CMP(*(raddr(ds,offset(_data,var)+4)), 0));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp [var+4],0')), u'\tR(CMP(*((m.var)+4), 0));\n')
 
     def test_instr_1460(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp [var-1],0')), u'\tR(CMP(*(raddr(ds,offset(_data,var)-1)), 0));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp [var-1],0')), u'\tR(CMP(*((m.var)-1), 0));\n')
 
     def test_instr_1470(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp [var0+5],0')), u'\tR(CMP(*(raddr(ds,offset(_data,var0)+5)), 0));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp [bytearray2+5],0')), u'\tR(CMP(*((m.bytearray2)+5), 0));\n')
 
     def test_instr_1480(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp [var1+1],5')), u'\tR(CMP(*(raddr(ds,offset(_data,var1)+1)), 5));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp [singlebyte2+1],5')), u'\tR(CMP(*((&m.singlebyte2)+1), 5));\n')
 
     def test_instr_1490(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp [var1],2')), u'\tR(CMP(m.var1, 2));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp [singlebyte2],2')), u'\tR(CMP(m.singlebyte2, 2));\n')
 
     def test_instr_1500(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp [var2+2],6')), u'\tR(CMP(*(dw*)(raddr(ds,offset(_data,var2)+2)), 6));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp [wordarray+2],6')), u'\tR(CMP(*(dw*)(((db*)m.wordarray)+2), 6));\n')
 
     def test_instr_1510(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp [var2-1],5')), u'\tR(CMP(*(((db*)&m.var2)-1), 5));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp [wordarray-1],5')), u'\tR(CMP(*(dw*)(((db*)m.wordarray)-1), 5));\n')
 
     def test_instr_1520(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp [var2],4')), u'\tR(CMP(*(dw*)(raddr(ds,offset(_data,var2))), 4));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp [wordarray],4')), u'\tR(CMP(*(m.wordarray), 4));\n')
 
     def test_instr_1530(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp [var3+3*4],40')), u'\tR(CMP(*(raddr(ds,offset(_data,var3)+3*4)), 40));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp [singlebyte+3*4],40')), u'\tR(CMP(*((&m.singlebyte)+3*4), 40));\n')
 
     def test_instr_1540(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp [var3+ebp],4000000')), u'\tR(CMP(*(raddr(ss,offset(_data,var3)+ebp)), 4000000));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp [singlebyte+ebp],4000000')), u'\tR(CMP(*(raddr(ss,offset(_data,singlebyte)+ebp)), 4000000));\n')
 
     def test_instr_1550(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp [var4+t],1')), u'\tR(CMP(*(raddr(ds,offset(_data,var4)+t)), 1));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp [bytearray+t],1')), u'\tR(CMP(*((m.bytearray)+t), 1));\n')
 
     def test_instr_1560(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp [var4],2')), u'\tR(CMP(*(raddr(ds,offset(_data,var4))), 2));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp [bytearray],2')), u'\tR(CMP(*(m.bytearray), 2));\n')
 
     def test_instr_1570(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp [var],5')), u'\tR(CMP(*(raddr(ds,offset(_data,var))), 5));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp [var],5')), u'\tR(CMP(*(m.var), 5));\n')
 
     def test_instr_1580(self):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp ah,-1')), u'\tR(CMP(ah, -1));\n')
@@ -698,7 +698,7 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp bx,6*256+5')), u'\tR(CMP(bx, 6*256+5));\n')
 
     def test_instr_1740(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp byte ptr [a],5')), u'\tR(CMP(*(raddr(ds,offset(_data,a))), 5));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp byte ptr [a],5')), u'\tR(CMP(*(m.a), 5));\n')
 
     def test_instr_1750(self):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp byte ptr [edi+1],6')), u'\tR(CMP(*(raddr(ds,edi+1)), 6));\n')
@@ -713,13 +713,13 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp byte ptr [esi],4')), u'\tR(CMP(*(raddr(ds,esi)), 4));\n')
 
     def test_instr_1790(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp byte ptr [testOVerlap+1],1')), u'\tR(CMP(*(raddr(ds,offset(_data,testoverlap)+1)), 1));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp byte ptr [testOVerlap+1],1')), u'\tR(CMP(*((m.testoverlap)+1), 1));\n')
 
     def test_instr_1800(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp byte ptr [var1+1],5')), u'\tR(CMP(*(raddr(ds,offset(_data,var1)+1)), 5));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp byte ptr [singlebyte2+1],5')), u'\tR(CMP(*((&m.singlebyte2)+1), 5));\n')
 
     def test_instr_1810(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp byte ptr [var1+2],5')), u'\tR(CMP(*(raddr(ds,offset(_data,var1)+2)), 5));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp byte ptr [singlebyte2+2],5')), u'\tR(CMP(*((&m.singlebyte2)+2), 5));\n')
 
     def test_instr_1820(self):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp byte ptr es:[0],55')), u'\tR(CMP(*(raddr(es,0)), 55));\n')
@@ -746,7 +746,7 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp dl,5')), u'\tR(CMP(dl, 5));\n')
 
     def test_instr_1900(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp dword ptr var4,11')), u'\tR(CMP(*(dd*)(raddr(ds,offset(_data,var4))), 11));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp dword ptr bytearray,11')), u'\tR(CMP(*(dd*)((m.bytearray)), 11));\n')
 
     def test_instr_1910(self):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp dx,-1')), u'\tR(CMP(dx, -1));\n')
@@ -875,10 +875,10 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp edi,esi')), u'\tR(CMP(edi, esi));\n')
 
     def test_instr_2330(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp edi,offset var4+1')), u'\tR(CMP(edi, offset(_data,var4)+1));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp edi,offset bytearray+1')), u'\tR(CMP(edi, offset(_data,bytearray)+1));\n')
 
     def test_instr_2340(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp edi,offset var4+4')), u'\tR(CMP(edi, offset(_data,var4)+4));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp edi,offset bytearray+4')), u'\tR(CMP(edi, offset(_data,bytearray)+4));\n')
 
     def test_instr_2350(self):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp edx,-2')), u'\tR(CMP(edx, -2));\n')
@@ -902,34 +902,34 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp esi,0')), u'\tR(CMP(esi, 0));\n')
 
     def test_instr_2420(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp esi,offset var1+1')), u'\tR(CMP(esi, offset(_data,var1)+1));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp esi,offset singlebyte2+1')), u'\tR(CMP(esi, offset(_data,singlebyte2)+1));\n')
 
     def test_instr_2430(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp esi,offset var3+4')), u'\tR(CMP(esi, offset(_data,var3)+4));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp esi,offset singlebyte+4')), u'\tR(CMP(esi, offset(_data,singlebyte)+4));\n')
 
     def test_instr_2440(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp var1[1],2')), u'\tR(CMP(*(raddr(ds,offset(_data,var1)+1)), 2));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp singlebyte2[1],2')), u'\tR(CMP(*((&m.singlebyte2)+1), 2));\n')
 
     def test_instr_2450(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp var1[bx+si],2')), u'\tR(CMP(*(raddr(ds,offset(_data,var1)+bx+si)), 2));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp singlebyte2[bx+si],2')), u'\tR(CMP(*((&m.singlebyte2)+bx+si), 2));\n')
 
     def test_instr_2460(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp var1[bx],2')), u'\tR(CMP(*(raddr(ds,offset(_data,var1)+bx)), 2));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp singlebyte2[bx],2')), u'\tR(CMP(*((&m.singlebyte2)+bx), 2));\n')
 
     def test_instr_2470(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp var3+3*4,4000000')), u'\tR(CMP(*(raddr(ds,offset(_data,var3)+3*4)), 4000000));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp singlebyte+3*4,4000000')), u'\tR(CMP(*((&m.singlebyte)+3*4), 4000000));\n')
 
     def test_instr_2480(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp var3+ebp,4000000')), u'\tR(CMP(*(raddr(ss,offset(_data,var3)+ebp)), 4000000));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp singlebyte+ebp,4000000')), u'\tR(CMP(*(raddr(ss,offset(_data,singlebyte)+ebp)), 4000000));\n')
 
     def test_instr_2490(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp word ptr [var5+2],25')), u'\tR(CMP(*(dw*)(raddr(ds,offset(_data,var5)+2)), 25));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp word ptr [singlequad+2],25')), u'\tR(CMP(*(dw*)(((db*)&m.singlequad)+2), 25));\n')
 
     def test_instr_2500(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp word ptr [var5+2],50')), u'\tR(CMP(*(dw*)(raddr(ds,offset(_data,var5)+2)), 50));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp word ptr [singlequad+2],50')), u'\tR(CMP(*(dw*)(((db*)&m.singlequad)+2), 50));\n')
 
     def test_instr_2510(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp word ptr var5,0')), u'\tR(CMP(*(dw*)(raddr(ds,offset(_data,var5))), 0));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp word ptr singlequad,0')), u'\tR(CMP(*(dw*)(((db*)&m.singlequad)), 0));\n')
 
     def test_instr_2520(self):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmpsb')), 'CMPSB;\n')
@@ -1439,7 +1439,7 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('lea edi,testOVerlap')), u'\tR(edi = offset(_data,testoverlap));\n')
 
     def test_instr_4210(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('lea edi,var1')), u'\tR(edi = offset(_data,var1));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('lea edi,singlebyte2')), u'\tR(edi = offset(_data,singlebyte2));\n')
 
     def test_instr_4220(self):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('lea edx,fileName')), u'\tR(edx = offset(_data,filename));\n')
@@ -1451,10 +1451,10 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('lea esi,f')), u'\tR(esi = offset(_data,f));\n')
 
     def test_instr_4250(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('lea esi,var2')), u'\tR(esi = offset(_data,var2));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('lea esi,wordarray')), u'\tR(esi = offset(_data,wordarray));\n')
 
     def test_instr_4260(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('lea esi,var5')), u'\tR(esi = offset(_data,var5));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('lea esi,singlequad')), u'\tR(esi = offset(_data,singlequad));\n')
 
     def test_instr_4270(self):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('leave')), '\tR(MOV(esp, ebp));\nR(POP(ebp));\n')
@@ -2531,7 +2531,7 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov  fs,ax')), u'\tR(MOV(fs, ax));\n')
 
     def test_instr_7850(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov [a],5')), u'\tR(MOV(*(raddr(ds,offset(_data,a))), 5));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov [a],5')), u'\tR(MOV(*(m.a), 5));\n')
 
     def test_instr_7860(self):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov [load_handle],eax')), u'\tR(MOV(m.load_handle, eax));\n')
@@ -2570,7 +2570,7 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov al,7')), u'\tR(MOV(al, 7));\n')
 
     def test_instr_7980(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov al,[a]')), u'\tR(MOV(al, *(raddr(ds,offset(_data,a)))));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov al,[a]')), u'\tR(MOV(al, *(m.a)));\n')
 
     def test_instr_7990(self):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov ax,-1')), u'\tR(MOV(ax, -1));\n')
@@ -2624,7 +2624,7 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov bl,192')), u'\tR(MOV(bl, 192));\n')
 
     def test_instr_8160(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov bl,[a+1]')), u'\tR(MOV(bl, *(raddr(ds,offset(_data,a)+1))));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov bl,[a+1]')), u'\tR(MOV(bl, *((m.a)+1)));\n')
 
     def test_instr_8170(self):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov bl,al')), u'\tR(MOV(bl, al));\n')
@@ -2651,19 +2651,19 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov bx,fs')), u'\tR(MOV(bx, fs));\n')
 
     def test_instr_8250(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov bx,word ptr [d]')), u'\tR(MOV(bx, *(dw*)(raddr(ds,offset(_data,d)))));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov bx,word ptr [d]')), u'\tR(MOV(bx, *(dw*)((&m.d))));\n')
 
     def test_instr_8260(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov bx,word ptr [e]')), u'\tR(MOV(bx, *(dw*)(raddr(ds,offset(_data,e)))));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov bx,word ptr [e]')), u'\tR(MOV(bx, *(dw*)((&m.e))));\n')
 
     def test_instr_8270(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov byte ptr [a],5')), u'\tR(MOV(*(raddr(ds,offset(_data,a))), 5));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov byte ptr [a],5')), u'\tR(MOV(*(m.a), 5));\n')
 
     def test_instr_8280(self):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov byte ptr [esi],-2')), u'\tR(MOV(*(raddr(ds,esi)), -2));\n')
 
     def test_instr_8290(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov byte ptr [var1+1],5')), u'\tR(MOV(*(raddr(ds,offset(_data,var1)+1)), 5));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov byte ptr [singlebyte2+1],5')), u'\tR(MOV(*((&m.singlebyte2)+1), 5));\n')
 
     def test_instr_8300(self):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov dl,byte ptr [edi]')), u'\tR(MOV(dl, *(raddr(ds,edi))));\n')
@@ -2942,13 +2942,13 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov edi,offset str3')), u'\tR(MOV(edi, offset(_data,str3)));\n')
 
     def test_instr_9220(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov edi,offset var1')), u'\tR(MOV(edi, offset(_data,var1)));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov edi,offset singlebyte2')), u'\tR(MOV(edi, offset(_data,singlebyte2)));\n')
 
     def test_instr_9230(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov edi,offset var2')), u'\tR(MOV(edi, offset(_data,var2)));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov edi,offset wordarray')), u'\tR(MOV(edi, offset(_data,wordarray)));\n')
 
     def test_instr_9240(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov edi,offset var4')), u'\tR(MOV(edi, offset(_data,var4)));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov edi,offset bytearray')), u'\tR(MOV(edi, offset(_data,bytearray)));\n')
 
     def test_instr_9250(self):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov edx,0')), u'\tR(MOV(edx, 0));\n')
@@ -2987,13 +2987,13 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov esi,offset testOVerlap')), u'\tR(MOV(esi, offset(_data,testoverlap)));\n')
 
     def test_instr_9370(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov esi,offset var1')), u'\tR(MOV(esi, offset(_data,var1)));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov esi,offset singlebyte2')), u'\tR(MOV(esi, offset(_data,singlebyte2)));\n')
 
     def test_instr_9380(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov esi,offset var2')), u'\tR(MOV(esi, offset(_data,var2)));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov esi,offset wordarray')), u'\tR(MOV(esi, offset(_data,wordarray)));\n')
 
     def test_instr_9390(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov esi,offset var3')), u'\tR(MOV(esi, offset(_data,var3)));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov esi,offset singlebyte')), u'\tR(MOV(esi, offset(_data,singlebyte)));\n')
 
     def test_instr_9400(self):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('movsb')), 'MOVSB;\n')
@@ -3011,10 +3011,10 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('movsx bx,bl')), u'\tR(MOVSX(bx, bl));\n')
 
     def test_instr_9450(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('movsx bx,byte ptr [h2]')), u'\tR(MOVSX(bx, *(raddr(ds,offset(_data,h2)))));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('movsx bx,byte ptr [h2]')), u'\tR(MOVSX(bx, m.h2));\n')
 
     def test_instr_9460(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('movsx bx,byte ptr [h]')), u'\tR(MOVSX(bx, *(raddr(ds,offset(_data,h)))));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('movsx bx,byte ptr [h]')), u'\tR(MOVSX(bx, m.h));\n')
 
     def test_instr_9470(self):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('movsx ecx,cx')), u'\tR(MOVSX(ecx, cx));\n')
@@ -3272,7 +3272,7 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('sub ebx,eax')), u'\tR(SUB(ebx, eax));\n')
 
     def test_instr_10320(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('sub word ptr [var5+2],25')), u'\tR(SUB(*(dw*)((&m.var5)+2), 25));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('sub word ptr [singlequad+2],25')), u'\tR(SUB(*(dw*)(((db*)&m.singlequad)+2), 25));\n')
 
     def test_instr_10330(self):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('test    ebx, ebx')), u'\tR(TEST(ebx, ebx));\n')
@@ -3485,7 +3485,7 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('lea     eax, ds:40h[ecx*8]')), u'\tR(eax = 0x40+ecx*8);\n')
 
     def test_instr_11030(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     ds:byte_41411F[eax], dl')), u'\tR(MOV(*(raddr(ds,offset(_bss,byte_41411f)+eax)), dl));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     ds:byte_41411F[eax], dl')), u'\tR(MOV(*((&m.byte_41411f)+eax), dl));\n')
 
     def test_instr_11040(self):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('lea     eax, large ds:4000h')), u'\tR(eax = 0x4000);\n')
@@ -3605,43 +3605,43 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('call printeax')), u'\tR(CALL(kprinteax));\n')
 
     def test_instr_11420(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp var2,2')), u'\tR(CMP(*(m.var2), 2));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp wordarray,2')), u'\tR(CMP(*(m.wordarray), 2));\n')
 
     def test_instr_11430(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp var2,bx')), u'\tR(CMP(*(m.var2), bx));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp wordarray,bx')), u'\tR(CMP(*(m.wordarray), bx));\n')
 
     def test_instr_11440(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp var3,-12')), u'\tR(CMP(m.var3, -12));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp singlebyte,-12')), u'\tR(CMP(m.singlebyte, -12));\n')
 
-    def test_instr_11450(self): # var3 is byte!
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp var3,ecx')), u'\tR(CMP(*(raddr(ds,offset(_data,var3))), ecx));\n')
+    def test_instr_11450(self): # singlebyte is byte!
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp singlebyte,ecx')), u'\tR(CMP(m.singlebyte, ecx));\n')
 
     def test_instr_11460(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('inc var3')), u'\tR(INC(*(raddr(ds,offset(_data,var3)))));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('inc singlebyte')), u'\tR(INC(m.singlebyte));\n')
 
     def test_instr_11470(self):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('jmp [cs:table+ax]')), '\t\tR(JMP(__dispatch_call));\n')
 
     def test_instr_11480(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov a,5')), u'\tR(MOV(*(raddr(ds,offset(_data,a))), 5));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov a,5')), u'\tR(MOV(*(m.a), 5));\n')
 
     def test_instr_11490(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov a,ah')), u'\tR(MOV(*(raddr(ds,offset(_data,a))), ah));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov a,ah')), u'\tR(MOV(*(m.a), ah));\n')
 
     def test_instr_11500(self):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp b,256+3+65536')), u'\tR(CMP(b, 256+3+65536));\n')
 
     def test_instr_11510(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp var1,1')), u'\tR(CMP(m.var1, 1));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp singlebyte2,1')), u'\tR(CMP(m.singlebyte2, 1));\n')
 
     def test_instr_11520(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp var1,al')), u'\tR(CMP(m.var1, al));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmp singlebyte2,al')), u'\tR(CMP(m.singlebyte2, al));\n')
 
     def test_instr_11530(self):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov b,ax')), u'\tR(MOV(b, ax));\n')
 
     def test_instr_11540(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov dl,var1')), u'\tR(MOV(dl, m.var1));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov dl,singlebyte2')), u'\tR(MOV(dl, m.singlebyte2));\n')
 
     def test_instr_11550(self):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov ebx,g')), u'\tR(MOV(ebx, m.g));\n')
@@ -3655,7 +3655,7 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     ax, offset gameconfig.game_trackname')), u'\tR(MOV(ax, offset(_data,gameconfig.game_trackname)));\n')
 
     def test_instr_11580(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov dl, [edi]')), u'\tR(MOV(dl, *raddr(ds,edi)));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov dl, [edi]')), u'\tR(MOV(dl, *(raddr(ds,edi))));\n')
 
 if __name__ == "__main__":
     unittest.main()

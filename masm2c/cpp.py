@@ -189,16 +189,17 @@ class Cpp(object):
                     self.__indirection = 0
                 else:
                     if self.__indirection == 1 and self.variable:
-                        if self.__isjustlabel:
-                            value = "m.%s" % g.name
-                        elif g.getsize() == 1 and not self.size_changed:
-                            value = "m.%s" % g.name
-                        elif g.getsize() == 1 and self.size_changed:
+                        value = "m.%s" % g.name
+                        if not self.__isjustlabel: # if not just single label
                             self.address = True
-                            value = "(&m.%s)" % g.name
-                        else:
-                            self.address = True
-                            value = "((db*)&m.%s)" % g.name
+                            if g.elements == 1: # array generates pointer himself
+                                value = "&" + value
+
+                            if g.getsize() == 1: # if byte no need for (db*)
+                                value = "(%s)" % value
+                            else:
+                                value = "((db*)%s)" % value
+                                self.size_changed = True
                     else:
                         value = "offset(%s,%s)" % (g.segment, g.name)
                     if self.__work_segment == 'cs':
@@ -302,9 +303,11 @@ class Cpp(object):
                     expr = "(dw*)(raddr(%s,%s))" % (self.__work_segment, expr)
                 elif size == 4:
                     expr = "(dd*)(raddr(%s,%s))" % (self.__work_segment, expr)
+                elif size == 8:
+                    expr = "(dq*)(raddr(%s,%s))" % (self.__work_segment, expr)
                 else:
-                    logging.debug("~%s~ @invalid size 0" % expr)
-                    expr = "(dw*)(raddr(%s,%s))" % (self.__work_segment, expr)
+                    logging.error("~%s~ @invalid size 0" % expr)
+                    expr = "raddr(%s,%s)" % (self.__work_segment, expr)
             else:
                 if self.size_changed: # or not self.__isjustlabel:
                     if size == 1:
@@ -313,9 +316,11 @@ class Cpp(object):
                         expr = "(dw*)(%s)" % expr
                     elif size == 4:
                         expr = "(dd*)(%s)" % expr
+                    elif size == 8:
+                        expr = "(dq*)(%s)" % expr
                     else:
-                        logging.debug("~%s~ @invalid size 0" % expr)
-                        expr = "(dw*)(%s)" % expr
+                        logging.error("~%s~ @invalid size 0" % expr)
+                        #expr = "(dw*)(%s)" % expr
             logging.debug("expr: %s" % expr)
         return expr
 
@@ -410,7 +415,8 @@ class Cpp(object):
             value = ptrdir[0]
             # logging.debug('get_size res 1')
             newsize = self.__context.typetosize(value)
-            self.size_changed = True
+            if newsize != size:
+                self.size_changed = True
 
         if memberdir:
             expr = memberdir[0]

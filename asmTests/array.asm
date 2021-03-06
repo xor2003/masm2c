@@ -1,6 +1,7 @@
 .386p
 
 _DATA   segment use16 word public 'DATA' ;IGNORE
+var4 db 1
 var1 db 2,5,6
 var2 dw 4,6,9
 var3 dd 11,-11,2,4000000
@@ -16,11 +17,26 @@ cld                             ; Clear The Direction Flag
 
 MOV ax, _data
 MOV ds, ax
-mov al,1
-cmp var1[1],5
-cmp var1[bx],2
-cmp var1[bx+si],2
+mov bx,1
+mov si,1
 
+mov al,13
+cmp var4[2],5
+jne failure
+
+mov al,12
+cmp var1[1],5
+jne failure
+
+mov al,11
+cmp var1[bx],5
+jne failure
+
+mov al,10
+cmp var1[bx+si],6
+jne failure
+
+mov al,1
 cmp var1,2
 jne failure
 

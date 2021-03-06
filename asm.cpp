@@ -920,7 +920,7 @@ X86_REGREF
 			jumpToBackGround = 1;
 			executionFinished = 1;
 			exitCode = al;
-			log_error("Graceful exit al:0x%x\n",al);
+			log_error("Graceful exit al=%d\n",al);
 			exit(al);
 			return;
 		}
