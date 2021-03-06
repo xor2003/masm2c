@@ -66,7 +66,7 @@ jne failure
 
 mov edi,offset var1
 mov esi,offset var2
-mov byte ptr dl,[edi]
+mov dl, byte ptr [edi]
 cmp dl,2
 jne failure
 

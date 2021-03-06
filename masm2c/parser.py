@@ -411,8 +411,13 @@ def radixdir(context, nodes, value):
     context.extra.radix = value
     return nodes
 
+def externdef(context, nodes, extrnname, type):
+    logging.debug(f'externdef {nodes}')
+    context.extra.add_extern(extrnname.value, type)
+    return nodes
 
 actions = {
+    "externdef": externdef,
     "macrocall": macrocall,
     "repeatbegin": repeatbegin,
     "ENDM": endm,
@@ -544,6 +549,7 @@ class Parser:
         self.current_struct = None
         self.struct_name = []
         self.structures = dict()
+        self.externals = set()
 
     def visible(self):
         for i in self.__stack:
@@ -1105,7 +1111,7 @@ class Parser:
         logging.debug("~size %d elements %d" % (binary_width, elements))
         if label:
             self.set_global(label, op.var(binary_width, offset, name=label,
-                                          segment=self.__segment_name, elements=elements))
+                                          segment=self.__segment_name, elements=elements, original_type=type))
 
         if len(label) == 0:
             self.__c_dummy_label += 1
@@ -1211,6 +1217,16 @@ class Parser:
         args = [cpp.expand(i) for i in args]
         d = op.Data(label, type, 5, args, 1, s.getsize())
         self.segment.append(d)
-        self.set_global(label, op.var(s.getsize(), self.__cur_seg_offset, label))
+        self.set_global(label, op.var(s.getsize(), self.__cur_seg_offset, label, original_type=type))
         self.__cur_seg_offset += s.getsize()
 
+    def add_extern(self, label, type):
+        strtype = type
+        if isinstance(type, Token):
+            strtype = type.value
+        if strtype not in ['proc']:
+            label = self.mangle_label(label)
+            binary_width = self.typetosize(type)
+            self.set_global(label, op.var(binary_width, 0, name=label, segment='',
+                                              elements=1, external=True, original_type=strtype))
+            self.externals.add(label)

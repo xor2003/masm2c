@@ -16,7 +16,7 @@ class Unsupported(Exception):
 
 class var(object):
 
-    def __init__(self, size, offset, name="", segment="", issegment=False, elements=1):
+    def __init__(self, size, offset, name="", segment="", issegment=False, elements=1, external=False, original_type=""):
         # logging.debug("op.var(%d, %d, %s, %s, %s, %d)" %(size, offset, name, segment, issegment, elements))
         self.size = size
         self.offset = offset
@@ -26,6 +26,8 @@ class var(object):
         self.issegment = issegment
         self.elements = elements
         self.used = False
+        self.external = external
+        self.original_type = original_type.lower()
         # logging.debug("op.var(%s)" %(str(self.__dict__).replace('\n',' ')))
 
     def getsize(self):

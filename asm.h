@@ -39,10 +39,16 @@ typedef uint8_t db;
 typedef uint16_t dw;
 typedef uint32_t dd;
 typedef uint64_t dq;
+//typedef uint80_t dt;
 
 typedef db byte;
 typedef dw word;
 typedef dd dword;
+typedef dq qword;
+//typedef dt tbyte;
+typedef float real4;
+typedef double real8;
+typedef long double real10;
 
 #ifndef NOSDL
  #ifdef __LIBSDL2__

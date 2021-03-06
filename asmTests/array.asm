@@ -17,7 +17,7 @@ cld                             ; Clear The Direction Flag
 MOV ax, _data
 MOV ds, ax
 mov al,1
-cmp var1[1],2
+cmp var1[1],5
 cmp var1[bx],2
 cmp var1[bx+si],2
 

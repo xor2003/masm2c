@@ -126,6 +126,8 @@ class Cpp(object):
         self.__pushpop_count = 0
         self.lea = False
         self.__far = False
+        self.size_changed = False
+        self.address = False
         self.body = ""
 
     def convert_label(self, token):
@@ -178,12 +180,27 @@ class Cpp(object):
                 value = "seg_offset(%s)" % (name_original.lower())
                 self.__indirection = 0
             else:
+                self.address = False
+                if g.elements != 1:
+                    self.address = True
                 if g.elements == 1 and self.__isjustlabel and not self.lea and g.size == self.__current_size:
                     # traceback.print_stack(file=sys.stdout)
                     value = "m." + g.name
                     self.__indirection = 0
                 else:
-                    value = "offset(%s,%s)" % (g.segment, g.name)
+                    if self.__indirection == 1 and self.variable:
+                        if self.__isjustlabel:
+                            value = "m.%s" % g.name
+                        elif g.getsize() == 1 and not self.size_changed:
+                            value = "m.%s" % g.name
+                        elif g.getsize() == 1 and self.size_changed:
+                            self.address = True
+                            value = "(&m.%s)" % g.name
+                        else:
+                            self.address = True
+                            value = "((db*)&m.%s)" % g.name
+                    else:
+                        value = "offset(%s,%s)" % (g.segment, g.name)
                     if self.__work_segment == 'cs':
                         self.body += '\tcs=seg_offset(' + g.segment + ');\n'
             # ?self.__indirection = 1
@@ -254,7 +271,7 @@ class Cpp(object):
                 logging.debug('name = %s' % name)
                 try:
                     g = self.__context.get_global(name)
-                    if isinstance(g, op._equ) or isinstance(g, op._assignment):
+                    if isinstance(g, (op._equ, op._assignment)):
                         if g.value != origexpr:  # prevent loop
                             return self.get_size(g.value)
                         else:
@@ -275,17 +292,30 @@ class Cpp(object):
         #    return 0
         return 0
 
-    def convert_sqbr_reference(self, expr, destination, size, lea=False):
+    def convert_sqbr_reference(self, expr, destination, size, islabel, lea=False):
         if not lea or destination:
-            if size == 1:
-                expr = "*(raddr(%s,%s))" % (self.__work_segment, expr)
-            elif size == 2:
-                expr = "*(dw*)(raddr(%s,%s))" % (self.__work_segment, expr)
-            elif size == 4:
-                expr = "*(dd*)(raddr(%s,%s))" % (self.__work_segment, expr)
+            if not islabel or not self.variable:
+                self.address = True
+                if size == 1:
+                    expr = "raddr(%s,%s)" % (self.__work_segment, expr)
+                elif size == 2:
+                    expr = "(dw*)(raddr(%s,%s))" % (self.__work_segment, expr)
+                elif size == 4:
+                    expr = "(dd*)(raddr(%s,%s))" % (self.__work_segment, expr)
+                else:
+                    logging.debug("~%s~ @invalid size 0" % expr)
+                    expr = "(dw*)(raddr(%s,%s))" % (self.__work_segment, expr)
             else:
-                logging.debug("~%s~ @invalid size 0" % expr)
-                expr = "*(dw*)(raddr(%s,%s))" % (self.__work_segment, expr)
+                if self.size_changed: # or not self.__isjustlabel:
+                    if size == 1:
+                        expr = "(db*)(%s)" % expr
+                    elif size == 2:
+                        expr = "(dw*)(%s)" % expr
+                    elif size == 4:
+                        expr = "(dd*)(%s)" % expr
+                    else:
+                        logging.debug("~%s~ @invalid size 0" % expr)
+                        expr = "(dw*)(%s)" % expr
             logging.debug("expr: %s" % expr)
         return expr
 
@@ -316,6 +346,8 @@ class Cpp(object):
         origexpr = expr
         self.__work_segment = "ds"
         self.__current_size = 0
+        self.size_changed = False
+        self.address = False
         indirection = 0
         size = self.get_size(expr) if def_size == 0 else def_size  # calculate size if it not provided
         # self.__expr_size = size
@@ -345,18 +377,23 @@ class Cpp(object):
 
         memberdir = Token.find_tokens(expr, 'memberdir')
         islabel = Token.find_tokens(expr, LABEL)
+        self.variable = False
         if islabel and not offsetdir and not memberdir:
-                #for i in islabel:
-                res = self.get_var_size(islabel[0])
-                if res:
-                    size = res
-                    indirection = 1
-                    #break
+                for i in islabel:
+                    res = self.get_var_size(i)
+                    if res:
+                        self.variable = True
+                        size = res
+                        indirection = 1
+                        break
+        if lea:
+            indirection = -1
 
         if indirection == 1 and not segoverride:
             regs = Token.find_tokens(expr, REGISTER)
             if regs and any([i in ['bp', 'ebp', 'sp', 'esp'] for i in regs]):  # TODO doublecheck
                 self.__work_segment = "ss"
+                self.variable = False
         if segoverride:
             self.__work_segment = segoverride[0].value
 
@@ -368,6 +405,12 @@ class Cpp(object):
 
 
         self.__current_size = size
+        newsize = size
+        if ptrdir:
+            value = ptrdir[0]
+            # logging.debug('get_size res 1')
+            newsize = self.__context.typetosize(value)
+            self.size_changed = True
 
         if memberdir:
             expr = memberdir[0]
@@ -375,10 +418,11 @@ class Cpp(object):
             g = None
             try:
                 g = self.__context.get_global(label[0])
-                if isinstance(g, op.var) or isinstance(g, op.Struct):
+                if isinstance(g, (op.var, op.Struct)):
                     if indirection == -1:
                         expr = ["offset(%s,%s" % (g.segment, g.name)]+expr[1:]+[')']
                     elif indirection == 0:
+                        self.address = True
                         expr = ["m." + (".".join(label))]
                     elif indirection == 1:
                         registers = Token.find_tokens(expr, 'register')
@@ -397,15 +441,18 @@ class Cpp(object):
         if self.__current_size != 0:  # and (indirection != 1 or size == 0):
             size = self.__current_size
 
-        if ptrdir:
-            value = ptrdir[0]
-            # logging.debug('get_size res 1')
-            size = self.__context.typetosize(value)
+        if self.size_changed:
+            size = newsize
 
         expr = self.tokenstostring(expr)
 
-        if indirection == 1 and not memberdir:
-            expr = self.convert_sqbr_reference(expr, destination, size, lea=lea)
+        if indirection == 1 and not memberdir and (not self.__isjustlabel or self.size_changed):
+            expr = self.convert_sqbr_reference(expr, destination, size, islabel, lea=lea)
+        if indirection == 1 and self.address:
+            if expr[0] == '(' and expr[-1] == ')':
+                expr = "*%s" % expr
+            else:
+                expr = "*(%s)" % expr
 
         return expr
 
@@ -413,8 +460,8 @@ class Cpp(object):
         size = 0
         if self.__context.has_global(name):
             g = self.__context.get_global(name)
-            if isinstance(g, op.var):
-                size = g.size
+            if isinstance(g, (op.var, op.Struct)):
+                size = g.getsize()
         return size
 
     def jump_to_label(self, name):
@@ -888,6 +935,10 @@ mainproc_begin:
         data = self.produce_data(hdata_bin)
         self.hd.write(data)
 
+        data = self.produce_externals(self.__context)
+        self.hd.write(data)
+
+
         self.hd.write("//};\n\n//} // End of namespace DreamGen\n\n#endif\n")
         self.hd.close()
 
@@ -927,6 +978,14 @@ mainproc_begin:
                 '''
         data_head += "};\n"
         return data_head
+
+    def produce_externals(self, context):
+        data = '\n'
+        for i in context.externals:
+            v = context.get_global(i)
+            data += f"extern {v.original_type} {v.name};\n"
+        return data
+
 
     def produce_jump_table(self):
         self.fd.write("__dispatch_call:\nswitch (__disp) {\n")

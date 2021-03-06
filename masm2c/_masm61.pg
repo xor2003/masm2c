@@ -172,7 +172,7 @@ exitdir: U_EXIT expr?  linereminder;
 exitmdir: EXITM textitem? linereminder;
 exprlist: expr+[COMMA];
 exprspacelist: expr+;
-externdef: langtype?  LABEL altidq? ':' externtype;
+externdef: langtype?  extrnname=LABEL altidq? ':' type=externtype;
 externdir: externkey externlist linereminder;
 externkey: EXTRN | EXTERN | EXTERNDEF ;
 externlist: externdef+[COMMAOEOL];
