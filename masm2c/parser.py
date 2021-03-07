@@ -300,12 +300,12 @@ def endpdir(context, nodes, name):
 
 def equdir(context, nodes, name, value):
     logging.debug("equdir " + str(nodes) + " ~~")
-    return context.extra.action_equ(name, value, get_raw(context), get_line_number(context))
+    return context.extra.action_equ(name.value, value, get_raw(context), get_line_number(context))
 
 
 def assdir(context, nodes, name, value):
     logging.debug("assdir " + str(nodes) + " ~~")
-    return context.extra.action_assign(name, value, get_raw(context), get_line_number(context))
+    return context.extra.action_assign(name.value, value, get_raw(context), get_line_number(context))
 
 
 def labeldef(context, nodes, name):
@@ -912,33 +912,31 @@ class Parser:
         content = read_asm_file(file_name)
         return self.parse_file_inside(content, file_name=file_name)
 
-    def action_assign(self, name, value, raw, line_number):
-        name = name.value
+    def action_assign(self, label, value, raw='', line_number=0):
+        label = self.mangle_label(label)
         value = Token.remove_tokens(value, 'expr')
         # value = self.tokenstostring(value)
         # value = self.get_equ_value(value)
         has_global = False
-        if self.has_global(name):
+        if self.has_global(label):
             has_global = True
-            name = self.get_global(name).original_name
-        o = self.proc.add_assignment(name, value, line_number=line_number)
+            label = self.get_global(label).original_name
+        o = self.proc.add_assignment(label, value, line_number=line_number)
         o.line = raw.rstrip()
-        o.line_number = line_number
         if not has_global:
-            self.set_global(name, o)
+            self.set_global(label, o)
         self.proc.stmts.append(o)
         return o
 
-    def action_equ(self, name, value, raw, line_number):
-        name = name.value
+    def action_equ(self, label, value, raw='', line_number=0):
+        label = self.mangle_label(label)
         value = Token.remove_tokens(value, 'expr')
         # value = self.tokenstostring(value)
         # vv = self.get_equ_value(value)
         proc = self.get_global("mainproc")
-        o = proc.add_equ_(name, value, line_number=line_number)
+        o = proc.add_equ_(label, value, line_number=line_number)
         o.line = raw.rstrip()
-        o.line_number = line_number
-        self.set_global(name, o)
+        self.set_global(label, o)
         proc.stmts.append(o)
         return o
 

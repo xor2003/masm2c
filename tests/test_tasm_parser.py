@@ -22,43 +22,43 @@ class TestInitOnce:
         self.proc = Proc('mainproc', False)
         self.cpp.proc = self.proc
 
-        self.proc.add_assignment(line_number=0, label='B', value=u'1')
-        self.proc.add_assignment(line_number=0, label='DDD', value=u'm.singlebyte2')
-        self.proc.add_assignment(line_number=0, label='argc', value=u'8')
-        self.proc.add_assignment(line_number=0, label='argv', value=u'0x0C')
-        self.proc.add_assignment(line_number=0, label='eax_0', value=u'eax')
-        self.proc.add_assignment(line_number=0, label='ecx_0', value=u'-0x2C')
-        self.proc.add_assignment(line_number=0, label='ecx_0_0', value=u'ecx')
-        self.proc.add_assignment(line_number=0, label='ecx_vals', value=u'-0x28')
-        self.proc.add_assignment(line_number=0, label='edi_0', value=u'edi')
-        self.proc.add_assignment(line_number=0, label='edx_0', value=u'-0x2C')
-        self.proc.add_assignment(line_number=0, label='edx_0_0', value=u'edx')
-        self.proc.add_assignment(line_number=0, label='eflags', value=u'eax')
-        self.proc.add_assignment(line_number=0, label='esi_0', value=u'ebx')
-        self.proc.add_assignment(line_number=0, label='esi_0', value=u'esi')
-        self.proc.add_assignment(line_number=0, label='flags', value=u'eax')
-        self.proc.add_assignment(line_number=0, label='i', value=u'eax')
-        self.proc.add_assignment(line_number=0, label='iflags', value=u'0x10')
-        self.proc.add_assignment(line_number=0, label='iflags', value=u'0x14')
-        self.proc.add_assignment(line_number=0, label='op0', value=u'0x0C')
-        self.proc.add_assignment(line_number=0, label='op0h', value=u'8')
-        self.proc.add_assignment(line_number=0, label='op1', value=u'eax')
-        self.proc.add_assignment(line_number=0, label='r', value=u'eax')
-        self.proc.add_assignment(line_number=0, label='res', value=u'eax')
-        self.proc.add_assignment(line_number=0, label='resh', value=u'ebx')
-        self.proc.add_assignment(line_number=0, label='resz', value=u'ecx')
-        self.proc.add_assignment(line_number=0, label='rh', value=u'edx')
-        self.proc.add_assignment(line_number=0, label='s0', value=u'0x0C')
-        self.proc.add_assignment(line_number=0, label='s0_0', value=u'ebx')
-        self.proc.add_assignment(line_number=0, label='s1', value=u'0x0C')
-        self.proc.add_assignment(line_number=0, label='s1_0', value=u'ecx')
-        self.proc.add_assignment(line_number=0, label='s2', value=u'8')
-        self.proc.add_assignment(line_number=0, label='table', value=u'-0x108')
-        self.proc.add_assignment(line_number=0, label='val', value=u'-0x1C')
-        self.proc.add_assignment(line_number=0, label='var_1C', value=u'-0x1C')
-        self.proc.add_assignment(line_number=0, label='var_20', value=u'-0x20')
-        self.proc.add_assignment(line_number=0, label='var_2C', value=u'-0x2C')
-        self.proc.add_assignment(line_number=0, label='var_4', value=u'-4')
+        self.parser.action_assign(line_number=0, label='B', value=u'1')
+        self.parser.action_assign(line_number=0, label='DDD', value=u'm.singlebyte2')
+        self.parser.action_assign(line_number=0, label='argc', value=u'8')
+        self.parser.action_assign(line_number=0, label='argv', value=u'0x0C')
+        self.parser.action_assign(line_number=0, label='eax_0', value=u'eax')
+        self.parser.action_assign(line_number=0, label='ecx_0', value=u'-0x2C')
+        self.parser.action_assign(line_number=0, label='ecx_0_0', value=u'ecx')
+        self.parser.action_assign(line_number=0, label='ecx_vals', value=u'-0x28')
+        self.parser.action_assign(line_number=0, label='edi_0', value=u'edi')
+        self.parser.action_assign(line_number=0, label='edx_0', value=u'-0x2C')
+        self.parser.action_assign(line_number=0, label='edx_0_0', value=u'edx')
+        self.parser.action_assign(line_number=0, label='eflags', value=u'eax')
+        self.parser.action_assign(line_number=0, label='esi_0', value=u'ebx')
+        self.parser.action_assign(line_number=0, label='esi_0', value=u'esi')
+        self.parser.action_assign(line_number=0, label='flags', value=u'eax')
+        self.parser.action_assign(line_number=0, label='i', value=u'eax')
+        self.parser.action_assign(line_number=0, label='iflags', value=u'0x10')
+        self.parser.action_assign(line_number=0, label='iflags', value=u'0x14')
+        self.parser.action_assign(line_number=0, label='op0', value=u'0x0C')
+        self.parser.action_assign(line_number=0, label='op0h', value=u'8')
+        self.parser.action_assign(line_number=0, label='op1', value=u'eax')
+        self.parser.action_assign(line_number=0, label='r', value=u'eax')
+        self.parser.action_assign(line_number=0, label='res', value=u'eax')
+        self.parser.action_assign(line_number=0, label='resh', value=u'ebx')
+        self.parser.action_assign(line_number=0, label='resz', value=u'ecx')
+        self.parser.action_assign(line_number=0, label='rh', value=u'edx')
+        self.parser.action_assign(line_number=0, label='s0', value=u'0x0C')
+        self.parser.action_assign(line_number=0, label='s0_0', value=u'ebx')
+        self.parser.action_assign(line_number=0, label='s1', value=u'0x0C')
+        self.parser.action_assign(line_number=0, label='s1_0', value=u'ecx')
+        self.parser.action_assign(line_number=0, label='s2', value=u'8')
+        #self.parser.action_assign(line_number=0, label='table', value=u'-0x108')
+        self.parser.action_assign(line_number=0, label='val', value=u'-0x1C')
+        self.parser.action_assign(line_number=0, label='var_1C', value=u'-0x1C')
+        self.parser.action_assign(line_number=0, label='var_20', value=u'-0x20')
+        self.parser.action_assign(line_number=0, label='var_2C', value=u'-0x2C')
+        self.parser.action_assign(line_number=0, label='var_4', value=u'-4')
         self.proc.add_equ(line_number=0, label='CC', value=u'4')
         self.proc.add_equ(line_number=0, label='T', value=u'4')
         self.proc.add_equ(line_number=0, label='TEST2', value=u'-13')
@@ -971,7 +971,7 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmpxchg word ptr [ebp+var_20], dx')), u'\tR(CMPXCHG(*(dw*)(raddr(ss,ebp+var_20)), dx));\n')
 
     def test_instr_2650(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmpxchg8b [ebp+var_20]')), u'\tR(CMPXCHG8B(*(dw*)(raddr(ss,ebp+var_20))));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cmpxchg8b [ebp+var_20]')), u'\tR(CMPXCHG8B(*(raddr(ss,ebp+var_20))));\n')
 
     def test_instr_2660(self):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('cwd')), '\tR(CWD);\n')
@@ -1010,7 +1010,7 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('div     dl')), u'\tR(DIV1(dl));\n')
 
     def test_instr_2780(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('div     s1_0')), u'\tR(DIV0(s1_0));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('div     s1_0')), u'\tR(DIV4(s1_0));\n')
 
     def test_instr_2790(self):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('idiv    cx')), u'\tR(IDIV2(cx));\n')
@@ -1019,7 +1019,7 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('idiv    dl')), u'\tR(IDIV1(dl));\n')
 
     def test_instr_2810(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('idiv    s1_0')), u'\tR(IDIV0(s1_0));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('idiv    s1_0')), u'\tR(IDIV4(s1_0));\n')
 
     def test_instr_2820(self):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('imul    ax, cx')), u'\tR(IMUL2_2(ax,cx));\n')
@@ -1058,7 +1058,7 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('imul    ebx, esi, 7FFFh')), u'\tR(IMUL3_4(ebx,esi,0x7FFF));\n')
 
     def test_instr_2940(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('imul    s1_0')), u'\tR(IMUL1_0(s1_0));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('imul    s1_0')), u'\tR(IMUL1_4(s1_0));\n')
 
     def test_instr_2950(self):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('inc     dl')), u'\tR(INC(dl));\n')
@@ -1484,7 +1484,7 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('loopne  loc_40855A')), u'\t\tR(LOOPNE(loc_40855a));\n')
 
     def test_instr_4360(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [ebp+ecx_0], ecx_0_0')), u'\tR(MOV(*(dw*)(raddr(ss,ebp+ecx_0)), ecx_0_0));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [ebp+ecx_0], ecx_0_0')), u'\tR(MOV(*(dd*)(raddr(ss,ebp+ecx_0)), ecx_0_0));\n')
 
     def test_instr_4370(self):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [ebp+edx_0], edx')), u'\tR(MOV(*(dd*)(raddr(ss,ebp+edx_0)), edx));\n')
@@ -1502,7 +1502,7 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [ebp+s2], ebx')), u'\tR(MOV(*(dd*)(raddr(ss,ebp+s2)), ebx));\n')
 
     def test_instr_4420(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [ebp+var_1C], edx')), u'\tR(MOV(*(dd*)(raddr(ss,ebp+var_1C)), edx));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [ebp+var_1C], edx')), u'\tR(MOV(*(dd*)(raddr(ss,ebp+var_1c)), edx));\n')
 
     def test_instr_4430(self):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [ebp+var_20], ecx')), u'\tR(MOV(*(dd*)(raddr(ss,ebp+var_20)), ecx));\n')
@@ -1517,34 +1517,34 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+0Ch], edi')), u'\tR(MOV(*(dd*)(raddr(ss,esp+0x0C)), edi));\n')
 
     def test_instr_4470(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+0Ch], edi_0')), u'\tR(MOV(*(dw*)(raddr(ss,esp+0x0C)), edi_0));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+0Ch], edi_0')), u'\tR(MOV(*(dd*)(raddr(ss,esp+0x0C)), edi_0));\n')
 
     def test_instr_4480(self):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+0Ch], edx')), u'\tR(MOV(*(dd*)(raddr(ss,esp+0x0C)), edx));\n')
 
     def test_instr_4490(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+0Ch], op0')), u'\tR(MOV(*(dw*)(raddr(ss,esp+0x0C)), op0));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+0Ch], op0')), u'\tR(MOV(*(raddr(ss,esp+0x0C)), op0));\n')
 
     def test_instr_4500(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+0Ch], op1')), u'\tR(MOV(*(dw*)(raddr(ss,esp+0x0C)), op1));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+0Ch], op1')), u'\tR(MOV(*(dd*)(raddr(ss,esp+0x0C)), op1));\n')
 
     def test_instr_4510(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+0Ch], r')), u'\tR(MOV(*(dw*)(raddr(ss,esp+0x0C)), r));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+0Ch], r')), u'\tR(MOV(*(dd*)(raddr(ss,esp+0x0C)), r));\n')
 
     def test_instr_4520(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+0Ch], res')), u'\tR(MOV(*(dw*)(raddr(ss,esp+0x0C)), res));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+0Ch], res')), u'\tR(MOV(*(dd*)(raddr(ss,esp+0x0C)), res));\n')
 
     def test_instr_4530(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+0Ch], resz')), u'\tR(MOV(*(dw*)(raddr(ss,esp+0x0C)), resz));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+0Ch], resz')), u'\tR(MOV(*(dd*)(raddr(ss,esp+0x0C)), resz));\n')
 
     def test_instr_4540(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+0Ch], s1_0')), u'\tR(MOV(*(dw*)(raddr(ss,esp+0x0C)), s1_0));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+0Ch], s1_0')), u'\tR(MOV(*(dd*)(raddr(ss,esp+0x0C)), s1_0));\n')
 
     def test_instr_4550(self):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+10h], eax')), u'\tR(MOV(*(dd*)(raddr(ss,esp+0x10)), eax));\n')
 
     def test_instr_4560(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+10h], eax_0')), u'\tR(MOV(*(dw*)(raddr(ss,esp+0x10)), eax_0));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+10h], eax_0')), u'\tR(MOV(*(dd*)(raddr(ss,esp+0x10)), eax_0));\n')
 
     def test_instr_4570(self):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+10h], ebx')), u'\tR(MOV(*(dd*)(raddr(ss,esp+0x10)), ebx));\n')
@@ -1553,19 +1553,19 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+10h], ecx')), u'\tR(MOV(*(dd*)(raddr(ss,esp+0x10)), ecx));\n')
 
     def test_instr_4590(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+10h], op1')), u'\tR(MOV(*(dw*)(raddr(ss,esp+0x10)), op1));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+10h], op1')), u'\tR(MOV(*(dd*)(raddr(ss,esp+0x10)), op1));\n')
 
     def test_instr_4600(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+10h], res')), u'\tR(MOV(*(dw*)(raddr(ss,esp+0x10)), res));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+10h], res')), u'\tR(MOV(*(dd*)(raddr(ss,esp+0x10)), res));\n')
 
     def test_instr_4610(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+10h], resz')), u'\tR(MOV(*(dw*)(raddr(ss,esp+0x10)), resz));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+10h], resz')), u'\tR(MOV(*(dd*)(raddr(ss,esp+0x10)), resz));\n')
 
     def test_instr_4620(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+10h], rh')), u'\tR(MOV(*(dw*)(raddr(ss,esp+0x10)), rh));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+10h], rh')), u'\tR(MOV(*(dd*)(raddr(ss,esp+0x10)), rh));\n')
 
     def test_instr_4630(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+10h], s1_0')), u'\tR(MOV(*(dw*)(raddr(ss,esp+0x10)), s1_0));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+10h], s1_0')), u'\tR(MOV(*(dd*)(raddr(ss,esp+0x10)), s1_0));\n')
 
     def test_instr_4640(self):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+14h], eax')), u'\tR(MOV(*(dd*)(raddr(ss,esp+0x14)), eax));\n')
@@ -1577,7 +1577,7 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+14h], ecx')), u'\tR(MOV(*(dd*)(raddr(ss,esp+0x14)), ecx));\n')
 
     def test_instr_4670(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+14h], ecx_0')), u'\tR(MOV(*(dw*)(raddr(ss,esp+0x14)), ecx_0));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+14h], ecx_0')), u'\tR(MOV(*(raddr(ss,esp+0x14)), ecx_0));\n')
 
     def test_instr_4680(self):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+14h], edi')), u'\tR(MOV(*(dd*)(raddr(ss,esp+0x14)), edi));\n')
@@ -1589,13 +1589,13 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+14h], esi')), u'\tR(MOV(*(dd*)(raddr(ss,esp+0x14)), esi));\n')
 
     def test_instr_4710(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+14h], flags')), u'\tR(MOV(*(dw*)(raddr(ss,esp+0x14)), flags));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+14h], flags')), u'\tR(MOV(*(dd*)(raddr(ss,esp+0x14)), flags));\n')
 
     def test_instr_4720(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+14h], res')), u'\tR(MOV(*(dw*)(raddr(ss,esp+0x14)), res));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+14h], res')), u'\tR(MOV(*(dd*)(raddr(ss,esp+0x14)), res));\n')
 
     def test_instr_4730(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+14h], resh')), u'\tR(MOV(*(dw*)(raddr(ss,esp+0x14)), resh));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+14h], resh')), u'\tR(MOV(*(dd*)(raddr(ss,esp+0x14)), resh));\n')
 
     def test_instr_4740(self):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+18h], eax')), u'\tR(MOV(*(dd*)(raddr(ss,esp+0x18)), eax));\n')
@@ -1607,7 +1607,7 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+18h], edx')), u'\tR(MOV(*(dd*)(raddr(ss,esp+0x18)), edx));\n')
 
     def test_instr_4770(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+18h], res')), u'\tR(MOV(*(dw*)(raddr(ss,esp+0x18)), res));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+18h], res')), u'\tR(MOV(*(dd*)(raddr(ss,esp+0x18)), res));\n')
 
     def test_instr_4780(self):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+1Ch], eax')), u'\tR(MOV(*(dd*)(raddr(ss,esp+0x1C)), eax));\n')
@@ -1616,7 +1616,7 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+1Ch], ebx')), u'\tR(MOV(*(dd*)(raddr(ss,esp+0x1C)), ebx));\n')
 
     def test_instr_4800(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+4], eax_0')), u'\tR(MOV(*(dw*)(raddr(ss,esp+4)), eax_0));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+4], eax_0')), u'\tR(MOV(*(dd*)(raddr(ss,esp+4)), eax_0));\n')
 
     def test_instr_4810(self):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+4], ebx    ; s0')), u'\tR(MOV(*(dd*)(raddr(ss,esp+4)), ebx));\n')
@@ -1631,10 +1631,10 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+4], esi    ; s1')), u'\tR(MOV(*(dd*)(raddr(ss,esp+4)), esi));\n')
 
     def test_instr_4850(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+4], i      ; op0')), u'\tR(MOV(*(dw*)(raddr(ss,esp+4)), i));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+4], i      ; op0')), u'\tR(MOV(*(dd*)(raddr(ss,esp+4)), i));\n')
 
     def test_instr_4860(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+4], res')), u'\tR(MOV(*(dw*)(raddr(ss,esp+4)), res));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+4], res')), u'\tR(MOV(*(dd*)(raddr(ss,esp+4)), res));\n')
 
     def test_instr_4870(self):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+8], eax')), u'\tR(MOV(*(dd*)(raddr(ss,esp+8)), eax));\n')
@@ -1649,7 +1649,7 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+8], ecx')), u'\tR(MOV(*(dd*)(raddr(ss,esp+8)), ecx));\n')
 
     def test_instr_4910(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+8], ecx_0_0')), u'\tR(MOV(*(dw*)(raddr(ss,esp+8)), ecx_0_0));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+8], ecx_0_0')), u'\tR(MOV(*(dd*)(raddr(ss,esp+8)), ecx_0_0));\n')
 
     def test_instr_4920(self):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+8], edi    ; op1')), u'\tR(MOV(*(dd*)(raddr(ss,esp+8)), edi));\n')
@@ -1658,7 +1658,7 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+8], edi    ; s1')), u'\tR(MOV(*(dd*)(raddr(ss,esp+8)), edi));\n')
 
     def test_instr_4940(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+8], edx_0_0')), u'\tR(MOV(*(dw*)(raddr(ss,esp+8)), edx_0_0));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+8], edx_0_0')), u'\tR(MOV(*(dd*)(raddr(ss,esp+8)), edx_0_0));\n')
 
     def test_instr_4950(self):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+8], esi    ; op1')), u'\tR(MOV(*(dd*)(raddr(ss,esp+8)), esi));\n')
@@ -1670,25 +1670,25 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+8], esi')), u'\tR(MOV(*(dd*)(raddr(ss,esp+8)), esi));\n')
 
     def test_instr_4980(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+8], esi_0')), u'\tR(MOV(*(dw*)(raddr(ss,esp+8)), esi_0));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+8], esi_0')), u'\tR(MOV(*(dd*)(raddr(ss,esp+8)), esi_0));\n')
 
     def test_instr_4990(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+8], i      ; s1')), u'\tR(MOV(*(dw*)(raddr(ss,esp+8)), i));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+8], i      ; s1')), u'\tR(MOV(*(dd*)(raddr(ss,esp+8)), i));\n')
 
     def test_instr_5000(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+8], i')), u'\tR(MOV(*(dw*)(raddr(ss,esp+8)), i));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+8], i')), u'\tR(MOV(*(dd*)(raddr(ss,esp+8)), i));\n')
 
     def test_instr_5010(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+8], op0')), u'\tR(MOV(*(dw*)(raddr(ss,esp+8)), op0));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+8], op0')), u'\tR(MOV(*(raddr(ss,esp+8)), op0));\n')
 
     def test_instr_5020(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+8], res')), u'\tR(MOV(*(dw*)(raddr(ss,esp+8)), res));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+8], res')), u'\tR(MOV(*(dd*)(raddr(ss,esp+8)), res));\n')
 
     def test_instr_5030(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+8], resh')), u'\tR(MOV(*(dw*)(raddr(ss,esp+8)), resh));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+8], resh')), u'\tR(MOV(*(dd*)(raddr(ss,esp+8)), resh));\n')
 
     def test_instr_5040(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+8], s0_0')), u'\tR(MOV(*(dw*)(raddr(ss,esp+8)), s0_0));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp+8], s0_0')), u'\tR(MOV(*(dd*)(raddr(ss,esp+8)), s0_0));\n')
 
     def test_instr_5050(self):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     [esp], ebx      ; s0')), u'\tR(MOV(*(dd*)(raddr(ss,esp)), ebx));\n')
@@ -2444,7 +2444,7 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     edx, [ebp+s1]')), u'\tR(MOV(edx, *(dd*)(raddr(ss,ebp+s1))));\n')
 
     def test_instr_7560(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     edx, [ebp+var_1C]')), u'\tR(MOV(edx, *(dd*)(raddr(ss,ebp+var_1C))));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     edx, [ebp+var_1C]')), u'\tR(MOV(edx, *(dd*)(raddr(ss,ebp+var_1c))));\n')
 
     def test_instr_7570(self):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov     edx, dword ptr [ebp+var_20]')), u'\tR(MOV(edx, *(dd*)(raddr(ss,ebp+var_20))));\n')
@@ -2741,7 +2741,7 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov eax, 0ffffffffh')), u'\tR(MOV(eax, 0x0ffffffff));\n')
 
     def test_instr_8550(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov eax, B')), u'\tR(MOV(eax, B));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov eax, B')), u'\tR(MOV(eax, b));\n')
 
     def test_instr_8560(self):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mov eax, CC')), u'\tR(MOV(eax, CC));\n')
@@ -3020,7 +3020,7 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('movsx ecx,cx')), u'\tR(MOVSX(ecx, cx));\n')
 
     def test_instr_9480(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('movzx eax, DDD')), u'\tR(MOVZX(eax, DDD));\n')  # ERROR
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('movzx eax, DDD')), u'\tR(MOVZX(eax, ddd));\n')  # ERROR
 
     def test_instr_9490(self):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('movzx ecx,bx')), u'\tR(MOVZX(ecx, bx));\n')
@@ -3032,7 +3032,7 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mul     cx')), u'\tR(MUL1_2(cx));\n')
 
     def test_instr_9520(self):
-        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mul     s1_0')), u'\tR(MUL1_0(s1_0));\n')
+        self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('mul     s1_0')), u'\tR(MUL1_4(s1_0));\n')
 
     def test_instr_9530(self):
         self.assertEqual(self.v.proc.generate_c_cmd(self.v.cpp, self.v.parser.action_code('neg     dl')), u'\tR(NEG(dl));\n')

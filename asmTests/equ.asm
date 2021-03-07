@@ -17,6 +17,12 @@ start proc near
 ;jne failure
 ;E = 1
 
+F equ bx
+G = byte ptr -2
+H equ word ptr -3
+I = word -5
+J equ word -5
+
 B = 2
 mov eax, B
 cmp eax,2

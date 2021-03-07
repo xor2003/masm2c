@@ -291,6 +291,9 @@ class Cpp(object):
 
         # if isinstance(expr, str):  # in ('+','-','*','(',')','/'):
         #    return 0
+        if isinstance(expr, str):
+            from masm2c.parser import Parser
+            return Parser.is_register(expr)
         return 0
 
     def convert_sqbr_reference(self, expr, destination, size, islabel, lea=False):
