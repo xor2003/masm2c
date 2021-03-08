@@ -405,13 +405,6 @@ class Cpp(object):
         if segoverride:
             self.__work_segment = segoverride[0].value
 
-        # for "label" or "[label]" get size
-        self.__isjustlabel = (isinstance(origexpr, Token) and origexpr.type == LABEL) \
-                             or (isinstance(origexpr, Token) and origexpr.type == SQEXPR \
-                                 and isinstance(origexpr.value, Token) and origexpr.value.type == LABEL) \
-                            or (isinstance(origexpr, Token) and origexpr.type == 'memberdir')
-
-
         self.__current_size = size
         newsize = size
         if ptrdir:
@@ -420,6 +413,17 @@ class Cpp(object):
             newsize = self.__context.typetosize(value)
             if newsize != size:
                 self.size_changed = True
+            else:
+                origexpr = Token.remove_tokens(origexpr, [PTRDIR, SQEXPR])
+                if isinstance(origexpr, list) and len(origexpr)==1:
+                    origexpr = origexpr[0]
+
+        # for "label" or "[label]" get size
+        self.__isjustlabel = (isinstance(origexpr, Token) and origexpr.type == LABEL) \
+                             or (isinstance(origexpr, Token) and origexpr.type == SQEXPR \
+                                 and isinstance(origexpr.value, Token) and origexpr.value.type == LABEL) \
+                            or (isinstance(origexpr, Token) and origexpr.type == 'memberdir')
+
 
         if memberdir:
             expr = memberdir[0]
