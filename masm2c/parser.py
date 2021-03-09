@@ -929,7 +929,15 @@ class Parser:
         self.proc.stmts.append(o)
         return o
 
-    def action_equ(self, label, value, raw='', line_number=0):
+    def action_assign_test(self, label="", value="", raw='', line_number=0):
+        o = self.action_assign(label, value, raw, line_number)
+        o.implemented = True
+
+    def action_equ_test(self, label="", value="", raw='', line_number=0):
+        o = self.action_equ(label, value, raw, line_number)
+        o.implemented = True
+
+    def action_equ(self, label="", value="", raw='', line_number=0):
         label = self.mangle_label(label)
         value = Token.remove_tokens(value, 'expr')
         size = Cpp(self).get_size(value)

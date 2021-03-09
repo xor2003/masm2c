@@ -2,7 +2,7 @@ matrix:
   include:
     - language: python
       python:
-          - "3.9"
+          - "3.6"
 
       install:
           - ./install-test.sh
