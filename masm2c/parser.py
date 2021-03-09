@@ -915,12 +915,15 @@ class Parser:
     def action_assign(self, label, value, raw='', line_number=0):
         label = self.mangle_label(label)
         value = Token.remove_tokens(value, 'expr')
+        size = Cpp(self).get_size(value)
+        value = Token.remove_tokens(value, 'ptrdir')
         has_global = False
         if self.has_global(label):
             has_global = True
             label = self.get_global(label).original_name
         o = self.proc.add_assignment(label, value, line_number=line_number)
         o.line = raw.rstrip()
+        o.size = size
         if not has_global:
             self.set_global(label, o)
         self.proc.stmts.append(o)
@@ -929,9 +932,12 @@ class Parser:
     def action_equ(self, label, value, raw='', line_number=0):
         label = self.mangle_label(label)
         value = Token.remove_tokens(value, 'expr')
+        size = Cpp(self).get_size(value)
+        value = Token.remove_tokens(value, 'ptrdir')
         proc = self.get_global("mainproc")
         o = proc.add_equ_(label, value, line_number=line_number)
         o.line = raw.rstrip()
+        o.size = size
         self.set_global(label, o)
         proc.stmts.append(o)
         return o
