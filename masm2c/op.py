@@ -132,6 +132,10 @@ class baseop(object):
         self.line_number = 0
         self.elements = 1
         self.args = []
+        self.size = 0
+
+    def getsize(self):
+        return self.size
 
     # def __str__(self):
     #        return self.cmd+" "+self.command+" "+str(self.line_number)
@@ -623,9 +627,16 @@ class _equ(baseop):
         super().__init__()
         self.args = args
         self.original_name = ''
+        self.implemented = False
+        self.size = 0
 
     def visit(self, visitor):
-        return visitor._equ(*self.args)
+        if self.implemented == False:
+            self.implemented = True
+            return visitor._equ(*self.args)
+        else:
+            from masm2c.cpp import SkipCode
+            raise SkipCode
 
 
 class _assignment(baseop):
@@ -633,6 +644,13 @@ class _assignment(baseop):
         super().__init__()
         self.args = args
         self.original_name = ''
+        self.implemented = False
+        self.size = 0
 
     def visit(self, visitor):
-        return visitor._assignment(*self.args)
+        if self.implemented == False:
+            self.implemented = True
+            return visitor._assignment(*self.args)
+        else:
+            from masm2c.cpp import SkipCode
+            raise SkipCode

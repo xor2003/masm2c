@@ -22,6 +22,14 @@ SEGMENTREGISTER = 'segmentregister'
 SEGOVERRIDE = 'segoverride'
 SQEXPR = 'sqexpr'
 
+class InjectCode(Exception):
+
+    def __init__(self, cmd):
+        self.cmd = cmd
+        super().__init__()
+
+class SkipCode(Exception):
+    pass
 
 class CrossJump(Exception):
     pass
@@ -154,11 +162,15 @@ class Cpp(object):
 
         if isinstance(g, op._equ):
             logging.debug("it is equ")
+            if g.implemented == False:
+                raise InjectCode(g)
             value = g.original_name
             # value = self.expand_equ(g.value)
             logging.debug("equ: %s -> %s" % (name, value))
         elif isinstance(g, op._assignment):
             logging.debug("it is assignment")
+            if g.implemented == False:
+                raise InjectCode(g)
             value = g.original_name
             # value = self.expand_equ(g.value)
             logging.debug("assignment %s = %s" % (name, value))
@@ -473,7 +485,7 @@ class Cpp(object):
         size = 0
         if self.__context.has_global(name):
             g = self.__context.get_global(name)
-            if isinstance(g, (op.var, op.Struct)):
+            if isinstance(g, (op.var, op.Struct, op._equ, op._assignment)):
                 size = g.getsize()
         return size
 

@@ -601,7 +601,7 @@ class Parser:
             logging.debug("get_global KeyError %s" % name)
             raise
         g.used = True
-        assert self.__globals[name].used
+        #assert self.__globals[name].used
         return g
 
     def get_globals(self):
@@ -915,8 +915,6 @@ class Parser:
     def action_assign(self, label, value, raw='', line_number=0):
         label = self.mangle_label(label)
         value = Token.remove_tokens(value, 'expr')
-        # value = self.tokenstostring(value)
-        # value = self.get_equ_value(value)
         has_global = False
         if self.has_global(label):
             has_global = True
@@ -931,8 +929,6 @@ class Parser:
     def action_equ(self, label, value, raw='', line_number=0):
         label = self.mangle_label(label)
         value = Token.remove_tokens(value, 'expr')
-        # value = self.tokenstostring(value)
-        # vv = self.get_equ_value(value)
         proc = self.get_global("mainproc")
         o = proc.add_equ_(label, value, line_number=line_number)
         o.line = raw.rstrip()

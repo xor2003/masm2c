@@ -140,14 +140,25 @@ class Proc(object):
     def visit(self, visitor, skip=0):
         for i in range(skip, len(self.stmts)):
             stmt = self.stmts[i]
-            s = self.generate_c_cmd(visitor, stmt)
-            visitor.body += s
+            from masm2c.cpp import InjectCode, SkipCode
+            try:
+                s = self.generate_c_cmd(visitor, stmt)
+                visitor.body += s
+            except InjectCode as ex:
+                logging.debug(f'Injecting code {ex.cmd} before {stmt}')
+                s = self.generate_c_cmd(visitor, ex.cmd)
+                visitor.body += s
+                s = self.generate_c_cmd(visitor, stmt)
+                visitor.body += s
+            except SkipCode:
+                logging.debug(f'Skipping code {stmt}')
+
             try:  # trying to add command and comment
                 if stmt.line or stmt.line_number != 0:
                     visitor.body = visitor.body[:-1] + "\t// " + str(stmt.line_number) \
                                    + " " + stmt.line + "\n"
             except AttributeError:
-                pass
+                logging.warning(f"Some attributes missing while setting comment for {stmt}")
 
     def generate_c_cmd(self, visitor, stmt):
         s = stmt.visit(visitor)
