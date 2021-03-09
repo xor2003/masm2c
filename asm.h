@@ -266,7 +266,7 @@ static const uint32_t MASK[]={0, 0xff, 0xffff, 0xffffff, 0xffffffff};
    #ifdef A_NORMAL
     #define STOSW { \
 	if (es==0xB800)  \
-		{dd t=(di>>1);attrset(COLOR_PAIR(ah)); mvaddch(t/80, t%80, al); /*attroff(COLOR_PAIR(ah))*/;di+=(DF==0)?2:-2;refresh();} \
+		{dd averytemporary=(di>>1);attrset(COLOR_PAIR(ah)); mvaddch(averytemporary/80, averytemporary%80, al); /*attroff(COLOR_PAIR(ah))*/;di+=(DF==0)?2:-2;refresh();} \
 	else \
 		{STOS(2,0);} \
 	}
@@ -383,14 +383,14 @@ typedef union registry16Bits
 #define PUSH(a) {stackPointer-=sizeof(a); memcpy (&m.stack[stackPointer], &a, sizeof (a));  assert(stackPointer>8);}
 */
 #ifdef DEBUG
- #define PUSH(a) {dd t=a;stackPointer-=sizeof(a); \
-		memcpy (raddr(ss,stackPointer), &t, sizeof (a)); \
+ #define PUSH(a) {dd averytemporary=a;stackPointer-=sizeof(a); \
+		memcpy (raddr(ss,stackPointer), &averytemporary, sizeof (a)); \
 		assert((raddr(ss,stackPointer) - ((db*)&m.stack))>8);log_debug("after push %x\n",stackPointer);}
 
  #define POP(a) { log_debug("before pop %x\n",stackPointer);memcpy (&a, raddr(ss,stackPointer), sizeof (a));stackPointer+=sizeof(a);}
 #else
- #define PUSH(a) {dd t=a;stackPointer-=sizeof(a); \
-		memcpy (raddr(ss,stackPointer), &t, sizeof (a));}
+ #define PUSH(a) {dd averytemporary=a;stackPointer-=sizeof(a); \
+		memcpy (raddr(ss,stackPointer), &averytemporary, sizeof (a));}
 
  #define POP(a) {memcpy (&a, raddr(ss,stackPointer), sizeof (a));stackPointer+=sizeof(a);}
 #endif
@@ -405,10 +405,10 @@ typedef union registry16Bits
 #define ISNEGATIVE(f,a) ( (a) & (1 << (bitsizeof(f)-1)) )
 #define AFFECT_SF(f, a) {SF=ISNEGATIVE(f,a);}
 
-#define CMP(a,b) {dd t=((a)-(b))& MASK[sizeof(a)]; \
-		AFFECT_CF((t)>(a)); \
-		AFFECT_ZF(t); \
-		AFFECT_SF(a,t);}
+#define CMP(a,b) {dd averytemporary=((a)-(b))& MASK[sizeof(a)]; \
+		AFFECT_CF((averytemporary)>(a)); \
+		AFFECT_ZF(averytemporary); \
+		AFFECT_SF(a,averytemporary);}
 
 #define OR(a,b) {a=(a)|(b); \
 		AFFECT_ZF(a); \
@@ -685,34 +685,34 @@ else
 
 #define AAD AAD1(10)
 
-#define ADD(a,b) {dq t=(dq)a+(dq)b; \
-		AFFECT_CF((t)>MASK[sizeof(a)]); \
-		a=t; \
+#define ADD(a,b) {dq averytemporary=(dq)a+(dq)b; \
+		AFFECT_CF((averytemporary)>MASK[sizeof(a)]); \
+		a=averytemporary; \
 		AFFECT_ZF(a); \
 		AFFECT_SF(a,a);}
 
-#define XADD(a,b) {dq t=(dq)a+(dq)b; \
-		AFFECT_CF((t)>MASK[sizeof(a)]); \
+#define XADD(a,b) {dq averytemporary=(dq)a+(dq)b; \
+		AFFECT_CF((averytemporary)>MASK[sizeof(a)]); \
 		b=a; \
-		a=t; \
+		a=averytemporary; \
 		AFFECT_ZF(a); \
 		AFFECT_SF(a,a);}
 
-#define SUB(a,b) {dd t=(a-b)& MASK[sizeof(a)]; \
-		AFFECT_CF((t)>(a)); \
-		a=t; \
+#define SUB(a,b) {dd averytemporary=(a-b)& MASK[sizeof(a)]; \
+		AFFECT_CF((averytemporary)>(a)); \
+		a=averytemporary; \
 		AFFECT_ZF(a); \
 		AFFECT_SF(a,a);}
 
-#define ADC(a,b) {dq t=(dq)a+(dq)b+(dq)CF; \
-		AFFECT_CF((t)>MASK[sizeof(a)]); \
-		a=t; \
+#define ADC(a,b) {dq averytemporary=(dq)a+(dq)b+(dq)CF; \
+		AFFECT_CF((averytemporary)>MASK[sizeof(a)]); \
+		a=averytemporary; \
 		AFFECT_ZF(a); \
 		AFFECT_SF(a,a);}
 
-#define SBB(a,b) {dq t=(dq)a-(dq)b-(dq)CF; \
-		AFFECT_CF((t)>MASK[sizeof(a)]); \
-		a=t; \
+#define SBB(a,b) {dq averytemporary=(dq)a-(dq)b-(dq)CF; \
+		AFFECT_CF((averytemporary)>MASK[sizeof(a)]); \
+		a=averytemporary; \
 		AFFECT_ZF(a); \
 		AFFECT_SF(a,a);} 
 
@@ -727,28 +727,28 @@ else
 
 // #num_args _ #bytes
 #define IMUL1_1(a) {ax=((int8_t)al)*((int8_t)(a)); OF=CF=(ax & 0xff80)==0xff80||(ax & 0xff80)==0?false:true;}
-#define IMUL1_2(a) {int32_t t=(int32_t)((int16_t)ax)*((int16_t)(a));ax=t;dx=t>>16; OF=CF=(t & 0xffff8000)==0xffff8000||(t & 0xffff8000)==0?false:true;}
-#define IMUL1_4(a) {int64_t t=(int64_t)((int32_t)eax)*((int32_t)(a));eax=t;edx=t>>32; OF=CF=(t & 0xffffffff80000000)==0xffffffff80000000||(t & 0xffffffff80000000)==0?false:true;}
-#define IMUL2_2(a,b) {int32_t t = ((int16_t)(a)) * ((int16_t)(b)); a=t;OF=CF=(t>= -32768)  && (t<=32767)?false:true;}
-#define IMUL2_4(a,b) {int64_t t = ((int64_t)(a)) * ((int32_t)(b)); a=t;OF=CF=(t>=-((int64_t)(2147483647)+1)) && (t<=(int64_t)2147483647)?false:true;}
-#define IMUL3_2(a,b,c) {int32_t t = ((int16_t)(b)) * ((int16_t)(c)); a=t;OF=CF=(t>= -32768)  && (t<=32767)?false:true;}
-#define IMUL3_4(a,b,c) {int64_t t = ((int64_t)(b)) * ((int32_t)(c)); a=t;OF=CF=(t>=-((int64_t)(2147483647)+1)) && (t<=(int64_t)2147483647)?false:true;}
+#define IMUL1_2(a) {int32_t averytemporary=(int32_t)((int16_t)ax)*((int16_t)(a));ax=averytemporary;dx=averytemporary>>16; OF=CF=(averytemporary & 0xffff8000)==0xffff8000||(averytemporary & 0xffff8000)==0?false:true;}
+#define IMUL1_4(a) {int64_t averytemporary=(int64_t)((int32_t)eax)*((int32_t)(a));eax=averytemporary;edx=averytemporary>>32; OF=CF=(averytemporary & 0xffffffff80000000)==0xffffffff80000000||(averytemporary & 0xffffffff80000000)==0?false:true;}
+#define IMUL2_2(a,b) {int32_t averytemporary = ((int16_t)(a)) * ((int16_t)(b)); a=averytemporary;OF=CF=(averytemporary>= -32768)  && (averytemporary<=32767)?false:true;}
+#define IMUL2_4(a,b) {int64_t averytemporary = ((int64_t)(a)) * ((int32_t)(b)); a=averytemporary;OF=CF=(averytemporary>=-((int64_t)(2147483647)+1)) && (averytemporary<=(int64_t)2147483647)?false:true;}
+#define IMUL3_2(a,b,c) {int32_t averytemporary = ((int16_t)(b)) * ((int16_t)(c)); a=averytemporary;OF=CF=(averytemporary>= -32768)  && (averytemporary<=32767)?false:true;}
+#define IMUL3_4(a,b,c) {int64_t averytemporary = ((int64_t)(b)) * ((int32_t)(c)); a=averytemporary;OF=CF=(averytemporary>=-((int64_t)(2147483647)+1)) && (averytemporary<=(int64_t)2147483647)?false:true;}
 
 #define MUL1_1(a) {ax=(dw)al*(a); OF=CF=ah;}
-#define MUL1_2(a) {dd t=(dd)ax*(a);ax=t;dx=t>>16; OF=CF=dx;}
-#define MUL1_4(a) {dq t=(dq)eax*(a);eax=t;edx=t>>32; OF=CF=edx;}
-#define MUL2_2(a,b) {dd t=(dd)(a)*(b);a=t; OF=CF=t>>16;}
-#define MUL2_4(a,b) {dq t=(dq)(a)*(b);a=t; OF=CF=t>>32;}
-#define MUL3_2(a,b,c) {dd t=(dd)(b)*(c);a=t; OF=CF=t>>16;}
-#define MUL3_4(a,b,c) {dq t=(dq)(b)*(c);a=t; OF=CF=t>>32;}
+#define MUL1_2(a) {dd averytemporary=(dd)ax*(a);ax=averytemporary;dx=averytemporary>>16; OF=CF=dx;}
+#define MUL1_4(a) {dq averytemporary=(dq)eax*(a);eax=averytemporary;edx=averytemporary>>32; OF=CF=edx;}
+#define MUL2_2(a,b) {dd averytemporary=(dd)(a)*(b);a=averytemporary; OF=CF=averytemporary>>16;}
+#define MUL2_4(a,b) {dq averytemporary=(dq)(a)*(b);a=averytemporary; OF=CF=averytemporary>>32;}
+#define MUL3_2(a,b,c) {dd averytemporary=(dd)(b)*(c);a=averytemporary; OF=CF=averytemporary>>16;}
+#define MUL3_4(a,b,c) {dq averytemporary=(dq)(b)*(c);a=averytemporary; OF=CF=averytemporary>>32;}
 
-#define IDIV1(a) {int16_t t=ax;al=t/((int8_t)a); ah=t%((int8_t)a); AFFECT_OF(false);}
-#define IDIV2(a) {int32_t t=(((int32_t)(int16_t)dx)<<16)|ax; ax=t/((int16_t)a);dx=t%((int16_t)a); AFFECT_OF(false);}
-#define IDIV4(a) {int64_t t=(((int64_t)(int32_t)edx)<<32)|eax;eax=t/((int32_t)a);edx=t%((int32_t)a); AFFECT_OF(false);}
+#define IDIV1(a) {int16_t averytemporary=ax;al=averytemporary/((int8_t)a); ah=averytemporary%((int8_t)a); AFFECT_OF(false);}
+#define IDIV2(a) {int32_t averytemporary=(((int32_t)(int16_t)dx)<<16)|ax; ax=averytemporary/((int16_t)a);dx=averytemporary%((int16_t)a); AFFECT_OF(false);}
+#define IDIV4(a) {int64_t averytemporary=(((int64_t)(int32_t)edx)<<32)|eax;eax=averytemporary/((int32_t)a);edx=averytemporary%((int32_t)a); AFFECT_OF(false);}
 
-#define DIV1(a) {dw t=ax;al=t/(a);ah=t%(a); AFFECT_OF(false);}
-#define DIV2(a) {dd t=((((dd)dx)<<16)|ax);ax=t/(a);dx=t%(a); AFFECT_OF(false);}
-#define DIV4(a) {uint64_t t=((((dq)edx)<<32)|eax);eax=t/(a);edx=t%(a); AFFECT_OF(false);}
+#define DIV1(a) {dw averytemporary=ax;al=averytemporary/(a);ah=averytemporary%(a); AFFECT_OF(false);}
+#define DIV2(a) {dd averytemporary=((((dd)dx)<<16)|ax);ax=averytemporary/(a);dx=averytemporary%(a); AFFECT_OF(false);}
+#define DIV4(a) {uint64_t averytemporary=((((dq)edx)<<32)|eax);eax=averytemporary/(a);edx=averytemporary%(a); AFFECT_OF(false);}
 
 #define NOT(a) a= ~(a);// AFFECT_ZF(a) //TODO
 
@@ -853,7 +853,7 @@ void MOV_(D* dest, const S& src)
 // LEA - Load Effective Address
 #define LEA(dest,src) dest = src
 
-#define XCHG(dest,src) {dd t = (dd) dest; dest = src; src = t;}//std::swap(dest,src); TODO
+#define XCHG(dest,src) {dd averytemporary = (dd) dest; dest = src; src = averytemporary;}//std::swap(dest,src); TODO
 
 
 #define MOVS(dest,src,s)  {dest=src; dest+=(DF==0)?s:-s; src+=(DF==0)?s:-s; }
@@ -934,11 +934,11 @@ void asm2C_OUT(int16_t address, int data);
 int8_t asm2C_IN(int16_t data);
 #define IN(a,b) a = asm2C_IN(b); TESTJUMPTOBACKGROUND
 
-//#define PUSHF {dd t = CF+(ZF<<1)+(DF<<2)+(SF<<3); PUSH(t);}
-//#define POPF {dd t; POP(t); CF=t&1; ZF=(t>>1)&1; DF=(t>>2)&1; SF=(t>>3)&1;}
+//#define PUSHF {dd averytemporary = CF+(ZF<<1)+(DF<<2)+(SF<<3); PUSH(averytemporary);}
+//#define POPF {dd averytemporary; POP(averytemporary); CF=averytemporary&1; ZF=(averytemporary>>1)&1; DF=(averytemporary>>2)&1; SF=(averytemporary>>3)&1;}
 
 #define PUSHF {PUSH( (dd) ((CF?1:0)|(PF?4:0)|(AF?0x10:0)|(ZF?0x40:0)|(SF?0x80:0)|(DF?0x400:0)|(OF?0x800:0)) );}
-#define POPF {dd t; POP(t); CF=t&1;  PF=(t&4);AF=(t&0x10);ZF=(t&0x40);SF=(t&0x80);DF=(t&0x400);OF=(t&0x800);}
+#define POPF {dd averytemporary; POP(averytemporary); CF=averytemporary&1;  PF=(averytemporary&4);AF=(averytemporary&0x10);ZF=(averytemporary&0x40);SF=(averytemporary&0x80);DF=(averytemporary&0x400);OF=(averytemporary&0x800);}
 #define NOP
 
 #define LAHF {ah= ((CF?1:0)|2|(PF?4:0)|(AF?0x10:0)|(ZF?0x40:0)|(SF?0x80:0)) ;}
@@ -1010,7 +1010,7 @@ int8_t asm2C_IN(int16_t data);
 #define BSWAP(op1)														\
 	op1 = (op1>>24)|((op1>>8)&0xFF00)|((op1<<8)&0xFF0000)|((op1<<24)&0xFF000000);
 
-#define RDTSC {dq t = realElapsedTime(); eax=t&0xffffffff; edx=(t>32)&0xffffffff;}
+#define RDTSC {dq averytemporary = realElapsedTime(); eax=averytemporary&0xffffffff; edx=(averytemporary>32)&0xffffffff;}
 
 #if DEBUG==2
     #define R(a) {log_debug("l:%s%d:%s\n",_state->_str,__LINE__,#a);}; a

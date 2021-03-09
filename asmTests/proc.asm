@@ -10,6 +10,7 @@ start proc near
 xor eax,eax
 xor edx,edx
 xor ebx,ebx
+xor ecx,ecx
 
 inc ebx
 call incebx
@@ -17,22 +18,26 @@ inc ecx
 inc ecx
 call aincecx
 
+mov al,1
 cmp edx,1
 jne failure
 
+mov al,2
 cmp ecx,3
 jne failure
 
+mov al,3
 cmp ebx,3
 jne failure
 
+mov al,0
 JMP exitLabel
 ;mov edx,offset exitLabel
 
 MOV al,0
 JMP exitLabel
 failure:
-mov al,1
+;mov al,1
 exitLabel:
 mov ah,4ch                    ; AH=4Ch - Exit To DOS
 int 21h
