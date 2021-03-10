@@ -194,8 +194,8 @@ static const uint32_t MASK[]={0, 0xff, 0xffff, 0xffffff, 0xffffffff};
  #endif
  #define STOSD STOS(4,0)
 
- #define INSB {db a = asm2C_IN(dx);*realAddress(edi,es)=a;edi+=(DF==0)?1:-1;}
- #define INSW {dw a = asm2C_INW(dx);*realAddress(edi,es)=a;edi+=(DF==0)?2:-2;}
+ #define INSB {db averytemporary3 = asm2C_IN(dx);*realAddress(edi,es)=averytemporary3;edi+=(DF==0)?1:-1;}
+ #define INSW {dw averytemporary3 = asm2C_INW(dx);*realAddress(edi,es)=averytemporary3;edi+=(DF==0)?2:-2;}
 
  #define LOOP(label) DEC(ecx); JNZ(label)
  #define LOOPE(label) --ecx; if (ecx!=0 && ZF) GOTOLABEL(label) //TODO
@@ -281,86 +281,6 @@ static const uint32_t MASK[]={0, 0xff, 0xffff, 0xffffff, 0xffffffff};
 #define LOOPNE(label) --cx; if (cx!=0 && !ZF) GOTOLABEL(label) //TODO
 
 #endif
-
-#ifdef MSB_FIRST
-typedef struct dblReg {
-	db v0;
-	db v1;
-	db v2;
-	db val;
-} dblReg;
-typedef struct dbhReg {
-	db v0;
-	db v1;
-	db val;
-	db v2;
-} dbhReg;
-typedef struct dwReg {
-	dw v0;
-	dw val;
-} dwReg;
-typedef struct dblReg16 {
-	db v0;
-	db val;
-} dblReg16;
-typedef struct dbhReg16 {
-	db val;
-	db v0;
-} dbhReg16;
-#else
-typedef struct dblReg {
-	db val;
-	db v0;
-	db v1;
-	db v2;
-} dblReg;
-typedef struct dbhReg {
-	db v0;
-	db val;
-	db v1;
-	db v2;
-} dbhReg;
-typedef struct dwReg {
-	dw val;
-	dw v0;
-} dwReg;
-typedef struct dblReg16 {
-	db val;
-	db v0;
-} dblReg16;
-typedef struct dbhReg16 {
-	db v0;
-	db val;
-} dbhReg16;
-#endif
-
-typedef struct ddReg {
-	dd val;
-} ddReg;
-
-
-typedef union registry32Bits
-{
-	struct dblReg dbl;
-	struct dbhReg dbh;
-	struct dwReg dw;
-	struct ddReg dd;
-} registry32Bits;
-
-
-typedef struct dwReg16 {
-	dw val;
-} dwReg16;                                       
-
-
-
-typedef union registry16Bits
-{
-	struct dblReg16 dbl;
-	struct dbhReg16 dbh;
-	struct dwReg16 dw;
-} registry16Bits;
-
 
 
 
@@ -535,28 +455,6 @@ else
 
 #define SAL(a,b) SHL(a,b)
 
-
-#define READDDp(a) ((dd *) &m.a)
-#define READDWp(a) ((dw *) &m.a)
-#define READDBp(a) ((db *) &m.a)
-
-#define READDD(a) (a)
-
-#ifdef MSB_FIRST
- #define READDBhW(a) (*(((db *) &a)+0))
- #define READDBhD(a) (*(((db *) &a)+2))
- #define READDBlW(a) (*(((db *) &a)+1))
- #define READDBlD(a) (*(((db *) &a)+3))
-#else
- #define READDBhW(a) (*(((db *) &a)+1))
- #define READDBhD(a) (*(((db *) &a)+1))
- #define READDBlW(a) (*(((db *) &a)))
- #define READDBlD(a) (*(((db *) &a)))
-#endif
-
-#define READDW(a) (*((dw *) &m.a.dw.val))
-#define READDBh(a) (*((db *) &m.a.dbh.val))
-#define READDBl(a) (*((db *) &m.a.dbl.val))
 
 //#define AAD {al = al + (ah * 10) & 0xFF; ah = 0;} //TODO
 /*
@@ -870,19 +768,6 @@ void MOV_(D* dest, const S& src)
 #define MOVSW MOVSS(2)
 #define MOVSD MOVSS(4)
 
-/*
-#define REP_MOVSS(b) MOVSS(b,cx)
-#define REP_MOVS(dest,src) while (cx-- > 0) {MOVS(dest,src);}
-#define REP_MOVSB REP_MOVSS(1)
-#define REP_MOVSW REP_MOVSS(2)
-#define REP_MOVSD REP_MOVSS(4)
-*/
-
-
-
-//#define REP_STOSB while (cx>0) { STOSB; --cx;}
-//#define REP_STOSW while (cx>0) { STOSW; --cx;}
-//#define REP_STOSD while (cx>0) { STOSD; --cx;}
 
 
 #ifdef MSB_FIRST
@@ -895,18 +780,6 @@ void MOV_(D* dest, const S& src)
 
 #define LODSD LODSS(4,0)
 
-/*
-#define REP_LODS(a,b) for (i=0; i<ecx; i++) { LODS(a,b); }
-
-#ifdef MSB_FIRST
-#define REP_LODSB REP_LODS(1,3)
-#define REP_LODSW REP_LODS(2,2)
-#else
-#define REP_LODSB REP_LODS(1,0)
-#define REP_LODSW REP_LODS(2,0)
-#define REP_LODSD REP_LODS(4,0)
-#endif
-*/
 
 // JMP - Unconditional Jump
 #define JMP(label) GOTOLABEL(label)
@@ -947,66 +820,66 @@ int8_t asm2C_IN(int16_t data);
 /*
 #define CALLF(label) {log_debug("before callf %d\n",stackPointer);PUSH(cs);CALL(label);}
 #define CALL(label) \
-	{ log_debug("before call %d\n",stackPointer); db tt='x';  \
+	{ log_debug("before call %d\n",stackPointer); db averytemporary4='x';  \
 	if (setjmp(jmpbuffer) == 0) { \
-		PUSH(jmpbuffer); PUSH(tt);\
+		PUSH(jmpbuffer); PUSH(averytemporary4);\
 		JMP(label); \
 	} }
 
-#define RET {log_debug("before ret %d\n",stackPointer); db tt=0; POP(tt); if (tt!='x') {log_error("Stack corrupted.\n");exit(1);} \
+#define RET {log_debug("before ret %d\n",stackPointer); db averytemporary5=0; POP(averytemporary5); if (averytemporary5!='x') {log_error("Stack corrupted.\n");exit(1);} \
  		POP(jmpbuffer); log_debug("after ret %d\n",stackPointer);longjmp(jmpbuffer, 0);}
 
 #define RETN RET
-#define RETF {log_debug("before ret %d\n",stackPointer); db tt=0; POP(tt); if (tt!='x') {log_error("Stack corrupted.\n");exit(1);} \
+#define RETF {log_debug("before ret %d\n",stackPointer); db averytemporary5=0; POP(averytemporary5); if (averytemporary5!='x') {log_error("Stack corrupted.\n");exit(1);} \
  		POP(jmpbuffer); stackPointer-=2; log_debug("after retf %d\n",stackPointer);longjmp(jmpbuffer, 0);}
 */
 #define CALLF(label) {PUSH(cs);CALL(label);}
 /*
 #define CALL(label) \
-	{ db tt='x';  \
+	{ db averytemporary6='x';  \
 	if (setjmp(jmpbuffer) == 0) { \
-		PUSH(jmpbuffer); PUSH(tt);\
+		PUSH(jmpbuffer); PUSH(averytemporary6);\
 		JMP(label); \
 	} }
 
-#define RET {db tt=0; POP(tt); if (tt!='x') {log_error("Stack corrupted.\n");exit(1);} \
+#define RET {db averytemporary7=0; POP(averytemporary7); if (averytemporary7!='x') {log_error("Stack corrupted.\n");exit(1);} \
  		POP(jmpbuffer); longjmp(jmpbuffer, 0);}
-#define RETF {db tt=0; POP(tt); if (tt!='x') {log_error("Stack corrupted.\n");exit(1);} \
+#define RETF {db averytemporary7=0; POP(averytemporary7); if (averytemporary7!='x') {log_error("Stack corrupted.\n");exit(1);} \
  		POP(jmpbuffer); stackPointer-=2; longjmp(jmpbuffer, 0);}
 */
 #if DEBUG
  #define CALL(label) \
-	{ MWORDSIZE tt='xy'; PUSH(tt); \
+	{ MWORDSIZE averytemporary8='xy'; PUSH(averytemporary8); \
 	  log_debug("after call %x\n",stackPointer); \
 	  ++_state->_indent;_state->_str=log_spaces(_state->_indent);\
 	  mainproc(label, _state); \
 	}
 
- #define RET {log_debug("before ret %x\n",stackPointer); MWORDSIZE tt=0; POP(tt); if (tt!='xy') {log_error("Stack corrupted.\n");exit(1);} \
+ #define RET {log_debug("before ret %x\n",stackPointer); MWORDSIZE averytemporary9=0; POP(averytemporary9); if (averytemporary9!='xy') {log_error("Stack corrupted.\n");exit(1);} \
 	log_debug("after ret %x\n",stackPointer); \
 	--_state->_indent;_state->_str=log_spaces(_state->_indent);return;}
 
- #define RETF {log_debug("before retf %x\n",stackPointer); MWORDSIZE tt=0; POP(tt); if (tt!='xy') {log_error("Stack corrupted.\n");exit(1);} \
-	dw tmpp;POP(tmpp); \
+ #define RETF {log_debug("before retf %x\n",stackPointer); MWORDSIZE averytemporary9=0; POP(averytemporary9); if (averytemporary9!='xy') {log_error("Stack corrupted.\n");exit(1);} \
+	dw averytemporary9;POP(averytemporary9); \
 	log_debug("after retf %x\n",stackPointer); \
 	--_state->_indent;_state->_str=log_spaces(_state->_indent);return;}
 #else
  #define CALL(label) \
-	{ MWORDSIZE tt='xy'; PUSH(tt); \
+	{ MWORDSIZE averytemporary10='xy'; PUSH(averytemporary10); \
 	  mainproc(label, _state); \
 	}
 
- #define RET {MWORDSIZE tt=0; POP(tt);  \
+ #define RET {MWORDSIZE averytemporary11=0; POP(averytemporary11);  \
 	return;}
 
- #define RETF {MWORDSIZE tt=0; POP(tt); \
-	dw tmpp;POP(tmpp); \
+ #define RETF {MWORDSIZE averytemporary11=0; POP(averytemporary11); \
+	dw averytemporary2;POP(averytemporary2); \
 	return;}
 #endif
 
 #define RETN RET
 #define IRET RETF
-//#define RETF {dw tt=0; POP(tt); RET;}
+//#define RETF {dw averytemporary=0; POP(averytemporary); RET;}
 #define BSWAP(op1)														\
 	op1 = (op1>>24)|((op1>>8)&0xFF00)|((op1<<8)&0xFF0000)|((op1<<24)&0xFF000000);
 

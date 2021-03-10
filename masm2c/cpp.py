@@ -133,7 +133,7 @@ class Cpp(object):
         self.__methods = []
         self.__pushpop_count = 0
         self.lea = False
-        self.__far = False
+        far = False
         self.size_changed = False
         self.address = False
         self.body = ""
@@ -493,20 +493,13 @@ class Cpp(object):
         logging.debug("jump_to_label(%s)" % name)
         name = Token.remove_tokens(name, ['expr'])
 
-        # name = name.strip()
         jump_proc = False
 
-        self.__far = False
-        # name_original = name
-
-        # prog = re.compile(r'^\s*(near|far|short)\s*(ptr)?\s*', re.I)  # x0r TODO
-        # name = re.sub(prog, '', name)
         indirection = -5
 
         segoverride = Token.find_tokens(name, 'segoverride')
         if segoverride:
             self.__work_segment = segoverride[0].value
-        #    name = Token.remove_tokens(name, ['segoverride', 'segmentregister'])
 
         if isinstance(name, Token) and name.type == 'register':
             name = name.value
@@ -514,7 +507,8 @@ class Cpp(object):
 
         labeldir = Token.find_tokens(name, 'LABEL')
         if labeldir:
-            labeldir[0] = self.__context.mangle_label(mangle2_label(labeldir[0]))
+            from masm2c.parser import Parser
+            labeldir[0] = Parser.mangle_label(mangle2_label(labeldir[0]))
             if self.__context.has_global(labeldir[0]):
                 g = self.__context.get_global(labeldir[0])
                 if isinstance(g, op.var):
@@ -542,43 +536,33 @@ class Cpp(object):
             if labeldir:
                 name = labeldir[0]
 
-        # name = self.resolve_label(name)
         logging.debug("label %s" % name)
-        hasglobal = False
-        if name in self.__blacklist:
-            jump_proc = True
 
+        hasglobal = False
+        far = False
         if self.__context.has_global(name):
             hasglobal = True
             g = self.__context.get_global(name)
             if isinstance(g, proc_module.Proc):
-                jump_proc = True
+                return (name, far)
 
-        if jump_proc:
-            if name in self.__function_name_remapping:
-                return "%s" % self.__function_name_remapping[name]
-            else:
-                return name
+        if name in self.proc.retlabels:
+            return ("return /* (%s) */" % name, far)
+
+        if hasglobal:
+            if isinstance(g, op.label) and g.far:
+                far = True  # make far calls to far procs
         else:
-            # TODO: name or self.resolve_label(name) or self.mangle_label(name)??
-            if name in self.proc.retlabels:
-                return "return /* (%s) */" % name
-            ## x0r return "goto %s" %self.resolve_label(name)
-            if not hasglobal:
-                ##name = self.expand_old(name, destination=True)  # TODO
-                self.body += "__disp = (dw)(" + name + ");\n"
-                name = "__dispatch_call"
-            else:
-                if isinstance(g, op.label) and g.far:
-                    self.__far = True  # make far calls to far procs
+            self.body += "__disp = (dw)(" + name + ");\n"
+            name = "__dispatch_call"
 
-            if ptrdir:
-                if any(isinstance(x, str) and x.lower() == 'far' for x in ptrdir):
-                    self.__far = True
-                elif any(isinstance(x, str) and x.lower() == 'near' for x in ptrdir):
-                    self.__far = False
+        if ptrdir:
+            if any(isinstance(x, str) and x.lower() == 'far' for x in ptrdir):
+                far = True
+            elif any(isinstance(x, str) and x.lower() == 'near' for x in ptrdir):
+                far = False
 
-        return name
+        return (name, far)
 
     def _label(self, name, proc):
         ret = ""
@@ -598,13 +582,13 @@ class Cpp(object):
         logging.debug("cpp._call(%s)" % str(name))
         ret = ""
         # dst = self.expand(name, destination = False)
-        dst = self.jump_to_label(name)
-        if dst != "__dispatch_call":
-            dst = "k" + dst
-        else:
+        dst, far = self.jump_to_label(name)
+        if dst == "__dispatch_call":
             dst = "__disp"
+        else:
+            dst = "k" + dst
 
-        if self.__far:
+        if far:
             ret += "\tR(CALLF(%s));\n" % (dst)
         else:
             ret += "\tR(CALL(%s));\n" % (dst)
@@ -704,27 +688,27 @@ class Cpp(object):
         if result:
             return "\n"
         else:
-            label = self.jump_to_label(label)  # TODO
+            label, far = self.jump_to_label(label)  # TODO
             return "\t\tR(JZ(%s));\n" % label
 
     def _jnz(self, label):
-        label = self.jump_to_label(label)
+        label, far = self.jump_to_label(label)
         return "\t\tR(JNZ(%s));\n" % label
 
     def _jbe(self, label):
-        label = self.jump_to_label(label)
+        label, far = self.jump_to_label(label)
         return "\t\tR(JBE(%s));\n" % label
 
     def _ja(self, label):
-        label = self.jump_to_label(label)
+        label, far = self.jump_to_label(label)
         return "\t\tR(JA(%s));\n" % label
 
     def _jc(self, label):
-        label = self.jump_to_label(label)
+        label, far = self.jump_to_label(label)
         return "\t\tR(JC(%s));\n" % label
 
     def _jnc(self, label):
-        label = self.jump_to_label(label)
+        label, far = self.jump_to_label(label)
         return "\t\tR(JNC(%s));\n" % label
 
     '''
@@ -1067,7 +1051,7 @@ mainproc_begin:
         if result:
             return "\n"
         else:
-            label = self.jump_to_label(label)  # TODO
+            label, far = self.jump_to_label(label)  # TODO
             return "\t\tR(%s(%s));\n" % (cmd.upper(), label)
 
     def isrelativejump(self, label):

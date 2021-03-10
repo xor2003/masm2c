@@ -148,7 +148,9 @@ def macroname(context, s, pos):
 
 def macrodirhead(context, nodes, name, parms):
     # macro definition header
-    param_names = [i.lower() for i in Token.find_tokens(parms, 'LABEL')]
+    param_names = []
+    if parms:
+        param_names = [i.lower() for i in Token.find_tokens(parms, 'LABEL')]
     context.extra.current_macro = Macro(name.value.lower(), param_names)
     context.extra.macro_name.append(name.value.lower())
     logging.debug("macroname added ~~" + name.value + "~~")
