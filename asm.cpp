@@ -178,19 +178,19 @@ X86_REGREF
 	log_debug("sizeof(db)=%zu\n",sizeof(db));
 	log_debug("sizeof(jmp_buf)=%zu\n",sizeof(jmp_buf));
 //	log_debug("sizeof(mem)=%zu\n",sizeof(m));
-	log_debug("eax: %x\n",READDD(eax));
+	log_debug("eax: %x\n",eax);
 //	hexDump(&eax,sizeof(dd));
-	log_debug("ebx: %x\n",READDD(ebx));
-	log_debug("ecx: %x\n",READDD(ecx));
-	log_debug("edx: %x\n",READDD(edx));
-	log_debug("ebp: %x\n",READDD(ebp));
+	log_debug("ebx: %x\n",ebx);
+	log_debug("ecx: %x\n",ecx);
+	log_debug("edx: %x\n",edx);
+	log_debug("ebp: %x\n",ebp);
 	log_debug("cs: %d -> %p\n",cs,(void *) realAddress(0,cs));
 	log_debug("ds: %d -> %p\n",ds,(void *) realAddress(0,ds));
-	log_debug("esi: %x\n",READDD(esi));
+	log_debug("esi: %x\n",esi);
 	log_debug("ds:esi %p\n",(void *) realAddress(esi,ds));
 	log_debug("es: %d -> %p\n",es,(void *) realAddress(0,es));
 	hexDump(&es,sizeof(dd));
-	log_debug("edi: %x\n",READDD(edi));
+	log_debug("edi: %x\n",edi);
 	log_debug("es:edi %p\n",(void *) realAddress(edi,es));
 	hexDump((void *) realAddress(edi,es),50);
 	log_debug("fs: %d -> %p\n",fs,(void *) realAddress(0,fs));
@@ -1005,7 +1005,7 @@ X86_REGREF
 		 
 		case 0x07:
 		{
-			log_debug2("Function 0007h - Set Segment Base Address: ebx: %x, edx:%x ecx:%x\n",READDD(ebx),READDD(edx),READDD(ecx));
+			log_debug2("Function 0007h - Set Segment Base Address: ebx: %x, edx:%x ecx:%x\n",ebx,edx,ecx);
 			if (bx>selectorsPointer) {
 				CF = 1;
 				log_error("Error: selector number doesnt exist\n");
