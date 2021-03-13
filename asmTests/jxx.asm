@@ -25,8 +25,10 @@ mov bx,6
 call [cs:jtable+bx]
 jmp next
 mov ebp,31
-@df@@@@9:
+
+@df@@@@9 proc
 ret
+@df@@@@9 endp
 
 next:
 

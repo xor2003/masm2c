@@ -123,7 +123,7 @@ X86_REGREF
         return '}\n'
 
     def produce_jump_table(self, globals):
-        result = "void DispatchProc(_offsets __disp, struct _STATE* _state){\nswitch (__disp) {\n"
+        result = "void __dispatch_call(_offsets __disp, struct _STATE* _state){\nswitch (__disp) {\n"
         offsets = []
         for k, v in globals:
             k = re.sub(r'[^A-Za-z0-9_]', '_', k)
@@ -142,7 +142,7 @@ X86_REGREF
         for p in procs:
               result += "void %s(_offsets, struct _STATE* _state);\n" %p
 
-        result += "void DispatchProc(_offsets __disp, struct _STATE* _state);\n";
+        result += "void __dispatch_call(_offsets __disp, struct _STATE* _state);\n";
         return result
 
     def get_strategy(self):

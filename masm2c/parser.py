@@ -524,11 +524,13 @@ class Parser:
         self.entry_point = "mainproc_begin"
 
         self.proc_list = []
+        self.proc_stack = []
 
         # self.proc = None
         nname = "mainproc"
         self.proc = Proc(nname)
         self.proc_list.append(nname)
+        self.proc_stack.append(self.proc)
         self.set_global(nname, self.proc)
 
         self.__binary_data_size = 0
@@ -967,6 +969,7 @@ class Parser:
             self.proc = Proc(name, far=far, line_number=line_number)
             logging.debug("procedure %s, #%d" %(name, len(self.proc_list)))
             self.proc_list.append(name)
+            self.proc_stack.append(self.proc)
             self.set_global(name, self.proc)
         else:
             self.action_label(name, far=far, isproc=True)
@@ -1005,7 +1008,11 @@ class Parser:
         self.parse_file(name)
 
     def action_endp(self):
-        self.proc = self.get_global('mainproc')
+        self.proc_stack.pop()
+        if self.proc_stack:
+            self.proc = self.proc_stack[-1]
+        else:
+            self.proc = None
 
     def action_endif(self):
         self.pop_if()
