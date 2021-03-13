@@ -1222,8 +1222,6 @@ class CppTest(unittest.TestCase):
 
         self.assertEqual(p.is_register(expr=u'cl'), 1)
 
-        self.assertEqual(p.is_register(expr=u'edx'), 4)
-
         self.assertEqual(p.is_register(expr=u'[edi+1]'), 0)
 
         self.assertEqual(p.is_register(expr=u'[doublequote+4]'), 0)
@@ -1233,8 +1231,6 @@ class CppTest(unittest.TestCase):
         self.assertEqual(p.is_register(expr=u'-12'), 0)
 
         self.assertEqual(p.is_register(expr=u'teST2'), 0)
-
-        self.assertEqual(p.is_register(expr=u'var3'), 0)
 
         self.assertEqual(p.is_register(expr=u"'d'"), 0)
 

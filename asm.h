@@ -847,13 +847,8 @@ int8_t asm2C_IN(int16_t data);
 #define RETF {db averytemporary7=0; POP(averytemporary7); if (averytemporary7!='x') {log_error("Stack corrupted.\n");exit(1);} \
  		POP(jmpbuffer); stackPointer-=2; longjmp(jmpbuffer, 0);}
 */
+
 #if DEBUG
- #define CALL(label) \
-	{ MWORDSIZE averytemporary8='xy'; PUSH(averytemporary8); \
-	  log_debug("after call %x\n",stackPointer); \
-	  ++_state->_indent;_state->_str=log_spaces(_state->_indent);\
-	  mainproc(label, _state); \
-	}
 
  #define RET {log_debug("before ret %x\n",stackPointer); MWORDSIZE averytemporary9=0; POP(averytemporary9); if (averytemporary9!='xy') {log_error("Stack corrupted.\n");exit(1);} \
 	log_debug("after ret %x\n",stackPointer); \
@@ -864,10 +859,6 @@ int8_t asm2C_IN(int16_t data);
 	log_debug("after retf %x\n",stackPointer); \
 	--_state->_indent;_state->_str=log_spaces(_state->_indent);return;}
 #else
- #define CALL(label) \
-	{ MWORDSIZE averytemporary10='xy'; PUSH(averytemporary10); \
-	  mainproc(label, _state); \
-	}
 
  #define RET {MWORDSIZE averytemporary11=0; POP(averytemporary11);  \
 	return;}
@@ -876,6 +867,40 @@ int8_t asm2C_IN(int16_t data);
 	dw averytemporary2;POP(averytemporary2); \
 	return;}
 #endif
+
+#ifdef SINGLEPROCSTRATEGY
+
+#if DEBUG
+ #define CALL(label) \
+	{ MWORDSIZE averytemporary8='xy'; PUSH(averytemporary8); \
+	  log_debug("after call %x\n",stackPointer); \
+	  ++_state->_indent;_state->_str=log_spaces(_state->_indent);\
+	  mainproc(label, _state); \
+	}
+#else
+ #define CALL(label) \
+	{ MWORDSIZE averytemporary10='xy'; PUSH(averytemporary10); \
+	  mainproc(label, _state); \
+	}
+#endif
+
+#else // SINGLEPROCSTRATEGY end separate procs start
+
+#if DEBUG
+ #define CALL(label) \
+	{ MWORDSIZE averytemporary8='xy'; PUSH(averytemporary8); \
+	  log_debug("after call %x\n",stackPointer); \
+	  ++_state->_indent;_state->_str=log_spaces(_state->_indent);\
+	  label(0, _state); \
+	}
+#else
+ #define CALL(label) \
+	{ MWORDSIZE averytemporary10='xy'; PUSH(averytemporary10); \
+	  label(0, _state); \
+	}
+#endif
+
+#endif // end separate procs
 
 #define RETN RET
 #define IRET RETF

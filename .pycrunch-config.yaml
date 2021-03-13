@@ -1,0 +1,15 @@
+# documentation https://pycrunch.com/docs/configuration-file
+engine:
+    runtime: pytest
+    timeout: 5000
+    cpu-cores: 1
+
+discovery:
+  exclusions:
+  # (example) do not search tests in 'ignored_folder' folder
+  #- ignored_folder/
+  # do not search tests in 'test_ignored.py' file
+  - _pglr_test.py
+  - _pglr_test_.py
+  - _masm61_lark.py
+

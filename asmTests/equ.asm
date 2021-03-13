@@ -36,6 +36,7 @@ jne failure
 B = 1
 
 call incebx
+jne failure
 
 DDD = var1 ; actually it is address of var1
 movzx eax, DDD
@@ -58,7 +59,6 @@ B = 3
 mov eax, B
 cmp eax,3
 mov al,5
-jne failure
 
 CC equ 4
 

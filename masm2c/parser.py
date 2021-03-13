@@ -4,8 +4,8 @@ import logging
 import os
 import re
 import sys
-from builtins import chr
-from builtins import hex
+#from builtins import chr
+#from builtins import hex
 from builtins import object
 from builtins import range
 from builtins import str
@@ -290,7 +290,7 @@ def endsdir(context, nodes, name):
 
 def procdir(context, nodes, name, type):
     logging.debug("procdir " + str(nodes) + " ~~")
-    context.extra.action_proc(name, type)
+    context.extra.action_proc(name, type, get_line_number(context))
     return nodes
 
 
@@ -346,6 +346,7 @@ def enddir(context, nodes, label):
     logging.debug("end " + str(nodes) + " ~~")
     if label:
         context.extra.entry_point = Token.find_tokens(label, 'LABEL')[0].lower()
+        context.extra.add_call_to_entrypoint()
     return nodes
 
 
@@ -512,7 +513,8 @@ def dump_object(value):
 
 class Parser:
     def __init__(self, skip_binary_data=[]):
-        self.__label_to_skip = skip_binary_data
+        self.separate_proc = True
+        #self.__label_to_skip = skip_binary_data
 
         self.__globals = {}
         self.__offsets = {}
@@ -826,12 +828,9 @@ class Parser:
         return n * len(values), res
 
     def action_label(self, name, far=False, isproc=False):
-        # if self.visible():
-        # name = m.group(1)
-        # logging.debug "~name: %s" %name
+        logging.debug("~name: %s" %name)
         name = self.mangle_label(name)
-        # logging.debug "~~name: %s" %name
-        if not (name in self.__label_to_skip):
+        if True: #not (name in self.__label_to_skip):
             logging.debug("offset %s -> %s" % (name, "&m." + name.lower() + " - &m." + self.__segment_name))
             '''
             if self.proc is None:
@@ -843,7 +842,6 @@ class Parser:
             '''
             if self.proc:
                 self.proc.add_label(name, isproc)
-                # self.set_offset(name, ("&m." + name.lower() + " - &m." + self.segment, self.proc, len(self.proc.stmts)))
                 self.set_offset(name, ("&m." + name.lower() + " - &m." + self.__segment_name, self.proc, self.__offset_id))
                 self.set_global(name, op.label(name, proc.Proc, line_number=self.__offset_id, far=far))
                 self.__offset_id += 1
@@ -957,22 +955,21 @@ class Parser:
         self.__segment_name = name
         self.create_segment(name)
 
-    def action_proc(self, name, type):
+    def action_proc(self, name, type, line_number):
         logging.info("procedure name %s" % name.value)
-        name = name.value.lower()
-        far = ''
+        name = self.mangle_label(name.value)
+        far = False
         for i in type:
             if i and i.lower() == 'far':
                 far = True
-        '''
-                                        name = cmd0l
-                                        self.proc = proc(name)
-                                        logging.debug "procedure %s, #%d" %(name, len(self.proc_list))
-                                        self.proc_list.append(name)
-                                        self.set_global(name, self.proc)
-        '''
 
-        self.action_label(name, far=far, isproc=True)
+        if self.separate_proc:
+            self.proc = Proc(name, far=far, line_number=line_number)
+            logging.debug("procedure %s, #%d" %(name, len(self.proc_list)))
+            self.proc_list.append(name)
+            self.set_global(name, self.proc)
+        else:
+            self.action_label(name, far=far, isproc=True)
 
     def action_simplesegment(self, type, name):
         if name is None:
@@ -1240,3 +1237,11 @@ class Parser:
             self.set_global(label, op.var(binary_width, 0, name=label, segment='',
                                               elements=1, external=True, original_type=strtype))
             self.externals.add(label)
+
+    def add_call_to_entrypoint(self):
+        if self.separate_proc:
+            proc = self.get_global('mainproc')
+            o = proc.create_instruction_object('call', [self.entry_point])
+            o.line = ''
+            o.line_number = 0
+            proc.stmts.append(o)

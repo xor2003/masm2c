@@ -16,7 +16,7 @@ class Proc(object):
     last_addr = 0xc000
     elements = 1  # how many
 
-    def __init__(self, name, far=False):
+    def __init__(self, name, far=False, line_number=0):
         self.name = name
         self.original_name = name
         #self.__calls = []
@@ -25,7 +25,7 @@ class Proc(object):
         self.retlabels = set()
         self.offset = Proc.last_addr
         Proc.last_addr += 4
-        # self.__line_number = line_number
+        self.line_number = line_number
         self.far = far
         self.used = False
 

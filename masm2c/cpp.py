@@ -34,6 +34,121 @@ class SkipCode(Exception):
 class CrossJump(Exception):
     pass
 
+
+class SingleProcStrategy:
+
+    def forward_to_dispatcher(self, name):
+        addtobody = "__disp = (dw)(" + name + ");\n"
+        name = "__dispatch_call"
+        return addtobody, name
+
+    def fix_call_label(self, dst):
+        if dst == "__dispatch_call":
+            # procedure id in variable __disp
+            dst = "__disp"  # [Token('expr', 'Token(sqexpr, [[Token('LABEL', 'table'), ['+', Token('register', 'ax')]]])')]
+        else:
+            # procedure id is an immediate value
+            dst = "k" + dst  # [Token('expr', 'Token(LABEL, exec_adc)')]
+        return dst
+
+    def produce_proc_start(self, name):
+        ret = " // Procedure %s() start\n%s:\n" % (name, mangle2_label(name))
+        return ret
+
+    def function_header(self, name, entry_point=''):
+        header = """
+
+            void %s(_offsets _i, struct _STATE* _state){
+            X86_REGREF
+            __disp=_i;
+            if (__disp==kbegin) goto %s;
+            else goto __dispatch_call;
+            mainproc_begin:
+            """ % (name, entry_point)
+        return header
+
+    def function_end(self):
+        return ''
+
+    def produce_jump_table(self, globals):
+        result = "\nreturn;\n__dispatch_call:\nswitch (__disp) {\n"
+        offsets = []
+        for k, v in globals:
+            k = re.sub(r'[^A-Za-z0-9_]', '_', k)
+            if isinstance(v, op.label):
+                offsets.append((k.lower(), k))
+        offsets = sorted(offsets, key=lambda t: t[1])
+        for o in offsets:
+            logging.debug(o)
+            result += "case k%s: \tgoto %s;\n" % o
+        result += "default: log_error(\"Jump/call to nothere %d\\n\", __disp);stackDump(_state); abort();\n"
+        result += "};\n}\n"
+        return result
+
+    def write_declarations(self, procs):
+        return ""
+
+    def get_strategy(self):
+        return "#define SINGLEPROCSTRATEGY\n"
+
+class SeparateProcStrategy:
+
+    def forward_to_dispatcher(self, name):
+        addtobody = "__disp = (dw)(" + name + ");\n"
+        name = "__dispatch_call"
+        return addtobody, name
+
+    def fix_call_label(self, dst):
+        if dst == "__dispatch_call":
+            # procedure id in variable __disp
+            pass # dst = "__disp"  # [Token('expr', 'Token(sqexpr, [[Token('LABEL', 'table'), ['+', Token('register', 'ax')]]])')]
+        else:
+            # procedure id is an immediate value
+            pass  # [Token('expr', 'Token(LABEL, exec_adc)')]
+        return dst
+
+    def produce_proc_start(self, name):
+        ret = " // Procedure %s() start\n%s()\n{\n" % (name, mangle2_label(name))
+        return ret
+
+    def function_header(self, name, entry_point=''):
+        header = """
+
+void %s(_offsets, struct _STATE* _state){
+X86_REGREF
+""" % name
+        return header
+
+    def function_end(self):
+        return '}\n'
+
+    def produce_jump_table(self, globals):
+        result = "void DispatchProc(_offsets __disp, struct _STATE* _state){\nswitch (__disp) {\n"
+        offsets = []
+        for k, v in globals:
+            k = re.sub(r'[^A-Za-z0-9_]', '_', k)
+            if isinstance(v, proc_module.Proc):
+                offsets.append((k.lower(), k))
+        offsets = sorted(offsets, key=lambda t: t[1])
+        for o in offsets:
+            logging.debug(o)
+            result += "case k%s: \t%s(0, _state); break;\n" % o
+        result += "default: log_error(\"Jump/call to nothere %d\\n\", __disp);stackDump(_state); abort();\n"
+        result += "};\n}\n"
+        return result
+
+    def write_declarations(self, procs):
+        result = ""
+        for p in procs:
+              result += "void %s(_offsets, struct _STATE* _state);\n" %p
+
+        result += "void DispatchProc(_offsets __disp, struct _STATE* _state);\n";
+        return result
+
+    def get_strategy(self):
+        return ""
+
+
 def check_int(s):
     if s[0] in ('-', '+'):
         return s[1:].isdigit()
@@ -99,7 +214,7 @@ def mangle2_label(name):
 
 class Cpp(object):
     def __init__(self, context, outfile="", skip_first=0, blacklist=[], skip_output=None, skip_dispatch_call=False,
-                 skip_addr_constants=False, header_omit_blacklisted=False, function_name_remapping=None):
+                 skip_addr_constants=False, header_omit_blacklisted=False, function_name_remapping=None, proc_strategy=SeparateProcStrategy()):
         FORMAT = "%(filename)s:%(lineno)d %(message)s"
         logging.basicConfig(format=FORMAT)
 
@@ -110,8 +225,11 @@ class Cpp(object):
         self.__codeset = 'cp437'
         self.__context = context
 
+        self.proc_strategy = proc_strategy
+
         self.__cdata_seg = ""
         self.__hdata_seg = ""
+
         for i in context.segments.values():
             for j in i.getdata():
                 c, h, size = self.produce_c_data(j)
@@ -491,6 +609,8 @@ class Cpp(object):
 
     def jump_to_label(self, name):
         logging.debug("jump_to_label(%s)" % name)
+        # Token(expr, Token(LABEL, printf))
+        #
         name = Token.remove_tokens(name, ['expr'])
 
         jump_proc = False
@@ -514,6 +634,8 @@ class Cpp(object):
                 if isinstance(g, op.var):
                     indirection = 1  # []
                 elif isinstance(g, op.label):
+                    indirection = -1  # direct using number
+                elif isinstance(g, proc_module.Proc):
                     indirection = -1  # direct using number
             else:
                 name = labeldir[0]
@@ -544,17 +666,17 @@ class Cpp(object):
             hasglobal = True
             g = self.__context.get_global(name)
             if isinstance(g, proc_module.Proc):
-                return (name, far)
+                return (name, g.far)
 
         if name in self.proc.retlabels:
             return ("return /* (%s) */" % name, far)
 
         if hasglobal:
-            if isinstance(g, op.label) and g.far:
-                far = True  # make far calls to far procs
+            if isinstance(g, op.label):
+                far = g.far  # make far calls to far procs
         else:
-            self.body += "__disp = (dw)(" + name + ");\n"
-            name = "__dispatch_call"
+            addtobody, name = self.proc_strategy.forward_to_dispatcher(name)
+            self.body += addtobody
 
         if ptrdir:
             if any(isinstance(x, str) and x.lower() == 'far' for x in ptrdir):
@@ -567,8 +689,9 @@ class Cpp(object):
     def _label(self, name, proc):
         ret = ""
         if proc:
-            ret += " // Procedure %s() start\n" % (name)
-        ret += "%s:\n" % mangle2_label(name)
+            ret = self.proc_strategy.produce_proc_start(name)
+        else:
+            ret = "%s:\n" % mangle2_label(name)
         return ret
 
     def schedule(self, name):
@@ -583,10 +706,7 @@ class Cpp(object):
         ret = ""
         # dst = self.expand(name, destination = False)
         dst, far = self.jump_to_label(name)
-        if dst == "__dispatch_call":
-            dst = "__disp"
-        else:
-            dst = "k" + dst
+        dst = self.proc_strategy.fix_call_label(dst)
 
         if far:
             ret += "\tR(CALLF(%s));\n" % (dst)
@@ -778,7 +898,7 @@ class Cpp(object):
         return "\tR(SCAS(%s,%d));\n" % (src, size)
 
     def __proc(self, name, def_skip=0):
-        logging.debug("cpp::__proc(%s)" % name)
+        logging.info("cpp::__proc(%s)" % name)
         # traceback.print_stack(file=sys.stdout)
         try:
             skip = def_skip
@@ -802,43 +922,18 @@ class Cpp(object):
                 self.body += "int %s() {\ngoto %s;\n" % (
                     self.__function_name_remapping[name], self.__context.entry_point)
             else:
-                self.body += """
-int init(struct _STATE* _state)
-{
-X86_REGREF
-
-  log_debug("~~~ heap_size=%%d para=%%d heap_ofs=%%d", HEAP_SIZE, (HEAP_SIZE >> 4), seg_offset(heap) );
-  /* We expect ram_top as Kbytes, so convert to paragraphs */
-  mcb_init(seg_offset(heap), (HEAP_SIZE >> 4) - seg_offset(heap) - 1, MCB_LAST);
-
-  R(MOV(ss, seg_offset(stack)));
-#if _BITS == 32
-  esp = ((dd)(db*)&m.stack[STACK_SIZE - 4]);
-#else
-  esp=0;
-  sp = STACK_SIZE - 4;
-  es=0;
- *(dw*)(raddr(0,0x408)) = 0x378; //LPT
-#endif
-
-        return(0);
-}
-
-void %s(_offsets _i, struct _STATE* _state){
-X86_REGREF
-__disp=_i;
-if (__disp==kbegin) goto %s;
-else goto __dispatch_call;
-mainproc_begin:
-""" % (name, self.__context.entry_point)
+                self.body += self.proc_strategy.function_header(name, self.__context.entry_point)
 
             logging.info(name)
             self.proc.optimize()
             self.__unbounded = []
             self.proc.visit(self, skip)
 
+            self.body += self.proc_strategy.function_end()
+
             if name not in self.__skip_output:
-                self.__translated.insert(0, self.body)
+                self.__translated.append(self.body)
+
             self.proc = None
 
             if self.__pushpop_count != 0:
@@ -849,6 +944,7 @@ mainproc_begin:
             self.__failed.append(name)
         except:
             raise
+
 
     def generate(self, start):
         fname = self.__namespace.lower() + ".cpp"
@@ -874,6 +970,8 @@ mainproc_begin:
 
 %s""" % (hid, hid, banner))
 
+        self.hd.write(self.proc_strategy.get_strategy())
+
         self.fd.write("""%s
 #include \"%s\"
 #include <curses.h>
@@ -881,8 +979,33 @@ mainproc_begin:
 //namespace %s {
 """ % (banner, header, self.__namespace))
 
-        self.__proc_queue.append(start)
-        while len(self.__proc_queue):
+        self.fd.write("""
+        int init(struct _STATE* _state)
+        {
+        X86_REGREF
+
+          log_debug("~~~ heap_size=%%d para=%%d heap_ofs=%%d", HEAP_SIZE, (HEAP_SIZE >> 4), seg_offset(heap) );
+          /* We expect ram_top as Kbytes, so convert to paragraphs */
+          mcb_init(seg_offset(heap), (HEAP_SIZE >> 4) - seg_offset(heap) - 1, MCB_LAST);
+
+          R(MOV(ss, seg_offset(stack)));
+        #if _BITS == 32
+          esp = ((dd)(db*)&m.stack[STACK_SIZE - 4]);
+        #else
+          esp=0;
+          sp = STACK_SIZE - 4;
+          es=0;
+         *(dw*)(raddr(0,0x408)) = 0x378; //LPT
+        #endif
+
+                return(0);
+        }
+        """)
+
+        #self.__proc_queue.append(start)
+        #while len(self.__proc_queue):
+        for name in self.__procs:
+            '''
             name = self.__proc_queue.pop()
             if name in self.__failed or name in self.__proc_done:
                 continue
@@ -890,7 +1013,8 @@ mainproc_begin:
                 logging.info("queue's empty, adding remaining __procs:")
                 for p in self.__procs:
                     self.schedule(p)
-                self.__procs = []
+                #self.__procs = []
+            '''
             logging.info("continuing on %s" % name)
             self.__proc_done.append(name)
             self.__proc(name)
@@ -913,9 +1037,7 @@ mainproc_begin:
 
         data_impl = ""
 
-        self.fd.write("\nreturn;\n")
-
-        self.produce_jump_table()
+        self.fd.write(self.proc_strategy.produce_jump_table(list(self.__context.get_globals().items())))
 
         data_impl += "\nstruct Memory m = {\n"
         for v in cdata_bin:
@@ -941,6 +1063,8 @@ mainproc_begin:
         structures = self.produce_structures()
         self.hd.write(structures)
 
+        self.hd.write(self.proc_strategy.write_declarations(self.__procs))
+
         data = self.produce_data(hdata_bin)
         self.hd.write(data)
 
@@ -961,7 +1085,7 @@ mainproc_begin:
         offsets = []
         for k, v in list(self.__context.get_globals().items()):
             k = re.sub(r'[^A-Za-z0-9_]', '_', k)
-            if isinstance(v, op.label):
+            if isinstance(v, (op.label, proc_module.Proc)):
                 offsets.append((k.lower(), hex(v.line_number)))
         offsets = sorted(offsets, key=lambda t: t[1])
         labeloffsets = "static const uint16_t kbegin = 0x1001;\n"
@@ -996,19 +1120,6 @@ mainproc_begin:
         return data
 
 
-    def produce_jump_table(self):
-        self.fd.write("__dispatch_call:\nswitch (__disp) {\n")
-        offsets = []
-        for k, v in list(self.__context.get_globals().items()):
-            k = re.sub(r'[^A-Za-z0-9_]', '_', k)
-            if isinstance(v, op.label):
-                offsets.append((k.lower(), k))
-        offsets = sorted(offsets, key=lambda t: t[1])
-        for o in offsets:
-            logging.debug(o)
-            self.fd.write("case k%s: \tgoto %s;\n" % o)
-        self.fd.write("default: log_error(\"Jump/call to nothere %d\\n\", __disp);stackDump(_state); abort();\n")
-        self.fd.write("};\n}\n")
 
     def _lea(self, dst, src):
         self.lea = True
@@ -1173,3 +1284,5 @@ mainproc_begin:
                 vvv = c
             # vvv = "'" + vvv + "'"
         return vvv
+
+
