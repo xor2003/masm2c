@@ -702,7 +702,7 @@ class Parser:
             v = g.original_name
         elif isinstance(g, op.var):
             v = "offset(%s,%s)" % (g.segment, g.name)
-        elif isinstance(g, op.label):
+        elif isinstance(g, (op.label, proc.Proc)):
             v = "k%s" % (g.name.lower())
         else:
             v = g.offset

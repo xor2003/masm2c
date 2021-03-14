@@ -891,12 +891,12 @@ int8_t asm2C_IN(int16_t data);
 	{ MWORDSIZE averytemporary8='xy'; PUSH(averytemporary8); \
 	  log_debug("after call %x\n",stackPointer); \
 	  ++_state->_indent;_state->_str=log_spaces(_state->_indent);\
-	  label(0, _state); \
+	  label(__disp, _state); \
 	}
 #else
  #define CALL(label) \
 	{ MWORDSIZE averytemporary10='xy'; PUSH(averytemporary10); \
-	  label(0, _state); \
+	  label(__disp, _state); \
 	}
 #endif
 
