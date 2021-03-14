@@ -1447,7 +1447,7 @@ int main(int argc, char *argv[]) {
             *(((dw *) &m) + 0x81 + s) = 0xD;
 
         }
-        mainproc((_offsets) 0x1001, _state);
+        mainproc((_offsets) 0, _state);
     }
     catch (const std::exception &e) {
         printf("std::exception& %s\n", e.what());

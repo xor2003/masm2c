@@ -845,7 +845,7 @@ class Parser:
             if self.proc:
                 self.proc.add_label(name, isproc)
                 self.set_offset(name, ("&m." + name.lower() + " - &m." + self.__segment_name, self.proc, self.__offset_id))
-                self.set_global(name, op.label(name, proc.Proc, line_number=self.__offset_id, far=far))
+                self.set_global(name, op.label(name, self.proc, line_number=self.__offset_id, far=far))
                 self.__offset_id += 1
             else:
                 logging.error("!!! Label %s is outside the procedure" % name)

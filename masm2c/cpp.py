@@ -35,6 +35,23 @@ class CrossJump(Exception):
     pass
 
 
+def produce_jump_table(globals):
+    # Produce jump table
+    result = "\nreturn;\n__dispatch_call:\nswitch (__disp) {\n"
+    offsets = []
+    for k, v in globals:
+        k = re.sub(r'[^A-Za-z0-9_]', '_', k)
+        if isinstance(v, op.label):
+            offsets.append((k.lower(), k))
+    offsets = sorted(offsets, key=lambda t: t[1])
+    for o in offsets:
+        logging.debug(o)
+        result += "case k%s: \tgoto %s;\n" % o
+    result += "default: log_error(\"Jump/call to nowhere %d\\n\", __disp);stackDump(_state); abort();\n"
+    result += "};\n}\n"
+    return result
+
+
 class SingleProcStrategy:
 
     def forward_to_dispatcher(self, name):
@@ -61,29 +78,23 @@ class SingleProcStrategy:
             void %s(_offsets _i, struct _STATE* _state){
             X86_REGREF
             __disp=_i;
+            """ % name
+        if entry_point != '':
+            header += """
             if (__disp==kbegin) goto %s;
+        """ % entry_point
+        header += """
+            if (__disp==0) goto _begin;
             else goto __dispatch_call;
-            mainproc_begin:
-            """ % (name, entry_point)
+            _begin:
+            """
         return header
 
     def function_end(self):
         return ''
 
-    def produce_jump_table(self, globals):
-        result = "\nreturn;\n__dispatch_call:\nswitch (__disp) {\n"
-        offsets = []
-        for k, v in globals:
-            k = re.sub(r'[^A-Za-z0-9_]', '_', k)
-            if isinstance(v, op.label):
-                offsets.append((k.lower(), k))
-        offsets = sorted(offsets, key=lambda t: t[1])
-        for o in offsets:
-            logging.debug(o)
-            result += "case k%s: \tgoto %s;\n" % o
-        result += "default: log_error(\"Jump/call to nothere %d\\n\", __disp);stackDump(_state); abort();\n"
-        result += "};\n}\n"
-        return result
+    def produce_global_jump_table(self, globals):
+        return produce_jump_table(globals)
 
     def write_declarations(self, procs):
         return ""
@@ -114,15 +125,26 @@ class SeparateProcStrategy:
     def function_header(self, name, entry_point=''):
         header = """
 
-void %s(_offsets, struct _STATE* _state){
-X86_REGREF
-""" % name
+                    void %s(_offsets _i, struct _STATE* _state){
+                    X86_REGREF
+                    __disp=_i;
+                    """ % name
+        if entry_point != '':
+            header += """
+                    if (__disp==kbegin) goto %s;
+                """ % entry_point
+        header += """
+                    if (__disp==0) goto _begin;
+                    else goto __dispatch_call;
+                    _begin:
+                    """
         return header
 
     def function_end(self):
         return '}\n'
 
-    def produce_jump_table(self, globals):
+    def produce_global_jump_table(self, globals):
+        # Produce call table
         result = "void __dispatch_call(_offsets __disp, struct _STATE* _state){\nswitch (__disp) {\n"
         offsets = []
         for k, v in globals:
@@ -140,7 +162,7 @@ X86_REGREF
     def write_declarations(self, procs):
         result = ""
         for p in procs:
-              result += "void %s(_offsets, struct _STATE* _state);\n" %p
+              result += "void %s(_offsets, struct _STATE*);\n" %p
 
         result += "void __dispatch_call(_offsets __disp, struct _STATE* _state);\n";
         return result
@@ -922,14 +944,29 @@ class Cpp(object):
                 self.body += "int %s() {\ngoto %s;\n" % (
                     self.__function_name_remapping[name], self.__context.entry_point)
             else:
-                self.body += self.proc_strategy.function_header(name, self.__context.entry_point)
+                entry_point = ''
+                try:
+                    g=self.__context.get_global(self.__context.entry_point)
+                except:
+                    g=None
+                if g and isinstance(g, op.label) and g.proc == self.proc:
+                    entry_point = self.__context.entry_point
+                self.body += self.proc_strategy.function_header(name, entry_point)
 
             logging.info(name)
             self.proc.optimize()
             self.__unbounded = []
             self.proc.visit(self, skip)
 
-            self.body += self.proc_strategy.function_end()
+            labels = dict()
+            for k, v in list(self.__context.get_globals().items()):
+                if isinstance(v, op.label) and v.used:
+                    if v.proc == self.proc:
+                        labels[k] = v
+
+            self.body += produce_jump_table(list(labels.items()))
+
+            #self.body += self.proc_strategy.function_end()
 
             if name not in self.__skip_output:
                 self.__translated.append(self.body)
@@ -1037,7 +1074,7 @@ class Cpp(object):
 
         data_impl = ""
 
-        self.fd.write(self.proc_strategy.produce_jump_table(list(self.__context.get_globals().items())))
+        self.fd.write(self.proc_strategy.produce_global_jump_table(list(self.__context.get_globals().items())))
 
         data_impl += "\nstruct Memory m = {\n"
         for v in cdata_bin:
