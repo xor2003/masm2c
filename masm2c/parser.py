@@ -555,7 +555,8 @@ class Parser:
         self.current_struct = None
         self.struct_name = []
         self.structures = dict()
-        self.externals = set()
+        self.externals_vars = set()
+        self.externals_procs = set()
 
     def visible(self):
         for i in self.__stack:
@@ -588,14 +589,13 @@ class Parser:
         value.used = False
         self.__globals[name] = value
 
-    '''
+
     def reset_global(self, name, value):
-            if len(name) == 0:
-                    raise Exception("empty name is not allowed")
-            name = name.lower()
-            logging.debug("adding global %s -> %s" %(name, value))
-            self.__globals[name] = value
-    '''
+        if len(name) == 0:
+                raise Exception("empty name is not allowed")
+        name = name.lower()
+        logging.debug("reset global %s -> %s" %(name, value))
+        self.__globals[name] = value
 
     def get_global(self, name):
         name = name.lower()
@@ -1238,12 +1238,21 @@ class Parser:
         strtype = type
         if isinstance(type, Token):
             strtype = type.value
+        label = self.mangle_label(label)
         if strtype not in ['proc']:
-            label = self.mangle_label(label)
             binary_width = self.typetosize(type)
-            self.set_global(label, op.var(binary_width, 0, name=label, segment='',
+            self.reset_global(label, op.var(binary_width, 0, name=label, segment='',
                                               elements=1, external=True, original_type=strtype))
-            self.externals.add(label)
+            self.externals_vars.add(label)
+        else: # Proc
+            if self.separate_proc:
+                self.externals_procs.add(label)
+                proc = Proc(label, extern=True)
+                logging.debug("procedure %s, extern" % label)
+                self.reset_global(label, proc)
+            else:
+                self.reset_global(label, op.label(label, self.proc))
+
 
     def add_call_to_entrypoint(self):
         if self.separate_proc:

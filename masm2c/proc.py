@@ -16,7 +16,7 @@ class Proc(object):
     last_addr = 0xc000
     elements = 1  # how many
 
-    def __init__(self, name, far=False, line_number=0):
+    def __init__(self, name, far=False, line_number=0, extern=False, id=0):
         self.name = name
         self.original_name = name
         #self.__calls = []
@@ -28,6 +28,7 @@ class Proc(object):
         self.line_number = line_number
         self.far = far
         self.used = False
+        self.extern = extern
 
     def add_label(self, label, proc, line_number=0):
         self.stmts.append(op.label(label, proc=proc, line_number=line_number))

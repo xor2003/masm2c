@@ -87,7 +87,7 @@ class SingleProcStrategy:
             if (__disp==0) goto _begin;
             else goto __dispatch_call;
             _begin:
-            """
+"""
         return header
 
     def function_end(self):
@@ -149,7 +149,7 @@ class SeparateProcStrategy:
         offsets = []
         for k, v in globals:
             k = re.sub(r'[^A-Za-z0-9_]', '_', k)
-            if isinstance(v, proc_module.Proc):
+            if isinstance(v, proc_module.Proc) and v.used:
                 offsets.append((k.lower(), k))
         offsets = sorted(offsets, key=lambda t: t[1])
         for o in offsets:
@@ -159,10 +159,15 @@ class SeparateProcStrategy:
         result += "};\n}\n"
         return result
 
-    def write_declarations(self, procs):
+    def write_declarations(self, procs, context):
         result = ""
-        for p in procs:
+        for p in procs: # TODO only if used or public
               result += "void %s(_offsets, struct _STATE*);\n" %p
+
+        for i in context.externals_procs:
+            v = context.get_globals()[i]
+            if v.used:
+                result += f"extern void {v.name}(_offsets, struct _STATE*);\n"
 
         result += "void __dispatch_call(_offsets __disp, struct _STATE* _state);\n";
         return result
@@ -1100,7 +1105,7 @@ class Cpp(object):
         structures = self.produce_structures()
         self.hd.write(structures)
 
-        self.hd.write(self.proc_strategy.write_declarations(self.__procs))
+        self.hd.write(self.proc_strategy.write_declarations(self.__procs, self.__context))
 
         data = self.produce_data(hdata_bin)
         self.hd.write(data)
@@ -1120,14 +1125,23 @@ class Cpp(object):
     def produce_label_offsets(self):
         # self.hd.write("\nenum _offsets MYINT_ENUM {\n")
         offsets = []
+        '''        
         for k, v in list(self.__context.get_globals().items()):
             k = re.sub(r'[^A-Za-z0-9_]', '_', k)
             if isinstance(v, (op.label, proc_module.Proc)):
                 offsets.append((k.lower(), hex(v.line_number)))
         offsets = sorted(offsets, key=lambda t: t[1])
+        '''
+        for k, v in list(self.__context.get_globals().items()):
+            k = re.sub(r'[^A-Za-z0-9_]', '_', k)
+            if isinstance(v, (op.label, proc_module.Proc)) and v.used:
+                offsets.append(k.lower())
+        offsets = sorted(offsets)
         labeloffsets = "static const uint16_t kbegin = 0x1001;\n"
+        i = 0x1001
         for o in offsets:
-            labeloffsets += "static const uint16_t k%s = %s;\n" % o
+            i += 1
+            labeloffsets += "static const uint16_t k%s = 0x%x;\n" % (o, i)
         return labeloffsets
 
     def produce_structures(self):
@@ -1151,9 +1165,10 @@ class Cpp(object):
 
     def produce_externals(self, context):
         data = '\n'
-        for i in context.externals:
-            v = context.get_global(i)
-            data += f"extern {v.original_type} {v.name};\n"
+        for i in context.externals_vars:
+            v = context.get_globals()[i]
+            if v.used:
+                data += f"extern {v.original_type} {v.name};\n"
         return data
 
 
