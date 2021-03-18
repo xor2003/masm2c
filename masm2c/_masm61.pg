@@ -346,7 +346,7 @@ specialregister: CR0 | CR2 | CR3 | DR0 | DR1 | DR2 | DR3 | DR6 | DR7| TR3 | TR4 
 stackoption: NEARSTACK | FARSTACK ;
 startupdir: U_STARTUP linereminder;
 structbody: structitem+;
-structdirhdr: name=LABEL structkw  expr?  commanonuniq?;
+structdirhdr: name=LABEL type=structkw  expr?  commanonuniq?;
 structdir: structdirhdr linereminder endsdir | structdirhdr linereminder items=structitem+ endsdir;
 structkw: STRUC | STRUCT | UNION ;
 structinstance: '<'  fieldinitlist?  '>'| '{' linereminder?   fieldinitlist?   linereminder?  '}'| expr DUP '(' structinstlist ')';

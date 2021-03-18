@@ -205,9 +205,9 @@ def structname(context, s, pos):
         return None
 
 
-def structdirhdr(context, nodes, name):
+def structdirhdr(context, nodes, name, type):
     # structure definition header
-    context.extra.current_struct = Struct(name.value.lower())
+    context.extra.current_struct = Struct(name.value.lower(), type)
     context.extra.struct_name.append(name.value.lower())
     logging.debug("structname added ~~" + name.value + "~~")
     return nodes
@@ -253,7 +253,7 @@ def datadir(context, nodes, label, type, values):
     else:
         label = ""
 
-    return context.extra.datadir_action(label, type.lower(), values, len(context.extra.struct_name) != 0)
+    return context.extra.datadir_action(label, type.lower(), values)
 
 
 def includedir(context, nodes, name):
@@ -1106,7 +1106,9 @@ class Parser:
 
         return result
 
-    def datadir_action(self, label, type, args, isstruct):
+    def datadir_action(self, label, type, args):
+        isstruct = len(self.struct_name) != 0
+
         label = self.mangle_label(label)
         binary_width = self.typetosize(type)
         size = calculate_data_size_new(binary_width, args)
@@ -1230,9 +1232,14 @@ class Parser:
         cpp = Cpp(self)
         args = [cpp.expand(i) for i in args]
         d = op.Data(label, type, 5, args, 1, s.getsize())
-        self.segment.append(d)
-        self.set_global(label, op.var(s.getsize(), self.__cur_seg_offset, label, original_type=type))
-        self.__cur_seg_offset += s.getsize()
+
+        isstruct = len(self.struct_name) != 0
+        if isstruct:
+            self.current_struct.append(d)
+        else:
+            self.segment.append(d)
+            self.set_global(label, op.var(s.getsize(), self.__cur_seg_offset, label, original_type=type))
+            self.__cur_seg_offset += s.getsize()
 
     def add_extern(self, label, type):
         strtype = type

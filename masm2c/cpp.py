@@ -254,14 +254,7 @@ class Cpp(object):
 
         self.proc_strategy = proc_strategy
 
-        self.__cdata_seg = ""
-        self.__hdata_seg = ""
-
-        for i in context.segments.values():
-            for j in i.getdata():
-                c, h, size = self.produce_c_data(j)
-                self.__cdata_seg += c
-                self.__hdata_seg += h
+        self.__cdata_seg, self.__hdata_seg, self.__rdata_seg = self.produce_c_data(context.segments)
 
         self.__procs = context.proc_list
         self.__proc_queue = []
@@ -282,6 +275,18 @@ class Cpp(object):
         self.size_changed = False
         self.address = False
         self.body = ""
+
+    def produce_c_data(self, segments):
+        cdata_seg = ""
+        hdata_seg = ""
+        rdata_seg = ""
+        for i in segments.values():
+            for j in i.getdata():
+                c, h, size = self.produce_c_data_single(j)
+                cdata_seg += c
+                hdata_seg += h
+                rdata_seg += re.sub(r'([0-9A-Za-z_]+)\s+([0-9A-Za-z_\[\]]+);','\g<1>& \g<2> = m.\g<2>;', h)
+        return cdata_seg, hdata_seg, rdata_seg
 
     def convert_label(self, token):
         name_original = token.value
@@ -992,11 +997,11 @@ class Cpp(object):
         fname = self.__namespace.lower() + ".cpp"
         header = self.__namespace.lower() + ".h"
         if sys.version_info >= (3, 0):
-            self.fd = open(fname, "wt", encoding=self.__codeset)
-            self.hd = open(header, "wt", encoding=self.__codeset)
+            fd = open(fname, "wt", encoding=self.__codeset)
+            hd = open(header, "wt", encoding=self.__codeset)
         else:
-            self.fd = open(fname, "wt")
-            self.hd = open(header, "wt")
+            fd = open(fname, "wt")
+            hd = open(header, "wt")
 
         banner = """/* PLEASE DO NOT MODIFY THIS FILE. ALL CHANGES WILL BE LOST! LOOK FOR README FOR DETAILS */
 
@@ -1007,21 +1012,21 @@ class Cpp(object):
 
         hid = "__M2C_%s_STUBS_H__" % self.__namespace.upper().replace('-', '_')
 
-        self.hd.write("""#ifndef %s
-#define %s
+        hd.write(f"""#ifndef {hid}
+#define {hid}
 
-%s""" % (hid, hid, banner))
+{banner}""")
 
-        self.hd.write(self.proc_strategy.get_strategy())
+        hd.write(self.proc_strategy.get_strategy())
 
-        self.fd.write("""%s
-#include \"%s\"
+        fd.write(f"""{banner}
+#include \"{header}\"
 #include <curses.h>
 
-//namespace %s {
-""" % (banner, header, self.__namespace))
+//namespace {self.__namespace} {{
+""")
 
-        self.fd.write("""
+        fd.write("""
         int init(struct _STATE* _state)
         {
         X86_REGREF
@@ -1065,65 +1070,62 @@ class Cpp(object):
         self.__methods += self.__failed
         done, failed = len(self.__proc_done), len(self.__failed)
 
-        self.fd.write("\n")
-        self.fd.write("\n".join(self.__translated))
-        self.fd.write("\n")
+        fd.write("\n")
+        fd.write("\n".join(self.__translated))
+        fd.write("\n")
 
         logging.info(
             "%d ok, %d failed of %d, %3g%% translated" % (done, failed, done + failed, 100.0 * done / (done + failed)))
         logging.info("\n".join(self.__failed))
 
-        # data_bin = self.data_seg
         cdata_bin = self.__cdata_seg
         hdata_bin = self.__hdata_seg
 
         data_impl = ""
 
-        self.fd.write(self.proc_strategy.produce_global_jump_table(list(self.__context.get_globals().items())))
+        fd.write(self.proc_strategy.produce_global_jump_table(list(self.__context.get_globals().items())))
 
         data_impl += "\nstruct Memory m = {\n"
         for v in cdata_bin:
             # data_impl += "0x%02x, " %v
-            data_impl += "%s" % v
+            data_impl += v
         data_impl += """
                 {0},
                 {0}
                 """
         data_impl += "};\n"
 
-        self.hd.write(
-            """\n#include "asm.h"
+        hd.write(f"""\n#include "asm.h"
 
-//namespace %s {
+//namespace {self.__namespace} {{
 
-"""
-            % (self.__namespace))
+""")
 
         labeloffsets = self.produce_label_offsets()
-        self.hd.write(labeloffsets)
+        hd.write(labeloffsets)
 
         structures = self.produce_structures()
-        self.hd.write(structures)
+        hd.write(structures)
 
-        self.hd.write(self.proc_strategy.write_declarations(self.__procs, self.__context))
+        hd.write(self.proc_strategy.write_declarations(self.__procs, self.__context))
 
         data = self.produce_data(hdata_bin)
-        self.hd.write(data)
+        hd.write(data)
 
         data = self.produce_externals(self.__context)
-        self.hd.write(data)
+        hd.write(data)
 
 
-        self.hd.write("//};\n\n//} // End of namespace DreamGen\n\n#endif\n")
-        self.hd.close()
+        hd.write("//};\n\n//} // End of namespace\n\n#endif\n")
+        hd.close()
 
-        self.fd.write(" %s\n" % data_impl)
+        fd.write(" %s\n" % data_impl)
 
-        self.fd.write("\n\n//} // End of namespace DreamGen\n")
-        self.fd.close()
+        fd.write("\n\n//} // End of namespace\n")
+        fd.close()
 
     def produce_label_offsets(self):
-        # self.hd.write("\nenum _offsets MYINT_ENUM {\n")
+        # hd.write("\nenum _offsets MYINT_ENUM {\n")
         offsets = []
         '''        
         for k, v in list(self.__context.get_globals().items()):
@@ -1147,9 +1149,10 @@ class Cpp(object):
     def produce_structures(self):
         structures = "\n"
         for name, v in self.__context.structures.items():
-            structures += "struct MYPACKED "+name+" {\n"
+            type = 'struct' if v.gettype() == op.Struct.Type.STRUCT else 'union'
+            structures += f"{type} MYPACKED {name} {{\n"
             for member in v.getdata():
-                structures += "%s %s;\n" %(member.type, member.label)
+                structures += f"{member.type} {member.label};\n"
             structures += "};\n"
         return structures
 
@@ -1237,7 +1240,7 @@ class Cpp(object):
         return "#define %s %s\n" % (dst, self.expand(src))
 
     @staticmethod
-    def produce_c_data(data):
+    def produce_c_data_single(data):
         label, type, cur_data_type, r, elements, size = data.getdata()
         data_ctype = type
         logging.debug("current data type = %d current data c type = %s" % (cur_data_type, data_ctype))

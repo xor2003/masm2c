@@ -6,7 +6,7 @@ from builtins import object
 
 from masm2c import parser
 from masm2c.Token import Token
-
+from enum import Enum
 
 # import traceback
 
@@ -69,14 +69,22 @@ class Data:
 
 
 class Struct:
-    def __init__(self, name):
+    class Type(Enum):
+        STRUCT = 1
+        UNION = 2
+
+    def __init__(self, name, type):
         self.__name = name
         self.__data = list()
         self.__size = 0
+        self.__type = Struct.Type.UNION if type.lower() == 'union' else Struct.Type.STRUCT
 
     def append(self, data):
         self.__data.append(data)
-        self.__size += data.getsize()
+        if self.__type == Struct.Type.STRUCT:
+            self.__size += data.getsize()
+        else: # Union
+            self.__size = max(self.__size, data.getsize())
 
     def getdata(self):
         return self.__data
@@ -84,6 +92,8 @@ class Struct:
     def getsize(self):
         return self.__size
 
+    def gettype(self):
+        return self.__type
 '''
 class reg(object):
     def __init__(self, name):
