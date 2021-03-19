@@ -1248,7 +1248,7 @@ class Parser:
         label = self.mangle_label(label)
         if strtype not in ['proc']:
             binary_width = self.typetosize(type)
-            self.reset_global(label, op.var(binary_width, 0, name=label, segment='',
+            self.reset_global(label, op.var(binary_width, 0, name=label, segment=self.__segment_name,
                                               elements=1, external=True, original_type=strtype))
             self.externals_vars.add(label)
         else: # Proc

@@ -1152,8 +1152,8 @@ class Cpp(object):
             type = 'struct' if v.gettype() == op.Struct.Type.STRUCT else 'union'
             structures += f"{type} MYPACKED {name} {{\n"
             for member in v.getdata():
-                structures += f"{member.type} {member.label};\n"
-            structures += "};\n"
+                structures += f"  {member.type} {member.label};\n"
+            structures += "};\n\n"
         return structures
 
     def produce_data(self, hdata_bin):
