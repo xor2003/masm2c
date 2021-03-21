@@ -918,7 +918,10 @@ class Parser:
         label = self.mangle_label(label)
         value = Token.remove_tokens(value, 'expr')
         size = Cpp(self).get_size(value)
-        value = Token.remove_tokens(value, 'ptrdir')
+        ptrdir = Token.find_tokens(value, 'ptrdir')
+        if ptrdir:
+            type = ptrdir[0].value.lower()
+            value = Token.remove_tokens(value, 'ptrdir')
         has_global = False
         if self.has_global(label):
             has_global = True
@@ -926,6 +929,8 @@ class Parser:
         o = self.proc.add_assignment(label, value, line_number=line_number)
         o.line = raw.rstrip()
         o.size = size
+        if ptrdir:
+            o.original_type = type
         if not has_global:
             self.set_global(label, o)
         self.proc.stmts.append(o)
@@ -943,11 +948,16 @@ class Parser:
         label = self.mangle_label(label)
         value = Token.remove_tokens(value, 'expr')
         size = Cpp(self).get_size(value)
-        value = Token.remove_tokens(value, 'ptrdir')
+        ptrdir = Token.find_tokens(value, 'ptrdir')
+        if ptrdir:
+            type = ptrdir[0].value.lower()
+            value = Token.remove_tokens(value, 'ptrdir')
         proc = self.get_global("mainproc")
         o = proc.add_equ_(label, value, line_number=line_number)
         o.line = raw.rstrip()
         o.size = size
+        if ptrdir:
+            o.original_type = type
         self.set_global(label, o)
         proc.stmts.append(o)
         return o

@@ -1268,10 +1268,9 @@ class ParserDataTest(unittest.TestCase):
         self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="_segfsbx_1DE28	dd 0			; DATA XREF: _read_module+99w")), ('0, // _segfsbx_1de28\n', 'dd _segfsbx_1de28;\n', 4))
 
     def test_data_14140(self):
-        #self.assertEqual(self.cpp.produce_c_data(self.parser.action_data(line="_slider		db '─\|/─\|/'           ; DATA XREF: _modules_search+7Fr")), ("{'\\xc4','\\\\','\\\\','|','/','\\xc4','\\\\','\\\\','|','/'}, // _slider\n", 'char _slider[8];\n', 8))
         self.assertEqual(
-            self.cpp.produce_c_data_single(self.parser.action_data(line="_slider		db '─\|/─\|/'           ; DATA XREF: _modules_search+7Fr")),
-            ("{'\\xc4','\\\\','|','/','\\xc4','\\\\','|','/'}, // _slider\n",
+            self.cpp.produce_c_data_single(self.parser.action_data(line=r"_slider		db '─\|/─\|/'")),
+            (r"{'\xc4','\\','|','/','\xc4','\\','|','/'}, // _slider"+"\n",
              'char _slider[8];\n',
              8))
 

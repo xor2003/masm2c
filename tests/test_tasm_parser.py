@@ -124,7 +124,25 @@ class ParserTest(unittest.TestCase):
         self.__class__.parser.set_global('singlebyte', op.var(elements=1, name=u'singlebyte', offset=1, segment=u'_data', size=1))
         self.__class__.parser.set_global('bytearray', op.var(elements=100, name=u'bytearray', offset=1, segment=u'_data', size=1))
         self.__class__.parser.set_global('singlequad', op.var(elements=1, name=u'singlequad', offset=1, segment=u'_data', size=4))
-        self.__class__.parser.set_global('gameconfig', op.var(elements=1, name=u'gameconfig', offset=1, segment=u'_data', size=1))
+        #self.__class__.parser.set_global('gameconfig', op.var(elements=1, name=u'gameconfig', offset=1, segment=u'_data', size=1))
+        self.__class__.parser.action_data(line='''GAMEINFO struc
+game_opponenttype dw ?
+game_opponentcarid db 4 dup (?)
+GAMEINFO ends
+extrn gameconfig:GAMEINFO
+''')
+        self.__class__.parser.action_data(line='''
+VECTOR struc
+vx dw ?
+VECTOR ends
+    TRANSFORMEDSHAPE struc
+    ts_shapeptr dw ?
+    ts_rectptr dw ?
+ts_rotvec VECTOR <>
+TRANSFORMEDSHAPE ends
+    var_transshape = TRANSFORMEDSHAPE ptr -50
+''')
+        self.__class__.parser.get_global('var_transshape').implemented = True
         self.__class__.parser.action_label(far=False, name='@@saaccvaaaax', isproc=False)
         self.__class__.parser.action_label(far=False, name='@VBL1', isproc=False)
         self.__class__.parser.action_label(far=False, name='@VBL12', isproc=False)
@@ -186,7 +204,7 @@ class ParserTest(unittest.TestCase):
     #    self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('pop     small word ptr [esp]')), u'\tR(POP(*(dw*)(raddr(ss,esp))));\n')
 
     def test_instr_20(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('call dx')), u'\tR(CALL(__disp));\n')
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('call dx')), u'\tR(CALL(__dispatch_call));\n')
 
     #def test_instr_30(self):
     #    self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('pop     dword ptr [esp] eax edx')), u'\tR(POP(*(dd*)(raddr(ss,esp))));\n\tR(POP(eax));\n\tR(POP(edx));\n')
@@ -258,7 +276,7 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('cmp b,256+3')), u'\tR(CMP(b, 256+3));\n')
 
     def test_instr_250(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('call [cs:table+ax]')), '\tR(CALL(__disp));\n')
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('call [cs:table+ax]')), '\tR(CALL(__dispatch_call));\n')
 
     def test_instr_260(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('CMP eax,1')), u'\tR(CMP(eax, 1));\n')
@@ -3597,19 +3615,19 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code(u'repne lodsb')), 'LODSB;\n')
 
     def test_instr_11370(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('call    dword ptr [ebx-4]')), '\tR(CALL(__disp));\n')
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('call    dword ptr [ebx-4]')), '\tR(CALL(__dispatch_call));\n')
 
     def test_instr_11380(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('call    exec_adc')), u'\tR(CALL(kexec_adc));\n')
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('call    exec_adc')), u'\tR(CALL(exec_adc));\n')
 
     def test_instr_11390(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('call    printf')), '\tR(CALL(__disp));\n')
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('call    printf')), '\tR(CALL(__dispatch_call));\n')
 
     def test_instr_11400(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('call    test_bcd')), u'\tR(CALLF(ktest_bcd));\n')
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('call    test_bcd')), u'\tR(CALLF(test_bcd));\n')
 
     def test_instr_11410(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('call printeax')), u'\tR(CALL(kprinteax));\n')
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('call printeax')), u'\tR(CALL(printeax));\n')
 
     def test_instr_11420(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('cmp wordarray,2')), u'\tR(CMP(*(m.wordarray), 2));\n')
@@ -3655,12 +3673,6 @@ class ParserTest(unittest.TestCase):
         #r=list(filter(lambda x: not x.used, p.get_globals().values()))
         #print([g.name for g in r])
 
-    def test_instr_11560(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('cmp gameconfig.game_opponenttype, 0')), u'\tR(CMP(m.gameconfig.game_opponenttype, 0));\n')
-
-    def test_instr_11570(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov     ax, offset gameconfig.game_trackname')), u'\tR(MOV(ax, offset(_data,gameconfig.game_trackname)));\n')
-
     def test_instr_11580(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov dl, [edi]')), u'\tR(MOV(dl, *(raddr(ds,edi))));\n')
 
@@ -3671,10 +3683,28 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('jmp cs:[bx]')), u'\t\tR(JMP(__dispatch_call));\n')
 
     def test_instr_11610(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('call exec_adc')),u'\tR(CALL(kexec_adc));\n')
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('call exec_adc')),u'\tR(CALL(exec_adc));\n')
 
     def test_instr_11620(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('call far ptr test_bcd')),u'\tR(CALLF(ktest_bcd));\n')
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('call far ptr test_bcd')),u'\tR(CALLF(test_bcd));\n')
+
+    def test_instr_11560(self):
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('cmp gameconfig.game_opponenttype, 0')), u'\tR(CMP(m.gameconfig.game_opponenttype, 0));\n')
+
+    def test_instr_11570(self):
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov     ax, offset gameconfig.game_opponenttype+t')), u'\tR(MOV(ax, offset(default_seg,gameconfig.game_opponenttype)+t));\n')
+
+    def test_instr_11630(self):
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('cmp gameconfig.game_opponenttype, 0')), u'\tR(CMP(m.gameconfig.game_opponenttype, 0));\n')
+
+
+    #    mov     [bp+var_transshape.ts_shapeptr], (offset game3dshapes.shape3d_numverts+0AA8h)
+    #def test_instr_11630(self):
+    #    self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov[bp + gameconfig.game_opponenttype], (offset gameconfig.game_opponenttype+0AA8h)')),                     u'\tR(MOV(*(bp+(db*)&gameconfig.game_opponenttype), offset(dseg, gameconfig.game_opponenttype)+0xAA8));\n')
+
+    def test_instr_11640(self):
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov ax, var_transshape.ts_rotvec.vx')),
+                     u'\tR(MOV(ax, m.var_transshape.ts_rotvec.vx));\n')
 
 if __name__ == "__main__":
     unittest.main()

@@ -75,12 +75,12 @@ class Struct:
 
     def __init__(self, name, type):
         self.__name = name
-        self.__data = list()
+        self.__data = dict()
         self.__size = 0
         self.__type = Struct.Type.UNION if type.lower() == 'union' else Struct.Type.STRUCT
 
     def append(self, data):
-        self.__data.append(data)
+        self.__data[data.label] = data
         if self.__type == Struct.Type.STRUCT:
             self.__size += data.getsize()
         else: # Union
@@ -88,6 +88,9 @@ class Struct:
 
     def getdata(self):
         return self.__data
+
+    def __getitem__(self, key):
+        return self.__data[key]
 
     def getsize(self):
         return self.__size

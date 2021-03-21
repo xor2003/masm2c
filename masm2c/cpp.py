@@ -205,11 +205,11 @@ def convert_number_to_c(expr, radix = 10):
             radix = 2
 
         if radix == 8:
-            expr = re.sub(r'^([+-]?)([0-8]+)[OoQq]?$', '\g<1>0\g<2>', expr)
+            expr = re.sub(r'^([+-]?)([0-8]+)[OoQq]?$', r'\g<1>0\g<2>', expr)
         elif radix == 16:
-            expr = re.sub(r'^([+-]?)([0-9][0-9A-Fa-f]*)[Hh]?$', '\g<1>0x\g<2>', expr)
+            expr = re.sub(r'^([+-]?)([0-9][0-9A-Fa-f]*)[Hh]?$', r'\g<1>0x\g<2>', expr)
         elif radix == 10:
-            expr = re.sub(r'^([+-]?)([0-9]+)[Dd]?$', '\g<1>\g<2>', expr)
+            expr = re.sub(r'^([+-]?)([0-9]+)[Dd]?$', r'\g<1>\g<2>', expr)
         elif radix == 2:
             expr = re.sub(r'^([+-]?)([0-1]+)[Bb]?$', parse_bin, expr)  # convert binary
         else:
@@ -285,7 +285,7 @@ class Cpp(object):
                 c, h, size = self.produce_c_data_single(j)
                 cdata_seg += c
                 hdata_seg += h
-                rdata_seg += re.sub(r'([0-9A-Za-z_]+)\s+([0-9A-Za-z_\[\]]+);','\g<1>& \g<2> = m.\g<2>;', h)
+                rdata_seg += re.sub(r'([0-9A-Za-z_]+)\s+([0-9A-Za-z_\[\]]+);', r'\g<1>& \g<2> = m.\g<2>;', h)
         return cdata_seg, hdata_seg, rdata_seg
 
     def convert_label(self, token):
@@ -386,6 +386,81 @@ class Cpp(object):
                 raise Exception("invalid indirection %d name '%s' size %u" % (self.__indirection, name, size))
         return Token('LABEL', value)
 
+    def convert_member(self, token):
+        #name_original = token.value
+        logging.debug("name = %s indirection = %u" % (str(token), self.__indirection))
+        label = Token.find_tokens(token, LABEL)
+
+        if self.__indirection == -1:
+            try:
+                g = self.__context.get_global(label[0])
+            except:
+                pass
+            else:
+                value = f'offset({g.segment},{".".join(label)})'
+                self.__indirection = 0
+                return Token('memberdir', value)
+
+        size = self.get_size(token)
+        try:
+            g = self.__context.get_global(label[0])
+        except:
+            # logging.warning("expand_cb() global '%s' is missing" % name)
+            return token
+
+        if isinstance(g, op._equ):
+            logging.debug("it is equ")
+            if g.implemented == False:
+                raise InjectCode(g)
+            #value = g.original_name
+            value = "m." + '.'.join(label)
+            logging.debug("equ: %s -> %s" % (label[0], value))
+        elif isinstance(g, op._assignment):
+            logging.debug("it is assignment")
+            if g.implemented == False:
+                raise InjectCode(g)
+            #value = g.original_name
+            value = "m." + '.'.join(label)
+            logging.debug("assignment %s = %s" % (label[0], value))
+        elif isinstance(g, op.var):
+            logging.debug("it is var " + str(g.size))
+
+            if self.__current_size == 0:  # TODO check
+                self.__current_size = size
+            if size == 0:
+                raise Exception("invalid var '%s' size %u" % (label[0], size))
+            self.address = False
+            if g.elements != 1:
+                self.address = True
+            if g.elements == 1 and self.__isjustlabel and not self.lea and g.size == self.__current_size:
+                # traceback.print_stack(file=sys.stdout)
+                value = "m." + '.'.join(label)
+                self.__indirection = 0
+            else:
+                if self.__indirection == 1 and self.variable:
+                    value = "m." + '.'.join(label)
+                    if not self.__isjustlabel: # if not just single label
+                        self.address = True
+                        if g.elements == 1: # array generates pointer himself
+                            value = "&" + value
+
+                        if g.getsize() == 1: # if byte no need for (db*)
+                            value = "(%s)" % value
+                        else:
+                            value = "((db*)%s)" % value
+                            self.size_changed = True
+                elif self.__indirection == -1 and self.variable:
+                    value = "offset(%s,%s)" % (g.segment, '.'.join(label))
+                if self.__work_segment == 'cs':
+                    self.body += '\tcs=seg_offset(' + g.segment + ');\n'
+            # ?self.__indirection = 1
+        if isinstance(g, op.Struct):
+            pass
+
+        if size == 0:
+            raise Exception("invalid var '%s' size %u" % (str(label), size))
+        return Token('memberdir', value)
+
     def get_size(self, expr):
         logging.debug('get_size("%s")' % expr)
         # if isinstance(expr, string):
@@ -393,6 +468,7 @@ class Cpp(object):
         origexpr = expr
 
         expr = Token.remove_tokens(expr, ['expr'])
+
 
         ptrdir = Token.find_tokens(expr, PTRDIR)
         if ptrdir:
@@ -443,6 +519,19 @@ class Cpp(object):
                     return g.size
                 except:
                     pass
+            elif expr.type == 'memberdir':
+                label = Token.find_tokens(expr.value, LABEL)
+                g = self.__context.get_global(label[0])
+                type = g.original_type
+
+                for t in label[1:]:
+                    g = self.__context.get_global(type)
+                    if isinstance(g, op.Struct):
+                        g = g[t]
+                        type = g.type
+                    else:
+                        return self.get_size(g)
+                return self.get_size(g)
 
         if isinstance(expr, list):
             return max([self.get_size(i) for i in expr])
@@ -456,6 +545,8 @@ class Cpp(object):
         if isinstance(expr, str):
             from masm2c.parser import Parser
             return Parser.is_register(expr)
+        elif isinstance(expr, op.Data):
+            return expr.getsize()
         return 0
 
     def convert_sqbr_reference(self, expr, destination, size, islabel, lea=False):
@@ -548,9 +639,16 @@ class Cpp(object):
         memberdir = Token.find_tokens(expr, 'memberdir')
         islabel = Token.find_tokens(expr, LABEL)
         self.variable = False
-        if islabel and not offsetdir and not memberdir:
+        if (islabel or memberdir) and not offsetdir:
+            if memberdir:
+                    res = self.get_size(memberdir)
+                    if res:
+                        self.variable = True
+                        size = res
+                        indirection = 1
+            elif islabel:
                 for i in islabel:
-                    res = self.get_var_size(i)
+                    res = self.get_size(Token(LABEL, i))
                     if res:
                         self.variable = True
                         size = res
@@ -586,33 +684,14 @@ class Cpp(object):
                                  and isinstance(origexpr.value, Token) and origexpr.value.type == LABEL) \
                             or (isinstance(origexpr, Token) and origexpr.type == 'memberdir')
 
-
+        self.__indirection = indirection
         if memberdir:
-            expr = memberdir[0]
-            label = islabel
-            g = None
-            try:
-                g = self.__context.get_global(label[0])
-                if isinstance(g, (op.var, op.Struct)):
-                    if indirection == -1:
-                        expr = ["offset(%s,%s" % (g.segment, g.name)]+expr[1:]+[')']
-                    elif indirection == 0:
-                        self.address = True
-                        expr = ["m." + (".".join(label))]
-                    elif indirection == 1:
-                        registers = Token.find_tokens(expr, 'register')
-                        if not registers:
-                            register = []
-                        integers = Token.find_tokens(expr, 'INTEGER')
-                        if not integers:
-                            integers = []
-                        expr = ["(*(%s*)(raddr(%s,%s))).%s" % (label[0], self.__work_segment, "+".join(registers+integers), ".".join(label[1:]))]
-            except:
-                pass
+            expr = Token.find_and_replace_tokens(expr, 'memberdir', self.convert_member)
         else:
-            self.__indirection = indirection
-            expr = Token.find_and_replace_tokens(expr, LABEL, self.convert_label)
-            indirection = self.__indirection
+            if islabel:
+                #assert(len(islabel) == 1)
+                expr = Token.find_and_replace_tokens(expr, LABEL, self.convert_label)
+        indirection = self.__indirection
         if self.__current_size != 0:  # and (indirection != 1 or size == 0):
             size = self.__current_size
 
@@ -630,14 +709,6 @@ class Cpp(object):
                 expr = "*(%s)" % expr
 
         return expr
-
-    def get_var_size(self, name):
-        size = 0
-        if self.__context.has_global(name):
-            g = self.__context.get_global(name)
-            if isinstance(g, (op.var, op.Struct, op._equ, op._assignment)):
-                size = g.getsize()
-        return size
 
     def jump_to_label(self, name):
         logging.debug("jump_to_label(%s)" % name)
@@ -1151,7 +1222,7 @@ class Cpp(object):
         for name, v in self.__context.structures.items():
             type = 'struct' if v.gettype() == op.Struct.Type.STRUCT else 'union'
             structures += f"{type} MYPACKED {name} {{\n"
-            for member in v.getdata():
+            for _, member in v.getdata():
                 structures += f"  {member.type} {member.label};\n"
             structures += "};\n\n"
         return structures
