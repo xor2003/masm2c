@@ -920,7 +920,10 @@ class Parser:
         size = Cpp(self).get_size(value)
         ptrdir = Token.find_tokens(value, 'ptrdir')
         if ptrdir:
-            type = ptrdir[0].value.lower()
+            type = ptrdir[0]
+            if isinstance(type, Token):
+                type = type.value
+            type = type.lower()
             value = Token.remove_tokens(value, 'ptrdir')
         has_global = False
         if self.has_global(label):
@@ -950,7 +953,10 @@ class Parser:
         size = Cpp(self).get_size(value)
         ptrdir = Token.find_tokens(value, 'ptrdir')
         if ptrdir:
-            type = ptrdir[0].value.lower()
+            type = ptrdir[0]
+            if isinstance(type, Token):
+                type = type.value
+            type = type.lower()
             value = Token.remove_tokens(value, 'ptrdir')
         proc = self.get_global("mainproc")
         o = proc.add_equ_(label, value, line_number=line_number)

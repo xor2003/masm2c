@@ -1222,7 +1222,7 @@ class Cpp(object):
         for name, v in self.__context.structures.items():
             type = 'struct' if v.gettype() == op.Struct.Type.STRUCT else 'union'
             structures += f"{type} MYPACKED {name} {{\n"
-            for _, member in v.getdata():
+            for member in v.getdata().values():
                 structures += f"  {member.type} {member.label};\n"
             structures += "};\n\n"
         return structures
