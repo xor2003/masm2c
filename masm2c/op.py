@@ -640,6 +640,7 @@ class _equ(baseop):
         super().__init__()
         self.args = args
         self.original_name = ''
+        self.original_type = ''
         self.implemented = False
         self.size = 0
 
@@ -657,6 +658,7 @@ class _assignment(baseop):
         super().__init__()
         self.args = args
         self.original_name = ''
+        self.original_type = ''
         self.implemented = False
         self.size = 0
 

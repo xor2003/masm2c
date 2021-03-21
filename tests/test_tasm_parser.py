@@ -3698,13 +3698,12 @@ TRANSFORMEDSHAPE ends
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('cmp gameconfig.game_opponenttype, 0')), u'\tR(CMP(m.gameconfig.game_opponenttype, 0));\n')
 
 
-    #    mov     [bp+var_transshape.ts_shapeptr], (offset game3dshapes.shape3d_numverts+0AA8h)
-    #def test_instr_11630(self):
-    #    self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov[bp + gameconfig.game_opponenttype], (offset gameconfig.game_opponenttype+0AA8h)')),                     u'\tR(MOV(*(bp+(db*)&gameconfig.game_opponenttype), offset(dseg, gameconfig.game_opponenttype)+0xAA8));\n')
+    def test_instr_11640(self): # TODO asmtest
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov[bp + var_transshape.ts_rotvec.vx], 3')), u'\tR(MOV((transformedshape*)(bp+var_transshape)->ts_rotvec.vx, 3));\n')
 
-    def test_instr_11640(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov ax, var_transshape.ts_rotvec.vx')),
-                     u'\tR(MOV(ax, m.var_transshape.ts_rotvec.vx));\n')
+    def test_instr_11650(self):
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov ax, (offset gameconfig.game_opponenttype+0AA8h)')),
+                     u'\tR(MOV(ax, offset(default_seg,gameconfig.game_opponenttype)+0x0AA8));\n')
 
 if __name__ == "__main__":
     unittest.main()

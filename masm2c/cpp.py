@@ -275,6 +275,7 @@ class Cpp(object):
         self.size_changed = False
         self.address = False
         self.body = ""
+        self.struct_type = None
 
     def produce_c_data(self, segments):
         cdata_seg = ""
@@ -390,6 +391,7 @@ class Cpp(object):
         #name_original = token.value
         logging.debug("name = %s indirection = %u" % (str(token), self.__indirection))
         label = Token.find_tokens(token, LABEL)
+        self.struct_type = None
 
         if self.__indirection == -1:
             try:
@@ -408,20 +410,17 @@ class Cpp(object):
             # logging.warning("expand_cb() global '%s' is missing" % name)
             return token
 
-        if isinstance(g, op._equ):
-            logging.debug("it is equ")
+        if isinstance(g, (op._equ, op._assignment)):
+            logging.debug(str(g))
             if g.implemented == False:
                 raise InjectCode(g)
-            #value = g.original_name
-            value = "m." + '.'.join(label)
+            if self.__isjustlabel:
+                value = "m." + '.'.join(label)
+            else:
+                self.struct_type = g.original_type
+                self.address = True
+                value = f"{label[0]})->{'.'.join(label[1:])}"
             logging.debug("equ: %s -> %s" % (label[0], value))
-        elif isinstance(g, op._assignment):
-            logging.debug("it is assignment")
-            if g.implemented == False:
-                raise InjectCode(g)
-            #value = g.original_name
-            value = "m." + '.'.join(label)
-            logging.debug("assignment %s = %s" % (label[0], value))
         elif isinstance(g, op.var):
             logging.debug("it is var " + str(g.size))
 
@@ -687,6 +686,9 @@ class Cpp(object):
         self.__indirection = indirection
         if memberdir:
             expr = Token.find_and_replace_tokens(expr, 'memberdir', self.convert_member)
+            if self.__indirection == 1 and self.address and self.struct_type:
+                expr = [f'({self.struct_type}*)('] + expr
+                self.address = False
         else:
             if islabel:
                 #assert(len(islabel) == 1)
