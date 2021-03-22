@@ -924,7 +924,7 @@ class Parser:
             if isinstance(type, Token):
                 type = type.value
             type = type.lower()
-            value = Token.remove_tokens(value, 'ptrdir')
+            value = Token.find_and_replace_tokens(value, 'ptrdir', self.return_empty)
         has_global = False
         if self.has_global(label):
             has_global = True
@@ -947,6 +947,9 @@ class Parser:
         o = self.action_equ(label, value, raw, line_number)
         o.implemented = True
 
+    def return_empty(self, _):
+        return []
+
     def action_equ(self, label="", value="", raw='', line_number=0):
         label = self.mangle_label(label)
         value = Token.remove_tokens(value, 'expr')
@@ -957,7 +960,7 @@ class Parser:
             if isinstance(type, Token):
                 type = type.value
             type = type.lower()
-            value = Token.remove_tokens(value, 'ptrdir')
+            value = Token.find_and_replace_tokens(value, 'ptrdir', self.return_empty)
         proc = self.get_global("mainproc")
         o = proc.add_equ_(label, value, line_number=line_number)
         o.line = raw.rstrip()

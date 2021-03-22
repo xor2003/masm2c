@@ -84,6 +84,7 @@ class ParserTest(unittest.TestCase):
         self.__class__.parser.action_equ_test(line_number=0, label='test3', value=u'1500')
         self.__class__.parser.action_equ_test(line_number=0, label='testEqu', value=u'1')
 
+
         self.__class__.parser.set_global("_data", op.var(1, 0, issegment=True))
         self.__class__.parser.set_global("singlebyte2", op.var(size=1, offset=1, name="singlebyte2", segment="_data", elements=1))
         self.__class__.parser.set_global('_msg', op.var(elements=2, name=u'_msg', offset=1, segment=u'_data', size=1))
@@ -3697,13 +3698,15 @@ TRANSFORMEDSHAPE ends
     def test_instr_11630(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('cmp gameconfig.game_opponenttype, 0')), u'\tR(CMP(m.gameconfig.game_opponenttype, 0));\n')
 
-
     def test_instr_11640(self): # TODO asmtest
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov[bp + var_transshape.ts_rotvec.vx], 3')), u'\tR(MOV((transformedshape*)(bp+var_transshape)->ts_rotvec.vx, 3));\n')
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov[bp + var_transshape.ts_rotvec.vx], 3')), u'\tR(MOV((transformedshape*)raddr(ss,bp+var_transshape)->ts_rotvec.vx, 3));\n')
 
     def test_instr_11650(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov ax, (offset gameconfig.game_opponenttype+0AA8h)')),
                      u'\tR(MOV(ax, offset(default_seg,gameconfig.game_opponenttype)+0x0AA8));\n')
+
+    def test_instr_11660(self):
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_data('var_104_rc equ TRANSFORMEDSHAPE ptr -260')), u'#define var_104_rc -260\n')
 
 if __name__ == "__main__":
     unittest.main()
