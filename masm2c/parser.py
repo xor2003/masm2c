@@ -1257,7 +1257,8 @@ class Parser:
             self.current_struct.append(d)
         else:
             self.segment.append(d)
-            self.set_global(label, op.var(s.getsize(), self.__cur_seg_offset, label, original_type=type))
+            self.set_global(label, op.var(s.getsize(), self.__cur_seg_offset, label, segment=self.__segment_name, \
+                                          original_type=type))
             self.__cur_seg_offset += s.getsize()
 
     def add_extern(self, label, type):
