@@ -687,7 +687,7 @@ class Cpp(object):
         if memberdir:
             expr = Token.find_and_replace_tokens(expr, 'memberdir', self.convert_member)
             if self.__indirection == 1 and self.address and self.struct_type:
-                expr = [f'({self.struct_type}*)('] + expr
+                expr = [f'({self.struct_type}*)raddr({self.__work_segment},'] + expr
                 self.address = False
         else:
             if islabel:
