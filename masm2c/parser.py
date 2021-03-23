@@ -17,7 +17,7 @@ from parglare import Grammar, Parser as PGParser
 
 from masm2c import cpp
 from masm2c.cpp import Cpp
-from masm2c.op import Segment, Struct
+from masm2c.op import Segment, Struct, DataType
 from masm2c.proc import Proc
 from masm2c import proc
 from masm2c import op
@@ -212,9 +212,25 @@ def structdirhdr(context, nodes, name, type):
     logging.debug("structname added ~~" + name.value + "~~")
     return nodes
 
+def remove_str(text):
+    if isinstance(text, str):
+        return None
+    elif isinstance(text, list):
+        while len(text) == 1 and isinstance(text[0], list):
+            text = text[0]
+        l = list()
+        for i in text:
+            r = remove_str(i)
+            if r:
+                l += [r]
+        return l
+    else:
+        return text
+
 def structinstdir(context, nodes, label, type, values):
     logging.debug("structinstdir" + str(label) + str(type) + str(values))
-    args = Token.find_tokens(values, 'expr')
+    #args = Token.find_tokens(values, 'expr')
+    args = remove_str(Token.remove_tokens(remove_str(values),'expr'))
     if args == None:
         args = [0]
     #args = Token.remove(args, 'INTEGER')
@@ -709,16 +725,16 @@ class Parser:
         logging.debug(v)
         return v
 
-    def identify_data_internal_type(self, r, elements, is_string):
+    def identify_data_internal_type(self, r, elements, is_string) -> DataType:
         if is_string:
             if len(r) >= 2 and r[-1] == 0:
-                cur_data_type = 1  # 0 terminated string
+                cur_data_type = DataType.ZERO_STRING  # 0 terminated string
             else:
-                cur_data_type = 2  # array string
+                cur_data_type = DataType.ARRAY_STRING  # array string
         else:
-            cur_data_type = 3  # number
+            cur_data_type = DataType.NUMBER  # number
             if elements > 1:
-                cur_data_type = 4  # array of numbers
+                cur_data_type = DataType.ARRAY_NUMBER  # array of numbers
         return cur_data_type
 
 
@@ -866,7 +882,7 @@ class Parser:
         self.segment = Segment(name, offset)
         self.segments[name] = self.segment
 
-        self.segment.append(op.Data(name, 'db', 4, [], 0, 0))
+        self.segment.append(op.Data(name, 'db', DataType.ARRAY_NUMBER, [], 0, 0))
         #c, h = self.produce_c_data(name, 'db', 4, [], 0)
         #self.c_data += c
         #self.h_data += h
@@ -884,7 +900,7 @@ class Parser:
             self.__c_dummy_label += 1
             label = "dummy" + str(self.__c_dummy_label)
 
-            self.segment.append(op.Data(label, 'db', 4, num * [0], num, num))
+            self.segment.append(op.Data(label, 'db', DataType.ARRAY_NUMBER, num * [0], num, num))
 
     def parse_file(self, fname):
         '''
@@ -1250,7 +1266,7 @@ class Parser:
         s = self.structures[type]
         cpp = Cpp(self)
         args = [cpp.expand(i) for i in args]
-        d = op.Data(label, type, 5, args, 1, s.getsize())
+        d = op.Data(label, type, DataType.STRUCT, args, 1, s.getsize())
 
         isstruct = len(self.struct_name) != 0
         if isstruct:

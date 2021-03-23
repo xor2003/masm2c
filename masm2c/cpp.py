@@ -13,6 +13,7 @@ from copy import copy
 import masm2c.proc as proc_module
 from masm2c import op
 from masm2c.Token import Token
+from masm2c.op import DataType
 
 OFFSETDIR = 'offsetdir'
 LABEL = 'LABEL'
@@ -1316,36 +1317,36 @@ class Cpp(object):
     def produce_c_data_single(data):
         label, type, cur_data_type, r, elements, size = data.getdata()
         data_ctype = type
-        logging.debug("current data type = %d current data c type = %s" % (cur_data_type, data_ctype))
+        logging.debug(f"current data type = {cur_data_type} current data c type = {data_ctype}")
         rc = [None] * len(r)
         rh = []
         vh = ""
         vc = ""
-        if cur_data_type == 1:  # 0 terminated string
+        if cur_data_type == DataType.ZERO_STRING:  # 0 terminated string
             vh = "char " + label + "[" + str(len(r)) + "]"
 
-        elif cur_data_type == 2:  # array string
+        elif cur_data_type == DataType.ARRAY_STRING:  # array string
             vh = "char " + label + "[" + str(len(r)) + "]"
             vc = "{"
 
-        elif cur_data_type == 3:  # number
+        elif cur_data_type == DataType.NUMBER:  # number
             vh = data_ctype + " " + label
 
-        elif cur_data_type == 4:  # array
+        elif cur_data_type == DataType.ARRAY_NUMBER:  # array
             vh = data_ctype + " " + label + "[" + str(elements) + "]"
             vc = "{"
-        elif cur_data_type == 5:  # struct
+        elif cur_data_type == DataType.STRUCT:  # struct
             vh = data_ctype + " " + label
             vc = "{"
 
-        if cur_data_type == 1:  # string
+        if cur_data_type == DataType.ZERO_STRING:  # string
             vv = "\""
             for i in range(0, len(r) - 1):
                 vv += Cpp.convert_str(r[i])
             vv += "\""
             rc = ["", vv]
 
-        elif cur_data_type == 2:  # array of char
+        elif cur_data_type == DataType.ARRAY_STRING:  # array of char
             vv = ""
             logging.debug(r)
             for i in range(0, len(r)):
@@ -1354,13 +1355,13 @@ class Cpp(object):
                     vv += ","
             rc = ["", vv]
 
-        elif cur_data_type == 3:  # number
+        elif cur_data_type == DataType.NUMBER:  # number
             if len(r):
                 rc[0] = str(r[0])
             else:
                 rc = ['']
 
-        elif cur_data_type in [4, 5]:  # array of numbers
+        elif cur_data_type in [DataType.ARRAY_NUMBER, DataType.STRUCT]:  # array of numbers
             # vv = ""
             for i in range(0, len(r)):
                 rc[i] = str(r[i])
@@ -1369,7 +1370,7 @@ class Cpp(object):
         rc.insert(0, vc)
         rh.insert(0, vh)
         # if it was array of numbers or array string
-        if cur_data_type in [2, 4, 5]:
+        if cur_data_type in [DataType.ARRAY_STRING, DataType.ARRAY_NUMBER, DataType.STRUCT]:
             rc.append("}")
         rc.append(", // " + label + "\n")  # TODO can put original_label
         rh.append(";\n")

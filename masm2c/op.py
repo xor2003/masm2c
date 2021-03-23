@@ -50,10 +50,17 @@ class Segment:
     def getdata(self):
         return self.__data
 
+class DataType(Enum):
+    ZERO_STRING = 1
+    ARRAY_STRING = 2
+    NUMBER = 3
+    ARRAY_NUMBER = 4
+    STRUCT = 5
+
 class Data:
     __slots__ = ['label', 'type', 'data_internal_type', 'array', 'elements', 'size']
 
-    def __init__(self, label, type, data_internal_type, array, elements, size):
+    def __init__(self, label, type, data_internal_type: DataType, array, elements, size):
         self.label = label
         self.type = type
         self.data_internal_type = data_internal_type
