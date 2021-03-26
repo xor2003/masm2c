@@ -3708,5 +3708,10 @@ TRANSFORMEDSHAPE ends
     def test_instr_11660(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_data('var_104_rc equ TRANSFORMEDSHAPE ptr -260')), u'#define var_104_rc -260\n')
 
+    def test_instr_11670(self):
+        self.assertEqual(
+            self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov (transformedshape + bp - 3).ts_rotvec.vx, 3')),
+            u'\tR(MOV((transformedshape*)raddr(ss,(bp-3))->ts_rotvec.vx, 3));\n')
+
 if __name__ == "__main__":
     unittest.main()

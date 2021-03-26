@@ -1,3 +1,5 @@
+from typing import Callable
+
 SQEXPR = 'sqexpr'
 
 
@@ -15,7 +17,7 @@ class Token:
         return "Token('%s', '%s')" % (self.type, self.value)
 
     @staticmethod
-    def find_tokens(expr, lookfor):
+    def find_tokens(expr, lookfor: str):
         l = []
         if isinstance(expr, Token):
             if expr.type == lookfor:
@@ -36,7 +38,7 @@ class Token:
         return l
 
     @staticmethod
-    def find_and_replace_tokens(expr, lookfor, call):
+    def find_and_replace_tokens(expr, lookfor: str, call: Callable):
         if isinstance(expr, Token):
             if expr.type == lookfor:
                 if call:
@@ -73,7 +75,7 @@ class Token:
 
 
     @staticmethod
-    def remove_tokens(expr, lookfor):
+    def remove_tokens(expr, lookfor: list):
         if isinstance(expr, Token):
             if expr.type in lookfor:
                 if isinstance(expr.value, str):

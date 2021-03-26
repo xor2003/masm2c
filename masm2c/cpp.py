@@ -388,6 +388,17 @@ class Cpp(object):
                 raise Exception("invalid indirection %d name '%s' size %u" % (self.__indirection, name, size))
         return Token('LABEL', value)
 
+    def remove_dots(self, tokens):
+        if isinstance(tokens, list):
+            l = []
+            for i in tokens:
+                i = self.remove_dots(i)
+                if i != '.':
+                    l += [i]
+            return l
+        else:
+            return tokens
+
     def convert_member(self, token):
         #name_original = token.value
         logging.debug("name = %s indirection = %u" % (str(token), self.__indirection))
@@ -454,8 +465,23 @@ class Cpp(object):
                 if self.__work_segment == 'cs':
                     self.body += '\tcs=seg_offset(' + g.segment + ');\n'
             # ?self.__indirection = 1
-        if isinstance(g, op.Struct):
-            pass
+        elif isinstance(g, op.Struct):
+            register = Token.remove_tokens(token, ['memberdir', 'LABEL'])
+            register = self.remove_dots(register)
+            register = self.tokenstostring(register)
+            register = re.sub(r'\(\+', '(', register)
+            '''
+            r = Token.find_tokens(token, 'register')
+            i = Token.find_tokens(token, 'INTEGER')
+            if r == None:
+                r = []
+            if i == None:
+                i = []
+            register = r + i
+            '''
+            self.struct_type = label[0]
+            self.address = True
+            value = f"{register})->{'.'.join(label[1:])}"
 
         if size == 0:
             raise Exception("invalid var '%s' size %u" % (str(label), size))
@@ -522,7 +548,10 @@ class Cpp(object):
             elif expr.type == 'memberdir':
                 label = Token.find_tokens(expr.value, LABEL)
                 g = self.__context.get_global(label[0])
-                type = g.original_type
+                if isinstance(g, op.var):
+                    type = g.original_type
+                elif  isinstance(g, op.Struct):
+                    type = label[0]
 
                 for t in label[1:]:
                     g = self.__context.get_global(type)
@@ -688,7 +717,7 @@ class Cpp(object):
         if memberdir:
             expr = Token.find_and_replace_tokens(expr, 'memberdir', self.convert_member)
             if self.__indirection == 1 and self.address and self.struct_type:
-                expr = [f'({self.struct_type}*)raddr({self.__work_segment},'] + expr
+                expr = [f'({self.struct_type}*)raddr({self.__work_segment},'] + [expr]
                 self.address = False
         else:
             if islabel:

@@ -4,8 +4,8 @@ import logging
 import os
 import re
 import sys
-#from builtins import chr
-#from builtins import hex
+# from builtins import chr
+# from builtins import hex
 from builtins import object
 from builtins import range
 from builtins import str
@@ -156,17 +156,19 @@ def macrodirhead(context, nodes, name, parms):
     logging.debug("macroname added ~~" + name.value + "~~")
     return nodes
 
+
 def repeatbegin(context, nodes, value):
     # start of repeat macro
     context.extra.current_macro = Macro("", [], value)
-    context.extra.macro_name.append('') # TODO
+    context.extra.macro_name.append('')  # TODO
     logging.debug("repeatbegin")
     return nodes
+
 
 def endm(context, nodes):
     # macro definition end
     name = context.extra.macro_name.pop()
-    logging.debug("endm "+name)
+    logging.debug("endm " + name)
     macroses[name] = context.extra.current_macro
     context.extra.current_macro = None
     return nodes
@@ -180,6 +182,7 @@ class Getmacroargval:
     def __call__(self, token):
         return self.d[token.value]
 
+
 def macrocall(context, nodes, name, args):
     # macro usage
     logging.debug("macrocall " + name + "~~")
@@ -190,6 +193,7 @@ def macrocall(context, nodes, name, args):
         i.args = Token.find_and_replace_tokens(i.args, 'LABEL', c)
     context.extra.proc.stmts += ins
     return nodes
+
 
 def structname(context, s, pos):
     mtch = macronamere.match(s[pos:])
@@ -212,12 +216,27 @@ def structdirhdr(context, nodes, name, type):
     logging.debug("structname added ~~" + name.value + "~~")
     return nodes
 
+
 def remove_str(text):
     if isinstance(text, str):
-        return None
+        #if re.match(r'\d+|\?', text):
+        return text
+        #else:
+        #    return None
     elif isinstance(text, list):
-        while len(text) == 1 and isinstance(text[0], list):
-            text = text[0]
+        found = True
+        while found:
+            found = False
+            while len(text) == 1 and isinstance(text[0], list):
+                found = True
+                text = text[0]
+            if len(text) >= 3 and text[0] in ['<', '{'] and text[-1] in ['>', '}']:
+                found = True
+                text = text[1:-1]
+            if len(text) and isinstance(text[-1], str) and re.match(r'\n+\s*', text[-1]):
+                found = True
+                text = text[:-1]
+
         l = list()
         for i in text:
             r = remove_str(i)
@@ -227,13 +246,14 @@ def remove_str(text):
     else:
         return text
 
+
 def structinstdir(context, nodes, label, type, values):
     logging.debug("structinstdir" + str(label) + str(type) + str(values))
-    #args = Token.find_tokens(values, 'expr')
-    args = remove_str(Token.remove_tokens(remove_str(values),'expr'))
+    args = remove_str(Token.remove_tokens(remove_str(values), 'expr'))
+    #args = Token.remove_tokens(remove_str(values), 'expr')
     if args == None:
         args = [0]
-    #args = Token.remove(args, 'INTEGER')
+    # args = Token.remove(args, 'INTEGER')
     context.extra.add_structinstance(label.value, type, args)
     return nodes  # Token('structdir', nodes) TODO ignore by now
 
@@ -293,9 +313,9 @@ def segmentdir(context, nodes, name):
 
 def endsdir(context, nodes, name):
     logging.debug("ends " + str(nodes) + " ~~")
-    if len(context.extra.struct_name): # if it is not a structure then it is end of segment
+    if len(context.extra.struct_name):  # if it is not a structure then it is end of segment
         name = context.extra.struct_name.pop()
-        logging.debug("endstruct "+name)
+        logging.debug("endstruct " + name)
         context.extra.structures[name] = context.extra.current_struct
         context.extra.set_global(name, context.extra.current_struct)
         context.extra.current_struct = None
@@ -430,10 +450,12 @@ def radixdir(context, nodes, value):
     context.extra.radix = value
     return nodes
 
+
 def externdef(context, nodes, extrnname, type):
     logging.debug('externdef %s' % str(nodes))
     context.extra.add_extern(extrnname.value, type)
     return nodes
+
 
 actions = {
     "externdef": externdef,
@@ -530,7 +552,7 @@ def dump_object(value):
 class Parser:
     def __init__(self, skip_binary_data=[]):
         self.separate_proc = True
-        #self.__label_to_skip = skip_binary_data
+        # self.__label_to_skip = skip_binary_data
 
         self.__globals = {}
         self.__offsets = {}
@@ -605,12 +627,11 @@ class Parser:
         value.used = False
         self.__globals[name] = value
 
-
     def reset_global(self, name, value):
         if len(name) == 0:
-                raise Exception("empty name is not allowed")
+            raise Exception("empty name is not allowed")
         name = name.lower()
-        logging.debug("reset global %s -> %s" %(name, value))
+        logging.debug("reset global %s -> %s" % (name, value))
         self.__globals[name] = value
 
     def get_global(self, name):
@@ -623,7 +644,7 @@ class Parser:
             logging.debug("get_global KeyError %s" % name)
             raise
         g.used = True
-        #assert self.__globals[name].used
+        # assert self.__globals[name].used
         return g
 
     def get_globals(self):
@@ -667,7 +688,7 @@ class Parser:
             v = int(v[:-1], 16)
         elif re.match(r'^[01]+[Bb]$', v):
             v = int(v[:-1], 2)
-        #v = int(cpp.convert_number_to_c(v))
+        # v = int(cpp.convert_number_to_c(v))
 
         try:
             vv = eval(v)
@@ -736,7 +757,6 @@ class Parser:
             if elements > 1:
                 cur_data_type = DataType.ARRAY_NUMBER  # array of numbers
         return cur_data_type
-
 
     def process_data_tokens(self, v, width):
         elements = 0
@@ -810,7 +830,7 @@ class Parser:
                     v = self.get_global_value(v, base)
                 except KeyError:
                     logging.warning("unknown address %s" % v)
-                    #logging.warning(self.c_data)
+                    # logging.warning(self.c_data)
                     # logging.warning(r)
                     # logging.warning(len(self.c_data) + len(r))
                     # self.__link_later.append((len(self.c_data) + len(r), v))
@@ -846,9 +866,9 @@ class Parser:
         return n * len(values), res
 
     def action_label(self, name, far=False, isproc=False):
-        logging.debug("~name: %s" %name)
+        logging.debug("~name: %s" % name)
         name = self.mangle_label(name)
-        if True: #not (name in self.__label_to_skip):
+        if True:  # not (name in self.__label_to_skip):
             logging.debug("offset %s -> %s" % (name, "&m." + name.lower() + " - &m." + self.__segment_name))
             '''
             if self.proc is None:
@@ -860,7 +880,8 @@ class Parser:
             '''
             if self.proc:
                 self.proc.add_label(name, isproc)
-                self.set_offset(name, ("&m." + name.lower() + " - &m." + self.__segment_name, self.proc, self.__offset_id))
+                self.set_offset(name,
+                                ("&m." + name.lower() + " - &m." + self.__segment_name, self.proc, self.__offset_id))
                 self.set_global(name, op.label(name, self.proc, line_number=self.__offset_id, far=far))
                 self.__offset_id += 1
             else:
@@ -875,25 +896,26 @@ class Parser:
         logging.debug("segment %s %x" % (name, offset))
 
         binary_width = 0
-        #num = 0
-        #elf.c_data.append("{}, // segment " + name + "\n")
-        #self.h_data.append(" db " + name + "[" + str(num) + "]; // segment " + name + "\n")
+        # num = 0
+        # elf.c_data.append("{}, // segment " + name + "\n")
+        # self.h_data.append(" db " + name + "[" + str(num) + "]; // segment " + name + "\n")
 
         self.segment = Segment(name, offset)
         self.segments[name] = self.segment
 
         self.segment.append(op.Data(name, 'db', DataType.ARRAY_NUMBER, [], 0, 0))
-        #c, h = self.produce_c_data(name, 'db', 4, [], 0)
-        #self.c_data += c
-        #self.h_data += h
+        # c, h = self.produce_c_data(name, 'db', 4, [], 0)
+        # self.c_data += c
+        # self.h_data += h
 
-        #self.__binary_data_size += num
+        # self.__binary_data_size += num
         self.__cur_seg_offset = 0
 
         self.set_global(name, op.var(binary_width, offset, name, issegment=True))
 
     def align(self, align_bound=0x10):
-        num = (align_bound - (self.__binary_data_size & (align_bound - 1))) if (self.__binary_data_size & (align_bound - 1)) else 0
+        num = (align_bound - (self.__binary_data_size & (align_bound - 1))) if (
+                    self.__binary_data_size & (align_bound - 1)) else 0
         if num:
             self.__binary_data_size += num
 
@@ -1002,7 +1024,7 @@ class Parser:
 
         if self.separate_proc:
             self.proc = Proc(name, far=far, line_number=line_number)
-            logging.debug("procedure %s, #%d" %(name, len(self.proc_list)))
+            logging.debug("procedure %s, #%d" % (name, len(self.proc_list)))
             self.proc_list.append(name)
             self.proc_stack.append(self.proc)
             self.set_global(name, self.proc)
@@ -1173,13 +1195,12 @@ class Parser:
         else:
             self.segment.append(data)
 
-
-        #c, h, size = cpp.Cpp.produce_c_data(data) # TO REMOVE
-        #self.c_data += c
-        #self.h_data += h
+        # c, h, size = cpp.Cpp.produce_c_data(data) # TO REMOVE
+        # self.c_data += c
+        # self.h_data += h
 
         # logging.debug("~~        self.assertEqual(parser_instance.parse_data_line_whole(line='"+str(line)+"'),"+str(("".join(c), "".join(h), offset2 - offset))+")")
-        return data #c, h, size
+        return data  # c, h, size
 
     '''
     def link(self):
@@ -1285,9 +1306,9 @@ class Parser:
         if strtype not in ['proc']:
             binary_width = self.typetosize(type)
             self.reset_global(label, op.var(binary_width, 0, name=label, segment=self.__segment_name,
-                                              elements=1, external=True, original_type=strtype))
+                                            elements=1, external=True, original_type=strtype))
             self.externals_vars.add(label)
-        else: # Proc
+        else:  # Proc
             if self.separate_proc:
                 self.externals_procs.add(label)
                 proc = Proc(label, extern=True)
@@ -1295,7 +1316,6 @@ class Parser:
                 self.reset_global(label, proc)
             else:
                 self.reset_global(label, op.label(label, self.proc))
-
 
     def add_call_to_entrypoint(self):
         if self.separate_proc:
