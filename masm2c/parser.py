@@ -249,7 +249,8 @@ def remove_str(text):
 
 def structinstdir(context, nodes, label, type, values):
     logging.debug("structinstdir" + str(label) + str(type) + str(values))
-    args = remove_str(Token.remove_tokens(remove_str(values), 'expr'))
+    #args = remove_str(Token.remove_tokens(remove_str(values), 'expr'))
+    args = values[0].value
     #args = Token.remove_tokens(remove_str(values), 'expr')
     if args == None:
         args = [0]
@@ -439,6 +440,8 @@ def labeltok(context, nodes):
 def STRING(context, nodes):
     return Token('STRING', nodes)
 
+def structinstance(context, nodes, values):
+    return Token('structinstance', values)
 
 def memberdir(context, nodes, variable, field):
     result = Token('memberdir', [variable, field])
@@ -467,7 +470,7 @@ actions = {
     "memberdir": memberdir,
     "structinstdir": structinstdir,
     "dupdir": dupdir,
-    "structinstance": make_token,
+    "structinstance": structinstance,
     "structdirhdr": structdirhdr,
     "includedir": includedir,
     "instrprefix": instrprefix,
@@ -1286,7 +1289,9 @@ class Parser:
     def add_structinstance(self, label, type, args):
         s = self.structures[type]
         cpp = Cpp(self)
-        args = [cpp.expand(i) for i in args]
+        #args = Token.find_and_replace_tokens(args, 'structinstance', cpp.expand)
+        args = Token.remove_tokens(args, 'structinstance')
+        #args = [cpp.expand(i) for i in args]
         d = op.Data(label, type, DataType.STRUCT, args, 1, s.getsize())
 
         isstruct = len(self.struct_name) != 0
