@@ -91,9 +91,9 @@ class Token:
             l = []
             for i in range(0, len(expr)):
                 result = Token.remove_tokens(expr[i], lookfor)
-                if result:
+                if result != None:
                     l.append(result)
-            if not l:
-                l = None
+            #if not l:
+            #    l = None
             return l
         return expr

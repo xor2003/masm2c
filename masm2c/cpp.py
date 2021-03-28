@@ -292,7 +292,10 @@ class Cpp(object):
         rdata_seg = ""
         for i in segments.values():
             for j in i.getdata():
-                c, h, size = self.produce_c_data_single(j)
+                c, h, size = self.produce_c_data_single_(j)
+                c += ", // " + j.getlabel() + "\n"  # TODO can put original_label
+                h += ";\n"
+
                 cdata_seg += c
                 hdata_seg += h
                 rdata_seg += re.sub(r'([0-9A-Za-z_]+)\s+([0-9A-Za-z_\[\]]+);', r'\g<1>& \g<2> = m.\g<2>;', h)
@@ -570,6 +573,8 @@ class Cpp(object):
                 return self.get_size(g)
 
         if isinstance(expr, list):
+            if len(expr) == 0:
+                return 0
             return max([self.get_size(i) for i in expr])
 
         offsetdir = Token.find_tokens(expr, 'offsetdir')
@@ -1347,50 +1352,65 @@ class Cpp(object):
 
     @staticmethod
     def produce_c_data_single(data):
-        label, data_ctype, internal_data_type, r, elements, size = data.getdata()
+        c, h, size = Cpp.produce_c_data_single_(data)
+        c += ", // " + data.getlabel() + "\n"  # TODO can put original_label
+        h += ";\n"
+        return c, h, size
 
-        logging.debug(f"current data type = {internal_data_type} current data c type = {data_ctype}")
+    @staticmethod
+    def produce_c_data_single_(data):
+        internal_data_type = data.getinttype()
+
+        logging.debug(f"current data type = {internal_data_type}")
         rc, rh = {DataType.NUMBER: Cpp.produce_c_data_number,
                   DataType.ARRAY_NUMBER: Cpp.produce_c_data_array_number,
                   DataType.ZERO_STRING: Cpp.produce_c_data_zero_string,
                   DataType.ARRAY_STRING: Cpp.produce_c_data_array_string,
-                  DataType.OBJECT: Cpp.produce_c_data_struct
-                  }[internal_data_type](label, data_ctype, r, elements)
+                  DataType.OBJECT: Cpp.produce_c_data_object
+                  }[internal_data_type](data)
 
-        rc += ", // " + label + "\n"  # TODO can put original_label
-        rh += ";\n"
         logging.debug(rc)
         logging.debug(rh)
-        return rc, rh, size
+        return rc, rh, data.getsize()
 
     @staticmethod
-    def produce_c_data_number(label, data_ctype, r, elements):
+    def produce_c_data_number(data):
+        label, data_ctype, _, r, elements, size = data.getdata()
         rc = ''.join([str(i) for i in r])
         rh = f'{data_ctype} {label}'
         return rc, rh
 
     @staticmethod
-    def produce_c_data_array_number(label, data_ctype, r, elements):
+    def produce_c_data_array_number(data):
+        label, data_ctype, _, r, elements, size = data.getdata()
         rc = '{' + ",".join([str(i) for i in r]) + '}'
         # assert(len(r)==elements)
         rh = f'{data_ctype} {label}[{str(len(r))}]'
         return rc, rh
 
     @staticmethod
-    def produce_c_data_zero_string(label, data_ctype, r, elements):
+    def produce_c_data_zero_string(data):
+        label, data_ctype, _, r, elements, size = data.getdata()
         rc = '"' + ''.join([Cpp.convert_str(i) for i in r[:-1]]) + '"'
         rh = f'char {label}[{str(len(r))}]'
         return rc, rh
 
     @staticmethod
-    def produce_c_data_array_string(label, data_ctype, r, elements):
+    def produce_c_data_array_string(data):
+        label, data_ctype, _, r, elements, size = data.getdata()
         rc = '{' + ",".join([Cpp.convert_char(i) for i in r]) + '}'
         rh = f'char {label}[{str(len(r))}]'
         return rc, rh
 
     @staticmethod
-    def produce_c_data_struct(label, data_ctype, r, elements):
-        rc = '{' + ",".join([str(i) for i in r]) + '}'
+    def produce_c_data_object(data):
+        label, data_ctype, _, r, elements, size = data.getdata()
+        #rc = '{' + ",".join([str(i) for i in r]) + '}'
+        rc = list()
+        for i in data.getmembers():
+            c, _, _ = Cpp.produce_c_data_single_(i)
+            rc += [c]
+        rc = '{' + ','.join(rc) + '}'
         rh = f'{data_ctype} {label}'
         return rc, rh
 

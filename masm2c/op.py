@@ -58,15 +58,44 @@ class DataType(Enum):
     OBJECT = 5
 
 class Data:
-    __slots__ = ['label', 'type', 'data_internal_type', 'array', 'elements', 'size']
+    __slots__ = ['label', 'type', 'data_internal_type', 'array', 'elements', 'size', 'members']
 
     def __init__(self, label, type, data_internal_type: DataType, array, elements, size):
         self.label = label
         self.type = type
         self.data_internal_type = data_internal_type
-        self.array = array
         self.elements = elements
         self.size = size
+        self.array = array
+        self.members = list()
+
+    def isobject(self):
+        return self.data_internal_type == DataType.OBJECT
+
+    def setmembers(self, members):
+        self.members = members
+
+    def getmembers(self):
+        return self.members
+
+    def setvalue(self, value):
+        if self.isobject():
+            for m, v in zip(self.members, value):
+                m.setvalue(v)
+        else:
+            self.array = value
+
+    def getlabel(self):
+        return self.label
+
+    def getsize(self):
+        return self.size
+
+    def gettype(self):
+        return self.type
+
+    def getinttype(self):
+        return self.data_internal_type
 
     def getdata(self):
         return self.label, self.type, self.data_internal_type, self.array, self.elements, self.size

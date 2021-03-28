@@ -248,12 +248,12 @@ def remove_str(text):
 
 
 def structinstdir(context, nodes, label, type, values):
-    logging.debug("structinstdir" + str(label) + str(type) + str(values))
+    logging.debug(f"structinstdir {label} {type} {values}")
     #args = remove_str(Token.remove_tokens(remove_str(values), 'expr'))
     args = values[0].value
     #args = Token.remove_tokens(remove_str(values), 'expr')
     if args == None:
-        args = [0]
+        args = []
     # args = Token.remove(args, 'INTEGER')
     context.extra.add_structinstance(label.value, type, args)
     return nodes  # Token('structdir', nodes) TODO ignore by now
@@ -1285,6 +1285,15 @@ class Parser:
             size = 0
         return size
 
+    def convert_members(self, data, values):
+        if data.isobject():
+            return [self.convert_members(m, v) for m, v in zip(data.getmembers(), values)]
+        else:
+            type = data.gettype()
+            binary_width = self.typetosize(type)
+            _, _, array = self.process_data_tokens(values, binary_width)
+            return array
+
     def add_structinstance(self, label, type, args):
         s = self.structures[type]
         #cpp = Cpp(self)
@@ -1293,6 +1302,10 @@ class Parser:
         #args = [cpp.expand(i) for i in args]
         #elements, is_string, array = self.process_data_tokens(args, binary_width)
         d = op.Data(label, type, DataType.OBJECT, args, 1, s.getsize())
+        members = [deepcopy(i) for i in s.getdata().values()]
+        d.setmembers(members)
+        args = self.convert_members(d, args)
+        d.setvalue(args)
 
         isstruct = len(self.struct_name) != 0
         if isstruct:

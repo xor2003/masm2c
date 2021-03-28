@@ -1,8 +1,21 @@
 .286
-.model medium
+.model tiny
+
+e struc
+    ddd dw ?
+    f dw ?
+e ends
+
+
+b struc
+    gogo e <?,?>
+    aa db ?
+b ends
 
 GAMEINFO struc
+    a db ?
     game_opponentcarid db 4 dup (?)
+    d b <<?,?>,?>
     game_opponenttype dw ?
 GAMEINFO ends
 
@@ -13,30 +26,27 @@ VECTOR struc
 VECTOR ends
 
 TRANSFORMEDSHAPE struc
-    ts_shapeptr dw ?
-    ts_rectptr dw ?
+    ts_shapeptr db ?
     ts_rotvec VECTOR <?, ?, ?>
+    ts_rectptr db ?
 TRANSFORMEDSHAPE ends
 
-var_transshape = TRANSFORMEDSHAPE ptr -50
+;var_transshape = TRANSFORMEDSHAPE ptr -50
 
-
-_DATA   segment use16 word public 'DATA' ;IGNORE
-gameconfig GAMEINFO < <1>, 5 >
-
-ts TRANSFORMEDSHAPE < 6, 7, <8> >
-_DATA   ends ;IGNORE
-
-_TEXT   segment use16 word public 'CODE' ;IGNORE
-assume  cs:_TEXT,ds:_DATA
+_TEXT   segment public 'CODE' ;IGNORE
+assume  ds:_TEXT
 start proc near
+
+
+gameconfig GAMEINFO < 0, <1>, <<2,3>,4>, 5>
+db 0ffh
+ts TRANSFORMEDSHAPE < 6, <7, 8, 9>, 10 >
+
+fff e <>
 
 
 sti                             ; Set The Interrupt Flag
 cld                             ; Clear The Direction Flag
-
-MOV ax, _data
-MOV ds, ax
 
 t equ -2
 
@@ -51,7 +61,7 @@ jne failure
 
 mov bx,-4
 mov al,3
-cmp[bx + ts.ts_rotvec.vz], 8
+;cmp[bx + ts.ts_rotvec.vz], 8
 jne failure
 
 ;mov bp, -4
