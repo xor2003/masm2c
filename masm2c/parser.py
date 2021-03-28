@@ -1292,7 +1292,7 @@ class Parser:
         args = Token.remove_tokens(args, 'structinstance')
         #args = [cpp.expand(i) for i in args]
         #elements, is_string, array = self.process_data_tokens(args, binary_width)
-        d = op.Data(label, type, DataType.STRUCT, args, 1, s.getsize())
+        d = op.Data(label, type, DataType.OBJECT, args, 1, s.getsize())
 
         isstruct = len(self.struct_name) != 0
         if isstruct:

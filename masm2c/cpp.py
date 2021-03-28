@@ -247,6 +247,7 @@ def mangle2_label(name):
 
 class Cpp(object):
     ''' Visitor for all operations to produce C++ code '''
+
     def __init__(self, context, outfile="", skip_first=0, blacklist=[], skip_output=None, skip_dispatch_call=False,
                  skip_addr_constants=False, header_omit_blacklisted=False, function_name_remapping=None,
                  proc_strategy=SeparateProcStrategy()):
@@ -1353,44 +1354,44 @@ class Cpp(object):
                   DataType.ARRAY_NUMBER: Cpp.produce_c_data_array_number,
                   DataType.ZERO_STRING: Cpp.produce_c_data_zero_string,
                   DataType.ARRAY_STRING: Cpp.produce_c_data_array_string,
-                  DataType.STRUCT: Cpp.produce_c_data_struct
+                  DataType.OBJECT: Cpp.produce_c_data_struct
                   }[internal_data_type](label, data_ctype, r, elements)
 
-        rc+=", // " + label + "\n"  # TODO can put original_label
-        rh+=";\n"
+        rc += ", // " + label + "\n"  # TODO can put original_label
+        rh += ";\n"
         logging.debug(rc)
         logging.debug(rh)
         return rc, rh, size
 
     @staticmethod
     def produce_c_data_number(label, data_ctype, r, elements):
-        rh = data_ctype + " " + label
         rc = ''.join([str(i) for i in r])
-        return rc, rh
-
-    @staticmethod
-    def produce_c_data_zero_string(label, data_ctype, r, elements):
-        rh = "char " + label + "[" + str(len(r)) + "]"
-        rc = '"'+"".join([Cpp.convert_str(i) for i in r[:-1]])+'"'
+        rh = f'{data_ctype} {label}'
         return rc, rh
 
     @staticmethod
     def produce_c_data_array_number(label, data_ctype, r, elements):
-        #assert(len(r)==elements)
-        rh = data_ctype + " " + label + "[" + str(len(r)) + "]"
-        rc = '{'+",".join([str(i) for i in r])+'}'
+        rc = '{' + ",".join([str(i) for i in r]) + '}'
+        # assert(len(r)==elements)
+        rh = f'{data_ctype} {label}[{str(len(r))}]'
+        return rc, rh
+
+    @staticmethod
+    def produce_c_data_zero_string(label, data_ctype, r, elements):
+        rc = '"' + ''.join([Cpp.convert_str(i) for i in r[:-1]]) + '"'
+        rh = f'char {label}[{str(len(r))}]'
         return rc, rh
 
     @staticmethod
     def produce_c_data_array_string(label, data_ctype, r, elements):
-        rh = "char " + label + "[" + str(len(r)) + "]"
-        rc = '{'+",".join([Cpp.convert_char(i) for i in r])+'}'
+        rc = '{' + ",".join([Cpp.convert_char(i) for i in r]) + '}'
+        rh = f'char {label}[{str(len(r))}]'
         return rc, rh
 
     @staticmethod
     def produce_c_data_struct(label, data_ctype, r, elements):
-        rh = data_ctype + " " + label
-        rc = '{'+",".join([str(i) for i in r])+'}'
+        rc = '{' + ",".join([str(i) for i in r]) + '}'
+        rh = f'{data_ctype} {label}'
         return rc, rh
 
     @staticmethod

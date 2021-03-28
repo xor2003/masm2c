@@ -55,7 +55,7 @@ class DataType(Enum):
     ARRAY_STRING = 2
     NUMBER = 3
     ARRAY_NUMBER = 4
-    STRUCT = 5
+    OBJECT = 5
 
 class Data:
     __slots__ = ['label', 'type', 'data_internal_type', 'array', 'elements', 'size']
