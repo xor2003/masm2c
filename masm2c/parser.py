@@ -733,7 +733,7 @@ class Parser:
         v = v.replace("\'\'", "'").replace('\"\"', '"')
         return len(v) - 2
 
-    def get_global_value(self, v, base):
+    def get_global_value(self, v):
         logging.debug("get_global_value(%s)" % v)
         v = self.mangle_label(v)
         g = self.get_global(v)
@@ -818,7 +818,7 @@ class Parser:
                     # traceback.print_stack(file=sys.stdout)
                     # logging.debug "global/expr: ~%s~" %v
                     try:
-                        v = self.get_global_value(v, base)
+                        v = self.get_global_value(v)
                     except KeyError:
                         v = 0
                 reslist = [v]
@@ -830,7 +830,7 @@ class Parser:
                     v = v.value
                     # width = 2  # TODO for 16 bit only
                     v = self.mangle_label(v)
-                    v = self.get_global_value(v, base)
+                    v = self.get_global_value(v)
                 except KeyError:
                     logging.warning("unknown address %s" % v)
                     # logging.warning(self.c_data)

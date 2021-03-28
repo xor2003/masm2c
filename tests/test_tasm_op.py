@@ -32,34 +32,34 @@ class ParserTest(unittest.TestCase):
         parser_instance = Parser([])
 
         with self.assertRaises(KeyError):
-            parser_instance.get_global_value(base=256, v=u'2*2')
+            parser_instance.get_global_value(v=u'2*2')
 
         with self.assertRaises(KeyError):
-            parser_instance.get_global_value(base=256, v=u'3)')
+            parser_instance.get_global_value(v=u'3)')
 
         with self.assertRaises(KeyError):
-            parser_instance.get_global_value(base=256, v=u'5*5 dup (0')
+            parser_instance.get_global_value(v=u'5*5 dup (0')
 
         with self.assertRaises(KeyError):
-            parser_instance.get_global_value(base=256, v=u'testEqu*2')
+            parser_instance.get_global_value(v=u'testEqu*2')
 
         with self.assertRaises(KeyError):
-            parser_instance.get_global_value(base=4294967296, v=u'test2')
+            parser_instance.get_global_value(v=u'test2')
 
         with self.assertRaises(KeyError):
-            parser_instance.get_global_value(base=65536, v=u'2*2')
+            parser_instance.get_global_value(v=u'2*2')
 
         with self.assertRaises(KeyError):
-            parser_instance.get_global_value(base=65536, v=u'3)')
+            parser_instance.get_global_value(v=u'3)')
 
         with self.assertRaises(KeyError):
-            parser_instance.get_global_value(base=65536, v=u'5*5 dup (0')
+            parser_instance.get_global_value(v=u'5*5 dup (0')
 
         with self.assertRaises(KeyError):
-            parser_instance.get_global_value(base=65536, v=u'test2')
+            parser_instance.get_global_value(v=u'test2')
 
         with self.assertRaises(KeyError):
-            parser_instance.get_global_value(base=65536, v=u'testEqu*2')
+            parser_instance.get_global_value(v=u'testEqu*2')
 
         # self.assertEqual(parser_instance.convert_data(base=4294967296,v=u'var5'),u'offset(_data,var5)')
 

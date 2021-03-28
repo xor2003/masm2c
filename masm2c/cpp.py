@@ -548,10 +548,11 @@ class Cpp(object):
             elif expr.type == 'memberdir':
                 label = Token.find_tokens(expr.value, LABEL)
                 g = self.__context.get_global(label[0])
-                if isinstance(g, op.var):
-                    type = g.original_type
-                elif  isinstance(g, op.Struct):
+                if isinstance(g, op.Struct):
                     type = label[0]
+                else:
+                    type = g.original_type
+
 
                 for t in label[1:]:
                     g = self.__context.get_global(type)
