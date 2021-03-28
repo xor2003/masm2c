@@ -1288,7 +1288,7 @@ class Parser:
 
     def add_structinstance(self, label, type, args):
         s = self.structures[type]
-        cpp = Cpp(self)
+        #cpp = Cpp(self)
         #args = Token.find_and_replace_tokens(args, 'structinstance', cpp.expand)
         args = Token.remove_tokens(args, 'structinstance')
         #args = [cpp.expand(i) for i in args]

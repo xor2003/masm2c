@@ -23,14 +23,17 @@ SEGMENTREGISTER = 'segmentregister'
 SEGOVERRIDE = 'segoverride'
 SQEXPR = 'sqexpr'
 
+
 class InjectCode(Exception):
 
     def __init__(self, cmd):
         self.cmd = cmd
         super().__init__()
 
+
 class SkipCode(Exception):
     pass
+
 
 class CrossJump(Exception):
     pass
@@ -103,6 +106,7 @@ class SingleProcStrategy:
     def get_strategy(self):
         return "#define SINGLEPROCSTRATEGY\n"
 
+
 class SeparateProcStrategy:
 
     def forward_to_dispatcher(self, name):
@@ -113,7 +117,7 @@ class SeparateProcStrategy:
     def fix_call_label(self, dst):
         if dst == "__dispatch_call":
             # procedure id in variable __disp
-            pass # dst = "__disp"  # [Token('expr', 'Token(sqexpr, [[Token('LABEL', 'table'), ['+', Token('register', 'ax')]]])')]
+            pass  # dst = "__disp"  # [Token('expr', 'Token(sqexpr, [[Token('LABEL', 'table'), ['+', Token('register', 'ax')]]])')]
         else:
             # procedure id is an immediate value
             pass  # [Token('expr', 'Token(LABEL, exec_adc)')]
@@ -162,8 +166,8 @@ class SeparateProcStrategy:
 
     def write_declarations(self, procs, context):
         result = ""
-        for p in procs: # TODO only if used or public
-              result += "void %s(_offsets, struct _STATE*);\n" %p
+        for p in procs:  # TODO only if used or public
+            result += "void %s(_offsets, struct _STATE*);\n" % p
 
         for i in context.externals_procs:
             v = context.get_globals()[i]
@@ -182,6 +186,7 @@ def check_int(s):
         return s[1:].isdigit()
     return s.isdigit()
 
+
 def parse_bin(s):
     sign = s.group(1)
     b = s.group(2)
@@ -192,7 +197,7 @@ def parse_bin(s):
     return v
 
 
-def convert_number_to_c(expr, radix = 10):
+def convert_number_to_c(expr, radix=10):
     if expr == '?':
         return '0'
     try:
@@ -242,7 +247,8 @@ def mangle2_label(name):
 
 class Cpp(object):
     def __init__(self, context, outfile="", skip_first=0, blacklist=[], skip_output=None, skip_dispatch_call=False,
-                 skip_addr_constants=False, header_omit_blacklisted=False, function_name_remapping=None, proc_strategy=SeparateProcStrategy()):
+                 skip_addr_constants=False, header_omit_blacklisted=False, function_name_remapping=None,
+                 proc_strategy=SeparateProcStrategy()):
         FORMAT = "%(filename)s:%(lineno)d %(message)s"
         logging.basicConfig(format=FORMAT)
 
@@ -354,12 +360,12 @@ class Cpp(object):
                 else:
                     if self.__indirection == 1 and self.variable:
                         value = "m.%s" % g.name
-                        if not self.__isjustlabel: # if not just single label
+                        if not self.__isjustlabel:  # if not just single label
                             self.address = True
-                            if g.elements == 1: # array generates pointer himself
+                            if g.elements == 1:  # array generates pointer himself
                                 value = "&" + value
 
-                            if g.getsize() == 1: # if byte no need for (db*)
+                            if g.getsize() == 1:  # if byte no need for (db*)
                                 value = "(%s)" % value
                             else:
                                 value = "((db*)%s)" % value
@@ -400,7 +406,7 @@ class Cpp(object):
             return tokens
 
     def convert_member(self, token):
-        #name_original = token.value
+        # name_original = token.value
         logging.debug("name = %s indirection = %u" % (str(token), self.__indirection))
         label = Token.find_tokens(token, LABEL)
         self.struct_type = None
@@ -450,12 +456,12 @@ class Cpp(object):
             else:
                 if self.__indirection == 1 and self.variable:
                     value = "m." + '.'.join(label)
-                    if not self.__isjustlabel: # if not just single label
+                    if not self.__isjustlabel:  # if not just single label
                         self.address = True
-                        if g.elements == 1: # array generates pointer himself
+                        if g.elements == 1:  # array generates pointer himself
                             value = "&" + value
 
-                        if g.getsize() == 1: # if byte no need for (db*)
+                        if g.getsize() == 1:  # if byte no need for (db*)
                             value = "(%s)" % value
                         else:
                             value = "((db*)%s)" % value
@@ -494,7 +500,6 @@ class Cpp(object):
         origexpr = expr
 
         expr = Token.remove_tokens(expr, ['expr'])
-
 
         ptrdir = Token.find_tokens(expr, PTRDIR)
         if ptrdir:
@@ -553,7 +558,6 @@ class Cpp(object):
                 else:
                     type = g.original_type
 
-
                 for t in label[1:]:
                     g = self.__context.get_global(type)
                     if isinstance(g, op.Struct):
@@ -595,7 +599,7 @@ class Cpp(object):
                     logging.error("~%s~ @invalid size 0" % expr)
                     expr = "raddr(%s,%s)" % (self.__work_segment, expr)
             else:
-                if self.size_changed: # or not self.__isjustlabel:
+                if self.size_changed:  # or not self.__isjustlabel:
                     if size == 1:
                         expr = "(db*)(%s)" % expr
                     elif size == 2:
@@ -606,7 +610,7 @@ class Cpp(object):
                         expr = "(dq*)(%s)" % expr
                     else:
                         logging.error("~%s~ @invalid size 0" % expr)
-                        #expr = "(dw*)(%s)" % expr
+                        # expr = "(dw*)(%s)" % expr
             logging.debug("expr: %s" % expr)
         return expr
 
@@ -671,11 +675,11 @@ class Cpp(object):
         self.variable = False
         if (islabel or memberdir) and not offsetdir:
             if memberdir:
-                    res = self.get_size(memberdir)
-                    if res:
-                        self.variable = True
-                        size = res
-                        indirection = 1
+                res = self.get_size(memberdir)
+                if res:
+                    self.variable = True
+                    size = res
+                    indirection = 1
             elif islabel:
                 for i in islabel:
                     res = self.get_size(Token(LABEL, i))
@@ -705,14 +709,14 @@ class Cpp(object):
                 self.size_changed = True
             else:
                 origexpr = Token.remove_tokens(origexpr, [PTRDIR, SQEXPR])
-                if isinstance(origexpr, list) and len(origexpr)==1:
+                if isinstance(origexpr, list) and len(origexpr) == 1:
                     origexpr = origexpr[0]
 
         # for "label" or "[label]" get size
         self.__isjustlabel = (isinstance(origexpr, Token) and origexpr.type == LABEL) \
                              or (isinstance(origexpr, Token) and origexpr.type == SQEXPR \
                                  and isinstance(origexpr.value, Token) and origexpr.value.type == LABEL) \
-                            or (isinstance(origexpr, Token) and origexpr.type == 'memberdir')
+                             or (isinstance(origexpr, Token) and origexpr.type == 'memberdir')
 
         self.__indirection = indirection
         if memberdir:
@@ -722,7 +726,7 @@ class Cpp(object):
                 self.address = False
         else:
             if islabel:
-                #assert(len(islabel) == 1)
+                # assert(len(islabel) == 1)
                 expr = Token.find_and_replace_tokens(expr, LABEL, self.convert_label)
         indirection = self.__indirection
         if self.__current_size != 0:  # and (indirection != 1 or size == 0):
@@ -881,13 +885,13 @@ class Cpp(object):
 
     def _add(self, dst, src):
         self.d, self.s = self.parse2(dst, src)
-        #if self.d in ['sp', 'esp'] and check_int(self.s):
+        # if self.d in ['sp', 'esp'] and check_int(self.s):
         #    self.__pushpop_count -= int(self.s)
         return "\tR(ADD(%s, %s));\n" % (self.d, self.s)
 
     def _sub(self, dst, src):
         self.d, self.s = self.parse2(dst, src)
-        #if self.d in ['sp', 'esp'] and check_int(self.s):
+        # if self.d in ['sp', 'esp'] and check_int(self.s):
         #    self.__pushpop_count += int(self.s)
         if self.d == self.s:
             return "\t%s = 0;AFFECT_ZF(0); AFFECT_SF(%s,0);\n" % (self.d, self.d)
@@ -1060,9 +1064,9 @@ class Cpp(object):
             else:
                 entry_point = ''
                 try:
-                    g=self.__context.get_global(self.__context.entry_point)
+                    g = self.__context.get_global(self.__context.entry_point)
                 except:
-                    g=None
+                    g = None
                 if g and isinstance(g, op.label) and g.proc == self.proc:
                     entry_point = self.__context.entry_point
                 self.body += self.proc_strategy.function_header(name, entry_point)
@@ -1080,7 +1084,7 @@ class Cpp(object):
 
             self.body += produce_jump_table(list(labels.items()))
 
-            #self.body += self.proc_strategy.function_end()
+            # self.body += self.proc_strategy.function_end()
 
             if name not in self.__skip_output:
                 self.__translated.append(self.body)
@@ -1095,7 +1099,6 @@ class Cpp(object):
             self.__failed.append(name)
         except:
             raise
-
 
     def generate(self, start):
         fname = self.__namespace.lower() + ".cpp"
@@ -1153,8 +1156,8 @@ class Cpp(object):
         }
         """)
 
-        #self.__proc_queue.append(start)
-        #while len(self.__proc_queue):
+        # self.__proc_queue.append(start)
+        # while len(self.__proc_queue):
         for name in self.__procs:
             '''
             name = self.__proc_queue.pop()
@@ -1219,7 +1222,6 @@ class Cpp(object):
         data = self.produce_externals(self.__context)
         hd.write(data)
 
-
         hd.write("//};\n\n//} // End of namespace\n\n#endif\n")
         hd.close()
 
@@ -1277,8 +1279,6 @@ class Cpp(object):
             if v.used:
                 data += f"extern {v.original_type} {v.name};\n"
         return data
-
-
 
     def _lea(self, dst, src):
         self.lea = True
@@ -1345,63 +1345,16 @@ class Cpp(object):
 
     @staticmethod
     def produce_c_data_single(data):
-        label, type, cur_data_type, r, elements, size = data.getdata()
-        data_ctype = type
-        logging.debug(f"current data type = {cur_data_type} current data c type = {data_ctype}")
-        rc = [None] * len(r)
-        rh = []
-        vh = ""
-        vc = ""
-        if cur_data_type == DataType.ZERO_STRING:  # 0 terminated string
-            vh = "char " + label + "[" + str(len(r)) + "]"
+        label, data_ctype, internal_data_type, r, elements, size = data.getdata()
 
-        elif cur_data_type == DataType.ARRAY_STRING:  # array string
-            vh = "char " + label + "[" + str(len(r)) + "]"
-            vc = "{"
+        logging.debug(f"current data type = {internal_data_type} current data c type = {data_ctype}")
+        rc, rh = {DataType.NUMBER: Cpp.produce_c_data_number,
+                  DataType.ARRAY_NUMBER: Cpp.produce_c_data_array_number,
+                  DataType.ZERO_STRING: Cpp.produce_c_data_zero_string,
+                  DataType.ARRAY_STRING: Cpp.produce_c_data_array_string,
+                  DataType.STRUCT: Cpp.produce_c_data_struct
+                  }[internal_data_type](label, data_ctype, r, elements)
 
-        elif cur_data_type == DataType.NUMBER:  # number
-            vh = data_ctype + " " + label
-
-        elif cur_data_type == DataType.ARRAY_NUMBER:  # array
-            vh = data_ctype + " " + label + "[" + str(elements) + "]"
-            vc = "{"
-        elif cur_data_type == DataType.STRUCT:  # struct
-            vh = data_ctype + " " + label
-            vc = "{"
-
-        if cur_data_type == DataType.ZERO_STRING:  # string
-            vv = "\""
-            for i in range(0, len(r) - 1):
-                vv += Cpp.convert_str(r[i])
-            vv += "\""
-            rc = ["", vv]
-
-        elif cur_data_type == DataType.ARRAY_STRING:  # array of char
-            vv = ""
-            logging.debug(r)
-            for i in range(0, len(r)):
-                vv += Cpp.convert_char(r[i])
-                if i != len(r) - 1:
-                    vv += ","
-            rc = ["", vv]
-
-        elif cur_data_type == DataType.NUMBER:  # number
-            if len(r):
-                rc[0] = str(r[0])
-            else:
-                rc = ['']
-
-        elif cur_data_type in [DataType.ARRAY_NUMBER, DataType.STRUCT]:  # array of numbers
-            # vv = ""
-            for i in range(0, len(r)):
-                rc[i] = str(r[i])
-                if i != len(r) - 1:
-                    rc[i] += ","
-        rc.insert(0, vc)
-        rh.insert(0, vh)
-        # if it was array of numbers or array string
-        if cur_data_type in [DataType.ARRAY_STRING, DataType.ARRAY_NUMBER, DataType.STRUCT]:
-            rc.append("}")
         rc.append(", // " + label + "\n")  # TODO can put original_label
         rh.append(";\n")
         logging.debug(rc)
@@ -1409,6 +1362,36 @@ class Cpp(object):
         rc = "".join(rc)
         rh = "".join(rh)
         return rc, rh, size
+
+    @staticmethod
+    def produce_c_data_number(label, data_ctype, r, elements):
+        rh = [data_ctype + " " + label]
+        rc = [str(i) for i in r]
+        return rc, rh
+
+    @staticmethod
+    def produce_c_data_zero_string(label, data_ctype, r, elements):
+        rh = ["char " + label + "[" + str(len(r)) + "]"]
+        rc = ['"'+"".join([Cpp.convert_str(i) for i in r[:-1]])+'"']
+        return rc, rh
+
+    @staticmethod
+    def produce_c_data_array_number(label, data_ctype, r, elements):
+        rh = [data_ctype + " " + label + "[" + str(elements) + "]"]
+        rc = ['{'+",".join([str(i) for i in r])+'}']
+        return rc, rh
+
+    @staticmethod
+    def produce_c_data_array_string(label, data_ctype, r, elements):
+        rh = ["char " + label + "[" + str(len(r)) + "]"]
+        rc = ['{'+",".join([Cpp.convert_char(i) for i in r])+'}']
+        return rc, rh
+
+    @staticmethod
+    def produce_c_data_struct(label, data_ctype, r, elements):
+        rh = [data_ctype + " " + label]
+        rc = ['{'+",".join([str(i) for i in r])+'}']
+        return rc, rh
 
     @staticmethod
     def convert_char(c):
@@ -1443,5 +1426,3 @@ class Cpp(object):
                 vvv = c
             # vvv = "'" + vvv + "'"
         return vvv
-
-
