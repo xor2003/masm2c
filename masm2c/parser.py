@@ -1174,11 +1174,11 @@ class Parser:
         size = calculate_data_size_new(binary_width, args)
 
         offset = self.__cur_seg_offset
-        logging.debug("data value %s offset %d" % (str(args), offset))
+        logging.debug("args %s offset %d" % (str(args), offset))
 
         self.__binary_data_size += size
         self.__cur_seg_offset += size
-        logging.debug("convert_data_to_c %s %d %s" % (label, binary_width, args))
+        logging.debug("convert_data %s %d %s" % (label, binary_width, args))
         # original_label = label
 
         elements, is_string, array = self.process_data_tokens(args, binary_width)
@@ -1270,10 +1270,9 @@ class Parser:
         if isinstance(value, Token) and value.value.lower() in self.structures.keys():
             return self.structures[value.value.lower()].getsize()
         elif not isinstance(value, str):
-            logging.error("Type is not a string TODO " + str(value))  # TODO add structures
+            logging.error("Type is not a string TODO " + str(value))
             return 0
         value = value.lower()
-        # DB | DW | DD | DF | DQ | DT | BYTE | SBYTE | WORD | SWORD | DWORD | SDWORD | FWORD | QWORD | TBYTE | REAL4 | REAL8 | REAL10
         try:
             size = {'db': 1, 'byte': 1, 'sbyte': 1,
                     'dw': 2, 'word': 2, 'sword': 2, 'small': 2,
@@ -1282,7 +1281,7 @@ class Parser:
                     'dq': 8, 'qword': 8, 'real8': 8,
                     'dt': 10, 'tbyte': 10, 'real10': 10}[value]
         except KeyError:
-            logging.debug("Cannot find size for %s" % value)
+            logging.error("Cannot find size for %s" % value)
             size = 0
         return size
 
@@ -1292,6 +1291,7 @@ class Parser:
         #args = Token.find_and_replace_tokens(args, 'structinstance', cpp.expand)
         args = Token.remove_tokens(args, 'structinstance')
         #args = [cpp.expand(i) for i in args]
+        #elements, is_string, array = self.process_data_tokens(args, binary_width)
         d = op.Data(label, type, DataType.STRUCT, args, 1, s.getsize())
 
         isstruct = len(self.struct_name) != 0
