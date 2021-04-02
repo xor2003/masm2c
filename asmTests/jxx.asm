@@ -1,30 +1,42 @@
-.386p
+.286
 
-_DATA   segment use16 word public 'DATA' ;IGNORE
-a db 0ffh,0dfh,0h
-b db 2
-
-_DATA   ends ;IGNORE
-
-_TEXT   segment use16 word public 'CODE' ;IGNORE
+_TEXT   segment use16 public 'CODE' ;IGNORE
 assume  cs:_TEXT,ds:_DATA
 start proc near
 
 mov ax,_DATA
 mov ds,ax
 
-mov ebp,32
-mov bx,4
-jmp [cs:jtable+bx]
+mov bp,33
+jmp @F
 jmp failure
-mov ebp,30
+@@:
+jmp label34
+@@:
+jmp failure
+label34:
+
+mov bp,35
+jmp label35
+jmp failure
+@@:
+jmp label351
+label35:
+jmp @B
+label351:
+
+mov bp,32
+mov bx,4
+jmp near ptr [cs:jtable+bx]
+jmp failure
+mov bp,30
 @df@@@@8:
 
-mov ebp,2
+mov bp,2
 mov bx,6
-call [cs:jtable+bx]
+call near ptr [cs:jtable+bx]
 jmp next
-mov ebp,31
+mov bp,31
 
 @df@@@@9 proc
 ret
@@ -32,150 +44,151 @@ ret
 
 next:
 
-mov ebp,3
-mov eax,-1
-test eax,eax
+mov bp,3
+mov ax,-1
+test ax,ax
 js @df@@@@
 @df@@@@:
 jns failure
 
-mov ebp,4
-xor eax,eax
+mov bp,4
+xor ax,ax
 js failure
 
-mov ebp,5
+mov bp,5
 mov ax,-1
 test ax,ax
 jns failure
 
-mov ebp,6
+mov bp,6
 mov al,[a]
 mov bl,[a+1]
 cmp bl,al
 ja failure
 
 
-mov ebp,7
+mov bp,7
 mov bl,192
 cmp bl,192
 jb failure
 
-mov ebp,8
+mov bp,8
 cmp bl,193
 jnb failure
 
-mov ebp,9
+mov bp,9
 mov dx,-1
 cmp dx,0
 jns failure
 
-mov ebp,10
+mov bp,10
 mov dx,1
 cmp dx,0
 js failure
 
 
-mov ebp,11
-mov ecx,000ff00ffh
-mov cx,1
+mov bp,11
+mov cx,0ffffh
+mov cl,1
 or cx,cx
 jz failure
 
-mov ebp,12
+mov bp,12
 xor cx,cx
 jnz failure
 
-mov ebp,13
-lea esi,b
-cmp byte ptr [esi],1
+mov bp,13
+lea si,b
+mov al,byte ptr [si]
+cmp byte ptr [si],1
 jb failure
 
-mov ebp,14
-cmp byte ptr [esi],4
+mov bp,14
+cmp byte ptr [si],4
 ja failure
 
-mov ebp,15
-mov byte ptr [esi],-2
-cmp byte ptr [esi],1
+mov bp,15
+mov byte ptr [si],-2
+cmp byte ptr [si],1
 jb failure  ; // because unsigned comparaison
 
-mov ebp,16
+mov bp,16
 mov dx,-1
 cmp dx,0
 jg failure
 
-mov ebp,17
+mov bp,17
 mov dx,5
 cmp dx,5
 jg failure
 
-mov ebp,18
-mov eax,5
-cmp eax,4
+mov bp,18
+mov ax,5
+cmp ax,4
 jg @df@@@@1
 jmp failure
 @df@@@@1:
 
-mov ebp,19
-mov eax,4
-cmp eax,4
+mov bp,19
+mov ax,4
+cmp ax,4
 jge @df@@@@2
 jmp failure
 @df@@@@2:
 
-mov ebp,20
-mov eax,5
-cmp eax,4
+mov bp,20
+mov ax,5
+cmp ax,4
 jge @df@@@@3
 jmp failure
 @df@@@@3:
 
-mov ebp,21
+mov bp,21
 mov dx,-1
 cmp dx,0
 jge failure
 
-mov ebp,22
+mov bp,22
 mov dx,0
 cmp dx,-1
 jl failure
 
-mov ebp,23
+mov bp,23
 mov dx,5
 cmp dx,5
 jl failure
 
-mov ebp,24
-mov eax,4
-cmp eax,5
+mov bp,24
+mov ax,4
+cmp ax,5
 jl @df@@@@4
 jmp failure
 @df@@@@4:
 
-mov ebp,25
-mov eax,4
-cmp eax,4
+mov bp,25
+mov ax,4
+cmp ax,4
 jle @df@@@@5
 jmp failure
 @df@@@@5:
 
-mov ebp,26
-mov eax,4
-cmp eax,5
+mov bp,26
+mov ax,4
+cmp ax,5
 jle @df@@@@6
 jmp failure
 @df@@@@6:
 
-mov ebp,27
+mov bp,27
 mov dx,0
 cmp dx,-1
 jle failure
 
-mov ebp,28
+mov bp,28
 mov cx,-1
 jcxz failure
 
-mov ebp,29
+mov bp,29
 mov cx,0
 jcxz @df@@@@7
 jmp failure
@@ -197,12 +210,18 @@ jtable   dw 0
   dw @df@@@@8
   dw @df@@@@9
 
+
 start endp
 
 _TEXT   ends ;IGNORE
 
+_DATA   segment use16 public 'DATA' ;IGNORE
+a db 0ffh,0dfh,0h
+b db 2
+_DATA   ends ;IGNORE
+
 stackseg   segment para stack 'STACK' ;IGNORE
-db 1000h dup(?)
+db 100h dup(?)
 stackseg   ends ;IGNORE
 
 end start ;IGNORE
