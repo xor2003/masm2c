@@ -1,7 +1,6 @@
 module: directivelist?  enddir;
 aliasdir: ALIAS;
 altidq: '(' LABEL ')';
-arbitrarytext: charlist;
 assdir: name=LABEL '=' value=expr linereminder;
 assumedir: ASSUME assumelist linereminder| ASSUMENOTHING linereminder;
 assumelist : assumeregister| assumeregister COMMA assumelist;
@@ -1048,3 +1047,4 @@ WS: /([\t \b\v\f\x1a]+)|(\\;?[^\r\n]*[\r\n\t \b\v\f\x1a]+)/;
 SPACE: /[\t ]+/;
 Comment: /;[^\r\n]*/;
 KEYWORD: /\w+/;
+arbitrarytext: /[^\r\n]*/;
