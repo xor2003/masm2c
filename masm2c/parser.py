@@ -314,15 +314,10 @@ def segmentdir(context, nodes, name):
 
 def endsdir(context, nodes, name):
     logging.debug("ends " + str(nodes) + " ~~")
-    if len(context.extra.struct_name):  # if it is not a structure then it is end of segment
-        name = context.extra.struct_name.pop()
-        logging.debug("endstruct " + name)
-        context.extra.structures[name] = context.extra.current_struct
-        context.extra.set_global(name, context.extra.current_struct)
-        context.extra.current_struct = None
-    else:
-        context.extra.action_endseg()
+    context.extra.action_ends()
     return nodes
+
+
 
 
 def procdir(context, nodes, name, type):
@@ -355,10 +350,11 @@ def labeldef(context, nodes, name):
 def instrprefix(context, nodes):
     logging.debug("instrprefix " + str(nodes) + " ~~")
     instruction = nodes[0]
-    o = context.extra.proc.create_instruction_object(instruction)
-    o.line = get_raw(context)
-    o.line_number = get_line_number(context)
-    context.extra.proc.stmts.append(o)
+    #o = context.extra.proc.create_instruction_object(instruction)
+    #o.line = get_raw(context)
+    #o.line_number = get_line_number(context)
+    #context.extra.proc.stmts.append(o)
+    context.extra.action_instruction(instruction, [], get_raw(context), get_line_number(context))
     return []
 
 
@@ -369,26 +365,17 @@ def asminstruction(context, nodes, instruction, args):
         return nodes
     if args is None:
         args = []
-    o = context.extra.proc.create_instruction_object(instruction, args)
-    o.line = get_raw(context)
-    o.line_number = get_line_number(context)
-    if context.extra.current_macro == None:
-        context.extra.proc.stmts.append(o)
-    else:
-        context.extra.current_macro.instructions.append(o)
-    return o
+    return context.extra.action_instruction(instruction, args, get_raw(context), get_line_number(context))
 
 
 def enddir(context, nodes, label):
     logging.debug("end " + str(nodes) + " ~~")
-    if label:
-        context.extra.entry_point = Token.find_tokens(label, 'LABEL')[0].lower()
-        context.extra.add_call_to_entrypoint()
+    context.extra.action_end(label)
     return nodes
 
 
 def notdir(context, nodes):
-    nodes[0] = '~'
+    nodes[0] = '~' # should be in Cpp module
     return nodes
 
 
@@ -579,6 +566,7 @@ class Parser:
         self.h_data = []
         self.__cur_seg_offset = 0
         self.__c_dummy_label = 0
+        self.__c_dummy_jump_label = 0
 
         self.segments = dict()
         self.__segment_name = "default_seg"
@@ -870,6 +858,8 @@ class Parser:
 
     def action_label(self, name, far=False, isproc=False):
         logging.debug("~name: %s" % name)
+        if name == '@@':
+            name = self.get_dummy_jumplabel()
         name = self.mangle_label(name)
         if True:  # not (name in self.__label_to_skip):
             logging.debug("offset %s -> %s" % (name, "&m." + name.lower() + " - &m." + self.__segment_name))
@@ -922,10 +912,19 @@ class Parser:
         if num:
             self.__binary_data_size += num
 
-            self.__c_dummy_label += 1
-            label = "dummy" + str(self.__c_dummy_label)
+            label = self.get_dummy_label()
 
             self.segment.append(op.Data(label, 'db', DataType.ARRAY_NUMBER, num * [0], num, num))
+
+    def get_dummy_label(self):
+        self.__c_dummy_label += 1
+        label = "dummy" + str(self.__c_dummy_label)
+        return label
+
+    def get_dummy_jumplabel(self):
+        self.__c_dummy_jump_label += 1
+        label = "dummylabel" + str(self.__c_dummy_jump_label)
+        return label
 
     def parse_file(self, fname):
         '''
@@ -1190,8 +1189,7 @@ class Parser:
                                           segment=self.__segment_name, elements=elements, original_type=type))
 
         if len(label) == 0:
-            self.__c_dummy_label += 1
-            label = "dummy" + str(self.__c_dummy_label)
+            label = self.get_dummy_label()
         data = op.Data(label, type, data_internal_type, array, elements, size)
         if isstruct:
             self.current_struct.append(data)
@@ -1230,6 +1228,7 @@ class Parser:
         # self.__pgcontext = PGContext(extra = self)
         self.__binary_data_size = 0
         self.__c_dummy_label = 0  # one dummy number is used for "default_seg" creation
+        self.__c_dummy_jump_label = 0
         return self.parse_file_insideseg(text)
 
     def parse_file_insideseg(self, text):
@@ -1275,8 +1274,8 @@ class Parser:
         value = value.lower()
         try:
             size = {'db': 1, 'byte': 1, 'sbyte': 1,
-                    'dw': 2, 'word': 2, 'sword': 2, 'small': 2,
-                    'dd': 4, 'dword': 4, 'sdword': 4, 'large': 4, 'real4': 4,
+                    'dw': 2, 'word': 2, 'sword': 2, 'small': 2, 'near': 2,
+                    'dd': 4, 'dword': 4, 'sdword': 4, 'large': 4, 'far': 4, 'real4': 4,
                     'df': 6, 'fword': 6,
                     'dq': 8, 'qword': 8, 'real8': 8,
                     'dt': 10, 'tbyte': 10, 'real10': 10}[value]
@@ -1342,3 +1341,35 @@ class Parser:
             o.line = ''
             o.line_number = 0
             proc.stmts.append(o)
+
+    def action_instruction(self, instruction, args, line, line_number):
+        if instruction[0].lower() == 'j' and len(args)==1 and isinstance(args[0], Token) and \
+                isinstance(args[0].value, Token) and args[0].value.type == 'LABEL':
+            if args[0].value.value.lower() == '@f':
+                args[0].value.value = "dummylabel" + str(self.__c_dummy_jump_label+1)
+            elif args[0].value.value.lower() == '@b':
+                args[0].value.value = "dummylabel" + str(self.__c_dummy_jump_label)
+
+        o = self.proc.create_instruction_object(instruction, args)
+        o.line = line
+        o.line_number = line_number
+        if self.current_macro == None:
+            self.proc.stmts.append(o)
+        else:
+            self.current_macro.instructions.append(o)
+        return o
+
+    def action_ends(self):
+        if len(self.struct_name):  # if it is not a structure then it is end of segment
+            name = self.struct_name.pop()
+            logging.debug("endstruct " + name)
+            self.structures[name] = self.current_struct
+            self.set_global(name, self.current_struct)
+            self.current_struct = None
+        else:
+            self.action_endseg()
+
+    def action_end(self, label):
+        if label:
+            self.entry_point = Token.find_tokens(label, 'LABEL')[0].lower()
+            self.add_call_to_entrypoint()

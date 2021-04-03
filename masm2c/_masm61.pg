@@ -217,7 +217,7 @@ instruction: asminstruction=asminstruction linereminder;
 invokearg: anyregister '::' register| ADDR expr | expr;
 invokedir: INVOKE expr commainvokelist? linereminder;
 invokelist: invokearg+[COMMAOEOL];
-labeldef: name=LABEL ':' | name=LABEL '::' | name=MONKEY ':';
+labeldef: name=LABEL ':' | name=LABEL '::'; // | name=MONKEY ':';
 labeldir: LABEL LABELKW qualifiedtype linereminder;
 langtype: C | PASCAL | FORTRAN | BASIC | SYSCALL | STDCALL ;
 linereminder: ENDOFLINE | Comment ENDOFLINE;
@@ -1034,7 +1034,7 @@ STRING: /((?<!\')\'(?!\').+?(?<!\')\'(?!\'))|((?<!\")\"(?!\").+?(?<!\")\"(?!\"))
 macroname: {prefer};
 structname: {prefer};
 LABEL: /[A-Za-z@_\$\?][A-Za-z@_\$\?0-9]*/;
-MONKEY: /@@|@B|@F/ ;
+//MONKEY: /@@|@B|@F/ {prefer};
 addop: /[+-]/;
 
 //COMMENTKW: /COMMENT\s+([^ ])[.\r\n]*?\1[^\r\n]*/;

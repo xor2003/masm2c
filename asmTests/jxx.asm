@@ -7,6 +7,8 @@ start proc near
 mov ax,_DATA
 mov ds,ax
 
+mov ax, [cs:jtable+bx]
+
 mov bp,33
 jmp @F
 jmp failure
