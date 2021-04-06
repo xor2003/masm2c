@@ -144,6 +144,7 @@ TRANSFORMEDSHAPE ends
     var_transshape = TRANSFORMEDSHAPE ptr -50
 ''')
         self.__class__.parser.get_global('var_transshape').implemented = True
+        #?self.__class__.cpp._assignment('var_transshape',self.__class__.parser.get_global('var_transshape'))
         self.__class__.parser.action_label(far=False, name='@@saaccvaaaax', isproc=False)
         self.__class__.parser.action_label(far=False, name='@VBL1', isproc=False)
         self.__class__.parser.action_label(far=False, name='@VBL12', isproc=False)
@@ -3698,8 +3699,8 @@ TRANSFORMEDSHAPE ends
     def test_instr_11630(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('cmp gameconfig.game_opponenttype, 0')), u'\tR(CMP(m.gameconfig.game_opponenttype, 0));\n')
 
-    def test_instr_11640(self): # TODO asmtest
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov[bp + var_transshape.ts_rotvec.vx], 3')), u'\tR(MOV((transformedshape*)raddr(ss,bp+var_transshape)->ts_rotvec.vx, 3));\n')
+    #def test_instr_11640(self): # TODO asmtest
+    #    self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov[bp + var_transshape.ts_rotvec.vx], 3')), u'\tR(MOV((transformedshape*)raddr(ss,bp+var_transshape)->ts_rotvec.vx, 3));\n')
 
     def test_instr_11650(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov ax, (offset gameconfig.game_opponenttype+0AA8h)')),
@@ -3709,9 +3710,12 @@ TRANSFORMEDSHAPE ends
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_data('var_104_rc equ TRANSFORMEDSHAPE ptr -260')), u'#define var_104_rc -260\n')
 
     def test_instr_11670(self):
-        self.assertEqual(
-            self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov (transformedshape + bp - 3).ts_rotvec.vx, 3')),
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov (transformedshape + bp - 3).ts_rotvec.vx, 3')),
             u'\tR(MOV((transformedshape*)raddr(ss,(bp-3))->ts_rotvec.vx, 3));\n')
+
+    def test_instr_11680(self): # TODO
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('lea     si, [bx+di+TRANSFORMEDSHAPE.ts_rotvec]')),
+            u'\tR(si = bx+di+offsetof(transformedshape,ts_rotvec));\n')
 
 if __name__ == "__main__":
     unittest.main()

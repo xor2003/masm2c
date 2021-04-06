@@ -176,22 +176,22 @@ def endm(context, nodes):
 
 class Getmacroargval:
 
-    def __init__(self, d):
-        self.d = d
+    def __init__(self, params, args):
+        self.argvaluedict = dict(zip(params, args))
 
     def __call__(self, token):
-        return self.d[token.value]
+        return self.argvaluedict[token.value]
 
 
 def macrocall(context, nodes, name, args):
     # macro usage
     logging.debug("macrocall " + name + "~~")
     macros = macroses[name]
-    c = Getmacroargval(dict(zip(macros.getparameters(), args)))
-    ins = deepcopy(macros.instructions)
-    for i in ins:
-        i.args = Token.find_and_replace_tokens(i.args, 'LABEL', c)
-    context.extra.proc.stmts += ins
+    instructions = deepcopy(macros.instructions)
+    param_assigner = Getmacroargval(macros.getparameters(), args)
+    for instruction in instructions:
+        instruction.args = Token.find_and_replace_tokens(instruction.args, 'LABEL', param_assigner)
+    context.extra.proc.stmts += instructions
     return nodes
 
 
@@ -621,6 +621,7 @@ class Parser:
     def reset_global(self, name, value):
         if len(name) == 0:
             raise Exception("empty name is not allowed")
+        value.original_name = name
         name = name.lower()
         logging.debug("reset global %s -> %s" % (name, value))
         self.__globals[name] = value
@@ -956,26 +957,12 @@ class Parser:
 
     def action_assign(self, label, value, raw='', line_number=0):
         label = self.mangle_label(label)
-        value = Token.remove_tokens(value, 'expr')
-        size = Cpp(self).get_size(value)
-        ptrdir = Token.find_tokens(value, 'ptrdir')
-        if ptrdir:
-            type = ptrdir[0]
-            if isinstance(type, Token):
-                type = type.value
-            type = type.lower()
-            value = Token.find_and_replace_tokens(value, 'ptrdir', self.return_empty)
-        has_global = False
-        if self.has_global(label):
-            has_global = True
-            label = self.get_global(label).original_name
-        o = self.proc.add_assignment(label, value, line_number=line_number)
+
+        #if self.has_global(label):
+        #    label = self.get_global(label).original_name
+        o = self.proc.create_assignment_op(label, value, line_number=line_number)
         o.line = raw.rstrip()
-        o.size = size
-        if ptrdir:
-            o.original_type = type
-        if not has_global:
-            self.set_global(label, o)
+        self.reset_global(label, o)
         self.proc.stmts.append(o)
         return o
 
@@ -1001,13 +988,13 @@ class Parser:
                 type = type.value
             type = type.lower()
             value = Token.find_and_replace_tokens(value, 'ptrdir', self.return_empty)
-        proc = self.get_global("mainproc")
-        o = proc.add_equ_(label, value, line_number=line_number)
+        o = Proc.create_equ_op(label, value, line_number=line_number)
         o.line = raw.rstrip()
         o.size = size
         if ptrdir:
             o.original_type = type
         self.set_global(label, o)
+        proc = self.get_global("mainproc")
         proc.stmts.append(o)
         return o
 

@@ -116,7 +116,7 @@ class Struct:
         self.__type = Struct.Type.UNION if type.lower() == 'union' else Struct.Type.STRUCT
 
     def append(self, data):
-        self.__fields[data.label] = data
+        self.__fields[data.label.lower()] = data
         if self.__type == Struct.Type.STRUCT:
             self.__size += data.getsize()
         else: # Union
@@ -126,7 +126,7 @@ class Struct:
         return self.__fields
 
     def __getitem__(self, key):
-        return self.__fields[key]
+        return self.__fields[key.lower()]
 
     def getsize(self):
         return self.__size

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import division
 from __future__ import print_function
 
 import logging
@@ -174,7 +175,7 @@ class SeparateProcStrategy:
             if v.used:
                 result += f"extern void {v.name}(_offsets, struct _STATE*);\n"
 
-        result += "void __dispatch_call(_offsets __disp, struct _STATE* _state);\n";
+        result += "void __dispatch_call(_offsets __disp, struct _STATE* _state);\n"
         return result
 
     def get_strategy(self):
@@ -280,7 +281,7 @@ class Cpp(object):
         self.__methods = []
         self.__pushpop_count = 0
         self.lea = False
-        far = False
+        self.far = False
         self.size_changed = False
         self.address = False
         self.body = ""
@@ -383,8 +384,6 @@ class Cpp(object):
         elif isinstance(g, op.label):
             value = "k" + g.name.lower()  # .capitalize()
         else:
-            if isinstance(g, op.Struct):
-                pass
             size = g.getsize()
             if size == 0:
                 raise Exception("invalid var '%s' size %u" % (name, size))
@@ -411,7 +410,6 @@ class Cpp(object):
             return tokens
 
     def convert_member(self, token):
-        # name_original = token.value
         logging.debug("name = %s indirection = %u" % (str(token), self.__indirection))
         label = Token.find_tokens(token, LABEL)
         self.struct_type = None
@@ -422,7 +420,12 @@ class Cpp(object):
             except:
                 pass
             else:
-                value = f'offset({g.segment},{".".join(label)})'
+                if isinstance(g, op.var):
+                    value = f'offset({g.segment},{".".join(label)})'
+                elif isinstance(g, op.Struct):
+                    value = f'offsetof({label[0].lower()},{".".join(label[1:]).lower()})'
+                else:
+                    raise Exception('Not handled type '+str(type(g)))
                 self.__indirection = 0
                 return Token('memberdir', value)
 
@@ -563,10 +566,10 @@ class Cpp(object):
                 else:
                     type = g.original_type
 
-                for t in label[1:]:
+                for member in label[1:]:
                     g = self.__context.get_global(type)
                     if isinstance(g, op.Struct):
-                        g = g[t]
+                        g = g[member]
                         type = g.type
                     else:
                         return self.get_size(g)
@@ -813,10 +816,10 @@ class Cpp(object):
             hasglobal = True
             g = self.__context.get_global(name)
             if isinstance(g, proc_module.Proc):
-                return (name, g.far)
+                return name, g.far
 
         if name in self.proc.retlabels:
-            return ("return /* (%s) */" % name, far)
+            return "return /* (%s) */" % name, far
 
         if hasglobal:
             if isinstance(g, op.label):
@@ -1344,7 +1347,25 @@ class Cpp(object):
         self.c = self.expand(c)
         return "\tR(%s(%s, %s, %s));\n" % (cmd.upper(), self.a, self.b, self.c)
 
+    def return_empty(self, _):
+        return []
+
     def _assignment(self, dst, src):
+        src = Token.remove_tokens(src, 'expr')
+        size = self.get_size(src)
+        ptrdir = Token.find_tokens(src, 'ptrdir')
+        if ptrdir:
+            type = ptrdir[0]
+            if isinstance(type, Token):
+                type = type.value
+            type = type.lower()
+            src = Token.find_and_replace_tokens(src, 'ptrdir', self.return_empty)
+        o = self.__context.get_global(dst)
+        o.size = size
+        if ptrdir:
+            o.original_type = type
+        self.__context.reset_global(dst, o)
+
         return "#undef %s\n#define %s %s\n" % (dst, dst, self.expand(src))
 
     def _equ(self, dst, src):

@@ -106,10 +106,11 @@ class Proc(object):
         return cl
 
     def add_equ(self, label, value, line_number=0):  # only for tests. to remove
-        o = self.add_equ_(label, value, line_number)
-        self.stmts.insert(0, o)
+        o = Proc.create_equ_op(label, value, line_number)
+        self.stmts.append(o)
 
-    def add_equ_(self, label, value, line_number):  # TODO Move it to parser
+    @staticmethod
+    def create_equ_op(label, value, line_number):  # TODO Move it to parser
         logging.debug(label + " " + str(value))
         o = op._equ([label, value])
         #value = cpp.convert_number_to_c(value)
@@ -120,7 +121,7 @@ class Proc(object):
         #               logging.info "~~~" + o.command + o.comments
         return o
 
-    def add_assignment(self, label, value, line_number=0):
+    def create_assignment_op(self, label, value, line_number=0):
         logging.debug(label + " " + str(value))
         #value = cpp.convert_number_to_c(value)
         o = op._assignment([label, value])
