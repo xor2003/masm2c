@@ -219,9 +219,9 @@ def structdirhdr(context, nodes, name, type):
 
 def remove_str(text):
     if isinstance(text, str):
-        #if re.match(r'\d+|\?', text):
+        # if re.match(r'\d+|\?', text):
         return text
-        #else:
+        # else:
         #    return None
     elif isinstance(text, list):
         found = True
@@ -249,9 +249,9 @@ def remove_str(text):
 
 def structinstdir(context, nodes, label, type, values):
     logging.debug(f"structinstdir {label} {type} {values}")
-    #args = remove_str(Token.remove_tokens(remove_str(values), 'expr'))
+    # args = remove_str(Token.remove_tokens(remove_str(values), 'expr'))
     args = values[0].value
-    #args = Token.remove_tokens(remove_str(values), 'expr')
+    # args = Token.remove_tokens(remove_str(values), 'expr')
     if args == None:
         args = []
     # args = Token.remove(args, 'INTEGER')
@@ -290,7 +290,8 @@ def datadir(context, nodes, label, type, values):
     else:
         label = ""
 
-    return context.extra.datadir_action(label, type.lower(), values)
+    return context.extra.datadir_action(label, type.lower(), values, raw=get_raw(context),
+                                        line_number=get_line_number(context))
 
 
 def includedir(context, nodes, name):
@@ -318,11 +319,9 @@ def endsdir(context, nodes, name):
     return nodes
 
 
-
-
 def procdir(context, nodes, name, type):
     logging.debug("procdir " + str(nodes) + " ~~")
-    context.extra.action_proc(name, type, get_line_number(context))
+    context.extra.action_proc(name, type, line_number=get_line_number(context))
     return nodes
 
 
@@ -334,12 +333,12 @@ def endpdir(context, nodes, name):
 
 def equdir(context, nodes, name, value):
     logging.debug("equdir " + str(nodes) + " ~~")
-    return context.extra.action_equ(name.value, value, get_raw(context), get_line_number(context))
+    return context.extra.action_equ(name.value, value, raw=get_raw(context), line_number=get_line_number(context))
 
 
 def assdir(context, nodes, name, value):
     logging.debug("assdir " + str(nodes) + " ~~")
-    return context.extra.action_assign(name.value, value, get_raw(context), get_line_number(context))
+    return context.extra.action_assign(name.value, value, raw=get_raw(context), line_number=get_line_number(context))
 
 
 def labeldef(context, nodes, name):
@@ -350,11 +349,11 @@ def labeldef(context, nodes, name):
 def instrprefix(context, nodes):
     logging.debug("instrprefix " + str(nodes) + " ~~")
     instruction = nodes[0]
-    #o = context.extra.proc.create_instruction_object(instruction)
-    #o.line = get_raw(context)
-    #o.line_number = get_line_number(context)
-    #context.extra.proc.stmts.append(o)
-    context.extra.action_instruction(instruction, [], get_raw(context), get_line_number(context))
+    # o = context.extra.proc.create_instruction_object(instruction)
+    # o.line = get_raw(context)
+    # o.line_number = get_line_number(context)
+    # context.extra.proc.stmts.append(o)
+    context.extra.action_instruction(instruction, [], raw=get_raw(context), line_number=get_line_number(context))
     return []
 
 
@@ -365,7 +364,8 @@ def asminstruction(context, nodes, instruction, args):
         return nodes
     if args is None:
         args = []
-    return context.extra.action_instruction(instruction, args, get_raw(context), get_line_number(context))
+    return context.extra.action_instruction(instruction, args, raw=get_raw(context),
+                                            line_number=get_line_number(context))
 
 
 def enddir(context, nodes, label):
@@ -375,7 +375,7 @@ def enddir(context, nodes, label):
 
 
 def notdir(context, nodes):
-    nodes[0] = '~' # should be in Cpp module
+    nodes[0] = '~'  # should be in Cpp module
     return nodes
 
 
@@ -427,8 +427,10 @@ def labeltok(context, nodes):
 def STRING(context, nodes):
     return Token('STRING', nodes)
 
+
 def structinstance(context, nodes, values):
     return Token('structinstance', values)
+
 
 def memberdir(context, nodes, variable, field):
     result = Token('memberdir', [variable, field])
@@ -446,8 +448,16 @@ def externdef(context, nodes, extrnname, type):
     context.extra.add_extern(extrnname.value, type)
     return nodes
 
+def maked(context, nodes):
+    #return Token(nodes[0].upper(), nodes[1].value)
+    # TODO dirty workaround for now
+    if nodes[0].lower() == 'size':
+        return [f'sizeof({nodes[1].value.lower()})']
+    else:
+        return nodes
 
 actions = {
+    "dir3": maked,
     "externdef": externdef,
     "macrocall": macrocall,
     "repeatbegin": repeatbegin,
@@ -550,6 +560,7 @@ class Parser:
         self.__stack = []
 
         self.entry_point = "mainproc_begin"
+        self.main_file = False
 
         self.proc_list = []
         self.proc_stack = []
@@ -586,6 +597,9 @@ class Parser:
         self.structures = dict()
         self.externals_vars = set()
         self.externals_procs = set()
+
+        self.current_file = ''
+        self.files = []
 
     def visible(self):
         for i in self.__stack:
@@ -909,7 +923,7 @@ class Parser:
 
     def align(self, align_bound=0x10):
         num = (align_bound - (self.__binary_data_size & (align_bound - 1))) if (
-                    self.__binary_data_size & (align_bound - 1)) else 0
+                self.__binary_data_size & (align_bound - 1)) else 0
         if num:
             self.__binary_data_size += num
 
@@ -940,27 +954,32 @@ class Parser:
             self.h_data.append(" db " + label + "[" + str(num) + "]; // protective\n")
         '''
 
-        skipping_binary_data = False
-        self.parse_file_lines(fname, skipping_binary_data)
+        self.parse_file_lines(fname)
 
         self.align()
 
         return self
 
-    def parse_file_lines(self, file_name, skipping_binary_data):
+    def parse_file_lines(self, file_name):
+        self.current_file = file_name
         content = read_asm_file(file_name)
         self.parse_args_new_data(content, file_name=file_name)
 
     def parse_include_file_lines(self, file_name):
+        self.files.append(self.current_file)
+        self.current_file = file_name
         content = read_asm_file(file_name)
-        return self.parse_file_inside(content, file_name=file_name)
+        result = self.parse_file_inside(content, file_name=file_name)
+        self.current_file = self.files.pop()
+        return result
 
     def action_assign(self, label, value, raw='', line_number=0):
         label = self.mangle_label(label)
 
-        #if self.has_global(label):
+        # if self.has_global(label):
         #    label = self.get_global(label).original_name
         o = self.proc.create_assignment_op(label, value, line_number=line_number)
+        o.filename = self.current_file
         o.line = raw.rstrip()
         self.reset_global(label, o)
         self.proc.stmts.append(o)
@@ -989,6 +1008,7 @@ class Parser:
             type = type.lower()
             value = Token.find_and_replace_tokens(value, 'ptrdir', self.return_empty)
         o = Proc.create_equ_op(label, value, line_number=line_number)
+        o.filename = self.current_file
         o.line = raw.rstrip()
         o.size = size
         if ptrdir:
@@ -1003,7 +1023,7 @@ class Parser:
         self.__segment_name = name
         self.create_segment(name)
 
-    def action_proc(self, name, type, line_number):
+    def action_proc(self, name, type, line_number=0):
         logging.info("procedure name %s" % name.value)
         name = self.mangle_label(name.value)
         far = False
@@ -1152,7 +1172,7 @@ class Parser:
 
         return result
 
-    def datadir_action(self, label, type, args):
+    def datadir_action(self, label, type, args, raw='', line_number=0):
         isstruct = len(self.struct_name) != 0
 
         label = self.mangle_label(label)
@@ -1173,11 +1193,13 @@ class Parser:
         logging.debug("~size %d elements %d" % (binary_width, elements))
         if label:
             self.set_global(label, op.var(binary_width, offset, name=label,
-                                          segment=self.__segment_name, elements=elements, original_type=type))
+                                          segment=self.__segment_name, elements=elements, original_type=type,
+                                          filename=self.current_file, raw=raw, line_number=line_number))
 
         if len(label) == 0:
             label = self.get_dummy_label()
-        data = op.Data(label, type, data_internal_type, array, elements, size)
+        data = op.Data(label, type, data_internal_type, array, elements, size, filename=self.current_file, raw=raw,
+                       line_number=line_number)
         if isstruct:
             self.current_struct.append(data)
         else:
@@ -1282,11 +1304,11 @@ class Parser:
 
     def add_structinstance(self, label, type, args):
         s = self.structures[type]
-        #cpp = Cpp(self)
-        #args = Token.find_and_replace_tokens(args, 'structinstance', cpp.expand)
+        # cpp = Cpp(self)
+        # args = Token.find_and_replace_tokens(args, 'structinstance', cpp.expand)
         args = Token.remove_tokens(args, 'structinstance')
-        #args = [cpp.expand(i) for i in args]
-        #elements, is_string, array = self.process_data_tokens(args, binary_width)
+        # args = [cpp.expand(i) for i in args]
+        # elements, is_string, array = self.process_data_tokens(args, binary_width)
         d = op.Data(label, type, DataType.OBJECT, args, 1, s.getsize())
         members = [deepcopy(i) for i in s.getdata().values()]
         d.setmembers(members)
@@ -1329,16 +1351,17 @@ class Parser:
             o.line_number = 0
             proc.stmts.append(o)
 
-    def action_instruction(self, instruction, args, line, line_number):
-        if instruction[0].lower() == 'j' and len(args)==1 and isinstance(args[0], Token) and \
+    def action_instruction(self, instruction, args, raw='', line_number=0):
+        if instruction[0].lower() == 'j' and len(args) == 1 and isinstance(args[0], Token) and \
                 isinstance(args[0].value, Token) and args[0].value.type == 'LABEL':
             if args[0].value.value.lower() == '@f':
-                args[0].value.value = "dummylabel" + str(self.__c_dummy_jump_label+1)
+                args[0].value.value = "dummylabel" + str(self.__c_dummy_jump_label + 1)
             elif args[0].value.value.lower() == '@b':
                 args[0].value.value = "dummylabel" + str(self.__c_dummy_jump_label)
 
         o = self.proc.create_instruction_object(instruction, args)
-        o.line = line
+        o.filename = self.current_file
+        o.line = raw
         o.line_number = line_number
         if self.current_macro == None:
             self.proc.stmts.append(o)
@@ -1358,5 +1381,6 @@ class Parser:
 
     def action_end(self, label):
         if label:
+            self.main_file = True
             self.entry_point = Token.find_tokens(label, 'LABEL')[0].lower()
             self.add_call_to_entrypoint()

@@ -1,7 +1,10 @@
-#!/bin/sh
+#!/bin/sh -x
 export PKG_CONFIG_PATH=/usr/lib/i386-linux-gnu/pkgconfig
 export CXX="g++ -m32"
-export OPT="-mno-ms-bitfields  -Wno-multichar `pkg-config --cflags --libs sdl` `pkg-config --cflags --libs ncurses` -ggdb3 -O0 -I. -DCHTYPE_16 -DDEBUG=3"
+#export SDL="`pkg-config --cflags --libs sdl`"
+export SDL="-DNOSDL"
+
+export OPT="-mno-ms-bitfields  -Wno-multichar $SDL `pkg-config --cflags --libs ncurses` -ggdb3 -O0 -I. -DCHTYPE_16 -DDEBUG=3"
 # -DDEBUG=1
 
 $CXX asm.cpp  -c $OPT

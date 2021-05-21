@@ -133,14 +133,15 @@ e09: offsetdir
 e10: memberdir
 | e10 expr?
 | e11;
-e11: '(' expr ')'
-| sqexpr
-| WIDTH LABEL
+dir3: WIDTH LABEL
 | MASK LABEL
 | SIZE sizearg
 | SIZEOF sizearg
 | LENGTH LABEL
-| LENGTHOF LABEL
+| LENGTHOF LABEL;
+e11: '(' expr ')'
+| sqexpr
+| dir3
 | recordconst
 | STRING
 | INTEGER

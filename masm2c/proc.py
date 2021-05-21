@@ -40,6 +40,7 @@ class Proc(object):
         logging.info("optimizing...")
         # trivial simplifications
 
+    '''
     def action_instruction(self, stmt):
         # print stmt
         # comment = stmt.find(';')
@@ -59,6 +60,7 @@ class Proc(object):
         # o.line_number = line_number
         # self.stmts.append(o)
         return o
+    '''
 
     def parse_extract_label(self, stmt):
         r = label_re.search(stmt)
@@ -154,6 +156,10 @@ class Proc(object):
                 visitor.body += s
             except SkipCode:
                 logging.debug(f'Skipping code {stmt}')
+            except Exception as ex:
+                logging.error(f'Exception in {stmt.filename}:{stmt.line_number} {stmt.line}\n {ex.args}')
+                raise
+
 
             try:  # trying to add command and comment
                 if stmt.line or stmt.line_number != 0:

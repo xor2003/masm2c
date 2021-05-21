@@ -337,14 +337,8 @@ TRANSFORMEDSHAPE ends
     def test_instr_440(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('JNE @VBL12    ;on attends le retrace')), u'\t\tR(JNZ(arbvbl12));\n')
 
-    def test_instr_450(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('JNE failure')), u'\t\tR(JNZ(failure));\n')
-
     def test_instr_460(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('JNZ  @@saaccvaaaax')), u'\t\tR(JNZ(arbarbsaaccvaaaax));\n')
-
-    def test_instr_470(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('LODSB')), 'LODSB;\n')
 
     def test_instr_480(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('MOV DX,3DAh')), u'\tR(MOV(dx, 0x3DA));\n')
@@ -1093,9 +1087,6 @@ TRANSFORMEDSHAPE ends
     def test_instr_2960(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('inc     dx')), u'\tR(INC(dx));\n')
 
-    def test_instr_2970(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('inc     edx')), u'\tR(INC(edx));\n')
-
     def test_instr_2980(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('inc     i')), u'\tR(INC(i));\n')
 
@@ -1135,17 +1126,11 @@ TRANSFORMEDSHAPE ends
     def test_instr_3100(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('int 31h')), u'\tR(_INT(0x31));\n')
 
-    def test_instr_3110(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('jC failure')), u'\t\tR(JC(failure));\n')
-
     def test_instr_3120(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('jNC OK')), u'\t\tR(JNC(ok));\n')
 
     def test_instr_3130(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('ja      short loc_407784')), u'\t\tR(JA(loc_407784));\n')
-
-    def test_instr_3140(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('ja failure')), u'\t\tR(JA(failure));\n')
 
     def test_instr_3150(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('jnbe failure')), u'\t\tR(JA(failure));\n')
@@ -1254,9 +1239,6 @@ TRANSFORMEDSHAPE ends
 
     def test_instr_3500(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('jnb failure')), u'\t\tR(JNC(failure));\n')
-
-    def test_instr_3510(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('jnc failure')), u'\t\tR(JNC(failure));\n')
 
     def test_instr_3520(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('jnc noerror')), u'\t\tR(JNC(noerror));\n')
@@ -1786,12 +1768,6 @@ TRANSFORMEDSHAPE ends
     def test_instr_5270(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov     dword ptr [esp+4], 0 ; op0')), u'\tR(MOV(*(dd*)(raddr(ss,esp+4)), 0));\n')
 
-    def test_instr_5280(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov     dword ptr [esp+4], 0 ; s1')), u'\tR(MOV(*(dd*)(raddr(ss,esp+4)), 0));\n')
-
-    def test_instr_5290(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov     dword ptr [esp+4], 0')), u'\tR(MOV(*(dd*)(raddr(ss,esp+4)), 0));\n')
-
     def test_instr_5300(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov     dword ptr [esp+4], 0FFFC70F9h ; op0')), u'\tR(MOV(*(dd*)(raddr(ss,esp+4)), 0x0FFFC70F9));\n')
 
@@ -1801,23 +1777,8 @@ TRANSFORMEDSHAPE ends
     def test_instr_5320(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov     dword ptr [esp+4], 0FFFFFFFFh ; s1')), u'\tR(MOV(*(dd*)(raddr(ss,esp+4)), 0x0FFFFFFFF));\n')
 
-    def test_instr_5330(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov     dword ptr [esp+4], 1 ; op0')), u'\tR(MOV(*(dd*)(raddr(ss,esp+4)), 1));\n')
-
-    def test_instr_5340(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov     dword ptr [esp+4], 1 ; s1')), u'\tR(MOV(*(dd*)(raddr(ss,esp+4)), 1));\n')
-
     def test_instr_5350(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov     dword ptr [esp+4], 10000h ; op0')), u'\tR(MOV(*(dd*)(raddr(ss,esp+4)), 0x10000));\n')
-
-    def test_instr_5360(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov     dword ptr [esp+4], 10000h ; op1')), u'\tR(MOV(*(dd*)(raddr(ss,esp+4)), 0x10000));\n')
-
-    def test_instr_5370(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov     dword ptr [esp+4], 10000h ; s1')), u'\tR(MOV(*(dd*)(raddr(ss,esp+4)), 0x10000));\n')
-
-    def test_instr_5380(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov     dword ptr [esp+4], 100h ; op0')), u'\tR(MOV(*(dd*)(raddr(ss,esp+4)), 0x100));\n')
 
     def test_instr_5390(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov     dword ptr [esp+4], 100h ; op1')), u'\tR(MOV(*(dd*)(raddr(ss,esp+4)), 0x100));\n')
@@ -3675,9 +3636,6 @@ TRANSFORMEDSHAPE ends
         #r=list(filter(lambda x: not x.used, p.get_globals().values()))
         #print([g.name for g in r])
 
-    def test_instr_11580(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov dl, [edi]')), u'\tR(MOV(dl, *(raddr(ds,edi))));\n')
-
     def test_instr_11590(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('jmp loc_406B3F')), u'\t\tR(JMP(loc_406b3f));\n')
 
@@ -3713,9 +3671,13 @@ TRANSFORMEDSHAPE ends
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov (transformedshape + bp - 3).ts_rotvec.vx, 3')),
             u'\tR(MOV((transformedshape*)raddr(ss,(bp-3))->ts_rotvec.vx, 3));\n')
 
-    def test_instr_11680(self): # TODO
+    def test_instr_11680(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('lea     si, [bx+di+TRANSFORMEDSHAPE.ts_rotvec]')),
             u'\tR(si = bx+di+offsetof(transformedshape,ts_rotvec));\n')
+
+    def test_instr_11690(self):
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('lea     ax, [si+(size TRANSFORMEDSHAPE)]')),
+            u'\tR(ax = si+(sizeof(transformedshape)));\n')
 
 if __name__ == "__main__":
     unittest.main()

@@ -49,9 +49,9 @@ def produce_jump_table(globals):
         if isinstance(v, op.label):
             offsets.append((k.lower(), k))
     offsets = sorted(offsets, key=lambda t: t[1])
-    for o in offsets:
-        logging.debug(o)
-        result += "case k%s: \tgoto %s;\n" % o
+    for name, label in offsets:
+        logging.debug(name, label)
+        result += "case k%s: \tgoto %s;\n" % (name, cpp_mangle_label(label))
     result += "default: log_error(\"Jump/call to nowhere %d\\n\", __disp);stackDump(_state); abort();\n"
     result += "};\n}\n"
     return result
@@ -74,7 +74,7 @@ class SingleProcStrategy:
         return dst
 
     def produce_proc_start(self, name):
-        ret = " // Procedure %s() start\n%s:\n" % (name, mangle2_label(name))
+        ret = " // Procedure %s() start\n%s:\n" % (name, cpp_mangle_label(name))
         return ret
 
     def function_header(self, name, entry_point=''):
@@ -83,7 +83,7 @@ class SingleProcStrategy:
             void %s(_offsets _i, struct _STATE* _state){
             X86_REGREF
             __disp=_i;
-            """ % name
+            """ % cpp_mangle_label(name)
         if entry_point != '':
             header += """
             if (__disp==kbegin) goto %s;
@@ -125,7 +125,7 @@ class SeparateProcStrategy:
         return dst
 
     def produce_proc_start(self, name):
-        ret = " // Procedure %s() start\n%s()\n{\n" % (name, mangle2_label(name))
+        ret = " // Procedure %s() start\n%s()\n{\n" % (name, cpp_mangle_label(name))
         return ret
 
     def function_header(self, name, entry_point=''):
@@ -134,7 +134,7 @@ class SeparateProcStrategy:
                     void %s(_offsets _i, struct _STATE* _state){
                     X86_REGREF
                     __disp=_i;
-                    """ % name
+                    """ % cpp_mangle_label(name)
         if entry_point != '':
             header += """
                     if (__disp==kbegin) goto %s;
@@ -158,9 +158,9 @@ class SeparateProcStrategy:
             if isinstance(v, proc_module.Proc) and v.used:
                 offsets.append((k.lower(), k))
         offsets = sorted(offsets, key=lambda t: t[1])
-        for o in offsets:
-            logging.debug(o)
-            result += "case k%s: \t%s(0, _state); break;\n" % o
+        for name, label in offsets:
+            logging.debug(name, label)
+            result += "case k%s: \t%s(0, _state); break;\n" % (name, cpp_mangle_label(label))
         result += "default: log_error(\"Jump/call to nothere %d\\n\", __disp);stackDump(_state); abort();\n"
         result += "};\n}\n"
         return result
@@ -168,7 +168,9 @@ class SeparateProcStrategy:
     def write_declarations(self, procs, context):
         result = ""
         for p in procs:  # TODO only if used or public
-            result += "void %s(_offsets, struct _STATE*);\n" % p
+            if p == 'mainproc' and not context.main_file:
+                result += 'static '
+            result += "void %s(_offsets, struct _STATE*);\n" % cpp_mangle_label(p)
 
         for i in context.externals_procs:
             v = context.get_globals()[i]
@@ -241,9 +243,11 @@ def guess_int_size(v):
     return size
 
 
-def mangle2_label(name):
+def cpp_mangle_label(name):
     name = name.lower()
-    return re.sub(r'\$', '_tmp', name)
+    if name == 'main':
+        name = 'asmmain'
+    return name.replace('$', '_tmp')
 
 
 class Cpp(object):
@@ -453,7 +457,7 @@ class Cpp(object):
             if self.__current_size == 0:  # TODO check
                 self.__current_size = size
             if size == 0:
-                raise Exception("invalid var '%s' size %u" % (label[0], size))
+                raise Exception(f"invalid var {label} size {size}")
             self.address = False
             if g.elements != 1:
                 self.address = True
@@ -566,13 +570,19 @@ class Cpp(object):
                 else:
                     type = g.original_type
 
-                for member in label[1:]:
-                    g = self.__context.get_global(type)
-                    if isinstance(g, op.Struct):
-                        g = g[member]
-                        type = g.type
-                    else:
-                        return self.get_size(g)
+                try:
+                    for member in label[1:]:
+                        g = self.__context.get_global(type)
+                        if isinstance(g, op.Struct):
+                            g = g[member]
+                            type = g.type
+                        else:
+                            return self.get_size(g)
+                except KeyError as ex:
+                    logging.debug(f"Didn't found for {label} {ex.args} will try workaround")
+                    # if members are global as with M510 or tasm try to find last member size
+                    g = self.__context.get_global(label[-1])
+
                 return self.get_size(g)
 
         if isinstance(expr, list):
@@ -589,8 +599,10 @@ class Cpp(object):
         if isinstance(expr, str):
             from masm2c.parser import Parser
             return Parser.is_register(expr)
-        elif isinstance(expr, op.Data):
+        elif isinstance(expr, (op.Data, op.var, op._assignment, op._equ)):
             return expr.getsize()
+        else:
+            logging.debug(f"Could not identify type for {expr} to get size")
         return 0
 
     def convert_sqbr_reference(self, expr, destination, size, islabel, lea=False):
@@ -778,7 +790,7 @@ class Cpp(object):
         labeldir = Token.find_tokens(name, 'LABEL')
         if labeldir:
             from masm2c.parser import Parser
-            labeldir[0] = Parser.mangle_label(mangle2_label(labeldir[0]))
+            labeldir[0] = Parser.mangle_label(cpp_mangle_label(labeldir[0]))
             if self.__context.has_global(labeldir[0]):
                 g = self.__context.get_global(labeldir[0])
                 if isinstance(g, op.var):
@@ -841,7 +853,7 @@ class Cpp(object):
         if proc:
             ret = self.proc_strategy.produce_proc_start(name)
         else:
-            ret = "%s:\n" % mangle2_label(name)
+            ret = "%s:\n" % cpp_mangle_label(name)
         return ret
 
     def schedule(self, name):
@@ -857,7 +869,7 @@ class Cpp(object):
         # dst = self.expand(name, destination = False)
         dst, far = self.jump_to_label(name)
         dst = self.proc_strategy.fix_call_label(dst)
-
+        dst = cpp_mangle_label(dst)
         if far:
             ret += "\tR(CALLF(%s));\n" % (dst)
         else:
@@ -1142,29 +1154,29 @@ class Cpp(object):
 
 //namespace {self.__namespace} {{
 """)
-
-        fd.write("""
-        int init(struct _STATE* _state)
-        {
-        X86_REGREF
-
-          log_debug("~~~ heap_size=%%d para=%%d heap_ofs=%%d", HEAP_SIZE, (HEAP_SIZE >> 4), seg_offset(heap) );
-          /* We expect ram_top as Kbytes, so convert to paragraphs */
-          mcb_init(seg_offset(heap), (HEAP_SIZE >> 4) - seg_offset(heap) - 1, MCB_LAST);
-
-          R(MOV(ss, seg_offset(stack)));
-        #if _BITS == 32
-          esp = ((dd)(db*)&m.stack[STACK_SIZE - 4]);
-        #else
-          esp=0;
-          sp = STACK_SIZE - 4;
-          es=0;
-         *(dw*)(raddr(0,0x408)) = 0x378; //LPT
-        #endif
-
-                return(0);
-        }
-        """)
+        if self.__context.main_file:
+            fd.write("""
+            int init(struct _STATE* _state)
+            {
+            X86_REGREF
+    
+              log_debug("~~~ heap_size=%%d para=%%d heap_ofs=%%d", HEAP_SIZE, (HEAP_SIZE >> 4), seg_offset(heap) );
+              /* We expect ram_top as Kbytes, so convert to paragraphs */
+              mcb_init(seg_offset(heap), (HEAP_SIZE >> 4) - seg_offset(heap) - 1, MCB_LAST);
+    
+              R(MOV(ss, seg_offset(stack)));
+            #if _BITS == 32
+              esp = ((dd)(db*)&m.stack[STACK_SIZE - 4]);
+            #else
+              esp=0;
+              sp = STACK_SIZE - 4;
+              es=0;
+             *(dw*)(raddr(0,0x408)) = 0x378; //LPT
+            #endif
+    
+                    return(0);
+            }
+            """)
 
         # self.__proc_queue.append(start)
         # while len(self.__proc_queue):

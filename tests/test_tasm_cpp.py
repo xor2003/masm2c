@@ -4,7 +4,7 @@ from __future__ import print_function
 from masm2c import op
 from masm2c import cpp
 from mock import patch
-from masm2c.cpp import Cpp, mangle2_label
+from masm2c.cpp import Cpp, cpp_mangle_label
 from masm2c.parser import Parser
 import logging
 import unittest
@@ -2013,9 +2013,9 @@ class CppTest(unittest.TestCase):
     def test_mangle_label(self):
         p = Parser([])
         cpp_instance = Cpp(p)
-        self.assertEqual(mangle2_label(name='loc_40458F'), 'loc_40458f')
-        self.assertEqual(mangle2_label(name=u'_start'), u'_start')
-        self.assertEqual(mangle2_label(name=u'_st$art$'), u'_st_tmpart_tmp')
+        self.assertEqual(cpp_mangle_label(name='loc_40458F'), 'loc_40458f')
+        self.assertEqual(cpp_mangle_label(name=u'_start'), u'_start')
+        self.assertEqual(cpp_mangle_label(name=u'_st$art$'), u'_st_tmpart_tmp')
 
 
 if __name__ == "__main__":

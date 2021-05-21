@@ -12,4 +12,5 @@ rem %CC% %OPT% iprintf.cpp -S -masm=intel
 %CC% %OPT% %1.cpp -c
 rem %CC%  %1.o asm.o memmgr.o -lpdcurses.dll -o %1 %OPT%
 %CC%  %1.o asm.o memmgr.o -Lc:\MinGW\lib c:\MinGW\lib\pdcurses.a -o %1 %OPT%
+rem %CC%  %1.o asm.o memmgr.o -Lc:\MinGW\lib pdcurses.a -o %1 %OPT%
 rem iprintf.o 

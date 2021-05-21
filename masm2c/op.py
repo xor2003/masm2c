@@ -13,10 +13,31 @@ from enum import Enum
 class Unsupported(Exception):
     pass
 
+class baseop(object):
+    __slots__ = ["cmd", "line", "line_number", "elements", "args"]
+
+    def __init__(self):
+        self.cmd = ""
+        self.line = ""
+        self.line_number = 0
+        self.elements = 1
+        self.args = []
+        self.size = 0
+
+
+    def getsize(self):
+        return self.size
+
+    # def __str__(self):
+    #        return self.cmd+" "+self.command+" "+str(self.line_number)
+
+    def __str__(self):
+        return str(self.__class__)
 
 class var(object):
 
-    def __init__(self, size, offset, name="", segment="", issegment=False, elements=1, external=False, original_type=""):
+    def __init__(self, size, offset, name="", segment="", issegment=False, elements=1,
+                 external=False, original_type="", filename='', raw='', line_number=0):
         # logging.debug("op.var(%d, %d, %s, %s, %s, %d)" %(size, offset, name, segment, issegment, elements))
         self.size = size
         self.offset = offset
@@ -28,6 +49,9 @@ class var(object):
         self.used = False
         self.external = external
         self.original_type = original_type.lower()
+        self.filename = filename
+        self.line = raw
+        self.line_number = line_number
         # logging.debug("op.var(%s)" %(str(self.__dict__).replace('\n',' ')))
 
     def getsize(self):
@@ -57,10 +81,12 @@ class DataType(Enum):
     ARRAY_NUMBER = 4
     OBJECT = 5
 
-class Data:
-    __slots__ = ['label', 'type', 'data_internal_type', 'array', 'elements', 'size', 'members']
+class Data(baseop):
+    __slots__ = ['label', 'type', 'data_internal_type', 'array', 'elements', 'size', 'members',
+                 'filename', 'line', 'line_number']
 
-    def __init__(self, label, type, data_internal_type: DataType, array, elements, size):
+    def __init__(self, label, type, data_internal_type: DataType, array, elements, size, filename='', raw='', line_number=0):
+        super().__init__()
         self.label = label
         self.type = type
         self.data_internal_type = data_internal_type
@@ -68,6 +94,10 @@ class Data:
         self.size = size
         self.array = array
         self.members = list()
+        self.filename = filename
+        self.line = raw
+        self.line_number = line_number
+
 
     def isobject(self):
         return self.data_internal_type == DataType.OBJECT
@@ -172,25 +202,6 @@ class glob(object):
 '''
 
 
-class baseop(object):
-    __slots__ = ["cmd", "line", "line_number", "elements", "args"]
-
-    def __init__(self):
-        self.cmd = ""
-        self.line = ""
-        self.line_number = 0
-        self.elements = 1
-        self.args = []
-        self.size = 0
-
-    def getsize(self):
-        return self.size
-
-    # def __str__(self):
-    #        return self.cmd+" "+self.command+" "+str(self.line_number)
-
-    def __str__(self):
-        return str(self.__class__)
 
 
 class basejmp(baseop):
@@ -687,7 +698,6 @@ class _equ(baseop):
         else:
             from masm2c.cpp import SkipCode
             raise SkipCode
-
 
 class _assignment(baseop):
     def __init__(self, args):
