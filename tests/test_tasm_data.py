@@ -37,12 +37,6 @@ class ParserDataTest(unittest.TestCase):
     def test_data_10050(self):
         self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="_a130295211558\tdb '13/02/95 21:15:58',0 ; DATA XREF: _read_module+BE\x18w")), ('"13/02/95 21:15:58", // _a130295211558\n', 'char _a130295211558[18];\n', 18))
 
-    def test_data_10060(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="_a1Thru0		db '1 Thru 0'")), ("{'1',' ','T','h','r','u',' ','0'}, // _a1thru0\n", 'char _a1thru0[8];\n', 8))
-
-    def test_data_10070(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="_a2284116_8	db '2:284/116.8'")), ("{'2',':','2','8','4','/','1','1','6','.','8'}, // _a2284116_8\n", 'char _a2284116_8[11];\n', 11))
-
     def test_data_10080(self):
         self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="_a24bitInterpolation db ' 24bit Interpolation'")), ("{' ','2','4','b','i','t',' ','I','n','t','e','r','p','o','l','a','t','i','o','n'}, // _a24bitinterpolation\n", 'char _a24bitinterpolation[20];\n', 20))
 
@@ -81,9 +75,6 @@ class ParserDataTest(unittest.TestCase):
 
     def test_data_10200(self):
         self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="_aBasePort	db ' base port ',0      ; DATA XREF: seg003:10C3o seg003:1156o ...")), ('" base port ", // _abaseport\n', 'char _abaseport[12];\n', 12))
-
-    def test_data_10210(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="_aBmod2stm	db 'BMOD2STM'")), ("{'B','M','O','D','2','S','T','M'}, // _abmod2stm\n", 'char _abmod2stm[8];\n', 8))
 
     def test_data_10220(self):
         self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="_aCd81		db 'CD81'")), ("{'C','D','8','1'}, // _acd81\n", 'char _acd81[4];\n', 4))
@@ -147,9 +138,6 @@ class ParserDataTest(unittest.TestCase):
 
     def test_data_10420(self):
         self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="_aDecIncVolume_0	db '  Dec/Inc volume'")), ("{' ',' ','D','e','c','/','I','n','c',' ','v','o','l','u','m','e'}, // _adecincvolume_0\n", 'char _adecincvolume_0[16];\n', 16))
-
-    def test_data_10430(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="_aDel		db 'Del'")), ("{'D','e','l'}, // _adel\n", 'char _adel[3];\n', 3))
 
     def test_data_10440(self):
         self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="_aDeleteAllFilesWhich db	'Delete all files which are marked to delete'")), ("{'D','e','l','e','t','e',' ','a','l','l',' ','f','i','l','e','s',' ','w','h','i','c','h',' ','a','r','e',' ','m','a','r','k','e','d',' ','t','o',' ','d','e','l','e','t','e'}, // _adeleteallfileswhich\n", 'char _adeleteallfileswhich[43];\n', 43))
