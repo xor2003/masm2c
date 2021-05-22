@@ -25,10 +25,10 @@ class FindDuplicateCoverage:
 
     def pytest_runtest_logstart(self, nodeid, location):
         #print(f"\nStart test {nodeid}")
-        self.name = re.sub(r'^[^/]+/', '', nodeid)
-        self.cov = Coverage(branch=True)
-        self.hash = Hasher()
         try:
+            self.name = re.sub(r'^[^/]+/', '', nodeid)
+            self.cov = Coverage(branch=True)
+            self.hash = Hasher()
             self.cov.start()
         except:
             self.cov = None
