@@ -709,9 +709,9 @@ class _assignment(baseop):
         self.size = 0
 
     def visit(self, visitor):
-        if self.implemented == False:
-            self.implemented = True
-            return visitor._assignment(*self.args)
-        else:
-            from masm2c.cpp import SkipCode
-            raise SkipCode
+        #if self.implemented == False:
+        self.implemented = True
+        return visitor._assignment(self, *self.args)
+        #else:
+        #    from masm2c.cpp import SkipCode
+        #    raise SkipCode

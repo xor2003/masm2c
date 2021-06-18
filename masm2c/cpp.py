@@ -1362,7 +1362,7 @@ class Cpp(object):
     def return_empty(self, _):
         return []
 
-    def _assignment(self, dst, src):
+    def _assignment(self, stmt, dst, src):
         src = Token.remove_tokens(src, 'expr')
         size = self.get_size(src)
         ptrdir = Token.find_tokens(src, 'ptrdir')
@@ -1372,10 +1372,11 @@ class Cpp(object):
                 type = type.value
             type = type.lower()
             src = Token.find_and_replace_tokens(src, 'ptrdir', self.return_empty)
-        o = self.__context.get_global(dst)
+        o = stmt #self.__context.get_global(dst)
         o.size = size
         if ptrdir:
             o.original_type = type
+        o.implemented = True
         self.__context.reset_global(dst, o)
 
         return "#undef %s\n#define %s %s\n" % (dst, dst, self.expand(src))
