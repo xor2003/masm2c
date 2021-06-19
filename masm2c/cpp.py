@@ -42,7 +42,11 @@ class CrossJump(Exception):
 
 def produce_jump_table(globals):
     # Produce jump table
-    result = "\nreturn;\n__dispatch_call:\nswitch (__disp) {\n"
+    result = """
+    return;
+    __dispatch_call:
+    switch (__disp) {
+"""
     offsets = []
     for k, v in globals:
         k = re.sub(r'[^A-Za-z0-9_]', '_', k)
@@ -51,9 +55,9 @@ def produce_jump_table(globals):
     offsets = sorted(offsets, key=lambda t: t[1])
     for name, label in offsets:
         logging.debug(name, label)
-        result += "case k%s: \tgoto %s;\n" % (name, cpp_mangle_label(label))
-    result += "default: log_error(\"Jump/call to nowhere %d\\n\", __disp);stackDump(_state); abort();\n"
-    result += "};\n}\n"
+        result += "        case k%s: \tgoto %s;\n" % (name, cpp_mangle_label(label))
+    result += "        default: log_error(\"Jump/call to nowhere %d\\n\", __disp);stackDump(_state); abort();\n"
+    result += "    };\n}\n"
     return result
 
 
@@ -80,18 +84,18 @@ class SingleProcStrategy:
     def function_header(self, name, entry_point=''):
         header = """
 
-            void %s(_offsets _i, struct _STATE* _state){
-            X86_REGREF
-            __disp=_i;
-            """ % cpp_mangle_label(name)
+ void %s(_offsets _i, struct _STATE* _state){
+    X86_REGREF
+    __disp = _i;
+""" % cpp_mangle_label(name)
         if entry_point != '':
             header += """
-            if (__disp==kbegin) goto %s;
+    if (__disp == kbegin) goto %s;
         """ % entry_point
         header += """
-            if (__disp==0) goto _begin;
-            else goto __dispatch_call;
-            _begin:
+    if (__disp == 0) goto _begin;
+    else goto __dispatch_call;
+    _begin:
 """
         return header
 
@@ -131,19 +135,19 @@ class SeparateProcStrategy:
     def function_header(self, name, entry_point=''):
         header = """
 
-                    void %s(_offsets _i, struct _STATE* _state){
-                    X86_REGREF
-                    __disp=_i;
-                    """ % cpp_mangle_label(name)
+ void %s(_offsets _i, struct _STATE* _state){
+    X86_REGREF
+    __disp = _i;
+""" % cpp_mangle_label(name)
         if entry_point != '':
             header += """
-                    if (__disp==kbegin) goto %s;
-                """ % entry_point
+    if (__disp == kbegin) goto %s;
+""" % entry_point
         header += """
-                    if (__disp==0) goto _begin;
-                    else goto __dispatch_call;
-                    _begin:
-                    """
+    if (__disp == 0) goto _begin;
+    else goto __dispatch_call;
+    _begin:
+"""
         return header
 
     def function_end(self):
@@ -151,7 +155,10 @@ class SeparateProcStrategy:
 
     def produce_global_jump_table(self, globals):
         # Produce call table
-        result = "void __dispatch_call(_offsets __disp, struct _STATE* _state){\nswitch (__disp) {\n"
+        result = """
+ void __dispatch_call(_offsets __disp, struct _STATE* _state){
+    switch (__disp) {
+"""
         offsets = []
         for k, v in globals:
             k = re.sub(r'[^A-Za-z0-9_]', '_', k)
@@ -160,9 +167,9 @@ class SeparateProcStrategy:
         offsets = sorted(offsets, key=lambda t: t[1])
         for name, label in offsets:
             logging.debug(name, label)
-            result += "case k%s: \t%s(0, _state); break;\n" % (name, cpp_mangle_label(label))
-        result += "default: log_error(\"Jump/call to nothere %d\\n\", __disp);stackDump(_state); abort();\n"
-        result += "};\n}\n"
+            result += "        case k%s: \t%s(0, _state); break;\n" % (name, cpp_mangle_label(label))
+        result += "        default: log_error(\"Jump/call to nothere %d\\n\", __disp);stackDump(_state); abort();\n"
+        result += "     };\n}\n"
         return result
 
     def write_declarations(self, procs, context):
@@ -1156,27 +1163,27 @@ class Cpp(object):
 """)
         if self.__context.main_file:
             fd.write("""
-            int init(struct _STATE* _state)
-            {
-            X86_REGREF
+ int init(struct _STATE* _state)
+ {
+    X86_REGREF
     
-              log_debug("~~~ heap_size=%%d para=%%d heap_ofs=%%d", HEAP_SIZE, (HEAP_SIZE >> 4), seg_offset(heap) );
-              /* We expect ram_top as Kbytes, so convert to paragraphs */
-              mcb_init(seg_offset(heap), (HEAP_SIZE >> 4) - seg_offset(heap) - 1, MCB_LAST);
+    log_debug("~~~ heap_size=%%d para=%%d heap_ofs=%%d", HEAP_SIZE, (HEAP_SIZE >> 4), seg_offset(heap) );
+    /* We expect ram_top as Kbytes, so convert to paragraphs */
+    mcb_init(seg_offset(heap), (HEAP_SIZE >> 4) - seg_offset(heap) - 1, MCB_LAST);
     
-              R(MOV(ss, seg_offset(stack)));
-            #if _BITS == 32
-              esp = ((dd)(db*)&m.stack[STACK_SIZE - 4]);
-            #else
-              esp=0;
-              sp = STACK_SIZE - 4;
-              es=0;
-             *(dw*)(raddr(0,0x408)) = 0x378; //LPT
-            #endif
+    R(MOV(ss, seg_offset(stack)));
+ #if _BITS == 32
+    esp = ((dd)(db*)&m.stack[STACK_SIZE - 4]);
+ #else
+    esp = 0;
+    sp = STACK_SIZE - 4;
+    es = 0;
+    *(dw*)(raddr(0, 0x408)) = 0x378; //LPT
+ #endif
     
-                    return(0);
-            }
-            """)
+    return(0);
+ }
+""")
 
         # self.__proc_queue.append(start)
         # while len(self.__proc_queue):
@@ -1210,19 +1217,8 @@ class Cpp(object):
         cdata_bin = self.__cdata_seg
         hdata_bin = self.__hdata_seg
 
-        data_impl = ""
-
         fd.write(self.proc_strategy.produce_global_jump_table(list(self.__context.get_globals().items())))
 
-        data_impl += "\nstruct Memory m = {\n"
-        for v in cdata_bin:
-            # data_impl += "0x%02x, " %v
-            data_impl += v
-        data_impl += """
-                {0},
-                {0}
-                """
-        data_impl += "};\n"
 
         hd.write(f"""\n#include "asm.h"
 
@@ -1247,7 +1243,16 @@ class Cpp(object):
         hd.write("//};\n\n//} // End of namespace\n\n#endif\n")
         hd.close()
 
-        fd.write(" %s\n" % data_impl)
+        data_impl = "\nstruct Memory m = {\n"
+        for v in cdata_bin:
+            data_impl += v
+        data_impl += """
+                {0},
+                {0}
+                };
+
+        """
+        fd.write(data_impl)
 
         fd.write("\n\n//} // End of namespace\n")
         fd.close()
