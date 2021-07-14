@@ -4,7 +4,7 @@ from __future__ import print_function
 
 import logging
 import re
-import sys
+import sys, os
 from builtins import hex
 from builtins import object
 from builtins import range
@@ -15,6 +15,8 @@ import masm2c.proc as proc_module
 from masm2c import op
 from masm2c.Token import Token
 from masm2c.op import DataType
+import json
+import jsonpickle
 
 OFFSETDIR = 'offsetdir'
 LABEL = 'LABEL'
@@ -246,7 +248,10 @@ def guess_int_size(v):
         size = 2
     elif v < 4294967296:
         size = 4
-    logging.debug('get_size res %d' % size)
+    else:
+        logging.error('too big number' % v)
+
+    logging.debug('guess_int_size %d' % size)
     return size
 
 
@@ -275,7 +280,7 @@ class Cpp(object):
 
         self.proc_strategy = proc_strategy
 
-        self.__cdata_seg, self.__hdata_seg, self.__rdata_seg = self.produce_c_data(context.segments)
+        #self.__cdata_seg, self.__hdata_seg, self.__rdata_seg = self.produce_c_data(context.segments)
 
         self.__procs = context.proc_list
         self.__proc_queue = []
@@ -1214,13 +1219,12 @@ class Cpp(object):
             "%d ok, %d failed of %d, %3g%% translated" % (done, failed, done + failed, 100.0 * done / (done + failed)))
         logging.info("\n".join(self.__failed))
 
-        cdata_bin = self.__cdata_seg
-        hdata_bin = self.__hdata_seg
-
         fd.write(self.proc_strategy.produce_global_jump_table(list(self.__context.get_globals().items())))
 
 
-        hd.write(f"""\n#include "asm.h"
+        hd.write(f"""
+#include "asm.h"
+#include "_data.h"
 
 //namespace {self.__namespace} {{
 
@@ -1234,16 +1238,51 @@ class Cpp(object):
 
         hd.write(self.proc_strategy.write_declarations(self.__procs, self.__context))
 
-        data = self.produce_data(hdata_bin)
-        hd.write(data)
-
         data = self.produce_externals(self.__context)
         hd.write(data)
 
         hd.write("//};\n\n//} // End of namespace\n\n#endif\n")
         hd.close()
 
-        data_impl = "\nstruct Memory m = {\n"
+        fd.write("\n\n//} // End of namespace\n")
+        fd.close()
+
+        self.write_segment(self.__context.segments)
+
+    def write_segment(self, segment):
+        jsonpickle.set_encoder_options('json', indent=2)
+        with open(self.__namespace.lower() + '.seg', 'w') as outfile:
+            outfile.write(jsonpickle.encode(segment))
+
+    def produce_data_cpp(self, asm_files):
+        self.generate_data(self.read_segments(asm_files))
+
+    def read_segments(self, asm_files):
+        segments = dict()
+        for file in asm_files:
+            file = file.replace('.asm', '.seg')
+            logging.info(f'Merging data from {file}')
+            with open(file, 'rt') as infile:
+                segments = self.merge_segments(segments, jsonpickle.decode(infile.read()))
+        return segments
+
+    def merge_segments(self, segments: dict, segment: dict):
+        segments.update(segment)
+        return segments
+
+    def generate_data(self, segments):
+        self.__cdata_seg, self.__hdata_seg, self.__rdata_seg = self.produce_c_data(segments)
+        fname = "_data.cpp"
+        header = "_data.h"
+        if sys.version_info >= (3, 0):
+            fd = open(fname, "wt", encoding=self.__codeset)
+            hd = open(header, "wt", encoding=self.__codeset)
+        else:
+            fd = open(fname, "wt")
+            hd = open(header, "wt")
+
+        cdata_bin = self.__cdata_seg
+        data_impl = '#include "_data.h"\nstruct Memory m = {\n'
         for v in cdata_bin:
             data_impl += v
         data_impl += """
@@ -1253,6 +1292,12 @@ class Cpp(object):
 
         """
         fd.write(data_impl)
+
+        hdata_bin = self.__hdata_seg
+        data = '''
+#include "asm.h"
+''' + self.produce_data(hdata_bin)
+        hd.write(data)
 
         fd.write("\n\n//} // End of namespace\n")
         fd.close()

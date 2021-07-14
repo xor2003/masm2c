@@ -1384,3 +1384,6 @@ class Parser:
             self.main_file = True
             self.entry_point = Token.find_tokens(label, 'LABEL')[0].lower()
             self.add_call_to_entrypoint()
+
+    def get_segments(self):
+        return self.segments

@@ -105,19 +105,12 @@ def process(i):
   context = p.parse_file(name)
   #p.link()
 
-  generator = Cpp(context, outfile = outname, blacklist = [
-      # These functions are not processed
-
-      #	'aboutturn',
-      ], skip_output = [
-      # These functions are processed but not output
-      ], skip_dispatch_call = True, skip_addr_constants = True,
+  generator = Cpp(context, outfile = outname, blacklist = [], skip_output = [], skip_dispatch_call = True,
+                  skip_addr_constants = True,
                   header_omit_blacklisted = True,
-                  function_name_remapping = {
-      # This remaps the function naming at output for readability
-      #	'_moduleread' : '_moduleread',
-      })
+                  function_name_remapping = {})
   generator.generate('mainproc') #start routine
+  return generator
 
 def main(args):
     """Main entry point allowing external calls
@@ -132,8 +125,8 @@ def main(args):
     args = parse_args(args)
     for i in args.filename:
        setup_logging(i, args.loglevel)
-       process(i)
-
+       generator = process(i)
+    generator.produce_data_cpp(args.filename)
 
 def run():
     """Entry point for console_scripts"""

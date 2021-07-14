@@ -10,11 +10,22 @@ from enum import Enum
 
 # import traceback
 
+from json import JSONEncoder
+
+'''
+def _default(self, obj):
+    return getattr(obj.__class__, "to_json", _default.default)(obj)
+
+_default.default = JSONEncoder().default
+JSONEncoder.default = _default
+'''
+#import json
+
 class Unsupported(Exception):
     pass
 
 class baseop(object):
-    __slots__ = ["cmd", "line", "line_number", "elements", "args"]
+    #__slots__ = ["cmd", "line", "line_number", "elements", "args"]
 
     def __init__(self):
         self.cmd = ""
@@ -57,7 +68,7 @@ class var(object):
     def getsize(self):
         return self.size
 
-class Segment:
+class Segment(JSONEncoder):
 	#__slots__ = ['name', 'offset', '__data', 'original_name', 'used']
 
     def __init__(self, name, offset):
@@ -67,6 +78,16 @@ class Segment:
         self.original_name = name
         self.used = False
         self.__data = list()
+
+    '''
+    def to_json(self):
+        import json
+        return json.dumps(self, default=lambda o: o.__dict__,
+                          sort_keys=False, indent=4)
+
+    def _default(self):
+        return json.dumps(self.__dict__, indent=4)
+    '''
 
     def append(self, data):
         self.__data.append(data)
@@ -82,8 +103,8 @@ class DataType(Enum):
     OBJECT = 5
 
 class Data(baseop):
-    __slots__ = ['label', 'type', 'data_internal_type', 'array', 'elements', 'size', 'members',
-                 'filename', 'line', 'line_number']
+    #__slots__ = ['label', 'type', 'data_internal_type', 'array', 'elements', 'size', 'members',
+    #             'filename', 'line', 'line_number']
 
     def __init__(self, label, type, data_internal_type: DataType, array, elements, size, filename='', raw='', line_number=0):
         super().__init__()
@@ -97,7 +118,6 @@ class Data(baseop):
         self.filename = filename
         self.line = raw
         self.line_number = line_number
-
 
     def isobject(self):
         return self.data_internal_type == DataType.OBJECT
