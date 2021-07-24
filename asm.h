@@ -1171,7 +1171,8 @@ void mycopy(char t[], const char*s);
 
 void mycopy(char t[], std::initializer_list<char> s);
 
-void mycopy(int t[], std::initializer_list<int> s);
+void mycopy(dw t[], std::initializer_list<dw> s);
+void mycopy(dd t[], std::initializer_list<dd> s);
 
 #endif
 
