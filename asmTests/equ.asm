@@ -20,7 +20,7 @@ start proc near
 F equ bx
 G = byte ptr -2
 H equ word ptr -3
-I = word -5
+;I = word -5
 J equ word -5
 
 B = 2
