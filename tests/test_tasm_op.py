@@ -383,7 +383,7 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(proc_instance.generate_c_cmd(cpp_instance, parser_instance.action_data(u'aaaa = 1')), '#undef aaaa\n#define aaaa 1\n')
 
         self.assertEqual(proc_instance.generate_c_cmd(cpp_instance, parser_instance.action_data(u'B = 1')), '#undef b\n#define b 1\n')
-        self.assertEqual(proc_instance.generate_c_cmd(cpp_instance, parser_instance.action_data(u'DDD = var1 ; actually it is address of var1')), '#undef ddd\n#define ddd m.var1\n')
+        self.assertEqual(proc_instance.generate_c_cmd(cpp_instance, parser_instance.action_data(u'DDD = var1 ; actually it is address of var1')), '#undef ddd\n#define ddd var1\n')
 
         self.assertEqual(proc_instance.generate_c_cmd(cpp_instance, parser_instance.action_data(u'left equ 0')), '#define left 0\n')
         self.assertEqual(proc_instance.generate_c_cmd(cpp_instance, parser_instance.action_data(u'col equ 40')), '#define col 40\n')

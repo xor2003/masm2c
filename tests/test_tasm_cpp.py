@@ -1048,7 +1048,7 @@ class CppTest(unittest.TestCase):
         # self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'b'),def_size=0,destination=False),u'offset(_data,b)')
 
     #def test_cpp_23430(self):
-        # self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'b'),def_size=2,destination=True),u'm.b')
+        # self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'b'),def_size=2,destination=True),u'b')
 
     #def test_cpp_23440(self):
         # self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'beginningdata'),def_size=0,destination=False),u'offset(_data,beginningdata)')
@@ -1087,7 +1087,7 @@ class CppTest(unittest.TestCase):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'bx'), def_size=2, destination=True), u'bx')
 
     #def test_cpp_23560(self):
-        # self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'c'),def_size=4,destination=True),u'm.c')
+        # self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'c'),def_size=4,destination=True),u'c')
 
     def test_cpp_23570(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'ch'), def_size=1, destination=True), u'ch')
@@ -1279,7 +1279,7 @@ class CppTest(unittest.TestCase):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'fs'), def_size=2, destination=True), u'fs')
 
     #def test_cpp_24200(self):
-        # self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'g'),def_size=4,destination=False),u'm.g')
+        # self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'g'),def_size=4,destination=False),u'g')
 
     def test_cpp_24210(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'i'), def_size=0, destination=False), u'i')
@@ -1640,7 +1640,7 @@ class CppTest(unittest.TestCase):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'_data'),def_size=1,destination=False),u'seg_offset(_data)')
 
     def test_cpp_25400(self):
-        self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'a'),def_size=1,destination=True),u'm.a')
+        self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'a'),def_size=1,destination=True),u'a')
 
     def test_cpp_25410(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'byte ptr [a]'),def_size=1,destination=True),u'*(raddr(ds,offset(_data,a)))')
@@ -1898,19 +1898,19 @@ class CppTest(unittest.TestCase):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'testOVerlap'),def_size=0,destination=False),u'offset(_data,testOVerlap)')
 
     def test_cpp_26260(self):
-        self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'var1'),def_size=0,destination=False),u'm.var1')
+        self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'var1'),def_size=0,destination=False),u'var1')
 
     def test_cpp_26270(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'var1'),def_size=0,destination=False),u'offset(_data,var1)')
 
     def test_cpp_26280(self):
-        self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'var1'),def_size=1,destination=False),u'm.var1')
+        self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'var1'),def_size=1,destination=False),u'var1')
 
     def test_cpp_26290(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'var1'),def_size=1,destination=True),u'*(db*)&m.var1')
 
     def test_cpp_26300(self):
-        self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'var1'),def_size=1,destination=True),u'm.var1')
+        self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'var1'),def_size=1,destination=True),u'var1')
 
     def test_cpp_26310(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'var1[1]'),def_size=1,destination=True),u'*(raddr(ds,offset(_data,var1)+1))')
@@ -1925,10 +1925,10 @@ class CppTest(unittest.TestCase):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'var2'),def_size=0,destination=False),u'offset(_data,var2)')
 
     def test_cpp_26350(self):
-        self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'var2'),def_size=2,destination=True),u'm.var2')
+        self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'var2'),def_size=2,destination=True),u'var2')
 
     #def test_cpp_26360(self):
-    #    self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'var3'),def_size=4,destination=True),u'm.var3')
+    #    self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'var3'),def_size=4,destination=True),u'var3')
 
     def test_cpp_26370(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'var3+3*4'),def_size=4,destination=True),u'*(dd*)(raddr(ds,offset(_data,var3)+3*4))')
@@ -1961,7 +1961,7 @@ class CppTest(unittest.TestCase):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'word'),def_size=0,destination=False),u'word')
 
     def test_cpp_26470(self):
-        self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'var3'),def_size=0,destination=False),u'm.var3')
+        self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'var3'),def_size=0,destination=False),u'var3')
     '''
 
     def test_cpp_26480(self):
