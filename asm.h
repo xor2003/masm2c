@@ -121,7 +121,7 @@ static const uint32_t MASK[]={0, 0xff, 0xffff, 0xffffff, 0xffffffff};
 
 #if _BITS == 32
  typedef dd MWORDSIZE;
- #define offset(segment,name) ((size_t)(db*)&m.name)
+ #define offset(segment,name) ((size_t)(db*)&name)
 #else
  typedef dw MWORDSIZE;
  #define offset(segment,name) (offsetof(struct Memory,name)-offsetof(struct Memory,segment))
@@ -1160,20 +1160,18 @@ extern db vgaPalette[256*3];
 // ---------
 
 #include <initializer_list>
+#include <algorithm>
 #include <cstring>
 
 template<typename S,typename T>
 void mycopy(T t[], std::initializer_list<S> s)
 { std::copy(s.begin(), s.end(), t); }
 
-void mycopy(char t[], const char*s)
-{ strcpy(t, s); }
+void mycopy(char t[], const char*s);
 
-void mycopy(char t[], std::initializer_list<char> s)
-{ std::copy(s.begin(), s.end(), t); }
+void mycopy(char t[], std::initializer_list<char> s);
 
-void mycopy(int t[], std::initializer_list<int> s)
-{ std::copy(s.begin(), s.end(), t); }
+void mycopy(int t[], std::initializer_list<int> s);
 
 #endif
 

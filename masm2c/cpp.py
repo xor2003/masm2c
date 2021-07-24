@@ -318,7 +318,10 @@ class Cpp(object):
                 m = re.match(r'^([0-9A-Za-z_]+)\s+([0-9A-Za-z_]+)(\[\d+\])?;\n', h)
                 name = m.group(2)
                 if m.group(3):
-                    c = f'   mycopy({name}, {c});'
+                    if c == '{}':
+                        c = ''
+                    else:
+                        c = f'   mycopy({name}, {c});'
                 else:
                     c = f'   {name}={c};'
 
@@ -394,11 +397,11 @@ class Cpp(object):
                     self.address = True
                 if g.elements == 1 and self.__isjustlabel and not self.lea and g.size == self.__current_size:
                     # traceback.print_stack(file=sys.stdout)
-                    value = "m." + g.name
+                    value = g.name
                     self.__indirection = 0
                 else:
                     if self.__indirection == 1 and self.variable:
-                        value = "m.%s" % g.name
+                        value = "%s" % g.name
                         if not self.__isjustlabel:  # if not just single label
                             self.address = True
                             if g.elements == 1:  # array generates pointer himself
@@ -474,7 +477,7 @@ class Cpp(object):
             if g.implemented == False:
                 raise InjectCode(g)
             if self.__isjustlabel:
-                value = "m." + '.'.join(label)
+                value = '.'.join(label)
             else:
                 self.struct_type = g.original_type
                 self.address = True
@@ -492,11 +495,11 @@ class Cpp(object):
                 self.address = True
             if g.elements == 1 and self.__isjustlabel and not self.lea and g.size == self.__current_size:
                 # traceback.print_stack(file=sys.stdout)
-                value = "m." + '.'.join(label)
+                value = '.'.join(label)
                 self.__indirection = 0
             else:
                 if self.__indirection == 1 and self.variable:
-                    value = "m." + '.'.join(label)
+                    value = '.'.join(label)
                     if not self.__isjustlabel:  # if not just single label
                         self.address = True
                         if g.elements == 1:  # array generates pointer himself
@@ -1181,6 +1184,7 @@ class Cpp(object):
 
         cppd.write(f"""{banner}
 #include \"{header}\"
+#include <_data.h>
 #include <curses.h>
 
 //namespace {self.__namespace} {{
@@ -1198,7 +1202,7 @@ class Cpp(object):
     
     R(MOV(ss, seg_offset(stack)));
  #if _BITS == 32
-    esp = ((dd)(db*)&m.stack[STACK_SIZE - 4]);
+    esp = ((dd)(db*)&stack[STACK_SIZE - 4]);
  #else
     esp = 0;
     sp = STACK_SIZE - 4;
@@ -1331,8 +1335,12 @@ struct Memory m;
 
         #hdata_bin = self.__hdata_seg
         data = '''
+#ifndef ___DATA_H__
+#define ___DATA_H__
 #include "asm.h"
-''' + self.produce_data(data_h)
+''' + self.produce_data(data_h) + '''
+#endif
+'''
         hd.write(data)
 
         fd.write("\n\n//} // End of namespace\n")
@@ -1364,20 +1372,30 @@ struct Memory m;
         structures = "\n"
         for name, v in self.__context.structures.items():
             type = 'struct' if v.gettype() == op.Struct.Type.STRUCT else 'union'
-            structures += f"{type} MYPACKED {name} {{\n"
+            structures += f"""#pragma pack(push, 1)
+{type} {name} {{
+"""
             for member in v.getdata().values():
                 structures += f"  {member.type} {member.label};\n"
-            structures += "};\n\n"
+            structures += """};
+#pragma pack(pop)            
+
+"""
         return structures
 
     def produce_data(self, hdata_bin):
-        data_head = "\nstruct MYPACKED Memory{\n"
+        data_head = """
+#pragma pack(push, 1)
+struct Memory{
+"""
         data_head += "".join(hdata_bin)
         data_head += '''
                         db stack[STACK_SIZE];
                         db heap[HEAP_SIZE];
                 '''
-        data_head += "};\n"
+        data_head += """};
+#pragma pack(pop)
+"""
         return data_head
 
     def produce_externals(self, context):

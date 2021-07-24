@@ -13,5 +13,6 @@ $CXX memmgr.cpp -c $OPT
 #$CXX $1.cpp -E $OPT > $1.e
 $CXX $1.cpp -c $OPT
 # iprintf.o 
-$CXX $1.o asm.o memmgr.o -o $1  $OPT 
+$CXX _data.cpp -c $OPT
+$CXX $1.o _data.o asm.o memmgr.o -o $1  $OPT 
 # pdcurses.lib
