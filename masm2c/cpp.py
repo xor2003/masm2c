@@ -1270,13 +1270,15 @@ class Cpp(object):
         hd.close()
 
         cppd.write(f"""
- struct Initializer {{
-  Initializer()
-  {{
+ namespace {{
+  struct Initializer {{
+   Initializer()
+   {{
 {cpp_assign}
-  }}
- }};
+   }}
+  }};
  static const Initializer i;
+ }}
 """)
 
         cppd.write("\n\n//} // End of namespace\n")
