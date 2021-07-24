@@ -153,7 +153,7 @@ class SeparateProcStrategy:
         return header
 
     def function_end(self):
-        return '}\n'
+        return ' }\n'
 
     def produce_global_jump_table(self, globals):
         # Produce call table
@@ -307,16 +307,33 @@ class Cpp(object):
         cdata_seg = ""
         hdata_seg = ""
         rdata_seg = ""
+        edata_seg = ""
         for i in segments.values():
             for j in i.getdata():
                 c, h, size = self.produce_c_data_single_(j)
-                c += ", // " + j.getlabel() + "\n"  # TODO can put original_label
                 h += ";\n"
+
+                #  mycopy(bb, {'1','2','3','4','5'});
+                #  caa=3;
+                m = re.match(r'^([0-9A-Za-z_]+)\s+([0-9A-Za-z_]+)(\[\d+\])?;\n', h)
+                name = m.group(2)
+                if m.group(3):
+                    c = f'   mycopy({name}, {c});'
+                else:
+                    c = f'   {name}={c};'
+
+                c += " // " + j.getlabel() + "\n"  # TODO can put original_label
 
                 cdata_seg += c
                 hdata_seg += h
-                rdata_seg += re.sub(r'([0-9A-Za-z_]+)\s+([0-9A-Za-z_\[\]]+);', r'\g<1>& \g<2> = m.\g<2>;', h)
-        return cdata_seg, hdata_seg, rdata_seg
+                # char (& bb)[5] = group.bb;
+                # int& caa = group.aaa;
+                r = re.sub(r'^([0-9A-Za-z_]+)\s+([0-9A-Za-z_\[\]]+)(\[\d+\]);', r'\g<1> (& \g<2>)\g<3> = m.\g<2>;', h)
+                rdata_seg += re.sub(r'^([0-9A-Za-z_]+)\s+([0-9A-Za-z_\[\]]+);', r'\g<1>& \g<2> = m.\g<2>;', r)
+                e = re.sub(r'^([0-9A-Za-z_]+)\s+([0-9A-Za-z_\[\]]+)(\[\d+\]);', r'extern \g<1> (& \g<2>)\g<3>;', h)
+                edata_seg += re.sub(r'^([0-9A-Za-z_]+)\s+([0-9A-Za-z_\[\]]+);', r'extern \g<1>& \g<2>;', e)
+
+        return cdata_seg, hdata_seg, rdata_seg, edata_seg
 
     def convert_label(self, token):
         name_original = token.value
@@ -1135,13 +1152,15 @@ class Cpp(object):
             raise
 
     def generate(self, start):
+        cpp_assign, _, _, cpp_extern = self.produce_c_data(self.__context.segments)
+
         fname = self.__namespace.lower() + ".cpp"
         header = self.__namespace.lower() + ".h"
         if sys.version_info >= (3, 0):
-            fd = open(fname, "wt", encoding=self.__codeset)
+            cppd = open(fname, "wt", encoding=self.__codeset)
             hd = open(header, "wt", encoding=self.__codeset)
         else:
-            fd = open(fname, "wt")
+            cppd = open(fname, "wt")
             hd = open(header, "wt")
 
         banner = """/* PLEASE DO NOT MODIFY THIS FILE. ALL CHANGES WILL BE LOST! LOOK FOR README FOR DETAILS */
@@ -1160,14 +1179,15 @@ class Cpp(object):
 
         hd.write(self.proc_strategy.get_strategy())
 
-        fd.write(f"""{banner}
+        cppd.write(f"""{banner}
 #include \"{header}\"
 #include <curses.h>
 
 //namespace {self.__namespace} {{
 """)
+
         if self.__context.main_file:
-            fd.write("""
+            cppd.write("""
  int init(struct _STATE* _state)
  {
     X86_REGREF
@@ -1211,24 +1231,25 @@ class Cpp(object):
         self.__methods += self.__failed
         done, failed = len(self.__proc_done), len(self.__failed)
 
-        fd.write("\n")
-        fd.write("\n".join(self.__translated))
-        fd.write("\n")
+        cppd.write("\n")
+        cppd.write("\n".join(self.__translated))
+        cppd.write("\n")
 
         logging.info(
             "%d ok, %d failed of %d, %3g%% translated" % (done, failed, done + failed, 100.0 * done / (done + failed)))
         logging.info("\n".join(self.__failed))
 
-        fd.write(self.proc_strategy.produce_global_jump_table(list(self.__context.get_globals().items())))
+        cppd.write(self.proc_strategy.produce_global_jump_table(list(self.__context.get_globals().items())))
 
 
         hd.write(f"""
 #include "asm.h"
-#include "_data.h"
 
 //namespace {self.__namespace} {{
 
 """)
+
+        hd.write(cpp_extern)
 
         labeloffsets = self.produce_label_offsets()
         hd.write(labeloffsets)
@@ -1244,8 +1265,18 @@ class Cpp(object):
         hd.write("//};\n\n//} // End of namespace\n\n#endif\n")
         hd.close()
 
-        fd.write("\n\n//} // End of namespace\n")
-        fd.close()
+        cppd.write(f"""
+ struct Initializer {{
+  Initializer()
+  {{
+{cpp_assign}
+  }}
+ }};
+ static const Initializer i;
+""")
+
+        cppd.write("\n\n//} // End of namespace\n")
+        cppd.close()
 
         self.write_segment(self.__context.segments)
 
@@ -1271,7 +1302,7 @@ class Cpp(object):
         return segments
 
     def generate_data(self, segments):
-        self.__cdata_seg, self.__hdata_seg, self.__rdata_seg = self.produce_c_data(segments)
+        _, data_h, data_cpp_reference, _ = self.produce_c_data(segments)
         fname = "_data.cpp"
         header = "_data.h"
         if sys.version_info >= (3, 0):
@@ -1281,22 +1312,27 @@ class Cpp(object):
             fd = open(fname, "wt")
             hd = open(header, "wt")
 
-        cdata_bin = self.__cdata_seg
-        data_impl = '#include "_data.h"\nstruct Memory m = {\n'
-        for v in cdata_bin:
-            data_impl += v
-        data_impl += """
-                {0},
-                {0}
-                };
+        '''
+                ' = {\n'
 
-        """
+        #for v in data_cpp_reference:
+        #    data_impl += v
+        data_impl += f"""
+                {{0}},
+                {{0}}
+                }};
+        '''
+        data_impl = f'''#include "_data.h"
+struct Memory m;
+{data_cpp_reference}
+        '''
+
         fd.write(data_impl)
 
-        hdata_bin = self.__hdata_seg
+        #hdata_bin = self.__hdata_seg
         data = '''
 #include "asm.h"
-''' + self.produce_data(hdata_bin)
+''' + self.produce_data(data_h)
         hd.write(data)
 
         fd.write("\n\n//} // End of namespace\n")
@@ -1436,6 +1472,7 @@ class Cpp(object):
 
     @staticmethod
     def produce_c_data_single(data):
+        # For unit test
         c, h, size = Cpp.produce_c_data_single_(data)
         c += ", // " + data.getlabel() + "\n"  # TODO can put original_label
         h += ";\n"
@@ -1443,6 +1480,7 @@ class Cpp(object):
 
     @staticmethod
     def produce_c_data_single_(data):
+        # Real conversion
         internal_data_type = data.getinttype()
 
         logging.debug(f"current data type = {internal_data_type}")

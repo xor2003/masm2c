@@ -1159,5 +1159,21 @@ extern db vgaPalette[256*3];
 #define XLATB XLAT
 // ---------
 
+#include <initializer_list>
+#include <cstring>
+
+template<typename S,typename T>
+void mycopy(T t[], std::initializer_list<S> s)
+{ std::copy(s.begin(), s.end(), t); }
+
+void mycopy(char t[], const char*s)
+{ strcpy(t, s); }
+
+void mycopy(char t[], std::initializer_list<char> s)
+{ std::copy(s.begin(), s.end(), t); }
+
+void mycopy(int t[], std::initializer_list<int> s)
+{ std::copy(s.begin(), s.end(), t); }
+
 #endif
 
