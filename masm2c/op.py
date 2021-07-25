@@ -175,7 +175,7 @@ class Struct:
     def getdata(self):
         return self.__fields
 
-    def __getitem__(self, key):
+    def getitem(self, key):
         return self.__fields[key.lower()]
 
     def getsize(self):

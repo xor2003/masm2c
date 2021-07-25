@@ -1,5 +1,5 @@
-#!/bin/sh -ex
-     
+#!/bin/sh
+set -ex     
 . ./_config.sh
 #$CC $OPT $1.cpp -E >$1.e
 #$CXX $OPT $1.cpp -c

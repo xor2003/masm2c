@@ -280,7 +280,7 @@ class Cpp(object):
 
         self.proc_strategy = proc_strategy
 
-        #self.__cdata_seg, self.__hdata_seg, self.__rdata_seg = self.produce_c_data(context.segments)
+        # self.__cdata_seg, self.__hdata_seg, self.__rdata_seg = self.produce_c_data(context.segments)
 
         self.__procs = context.proc_list
         self.__proc_queue = []
@@ -461,7 +461,7 @@ class Cpp(object):
                 elif isinstance(g, op.Struct):
                     value = f'offsetof({label[0].lower()},{".".join(label[1:]).lower()})'
                 else:
-                    raise Exception('Not handled type '+str(type(g)))
+                    raise Exception('Not handled type ' + str(type(g)))
                 self.__indirection = 0
                 return Token('memberdir', value)
 
@@ -606,7 +606,7 @@ class Cpp(object):
                     for member in label[1:]:
                         g = self.__context.get_global(type)
                         if isinstance(g, op.Struct):
-                            g = g[member]
+                            g = g.getitem(member)
                             type = g.type
                         else:
                             return self.get_size(g)
@@ -1184,7 +1184,6 @@ class Cpp(object):
 
         cppd.write(f"""{banner}
 #include \"{header}\"
-#include <_data.h>
 #include <curses.h>
 
 //namespace {self.__namespace} {{
@@ -1245,9 +1244,9 @@ class Cpp(object):
 
         cppd.write(self.proc_strategy.produce_global_jump_table(list(self.__context.get_globals().items())))
 
-
         hd.write(f"""
 #include "asm.h"
+#include <_data.h>
 
 //namespace {self.__namespace} {{
 
@@ -1257,9 +1256,6 @@ class Cpp(object):
 
         labeloffsets = self.produce_label_offsets()
         hd.write(labeloffsets)
-
-        structures = self.produce_structures()
-        hd.write(structures)
 
         hd.write(self.proc_strategy.write_declarations(self.__procs, self.__context))
 
@@ -1284,30 +1280,32 @@ class Cpp(object):
         cppd.write("\n\n//} // End of namespace\n")
         cppd.close()
 
-        self.write_segment(self.__context.segments)
+        self.write_segment(self.__context.segments, self.__context.structures)
 
-    def write_segment(self, segment):
+    def write_segment(self, segments, structs):
         jsonpickle.set_encoder_options('json', indent=2)
         with open(self.__namespace.lower() + '.seg', 'w') as outfile:
-            outfile.write(jsonpickle.encode(segment))
+            outfile.write(jsonpickle.encode((segments, structs)))
 
     def produce_data_cpp(self, asm_files):
-        self.generate_data(self.read_segments(asm_files))
+        self.generate_data(*self.read_segments(asm_files))
 
     def read_segments(self, asm_files):
         segments = dict()
+        structs = dict()
         for file in asm_files:
             file = file.replace('.asm', '.seg')
             logging.info(f'Merging data from {file}')
             with open(file, 'rt') as infile:
-                segments = self.merge_segments(segments, jsonpickle.decode(infile.read()))
-        return segments
+                segments, structures = self.merge_segments(segments, structs, *jsonpickle.decode(infile.read()))
+        return segments, structures
 
-    def merge_segments(self, segments: dict, segment: dict):
+    def merge_segments(self, segments: dict, structs: dict, segment: dict, struct: dict):
         segments.update(segment)
-        return segments
+        structs.update(struct)
+        return segments, structs
 
-    def generate_data(self, segments):
+    def generate_data(self, segments, structures):
         _, data_h, data_cpp_reference, _ = self.produce_c_data(segments)
         fname = "_data.cpp"
         header = "_data.h"
@@ -1318,16 +1316,6 @@ class Cpp(object):
             fd = open(fname, "wt")
             hd = open(header, "wt")
 
-        '''
-                ' = {\n'
-
-        #for v in data_cpp_reference:
-        #    data_impl += v
-        data_impl += f"""
-                {{0}},
-                {{0}}
-                }};
-        '''
         data_impl = f'''#include "_data.h"
 struct Memory m;
 {data_cpp_reference}
@@ -1335,12 +1323,12 @@ struct Memory m;
 
         fd.write(data_impl)
 
-        #hdata_bin = self.__hdata_seg
+        # hdata_bin = self.__hdata_seg
         data = '''
 #ifndef ___DATA_H__
 #define ___DATA_H__
 #include "asm.h"
-''' + self.produce_data(data_h) + '''
+''' + self.produce_structures(structures) + self.produce_data(data_h) + '''
 #endif
 '''
         hd.write(data)
@@ -1370,9 +1358,9 @@ struct Memory m;
             labeloffsets += "static const uint16_t k%s = 0x%x;\n" % (o, i)
         return labeloffsets
 
-    def produce_structures(self):
+    def produce_structures(self, strucs):
         structures = "\n"
-        for name, v in self.__context.structures.items():
+        for name, v in strucs.items():
             type = 'struct' if v.gettype() == op.Struct.Type.STRUCT else 'union'
             structures += f"""#pragma pack(push, 1)
 {type} {name} {{
@@ -1478,7 +1466,7 @@ struct Memory{
                 type = type.value
             type = type.lower()
             src = Token.find_and_replace_tokens(src, 'ptrdir', self.return_empty)
-        o = stmt #self.__context.get_global(dst)
+        o = stmt  # self.__context.get_global(dst)
         o.size = size
         if ptrdir:
             o.original_type = type
@@ -1547,7 +1535,7 @@ struct Memory{
     @staticmethod
     def produce_c_data_object(data):
         label, data_ctype, _, r, elements, size = data.getdata()
-        #rc = '{' + ",".join([str(i) for i in r]) + '}'
+        # rc = '{' + ",".join([str(i) for i in r]) + '}'
         rc = list()
         for i in data.getmembers():
             c, _, _ = Cpp.produce_c_data_single_(i)
