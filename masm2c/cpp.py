@@ -1302,6 +1302,8 @@ class Cpp(object):
 
     def merge_segments(self, segments: dict, structs: dict, segment: dict, struct: dict):
         segments.update(segment)
+        if set(structs.keys()) & set(structs.keys()):
+            logging.error("Probably structs should not duplicate")
         structs.update(struct)
         return segments, structs
 

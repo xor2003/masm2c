@@ -71,13 +71,15 @@ class var(object):
 class Segment(JSONEncoder):
 	#__slots__ = ['name', 'offset', '__data', 'original_name', 'used']
 
-    def __init__(self, name, offset):
+    def __init__(self, name, offset, options=None, segclass=None):
         # logging.debug("op.var(%d, %d, %s, %s, %s, %d)" %(size, offset, name, segment, issegment, elements))
         self.name = name.lower()
         self.offset = offset
         self.original_name = name
         self.used = False
         self.__data = list()
+        self.options = options
+        self.segclass = segclass
 
     '''
     def to_json(self):

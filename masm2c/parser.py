@@ -10,7 +10,6 @@ from builtins import object
 from builtins import range
 from builtins import str
 from copy import copy, deepcopy
-import traceback
 
 import parglare
 from parglare import Grammar, Parser as PGParser
@@ -307,17 +306,29 @@ def segdir(context, nodes, type):
     return nodes
 
 
-def segmentdir(context, nodes, name):
+def segmentdir(context, nodes, name, options):
     logging.debug("segmentdir " + str(nodes) + " ~~")
-    context.extra.action_segment(name.value)
+    opts = set()
+    segclass = None
+    if options:
+        for o in options:
+            if isinstance(o, str):
+                opts.add(o.lower())
+            elif  isinstance(o, Token) and o.type == 'STRING':
+                segclass = o.value.lower()
+            else:
+                logging.warning('Unknown segment option')
+    context.extra.create_segment(name.value, options=opts, segclass=segclass)
     return nodes
 
+def modeldir(context, nodes, model):
+    logging.debug("modeldir " + str(nodes) + " ~~")
+    return nodes
 
 def endsdir(context, nodes, name):
     logging.debug("ends " + str(nodes) + " ~~")
     context.extra.action_ends()
     return nodes
-
 
 def procdir(context, nodes, name, type):
     logging.debug("procdir " + str(nodes) + " ~~")
@@ -457,6 +468,7 @@ def maked(context, nodes):
         return nodes
 
 actions = {
+    "modeldir": modeldir,
     "dir3": maked,
     "externdef": externdef,
     "macrocall": macrocall,
@@ -897,30 +909,6 @@ class Parser:
         else:
             logging.info("skipping binary data for %s" % (name,))
 
-    def create_segment(self, name):
-        self.align()
-
-        offset = self.__binary_data_size // 16
-        logging.debug("segment %s %x" % (name, offset))
-
-        binary_width = 0
-        # num = 0
-        # elf.c_data.append("{}, // segment " + name + "\n")
-        # self.h_data.append(" db " + name + "[" + str(num) + "]; // segment " + name + "\n")
-
-        self.segment = Segment(name, offset)
-        self.segments[name] = self.segment
-
-        self.segment.append(op.Data(name, 'db', DataType.ARRAY_NUMBER, [], 0, 0))
-        # c, h = self.produce_c_data(name, 'db', 4, [], 0)
-        # self.c_data += c
-        # self.h_data += h
-
-        # self.__binary_data_size += num
-        self.__cur_seg_offset = 0
-
-        self.set_global(name, op.var(binary_width, offset, name, issegment=True))
-
     def align(self, align_bound=0x10):
         num = (align_bound - (self.__binary_data_size & (align_bound - 1))) if (
                 self.__binary_data_size & (align_bound - 1)) else 0
@@ -1018,10 +1006,25 @@ class Parser:
         proc.stmts.append(o)
         return o
 
-    def action_segment(self, name):
+    def create_segment(self, name, options=None, segclass=None):
         name = name.lower()
         self.__segment_name = name
-        self.create_segment(name)
+        self.align()
+        offset = self.__binary_data_size // 16
+        logging.debug("segment %s %x" % (name, offset))
+        binary_width = 0
+        # num = 0
+        # elf.c_data.append("{}, // segment " + name + "\n")
+        # self.h_data.append(" db " + name + "[" + str(num) + "]; // segment " + name + "\n")
+        self.segment = Segment(name, offset, options=options, segclass=segclass)
+        self.segments[name] = self.segment
+        self.segment.append(op.Data(name, 'db', DataType.ARRAY_NUMBER, [], 0, 0))
+        # c, h = self.produce_c_data(name, 'db', 4, [], 0)
+        # self.c_data += c
+        # self.h_data += h
+        # self.__binary_data_size += num
+        self.__cur_seg_offset = 0
+        self.set_global(name, op.var(binary_width, offset, name, issegment=True))
 
     def action_proc(self, name, type, line_number=0):
         logging.info("procedure name %s" % name.value)
@@ -1046,7 +1049,7 @@ class Parser:
         else:
             type = type + "_"
         type = type[1:] + name
-        self.action_segment(type)
+        self.create_segment(type)
 
     '''
     def action_prefix(self, line):

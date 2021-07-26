@@ -268,7 +268,7 @@ mnemonic: AAA| AAD| AAM| AAS| ADC| ADD| AND| CALL| CBW| CLC| CLD| CLI| CMC| CMP|
 //| FXTRACT| FYL2X| FYL2XP1| FSETPM| FCOS| FLDENVD| FNSAVED| FNSTENVD| FPREM1| FRSTORD| FSAVED| FSIN| FSINCOS| FSTENVD| FUCOM
 //| FUCOMP| FUCOMPP
 ;
-modeldir: U_MODEL memoption commamodeloptlist? linereminder;
+modeldir: U_MODEL model=memoption commamodeloptlist? linereminder;
 modelopt: langtype| stackoption | OS_DOS;
 modeloptlist: modelopt+[COMMA];
 mulop: '*'| '/' | MOD ;
@@ -332,7 +332,7 @@ segattrib: PUBLIC | STACK | COMMON | MEMORY | AT expr| PRIVATE ;
 segdir: type=U_CODE LABEL? | type=U_DATA | type=U_DATA_| type=U_CONST | type=U_FARDATA LABEL? | type=U_FARDATA_ LABEL? | type=U_STACK expr?;
 segidlist : LABEL  COMMA segidlist | LABEL;
 segmentdef: segmentdir  endsdir|segmentdir  insegdir+  endsdir| simplesegdir | simplesegdir  endsdir | simplesegdir  insegdir+   endsdir? ;
-segmentdir: name=LABEL SEGMENT segoptionlist?  linereminder;
+segmentdir: name=LABEL SEGMENT options=segoptionlist?  linereminder;
 segmentregister: CS | DS | ES | FS | GS | SS;
 segoption: segalign| segro| segattrib| segsize| classname;
 segoptionlist: segoption+;
