@@ -10,7 +10,7 @@ from enum import Enum
 
 # import traceback
 
-from json import JSONEncoder
+# from json import JSONEncoder
 
 '''
 def _default(self, obj):
@@ -19,13 +19,16 @@ def _default(self, obj):
 _default.default = JSONEncoder().default
 JSONEncoder.default = _default
 '''
-#import json
+
+
+# import json
 
 class Unsupported(Exception):
     pass
 
+
 class baseop(object):
-    #__slots__ = ["cmd", "line", "line_number", "elements", "args"]
+    # __slots__ = ["cmd", "line", "line_number", "elements", "args"]
 
     def __init__(self):
         self.cmd = ""
@@ -35,7 +38,6 @@ class baseop(object):
         self.args = []
         self.size = 0
 
-
     def getsize(self):
         return self.size
 
@@ -44,6 +46,7 @@ class baseop(object):
 
     def __str__(self):
         return str(self.__class__)
+
 
 class var(object):
 
@@ -68,10 +71,19 @@ class var(object):
     def getsize(self):
         return self.size
 
-class Segment(JSONEncoder):
-	#__slots__ = ['name', 'offset', '__data', 'original_name', 'used']
 
-    def __init__(self, name, offset, options=None, segclass=None):
+class Segment(object):
+    # __slots__ = ['name', 'offset', '__data', 'original_name', 'used']
+
+    def __init__(self, name, offset, options=None, segclass=None, comment=''):
+        '''
+        Represents MASM Segment
+        :param name: Segment name
+        :param offset: In-memory segment offset in paragraphs. TODO: Used?
+        :param options: Segment options
+        :param segclass: Segment class name
+        :param comment: Source of element
+        '''
         # logging.debug("op.var(%d, %d, %s, %s, %s, %d)" %(size, offset, name, segment, issegment, elements))
         self.name = name.lower()
         self.offset = offset
@@ -80,22 +92,14 @@ class Segment(JSONEncoder):
         self.__data = list()
         self.options = options
         self.segclass = segclass
-
-    '''
-    def to_json(self):
-        import json
-        return json.dumps(self, default=lambda o: o.__dict__,
-                          sort_keys=False, indent=4)
-
-    def _default(self):
-        return json.dumps(self.__dict__, indent=4)
-    '''
+        self.comment = comment
 
     def append(self, data):
         self.__data.append(data)
 
     def getdata(self):
         return self.__data
+
 
 class DataType(Enum):
     ZERO_STRING = 1
@@ -104,11 +108,26 @@ class DataType(Enum):
     ARRAY_NUMBER = 4
     OBJECT = 5
 
+
 class Data(baseop):
-    #__slots__ = ['label', 'type', 'data_internal_type', 'array', 'elements', 'size', 'members',
+    # __slots__ = ['label', 'type', 'data_internal_type', 'array', 'elements', 'size', 'members',
     #             'filename', 'line', 'line_number']
 
-    def __init__(self, label, type, data_internal_type: DataType, array, elements, size, filename='', raw='', line_number=0):
+    def __init__(self, label, type, data_internal_type: DataType, array, elements, size, filename='', raw='',
+                 line_number=0, comment=''):
+        '''
+        One element of data
+        :param label: Data label
+        :param type: Input data type
+        :param data_internal_type: Internal type. See DataType
+        :param array: Value or values
+        :param elements: Number of elements
+        :param size: Memory size
+        :param filename: Source filename
+        :param raw: Raw input string
+        :param line_number: Source linenumber
+        :param comment: Source of element
+        '''
         super().__init__()
         self.label = label
         self.type = type
@@ -116,23 +135,24 @@ class Data(baseop):
         self.elements = elements
         self.size = size
         self.array = array
-        self.members = list()
+        self.__members = list()
         self.filename = filename
         self.line = raw
         self.line_number = line_number
+        self.comment = comment
 
     def isobject(self):
         return self.data_internal_type == DataType.OBJECT
 
     def setmembers(self, members):
-        self.members = members
+        self.__members = members
 
     def getmembers(self):
-        return self.members
+        return self.__members
 
     def setvalue(self, value):
         if self.isobject():
-            for m, v in zip(self.members, value):
+            for m, v in zip(self.__members, value):
                 m.setvalue(v)
         else:
             self.array = value
@@ -171,7 +191,7 @@ class Struct:
         self.__fields[data.label.lower()] = data
         if self.__type == Struct.Type.STRUCT:
             self.__size += data.getsize()
-        else: # Union
+        else:  # Union
             self.__size = max(self.__size, data.getsize())
 
     def getdata(self):
@@ -185,6 +205,8 @@ class Struct:
 
     def gettype(self):
         return self.__type
+
+
 '''
 class reg(object):
     def __init__(self, name):
@@ -224,8 +246,6 @@ class glob(object):
 '''
 
 
-
-
 class basejmp(baseop):
     pass
 
@@ -255,6 +275,7 @@ class _add(baseop):
 
     def visit(self, visitor):
         return visitor._add(*self.args)
+
 
 class _sub(baseop):
     def __init__(self, args):
@@ -358,6 +379,7 @@ def flattenpush(s):  # TODO will work most of the time
         res.append(ressec)
     return res
 
+
 '''
 class _push(baseop):
     def __init__(self, arg):
@@ -385,6 +407,7 @@ class _pop(baseop):
     def visit(self, visitor):
         return visitor._pop(self.args)
 '''
+
 
 class _ret(baseop):
     def __init__(self, arg):
@@ -721,6 +744,7 @@ class _equ(baseop):
             from masm2c.cpp import SkipCode
             raise SkipCode
 
+
 class _assignment(baseop):
     def __init__(self, args):
         super().__init__()
@@ -731,9 +755,9 @@ class _assignment(baseop):
         self.size = 0
 
     def visit(self, visitor):
-        #if self.implemented == False:
+        # if self.implemented == False:
         self.implemented = True
         return visitor._assignment(self, *self.args)
-        #else:
+        # else:
         #    from masm2c.cpp import SkipCode
         #    raise SkipCode

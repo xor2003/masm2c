@@ -4,8 +4,6 @@ import logging
 import os
 import re
 import sys
-# from builtins import chr
-# from builtins import hex
 from builtins import object
 from builtins import range
 from builtins import str
@@ -593,7 +591,7 @@ class Parser:
 
         self.segments = dict()
         self.__segment_name = "default_seg"
-        self.segment = Segment(self.__segment_name, 0)
+        self.segment = Segment(self.__segment_name, 0, comment="Artificial initial segment")
         self.segments[self.__segment_name] = self.segment
 
         self.__lex = ParglareParser()
@@ -917,7 +915,7 @@ class Parser:
 
             label = self.get_dummy_label()
 
-            self.segment.append(op.Data(label, 'db', DataType.ARRAY_NUMBER, num * [0], num, num))
+            self.segment.append(op.Data(label, 'db', DataType.ARRAY_NUMBER, num * [0], num, num, comment='for alignment'))
 
     def get_dummy_label(self):
         self.__c_dummy_label += 1
@@ -1018,7 +1016,7 @@ class Parser:
         # self.h_data.append(" db " + name + "[" + str(num) + "]; // segment " + name + "\n")
         self.segment = Segment(name, offset, options=options, segclass=segclass)
         self.segments[name] = self.segment
-        self.segment.append(op.Data(name, 'db', DataType.ARRAY_NUMBER, [], 0, 0))
+        self.segment.append(op.Data(name, 'db', DataType.ARRAY_NUMBER, [], 0, 0, comment='segment start zero label'))
         # c, h = self.produce_c_data(name, 'db', 4, [], 0)
         # self.c_data += c
         # self.h_data += h
@@ -1201,8 +1199,12 @@ class Parser:
 
         if len(label) == 0:
             label = self.get_dummy_label()
+        if isstruct:
+            data_type = 'struct data'
+        else:
+            data_type = 'usual data'
         data = op.Data(label, type, data_internal_type, array, elements, size, filename=self.current_file, raw=raw,
-                       line_number=line_number)
+                       line_number=line_number, comment=data_type)
         if isstruct:
             self.current_struct.append(data)
         else:
@@ -1312,7 +1314,7 @@ class Parser:
         args = Token.remove_tokens(args, 'structinstance')
         # args = [cpp.expand(i) for i in args]
         # elements, is_string, array = self.process_data_tokens(args, binary_width)
-        d = op.Data(label, type, DataType.OBJECT, args, 1, s.getsize())
+        d = op.Data(label, type, DataType.OBJECT, args, 1, s.getsize(), comment='struct instance')
         members = [deepcopy(i) for i in s.getdata().values()]
         d.setmembers(members)
         args = self.convert_members(d, args)
