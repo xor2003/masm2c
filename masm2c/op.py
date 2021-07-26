@@ -32,7 +32,7 @@ class baseop(object):
 
     def __init__(self):
         self.cmd = ""
-        self.line = ""
+        self.raw_line = ""
         self.line_number = 0
         self.elements = 1
         self.args = []
@@ -113,7 +113,7 @@ class Data(baseop):
     # __slots__ = ['label', 'type', 'data_internal_type', 'array', 'elements', 'size', 'members',
     #             'filename', 'line', 'line_number']
 
-    def __init__(self, label, type, data_internal_type: DataType, array, elements, size, filename='', raw='',
+    def __init__(self, label, type, data_internal_type: DataType, array, elements, size, filename='', raw_line='',
                  line_number=0, comment=''):
         '''
         One element of data
@@ -124,7 +124,7 @@ class Data(baseop):
         :param elements: Number of elements
         :param size: Memory size
         :param filename: Source filename
-        :param raw: Raw input string
+        :param raw_line: Raw input string
         :param line_number: Source linenumber
         :param comment: Source of element
         '''
@@ -137,7 +137,7 @@ class Data(baseop):
         self.array = array
         self.__members = list()
         self.filename = filename
-        self.line = raw
+        self.raw_line = raw_line
         self.line_number = line_number
         self.comment = comment
 

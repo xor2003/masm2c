@@ -116,9 +116,9 @@ class Proc(object):
         logging.debug(label + " " + str(value))
         o = op._equ([label, value])
         #value = cpp.convert_number_to_c(value)
-        o.line = str(line_number) + " " + label + " equ " + str(value)
+        o.raw_line = str(line_number) + " " + label + " equ " + str(value)
         o.line_number = line_number
-        o.cmd = o.line
+        o.cmd = o.raw_line
         o.value = value
         #               logging.info "~~~" + o.command + o.comments
         return o
@@ -127,9 +127,9 @@ class Proc(object):
         logging.debug(label + " " + str(value))
         #value = cpp.convert_number_to_c(value)
         o = op._assignment([label, value])
-        o.line = str(line_number) + " " + label + " = " + str(value)
+        o.raw_line = str(line_number) + " " + label + " = " + str(value)
         o.line_number = line_number
-        o.cmd = o.line
+        o.cmd = o.raw_line
         o.value = value
 
         #               logging.info "~~~" + o.command + o.comments
@@ -157,14 +157,14 @@ class Proc(object):
             except SkipCode:
                 logging.debug(f'Skipping code {stmt}')
             except Exception as ex:
-                logging.error(f'Exception in {stmt.filename}:{stmt.line_number} {stmt.line}\n {ex.args}')
+                logging.error(f'Exception in {stmt.filename}:{stmt.line_number} {stmt.raw_line}\n {ex.args}')
                 raise
 
 
             try:  # trying to add command and comment
-                if stmt.line or stmt.line_number != 0:
+                if stmt.raw_line or stmt.line_number != 0:
                     visitor.body = visitor.body[:-1] + "\t// " + str(stmt.line_number) \
-                                   + " " + stmt.line + "\n"
+                                   + " " + stmt.raw_line + "\n"
             except AttributeError:
                 logging.warning(f"Some attributes missing while setting comment for {stmt}")
 

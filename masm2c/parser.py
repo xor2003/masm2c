@@ -966,7 +966,7 @@ class Parser:
         #    label = self.get_global(label).original_name
         o = self.proc.create_assignment_op(label, value, line_number=line_number)
         o.filename = self.current_file
-        o.line = raw.rstrip()
+        o.raw_line = raw.rstrip()
         self.reset_global(label, o)
         self.proc.stmts.append(o)
         return o
@@ -995,7 +995,7 @@ class Parser:
             value = Token.find_and_replace_tokens(value, 'ptrdir', self.return_empty)
         o = Proc.create_equ_op(label, value, line_number=line_number)
         o.filename = self.current_file
-        o.line = raw.rstrip()
+        o.raw_line = raw.rstrip()
         o.size = size
         if ptrdir:
             o.original_type = type
@@ -1203,7 +1203,7 @@ class Parser:
             data_type = 'struct data'
         else:
             data_type = 'usual data'
-        data = op.Data(label, type, data_internal_type, array, elements, size, filename=self.current_file, raw=raw,
+        data = op.Data(label, type, data_internal_type, array, elements, size, filename=self.current_file, raw_line=raw,
                        line_number=line_number, comment=data_type)
         if isstruct:
             self.current_struct.append(data)
@@ -1352,7 +1352,7 @@ class Parser:
         if self.separate_proc:
             proc = self.get_global('mainproc')
             o = proc.create_instruction_object('call', [self.entry_point])
-            o.line = ''
+            o.raw_line = ''
             o.line_number = 0
             proc.stmts.append(o)
 
@@ -1366,7 +1366,7 @@ class Parser:
 
         o = self.proc.create_instruction_object(instruction, args)
         o.filename = self.current_file
-        o.line = raw
+        o.raw_line = raw
         o.line_number = line_number
         if self.current_macro == None:
             self.proc.stmts.append(o)
