@@ -314,6 +314,8 @@ def segmentdir(context, nodes, name, options):
                 opts.add(o.lower())
             elif  isinstance(o, Token) and o.type == 'STRING':
                 segclass = o.value.lower()
+                if segclass[0] in ['"', "'"] and segclass[0] == segclass[-1]:
+                    segclass = segclass[1:-1]
             else:
                 logging.warning('Unknown segment option')
     context.extra.create_segment(name.value, options=opts, segclass=segclass)

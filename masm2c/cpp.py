@@ -1300,12 +1300,36 @@ class Cpp(object):
                 segments, structures = self.merge_segments(segments, structs, *jsonpickle.decode(infile.read()))
         return segments, structures
 
-    def merge_segments(self, segments: dict, structs: dict, segment: dict, struct: dict):
-        segments.update(segment)
-        if set(structs.keys()) & set(structs.keys()):
-            logging.error("Probably structs should not duplicate")
-        structs.update(struct)
-        return segments, structs
+    def merge_segments(self, allsegments: dict, allstructs: dict, newsegments: dict, newstructs: dict):
+        for k, v in newsegments.items():
+            segclass = v.segclass
+            ispublic = v.options and 'public' in v.options
+            if segclass and ispublic:
+                if segclass not in allsegments:
+                    allsegments[segclass] = v
+                else:
+                    data = v.getdata()
+                    allsegments[segclass].insert_label(data[0])
+                    for d in data[1:]:
+                        allsegments[segclass].append(d)
+            else:
+                if k in allsegments and (v.getsize() > 0 or allsegments[k].getsize() > 0):
+                    old = jsonpickle.encode(allsegments[k])
+                    new = jsonpickle.encode(v)
+                    if old != new:
+                        logging.error(f'Overwritting segment {k}')
+                allsegments[k] = v
+
+        #allsegments.update(newsegments)
+        if allstructs != newstructs and set(allstructs.keys()) & set(newstructs.keys()):
+            for k, v in newstructs.items():
+                if k in allstructs:
+                    old = jsonpickle.encode(allstructs[k])
+                    new = jsonpickle.encode(v)
+                    if old != new:
+                        logging.error(f"Overwritting structure {k}")
+        allstructs.update(newstructs)
+        return allsegments, allstructs
 
     def generate_data(self, segments, structures):
         _, data_h, data_cpp_reference, _ = self.produce_c_data(segments)
@@ -1506,14 +1530,14 @@ struct Memory{
         return rc, rh, data.getsize()
 
     @staticmethod
-    def produce_c_data_number(data):
+    def produce_c_data_number(data: op.Data):
         label, data_ctype, _, r, elements, size = data.getdata()
         rc = ''.join([str(i) for i in r])
         rh = f'{data_ctype} {label}'
         return rc, rh
 
     @staticmethod
-    def produce_c_data_array_number(data):
+    def produce_c_data_array_number(data: op.Data):
         label, data_ctype, _, r, elements, size = data.getdata()
         rc = '{' + ",".join([str(i) for i in r]) + '}'
         # assert(len(r)==elements)
@@ -1521,21 +1545,21 @@ struct Memory{
         return rc, rh
 
     @staticmethod
-    def produce_c_data_zero_string(data):
+    def produce_c_data_zero_string(data: op.Data):
         label, data_ctype, _, r, elements, size = data.getdata()
         rc = '"' + ''.join([Cpp.convert_str(i) for i in r[:-1]]) + '"'
         rh = f'char {label}[{str(len(r))}]'
         return rc, rh
 
     @staticmethod
-    def produce_c_data_array_string(data):
+    def produce_c_data_array_string(data: op.Data):
         label, data_ctype, _, r, elements, size = data.getdata()
         rc = '{' + ",".join([Cpp.convert_char(i) for i in r]) + '}'
         rh = f'char {label}[{str(len(r))}]'
         return rc, rh
 
     @staticmethod
-    def produce_c_data_object(data):
+    def produce_c_data_object(data: op.Data):
         label, data_ctype, _, r, elements, size = data.getdata()
         # rc = '{' + ",".join([str(i) for i in r]) + '}'
         rc = list()

@@ -78,24 +78,35 @@ class Segment(object):
     def __init__(self, name, offset, options=None, segclass=None, comment=''):
         '''
         Represents MASM Segment
+
         :param name: Segment name
         :param offset: In-memory segment offset in paragraphs. TODO: Used?
         :param options: Segment options
         :param segclass: Segment class name
         :param comment: Source of element
         '''
-        # logging.debug("op.var(%d, %d, %s, %s, %s, %d)" %(size, offset, name, segment, issegment, elements))
         self.name = name.lower()
-        self.offset = offset
+        #self.offset = offset
         self.original_name = name
         self.used = False
         self.__data = list()
         self.options = options
         self.segclass = segclass
         self.comment = comment
+        self.seglabels = set([self.name])
+        self.size = 0  # Check if needed
+
+    def getsize(self):
+        return self.size
 
     def append(self, data):
         self.__data.append(data)
+        self.size += data.getsize()
+
+    def insert_label(self, data):
+        if data.getlabel() not in self.seglabels:
+            self.__data.insert(1, data)
+            self.seglabels.add(data.getlabel())
 
     def getdata(self):
         return self.__data
@@ -117,6 +128,7 @@ class Data(baseop):
                  line_number=0, comment=''):
         '''
         One element of data
+
         :param label: Data label
         :param type: Input data type
         :param data_internal_type: Internal type. See DataType
