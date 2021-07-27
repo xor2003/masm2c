@@ -855,7 +855,7 @@ int8_t asm2C_IN(int16_t data);
 	--_state->_indent;_state->_str=log_spaces(_state->_indent);return;}
 
  #define RETF {log_debug("before retf %x\n",stackPointer); MWORDSIZE averytemporary9=0; POP(averytemporary9); if (averytemporary9!='xy') {log_error("Stack corrupted.\n");exit(1);} \
-	dw averytemporary9;POP(averytemporary9); \
+	dw averytemporary11;POP(averytemporary11); \
 	log_debug("after retf %x\n",stackPointer); \
 	--_state->_indent;_state->_str=log_spaces(_state->_indent);return;}
 #else
