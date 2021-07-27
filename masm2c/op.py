@@ -4,24 +4,12 @@ import logging
 from builtins import str
 from builtins import object
 
-from masm2c import parser
+#from masm2c import parser
 from masm2c.Token import Token
 from enum import Enum
 
 # import traceback
 
-# from json import JSONEncoder
-
-'''
-def _default(self, obj):
-    return getattr(obj.__class__, "to_json", _default.default)(obj)
-
-_default.default = JSONEncoder().default
-JSONEncoder.default = _default
-'''
-
-
-# import json
 
 class Unsupported(Exception):
     pass
@@ -92,7 +80,7 @@ class Segment(object):
         self.__data = list()
         self.options = options
         self.segclass = segclass
-        self.comment = comment
+        #self.comment = comment
         self.seglabels = set([self.name])
         self.size = 0  # Check if needed
 
@@ -151,7 +139,7 @@ class Data(baseop):
         self.filename = filename
         self.raw_line = raw_line
         self.line_number = line_number
-        self.comment = comment
+        #self.comment = comment
 
     def isobject(self):
         return self.data_internal_type == DataType.OBJECT

@@ -562,6 +562,8 @@ def dump_object(value):
 
 
 class Parser:
+    c_dummy_label = 0
+
     def __init__(self, skip_binary_data=[]):
         self.separate_proc = True
         # self.__label_to_skip = skip_binary_data
@@ -588,7 +590,6 @@ class Parser:
         self.c_data = []
         self.h_data = []
         self.__cur_seg_offset = 0
-        self.__c_dummy_label = 0
         self.__c_dummy_jump_label = 0
 
         self.segments = dict()
@@ -920,8 +921,8 @@ class Parser:
             self.segment.append(op.Data(label, 'db', DataType.ARRAY_NUMBER, num * [0], num, num, comment='for alignment'))
 
     def get_dummy_label(self):
-        self.__c_dummy_label += 1
-        label = "dummy" + str(self.__c_dummy_label)
+        Parser.c_dummy_label += 1
+        label = "dummy" + str(Parser.c_dummy_label)
         return label
 
     def get_dummy_jumplabel(self):
@@ -1243,7 +1244,7 @@ class Parser:
     def parse_args_new_data_(self, text):
         # self.__pgcontext = PGContext(extra = self)
         self.__binary_data_size = 0
-        self.__c_dummy_label = 0  # one dummy number is used for "default_seg" creation
+        # TODO check if required self.__c_dummy_label = 0  # one dummy number is used for "default_seg" creation
         self.__c_dummy_jump_label = 0
         return self.parse_file_insideseg(text)
 

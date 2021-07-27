@@ -12,7 +12,7 @@ import logging
 import sys
 
 #from import __version__
-__version__='0.9.3'
+__version__='0.9.4'
 
 __author__ = "x0r"
 __copyright__ = "x0r"

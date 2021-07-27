@@ -1,10 +1,11 @@
 from __future__ import division
-from __future__ import division
 from __future__ import print_function
 
 import logging
 import re
-import sys, os
+import sys
+import jsonpickle
+
 from builtins import hex
 from builtins import object
 from builtins import range
@@ -15,8 +16,6 @@ import masm2c.proc as proc_module
 from masm2c import op
 from masm2c.Token import Token
 from masm2c.op import DataType
-import json
-import jsonpickle
 
 OFFSETDIR = 'offsetdir'
 LABEL = 'LABEL'
@@ -1507,6 +1506,8 @@ struct Memory{
     @staticmethod
     def produce_c_data_single(data):
         # For unit test
+        from masm2c.parser import Parser
+        Parser.c_dummy_label = 0
         c, h, size = Cpp.produce_c_data_single_(data)
         c += ", // " + data.getlabel() + "\n"  # TODO can put original_label
         h += ";\n"
