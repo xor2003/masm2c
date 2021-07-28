@@ -316,15 +316,21 @@ class Cpp(object):
                 #  caa=3;
                 m = re.match(r'^([0-9A-Za-z_]+)\s+([0-9A-Za-z_]+)(\[\d+\])?;\n', h)
                 name = m.group(2)
-                if m.group(3):
-                    if c == '{}':
-                        c = ''
-                    else:
-                        c = f'   mycopy({name}, {c});'
-                else:
-                    c = f'   {name}={c};'
 
-                c += " // " + j.getlabel() + "\n"  # TODO can put original_label
+                if name.startswith('dummy') and c == '0':
+                    c = ''
+                else:
+                    if m.group(3):
+                        if c == '{}':
+                            c = ''
+                        else:
+                            c = f'   mycopy({name}, {c});'
+                    else:
+                        c = f'   {name}={c};'
+
+                if c != '':
+                    c += "\n"
+                    #c += " // " + j.getlabel() + "\n"  # TODO can put original_label
 
                 cdata_seg += c
                 hdata_seg += h

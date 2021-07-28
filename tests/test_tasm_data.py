@@ -18,6 +18,9 @@ class ParserDataTest(unittest.TestCase):
         self.parser = Parser()
         self.cpp = Cpp(self.parser)
 
+    def test_data_10012(self):
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="Dw seg default_seg")), ('seg_offset(default_seg), // dummy1\n', 'dw dummy1;\n', 2))
+
     def test_data_10011(self):
         self.parser.action_label(far=False, name='@df@@@@8', isproc=False)
         self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="dw @df@@@@8")), ('karbdfarbarbarbarb8, // dummy1\n', 'dw dummy1;\n', 2))
