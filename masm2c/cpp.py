@@ -462,7 +462,7 @@ class Cpp(object):
                 pass
             else:
                 if isinstance(g, op.var):
-                    value = f'offset({g.segment},{".".join(label)})'
+                    value = f'offset({g.segment},{".".join(label).lower()})'
                 elif isinstance(g, op.Struct):
                     value = f'offsetof({label[0].lower()},{".".join(label[1:]).lower()})'
                 else:
@@ -504,7 +504,7 @@ class Cpp(object):
                 self.__indirection = 0
             else:
                 if self.__indirection == 1 and self.variable:
-                    value = '.'.join(label)
+                    value = '.'.join(label).lower()
                     if not self.__isjustlabel:  # if not just single label
                         self.address = True
                         if g.elements == 1:  # array generates pointer himself
@@ -516,7 +516,7 @@ class Cpp(object):
                             value = "((db*)%s)" % value
                             self.size_changed = True
                 elif self.__indirection == -1 and self.variable:
-                    value = "offset(%s,%s)" % (g.segment, '.'.join(label))
+                    value = "offset(%s,%s)" % (g.segment, '.'.join(label).lower())
                 if self.__work_segment == 'cs':
                     self.body += '\tcs=seg_offset(' + g.segment + ');\n'
             # ?self.__indirection = 1
@@ -534,7 +534,7 @@ class Cpp(object):
                 i = []
             register = r + i
             '''
-            self.struct_type = label[0]
+            self.struct_type = label[0].lower()
             self.address = True
             value = f"{register}))->{'.'.join(label[1:]).lower()}"
 
@@ -681,6 +681,7 @@ class Cpp(object):
                 if len(result) and result[-1] == ')' and isinstance(i, Token) and i.type == 'register':
                     result += '+'
                 result += self.tokenstostring(i)
+            result = result.replace('+)', ')').replace('+())', ')') # TODO hack
             return result
         elif isinstance(expr, Token):
 

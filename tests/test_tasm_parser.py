@@ -3688,6 +3688,25 @@ TRANSFORMEDSHAPE ends
             self.proc.generate_c_cmd(self.cpp, self.parser.action_code('push    [bp+var_TransshapE.ts_rotvec.vx]')),
             u'\tR(PUSH(((transformedshape*)raddr(ss,bp+var_transshape))->ts_rotvec.vx));\n')
 
+    def test_instr_11720(self):
+        self.assertEqual(
+            self.proc.generate_c_cmd(self.cpp, self.parser.action_code('add     word ptr [bx+transformedshape.ts_rotvec], ax')),
+            u'\tR(ADD(((transformedshape*)raddr(ds,bx))->ts_rotvec, ax));\n')
+
+    def test_instr_11730(self):
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov ax, (offset gameconfig.game_opponenTType+0AA8h)')),
+                     u'\tR(MOV(ax, offset(default_seg,gameconfig.game_opponenttype)+0x0AA8));\n')
+
+    def test_instr_11740(self):
+        self.assertEqual(
+            self.proc.generate_c_cmd(self.cpp,
+                                     self.parser.action_code('adc     word ptr [bx+(transformedshape.ts_rotvec+2)], dx')),
+            u'\tR(ADC((((transformedshape*)raddr(ds,bx+2))->ts_rotvec), dx));\n')
+
+    def test_instr_11750(self):
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('add     gameconfig.game_opponenTType[di], 10h')),
+                     u'\tR(ADD(*(((db*)&gameconfig.game_opponenttype)+di), 0x10));\n')
+
 
 if __name__ == "__main__":
     unittest.main()
