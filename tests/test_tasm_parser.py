@@ -3707,6 +3707,9 @@ TRANSFORMEDSHAPE ends
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('add     gameconfig.game_opponenTType[di], 10h')),
                      u'\tR(ADD(*(((db*)&gameconfig.game_opponenttype)+di), 0x10));\n')
 
+    def test_instr_11760(self):
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('inc     gameconfig.game_opponenTType')),
+                     u'\tR(INC(gameconfig.game_opponenttype));\n')
 
 if __name__ == "__main__":
     unittest.main()

@@ -452,7 +452,7 @@ class Cpp(object):
 
     def convert_member(self, token):
         logging.debug("name = %s indirection = %u" % (str(token), self.__indirection))
-        label = Token.find_tokens(token, LABEL)
+        label = [l.lower() for l in Token.find_tokens(token, LABEL)]
         self.struct_type = None
 
         if self.__indirection == -1:
@@ -462,9 +462,9 @@ class Cpp(object):
                 pass
             else:
                 if isinstance(g, op.var):
-                    value = f'offset({g.segment},{".".join(label).lower()})'
+                    value = f'offset({g.segment},{".".join(label)})'
                 elif isinstance(g, op.Struct):
-                    value = f'offsetof({label[0].lower()},{".".join(label[1:]).lower()})'
+                    value = f'offsetof({label[0]},{".".join(label[1:])})'
                 else:
                     raise Exception('Not handled type ' + str(type(g)))
                 self.__indirection = 0
@@ -486,7 +486,7 @@ class Cpp(object):
             else:
                 self.struct_type = g.original_type
                 self.address = True
-                value = f"{label[0].lower()}))->{'.'.join(label[1:]).lower()}"
+                value = f"{label[0]}))->{'.'.join(label[1:])}"
             logging.debug("equ: %s -> %s" % (label[0], value))
         elif isinstance(g, op.var):
             logging.debug("it is var " + str(g.size))
@@ -504,7 +504,7 @@ class Cpp(object):
                 self.__indirection = 0
             else:
                 if self.__indirection == 1 and self.variable:
-                    value = '.'.join(label).lower()
+                    value = '.'.join(label)
                     if not self.__isjustlabel:  # if not just single label
                         self.address = True
                         if g.elements == 1:  # array generates pointer himself
@@ -516,7 +516,7 @@ class Cpp(object):
                             value = "((db*)%s)" % value
                             self.size_changed = True
                 elif self.__indirection == -1 and self.variable:
-                    value = "offset(%s,%s)" % (g.segment, '.'.join(label).lower())
+                    value = "offset(%s,%s)" % (g.segment, '.'.join(label))
                 if self.__work_segment == 'cs':
                     self.body += '\tcs=seg_offset(' + g.segment + ');\n'
             # ?self.__indirection = 1
@@ -534,9 +534,9 @@ class Cpp(object):
                 i = []
             register = r + i
             '''
-            self.struct_type = label[0].lower()
+            self.struct_type = label[0]
             self.address = True
-            value = f"{register}))->{'.'.join(label[1:]).lower()}"
+            value = f"{register}))->{'.'.join(label[1:])}"
 
         if size == 0:
             raise Exception("invalid var '%s' size %u" % (str(label), size))
