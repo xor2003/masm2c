@@ -124,10 +124,11 @@ static const uint32_t MASK[]={0, 0xff, 0xffff, 0xffffff, 0xffffffff};
  #define offset(segment,name) ((size_t)(db*)&name)
 #else
  typedef dw MWORDSIZE;
- #define offset(segment,name) (offsetof(struct Memory,name)-offsetof(struct Memory,segment))
+ //#define offset(segment,name) (offsetof(struct Memory,name)-offsetof(struct Memory,segment))
+ #define offset(segment,name) ((db*)(&name)-(db*)(&segment))
 #endif
 
-#define seg_offset(segment) ((offsetof(struct Memory,segment))>>4)
+#define seg_offset(segment) ((offset(m,(segment)))>>4)
 
 // DJGPP
 #define MASK_LINEAR(addr)     (((size_t)addr) & 0x000FFFFF)
@@ -305,7 +306,7 @@ static const uint32_t MASK[]={0, 0xff, 0xffff, 0xffffff, 0xffffffff};
 #ifdef DEBUG
  #define PUSH(a) {dd averytemporary=a;stackPointer-=sizeof(a); \
 		memcpy (raddr(ss,stackPointer), &averytemporary, sizeof (a)); \
-		assert((raddr(ss,stackPointer) - ((db*)&m.stack))>8);log_debug("after push %x\n",stackPointer);}
+		assert((raddr(ss,stackPointer) - ((db*)&stack))>8);log_debug("after push %x\n",stackPointer);}
 
  #define POP(a) { log_debug("before pop %x\n",stackPointer);memcpy (&a, raddr(ss,stackPointer), sizeof (a));stackPointer+=sizeof(a);}
 #else
@@ -1173,6 +1174,11 @@ void mycopy(char t[], std::initializer_list<char> s);
 
 void mycopy(dw t[], std::initializer_list<dw> s);
 void mycopy(dd t[], std::initializer_list<dd> s);
+
+struct /*__attribute__((__packed__))*/ Memory;
+extern Memory& m;
+extern db(& stack)[STACK_SIZE];
+extern db(& heap)[HEAP_SIZE];
 
 #endif
 

@@ -1,7 +1,5 @@
 #include "asm.h"
 
-struct /*__attribute__((__packed__))*/ Memory;
-extern Memory m;
 
 #include <exception>
 
@@ -1442,9 +1440,9 @@ int main(int argc, char *argv[]) {
 
         if (argc >= 2) {
             db s = strlen(argv[1]);
-            *(((char *) &m) + 0x80) = s + 1;
+            *(((db *) &m) + 0x80) = s + 1;
             strcpy(((char *) &m) + 0x81, argv[1]);
-            *(((dw *) &m) + 0x81 + s) = 0xD;
+            *(dw *)((db*)&m + 0x81 + s) = 0xD;
 
         }
         mainproc((_offsets) 0, _state);

@@ -35,17 +35,17 @@ extern "C" {
 typedef uint8_t db;
 typedef uint16_t dw;
 
-struct Memory;
-extern struct Memory m;
+// !struct Memory;
+// !extern struct Memory m;
 
 
 //#define MK_FP(seg,ofs)      (&(raddr(seg,ofs))) //  ( (ULONG(seg)<<4)+(UWORD)(ofs) )
-#define FP_SEG(fp)           ( (  ((uint8_t*)(fp)) - ((uint8_t*)(&m)) )>>4)// ( (UWORD) ((fp)>>4) )
+#define FP_SEG(fp)           ( (  ((uint8_t*)(fp)) - ((uint8_t*)(&m)) )>>4)
 //#define FP_OFF(fp)            ( (UWORD) (fp) )
 #define SUCCESS 0
 //#define NULL 0
 
-extern uint16_t first_mcb; //=FP_SEG(&m.heap);         /* Start of user memory                 */
+extern uint16_t first_mcb;          /* Start of user memory                 */
 extern db mem_access_mode;
 
 #define nxtMCBsize(mcbp,size) ((mcb*)(((db*)mcbp) + (size<<4) + 0x10))

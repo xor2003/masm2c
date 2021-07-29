@@ -1354,6 +1354,10 @@ class Cpp(object):
         data_impl = f'''#include "_data.h"
 static struct Memory mm;
 struct Memory& m = mm;
+
+db(& stack)[STACK_SIZE]=m.stack;
+db(& heap)[HEAP_SIZE]=m.heap;
+
 {data_cpp_reference}
         '''
 
@@ -1396,15 +1400,20 @@ struct Memory& m = mm;
 
     def produce_structures(self, strucs):
         structures = "\n"
+        if len(strucs):
+            structures += f"""#pragma pack(push, 1)"""
         for name, v in strucs.items():
             type = 'struct' if v.gettype() == op.Struct.Type.STRUCT else 'union'
-            structures += f"""#pragma pack(push, 1)
+            structures += f"""
 {type} {name} {{
 """
             for member in v.getdata().values():
                 structures += f"  {member.type} {member.label};\n"
             structures += """};
-#pragma pack(pop)            
+"""
+        if len(strucs):
+            structures += f"""
+#pragma pack(pop)
 
 """
         return structures
