@@ -7,9 +7,11 @@ from builtins import object
 from builtins import range
 from builtins import str
 
+from masm2c.Token import Token
 from masm2c import op
 
 label_re = re.compile(r'^([\S@]+)::?(.*)$')  # speed
+PTRDIR = 'ptrdir'
 
 
 class Proc(object):
@@ -116,6 +118,10 @@ class Proc(object):
         logging.debug(label + " " + str(value))
         o = op._equ([label, value])
         #value = cpp.convert_number_to_c(value)
+        ptrdir = Token.find_tokens(value, PTRDIR)
+        if ptrdir:
+            o.original_type = ptrdir[0].value.lower()
+
         o.raw_line = str(line_number) + " " + label + " equ " + str(value)
         o.line_number = line_number
         o.cmd = o.raw_line
@@ -127,6 +133,10 @@ class Proc(object):
         logging.debug(label + " " + str(value))
         #value = cpp.convert_number_to_c(value)
         o = op._assignment([label, value])
+        ptrdir = Token.find_tokens(value, PTRDIR)
+        if ptrdir:
+            o.original_type = ptrdir[0].value.lower()
+
         o.raw_line = str(line_number) + " " + label + " = " + str(value)
         o.line_number = line_number
         o.cmd = o.raw_line

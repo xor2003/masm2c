@@ -486,7 +486,7 @@ class Cpp(object):
             else:
                 self.struct_type = g.original_type
                 self.address = True
-                value = f"{label[0]})->{'.'.join(label[1:])}"
+                value = f"{label[0]}))->{'.'.join(label[1:])}"
             logging.debug("equ: %s -> %s" % (label[0], value))
         elif isinstance(g, op.var):
             logging.debug("it is var " + str(g.size))
@@ -536,7 +536,7 @@ class Cpp(object):
             '''
             self.struct_type = label[0]
             self.address = True
-            value = f"{register})->{'.'.join(label[1:])}"
+            value = f"{register}))->{'.'.join(label[1:])}"
 
         if size == 0:
             raise Exception("invalid var '%s' size %u" % (str(label), size))
@@ -781,7 +781,7 @@ class Cpp(object):
         if memberdir:
             expr = Token.find_and_replace_tokens(expr, 'memberdir', self.convert_member)
             if self.__indirection == 1 and self.address and self.struct_type:
-                expr = [f'({self.struct_type}*)raddr({self.__work_segment},'] + [expr]
+                expr = [f'(({self.struct_type}*)raddr({self.__work_segment},'] + [expr]
                 self.address = False
         else:
             if islabel:
