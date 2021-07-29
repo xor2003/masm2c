@@ -3679,5 +3679,15 @@ TRANSFORMEDSHAPE ends
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('lea     ax, [si+(size TRANSFORMEDSHAPE)]')),
             u'\tR(ax = si+(sizeof(transformedshape)));\n')
 
+    def test_instr_11700(self):
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov     dx, word ptr (oppresources+2)[bx]')),
+            u'\tR(MOV(dx, *(dw*)(raddr(ds,(oppresources+2)+bx))));\n')
+
+    def test_instr_11710(self):
+        self.assertEqual(
+            self.proc.generate_c_cmd(self.cpp, self.parser.action_code('push    [bp+var_TransshapE.ts_rotvec.vx]')),
+            u'\tR(PUSH(((transformedshape*)raddr(ss,bp+var_transshape))->ts_rotvec.vx));\n')
+
+
 if __name__ == "__main__":
     unittest.main()

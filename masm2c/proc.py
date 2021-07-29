@@ -120,7 +120,10 @@ class Proc(object):
         #value = cpp.convert_number_to_c(value)
         ptrdir = Token.find_tokens(value, PTRDIR)
         if ptrdir:
-            o.original_type = ptrdir[0].value.lower()
+            if isinstance(ptrdir[0], Token):
+                o.original_type = ptrdir[0].value.lower()
+            elif isinstance(ptrdir[0], str):
+                o.original_type = ptrdir[0].lower()
 
         o.raw_line = str(line_number) + " " + label + " equ " + str(value)
         o.line_number = line_number
@@ -135,7 +138,10 @@ class Proc(object):
         o = op._assignment([label, value])
         ptrdir = Token.find_tokens(value, PTRDIR)
         if ptrdir:
-            o.original_type = ptrdir[0].value.lower()
+            if isinstance(ptrdir[0], Token):
+                o.original_type = ptrdir[0].value.lower()
+            elif isinstance(ptrdir[0], str):
+                o.original_type = ptrdir[0].lower()
 
         o.raw_line = str(line_number) + " " + label + " = " + str(value)
         o.line_number = line_number

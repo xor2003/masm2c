@@ -486,7 +486,7 @@ class Cpp(object):
             else:
                 self.struct_type = g.original_type
                 self.address = True
-                value = f"{label[0]}))->{'.'.join(label[1:])}"
+                value = f"{label[0].lower()}))->{'.'.join(label[1:]).lower()}"
             logging.debug("equ: %s -> %s" % (label[0], value))
         elif isinstance(g, op.var):
             logging.debug("it is var " + str(g.size))
@@ -536,7 +536,7 @@ class Cpp(object):
             '''
             self.struct_type = label[0]
             self.address = True
-            value = f"{register}))->{'.'.join(label[1:])}"
+            value = f"{register}))->{'.'.join(label[1:]).lower()}"
 
         if size == 0:
             raise Exception("invalid var '%s' size %u" % (str(label), size))
@@ -675,7 +675,12 @@ class Cpp(object):
 
     def tokenstostring(self, expr):
         if isinstance(expr, list):
-            result = "".join([self.tokenstostring(i) for i in expr])
+            result = ''
+            for i in expr:
+                # TODO hack to handle ')register'
+                if len(result) and result[-1] == ')' and isinstance(i, Token) and i.type == 'register':
+                    result += '+'
+                result += self.tokenstostring(i)
             return result
         elif isinstance(expr, Token):
 
@@ -1251,10 +1256,9 @@ class Cpp(object):
 
         hd.write(f"""
 #include "asm.h"
-#include <_data.h>
 
 //namespace {self.__namespace} {{
-
+{self.produce_structures(self.__context.structures)}
 """)
 
         hd.write(cpp_extern)
@@ -1348,7 +1352,8 @@ class Cpp(object):
             hd = open(header, "wt")
 
         data_impl = f'''#include "_data.h"
-struct Memory m;
+static struct Memory mm;
+struct Memory& m = mm;
 {data_cpp_reference}
         '''
 
