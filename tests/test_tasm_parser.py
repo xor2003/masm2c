@@ -3701,7 +3701,7 @@ TRANSFORMEDSHAPE ends
         self.assertEqual(
             self.proc.generate_c_cmd(self.cpp,
                                      self.parser.action_code('adc     word ptr [bx+(transformedshape.ts_rotvec+2)], dx')),
-            u'\tR(ADC((((transformedshape*)raddr(ds,bx+2))->ts_rotvec), dx));\n')
+            u'\tR(ADC(((transformedshape*)raddr(ds,bx+2))->ts_rotvec, dx));\n')
 
     def test_instr_11750(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('add     gameconfig.game_opponenTType[di], 10h')),
@@ -3714,7 +3714,7 @@ TRANSFORMEDSHAPE ends
     def test_instr_11770(self):
         self.assertEqual(
             self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov     dx, word ptr [bx+(gameinfo.game_opponenTType+2)]')),
-            u'\tR(MOV(dx, (((gameinfo*)raddr(ds,bx+2))->game_opponenttype)));\n')
+            u'\tR(MOV(dx, ((gameinfo*)raddr(ds,bx+2))->game_opponenttype));\n')
 
     def test_instr_11780(self):
         self.assertEqual(

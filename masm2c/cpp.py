@@ -330,7 +330,7 @@ class Cpp(object):
 
                 if c != '':
                     c += "\n"
-                    #c += " // " + j.getlabel() + "\n"  # TODO can put original_label
+                    # c += " // " + j.getlabel() + "\n"  # TODO can put original_label
 
                 cdata_seg += c
                 hdata_seg += h
@@ -524,7 +524,7 @@ class Cpp(object):
             register = Token.remove_tokens(token, ['memberdir', 'LABEL'])
             register = self.remove_dots(register)
             register = self.tokenstostring(register)
-            register = re.sub(r'\(\+', '(', register)
+            register = register.replace('(+', '(')
             '''
             r = Token.find_tokens(token, 'register')
             i = Token.find_tokens(token, 'INTEGER')
@@ -540,7 +540,7 @@ class Cpp(object):
 
         if size == 0:
             raise Exception("invalid var '%s' size %u" % (str(label), size))
-        return Token('memberdir', value)
+        return value
 
     def get_size(self, expr):
         logging.debug('get_size("%s")' % expr)
@@ -681,7 +681,7 @@ class Cpp(object):
                 if len(result) and result[-1] == ')' and isinstance(i, Token) and i.type == 'register':
                     result += '+'
                 result += self.tokenstostring(i)
-            result = result.replace('+)', ')').replace('+())', ')') # TODO hack
+            result = result.replace('+)', ')')  # .replace('+())', ')') # TODO hack
             return result
         elif isinstance(expr, Token):
 
@@ -787,6 +787,24 @@ class Cpp(object):
         if memberdir:
             expr = Token.find_and_replace_tokens(expr, 'memberdir', self.convert_member)
             if self.__indirection == 1 and self.address and self.struct_type:
+
+                # TODO A very hacky way to
+                # put registers and numbers first since asm have byte aligned pointers
+                # in comparision to C's type aligned
+                registers = Token.find_tokens(expr, 'register')
+                integers = Token.find_tokens(expr, 'INTEGER')
+                expr = Token.remove_tokens(expr, ['register', 'INTEGER'])
+                expr = self.tokenstostring(expr)
+                if len(expr) and expr[0] == '+':
+                    expr = expr[1:]
+                while len(expr) > 2 and expr[0] == '(' and expr[-1] == ')':
+                    expr = expr[1:-1]
+                if integers:
+                    expr = '+'.join(integers) + '+' + expr
+                if registers:
+                    expr = '+'.join(registers) + '+' + expr
+                expr = expr.replace('++', '+').replace('+-', '-')
+
                 expr = [f'(({self.struct_type}*)raddr({self.__work_segment},'] + [expr]
                 self.address = False
         else:
@@ -1330,7 +1348,7 @@ class Cpp(object):
                         logging.error(f'Overwritting segment {k}')
                 allsegments[k] = v
 
-        #allsegments.update(newsegments)
+        # allsegments.update(newsegments)
         if allstructs != newstructs and set(allstructs.keys()) & set(newstructs.keys()):
             for k, v in newstructs.items():
                 if k in allstructs:
