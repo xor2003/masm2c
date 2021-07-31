@@ -139,7 +139,7 @@ VECTOR ends
     TRANSFORMEDSHAPE struc
     ts_shapeptr dw ?
     ts_rectptr dw ?
-ts_rotvec VECTOR <>
+ts_rOTvec VECTOR <>
 TRANSFORMEDSHAPE ends
     var_transshape = TRANSFORMEDSHAPE ptr -50
 ''')
@@ -3710,6 +3710,17 @@ TRANSFORMEDSHAPE ends
     def test_instr_11760(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('inc     gameconfig.game_opponenTType')),
                      u'\tR(INC(gameconfig.game_opponenttype));\n')
+
+    def test_instr_11770(self):
+        self.assertEqual(
+            self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov     dx, word ptr [bx+(gameinfo.game_opponenTType+2)]')),
+            u'\tR(MOV(dx, (((gameinfo*)raddr(ds,bx+2))->game_opponenttype)));\n')
+
+    def test_instr_11780(self):
+        self.assertEqual(
+            self.proc.generate_c_cmd(self.cpp, self.parser.action_code('add     ax, gameInfo.game_opponenTType')),
+            u'\tR(ADD(ax, offsetof(struct gameinfo,game_opponenttype)));\n')
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -252,7 +252,7 @@ def structinstdir(context, nodes, label, type, values):
     if args == None:
         args = []
     # args = Token.remove(args, 'INTEGER')
-    context.extra.add_structinstance(label.value, type, args)
+    context.extra.add_structinstance(label.value.lower(), type.lower(), args)
     return nodes  # Token('structdir', nodes) TODO ignore by now
 
 
