@@ -4,6 +4,8 @@ from __future__ import print_function
 import logging
 import re
 import sys
+from enum import Enum
+
 import jsonpickle
 
 from builtins import hex
@@ -24,6 +26,12 @@ REGISTER = 'register'
 SEGMENTREGISTER = 'segmentregister'
 SEGOVERRIDE = 'segoverride'
 SQEXPR = 'sqexpr'
+
+
+class IndirectionType(Enum):
+    OFFSET = -1
+    VALUE = 0
+    POINTER = 1
 
 
 class InjectCode(Exception):
@@ -271,7 +279,7 @@ class Cpp(object):
         logging.basicConfig(format=FORMAT)
 
         self.__namespace = outfile
-        self.__indirection = 0
+        self.__indirection : IndirectionType = IndirectionType.VALUE
         self.__current_size = 0
         self.__work_segment = ""
         self.__codeset = 'cp437'
@@ -348,14 +356,14 @@ class Cpp(object):
         name = name_original.lower()
         logging.debug("convert_label name = %s indirection = %u" % (name, self.__indirection))
 
-        if self.__indirection == -1:
+        if self.__indirection == IndirectionType.OFFSET:
             try:
                 offset, _, _ = self.__context.get_offset(name)
             except:
                 pass
             else:
                 logging.debug("OFFSET = %s" % offset)
-                self.__indirection = 0
+                self.__indirection = IndirectionType.VALUE
                 self.__used_data_offsets.add((name, offset))
                 return Token('LABEL', "k" + name)
 
@@ -381,11 +389,11 @@ class Cpp(object):
             logging.debug("assignment %s = %s" % (name, value))
         elif isinstance(g, proc_module.Proc):
             logging.debug("it is proc")
-            if self.__indirection != -1:
+            if self.__indirection != IndirectionType.OFFSET:
                 logging.error("proc %s offset %s" % (str(proc_module.Proc), str(g.offset)))
                 raise Exception("invalid proc label usage")
             value = str(g.offset)
-            self.__indirection = 0
+            self.__indirection = IndirectionType.VALUE
         elif isinstance(g, op.var):
             logging.debug("it is var " + str(g.size))
             size = g.size
@@ -395,7 +403,7 @@ class Cpp(object):
                 raise Exception("invalid var '%s' size %u" % (name, size))
             if g.issegment:
                 value = "seg_offset(%s)" % (name_original.lower())
-                self.__indirection = 0
+                self.__indirection = IndirectionType.VALUE
             else:
                 self.address = False
                 if g.elements != 1:
@@ -403,9 +411,9 @@ class Cpp(object):
                 if g.elements == 1 and self.__isjustlabel and not self.lea and g.size == self.__current_size:
                     # traceback.print_stack(file=sys.stdout)
                     value = g.name
-                    self.__indirection = 0
+                    self.__indirection = IndirectionType.VALUE
                 else:
-                    if self.__indirection == 1 and self.variable:
+                    if self.__indirection == IndirectionType.POINTER and self.variable:
                         value = "%s" % g.name
                         if not self.__isjustlabel:  # if not just single label
                             self.address = True
@@ -428,13 +436,13 @@ class Cpp(object):
             size = g.getsize()
             if size == 0:
                 raise Exception("invalid var '%s' size %u" % (name, size))
-            if self.__indirection == 0 or self.__indirection == 1:  # x0r self.indirection == 1 ??
-                value = "offsetof(struct Mem,%s)" % name_original
-                if self.__indirection == 1:
-                    self.__indirection = 0
-            elif self.__indirection == -1:
+            if self.__indirection in [IndirectionType.VALUE or IndirectionType.POINTER]:  # x0r self.indirection == 1 ??
+                value = "offsetof(struct Memory,%s)" % name_original
+                if self.__indirection == IndirectionType.POINTER:
+                    self.__indirection = IndirectionType.VALUE
+            elif self.__indirection == IndirectionType.OFFSET:
                 value = "%s" % g.offset
-                self.__indirection = 0
+                self.__indirection = IndirectionType.VALUE
             else:
                 raise Exception("invalid indirection %d name '%s' size %u" % (self.__indirection, name, size))
         return Token('LABEL', value)
@@ -455,7 +463,7 @@ class Cpp(object):
         label = [l.lower() for l in Token.find_tokens(token, LABEL)]
         self.struct_type = None
 
-        if self.__indirection == -1:
+        if self.__indirection == IndirectionType.OFFSET:
             try:
                 g = self.__context.get_global(label[0])
             except:
@@ -467,7 +475,7 @@ class Cpp(object):
                     value = f'offsetof({label[0]},{".".join(label[1:])})'
                 else:
                     raise Exception('Not handled type ' + str(type(g)))
-                self.__indirection = 0
+                self.__indirection = IndirectionType.VALUE
                 return Token('memberdir', value)
 
         size = self.get_size(token)
@@ -501,9 +509,9 @@ class Cpp(object):
             if g.elements == 1 and self.__isjustlabel and not self.lea and g.size == self.__current_size:
                 # traceback.print_stack(file=sys.stdout)
                 value = '.'.join(label)
-                self.__indirection = 0
+                self.__indirection = IndirectionType.VALUE
             else:
-                if self.__indirection == 1 and self.variable:
+                if self.__indirection == IndirectionType.POINTER and self.variable:
                     value = '.'.join(label)
                     if not self.__isjustlabel:  # if not just single label
                         self.address = True
@@ -515,25 +523,18 @@ class Cpp(object):
                         else:
                             value = "((db*)%s)" % value
                             self.size_changed = True
-                elif self.__indirection == -1 and self.variable:
+                elif self.__indirection == IndirectionType.OFFSET and self.variable:
                     value = "offset(%s,%s)" % (g.segment, '.'.join(label))
                 if self.__work_segment == 'cs':
                     self.body += '\tcs=seg_offset(' + g.segment + ');\n'
             # ?self.__indirection = 1
         elif isinstance(g, op.Struct):
+
             register = Token.remove_tokens(token, ['memberdir', 'LABEL'])
             register = self.remove_dots(register)
             register = self.tokenstostring(register)
             register = register.replace('(+', '(')
-            '''
-            r = Token.find_tokens(token, 'register')
-            i = Token.find_tokens(token, 'INTEGER')
-            if r == None:
-                r = []
-            if i == None:
-                i = []
-            register = r + i
-            '''
+
             self.struct_type = label[0]
             self.address = True
             value = f"{register}))->{'.'.join(label[1:])}"
@@ -708,7 +709,7 @@ class Cpp(object):
         self.__current_size = 0
         self.size_changed = False
         self.address = False
-        indirection = 0
+        indirection : IndirectionType = IndirectionType.VALUE
         size = self.get_size(expr) if def_size == 0 else def_size  # calculate size if it not provided
         # self.__expr_size = size
 
@@ -716,18 +717,18 @@ class Cpp(object):
         segoverride = Token.find_tokens(expr, SEGOVERRIDE)
         sqexpr = Token.find_tokens(expr, SQEXPR)
         if sqexpr:
-            indirection = 1
+            indirection = IndirectionType.POINTER
         if segoverride:
             expr = Token.remove_tokens(expr, [SEGMENTREGISTER])
 
         offsetdir = Token.find_tokens(expr, OFFSETDIR)
         if offsetdir:
-            indirection = -1
+            indirection = IndirectionType.OFFSET
             expr = offsetdir
 
         ptrdir = Token.find_tokens(expr, PTRDIR)
         if ptrdir:
-            indirection = 1
+            indirection = IndirectionType.POINTER
 
         if ptrdir or offsetdir or segoverride:
             expr = Token.remove_tokens(expr, [PTRDIR, OFFSETDIR, SEGOVERRIDE])
@@ -744,19 +745,19 @@ class Cpp(object):
                 if res:
                     self.variable = True
                     size = res
-                    indirection = 1
+                    indirection = IndirectionType.POINTER
             elif islabel:
                 for i in islabel:
                     res = self.get_size(Token(LABEL, i))
                     if res:
                         self.variable = True
                         size = res
-                        indirection = 1
+                        indirection = IndirectionType.POINTER
                         break
         if lea:
-            indirection = -1
+            indirection = IndirectionType.OFFSET
 
-        if indirection == 1 and not segoverride:
+        if indirection == IndirectionType.POINTER and not segoverride:
             regs = Token.find_tokens(expr, REGISTER)
             if regs and any([i in ['bp', 'ebp', 'sp', 'esp'] for i in regs]):  # TODO doublecheck
                 self.__work_segment = "ss"
@@ -786,7 +787,7 @@ class Cpp(object):
         self.__indirection = indirection
         if memberdir:
             expr = Token.find_and_replace_tokens(expr, 'memberdir', self.convert_member)
-            if self.__indirection == 1 and self.address and self.struct_type:
+            if self.__indirection == IndirectionType.POINTER and self.address and self.struct_type:
 
                 # TODO A very hacky way to
                 # put registers and numbers first since asm have byte aligned pointers
@@ -820,9 +821,9 @@ class Cpp(object):
 
         expr = self.tokenstostring(expr)
 
-        if indirection == 1 and not memberdir and (not self.__isjustlabel or self.size_changed):
+        if indirection == IndirectionType.POINTER and not memberdir and (not self.__isjustlabel or self.size_changed):
             expr = self.convert_sqbr_reference(expr, destination, size, islabel, lea=lea)
-        if indirection == 1 and self.address:
+        if indirection == IndirectionType.POINTER and self.address:
             if expr[0] == '(' and expr[-1] == ')':
                 expr = "*%s" % expr
             else:
@@ -846,7 +847,7 @@ class Cpp(object):
 
         if isinstance(name, Token) and name.type == 'register':
             name = name.value
-            indirection = 0  # based register value
+            indirection = IndirectionType.VALUE  # based register value
 
         labeldir = Token.find_tokens(name, 'LABEL')
         if labeldir:
@@ -855,29 +856,29 @@ class Cpp(object):
             if self.__context.has_global(labeldir[0]):
                 g = self.__context.get_global(labeldir[0])
                 if isinstance(g, op.var):
-                    indirection = 1  # []
+                    indirection = IndirectionType.POINTER  # []
                 elif isinstance(g, op.label):
-                    indirection = -1  # direct using number
+                    indirection = IndirectionType.OFFSET  # direct using number
                 elif isinstance(g, proc_module.Proc):
-                    indirection = -1  # direct using number
+                    indirection = IndirectionType.OFFSET  # direct using number
             else:
                 name = labeldir[0]
 
         ptrdir = Token.find_tokens(name, 'ptrdir')
         if ptrdir:
             if any(isinstance(x, str) and x.lower() in ['near', 'far', 'short'] for x in ptrdir):
-                indirection = -1  #
+                indirection = IndirectionType.OFFSET  #
             else:
-                indirection = 1
+                indirection = IndirectionType.POINTER
 
         sqexpr = Token.find_tokens(name, 'sqexpr')
         if sqexpr:
-            indirection = 1
+            indirection = IndirectionType.POINTER
 
-        if indirection == 1:
+        if indirection == IndirectionType.POINTER:
             name = self.expand(name)
 
-        if indirection == -1:
+        if indirection == IndirectionType.OFFSET:
             if labeldir:
                 name = labeldir[0]
 
