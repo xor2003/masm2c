@@ -108,6 +108,10 @@ def process(i):
       #	'characterset1',
    ])
   #p.strip_path = 3
+
+  counter = Parser.c_dummy_label
+  p.parse_file(name)
+  p.next_pass(counter)
   context = p.parse_file(name)
   #p.link()
 

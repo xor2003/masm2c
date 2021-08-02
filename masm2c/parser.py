@@ -149,7 +149,7 @@ def macrodirhead(context, nodes, name, parms):
     if parms:
         param_names = [i.lower() for i in Token.find_tokens(parms, 'LABEL')]
     context.extra.current_macro = Macro(name.value.lower(), param_names)
-    context.extra.macro_name.append(name.value.lower())
+    context.extra.macro_name.add(name.value.lower())
     logging.debug("macroname added ~~" + name.value + "~~")
     return nodes
 
@@ -157,7 +157,7 @@ def macrodirhead(context, nodes, name, parms):
 def repeatbegin(context, nodes, value):
     # start of repeat macro
     context.extra.current_macro = Macro("", [], value)
-    context.extra.macro_name.append('')  # TODO
+    context.extra.macro_name.add('')  # TODO
     logging.debug("repeatbegin")
     return nodes
 
@@ -209,7 +209,7 @@ def structname(context, s, pos):
 def structdirhdr(context, nodes, name, type):
     # structure definition header
     context.extra.current_struct = Struct(name.value.lower(), type)
-    context.extra.struct_name.append(name.value.lower())
+    context.extra.struct_name.add(name.value.lower())
     logging.debug("structname added ~~" + name.value + "~~")
     return nodes
 
@@ -565,54 +565,52 @@ class Parser:
     c_dummy_label = 0
 
     def __init__(self, skip_binary_data=[]):
-        self.separate_proc = True
-        # self.__label_to_skip = skip_binary_data
-
         self.__globals = {}
         self.__offsets = {}
-        self.__offset_id = 0x1111
-        self.__stack = []
-
-        self.entry_point = "mainproc_begin"
-        self.main_file = False
-
-        self.proc_list = []
-        self.proc_stack = []
-
-        # self.proc = None
-        nname = "mainproc"
-        self.proc = Proc(nname)
-        self.proc_list.append(nname)
-        self.proc_stack.append(self.proc)
-        self.set_global(nname, self.proc)
-
-        self.__binary_data_size = 0
-        self.c_data = []
-        self.h_data = []
-        self.__cur_seg_offset = 0
-        self.__c_dummy_jump_label = 0
-
-        self.segments = dict()
-        self.__segment_name = "default_seg"
-        self.segment = Segment(self.__segment_name, 0, comment="Artificial initial segment")
-        self.segments[self.__segment_name] = self.segment
-
+        self.proc_list = set()
+        self.pass_number = 0
         self.__lex = ParglareParser()
-        self.used = False
-        # self.__pgcontext = PGContext(extra = self)
-        self.radix = 10
-
-        self.current_macro = None
-        self.macro_name = []
-
-        self.current_struct = None
-        self.struct_name = []
+        self.segments = dict()
+        self.macro_name = set()
         self.structures = dict()
         self.externals_vars = set()
         self.externals_procs = set()
+        self.__files = set()
+        self.__separate_proc = True
 
-        self.current_file = ''
-        self.files = []
+        self.next_pass(Parser.c_dummy_label)
+
+    def next_pass(self, counter):
+        self.pass_number += 1
+        logging.info(f"     Pass number {self.pass_number}")
+        Parser.c_dummy_label = counter
+
+        # self.__label_to_skip = skip_binary_data
+        self.__offset_id = 0x1111
+        self.__stack = []
+        self.entry_point = "mainproc_begin"
+        self.main_file = False
+        self.__proc_stack = []
+        # self.proc = None
+        nname = "mainproc"
+        self.proc = Proc(nname)
+        self.proc_list.add(nname)
+        self.__proc_stack.append(self.proc)
+        self.set_global(nname, self.proc)
+        self.__binary_data_size = 0
+
+        self.__cur_seg_offset = 0
+        self.__c_dummy_jump_label = 0
+        self.__segment_name = "default_seg"
+        self.__segment = Segment(self.__segment_name, 0, comment="Artificial initial segment")
+        self.segments[self.__segment_name] = self.__segment
+        self.used = False
+        # self.__pgcontext = PGContext(extra = self)
+        self.radix = 10
+        self.current_macro = None
+        self.current_struct = None
+        self.struct_name = set()
+        self.__current_file = ''
 
     def visible(self):
         for i in self.__stack:
@@ -640,7 +638,7 @@ class Parser:
         name = name.lower()
 
         logging.debug("set_global(name='%s',value=%s)" % (name, dump_object(value)))
-        if name in self.__globals:
+        if name in self.__globals and self.pass_number == 1:
             raise Exception("global %s was already defined", name)
         value.used = False
         self.__globals[name] = value
@@ -678,7 +676,7 @@ class Parser:
             raise Exception("empty name is not allowed")
         name = name.lower()
         logging.debug("adding offset %s -> %s" % (name, value))
-        if name in self.__offsets:
+        if name in self.__offsets and self.pass_number == 1:
             raise Exception("offset %s was already defined", name)
         self.__offsets[name] = value
 
@@ -888,7 +886,7 @@ class Parser:
         return n * len(values), res
 
     def action_label(self, name, far=False, isproc=False):
-        logging.debug("~name: %s" % name)
+        logging.debug("label name: %s" % name)
         if name == '@@':
             name = self.get_dummy_jumplabel()
         name = self.mangle_label(name)
@@ -921,7 +919,7 @@ class Parser:
 
             label = self.get_dummy_label()
 
-            self.segment.append(op.Data(label, 'db', DataType.ARRAY_NUMBER, num * [0], num, num, comment='for alignment'))
+            self.__segment.append(op.Data(label, 'db', DataType.ARRAY_NUMBER, num * [0], num, num, comment='for alignment'))
 
     def get_dummy_label(self):
         Parser.c_dummy_label += 1
@@ -954,16 +952,16 @@ class Parser:
         return self
 
     def parse_file_lines(self, file_name):
-        self.current_file = file_name
+        self.__current_file = file_name
         content = read_asm_file(file_name)
         self.parse_args_new_data(content, file_name=file_name)
 
     def parse_include_file_lines(self, file_name):
-        self.files.append(self.current_file)
-        self.current_file = file_name
+        self.__files.add(self.__current_file)
+        self.__current_file = file_name
         content = read_asm_file(file_name)
         result = self.parse_file_inside(content, file_name=file_name)
-        self.current_file = self.files.pop()
+        self.__current_file = self.__files.pop()
         return result
 
     def action_assign(self, label, value, raw='', line_number=0):
@@ -972,7 +970,7 @@ class Parser:
         # if self.has_global(label):
         #    label = self.get_global(label).original_name
         o = self.proc.create_assignment_op(label, value, line_number=line_number)
-        o.filename = self.current_file
+        o.filename = self.__current_file
         o.raw_line = raw.rstrip()
         self.reset_global(label, o)
         self.proc.stmts.append(o)
@@ -1001,7 +999,7 @@ class Parser:
             type = type.lower()
             value = Token.find_and_replace_tokens(value, 'ptrdir', self.return_empty)
         o = Proc.create_equ_op(label, value, line_number=line_number)
-        o.filename = self.current_file
+        o.filename = self.__current_file
         o.raw_line = raw.rstrip()
         o.size = size
         if ptrdir:
@@ -1021,9 +1019,9 @@ class Parser:
         # num = 0
         # elf.c_data.append("{}, // segment " + name + "\n")
         # self.h_data.append(" db " + name + "[" + str(num) + "]; // segment " + name + "\n")
-        self.segment = Segment(name, offset, options=options, segclass=segclass)
-        self.segments[name] = self.segment
-        self.segment.append(op.Data(name, 'db', DataType.ARRAY_NUMBER, [], 0, 0, comment='segment start zero label'))
+        self.__segment = Segment(name, offset, options=options, segclass=segclass)
+        self.segments[name] = self.__segment
+        self.__segment.append(op.Data(name, 'db', DataType.ARRAY_NUMBER, [], 0, 0, comment='segment start zero label'))
         # c, h = self.produce_c_data(name, 'db', 4, [], 0)
         # self.c_data += c
         # self.h_data += h
@@ -1039,11 +1037,11 @@ class Parser:
             if i and i.lower() == 'far':
                 far = True
 
-        if self.separate_proc:
+        if self.__separate_proc:
             self.proc = Proc(name, far=far, line_number=line_number)
             logging.debug("procedure %s, #%d" % (name, len(self.proc_list)))
-            self.proc_list.append(name)
-            self.proc_stack.append(self.proc)
+            self.proc_list.add(name)
+            self.__proc_stack.append(self.proc)
             self.set_global(name, self.proc)
         else:
             self.action_label(name, far=far, isproc=True)
@@ -1082,9 +1080,9 @@ class Parser:
         self.parse_file(name)
 
     def action_endp(self):
-        self.proc_stack.pop()
-        if self.proc_stack:
-            self.proc = self.proc_stack[-1]
+        self.__proc_stack.pop()
+        if self.__proc_stack:
+            self.proc = self.__proc_stack[-1]
         else:
             self.proc = None
 
@@ -1202,7 +1200,7 @@ class Parser:
         if label:
             self.set_global(label, op.var(binary_width, offset, name=label,
                                           segment=self.__segment_name, elements=elements, original_type=type,
-                                          filename=self.current_file, raw=raw, line_number=line_number))
+                                          filename=self.__current_file, raw=raw, line_number=line_number))
 
         if len(label) == 0:
             label = self.get_dummy_label()
@@ -1210,12 +1208,12 @@ class Parser:
             data_type = 'struct data'
         else:
             data_type = 'usual data'
-        data = op.Data(label, type, data_internal_type, array, elements, size, filename=self.current_file, raw_line=raw,
+        data = op.Data(label, type, data_internal_type, array, elements, size, filename=self.__current_file, raw_line=raw,
                        line_number=line_number, comment=data_type)
         if isstruct:
             self.current_struct.append(data)
         else:
-            self.segment.append(data)
+            self.__segment.append(data)
 
         # c, h, size = cpp.Cpp.produce_c_data(data) # TO REMOVE
         # self.c_data += c
@@ -1331,7 +1329,7 @@ class Parser:
         if isstruct:
             self.current_struct.append(d)
         else:
-            self.segment.append(d)
+            self.__segment.append(d)
             self.set_global(label, op.var(s.getsize(), self.__cur_seg_offset, label, segment=self.__segment_name, \
                                           original_type=type))
             self.__cur_seg_offset += s.getsize()
@@ -1347,7 +1345,7 @@ class Parser:
                                             elements=1, external=True, original_type=strtype))
             self.externals_vars.add(label)
         else:  # Proc
-            if self.separate_proc:
+            if self.__separate_proc:
                 self.externals_procs.add(label)
                 proc = Proc(label, extern=True)
                 logging.debug("procedure %s, extern" % label)
@@ -1356,7 +1354,7 @@ class Parser:
                 self.reset_global(label, op.label(label, self.proc))
 
     def add_call_to_entrypoint(self):
-        if self.separate_proc:
+        if self.__separate_proc:
             proc = self.get_global('mainproc')
             o = proc.create_instruction_object('call', [self.entry_point])
             o.raw_line = ''
@@ -1372,7 +1370,7 @@ class Parser:
                 args[0].value.value = "dummylabel" + str(self.__c_dummy_jump_label)
 
         o = self.proc.create_instruction_object(instruction, args)
-        o.filename = self.current_file
+        o.filename = self.__current_file
         o.raw_line = raw
         o.line_number = line_number
         if self.current_macro == None:
