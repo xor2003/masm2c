@@ -3731,5 +3731,18 @@ extrn gameconfig:GAMEINFO
             self.proc.generate_c_cmd(self.cpp, self.parser.action_code('sub     ax, es:[bx+di+(transformedshape.ts_rotvec+24h)]')),
             u'\tR(SUB(ax, ((transformedshape*)raddr(es,bx+di+0x24))->ts_rotvec));\n')
 
+    def test_instr_11810(self):
+        self.assertEqual(
+            self.proc.generate_c_cmd(self.cpp, self.parser.action_code(r"cmp al, '\'")), u"\tR(CMP(al, '\\\\'));\n")
+
+    def test_instr_11820(self):
+        self.assertEqual(
+            self.proc.generate_c_cmd(self.cpp, self.parser.action_code(r'mov     ds:2, si')), u"\tR(MOV(raddr(ds,2), si));\n")
+
+    def test_instr_11830(self):
+        self.assertEqual(
+            self.proc.generate_c_cmd(self.cpp, self.parser.action_code(r'mov     ax, word ptr cs:gameInfo.game_opponenTType+2')),
+            u"\tR(MOV(ax, *(dw*)((db*)(&gameinfo.game_opponenttype)+2)));\n")
+
 if __name__ == "__main__":
     unittest.main()

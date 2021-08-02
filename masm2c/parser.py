@@ -35,7 +35,7 @@ def escape(s):
 
 
 def read_asm_file(file_name):
-    logging.info("opening file %s..." % file_name)
+    logging.info("     Opening file %s..." % file_name)
     if sys.version_info >= (3, 0):
         fd = open(file_name, 'rt', encoding="cp437")
     else:
@@ -369,7 +369,7 @@ def instrprefix(context, nodes):
 
 
 def asminstruction(context, nodes, instruction, args):
-    logging.debug("instruction " + str(nodes) + " ~~")
+    logging.debug("asminstruction " + str(nodes) + " ~~")
     # args = build_ast(args)
     if not instruction:
         return nodes
@@ -425,7 +425,7 @@ def offsetdir(context, nodes):
 
 
 def segmdir(context, nodes):
-    logging.debug("offset /~" + str(nodes) + "~\\")
+    logging.debug("segmdir /~" + str(nodes) + "~\\")
     # global indirection
     # indirection = -1
     return Token('segmdir', nodes[1])
@@ -934,6 +934,7 @@ class Parser:
         return label
 
     def parse_file(self, fname):
+        logging.info(f' *** Parsing {fname} file')
         '''
         num = 0x1000
         if num:
@@ -1031,7 +1032,7 @@ class Parser:
         self.set_global(name, op.var(binary_width, offset, name, issegment=True))
 
     def action_proc(self, name, type, line_number=0):
-        logging.info("procedure name %s" % name.value)
+        logging.info("     Proc directive %s" % name.value)
         name = self.mangle_label(name.value)
         far = False
         for i in type:

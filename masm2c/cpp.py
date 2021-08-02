@@ -275,8 +275,6 @@ class Cpp(object):
     def __init__(self, context, outfile="", skip_first=0, blacklist=[], skip_output=None, skip_dispatch_call=False,
                  skip_addr_constants=False, header_omit_blacklisted=False, function_name_remapping=None,
                  proc_strategy=SeparateProcStrategy()):
-        FORMAT = "%(filename)s:%(lineno)d %(message)s"
-        logging.basicConfig(format=FORMAT)
 
         self.__namespace = outfile
         self.__indirection : IndirectionType = IndirectionType.VALUE
@@ -1138,7 +1136,7 @@ class Cpp(object):
         return "\tR(SCAS(%s,%d));\n" % (src, size)
 
     def __proc(self, name, def_skip=0):
-        logging.info("cpp::__proc(%s)" % name)
+        logging.info("     Generating proc %s" % name)
         # traceback.print_stack(file=sys.stdout)
         try:
             skip = def_skip
@@ -1171,8 +1169,8 @@ class Cpp(object):
                     entry_point = self.__context.entry_point
                 self.body += self.proc_strategy.function_header(name, entry_point)
 
-            logging.info(name)
-            self.proc.optimize()
+            #logging.info(name)
+            #self.proc.optimize()
             self.__unbounded = []
             self.proc.visit(self, skip)
 
@@ -1201,10 +1199,12 @@ class Cpp(object):
             raise
 
     def generate(self, start):
-        cpp_assign, _, _, cpp_extern = self.produce_c_data(self.__context.segments)
-
         fname = self.__namespace.lower() + ".cpp"
         header = self.__namespace.lower() + ".h"
+        logging.info(f' *** Generating output files in C++ {fname} {header}')
+
+        cpp_assign, _, _, cpp_extern = self.produce_c_data(self.__context.segments)
+
         if sys.version_info >= (3, 0):
             cppd = open(fname, "wt", encoding=self.__codeset)
             hd = open(header, "wt", encoding=self.__codeset)
@@ -1272,7 +1272,7 @@ class Cpp(object):
                     self.schedule(p)
                 #self.__procs = []
             '''
-            logging.info("continuing on %s" % name)
+            #logging.info("continuing on %s" % name)
             self.__proc_done.append(name)
             self.__proc(name)
             self.__methods.append(name)
@@ -1340,7 +1340,7 @@ class Cpp(object):
         structs = dict()
         for file in asm_files:
             file = file.replace('.asm', '.seg')
-            logging.info(f'Merging data from {file}')
+            logging.info(f'     Merging data from {file}')
             with open(file, 'rt') as infile:
                 segments, structures = self.merge_segments(segments, structs, *jsonpickle.decode(infile.read()))
         return segments, structures

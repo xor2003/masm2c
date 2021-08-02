@@ -89,6 +89,10 @@ def setup_logging(name, loglevel):
   ##handler.setFormatter(formatter)
   root.addHandler(handler)
 
+  FORMAT = "%(filename)s:%(lineno)d %(message)s"
+  logging.basicConfig(format=FORMAT)
+
+
 def process(i):
   name = i
   m = re.match(r'.*?([A-Za-z90-9_.-]+)\.asm', name.lower())
