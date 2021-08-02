@@ -354,7 +354,7 @@ class Cpp(object):
     def convert_label(self, token):
         name_original = token.value
         name = name_original.lower()
-        logging.debug("convert_label name = %s indirection = %u" % (name, self.__indirection))
+        logging.debug("convert_label name = %s indirection = %s" % (name, str(self.__indirection)))
 
         if self.__indirection == IndirectionType.OFFSET:
             try:
@@ -459,7 +459,7 @@ class Cpp(object):
             return tokens
 
     def convert_member(self, token):
-        logging.debug("name = %s indirection = %u" % (str(token), self.__indirection))
+        logging.debug("name = %s indirection = %s" % (str(token), str(self.__indirection)))
         label = [l.lower() for l in Token.find_tokens(token, LABEL)]
         self.struct_type = None
 
@@ -529,15 +529,17 @@ class Cpp(object):
                     self.body += '\tcs=seg_offset(' + g.segment + ');\n'
             # ?self.__indirection = 1
         elif isinstance(g, op.Struct):
+            if self.__isjustmember:
+                value = f'offsetof({label[0]},{".".join(label[1:])})'
+            else:
+                register = Token.remove_tokens(token, ['memberdir', 'LABEL'])
+                register = self.remove_dots(register)
+                register = self.tokenstostring(register)
+                register = register.replace('(+', '(')
 
-            register = Token.remove_tokens(token, ['memberdir', 'LABEL'])
-            register = self.remove_dots(register)
-            register = self.tokenstostring(register)
-            register = register.replace('(+', '(')
-
-            self.struct_type = label[0]
-            self.address = True
-            value = f"{register}))->{'.'.join(label[1:])}"
+                self.struct_type = label[0]
+                self.address = True
+                value = f"{register}))->{'.'.join(label[1:])}"
 
         if size == 0:
             raise Exception("invalid var '%s' size %u" % (str(label), size))
@@ -559,7 +561,9 @@ class Cpp(object):
 
         issqexpr = Token.find_tokens(expr, SQEXPR)
         if issqexpr:
-            return 0
+            expr = Token.remove_tokens(expr, ['register', 'INTEGER', SQEXPR])
+            return self.get_size(expr)
+            #return 0
 
         if isinstance(expr, list) and all(
                 isinstance(i, str) or (isinstance(i, Token) and i.type == 'INTEGER') for i in expr):
@@ -683,6 +687,7 @@ class Cpp(object):
                     result += '+'
                 result += self.tokenstostring(i)
             result = result.replace('+)', ')')  # .replace('+())', ')') # TODO hack
+            result = re.sub(r'([Ee])\+', r'\g<1> +', result)  # prevent "error: unable to find numeric literal operator 'operator""+" 0x0E+vecl_1c0
             return result
         elif isinstance(expr, Token):
 
@@ -783,9 +788,19 @@ class Cpp(object):
                              or (isinstance(origexpr, Token) and origexpr.type == SQEXPR \
                                  and isinstance(origexpr.value, Token) and origexpr.value.type == LABEL) \
                              or (isinstance(origexpr, Token) and origexpr.type == 'memberdir')
+        self.__isjustmember = isinstance(origexpr, Token) and origexpr.type == 'memberdir'
 
         self.__indirection = indirection
         if memberdir:
+            '''
+            if self.__isjustmember:
+                try:
+                    g = self.__context.get_global(islabel[0])
+                except:
+                    pass
+                if isinstance(g, op.Struct):
+                    self.__indirection = IndirectionType.OFFSET
+            '''
             expr = Token.find_and_replace_tokens(expr, 'memberdir', self.convert_member)
             if self.__indirection == IndirectionType.POINTER and self.address and self.struct_type:
 

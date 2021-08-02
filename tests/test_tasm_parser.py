@@ -133,15 +133,15 @@ GAMEINFO ends
 extrn gameconfig:GAMEINFO
 ''')
         self.__class__.parser.action_data(line='''
-VECTOR struc
-vx dw ?
-VECTOR ends
-    TRANSFORMEDSHAPE struc
+ VECTOR struc
+    vx dw ?
+ VECTOR ends
+ TRANSFORMEDSHAPE struc
     ts_shapeptr dw ?
     ts_rectptr dw ?
-ts_rOTvec VECTOR <>
-TRANSFORMEDSHAPE ends
-    var_transshape = TRANSFORMEDSHAPE ptr -50
+    ts_rOTvec VECTOR <>
+ TRANSFORMEDSHAPE ends
+ var_transshape = TRANSFORMEDSHAPE ptr -50
 ''')
         self.__class__.parser.get_global('var_transshape').implemented = True
         #?self.__class__.cpp._assignment('var_transshape',self.__class__.parser.get_global('var_transshape'))
@@ -3667,9 +3667,9 @@ TRANSFORMEDSHAPE ends
     def test_instr_11660(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_data('var_104_rc equ TRANSFORMEDSHAPE ptr -260')), u'#define var_104_rc -260\n')
 
-    def test_instr_11670(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov (transformedshape + bp - 3).ts_rotvec.vx, 3')),
-            u'\tR(MOV(((transformedshape*)raddr(ss,(bp-3)))->ts_rotvec.vx, 3));\n')
+    #def test_instr_11670(self):
+    #    self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov (transformedshape + bp - 3).ts_rotvec.vx, 3')),
+    #        u'\tR(MOV(((transformedshape*)raddr(ss,(bp-3)))->ts_rotvec.vx, 3));\n')
 
     def test_instr_11680(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('lea     si, [bx+di+TRANSFORMEDSHAPE.ts_rotvec]')),
@@ -3719,8 +3719,12 @@ TRANSFORMEDSHAPE ends
     def test_instr_11780(self):
         self.assertEqual(
             self.proc.generate_c_cmd(self.cpp, self.parser.action_code('add     ax, gameInfo.game_opponenTType')),
-            u'\tR(ADD(ax, offsetof(struct gameinfo,game_opponenttype)));\n')
+            u'\tR(ADD(ax, offsetof(gameinfo,game_opponenttype)));\n')
 
+    def test_instr_11790(self):
+        self.assertEqual(
+            self.proc.generate_c_cmd(self.cpp, self.parser.action_code('adc     dx, word ptr [bp+var_transshape.ts_rectptr+0Eh]')),
+            u'\tR(ADC(dx, ((transformedshape*)raddr(ss,bp+0x0E +var_transshape))->ts_rectptr));\n')
 
 if __name__ == "__main__":
     unittest.main()

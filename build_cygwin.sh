@@ -1,4 +1,5 @@
-#!/bin/sh -x
+#!/bin/sh
+set -ex
 export PKG_CONFIG_PATH=/usr/lib/i386-linux-gnu/pkgconfig
 export CXX="g++ -m32"
 #export SDL="`pkg-config --cflags --libs sdl`"
@@ -8,9 +9,9 @@ export OPT="-mno-ms-bitfields  -Wno-multichar $SDL `pkg-config --cflags --libs n
 # -DDEBUG=3"
 # -DDEBUG=1
 
+#$CXX $1.cpp -E $OPT > $1.e
 $CXX $1.cpp -c $OPT
 # $CXX $1.cpp  $OPT -Og -S -masm=intel -fverbose-asm > $1_.s
-#$CXX $1.cpp -E $OPT > $1.e
 # iprintf.o 
 $CXX _data.cpp -c $OPT
 $CXX asm.cpp  -c $OPT
