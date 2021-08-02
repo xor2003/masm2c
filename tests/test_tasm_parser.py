@@ -3726,5 +3726,10 @@ extrn gameconfig:GAMEINFO
             self.proc.generate_c_cmd(self.cpp, self.parser.action_code('adc     dx, word ptr [bp+var_transshape.ts_rectptr+0Eh]')),
             u'\tR(ADC(dx, ((transformedshape*)raddr(ss,bp+0x0E +var_transshape))->ts_rectptr));\n')
 
+    def test_instr_11800(self):
+        self.assertEqual(
+            self.proc.generate_c_cmd(self.cpp, self.parser.action_code('sub     ax, es:[bx+di+(transformedshape.ts_rotvec+24h)]')),
+            u'\tR(SUB(ax, ((transformedshape*)raddr(es,bx+di+0x24))->ts_rotvec));\n')
+
 if __name__ == "__main__":
     unittest.main()

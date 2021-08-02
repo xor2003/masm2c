@@ -685,9 +685,10 @@ class Cpp(object):
                 # TODO hack to handle ')register'
                 if len(result) and result[-1] == ')' and isinstance(i, Token) and i.type == 'register':
                     result += '+'
-                result += self.tokenstostring(i)
-            result = result.replace('+)', ')')  # .replace('+())', ')') # TODO hack
-            result = re.sub(r'([Ee])\+', r'\g<1> +', result)  # prevent "error: unable to find numeric literal operator 'operator""+" 0x0E+vecl_1c0
+                res = self.tokenstostring(i)
+                res = re.sub(r'([Ee])\+', r'\g<1> +', res)  # prevent "error: unable to find numeric literal operator 'operator""+" 0x0E+vecl_1c0
+                res = res.replace('+)', ')')#.replace('+())', ')') # TODO hack
+                result += res
             return result
         elif isinstance(expr, Token):
 
@@ -811,7 +812,7 @@ class Cpp(object):
                 integers = Token.find_tokens(expr, 'INTEGER')
                 expr = Token.remove_tokens(expr, ['register', 'INTEGER'])
                 expr = self.tokenstostring(expr)
-                if len(expr) and expr[0] == '+':
+                while len(expr) and expr[0] == '+':
                     expr = expr[1:]
                 while len(expr) > 2 and expr[0] == '(' and expr[-1] == ')':
                     expr = expr[1:-1]
