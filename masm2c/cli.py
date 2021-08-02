@@ -16,7 +16,7 @@ __version__='0.9.4'
 
 __author__ = "x0r"
 __copyright__ = "x0r"
-__license__ = "gpl2"
+__license__ = "GPL2+"
 
 _logger = logging.getLogger(__name__)
 
@@ -40,14 +40,15 @@ def parse_args(args):
     """
     aparser = argparse.ArgumentParser(description="Masm source to C source translator")
     aparser.add_argument(
+        "-v",
         "--version",
         action="version",
         version="{ver}".format(ver=__version__),
     )
     aparser.add_argument('filename', nargs='+', help='Assembler source')
     aparser.add_argument(
-        "-v",
-        "--verbose",
+        "-d",
+        "--debug",
         dest="loglevel",
         help="set loglevel to DEBUG",
         action="store_const",
@@ -63,35 +64,36 @@ def setup_logging(name, loglevel):
     Args:
       loglevel (int): minimum loglevel for emitting messages
   """
-  numeric_level = loglevel
-  ##if i == '-d':
-  #numeric_level = logging.DEBUG
-  logging.basicConfig(
-     handlers=[logging.FileHandler(name+'.log', 'w', 'utf-8')], 
-     format="[%(filename)s:%(lineno)s - %(funcName)20s()] %(message)s",
-     level=loglevel
-  )
-
   root = logging.getLogger()
-  #if i == '-d':
   root.setLevel(loglevel)
-  #   return
 
-  handler = logging.StreamHandler(sys.stderr)
-  handler.setLevel(logging.ERROR)
-  ##formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-  ##handler.setFormatter(formatter)
-  root.addHandler(handler)
+  err_handler = logging.StreamHandler(sys.stderr)
+  err_handler.setLevel(logging.ERROR)
+  formatter = logging.Formatter("[%(filename)s:%(lineno)s - %(funcName)20s()] %(message)s")
+  err_handler.setFormatter(formatter)
+  #root.addHandler(err_handler)
 
-  handler = logging.StreamHandler(sys.stdout)
-  handler.setLevel(logging.INFO)
-  ##formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-  ##handler.setFormatter(formatter)
-  root.addHandler(handler)
+  out_handler = logging.StreamHandler(sys.stdout)
+  #out_handler.setFormatter(logging.Formatter("%(message)s"))
+  out_handler.setLevel(loglevel)
 
-  FORMAT = "%(filename)s:%(lineno)d %(message)s"
-  logging.basicConfig(format=FORMAT)
+  if len(name):
+      file_handler = logging.FileHandler(name+'.log', 'w', 'utf-8')
+      file_handler.setLevel(loglevel)
+      formatter = logging.Formatter("[%(filename)s:%(lineno)s - %(funcName)20s()] %(message)s")
+      file_handler.setFormatter(formatter)
 
+      logging.basicConfig(
+          handlers=[err_handler, out_handler, file_handler],
+          level=loglevel,
+          force=True
+      )
+  else:
+      logging.basicConfig(
+         handlers=[err_handler, out_handler],
+         level=loglevel,
+         force = True
+      )
 
 def process(i):
   name = i
@@ -122,11 +124,13 @@ def main(args):
     Args:
       args ([str]): command line parameter list
     """
+    setup_logging('', logging.INFO)
     if sys.version_info[0] >= 3:
        sys.stdout.reconfigure(encoding='utf-8')
        sys.stderr.reconfigure(encoding='utf-8')
 
     args = parse_args(args)
+    logging.info(f"Masm source to C source translator V{__version__} {__license__}")
     for i in args.filename:
        setup_logging(i, args.loglevel)
        generator = process(i)

@@ -63,7 +63,7 @@ def produce_jump_table(globals):
             offsets.append((k.lower(), k))
     offsets = sorted(offsets, key=lambda t: t[1])
     for name, label in offsets:
-        logging.debug(name, label)
+        logging.debug(f'{name}, {label}')
         result += "        case k%s: \tgoto %s;\n" % (name, cpp_mangle_label(label))
     result += "        default: log_error(\"Jump/call to nowhere %d\\n\", __disp);stackDump(_state); abort();\n"
     result += "    };\n}\n"
@@ -175,7 +175,7 @@ class SeparateProcStrategy:
                 offsets.append((k.lower(), k))
         offsets = sorted(offsets, key=lambda t: t[1])
         for name, label in offsets:
-            logging.debug(name, label)
+            logging.debug(f'{name}, {label}')
             result += "        case k%s: \t%s(0, _state); break;\n" % (name, cpp_mangle_label(label))
         result += "        default: log_error(\"Jump/call to nothere %d\\n\", __disp);stackDump(_state); abort();\n"
         result += "     };\n}\n"
