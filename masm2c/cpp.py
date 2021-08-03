@@ -700,6 +700,7 @@ class Cpp(object):
                         ss = str(hex(ord(ex[i])))
                         # logging.debug("constant %s" %ss)
                         expr.value += ss[2:]
+                expr.value = expr.value.replace('\\', '\\\\') # escape c \ symbol
 
             return self.tokenstostring(expr.value)
         return expr
