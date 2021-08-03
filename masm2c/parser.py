@@ -149,7 +149,7 @@ def macrodirhead(context, nodes, name, parms):
     if parms:
         param_names = [i.lower() for i in Token.find_tokens(parms, 'LABEL')]
     context.extra.current_macro = Macro(name.value.lower(), param_names)
-    context.extra.macro_name.add(name.value.lower())
+    context.extra.macro_names_stack.add(name.value.lower())
     logging.debug("macroname added ~~" + name.value + "~~")
     return nodes
 
@@ -157,14 +157,14 @@ def macrodirhead(context, nodes, name, parms):
 def repeatbegin(context, nodes, value):
     # start of repeat macro
     context.extra.current_macro = Macro("", [], value)
-    context.extra.macro_name.add('')  # TODO
+    context.extra.macro_names_stack.add('')  # TODO
     logging.debug("repeatbegin")
     return nodes
 
 
 def endm(context, nodes):
     # macro definition end
-    name = context.extra.macro_name.pop()
+    name = context.extra.macro_names_stack.pop()
     logging.debug("endm " + name)
     macroses[name] = context.extra.current_macro
     context.extra.current_macro = None
@@ -209,7 +209,7 @@ def structname(context, s, pos):
 def structdirhdr(context, nodes, name, type):
     # structure definition header
     context.extra.current_struct = Struct(name.value.lower(), type)
-    context.extra.struct_name.add(name.value.lower())
+    context.extra.struct_names_stack.add(name.value.lower())
     logging.debug("structname added ~~" + name.value + "~~")
     return nodes
 
@@ -571,8 +571,6 @@ class Parser:
         self.pass_number = 0
         self.__lex = ParglareParser()
         self.segments = dict()
-        self.macro_name = set()
-        self.structures = dict()
         self.externals_vars = set()
         self.externals_procs = set()
         self.__files = set()
@@ -584,6 +582,9 @@ class Parser:
         self.pass_number += 1
         logging.info(f"     Pass number {self.pass_number}")
         Parser.c_dummy_label = counter
+
+        self.structures = dict()
+        self.macro_names_stack = set()
 
         # self.__label_to_skip = skip_binary_data
         self.__offset_id = 0x1111
@@ -609,7 +610,7 @@ class Parser:
         self.radix = 10
         self.current_macro = None
         self.current_struct = None
-        self.struct_name = set()
+        self.struct_names_stack = set()
         self.__current_file = ''
 
     def visible(self):
@@ -1179,7 +1180,7 @@ class Parser:
         return result
 
     def datadir_action(self, label, type, args, raw='', line_number=0):
-        isstruct = len(self.struct_name) != 0
+        isstruct = len(self.struct_names_stack) != 0
 
         label = self.mangle_label(label)
         binary_width = self.typetosize(type)
@@ -1325,7 +1326,7 @@ class Parser:
         args = self.convert_members(d, args)
         d.setvalue(args)
 
-        isstruct = len(self.struct_name) != 0
+        isstruct = len(self.struct_names_stack) != 0
         if isstruct:
             self.current_struct.append(d)
         else:
@@ -1380,8 +1381,8 @@ class Parser:
         return o
 
     def action_ends(self):
-        if len(self.struct_name):  # if it is not a structure then it is end of segment
-            name = self.struct_name.pop()
+        if len(self.struct_names_stack):  # if it is not a structure then it is end of segment
+            name = self.struct_names_stack.pop()
             logging.debug("endstruct " + name)
             self.structures[name] = self.current_struct
             self.set_global(name, self.current_struct)
