@@ -26,7 +26,8 @@ REGISTER = 'register'
 SEGMENTREGISTER = 'segmentregister'
 SEGOVERRIDE = 'segoverride'
 SQEXPR = 'sqexpr'
-
+INTEGER = 'INTEGER'
+MEMBERDIR = 'memberdir'
 
 class IndirectionType(Enum):
     OFFSET = -1
@@ -304,7 +305,7 @@ class Cpp(object):
         self.lea = False
         self.far = False
         self.size_changed = False
-        self.address = False
+        self.needs_dereference = False
         self.body = ""
         self.struct_type = None
 
@@ -403,22 +404,22 @@ class Cpp(object):
                 value = "seg_offset(%s)" % (name_original.lower())
                 self.__indirection = IndirectionType.VALUE
             else:
-                self.address = False
+                self.needs_dereference = False
                 if g.elements != 1:
-                    self.address = True
+                    self.needs_dereference = True
                 if g.elements == 1 and self.__isjustlabel and not self.lea and g.size == self.__current_size:
                     # traceback.print_stack(file=sys.stdout)
                     value = g.name
                     self.__indirection = IndirectionType.VALUE
                 else:
-                    if self.__indirection == IndirectionType.POINTER and self.variable:
-                        value = "%s" % g.name
+                    if self.__indirection == IndirectionType.POINTER and self.isvariable:
+                        value = g.name
                         if not self.__isjustlabel:  # if not just single label
-                            self.address = True
+                            self.needs_dereference = True
                             if g.elements == 1:  # array generates pointer himself
                                 value = "&" + value
 
-                            if g.getsize() == 1:  # if byte no need for (db*)
+                            if g.getsize() == 1:  # it is already a byte
                                 value = "(%s)" % value
                             else:
                                 value = "((db*)%s)" % value
@@ -491,7 +492,7 @@ class Cpp(object):
                 value = '.'.join(label)
             else:
                 self.struct_type = g.original_type
-                self.address = True
+                self.needs_dereference = True
                 value = f"{label[0]}))->{'.'.join(label[1:])}"
             logging.debug("equ: %s -> %s" % (label[0], value))
         elif isinstance(g, op.var):
@@ -501,27 +502,27 @@ class Cpp(object):
                 self.__current_size = size
             if size == 0:
                 raise Exception(f"invalid var {label} size {size}")
-            self.address = False
+            self.needs_dereference = False
             if g.elements != 1:
-                self.address = True
+                self.needs_dereference = True
             if g.elements == 1 and self.__isjustlabel and not self.lea and g.size == self.__current_size:
                 # traceback.print_stack(file=sys.stdout)
                 value = '.'.join(label)
                 self.__indirection = IndirectionType.VALUE
             else:
-                if self.__indirection == IndirectionType.POINTER and self.variable:
+                if self.__indirection == IndirectionType.POINTER and self.isvariable:
                     value = '.'.join(label)
                     if not self.__isjustlabel:  # if not just single label
-                        self.address = True
+                        self.needs_dereference = True
                         if g.elements == 1:  # array generates pointer himself
                             value = "&" + value
 
-                        if g.getsize() == 1:  # if byte no need for (db*)
+                        if g.getsize() == 1:  # it is already a byte
                             value = "(%s)" % value
                         else:
                             value = "((db*)%s)" % value
                             self.size_changed = True
-                elif self.__indirection == IndirectionType.OFFSET and self.variable:
+                elif self.__indirection == IndirectionType.OFFSET and self.isvariable:
                     value = "offset(%s,%s)" % (g.segment, '.'.join(label))
                 if self.__work_segment == 'cs':
                     self.body += '\tcs=seg_offset(' + g.segment + ');\n'
@@ -530,13 +531,13 @@ class Cpp(object):
             if self.__isjustmember:
                 value = f'offsetof({label[0]},{".".join(label[1:])})'
             else:
-                register = Token.remove_tokens(token, ['memberdir', 'LABEL'])
+                register = Token.remove_tokens(token, [MEMBERDIR, 'LABEL'])
                 register = self.remove_dots(register)
                 register = self.tokenstostring(register)
                 register = register.replace('(+', '(')
 
                 self.struct_type = label[0]
-                self.address = True
+                self.needs_dereference = True
                 value = f"{register}))->{'.'.join(label[1:])}"
 
         if size == 0:
@@ -602,7 +603,7 @@ class Cpp(object):
                     return g.size
                 except:
                     pass
-            elif expr.type == 'memberdir':
+            elif expr.type == MEMBERDIR:
                 label = Token.find_tokens(expr.value, LABEL)
                 g = self.__context.get_global(label[0])
                 if isinstance(g, op.Struct):
@@ -647,8 +648,8 @@ class Cpp(object):
 
     def convert_sqbr_reference(self, expr, destination, size, islabel, lea=False):
         if not lea or destination:
-            if not islabel or not self.variable:
-                self.address = True
+            if not islabel or not self.isvariable:
+                self.needs_dereference = True
                 if size == 1:
                     expr = "raddr(%s,%s)" % (self.__work_segment, expr)
                 elif size == 2:
@@ -662,18 +663,23 @@ class Cpp(object):
                     expr = "raddr(%s,%s)" % (self.__work_segment, expr)
             else:
                 if self.size_changed:  # or not self.__isjustlabel:
-                    if size == 1:
-                        expr = "(db*)(%s)" % expr
-                    elif size == 2:
-                        expr = "(dw*)(%s)" % expr
-                    elif size == 4:
-                        expr = "(dd*)(%s)" % expr
-                    elif size == 8:
-                        expr = "(dq*)(%s)" % expr
-                    else:
-                        logging.error("~%s~ @invalid size 0" % expr)
-                        # expr = "(dw*)(%s)" % expr
+                    expr = self.point_new_size(expr, size)
+
             logging.debug("expr: %s" % expr)
+        return expr
+
+    def point_new_size(self, expr, size):
+        if size == 1:
+            expr = "(db*)(%s)" % expr
+        elif size == 2:
+            expr = "(dw*)(%s)" % expr
+        elif size == 4:
+            expr = "(dd*)(%s)" % expr
+        elif size == 8:
+            expr = "(dq*)(%s)" % expr
+        else:
+            logging.error("~%s~ @invalid size 0" % expr)
+        self.size_changed = False
         return expr
 
     def tokenstostring(self, expr):
@@ -706,107 +712,109 @@ class Cpp(object):
         return expr
 
     def expand(self, expr, def_size=0, destination=False, lea=False):
-        logging.debug("EXPAND(expr:\"%s\")" % expr)
+        ''' Convert argument from Token list to C '''
+        logging.debug(str(expr))
 
-        expr = Token.remove_tokens(expr, ['expr'])
-        origexpr = expr
-        self.__work_segment = "ds"
-        self.__current_size = 0
+        expr = Token.remove_tokens(expr, ['expr']) # no need expr token any more
+        origexpr = expr # save original expression before we will change it
+        self.__work_segment = "ds" # default work segment is ds
+        self.__current_size = 0 # current size of argument is not yet found
         self.size_changed = False
-        self.address = False
+        self.needs_dereference = False
         indirection : IndirectionType = IndirectionType.VALUE
         size = self.get_size(expr) if def_size == 0 else def_size  # calculate size if it not provided
-        # self.__expr_size = size
+
 
         # calculate the segment register
         segoverride = Token.find_tokens(expr, SEGOVERRIDE)
         sqexpr = Token.find_tokens(expr, SQEXPR)
-        if sqexpr:
+        if sqexpr:  # if [] then we want to get data using memory pointer
             indirection = IndirectionType.POINTER
-        if segoverride:
+        if segoverride: # check if there is segment override
             expr = Token.remove_tokens(expr, [SEGMENTREGISTER])
 
         offsetdir = Token.find_tokens(expr, OFFSETDIR)
-        if offsetdir:
+        if offsetdir:  # if 'offset' then we want just address of data
             indirection = IndirectionType.OFFSET
             expr = offsetdir
 
         ptrdir = Token.find_tokens(expr, PTRDIR)
-        if ptrdir:
+        if ptrdir: # word/byte ptr means we want to get data using memory pointer
             indirection = IndirectionType.POINTER
 
-        if ptrdir or offsetdir or segoverride:
+        if ptrdir or offsetdir or segoverride: # no need it anymore. simplify
             expr = Token.remove_tokens(expr, [PTRDIR, OFFSETDIR, SEGOVERRIDE])
 
+        # if it is a destination argument and there is only number then we want to put data using memory pointer
+        # represented by integer
+        if destination and isinstance(expr, list) and len(expr) == 1 and isinstance(expr[0], Token) and expr[0].type == INTEGER:
+            indirection = IndirectionType.POINTER
+            self.needs_dereference = True
+
+        # Simplify by removing square bracets
         if sqexpr:
             expr, _ = Token.remove_squere_bracets(expr)
 
-        memberdir = Token.find_tokens(expr, 'memberdir')
+        # check if we pointing some member of structure
+        memberdir = Token.find_tokens(expr, MEMBERDIR)
+        # get struct name or instance name and member names
         islabel = Token.find_tokens(expr, LABEL)
-        self.variable = False
+        self.isvariable = False  # only address or variable
         if (islabel or memberdir) and not offsetdir:
             if memberdir:
-                res = self.get_size(memberdir)
-                if res:
-                    self.variable = True
-                    size = res
+                member_size = self.get_size(Token(MEMBERDIR, memberdir))
+                if member_size:
+                    self.isvariable = True
+                    size = member_size
                     indirection = IndirectionType.POINTER
             elif islabel:
-                for i in islabel:
-                    res = self.get_size(Token(LABEL, i))
-                    if res:
-                        self.variable = True
-                        size = res
+                for i in islabel:  # Strange !?
+                    label_size = self.get_size(Token(LABEL, i))
+                    if label_size:
+                        self.isvariable = True
+                        size = label_size
                         indirection = IndirectionType.POINTER
                         break
-        if lea:
+        if lea:  # If lea operation it is the same as getting offset
             indirection = IndirectionType.OFFSET
 
         if indirection == IndirectionType.POINTER and not segoverride:
-            regs = Token.find_tokens(expr, REGISTER)
+            regs = Token.find_tokens(expr, REGISTER) # if it was registers used: bp, sp
             if regs and any([i in ['bp', 'ebp', 'sp', 'esp'] for i in regs]):  # TODO doublecheck
-                self.__work_segment = "ss"
-                self.variable = False
-        if segoverride:
+                self.__work_segment = "ss"  # and segment is not overriden means base is "ss:"
+                self.isvariable = False
+        if segoverride: # if it was segment override then use provided value
             self.__work_segment = segoverride[0].value
 
         self.__current_size = size
-        newsize = size
-        if ptrdir:
+        size_ovrr_by_ptr = size  # setting initial value
+        if ptrdir:  # byte/word/struct ptr. get override type size
             value = ptrdir[0]
             # logging.debug('get_size res 1')
-            newsize = self.__context.typetosize(value)
-            if newsize != size:
+            size_ovrr_by_ptr = self.__context.typetosize(value)  # size overriden by ptr
+            if size_ovrr_by_ptr != size:
                 self.size_changed = True
             else:
                 origexpr = Token.remove_tokens(origexpr, [PTRDIR, SQEXPR])
                 if isinstance(origexpr, list) and len(origexpr) == 1:
                     origexpr = origexpr[0]
 
-        # for "label" or "[label]" get size
+        # if just "label" or "[label]" or member
         self.__isjustlabel = (isinstance(origexpr, Token) and origexpr.type == LABEL) \
                              or (isinstance(origexpr, Token) and origexpr.type == SQEXPR \
                                  and isinstance(origexpr.value, Token) and origexpr.value.type == LABEL) \
-                             or (isinstance(origexpr, Token) and origexpr.type == 'memberdir')
-        self.__isjustmember = isinstance(origexpr, Token) and origexpr.type == 'memberdir'
+                             or (isinstance(origexpr, Token) and origexpr.type == MEMBERDIR)
+        self.__isjustmember = isinstance(origexpr, Token) and origexpr.type == MEMBERDIR
 
         self.__indirection = indirection
+
         if memberdir:
-            '''
-            if self.__isjustmember:
-                try:
-                    g = self.__context.get_global(islabel[0])
-                except:
-                    pass
-                if isinstance(g, op.Struct):
-                    self.__indirection = IndirectionType.OFFSET
-            '''
-            expr = Token.find_and_replace_tokens(expr, 'memberdir', self.convert_member)
-            if self.__indirection == IndirectionType.POINTER and self.address and self.struct_type:
+            expr = Token.find_and_replace_tokens(expr, MEMBERDIR, self.convert_member)
+            if self.__indirection == IndirectionType.POINTER and self.needs_dereference and self.struct_type:
 
                 # TODO A very hacky way to
                 # put registers and numbers first since asm have byte aligned pointers
-                # in comparision to C's type aligned
+                # in comparison to C's type aligned
                 registers = Token.find_tokens(expr, 'register')
                 integers = Token.find_tokens(expr, 'INTEGER')
                 expr = Token.remove_tokens(expr, ['register', 'INTEGER'])
@@ -822,23 +830,27 @@ class Cpp(object):
                 expr = expr.replace('++', '+').replace('+-', '-')
 
                 expr = [f'(({self.struct_type}*)raddr({self.__work_segment},'] + [expr]
-                self.address = False
+                self.needs_dereference = False
         else:
             if islabel:
                 # assert(len(islabel) == 1)
                 expr = Token.find_and_replace_tokens(expr, LABEL, self.convert_label)
         indirection = self.__indirection
-        if self.__current_size != 0:  # and (indirection != 1 or size == 0):
+        if self.__current_size != 0 and size != self.__current_size and not self.size_changed:
             size = self.__current_size
 
         if self.size_changed:
-            size = newsize
+            size = size_ovrr_by_ptr
 
         expr = self.tokenstostring(expr)
 
         if indirection == IndirectionType.POINTER and not memberdir and (not self.__isjustlabel or self.size_changed):
             expr = self.convert_sqbr_reference(expr, destination, size, islabel, lea=lea)
-        if indirection == IndirectionType.POINTER and self.address:
+
+        if self.size_changed:  # or not self.__isjustlabel:
+            expr = self.point_new_size(expr, size)
+
+        if indirection == IndirectionType.POINTER and self.needs_dereference:
             if expr[0] == '(' and expr[-1] == ')':
                 expr = "*%s" % expr
             else:

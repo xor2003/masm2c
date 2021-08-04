@@ -128,6 +128,7 @@ class ParserTest(unittest.TestCase):
         #self.__class__.parser.set_global('gameconfig', op.var(elements=1, name=u'gameconfig', offset=1, segment=u'_data', size=1))
         self.__class__.parser.action_data(line='''GAMEINFO struc
 game_opponenttype dw ?
+game_opponentmaterial dd ?
 game_opponentcarid db 4 dup (?)
 GAMEINFO ends
 extrn gameconfig:GAMEINFO
@@ -140,6 +141,7 @@ extrn gameconfig:GAMEINFO
     ts_shapeptr dw ?
     ts_rectptr dw ?
     ts_rOTvec VECTOR <>
+    ts_vec VECTOR 3 dup (<>)
  TRANSFORMEDSHAPE ends
  var_transshape = TRANSFORMEDSHAPE ptr -50
 ''')
@@ -3705,7 +3707,7 @@ extrn gameconfig:GAMEINFO
 
     def test_instr_11750(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('add     gameconfig.game_opponenTType[di], 10h')),
-                     u'\tR(ADD(*(((db*)&gameconfig.game_opponenttype)+di), 0x10));\n')
+                     u'\tR(ADD(*(dw*)(((db*)&gameconfig.game_opponenttype)+di), 0x10));\n')
 
     def test_instr_11760(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('inc     gameconfig.game_opponenTType')),
@@ -3737,12 +3739,12 @@ extrn gameconfig:GAMEINFO
 
     def test_instr_11820(self):
         self.assertEqual(
-            self.proc.generate_c_cmd(self.cpp, self.parser.action_code(r'mov     ds:2, si')), u"\tR(MOV(raddr(ds,2), si));\n")
+            self.proc.generate_c_cmd(self.cpp, self.parser.action_code(r'mov     ds:2, si')), u"\tR(MOV(*(raddr(ds,2)), si));\n")
 
     def test_instr_11830(self):
         self.assertEqual(
-            self.proc.generate_c_cmd(self.cpp, self.parser.action_code(r'mov     ax, word ptr cs:gameInfo.game_opponenTType+2')),
-            u"\tR(MOV(ax, *(dw*)((db*)(&gameinfo.game_opponenttype)+2)));\n")
+            self.proc.generate_c_cmd(self.cpp, self.parser.action_code(r'mov     ax, word ptr cs:gameconfig.game_opponentmaterial+2')),
+            u"\tR(MOV(ax, *(dw*)(((db*)&gameconfig.game_opponentmaterial)+2)));\n")
 
 if __name__ == "__main__":
     unittest.main()
