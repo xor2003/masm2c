@@ -11,6 +11,9 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <assert.h>
+#include <initializer_list>
+#include <algorithm>
+#include <cstring>
 
 #ifdef __BORLANDC__
  typedef unsigned long uint32_t;
@@ -1160,10 +1163,6 @@ extern db vgaPalette[256*3];
 #define XLATB XLAT
 // ---------
 
-#include <initializer_list>
-#include <algorithm>
-#include <cstring>
-
 template<typename S,typename T>
 void mycopy(T t[], std::initializer_list<S> s)
 { std::copy(s.begin(), s.end(), t); }
@@ -1179,6 +1178,15 @@ struct /*__attribute__((__packed__))*/ Memory;
 extern Memory& m;
 extern db(& stack)[STACK_SIZE];
 extern db(& heap)[HEAP_SIZE];
+
+namespace mc {
+
+#define TODB(X) (*(db*)(&(X)))
+#define TODW(X) (*(dw*)(&(X)))
+#define TODD(X) (*(dd*)(&(X)))
+#define TODQ(X) (*(dq*)(&(X)))
+
+}
 
 #endif
 

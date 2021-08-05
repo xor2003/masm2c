@@ -3749,7 +3749,7 @@ extrn gameconfig:GAMEINFO
     def test_instr_11840(self):
         self.assertEqual(
             self.proc.generate_c_cmd(self.cpp, self.parser.action_code(r'mov     al, byte ptr [bx+GAMEINFO.game_opponenttype]')),
-            u"\tR(MOV(al, ((gameinfo*)raddr(ds,bx))->game_opponenttype));\n")
+            u"\tR(MOV(al, TODB(((gameinfo*)raddr(ds,bx))->game_opponenttype)));\n")
 
 
 

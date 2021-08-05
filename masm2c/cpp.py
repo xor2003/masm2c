@@ -302,10 +302,13 @@ class Cpp(object):
         self.__used_data_offsets = set()
         self.__methods = []
         self.__pushpop_count = 0
+
         self.lea = False
         self.far = False
         self.size_changed = False
         self.needs_dereference = False
+        self.itispointer = False
+
         self.body = ""
         self.struct_type = None
 
@@ -405,8 +408,10 @@ class Cpp(object):
                 self.__indirection = IndirectionType.VALUE
             else:
                 self.needs_dereference = False
+                self.itispointer = False
                 if g.elements != 1:
                     self.needs_dereference = True
+                    self.itispointer = True
                 if g.elements == 1 and self.__isjustlabel and not self.lea and g.size == self.__current_size:
                     # traceback.print_stack(file=sys.stdout)
                     value = g.name
@@ -416,6 +421,7 @@ class Cpp(object):
                         value = g.name
                         if not self.__isjustlabel:  # if not just single label
                             self.needs_dereference = True
+                            self.itispointer = True
                             if g.elements == 1:  # array generates pointer himself
                                 value = "&" + value
 
@@ -494,6 +500,7 @@ class Cpp(object):
             else:
                 self.struct_type = g.original_type
                 self.needs_dereference = True
+                self.itispointer = False
                 value = f"{label[0]}))->{'.'.join(label[1:])}"
             logging.debug("equ: %s -> %s" % (label[0], value))
         elif isinstance(g, op.var):
@@ -504,8 +511,10 @@ class Cpp(object):
             if size == 0:
                 raise Exception(f"invalid var {label} size {size}")
             self.needs_dereference = False
+            self.itispointer = False
             if g.elements != 1:
                 self.needs_dereference = True
+                self.itispointer = True
             if g.elements == 1 and self.__isjustlabel and not self.lea and size == self.__current_size:
                 # traceback.print_stack(file=sys.stdout)
                 value = '.'.join(label)
@@ -515,6 +524,7 @@ class Cpp(object):
                     value = '.'.join(label)
                     if not self.__isjustlabel:  # if not just single label
                         self.needs_dereference = True
+                        self.itispointer = True
                         if g.elements == 1:  # array generates pointer himself
                             value = "&" + value
 
@@ -541,6 +551,7 @@ class Cpp(object):
 
                 self.struct_type = label[0]
                 self.needs_dereference = True
+                self.itispointer = False
                 value = f"{register}))->{'.'.join(label[1:])}"
 
         if size == 0:
@@ -709,6 +720,7 @@ class Cpp(object):
         if not lea or destination:
             if not islabel or not self.isvariable:
                 self.needs_dereference = True
+                self.itispointer = True
                 if size == 1:
                     expr = "raddr(%s,%s)" % (self.__work_segment, expr)
                 elif size == 2:
@@ -728,16 +740,29 @@ class Cpp(object):
         return expr
 
     def point_new_size(self, expr, size):
-        if size == 1:
-            expr = "(db*)(%s)" % expr
-        elif size == 2:
-            expr = "(dw*)(%s)" % expr
-        elif size == 4:
-            expr = "(dd*)(%s)" % expr
-        elif size == 8:
-            expr = "(dq*)(%s)" % expr
+        if self.itispointer:
+            if size == 1:
+                expr = "(db*)(%s)" % expr
+            elif size == 2:
+                expr = "(dw*)(%s)" % expr
+            elif size == 4:
+                expr = "(dd*)(%s)" % expr
+            elif size == 8:
+                expr = "(dq*)(%s)" % expr
+            else:
+                logging.error(f"~{expr}~ invalid size {size}")
         else:
-            logging.error(f"~{expr}~ invalid size {size}")
+            if size == 1:
+                expr = "TODB(%s)" % expr
+            elif size == 2:
+                expr = "TODW(%s)" % expr
+            elif size == 4:
+                expr = "TODD(%s)" % expr
+            elif size == 8:
+                expr = "TODQ(%s)" % expr
+            else:
+                logging.error(f"~{expr}~ invalid size {size}")
+
         self.size_changed = False
         return expr
 
@@ -780,6 +805,7 @@ class Cpp(object):
         self.__current_size = 0 # current size of argument is not yet found
         self.size_changed = False
         self.needs_dereference = False
+        self.itispointer = False
         indirection : IndirectionType = IndirectionType.VALUE
         size = self.get_size(expr) if def_size == 0 else def_size  # calculate size if it not provided
 
@@ -890,6 +916,7 @@ class Cpp(object):
 
                 expr = [f'(({self.struct_type}*)raddr({self.__work_segment},'] + [expr]
                 self.needs_dereference = False
+                #self.itispointer = True
         else:
             if islabel:
                 # assert(len(islabel) == 1)
