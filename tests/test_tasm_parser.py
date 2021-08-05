@@ -3746,5 +3746,12 @@ extrn gameconfig:GAMEINFO
             self.proc.generate_c_cmd(self.cpp, self.parser.action_code(r'mov     ax, word ptr cs:gameconfig.game_opponentmaterial+2')),
             u"\tR(MOV(ax, *(dw*)(((db*)&gameconfig.game_opponentmaterial)+2)));\n")
 
+    def test_instr_11840(self):
+        self.assertEqual(
+            self.proc.generate_c_cmd(self.cpp, self.parser.action_code(r'mov     al, byte ptr [bx+GAMEINFO.game_opponenttype]')),
+            u"\tR(MOV(al, ((gameinfo*)raddr(ds,bx))->game_opponenttype));\n")
+
+
+
 if __name__ == "__main__":
     unittest.main()
