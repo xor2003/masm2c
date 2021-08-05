@@ -567,7 +567,6 @@ class Parser:
     def __init__(self, skip_binary_data=[]):
         self.__globals = {}
         self.__offsets = {}
-        self.proc_list = set()
         self.pass_number = 0
         self.__lex = ParglareParser()
         self.segments = dict()
@@ -585,6 +584,7 @@ class Parser:
 
         self.structures = dict()
         self.macro_names_stack = set()
+        self.proc_list = []
 
         # self.__label_to_skip = skip_binary_data
         self.__offset_id = 0x1111
@@ -595,7 +595,7 @@ class Parser:
         # self.proc = None
         nname = "mainproc"
         self.proc = Proc(nname)
-        self.proc_list.add(nname)
+        self.proc_list.append(nname)
         self.__proc_stack.append(self.proc)
         self.set_global(nname, self.proc)
         self.__binary_data_size = 0
@@ -1041,7 +1041,7 @@ class Parser:
         if self.__separate_proc:
             self.proc = Proc(name, far=far, line_number=line_number)
             logging.debug("procedure %s, #%d" % (name, len(self.proc_list)))
-            self.proc_list.add(name)
+            self.proc_list.append(name)
             self.__proc_stack.append(self.proc)
             self.set_global(name, self.proc)
         else:
