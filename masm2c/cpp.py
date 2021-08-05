@@ -689,14 +689,14 @@ class Cpp(object):
                 if isinstance(g, op.Struct):
                     type = label[0]
                 else:
-                    type = g.original_type
+                    type = g.gettype()
 
                 try:
                     for member in label[1:]:
                         g = self.__context.get_global(type)
                         if isinstance(g, op.Struct):
                             g = g.getitem(member)
-                            type = g.type
+                            type = g.gettype()
                         else:
                             return self.get_size(g)
                 except KeyError as ex:
@@ -706,7 +706,7 @@ class Cpp(object):
 
                 #if g.size != self.__context.typetosize(g.type):
                 #    logging.info('found')
-                return self.__context.typetosize(Token(LABEL, g.type))
+                return self.__context.typetosize(Token(LABEL, g.gettype()))
         '''
         if isinstance(expr, (op.Data, op.var, op._assignment, op._equ)):
             return expr.getsize()

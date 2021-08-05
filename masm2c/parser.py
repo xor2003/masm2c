@@ -850,7 +850,8 @@ class Parser:
                     v = self.mangle_label(v)
                     v = self.get_global_value(v)
                 except KeyError:
-                    logging.warning("unknown address %s" % v)
+                    if self.pass_number != 1:
+                        logging.error("unknown address %s" % v)
                     # logging.warning(self.c_data)
                     # logging.warning(r)
                     # logging.warning(len(self.c_data) + len(r))

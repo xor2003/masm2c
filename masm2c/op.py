@@ -40,6 +40,21 @@ class var(object):
 
     def __init__(self, size, offset, name="", segment="", issegment=False, elements=1,
                  external=False, original_type="", filename='', raw='', line_number=0):
+        '''
+        Global variable with name representing data
+
+        :param size:
+        :param offset:
+        :param name:
+        :param segment:
+        :param issegment:
+        :param elements:
+        :param external:
+        :param original_type:
+        :param filename:
+        :param raw:
+        :param line_number:
+        '''
         # logging.debug("op.var(%d, %d, %s, %s, %s, %d)" %(size, offset, name, segment, issegment, elements))
         self.size = size
         self.offset = offset
@@ -59,6 +74,8 @@ class var(object):
     def getsize(self):
         return self.size
 
+    def gettype(self):
+        return self.original_type
 
 class Segment(object):
     # __slots__ = ['name', 'offset', '__data', 'original_name', 'used']
@@ -182,6 +199,12 @@ class Struct:
         UNION = 2
 
     def __init__(self, name, type):
+        '''
+        Represent structure
+
+        :param name: Name
+        :param type: Structure or Union?
+        '''
         self.__name = name
         self.__fields = dict()
         self.__size = 0
@@ -205,45 +228,6 @@ class Struct:
 
     def gettype(self):
         return self.__type
-
-
-'''
-class reg(object):
-    def __init__(self, name):
-        self.name = name
-
-    def size(self):
-        return 2 if self.name[1] == 'x' else 1
-
-    def __str__(self):
-        return "<register %s>" % self.name
-
-
-class unref(object):
-    def __init__(self, exp):
-        self.exp = exp
-
-    def __str__(self):
-        return "<unref %s>" % self.exp
-
-
-class ref(object):
-    def __init__(self, name):
-        self.name = name
-
-    def __str__(self):
-        return "<ref %s>" % self.name
-
-
-class glob(object):
-    def __init__(self, name):
-        self.name = name
-
-    def __str__(self):
-        return "<global %s>" % self.name
-
-
-'''
 
 
 class basejmp(baseop):
@@ -736,6 +720,9 @@ class _equ(baseop):
         self.implemented = False
         self.size = 0
 
+    def gettype(self):
+        return self.original_type
+
     def visit(self, visitor):
         if self.implemented == False:
             self.implemented = True
@@ -753,6 +740,9 @@ class _assignment(baseop):
         self.original_type = ''
         self.implemented = False
         self.size = 0
+
+    def gettype(self):
+        return self.original_type
 
     def visit(self, visitor):
         # if self.implemented == False:
