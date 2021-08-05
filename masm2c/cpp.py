@@ -459,6 +459,7 @@ class Cpp(object):
 
     def convert_member(self, token):
         logging.debug("name = %s indirection = %s" % (str(token), str(self.__indirection)))
+        value = token
         label = [l.lower() for l in Token.find_tokens(token, LABEL)]
         self.struct_type = None
 
@@ -496,7 +497,7 @@ class Cpp(object):
                 value = f"{label[0]}))->{'.'.join(label[1:])}"
             logging.debug("equ: %s -> %s" % (label[0], value))
         elif isinstance(g, op.var):
-            logging.debug("it is var " + str(g.size))
+            logging.debug("it is var " + str(size))
 
             if self.__current_size == 0:  # TODO check
                 self.__current_size = size
@@ -505,7 +506,7 @@ class Cpp(object):
             self.needs_dereference = False
             if g.elements != 1:
                 self.needs_dereference = True
-            if g.elements == 1 and self.__isjustlabel and not self.lea and g.size == self.__current_size:
+            if g.elements == 1 and self.__isjustlabel and not self.lea and size == self.__current_size:
                 # traceback.print_stack(file=sys.stdout)
                 value = '.'.join(label)
                 self.__indirection = IndirectionType.VALUE
@@ -527,6 +528,8 @@ class Cpp(object):
                 if self.__work_segment == 'cs':
                     self.body += '\tcs=seg_offset(' + g.segment + ');\n'
             # ?self.__indirection = 1
+            if value == token:
+                logging.error('value not yet assigned')
         elif isinstance(g, op.Struct):
             if self.__isjustmember:
                 value = f'offsetof({label[0]},{".".join(label[1:])})'
@@ -646,6 +649,62 @@ class Cpp(object):
             logging.debug(f"Could not identify type for {expr} to get size")
         return 0
 
+    def get_member_size(self, expr):
+        logging.debug('get_size("%s")' % expr)
+        # if isinstance(expr, string):
+        #    expr = expr.strip()
+        origexpr = expr
+
+        if isinstance(expr, Token):
+            '''
+            if expr.type == 'LABEL':
+                name = expr.value
+                logging.debug('name = %s' % name)
+                try:
+                    g = self.__context.get_global(name)
+                    if isinstance(g, (op._equ, op._assignment)):
+                        if g.value != origexpr:  # prevent loop
+                            return self.get_size(g.value)
+                        else:
+                            return 0
+                    logging.debug('get_size res %d' % g.size)
+                    return g.size
+                except:
+                    pass
+            '''
+            if expr.type == MEMBERDIR:
+                label = Token.find_tokens(expr.value, LABEL)
+                g = self.__context.get_global(label[0])
+                if isinstance(g, op.Struct):
+                    type = label[0]
+                else:
+                    type = g.original_type
+
+                try:
+                    for member in label[1:]:
+                        g = self.__context.get_global(type)
+                        if isinstance(g, op.Struct):
+                            g = g.getitem(member)
+                            type = g.type
+                        else:
+                            return self.get_size(g)
+                except KeyError as ex:
+                    logging.debug(f"Didn't found for {label} {ex.args} will try workaround")
+                    # if members are global as with M510 or tasm try to find last member size
+                    g = self.__context.get_global(label[-1])
+
+                #if g.size != self.__context.typetosize(g.type):
+                #    logging.info('found')
+                return self.__context.typetosize(Token(LABEL, g.type))
+        '''
+        if isinstance(expr, (op.Data, op.var, op._assignment, op._equ)):
+            return expr.getsize()
+        else:
+            logging.debug(f"Could not identify type for {expr} to get size")
+        '''
+        return 0
+
+
     def convert_sqbr_reference(self, expr, destination, size, islabel, lea=False):
         if not lea or destination:
             if not islabel or not self.isvariable:
@@ -659,7 +718,7 @@ class Cpp(object):
                 elif size == 8:
                     expr = "(dq*)(raddr(%s,%s))" % (self.__work_segment, expr)
                 else:
-                    logging.error("~%s~ @invalid size 0" % expr)
+                    logging.error(f"~{expr}~ invalid size {size}")
                     expr = "raddr(%s,%s)" % (self.__work_segment, expr)
             else:
                 if self.size_changed:  # or not self.__isjustlabel:
@@ -678,7 +737,7 @@ class Cpp(object):
         elif size == 8:
             expr = "(dq*)(%s)" % expr
         else:
-            logging.error("~%s~ @invalid size 0" % expr)
+            logging.error(f"~{expr}~ invalid size {size}")
         self.size_changed = False
         return expr
 
@@ -762,7 +821,7 @@ class Cpp(object):
         self.isvariable = False  # only address or variable
         if (islabel or memberdir) and not offsetdir:
             if memberdir:
-                member_size = self.get_size(Token(MEMBERDIR, memberdir))
+                member_size = self.get_member_size(Token(MEMBERDIR, memberdir))
                 if member_size:
                     self.isvariable = True
                     size = member_size

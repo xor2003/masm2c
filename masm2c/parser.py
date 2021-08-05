@@ -1286,12 +1286,14 @@ class Parser:
         return size
 
     def typetosize(self, value):
-        if isinstance(value, Token) and value.value.lower() in self.structures.keys():
-            return self.structures[value.value.lower()].getsize()
-        elif not isinstance(value, str):
+        if isinstance(value, Token):
+            value = value.value
+        if not isinstance(value, str):
             logging.error("Type is not a string TODO " + str(value))
             return 0
         value = value.lower()
+        if value in self.structures.keys():
+            return self.structures[value].getsize()
         try:
             size = {'db': 1, 'byte': 1, 'sbyte': 1,
                     'dw': 2, 'word': 2, 'sword': 2, 'small': 2, 'near': 2,
