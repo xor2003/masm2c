@@ -1503,14 +1503,3 @@ void prepare_cp437_to_curses() {
     vga_to_curses[0xfe] = ACS_BULLET;
 }
 
-void mycopy(char t[], const char*s)
-{ strcpy(t, s); }
-
-void mycopy(char t[], std::initializer_list<char> s)
-{ std::copy(s.begin(), s.end(), t); }
-
-void mycopy(dw t[], std::initializer_list<dw> s)
-{ std::copy(s.begin(), s.end(), t); }
-
-void mycopy(dd t[], std::initializer_list<dd> s)
-{ std::copy(s.begin(), s.end(), t); }
