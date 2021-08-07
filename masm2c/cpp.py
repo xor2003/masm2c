@@ -559,6 +559,11 @@ class Cpp(object):
         return value
 
     def get_size(self, expr):
+        '''
+        Get tokens memory size
+        :param expr: Tokens
+        :return: byte size
+        '''
         logging.debug('get_size("%s")' % expr)
         # if isinstance(expr, string):
         #    expr = expr.strip()
@@ -661,6 +666,11 @@ class Cpp(object):
         return 0
 
     def get_member_size(self, expr):
+        '''
+        Get (structure/object).member primitive size (like db, dw, dd...)
+        :param expr: Tokens
+        :return: size in bytes
+        '''
         logging.debug('get_size("%s")' % expr)
         # if isinstance(expr, string):
         #    expr = expr.strip()
@@ -767,6 +777,11 @@ class Cpp(object):
         return expr
 
     def tokenstostring(self, expr):
+        '''
+        Convert remaining tokens to make it simple string
+        :param expr: tokens
+        :return: string
+        '''
         if isinstance(expr, list):
             result = ''
             for i in expr:
@@ -796,7 +811,14 @@ class Cpp(object):
         return expr
 
     def expand(self, expr, def_size=0, destination=False, lea=False):
-        ''' Convert argument from Token list to C '''
+        '''
+        Convert argument Tokens into C
+        :param expr: argument Tokens
+        :param def_size: Preliminary calculate size in bytes
+        :param destination: if it is destination argument
+        :param lea: if it is lea operation
+        :return: Argument in C format as string
+        '''
         logging.debug(str(expr))
 
         expr = Token.remove_tokens(expr, ['expr']) # no need expr token any more
@@ -945,6 +967,11 @@ class Cpp(object):
         return expr
 
     def jump_to_label(self, name):
+        '''
+        Convert argument tokens which for jump operations into C string
+        :param name: Tokens
+        :return: C string
+        '''
         logging.debug("jump_to_label(%s)" % name)
         # Token(expr, Token(LABEL, printf))
         #
@@ -1212,13 +1239,13 @@ class Cpp(object):
         return "STOSD;\n"  # %("" if n == 1 else n, ", true" if clear_cx else "")
 
     def _movsb(self, n, clear_cx):
-        return "MOVSB;\n"  # %("" if n == 1 else n, ", true" if clear_cx else "")
+        return "MOVSB;\n"
 
     def _movsw(self, n, clear_cx):
-        return "MOVSW;\n"  # %("" if n == 1 else n, ", true" if clear_cx else "")
+        return "MOVSW;\n"
 
     def _movsd(self, n, clear_cx):
-        return "MOVSD;\n"  # %("" if n == 1 else n, ", true" if clear_cx else "")
+        return "MOVSD;\n"
 
     def _scasb(self):
         return "SCASB;\n"

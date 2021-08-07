@@ -35,7 +35,7 @@ def escape(s):
 
 
 def read_asm_file(file_name):
-    logging.info("     Opening file %s..." % file_name)
+    logging.info("     Reading file %s..." % file_name)
     if sys.version_info >= (3, 0):
         fd = open(file_name, 'rt', encoding="cp437")
     else:
@@ -253,7 +253,7 @@ def structinstdir(context, nodes, label, type, values):
         args = []
     # args = Token.remove(args, 'INTEGER')
     context.extra.add_structinstance(label.value.lower(), type.lower(), args)
-    return nodes  # Token('structdir', nodes) TODO ignore by now
+    return nodes
 
 
 def calculate_data_size_new(size, values):
@@ -312,7 +312,7 @@ def segmentdir(context, nodes, name, options):
         for o in options:
             if isinstance(o, str):
                 opts.add(o.lower())
-            elif  isinstance(o, Token) and o.type == 'STRING':
+            elif isinstance(o, Token) and o.type == 'STRING':
                 segclass = o.value.lower()
                 if segclass[0] in ['"', "'"] and segclass[0] == segclass[-1]:
                     segclass = segclass[1:-1]
@@ -321,14 +321,17 @@ def segmentdir(context, nodes, name, options):
     context.extra.create_segment(name.value, options=opts, segclass=segclass)
     return nodes
 
+
 def modeldir(context, nodes, model):
     logging.debug("modeldir " + str(nodes) + " ~~")
     return nodes
+
 
 def endsdir(context, nodes, name):
     logging.debug("ends " + str(nodes) + " ~~")
     context.extra.action_ends()
     return nodes
+
 
 def procdir(context, nodes, name, type):
     logging.debug("procdir " + str(nodes) + " ~~")
@@ -459,15 +462,18 @@ def externdef(context, nodes, extrnname, type):
     context.extra.add_extern(extrnname.value, type)
     return nodes
 
+
 def maked(context, nodes):
-    #return Token(nodes[0].upper(), nodes[1].value)
+    # return Token(nodes[0].upper(), nodes[1].value)
     # TODO dirty workaround for now
     if nodes[0].lower() == 'size':
         return [f'sizeof({nodes[1].value.lower()})']
     else:
         return nodes
 
+
 actions = {
+    #    "structdup": make_token,
     "modeldir": modeldir,
     "dir3": maked,
     "externdef": externdef,
@@ -921,7 +927,8 @@ class Parser:
 
             label = self.get_dummy_label()
 
-            self.__segment.append(op.Data(label, 'db', DataType.ARRAY_NUMBER, num * [0], num, num, comment='for alignment'))
+            self.__segment.append(
+                op.Data(label, 'db', DataType.ARRAY_NUMBER, num * [0], num, num, comment='for alignment'))
 
     def get_dummy_label(self):
         Parser.c_dummy_label += 1
@@ -1032,7 +1039,7 @@ class Parser:
         self.set_global(name, op.var(binary_width, offset, name, issegment=True))
 
     def action_proc(self, name, type, line_number=0):
-        logging.info("     Proc directive %s" % name.value)
+        logging.info("     Found proc %s" % name.value)
         name = self.mangle_label(name.value)
         far = False
         for i in type:
@@ -1041,7 +1048,6 @@ class Parser:
 
         if self.__separate_proc:
             self.proc = Proc(name, far=far, line_number=line_number)
-            logging.debug("procedure %s, #%d" % (name, len(self.proc_list)))
             self.proc_list.append(name)
             self.__proc_stack.append(self.proc)
             self.set_global(name, self.proc)
@@ -1210,7 +1216,8 @@ class Parser:
             data_type = 'struct data'
         else:
             data_type = 'usual data'
-        data = op.Data(label, type, data_internal_type, array, elements, size, filename=self.__current_file, raw_line=raw,
+        data = op.Data(label, type, data_internal_type, array, elements, size, filename=self.__current_file,
+                       raw_line=raw,
                        line_number=line_number, comment=data_type)
         if isstruct:
             self.current_struct.append(data)
@@ -1318,11 +1325,15 @@ class Parser:
 
     def add_structinstance(self, label, type, args):
         s = self.structures[type]
-        # cpp = Cpp(self)
-        # args = Token.find_and_replace_tokens(args, 'structinstance', cpp.expand)
+        number = 1
+        if isinstance(args, list) and len(args) > 2 and isinstance(args[1], str) and args[1] == 'dup':
+            cpp = Cpp(self)
+            number = eval(cpp.expand(Token.find_tokens(args[0], 'expr')))
+            args = args[3]
         args = Token.remove_tokens(args, 'structinstance')
-        # args = [cpp.expand(i) for i in args]
-        # elements, is_string, array = self.process_data_tokens(args, binary_width)
+
+        #if number > 1:
+        #    args = number * [args]
         d = op.Data(label, type, DataType.OBJECT, args, 1, s.getsize(), comment='struct instance')
         members = [deepcopy(i) for i in s.getdata().values()]
         d.setmembers(members)
@@ -1333,9 +1344,9 @@ class Parser:
         if isstruct:
             self.current_struct.append(d)
         else:
-            self.__segment.append(d)
             self.set_global(label, op.var(s.getsize(), self.__cur_seg_offset, label, segment=self.__segment_name, \
                                           original_type=type))
+            self.__segment.append(d)
             self.__cur_seg_offset += s.getsize()
 
     def add_extern(self, label, type):
