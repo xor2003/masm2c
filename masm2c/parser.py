@@ -214,42 +214,12 @@ def structdirhdr(context, nodes, name, type):
     return nodes
 
 
-def remove_str(text):
-    if isinstance(text, str):
-        # if re.match(r'\d+|\?', text):
-        return text
-        # else:
-        #    return None
-    elif isinstance(text, list):
-        found = True
-        while found:
-            found = False
-            while len(text) == 1 and isinstance(text[0], list):
-                found = True
-                text = text[0]
-            if len(text) >= 3 and text[0] in ['<', '{'] and text[-1] in ['>', '}']:
-                found = True
-                text = text[1:-1]
-            if len(text) and isinstance(text[-1], str) and re.match(r'\n+\s*', text[-1]):
-                found = True
-                text = text[:-1]
-
-        l = list()
-        for i in text:
-            r = remove_str(i)
-            if r:
-                l += [r]
-        return l
-    else:
-        return text
-
-
 def structinstdir(context, nodes, label, type, values):
     logging.debug(f"structinstdir {label} {type} {values}")
     # args = remove_str(Token.remove_tokens(remove_str(values), 'expr'))
     args = values[0].value
     # args = Token.remove_tokens(remove_str(values), 'expr')
-    if args == None:
+    if args is None:
         args = []
     # args = Token.remove(args, 'INTEGER')
     context.extra.add_structinstance(label.value.lower(), type.lower(), args)
@@ -276,7 +246,7 @@ def calculate_data_size_new(size, values):
             return size
         return len(values)
     else:
-        raise Exception('Unknown Token: ' + str(values))
+        raise NotImplementedError('Unknown Token: ' + str(values))
 
 
 def datadir(context, nodes, label, type, values):
@@ -559,7 +529,7 @@ def dump_object(value):
     replacements = [
         (r'\n', ' '),
         (r'[{}]', ''),
-        (r"'([A-Za-z_0-9]+)'\s*:\s*", '\g<1>=')
+        (r"'([A-Za-z_0-9]+)'\s*:\s*", r'\g<1>=')
     ]
     for old, new in replacements:
         stuff = re.sub(old, new, stuff)
@@ -640,19 +610,19 @@ class Parser:
 
     def set_global(self, name, value):
         if len(name) == 0:
-            raise Exception("empty name is not allowed")
+            raise NameError("empty name is not allowed")
         value.original_name = name
         name = name.lower()
 
         logging.debug("set_global(name='%s',value=%s)" % (name, dump_object(value)))
         if name in self.__globals and self.pass_number == 1:
-            raise Exception("global %s was already defined", name)
+            raise LookupError("global %s was already defined", name)
         value.used = False
         self.__globals[name] = value
 
     def reset_global(self, name, value):
         if len(name) == 0:
-            raise Exception("empty name is not allowed")
+            raise NameError("empty name is not allowed")
         value.original_name = name
         name = name.lower()
         logging.debug("reset global %s -> %s" % (name, value))
@@ -680,11 +650,11 @@ class Parser:
 
     def set_offset(self, name, value):
         if len(name) == 0:
-            raise Exception("empty name is not allowed")
+            raise NameError("empty name is not allowed")
         name = name.lower()
         logging.debug("adding offset %s -> %s" % (name, value))
         if name in self.__offsets and self.pass_number == 1:
-            raise Exception("offset %s was already defined", name)
+            raise LookupError("offset %s was already defined", name)
         self.__offsets[name] = value
 
     def get_offset(self, name):
@@ -702,7 +672,7 @@ class Parser:
             for i in v:
                 try:
                     i = Parser.parse_int(i)
-                except:
+                except Exception:
                     pass
                 vv += str(i)
             v = vv
@@ -717,7 +687,7 @@ class Parser:
         try:
             vv = eval(v)
             v = vv
-        except:
+        except Exception:
             pass
 
         # logging.debug "~4~ %s" %v
@@ -825,7 +795,6 @@ class Parser:
                 values = self.process_data_tokens(v.value[1], width)[2]
                 elements, reslist = self.action_dup(repeat, values)
 
-
             elif v.type == 'INTEGER':
                 elements += 1
                 try:  # just number or many
@@ -837,7 +806,7 @@ class Parser:
                     if v < 0:  # negative values
                         v += base
 
-                except:
+                except Exception:
                     # global name
                     # traceback.print_stack(file=sys.stdout)
                     # logging.debug "global/expr: ~%s~" %v
@@ -998,7 +967,7 @@ class Parser:
 
     def action_equ(self, label="", value="", raw='', line_number=0):
         label = self.mangle_label(label)
-        value = Token.remove_tokens(value, 'expr')
+        value = Token.remove_tokens(value, ['expr'])
         size = Cpp(self).get_size(value)
         ptrdir = Token.find_tokens(value, 'ptrdir')
         if ptrdir:
@@ -1330,9 +1299,9 @@ class Parser:
             cpp = Cpp(self)
             number = eval(cpp.expand(Token.find_tokens(args[0], 'expr')))
             args = args[3]
-        args = Token.remove_tokens(args, 'structinstance')
+        args = Token.remove_tokens(args, ['structinstance'])
 
-        #if number > 1:
+        # if number > 1:
         #    args = number * [args]
         d = op.Data(label, type, DataType.OBJECT, args, 1, s.getsize(), comment='struct instance')
         members = [deepcopy(i) for i in s.getdata().values()]
@@ -1347,8 +1316,9 @@ class Parser:
         if isstruct:
             self.current_struct.append(d)
         else:
-            self.set_global(label, op.var(number * s.getsize(), self.__cur_seg_offset, label, segment=self.__segment_name, \
-                                          original_type=type))
+            self.set_global(label,
+                            op.var(number * s.getsize(), self.__cur_seg_offset, label, segment=self.__segment_name, \
+                                   original_type=type))
             self.__segment.append(d)
             self.__cur_seg_offset += number * s.getsize()
 

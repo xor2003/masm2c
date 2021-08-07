@@ -10,7 +10,7 @@ Because of DOS segmentation model, etc)
 
 Translator generates pseudo assembler instruction which can be compiled with C compiler.
 
-The following example:
+The following assembler example:
 
 ```assembler
 _DATA   segment use16 word public 'DATA'
@@ -37,7 +37,7 @@ start endp
 _TEXT   ends
 ```
 
-Converts to working:
+Converts to a compilable and working C++ code:
 
 ```c++
 start:
@@ -66,9 +66,12 @@ Key features:
 flags: Carry, Zero, Sign are supported for most of x86 instructions.
 - Segment memory model and 16bit offsets.
 - Some BIOS/DOS Int 10h, 21h interrupts are supported. (Maybe I will reuse DOSBOX implementations in future)
-  Also DOS memory manager and stack.
+  Also DOS memory manager and stack emulated
 - CGA text mode is supported using Curses (PDcurses or NCurses).
 - VGA 320x200x256 support (partial)
+- structures support
+- parser based on Masm EBNF
+- segment merging as Masm do during linking
 
 3rd-party code used from: ASM2C (x86 instruction emulation), tasm-recover (from SCUMMVM project; highly modified), QEMU x86 instructions test suit, FreeDOS memory manager.
 
@@ -77,13 +80,9 @@ License: GPL2.
 Sure ASM2C have cleaner code but it written on Swift and less instructions supported, also only protected mode.
 
 TODO: 
-- structures support
-- macros support
-- equ out of segment/proceedure
+- full macros support
 - full VGA/EGA
-- ~~better parser based on Masm EBNF~~
 - proper SB emulation or use DOSBOX as library
-- better keyboard
 - add FPU instructions support (may use linux 387 emulator)
 
 For easier disassembling (exe to asm) you may need to collect run-time information from dosbox or other emulator to annotate IDA disassembly. Maybe modify dosbox debugger tracing mechanism to collect:
@@ -98,7 +97,7 @@ Assembler source code for Tornado flight sim https://github.com/xor2003/tornado-
 
 See list of DOS games with debug information http://bringerp.free.fr/forum/viewtopic.php?f=1&t=128
 
-How to run to convert your masm 16 bit source to C:
+How to convert your masm 16 bit source to C++:
 -------------------------------
 
 First your code should be compilable with uasm(jwasm)/masm6, link5/tlink and working on DOS.
@@ -107,7 +106,7 @@ masm2c.py <some.asm>
 
 (Small source code modification might also be required to build)
 
-IDA Pro Free https://www.scummvm.org/news/20180331/
+IDA Pro Free you can find here https://www.scummvm.org/news/20180331/
 
 Inertia Player 1.22 source code
 =============

@@ -30,6 +30,7 @@ SQEXPR = 'sqexpr'
 INTEGER = 'INTEGER'
 MEMBERDIR = 'memberdir'
 
+
 class IndirectionType(Enum):
     OFFSET = -1
     VALUE = 0
@@ -241,7 +242,7 @@ def convert_number_to_c(expr, radix=10):
             expr = re.sub(r'^([+-]?)([0-1]+)[Bb]?$', parse_bin, expr)  # convert binary
         else:
             expr = str(int(expr, radix))
-    except:
+    except Exception:
         logging.error("Failed to parse number " + expr)
 
     return expr
@@ -258,7 +259,7 @@ def guess_int_size(v):
     elif v < 4294967296:
         size = 4
     else:
-        logging.error('too big number' % v)
+        logging.error(f'too big number {v}')
 
     logging.debug('guess_int_size %d' % size)
     return size
@@ -279,7 +280,7 @@ class Cpp(object):
                  proc_strategy=SeparateProcStrategy()):
 
         self.__namespace = outfile
-        self.__indirection : IndirectionType = IndirectionType.VALUE
+        self.__indirection: IndirectionType = IndirectionType.VALUE
         self.__current_size = 0
         self.__work_segment = ""
         self.__codeset = 'cp437'
@@ -292,11 +293,11 @@ class Cpp(object):
         self.__procs = context.proc_list
         self.__proc_queue = []
         self.__proc_done = []
-        self.__blacklist = blacklist
+        # self.__blacklist = blacklist
         self.__failed = list(blacklist)
         self.__skip_output = skip_output
-        #self.__skip_dispatch_call = skip_dispatch_call
-        #self.__skip_addr_constants = skip_addr_constants
+        # self.__skip_dispatch_call = skip_dispatch_call
+        # self.__skip_addr_constants = skip_addr_constants
         self.__function_name_remapping = function_name_remapping
         self.__translated = list()  # []
         self.__proc_addr = []
@@ -364,7 +365,7 @@ class Cpp(object):
         if self.__indirection == IndirectionType.OFFSET:
             try:
                 offset, _, _ = self.__context.get_offset(name)
-            except:
+            except Exception:
                 pass
             else:
                 logging.debug("OFFSET = %s" % offset)
@@ -374,20 +375,20 @@ class Cpp(object):
 
         try:
             g = self.__context.get_global(name)
-        except:
+        except Exception:
             # logging.warning("expand_cb() global '%s' is missing" % name)
             return token
 
         if isinstance(g, op._equ):
             logging.debug("it is equ")
-            if g.implemented == False:
+            if not g.implemented:
                 raise InjectCode(g)
             value = g.original_name
             # value = self.expand_equ(g.value)
             logging.debug("equ: %s -> %s" % (name, value))
         elif isinstance(g, op._assignment):
             logging.debug("it is assignment")
-            if g.implemented == False:
+            if not g.implemented:
                 raise InjectCode(g)
             value = g.original_name
             # value = self.expand_equ(g.value)
@@ -496,7 +497,7 @@ class Cpp(object):
 
         if isinstance(g, (op._equ, op._assignment)):
             logging.debug(str(g))
-            if g.implemented == False:
+            if not g.implemented:
                 raise InjectCode(g)
             if self.__isjustlabel:
                 value = '.'.join(label)
@@ -584,7 +585,7 @@ class Cpp(object):
         if issqexpr:
             expr = Token.remove_tokens(expr, ['register', 'INTEGER', SQEXPR])
             return self.get_size(expr)
-            #return 0
+            # return 0
 
         if isinstance(expr, list) and all(
                 isinstance(i, str) or (isinstance(i, Token) and i.type == 'INTEGER') for i in expr):
@@ -675,27 +676,8 @@ class Cpp(object):
         :return: size in bytes
         '''
         logging.debug('get_size("%s")' % expr)
-        # if isinstance(expr, string):
-        #    expr = expr.strip()
-        origexpr = expr
 
         if isinstance(expr, Token):
-            '''
-            if expr.type == 'LABEL':
-                name = expr.value
-                logging.debug('name = %s' % name)
-                try:
-                    g = self.__context.get_global(name)
-                    if isinstance(g, (op._equ, op._assignment)):
-                        if g.value != origexpr:  # prevent loop
-                            return self.get_size(g.value)
-                        else:
-                            return 0
-                    logging.debug('get_size res %d' % g.size)
-                    return g.size
-                except:
-                    pass
-            '''
             if expr.type == MEMBERDIR:
                 label = Token.find_tokens(expr.value, LABEL)
                 g = self.__context.get_global(label[0])
@@ -717,17 +699,8 @@ class Cpp(object):
                     # if members are global as with M510 or tasm try to find last member size
                     g = self.__context.get_global(label[-1])
 
-                #if g.size != self.__context.typetosize(g.type):
-                #    logging.info('found')
                 return self.__context.typetosize(Token(LABEL, g.gettype()))
-        '''
-        if isinstance(expr, (op.Data, op.var, op._assignment, op._equ)):
-            return expr.getsize()
-        else:
-            logging.debug(f"Could not identify type for {expr} to get size")
-        '''
         return 0
-
 
     def convert_sqbr_reference(self, expr, destination, size, islabel, lea=False):
         if not lea or destination:
@@ -792,8 +765,9 @@ class Cpp(object):
                 if len(result) and result[-1] == ')' and isinstance(i, Token) and i.type == 'register':
                     result += '+'
                 res = self.tokenstostring(i)
-                res = re.sub(r'([Ee])\+', r'\g<1> +', res)  # prevent "error: unable to find numeric literal operator 'operator""+" 0x0E+vecl_1c0
-                res = res.replace('+)', ')')#.replace('+())', ')') # TODO hack
+                res = re.sub(r'([Ee])\+', r'\g<1> +',
+                             res)  # prevent "error: unable to find numeric literal operator 'operator""+" 0x0E+vecl_1c0
+                res = res.replace('+)', ')')  # TODO hack
                 result += res
             return result
         elif isinstance(expr, Token):
@@ -808,7 +782,7 @@ class Cpp(object):
                         ss = str(hex(ord(ex[i])))
                         # logging.debug("constant %s" %ss)
                         expr.value += ss[2:]
-                expr.value = expr.value.replace('\\', '\\\\') # escape c \ symbol
+                expr.value = expr.value.replace('\\', '\\\\')  # escape c \ symbol
 
             return self.tokenstostring(expr.value)
         return expr
@@ -824,23 +798,22 @@ class Cpp(object):
         '''
         logging.debug(str(expr))
 
-        expr = Token.remove_tokens(expr, ['expr']) # no need expr token any more
-        origexpr = expr # save original expression before we will change it
-        self.__work_segment = "ds" # default work segment is ds
-        self.__current_size = 0 # current size of argument is not yet found
+        expr = Token.remove_tokens(expr, ['expr'])  # no need expr token any more
+        origexpr = expr  # save original expression before we will change it
+        self.__work_segment = "ds"  # default work segment is ds
+        self.__current_size = 0  # current size of argument is not yet found
         self.size_changed = False
         self.needs_dereference = False
         self.itispointer = False
-        indirection : IndirectionType = IndirectionType.VALUE
+        indirection: IndirectionType = IndirectionType.VALUE
         size = self.get_size(expr) if def_size == 0 else def_size  # calculate size if it not provided
-
 
         # calculate the segment register
         segoverride = Token.find_tokens(expr, SEGOVERRIDE)
         sqexpr = Token.find_tokens(expr, SQEXPR)
         if sqexpr:  # if [] then we want to get data using memory pointer
             indirection = IndirectionType.POINTER
-        if segoverride: # check if there is segment override
+        if segoverride:  # check if there is segment override
             expr = Token.remove_tokens(expr, [SEGMENTREGISTER])
 
         offsetdir = Token.find_tokens(expr, OFFSETDIR)
@@ -849,15 +822,16 @@ class Cpp(object):
             expr = offsetdir
 
         ptrdir = Token.find_tokens(expr, PTRDIR)
-        if ptrdir: # word/byte ptr means we want to get data using memory pointer
+        if ptrdir:  # word/byte ptr means we want to get data using memory pointer
             indirection = IndirectionType.POINTER
 
-        if ptrdir or offsetdir or segoverride: # no need it anymore. simplify
+        if ptrdir or offsetdir or segoverride:  # no need it anymore. simplify
             expr = Token.remove_tokens(expr, [PTRDIR, OFFSETDIR, SEGOVERRIDE])
 
         # if it is a destination argument and there is only number then we want to put data using memory pointer
         # represented by integer
-        if destination and isinstance(expr, list) and len(expr) == 1 and isinstance(expr[0], Token) and expr[0].type == INTEGER:
+        if destination and isinstance(expr, list) and len(expr) == 1 and isinstance(expr[0], Token) and expr[
+            0].type == INTEGER:
             indirection = IndirectionType.POINTER
             self.needs_dereference = True
 
@@ -889,11 +863,11 @@ class Cpp(object):
             indirection = IndirectionType.OFFSET
 
         if indirection == IndirectionType.POINTER and not segoverride:
-            regs = Token.find_tokens(expr, REGISTER) # if it was registers used: bp, sp
+            regs = Token.find_tokens(expr, REGISTER)  # if it was registers used: bp, sp
             if regs and any([i in ['bp', 'ebp', 'sp', 'esp'] for i in regs]):  # TODO doublecheck
                 self.__work_segment = "ss"  # and segment is not overriden means base is "ss:"
                 self.isvariable = False
-        if segoverride: # if it was segment override then use provided value
+        if segoverride:  # if it was segment override then use provided value
             self.__work_segment = segoverride[0].value
 
         self.__current_size = size
@@ -941,7 +915,6 @@ class Cpp(object):
 
                 expr = [f'(({self.struct_type}*)raddr({self.__work_segment},'] + [expr]
                 self.needs_dereference = False
-                #self.itispointer = True
         else:
             if islabel:
                 # assert(len(islabel) == 1)
@@ -980,7 +953,7 @@ class Cpp(object):
         #
         name = Token.remove_tokens(name, ['expr'])
 
-        jump_proc = False
+        # jump_proc = False
 
         indirection = -5
 
@@ -1021,9 +994,8 @@ class Cpp(object):
         if indirection == IndirectionType.POINTER:
             name = self.expand(name)
 
-        if indirection == IndirectionType.OFFSET:
-            if labeldir:
-                name = labeldir[0]
+        if indirection == IndirectionType.OFFSET and labeldir:
+            name = labeldir[0]
 
         logging.debug("label %s" % name)
 
@@ -1298,16 +1270,15 @@ class Cpp(object):
                     entry_point = self.__context.entry_point
                 self.body += self.proc_strategy.function_header(name, entry_point)
 
-            #logging.info(name)
-            #self.proc.optimize()
-            self.__unbounded = []
+            # logging.info(name)
+            # self.proc.optimize()
+            # self.__unbounded = []
             self.proc.visit(self, skip)
 
             labels = dict()
             for k, v in list(self.__context.get_globals().items()):
-                if isinstance(v, op.label) and v.used:
-                    if v.proc == self.proc:
-                        labels[k] = v
+                if isinstance(v, op.label) and v.used and v.proc == self.proc:
+                    labels[k] = v
 
             self.body += produce_jump_table(list(labels.items()))
 
@@ -1403,7 +1374,7 @@ class Cpp(object):
                     self.schedule(p)
                 #self.__procs = []
             '''
-            #logging.info("continuing on %s" % name)
+            # logging.info("continuing on %s" % name)
             self.__proc_done.append(name)
             self.__proc(name)
             self.__methods.append(name)
@@ -1678,7 +1649,7 @@ struct Memory{
         return []
 
     def _assignment(self, stmt, dst, src):
-        src = Token.remove_tokens(src, 'expr')
+        src = Token.remove_tokens(src, ['expr'])
         size = self.get_size(src)
         ptrdir = Token.find_tokens(src, 'ptrdir')
         if ptrdir:
