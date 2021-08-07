@@ -11,8 +11,6 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <assert.h>
-#include <initializer_list>
-#include <algorithm>
 #include <cstring>
 
 #ifdef __BORLANDC__
@@ -1162,17 +1160,6 @@ extern db vgaPalette[256*3];
 #define ORG(x) 
 #define XLATB XLAT
 // ---------
-
-template<typename S,typename T>
-void mycopy(T t[], std::initializer_list<S> s)
-{ std::copy(s.begin(), s.end(), t); }
-
-void mycopy(char t[], const char*s);
-
-void mycopy(char t[], std::initializer_list<char> s);
-
-void mycopy(dw t[], std::initializer_list<dw> s);
-void mycopy(dd t[], std::initializer_list<dd> s);
 
 struct /*__attribute__((__packed__))*/ Memory;
 extern Memory& m;

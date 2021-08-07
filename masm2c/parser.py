@@ -782,7 +782,7 @@ class Parser:
         else:
             cur_data_type = DataType.NUMBER  # number
             if elements > 1:
-                cur_data_type = DataType.ARRAY_NUMBER  # array of numbers
+                cur_data_type = DataType.ARRAY  # array
         return cur_data_type
 
     def process_data_tokens(self, v, width):
@@ -928,7 +928,7 @@ class Parser:
             label = self.get_dummy_label()
 
             self.__segment.append(
-                op.Data(label, 'db', DataType.ARRAY_NUMBER, num * [0], num, num, comment='for alignment'))
+                op.Data(label, 'db', DataType.ARRAY, num * [0], num, num, comment='for alignment'))
 
     def get_dummy_label(self):
         Parser.c_dummy_label += 1
@@ -1030,7 +1030,7 @@ class Parser:
         # self.h_data.append(" db " + name + "[" + str(num) + "]; // segment " + name + "\n")
         self.__segment = Segment(name, offset, options=options, segclass=segclass)
         self.segments[name] = self.__segment
-        self.__segment.append(op.Data(name, 'db', DataType.ARRAY_NUMBER, [], 0, 0, comment='segment start zero label'))
+        self.__segment.append(op.Data(name, 'db', DataType.ARRAY, [], 0, 0, comment='segment start zero label'))
         # c, h = self.produce_c_data(name, 'db', 4, [], 0)
         # self.c_data += c
         # self.h_data += h
@@ -1340,14 +1340,17 @@ class Parser:
         args = self.convert_members(d, args)
         d.setvalue(args)
 
+        if number > 1:
+            d = op.Data(label, type, DataType.ARRAY, number * [d], number, number * s.getsize(), comment='object array')
+
         isstruct = len(self.struct_names_stack) != 0
         if isstruct:
             self.current_struct.append(d)
         else:
-            self.set_global(label, op.var(s.getsize(), self.__cur_seg_offset, label, segment=self.__segment_name, \
+            self.set_global(label, op.var(number * s.getsize(), self.__cur_seg_offset, label, segment=self.__segment_name, \
                                           original_type=type))
             self.__segment.append(d)
-            self.__cur_seg_offset += s.getsize()
+            self.__cur_seg_offset += number * s.getsize()
 
     def add_extern(self, label, type):
         strtype = type

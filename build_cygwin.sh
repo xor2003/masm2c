@@ -5,7 +5,7 @@ export CXX="g++ -m32"
 #export SDL="`pkg-config --cflags --libs sdl`"
 export SDL="-DNOSDL"
 
-export OPT="-mno-ms-bitfields  -Wno-multichar $SDL `pkg-config --cflags --libs ncurses` -ggdb3 -O0 -I. -DCHTYPE_16"
+export OPT="-std=c++14 -mno-ms-bitfields  -Wno-multichar $SDL `pkg-config --cflags --libs ncurses` -ggdb3 -O0 -I. -DCHTYPE_16"
 # -DDEBUG=3"
 # -DDEBUG=1
 

@@ -121,7 +121,7 @@ class DataType(Enum):
     ZERO_STRING = 1
     ARRAY_STRING = 2
     NUMBER = 3
-    ARRAY_NUMBER = 4
+    ARRAY = 4
     OBJECT = 5
 
 

@@ -327,6 +327,8 @@ class Cpp(object):
                 m = re.match(r'^([0-9A-Za-z_]+)\s+([0-9A-Za-z_]+)(\[\d+\])?;\n', h)
                 name = m.group(2)
 
+                asgn = re.sub(r'^([0-9A-Za-z_]+)\s+(?:[0-9A-Za-z_]+(\[\d+\])?);\n', r'\g<1> tmp999\g<2>', h)
+
                 if name.startswith('dummy') and c == '0':
                     c = ''
                 else:
@@ -334,9 +336,9 @@ class Cpp(object):
                         if c == '{}':
                             c = ''
                         else:
-                            c = f'   mycopy({name}, {c});'
+                            c = f'    {{{asgn}={c};MYCOPY({name})}}'
                     else:
-                        c = f'   {name}={c};'
+                        c = f'    {name}={c};'
 
                 if c != '':
                     c += "\n"
@@ -1437,6 +1439,9 @@ class Cpp(object):
         hd.close()
 
         cppd.write(f"""
+#include <algorithm>
+#include <iterator>
+#define MYCOPY(x) std::copy(std::begin(tmp999),std::end(tmp999),std::begin(x));
  namespace {{
   struct Initializer {{
    Initializer()
@@ -1702,7 +1707,7 @@ struct Memory{
 
         logging.debug(f"current data type = {internal_data_type}")
         rc, rh = {DataType.NUMBER: Cpp.produce_c_data_number,
-                  DataType.ARRAY_NUMBER: Cpp.produce_c_data_array_number,
+                  DataType.ARRAY: Cpp.produce_c_data_array,
                   DataType.ZERO_STRING: Cpp.produce_c_data_zero_string,
                   DataType.ARRAY_STRING: Cpp.produce_c_data_array_string,
                   DataType.OBJECT: Cpp.produce_c_data_object
@@ -1720,9 +1725,18 @@ struct Memory{
         return rc, rh
 
     @staticmethod
-    def produce_c_data_array_number(data: op.Data):
-        label, data_ctype, _, r, elements, size = data.getdata()
-        rc = '{' + ",".join([str(i) for i in r]) + '}'
+    def produce_c_data_array(data: op.Data):
+        label, data_ctype, _, r, _, _ = data.getdata()
+        rc = '{'
+        for i, v in enumerate(r):
+            if i != 0:
+                rc += ','
+            if isinstance(v, op.Data):
+                c, _, _ = Cpp.produce_c_data_single_(v)
+                rc += c
+            else:
+                rc += str(v)
+        rc += '}'
         # assert(len(r)==elements)
         rh = f'{data_ctype} {label}[{str(len(r))}]'
         return rc, rh
