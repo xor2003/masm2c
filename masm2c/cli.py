@@ -45,7 +45,7 @@ def parse_args(args):
         action="version",
         version="{ver}".format(ver=__version__),
     )
-    aparser.add_argument('filename', nargs='+', help='Assembler source')
+    aparser.add_argument('filenames', nargs='+', help='Assembler source .asm or .seg Segment dump to merge')
     aparser.add_argument(
         "-d",
         "--debug",
@@ -97,23 +97,18 @@ def setup_logging(name, loglevel):
 
 def process(i):
   name = i
-  m = re.match(r'.*?([A-Za-z90-9_.-]+)\.asm', name.lower())
+  m = re.match(r'([A-Za-z90-9_.-]+)\.asm', name.lower())
   outname=""
-  if m is not None:
+  if m:
+     input_file = 'asm'
      outname = m.group(1).strip()
 
-  p = Parser(skip_binary_data = [
-      # These data blobs are not output
-      # dreamweb.asm
-      #	'characterset1',
-   ])
-  #p.strip_path = 3
+  p = Parser()
 
   counter = Parser.c_dummy_label
   p.parse_file(name)
   p.next_pass(counter)
   context = p.parse_file(name)
-  #p.link()
 
   generator = Cpp(context, outfile = outname, blacklist = [], skip_output = [], skip_dispatch_call = True,
                   skip_addr_constants = True,
@@ -135,10 +130,17 @@ def main(args):
 
     args = parse_args(args)
     logging.info(f"Masm source to C source translator V{__version__} {__license__}")
-    for i in args.filename:
-       setup_logging(i, args.loglevel)
-       generator = process(i)
-    generator.produce_data_cpp(args.filename)
+    # Process .asm
+    for i in args.filenames:
+        if i.lower().endswith('.asm'):
+           setup_logging(i, args.loglevel)
+           process(i)
+
+    # Process .seg files
+    generator = Cpp(Parser())
+    generator.produce_data_cpp(args.filenames)
+
+    logging.info(f" *** Finished")
 
 def run():
     """Entry point for console_scripts"""

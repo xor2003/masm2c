@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import division
 from __future__ import print_function
 
 import logging
@@ -294,8 +295,8 @@ class Cpp(object):
         self.__blacklist = blacklist
         self.__failed = list(blacklist)
         self.__skip_output = skip_output
-        self.__skip_dispatch_call = skip_dispatch_call
-        self.__skip_addr_constants = skip_addr_constants
+        #self.__skip_dispatch_call = skip_dispatch_call
+        #self.__skip_addr_constants = skip_addr_constants
         self.__function_name_remapping = function_name_remapping
         self.__translated = list()  # []
         self.__proc_addr = []
@@ -1469,6 +1470,7 @@ class Cpp(object):
         self.generate_data(*self.read_segments(asm_files))
 
     def read_segments(self, asm_files):
+        logging.info(" *** Merging .seg files")
         segments = dict()
         structs = dict()
         for file in asm_files:
@@ -1493,7 +1495,9 @@ class Cpp(object):
             else:
                 if k in allsegments and (v.getsize() > 0 or allsegments[k].getsize() > 0):
                     old = jsonpickle.encode(allsegments[k])
+                    old = re.sub(r'py/id.*', '', old)
                     new = jsonpickle.encode(v)
+                    new = re.sub(r'py/id.*', '', new)
                     if old != new:
                         logging.error(f'Overwritting segment {k}')
                 allsegments[k] = v
@@ -1503,13 +1507,16 @@ class Cpp(object):
             for k, v in newstructs.items():
                 if k in allstructs:
                     old = jsonpickle.encode(allstructs[k])
+                    old = re.sub(r'py/id.*', '', old)
                     new = jsonpickle.encode(v)
+                    new = re.sub(r'py/id.*', '', new)
                     if old != new:
                         logging.error(f"Overwritting structure {k}")
         allstructs.update(newstructs)
         return allsegments, allstructs
 
     def generate_data(self, segments, structures):
+        logging.info(" *** Producing _data.cpp and _data.h files")
         _, data_h, data_cpp_reference, _ = self.produce_c_data(segments)
         fname = "_data.cpp"
         header = "_data.h"
