@@ -1345,6 +1345,8 @@ class Cpp(object):
 /* 
  *
  */
+#include <algorithm>
+#include <iterator>
 """
 
         hid = "__M2C_%s_STUBS_H__" % self.__namespace.upper().replace('-', '_')
