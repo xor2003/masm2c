@@ -830,12 +830,12 @@ class Cpp(object):
 
         # if it is a destination argument and there is only number then we want to put data using memory pointer
         # represented by integer
-        if destination and isinstance(expr, list) and len(expr) == 1 and isinstance(expr[0], Token) and expr[
-            0].type == INTEGER:
+        if isinstance(expr, list) and len(expr) == 1 and isinstance(expr[0], Token) and expr[0].type == INTEGER:
             indirection = IndirectionType.POINTER
             self.needs_dereference = True
 
-        # Simplify by removing square bracets
+
+        # Simplify by removing square brackets
         if sqexpr:
             expr, _ = Token.remove_squere_bracets(expr)
 
@@ -1465,10 +1465,8 @@ class Cpp(object):
                         allsegments[segclass].append(d)
             else:
                 if k in allsegments and (v.getsize() > 0 or allsegments[k].getsize() > 0):
-                    old = jsonpickle.encode(allsegments[k])
-                    old = re.sub(r'py/id.*', '', old)
-                    new = jsonpickle.encode(v)
-                    new = re.sub(r'py/id.*', '', new)
+                    old = jsonpickle.encode(allsegments[k], unpicklable=False)
+                    new = jsonpickle.encode(v, unpicklable=False)
                     if old != new:
                         logging.error(f'Overwritting segment {k}')
                 allsegments[k] = v
@@ -1477,10 +1475,8 @@ class Cpp(object):
         if allstructs != newstructs and set(allstructs.keys()) & set(newstructs.keys()):
             for k, v in newstructs.items():
                 if k in allstructs:
-                    old = jsonpickle.encode(allstructs[k])
-                    old = re.sub(r'py/id.*', '', old)
-                    new = jsonpickle.encode(v)
-                    new = re.sub(r'py/id.*', '', new)
+                    old = jsonpickle.encode(allstructs[k], unpicklable=False)
+                    new = jsonpickle.encode(v, unpicklable=False)
                     if old != new:
                         logging.error(f"Overwritting structure {k}")
         allstructs.update(newstructs)
