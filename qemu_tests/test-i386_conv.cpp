@@ -84,15 +84,19 @@
 #define _BITS 32
 #define _PROTECTED_MODE 1
 
-#include "asm.h"
+#include <asm.h>
 
 struct Memory{
 db stack[STACK_SIZE];
+db heap[HEAP_SIZE];
 };
 
-struct Memory m = {
-{0}
-};
+static struct Memory mm;
+struct Memory& m = mm;
+
+db(& stack)[STACK_SIZE]=m.stack;
+db(& heap)[HEAP_SIZE]=m.heap;
+
 
 _STATE sstate;
 _STATE* _state=&sstate;
