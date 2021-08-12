@@ -220,6 +220,7 @@ def parse_bin(s):
 
 
 def convert_number_to_c(expr, radix=10):
+    origexpr = expr
     if expr == '?':
         return '0'
     try:
@@ -243,7 +244,7 @@ def convert_number_to_c(expr, radix=10):
         else:
             expr = str(int(expr, radix))
     except Exception:
-        logging.error("Failed to parse number " + expr)
+        logging.error(f"Failed to parse number {origexpr} radix {radix}")
 
     return expr
 
@@ -1445,7 +1446,7 @@ class Cpp(object):
         segments = dict()
         structs = dict()
         for file in asm_files:
-            file = file.replace('.asm', '.seg')
+            file = file.replace('.asm', '.seg').replace('.lst', '.seg')
             logging.info(f'     Merging data from {file}')
             with open(file, 'rt') as infile:
                 segments, structures = self.merge_segments(segments, structs, *jsonpickle.decode(infile.read()))

@@ -276,7 +276,7 @@ namedir: NAME LABEL linereminder;
 nearfar: NEAR | FAR ;
 nestedstruct: structkw  LABEL?  linereminder ENDS linereminder | structkw  LABEL?  linereminder structitem+ ENDS linereminder;
 offsetdir: offsetdirtype linereminder;
-offsetdirtype: EVEN | ORG expr| ALIGN expr? ;
+offsetdirtype: directive=EVEN | directive=ORG value=expr| directive=ALIGN value=expr? ;
 offsettype: GROUP | SEGMENT | FLAT ;
 optiondir: OPTION optionlist linereminder;
 optionitem: CASEMAP ':' maptype| DOTNAME | NODOTNAME | EMULATOR | NOEMULATOR | EPILOGUE ':' LABEL| EXPR16 | EXPR32 | LANGUAGE ':' langtype| LJMP | NOLJMP | M510 | NOM510 | NOSIGNEXTEND | OFFSET ':' offsettype| OLDMACROS | NOOLDMACROS | OLDSTRUCTS | NOOLDSTRUCTS | PROC ':' ovisibility| PROLOGUE ':' LABEL| readonly | NOREADONLY | SCOPED | NOSCOPED | SEGMENT ':' segsize| SETIF2 ':' bool;

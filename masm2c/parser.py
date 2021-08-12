@@ -34,7 +34,7 @@ def escape(s):
         return s.translate(s.maketrans({"\\": r"\\"})).replace("''", "'").replace('""', '"')
 
 
-def read_asm_file(file_name):
+def read_whole_file(file_name):
     logging.info("     Reading file %s..." % file_name)
     if sys.version_info >= (3, 0):
         fd = open(file_name, 'rt', encoding="cp437")
@@ -423,7 +423,7 @@ def memberdir(context, nodes, variable, field):
 
 
 def radixdir(context, nodes, value):
-    context.extra.radix = value
+    context.extra.radix = int(value.value.value)
     return nodes
 
 
@@ -442,8 +442,21 @@ def maked(context, nodes):
         return nodes
 
 
+def offsetdirtype(context, nodes, directive, value):
+    logging.debug(f'offsetdirtype {directive} {str(value)}')
+    directive = directive.lower()
+    value = value.value.value if value else 2
+    if directive == 'align':
+        context.extra.align(Parser.parse_int(nodes))
+    elif directive == 'even':
+        context.extra.align(2)
+    elif directive == 'org':
+        context.extra.org(Parser.parse_int(nodes))
+    return nodes
+
+
 actions = {
-    #    "structdup": make_token,
+    "offsetdirtype": offsetdirtype,
     "modeldir": modeldir,
     "dir3": maked,
     "externdef": externdef,
@@ -891,6 +904,9 @@ class Parser:
     def align(self, align_bound=0x10):
         num = (align_bound - (self.__binary_data_size & (align_bound - 1))) if (
                 self.__binary_data_size & (align_bound - 1)) else 0
+        self.org(num)
+
+    def org(self, num):
         if num:
             self.__binary_data_size += num
 
@@ -898,6 +914,16 @@ class Parser:
 
             self.__segment.append(
                 op.Data(label, 'db', DataType.ARRAY, num * [0], num, num, comment='for alignment'))
+
+    def move_offset(self, pointer):
+        if pointer > self.__binary_data_size:
+            num = pointer - self.__binary_data_size
+            self.__binary_data_size += num
+
+            label = self.get_dummy_label()
+
+            self.__segment.append(
+                op.Data(label, 'db', DataType.ARRAY, num * [0], num, num, comment='move_offset'))
 
     def get_dummy_label(self):
         Parser.c_dummy_label += 1
@@ -931,13 +957,20 @@ class Parser:
 
     def parse_file_lines(self, file_name):
         self.__current_file = file_name
-        content = read_asm_file(file_name)
+        content = read_whole_file(file_name)
+        if file_name.lower().endswith('.lst'):  # for .lst provided by IDA move address to comments after ;~
+            # we want exact placement so program could work
+            segmap = dict(
+                x.split(' ') for x in read_whole_file(re.sub(r'\.lst', '.segmap', file_name, flags=re.I)).splitlines())
+            content = re.sub(r'^(?P<segment>[_0-9A-Za-z]+):(?P<offset>[0-9A-F]{4})(?P<remain>.*)',
+                             lambda m: f'{m.group("remain")} ;~ {segmap.get(m.group("segment"))}:{m.group("offset")}',
+                             content, flags=re.MULTILINE)
         self.parse_args_new_data(content, file_name=file_name)
 
     def parse_include_file_lines(self, file_name):
         self.__files.add(self.__current_file)
         self.__current_file = file_name
-        content = read_asm_file(file_name)
+        content = read_whole_file(file_name)
         result = self.parse_file_inside(content, file_name=file_name)
         self.__current_file = self.__files.pop()
         return result
@@ -1163,10 +1196,23 @@ class Parser:
         size = calculate_data_size_new(binary_width, args)
 
         offset = self.__cur_seg_offset
-        logging.debug("args %s offset %d" % (str(args), offset))
+        if not isstruct:
+            m = re.match(r'.* ;~ (?P<segment>[0-9A-F]{4}):(?P<offset>[0-9A-F]{4})', raw)
+            if m:
+                real_offset = int(m.group('offset'), 16)
+                absolute_offset = int(m.group('segment'), 16) * 0x10 + real_offset
+                self.move_offset(absolute_offset)
+                # if self.__cur_seg_offset != int('0x'+m.group('offset'),0):
+                #    logging.warning('Current offset does not equal to required')
+                self.__cur_seg_offset = real_offset
 
-        self.__binary_data_size += size
-        self.__cur_seg_offset += size
+            offset = self.__cur_seg_offset
+
+            logging.debug("args %s offset %d" % (str(args), offset))
+
+            self.__binary_data_size += size
+            self.__cur_seg_offset += size
+
         logging.debug("convert_data %s %d %s" % (label, binary_width, args))
         # original_label = label
 
@@ -1174,7 +1220,7 @@ class Parser:
         data_internal_type = self.identify_data_internal_type(array, elements, is_string)
 
         logging.debug("~size %d elements %d" % (binary_width, elements))
-        if label:
+        if label and not isstruct:
             self.set_global(label, op.var(binary_width, offset, name=label,
                                           segment=self.__segment_name, elements=elements, original_type=type,
                                           filename=self.__current_file, raw=raw, line_number=line_number))

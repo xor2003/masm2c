@@ -97,10 +97,9 @@ def setup_logging(name, loglevel):
 
 def process(i):
   name = i
-  m = re.match(r'([A-Za-z90-9_.-]+)\.asm', name.lower())
+  m = re.match(r'([A-Za-z90-9_.-]+)\.(?:asm|lst)', name.lower())
   outname=""
   if m:
-     input_file = 'asm'
      outname = m.group(1).strip()
 
   p = Parser()
@@ -132,7 +131,7 @@ def main(args):
     logging.info(f"Masm source to C source translator V{__version__} {__license__}")
     # Process .asm
     for i in args.filenames:
-        if i.lower().endswith('.asm'):
+        if i.lower().endswith('.asm') or i.lower().endswith('.lst'):
            setup_logging(i, args.loglevel)
            process(i)
 
