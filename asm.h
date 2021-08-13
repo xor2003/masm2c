@@ -278,6 +278,9 @@ static const uint32_t MASK[]={0, 0xff, 0xffff, 0xffffff, 0xffffffff};
  #endif
  #define STOSD STOS(4,0)
 
+ #define INSB {db averytemporary3 = asm2C_IN(dx);*realAddress(di,es)=averytemporary3;di+=(DF==0)?1:-1;}
+ #define INSW {dw averytemporary3 = asm2C_INW(dx);*realAddress(di,es)=averytemporary3;di+=(DF==0)?2:-2;}
+
 #define LOOP(label) DEC(cx); JNZ(label)
 #define LOOPE(label) --cx; if (cx!=0 && ZF) GOTOLABEL(label) //TODO
 #define LOOPNE(label) --cx; if (cx!=0 && !ZF) GOTOLABEL(label) //TODO

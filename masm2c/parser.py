@@ -276,6 +276,7 @@ def segdir(context, nodes, type):
 
 def segmentdir(context, nodes, name, options):
     logging.debug("segmentdir " + str(nodes) + " ~~")
+
     opts = set()
     segclass = None
     if options:
@@ -288,7 +289,8 @@ def segmentdir(context, nodes, name, options):
                     segclass = segclass[1:-1]
             else:
                 logging.warning('Unknown segment option')
-    context.extra.create_segment(name.value, options=opts, segclass=segclass)
+
+    context.extra.create_segment(name.value, options=opts, segclass=segclass, raw=get_raw(context))
     return nodes
 
 
@@ -924,6 +926,8 @@ class Parser:
 
             self.__segment.append(
                 op.Data(label, 'db', DataType.ARRAY, num * [0], num, num, comment='move_offset'))
+        elif pointer < self.__binary_data_size:
+            logging.warning(f'Maybe wrong offset {pointer} {self.__binary_data_size}')
 
     def get_dummy_label(self):
         Parser.c_dummy_label += 1
@@ -1020,24 +1024,20 @@ class Parser:
         proc.stmts.append(o)
         return o
 
-    def create_segment(self, name, options=None, segclass=None):
+    def create_segment(self, name, options=None, segclass=None, raw=''):
         name = name.lower()
         self.__segment_name = name
         self.align()
+        self.__cur_seg_offset = 0
+        self.adjust_offset_to_real(raw)
         offset = self.__binary_data_size // 16
         logging.debug("segment %s %x" % (name, offset))
         binary_width = 0
-        # num = 0
-        # elf.c_data.append("{}, // segment " + name + "\n")
-        # self.h_data.append(" db " + name + "[" + str(num) + "]; // segment " + name + "\n")
+
         self.__segment = Segment(name, offset, options=options, segclass=segclass)
         self.segments[name] = self.__segment
         self.__segment.append(op.Data(name, 'db', DataType.ARRAY, [], 0, 0, comment='segment start zero label'))
-        # c, h = self.produce_c_data(name, 'db', 4, [], 0)
-        # self.c_data += c
-        # self.h_data += h
-        # self.__binary_data_size += num
-        self.__cur_seg_offset = 0
+
         self.set_global(name, op.var(binary_width, offset, name, issegment=True))
 
     def action_proc(self, name, type, line_number=0):
@@ -1197,14 +1197,7 @@ class Parser:
 
         offset = self.__cur_seg_offset
         if not isstruct:
-            m = re.match(r'.* ;~ (?P<segment>[0-9A-F]{4}):(?P<offset>[0-9A-F]{4})', raw)
-            if m:
-                real_offset = int(m.group('offset'), 16)
-                absolute_offset = int(m.group('segment'), 16) * 0x10 + real_offset
-                self.move_offset(absolute_offset)
-                # if self.__cur_seg_offset != int('0x'+m.group('offset'),0):
-                #    logging.warning('Current offset does not equal to required')
-                self.__cur_seg_offset = real_offset
+            self.adjust_offset_to_real(raw)
 
             offset = self.__cur_seg_offset
 
@@ -1245,6 +1238,16 @@ class Parser:
 
         # logging.debug("~~        self.assertEqual(parser_instance.parse_data_line_whole(line='"+str(line)+"'),"+str(("".join(c), "".join(h), offset2 - offset))+")")
         return data  # c, h, size
+
+    def adjust_offset_to_real(self, raw):
+        m = re.match(r'.* ;~ (?P<segment>[0-9A-F]{4}):(?P<offset>[0-9A-F]{4})', raw)
+        if m:
+            real_offset = int(m.group('offset'), 16)
+            absolute_offset = int(m.group('segment'), 16) * 0x10 + real_offset
+            self.move_offset(absolute_offset)
+            if self.__cur_seg_offset > real_offset:
+                logging.warning('Current offset does not equal to required')
+            self.__cur_seg_offset = real_offset
 
     '''
     def link(self):

@@ -2,6 +2,10 @@
 
 _TEXT   segment use16 public 'CODE' ;IGNORE
 assume  cs:_TEXT,ds:_DATA
+@df@@@@9 proc
+ret
+@df@@@@9 endp
+
 start proc near
 
 mov ax,_DATA
@@ -40,9 +44,6 @@ call near ptr [cs:jtable+bx]
 jmp next
 mov bp,31
 
-@df@@@@9 proc
-ret
-@df@@@@9 endp
 
 next:
 

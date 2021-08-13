@@ -68,7 +68,7 @@ def produce_jump_table(globals):
     for name, label in offsets:
         logging.debug(f'{name}, {label}')
         result += "        case k%s: \tgoto %s;\n" % (name, cpp_mangle_label(label))
-    result += "        default: log_error(\"Jump/call to nowhere %d\\n\", __disp);stackDump(_state); abort();\n"
+    result += "        default: log_error(\"Jump/call to nowhere to 0x%x. See line %d\\n\", __disp, __LINE__);stackDump(_state); abort();\n"
     result += "    };\n}\n"
     return result
 
@@ -115,9 +115,10 @@ class SingleProcStrategy:
         return ''
 
     def produce_global_jump_table(self, globals):
-        return produce_jump_table(globals)
+        return ""
+        #return produce_jump_table(globals)
 
-    def write_declarations(self, procs):
+    def write_declarations(self, procs, context):
         return ""
 
     def get_strategy(self):
@@ -180,7 +181,7 @@ class SeparateProcStrategy:
         for name, label in offsets:
             logging.debug(f'{name}, {label}')
             result += "        case k%s: \t%s(0, _state); break;\n" % (name, cpp_mangle_label(label))
-        result += "        default: log_error(\"Jump/call to nothere %d\\n\", __disp);stackDump(_state); abort();\n"
+        result += "        default: log_error(\"Jump/call to nowhere to 0x%x. See line %d\\n\", __disp, __LINE__);stackDump(_state); abort();\n"
         result += "     };\n}\n"
         return result
 
@@ -276,9 +277,17 @@ def cpp_mangle_label(name):
 class Cpp(object):
     ''' Visitor for all operations to produce C++ code '''
 
-    def __init__(self, context, outfile="", skip_first=0, blacklist=[], skip_output=None, skip_dispatch_call=False,
-                 skip_addr_constants=False, header_omit_blacklisted=False, function_name_remapping=None,
+    def __init__(self, context, outfile="", skip_output=None, function_name_remapping=None,
                  proc_strategy=SeparateProcStrategy()):
+        #proc_strategy = SingleProcStrategy()):
+        '''
+
+        :param context: pointer to Parser data
+        :param outfile: Output filename
+        :param skip_output: List of functions to skip at output
+        :param function_name_remapping: Dict for how to rename functions
+        :param proc_strategy: Strategy to Single/Separate functions
+        '''
 
         self.__namespace = outfile
         self.__indirection: IndirectionType = IndirectionType.VALUE
@@ -289,18 +298,13 @@ class Cpp(object):
 
         self.proc_strategy = proc_strategy
 
-        # self.__cdata_seg, self.__hdata_seg, self.__rdata_seg = self.produce_c_data(context.segments)
-
         self.__procs = context.proc_list
         self.__proc_queue = []
         self.__proc_done = []
-        # self.__blacklist = blacklist
-        self.__failed = list(blacklist)
+        self.__failed = []
         self.__skip_output = skip_output
-        # self.__skip_dispatch_call = skip_dispatch_call
-        # self.__skip_addr_constants = skip_addr_constants
         self.__function_name_remapping = function_name_remapping
-        self.__translated = list()  # []
+        self.__translated = []
         self.__proc_addr = []
         self.__used_data_offsets = set()
         self.__methods = []

@@ -109,10 +109,7 @@ def process(i):
   p.next_pass(counter)
   context = p.parse_file(name)
 
-  generator = Cpp(context, outfile = outname, blacklist = [], skip_output = [], skip_dispatch_call = True,
-                  skip_addr_constants = True,
-                  header_omit_blacklisted = True,
-                  function_name_remapping = {})
+  generator = Cpp(context, outfile = outname, skip_output = [], function_name_remapping = {})
   generator.generate('mainproc') #start routine
   return generator
 
