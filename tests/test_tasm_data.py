@@ -1038,6 +1038,8 @@ class ParserDataTest(unittest.TestCase):
     def test_data_15920(self):
         self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 000,009,000,000,009,021,000,009,042,000,009,063,009,009,000,009")), ('{0,9,0,0,9,21,0,9,42,0,9,63,9,9,0,9}, // dummy1\n', 'db dummy1[16];\n', 16))
 
+    def test_data_15930(self):
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 7,'¬¬êê',16,'éÇÇÇ',0")), ('"\\x07\\xaa\\xaa\\x88\\x88\\x10\\x82\\x80\\x80\\x80", // dummy1\n', 'char dummy1[11];\n', 11))
 
 if __name__ == "__main__":
     unittest.main()

@@ -449,11 +449,11 @@ def offsetdirtype(context, nodes, directive, value):
     directive = directive.lower()
     value = value.value.value if value else 2
     if directive == 'align':
-        context.extra.align(Parser.parse_int(nodes))
+        context.extra.align(Parser.parse_int(value))
     elif directive == 'even':
         context.extra.align(2)
     elif directive == 'org':
-        context.extra.org(Parser.parse_int(nodes))
+        context.extra.org(Parser.parse_int(value))
     return nodes
 
 
@@ -556,6 +556,9 @@ class Parser:
     c_dummy_label = 0
 
     def __init__(self, skip_binary_data=[]):
+        '''
+        Assembler parser
+        '''
         self.__globals = {}
         self.__offsets = {}
         self.pass_number = 0
@@ -569,6 +572,12 @@ class Parser:
         self.next_pass(Parser.c_dummy_label)
 
     def next_pass(self, counter):
+        '''
+        Initializer for each pass
+
+        :param counter: Labels id counter
+        :return:
+        '''
         self.pass_number += 1
         logging.info(f"     Pass number {self.pass_number}")
         Parser.c_dummy_label = counter
@@ -583,25 +592,30 @@ class Parser:
         self.entry_point = "mainproc_begin"
         self.main_file = False
         self.__proc_stack = []
-        # self.proc = None
+
         nname = "mainproc"
         self.proc = Proc(nname)
         self.proc_list.append(nname)
         self.__proc_stack.append(self.proc)
         self.set_global(nname, self.proc)
-        self.__binary_data_size = 0
 
+        self.__binary_data_size = 0
         self.__cur_seg_offset = 0
         self.__c_dummy_jump_label = 0
+
         self.__segment_name = "default_seg"
         self.__segment = Segment(self.__segment_name, 0, comment="Artificial initial segment")
         self.segments[self.__segment_name] = self.__segment
+
         self.used = False
-        # self.__pgcontext = PGContext(extra = self)
+
         self.radix = 10
+
         self.current_macro = None
         self.current_struct = None
+
         self.struct_names_stack = set()
+
         self.__current_file = ''
 
     def visible(self):
@@ -882,26 +896,24 @@ class Parser:
         if name == '@@':
             name = self.get_dummy_jumplabel()
         name = self.mangle_label(name)
-        if True:  # not (name in self.__label_to_skip):
-            logging.debug("offset %s -> %s" % (name, "&m." + name.lower() + " - &m." + self.__segment_name))
-            '''
-            if self.proc is None:
-                    nname = "mainproc"
-                    self.proc = proc(nname)
-                    #logging.debug "procedure %s, #%d" %(name, len(self.proc_list))
-                    self.proc_list.append(nname)
-                    self.set_global(nname, self.proc)
-            '''
-            if self.proc:
-                self.proc.add_label(name, isproc)
-                self.set_offset(name,
-                                ("&m." + name.lower() + " - &m." + self.__segment_name, self.proc, self.__offset_id))
-                self.set_global(name, op.label(name, self.proc, line_number=self.__offset_id, far=far))
-                self.__offset_id += 1
-            else:
-                logging.error("!!! Label %s is outside the procedure" % name)
+
+        logging.debug("offset %s -> %s" % (name, "&m." + name.lower() + " - &m." + self.__segment_name))
+        '''
+        if self.proc is None:
+                nname = "mainproc"
+                self.proc = proc(nname)
+                #logging.debug "procedure %s, #%d" %(name, len(self.proc_list))
+                self.proc_list.append(nname)
+                self.set_global(nname, self.proc)
+        '''
+        if self.proc:
+            self.proc.add_label(name, isproc)
+            self.set_offset(name,
+                            ("&m." + name.lower() + " - &m." + self.__segment_name, self.proc, self.__offset_id))
+            self.set_global(name, op.label(name, self.proc, line_number=self.__offset_id, far=far))
+            self.__offset_id += 1
         else:
-            logging.info("skipping binary data for %s" % (name,))
+            logging.error("!!! Label %s is outside the procedure" % name)
 
     def align(self, align_bound=0x10):
         num = (align_bound - (self.__binary_data_size & (align_bound - 1))) if (
@@ -1142,7 +1154,7 @@ class Parser:
     default_seg segment
     ''' + line + '''
     default_seg ends
-    end startd
+    end start
     ''')
         except Exception as e:
             print(str(e))
@@ -1350,8 +1362,6 @@ class Parser:
             args = args[3]
         args = Token.remove_tokens(args, ['structinstance'])
 
-        # if number > 1:
-        #    args = number * [args]
         d = op.Data(label, type, DataType.OBJECT, args, 1, s.getsize(), comment='struct instance')
         members = [deepcopy(i) for i in s.getdata().values()]
         d.setmembers(members)

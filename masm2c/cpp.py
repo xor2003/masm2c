@@ -61,8 +61,8 @@ def produce_jump_table(globals):
 """
     offsets = []
     for k, v in globals:
-        k = re.sub(r'[^A-Za-z0-9_]', '_', k)
         if isinstance(v, op.label):
+            k = re.sub(r'[^A-Za-z0-9_]', '_', k)
             offsets.append((k.lower(), k))
     offsets = sorted(offsets, key=lambda t: t[1])
     for name, label in offsets:
@@ -835,7 +835,7 @@ class Cpp(object):
 
         # if it is a destination argument and there is only number then we want to put data using memory pointer
         # represented by integer
-        if isinstance(expr, list) and len(expr) == 1 and isinstance(expr[0], Token) and expr[0].type == INTEGER:
+        if isinstance(expr, list) and len(expr) == 1 and isinstance(expr[0], Token) and expr[0].type == INTEGER and segoverride:
             indirection = IndirectionType.POINTER
             self.needs_dereference = True
 
@@ -978,9 +978,7 @@ class Cpp(object):
                 g = self.__context.get_global(labeldir[0])
                 if isinstance(g, op.var):
                     indirection = IndirectionType.POINTER  # []
-                elif isinstance(g, op.label):
-                    indirection = IndirectionType.OFFSET  # direct using number
-                elif isinstance(g, proc_module.Proc):
+                elif isinstance(g, (op.label, proc_module.Proc)):
                     indirection = IndirectionType.OFFSET  # direct using number
             else:
                 name = labeldir[0]
@@ -1281,11 +1279,11 @@ class Cpp(object):
             self.proc.visit(self, skip)
 
             labels = dict()
-            for k, v in list(self.__context.get_globals().items()):
+            for k, v in self.__context.get_globals().items():
                 if isinstance(v, op.label) and v.used and v.proc == self.proc:
                     labels[k] = v
 
-            self.body += produce_jump_table(list(labels.items()))
+            self.body += produce_jump_table(labels.items())
 
             # self.body += self.proc_strategy.function_end()
 
@@ -1535,8 +1533,8 @@ db(& heap)[HEAP_SIZE]=m.heap;
         offsets = sorted(offsets, key=lambda t: t[1])
         '''
         for k, v in list(self.__context.get_globals().items()):
-            k = re.sub(r'[^A-Za-z0-9_]', '_', k)
             if isinstance(v, (op.label, proc_module.Proc)) and v.used:
+                k = re.sub(r'[^A-Za-z0-9_]', '_', k)
                 offsets.append(k.lower())
         offsets = sorted(offsets)
         labeloffsets = "static const uint16_t kbegin = 0x1001;\n"
@@ -1762,8 +1760,8 @@ struct Memory{
                 vvv = r"\r"
             elif c == 10:
                 vvv = r"\n"
-            elif c < 10:
-                vvv = "\\{:01x}".format(c)
+            elif c == 0:
+                vvv = r"\0"
             elif c < 32:
                 vvv = "\\x{:02x}".format(c)
             else:
@@ -1773,7 +1771,8 @@ struct Memory{
             if c in ["\'", '\"', '\\']:
                 vvv = "\\" + c
             elif ord(c) > 127:
-                vvv = '\\' + hex(ord(c.encode('cp437', 'backslashreplace')))[1:]
+                t = c.encode('cp437', 'backslashreplace')
+                vvv = '\\' + hex(ord(t))[1:]
                 # vvv = c
             elif c == '\0':
                 vvv = '\\0'

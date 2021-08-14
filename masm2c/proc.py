@@ -18,7 +18,16 @@ class Proc(object):
     last_addr = 0xc000
     elements = 1  # how many
 
-    def __init__(self, name, far=False, line_number=0, extern=False, id=0):
+    def __init__(self, name, far=False, line_number=0, extern=False):
+        '''
+        Procedure object
+
+        :param name: Name
+        :param far: is Far?
+        :param line_number: Original line number
+        :param extern: is Extern?
+        :param id:
+        '''
         self.name = name
         self.original_name = name
         #self.__calls = []
@@ -35,7 +44,6 @@ class Proc(object):
     def add_label(self, label, proc, line_number=0):
         self.stmts.append(op.label(label, proc=proc, line_number=line_number))
         self.labels.add(label)
-
 
 
     def optimize(self, keep_labels=[]):
