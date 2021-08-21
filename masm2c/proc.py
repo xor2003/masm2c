@@ -18,33 +18,43 @@ class Proc(object):
     last_addr = 0xc000
     elements = 1  # how many
 
-    def __init__(self, name, far=False, line_number=0, extern=False):
+    def __init__(self, name, far=False, line_number=0, extern: bool = False):
         '''
         Procedure object
 
         :param name: Name
-        :param far: is Far?
+        :param far: is Far proc?
         :param line_number: Original line number
-        :param extern: is Extern?
-        :param id:
+        :param extern: is Extern proc?
         '''
         self.name = name
         self.original_name = name
-        #self.__calls = []
+
         self.stmts = []
-        self.labels = set()
-        self.retlabels = set()
-        self.offset = Proc.last_addr
-        Proc.last_addr += 4
+        self.provided_labels = set()
         self.line_number = line_number
         self.far = far
         self.used = False
         self.extern = extern
+        self.used_labels = set()
+        self.group = None
 
-    def add_label(self, label, proc, line_number=0):
-        self.stmts.append(op.label(label, proc=proc, line_number=line_number))
-        self.labels.add(label)
+        self.offset = Proc.last_addr
+        Proc.last_addr += 4
+        # self.retlabels = set()
 
+    def merge(self, newname, other):
+        self.name, self.original_name = newname, newname
+        self.stmts += other.stmts
+        self.provided_labels |= other.provided_labels
+        self.used_labels |= other.used_labels
+        self.extern = other.extern
+        #self.group = None
+        del other
+
+    def add_label(self, name, label):
+        self.stmts.append(label)
+        self.provided_labels.add(name)
 
     def optimize(self, keep_labels=[]):
         logging.info("optimizing...")
@@ -70,7 +80,6 @@ class Proc(object):
         # o.line_number = line_number
         # self.stmts.append(o)
         return o
-    '''
 
     def parse_extract_label(self, stmt):
         r = label_re.search(stmt)
@@ -81,6 +90,7 @@ class Proc(object):
             # print "remains: %s" %r.group(2)
             stmt = r.group(2).strip()
         return stmt
+    '''
 
     def split_create_instruction(self, stmt):
         # s = [stmt.replace("\x00", " ") for stmt in
@@ -112,7 +122,7 @@ class Proc(object):
             if re.match(r"^(j[a-z]+|loop[a-z]*)$", cmd.lower()):
                 cl = getattr(op, '_jump')
             else:
-                cl = getattr(op, '_instruction'+str(len(args)))
+                cl = getattr(op, '_instruction' + str(len(args)))
         except:
             raise Exception("unknown command: " + cmd.lower())
         return cl
@@ -125,7 +135,7 @@ class Proc(object):
     def create_equ_op(label, value, line_number):  # TODO Move it to parser
         logging.debug(label + " " + str(value))
         o = op._equ([label, value])
-        #value = cpp.convert_number_to_c(value)
+        # value = cpp.convert_number_to_c(value)
         ptrdir = Token.find_tokens(value, PTRDIR)
         if ptrdir:
             if isinstance(ptrdir[0], Token):
@@ -142,7 +152,7 @@ class Proc(object):
 
     def create_assignment_op(self, label, value, line_number=0):
         logging.debug(label + " " + str(value))
-        #value = cpp.convert_number_to_c(value)
+        # value = cpp.convert_number_to_c(value)
         o = op._assignment([label, value])
         ptrdir = Token.find_tokens(value, PTRDIR)
         if ptrdir:
@@ -183,7 +193,6 @@ class Proc(object):
             except Exception as ex:
                 logging.error(f'Exception in {stmt.filename}:{stmt.line_number} {stmt.raw_line}\n {ex.args}')
                 raise
-
 
             try:  # trying to add command and comment
                 if stmt.raw_line or stmt.line_number != 0:

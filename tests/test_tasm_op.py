@@ -376,7 +376,7 @@ class ParserTest(unittest.TestCase):
         parser_instance = Parser([])
 
         cpp_instance = cpp.Cpp(parser_instance)
-        proc_instance = Proc('mainproc', False)
+        proc_instance = Proc('mainproc')
         cpp_instance.proc = proc_instance
         parser_instance.set_global("_data", op.var(1, 0, issegment=True))
         parser_instance.set_global("var1", op.var(size=1, offset=1, name="var1", segment="_data", elements=1))

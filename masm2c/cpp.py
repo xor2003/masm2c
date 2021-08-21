@@ -116,7 +116,7 @@ class SingleProcStrategy:
 
     def produce_global_jump_table(self, globals):
         return ""
-        #return produce_jump_table(globals)
+        # return produce_jump_table(globals)
 
     def write_declarations(self, procs, context):
         return ""
@@ -279,7 +279,7 @@ class Cpp(object):
 
     def __init__(self, context, outfile="", skip_output=None, function_name_remapping=None,
                  proc_strategy=SeparateProcStrategy()):
-        #proc_strategy = SingleProcStrategy()):
+        # proc_strategy = SingleProcStrategy()):
         '''
 
         :param context: pointer to Parser data
@@ -835,10 +835,10 @@ class Cpp(object):
 
         # if it is a destination argument and there is only number then we want to put data using memory pointer
         # represented by integer
-        if isinstance(expr, list) and len(expr) == 1 and isinstance(expr[0], Token) and expr[0].type == INTEGER and segoverride:
+        if isinstance(expr, list) and len(expr) == 1 and isinstance(expr[0], Token) and expr[
+            0].type == INTEGER and segoverride:
             indirection = IndirectionType.POINTER
             self.needs_dereference = True
-
 
         # Simplify by removing square brackets
         if sqexpr:
@@ -1010,8 +1010,8 @@ class Cpp(object):
             if isinstance(g, proc_module.Proc):
                 return name, g.far
 
-        if name in self.proc.retlabels:
-            return "return /* (%s) */" % name, far
+        # if name in self.proc.retlabels:
+        #    return "return /* (%s) */" % name, far
 
         if hasglobal:
             if isinstance(g, op.label):
@@ -1028,9 +1028,8 @@ class Cpp(object):
 
         return (name, far)
 
-    def _label(self, name, proc):
-        ret = ""
-        if proc:
+    def _label(self, name, isproc):
+        if isproc:
             ret = self.proc_strategy.produce_proc_start(name)
         else:
             ret = "%s:\n" % cpp_mangle_label(name)
@@ -1254,8 +1253,8 @@ class Cpp(object):
 
                 self.proc = proc_module.Proc(name)
                 self.proc.stmts = copy(src_proc.stmts)
-                self.proc.labels = copy(src_proc.labels)
-                self.proc.retlabels = copy(src_proc.retlabels)
+                self.proc.provided_labels = copy(src_proc.provided_labels)
+                # self.proc.retlabels = copy(src_proc.retlabels)
 
             self.__proc_addr.append((name, self.proc.offset))
             self.body = ""
@@ -1366,20 +1365,11 @@ class Cpp(object):
 
         # self.__proc_queue.append(start)
         # while len(self.__proc_queue):
+        self.merge_procs()
+
         for name in self.__procs:
-            '''
-            name = self.__proc_queue.pop()
-            if name in self.__failed or name in self.__proc_done:
-                continue
-            if len(self.__proc_queue) == 0 and len(self.__procs) > 0:
-                logging.info("queue's empty, adding remaining __procs:")
-                for p in self.__procs:
-                    self.schedule(p)
-                #self.__procs = []
-            '''
-            # logging.info("continuing on %s" % name)
-            self.__proc_done.append(name)
             self.__proc(name)
+            self.__proc_done.append(name)
             self.__methods.append(name)
         # self.write_stubs("_stubs.cpp", self.__failed)
         self.__methods += self.__failed
@@ -1434,6 +1424,72 @@ class Cpp(object):
         cppd.close()
 
         self.write_segment(self.__context.segments, self.__context.structures)
+
+    def merge_procs(self):
+        '''
+        Merge procs in case they have cross jumps since incompatible with C
+
+        :return:
+        '''
+        for name in self.__procs:
+            proc = self.__context.get_global(name)
+
+            labels = set()  # leave only real labels
+            for label_name in proc.used_labels:
+                label = self.__context.get_global(label_name)
+                if isinstance(label, op.label):
+                    labels.add(label_name)
+            proc.used_labels = labels
+
+            missing = proc.used_labels - proc.provided_labels
+            proc_to_merge = set()
+            if missing:
+                proc_to_merge.add(name)
+                for l in missing:
+                    label = self.__context.get_global(l)
+                    proc_to_merge.add(label.proc.name)
+
+            proc.group = proc_to_merge
+        changed = True
+        iteration = 0
+        while changed:
+            iteration += 1
+            logging.info(f"     Identifing proc to merge #{iteration}")
+            changed = False
+            for name in self.__procs:
+                proc = self.__context.get_global(name)
+                if proc.group:
+                    for p_name in proc.group:
+                        if name != p_name:
+                            p = self.__context.get_global(p_name)
+                            if not p.group:
+                                p.group = set()
+                            if p.group != proc.group:
+                                p.group.update(proc.group)
+                                changed = True
+        for name in self.__procs:
+            proc = self.__context.get_global(name)
+            if proc.group:
+                logging.info(f"     ~{name}")
+                for p_name in proc.group:
+                    logging.info(f"       {p_name}")
+        groups = []
+        groups_id = 1
+        grouped = set()
+        for name in self.__procs:
+            if name not in grouped:
+                proc = self.__context.get_global(name)
+                if proc.group:
+                    group_name = f'_group{groups_id}'
+                    grouped |= proc.group
+                    for p in proc.group:
+                        if p != name:
+                            proc.merge(group_name, self.__context.get_global(p))
+                    groups += [group_name]
+                    self.__context.set_global(group_name, proc)
+                    groups_id += 1
+        self.__procs = [x for x in self.__procs if x not in grouped]
+        self.__procs += groups
 
     def write_segment(self, segments, structs):
         jsonpickle.set_encoder_options('json', indent=2)

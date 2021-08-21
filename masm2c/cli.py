@@ -11,8 +11,8 @@ import argparse
 import logging
 import sys
 
-#from import __version__
-__version__='0.9.4'
+# from import __version__
+__version__ = '0.9.4'
 
 __author__ = "x0r"
 __copyright__ = "x0r"
@@ -20,14 +20,16 @@ __license__ = "GPL2+"
 
 _logger = logging.getLogger(__name__)
 
+
 def tracefunc(frame, event, arg, indent=[0]):
-      if event == "call":
-          indent[0] += 2
-          print("-" * indent[0] + "> call function", frame.f_code.co_filename, frame.f_code.co_name)
-      elif event == "return":
-          print("<" + "-" * indent[0], "exit function", frame.f_code.co_name)
-          indent[0] -= 2
-      return tracefunc
+    if event == "call":
+        indent[0] += 2
+        print("-" * indent[0] + "> call function", frame.f_code.co_filename, frame.f_code.co_name)
+    elif event == "return":
+        print("<" + "-" * indent[0], "exit function", frame.f_code.co_name)
+        indent[0] -= 2
+    return tracefunc
+
 
 def parse_args(args):
     """Parse command line parameters
@@ -59,59 +61,61 @@ def parse_args(args):
 
 
 def setup_logging(name, loglevel):
-  """Setup basic logging
+    """Setup basic logging
 
-    Args:
-      loglevel (int): minimum loglevel for emitting messages
-  """
-  root = logging.getLogger()
-  root.setLevel(loglevel)
+      Args:
+        loglevel (int): minimum loglevel for emitting messages
+    """
+    root = logging.getLogger()
+    root.setLevel(loglevel)
 
-  err_handler = logging.StreamHandler(sys.stderr)
-  err_handler.setLevel(logging.ERROR)
-  formatter = logging.Formatter("[%(filename)s:%(lineno)s - %(funcName)20s()] %(message)s")
-  err_handler.setFormatter(formatter)
-  #root.addHandler(err_handler)
+    err_handler = logging.StreamHandler(sys.stderr)
+    err_handler.setLevel(logging.ERROR)
+    formatter = logging.Formatter("[%(filename)s:%(lineno)s - %(funcName)20s()] %(message)s")
+    err_handler.setFormatter(formatter)
+    # root.addHandler(err_handler)
 
-  out_handler = logging.StreamHandler(sys.stdout)
-  #out_handler.setFormatter(logging.Formatter("%(message)s"))
-  out_handler.setLevel(loglevel)
+    out_handler = logging.StreamHandler(sys.stdout)
+    # out_handler.setFormatter(logging.Formatter("%(message)s"))
+    out_handler.setLevel(loglevel)
 
-  if len(name):
-      file_handler = logging.FileHandler(name+'.log', 'w', 'utf-8')
-      file_handler.setLevel(loglevel)
-      formatter = logging.Formatter("[%(filename)s:%(lineno)s - %(funcName)20s()] %(message)s")
-      file_handler.setFormatter(formatter)
+    if len(name):
+        file_handler = logging.FileHandler(name + '.log', 'w', 'utf-8')
+        file_handler.setLevel(loglevel)
+        formatter = logging.Formatter("[%(filename)s:%(lineno)s - %(funcName)20s()] %(message)s")
+        file_handler.setFormatter(formatter)
 
-      logging.basicConfig(
-          handlers=[err_handler, out_handler, file_handler],
-          level=loglevel,
-          force=True
-      )
-  else:
-      logging.basicConfig(
-         handlers=[err_handler, out_handler],
-         level=loglevel,
-         force = True
-      )
+        logging.basicConfig(
+            handlers=[err_handler, out_handler, file_handler],
+            level=loglevel,
+            force=True
+        )
+    else:
+        logging.basicConfig(
+            handlers=[err_handler, out_handler],
+            level=loglevel,
+            force=True
+        )
+
 
 def process(i):
-  name = i
-  m = re.match(r'([A-Za-z90-9_.-]+)\.(?:asm|lst)', name.lower())
-  outname=""
-  if m:
-     outname = m.group(1).strip()
+    name = i
+    m = re.match(r'(.+)\.(?:asm|lst)', name.lower())
+    outname = ""
+    if m:
+        outname = m.group(1).strip()
 
-  p = Parser()
+    p = Parser()
 
-  counter = Parser.c_dummy_label
-  p.parse_file(name)
-  p.next_pass(counter)
-  context = p.parse_file(name)
+    counter = Parser.c_dummy_label
+    p.parse_file(name)
+    p.next_pass(counter)
+    context = p.parse_file(name)
 
-  generator = Cpp(context, outfile = outname, skip_output = [], function_name_remapping = {})
-  generator.generate('mainproc') #start routine
-  return generator
+    generator = Cpp(context, outfile=outname, skip_output=[], function_name_remapping={})
+    generator.generate('mainproc')  # start routine
+    return generator
+
 
 def main(args):
     """Main entry point allowing external calls
@@ -121,22 +125,23 @@ def main(args):
     """
     setup_logging('', logging.INFO)
     if sys.version_info[0] >= 3:
-       sys.stdout.reconfigure(encoding='utf-8')
-       sys.stderr.reconfigure(encoding='utf-8')
+        sys.stdout.reconfigure(encoding='utf-8')
+        sys.stderr.reconfigure(encoding='utf-8')
 
     args = parse_args(args)
     logging.info(f"Masm source to C source translator V{__version__} {__license__}")
     # Process .asm
     for i in args.filenames:
         if i.lower().endswith('.asm') or i.lower().endswith('.lst'):
-           setup_logging(i, args.loglevel)
-           process(i)
+            setup_logging(i, args.loglevel)
+            process(i)
 
     # Process .seg files
     generator = Cpp(Parser())
     generator.produce_data_cpp(args.filenames)
 
     logging.info(f" *** Finished")
+
 
 def run():
     """Entry point for console_scripts"""

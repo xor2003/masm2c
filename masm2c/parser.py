@@ -329,7 +329,7 @@ def assdir(context, nodes, name, value):
 
 def labeldef(context, nodes, name):
     logging.debug("labeldef " + str(nodes) + " ~~")
-    return context.extra.action_label(name.value)
+    return context.extra.action_label(name.value, isproc=False)
 
 
 def instrprefix(context, nodes):
@@ -680,7 +680,6 @@ class Parser:
     def set_offset(self, name, value):
         if len(name) == 0:
             raise NameError("empty name is not allowed")
-        name = name.lower()
         logging.debug("adding offset %s -> %s" % (name, value))
         if name in self.__offsets and self.pass_number == 1:
             raise LookupError("offset %s was already defined", name)
@@ -897,6 +896,8 @@ class Parser:
             name = self.get_dummy_jumplabel()
         name = self.mangle_label(name)
 
+        #self.proc.provided_labels.add(name)
+
         logging.debug("offset %s -> %s" % (name, "&m." + name.lower() + " - &m." + self.__segment_name))
         '''
         if self.proc is None:
@@ -907,10 +908,11 @@ class Parser:
                 self.set_global(nname, self.proc)
         '''
         if self.proc:
-            self.proc.add_label(name, isproc)
+            l = op.label(name, proc=self.proc, isproc=isproc, line_number=self.__offset_id, far=far)
+            self.proc.add_label(name, l)
             self.set_offset(name,
                             ("&m." + name.lower() + " - &m." + self.__segment_name, self.proc, self.__offset_id))
-            self.set_global(name, op.label(name, self.proc, line_number=self.__offset_id, far=far))
+            self.set_global(name, l)
             self.__offset_id += 1
         else:
             logging.error("!!! Label %s is outside the procedure" % name)
@@ -1398,7 +1400,7 @@ class Parser:
                 logging.debug("procedure %s, extern" % label)
                 self.reset_global(label, proc)
             else:
-                self.reset_global(label, op.label(label, self.proc))
+                self.reset_global(label, op.label(label, proc=self.proc, isproc=True))
 
     def add_call_to_entrypoint(self):
         if self.__separate_proc:
@@ -1422,9 +1424,17 @@ class Parser:
         o.line_number = line_number
         if self.current_macro == None:
             self.proc.stmts.append(o)
+
+            self.collect_labels(self.proc.used_labels, o)
         else:
             self.current_macro.instructions.append(o)
         return o
+
+    def collect_labels(self, target, operation):
+        for arg in operation.args:
+            s = Token.find_tokens(arg, 'LABEL')
+            if s:
+                target.add(self.mangle_label(s[0]))
 
     def action_ends(self):
         if len(self.struct_names_stack):  # if it is not a structure then it is end of segment

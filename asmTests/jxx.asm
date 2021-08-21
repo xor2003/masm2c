@@ -6,10 +6,22 @@ assume  cs:_TEXT,ds:_DATA
 ret
 @df@@@@9 endp
 
+test2 proc
+mylabel1::
+jmp mylabel2
+test2 endp
+
+test3 proc
+jmp mylabel1
+test3 endp
+
 start proc near
 
 mov ax,_DATA
 mov ds,ax
+
+jmp mylabel1
+mylabel2::
 
 mov ax, [cs:jtable+bx]
 

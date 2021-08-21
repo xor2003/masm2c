@@ -34,7 +34,7 @@ class ParserTest(unittest.TestCase):
         unittest.TestCase.setUp(self)
         self.__class__.parser = Parser([])
         self.__class__.cpp = cpp.Cpp(self.__class__.parser)
-        self.__class__.proc = Proc('mainproc', False)
+        self.__class__.proc = Proc('mainproc')
         self.__class__.cpp.proc = self.__class__.proc
 
         self.__class__.parser.action_assign_test(line_number=0, label='B', value=u'1')

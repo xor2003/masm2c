@@ -341,7 +341,7 @@ class _jnb(basejmp):
     def visit(self, visitor):
         return visitor._jnc(*self.args)
 
-
+'''
 def flatten(s):
     if not s:
         return s
@@ -362,7 +362,7 @@ def flattenpush(s):  # TODO will work most of the time
     if ressec:
         res.append(ressec)
     return res
-
+'''
 
 '''
 class _push(baseop):
@@ -554,17 +554,18 @@ class _nop(baseop):
 
 class label(baseop):
 
-    def __init__(self, name, proc, line_number=0, far=False):
+    def __init__(self, name, proc=None, isproc=False, line_number=0, far=False):
         super().__init__()
         self.name = name
         self.original_name = name
         self.line_number = line_number
         self.far = far
         self.proc = proc
+        self.isproc = isproc
         self.used = False
 
     def visit(self, visitor):
-        return visitor._label(self.name, self.proc)
+        return visitor._label(self.name, self.isproc)
 
 
 class _lea(baseop):
