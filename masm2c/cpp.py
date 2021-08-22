@@ -68,7 +68,7 @@ def produce_jump_table(globals):
     for name, label in offsets:
         logging.debug(f'{name}, {label}')
         result += "        case k%s: \tgoto %s;\n" % (name, cpp_mangle_label(label))
-    result += "        default: log_error(\"Jump/call to nowhere to 0x%x. See line %d\\n\", __disp, __LINE__);stackDump(_state); abort();\n"
+    result += "        default: log_error(\"Jump to nowhere to 0x%x. See line %d\\n\", __disp, __LINE__);stackDump(_state); abort();\n"
     result += "    };\n}\n"
     return result
 
@@ -181,7 +181,7 @@ class SeparateProcStrategy:
         for name, label in offsets:
             logging.debug(f'{name}, {label}')
             result += "        case k%s: \t%s(0, _state); break;\n" % (name, cpp_mangle_label(label))
-        result += "        default: log_error(\"Jump/call to nowhere to 0x%x. See line %d\\n\", __disp, __LINE__);stackDump(_state); abort();\n"
+        result += "        default: log_error(\"Call to nowhere to 0x%x. See line %d\\n\", __disp, __LINE__);stackDump(_state); abort();\n"
         result += "     };\n}\n"
         return result
 
@@ -318,6 +318,8 @@ class Cpp(object):
 
         self.body = ""
         self.struct_type = None
+        self.grouped = set()
+        self.groups = dict()
 
     def produce_c_data(self, segments):
         cdata_seg = ""
@@ -1367,6 +1369,13 @@ class Cpp(object):
         # while len(self.__proc_queue):
         self.merge_procs()
 
+        for p in self.grouped:
+            self.body += f"""
+
+         void {p}(_offsets, struct _STATE* _state){{{self.groups[p]}(k{p}, _state);}}
+        """
+        self.__translated.append(self.body)
+
         for name in self.__procs:
             self.__proc(name)
             self.__proc_done.append(name)
@@ -1397,7 +1406,7 @@ class Cpp(object):
         labeloffsets = self.produce_label_offsets()
         hd.write(labeloffsets)
 
-        hd.write(self.proc_strategy.write_declarations(self.__procs, self.__context))
+        hd.write(self.proc_strategy.write_declarations(self.__procs + list(self.grouped), self.__context))
 
         data = self.produce_externals(self.__context)
         hd.write(data)
@@ -1475,20 +1484,29 @@ class Cpp(object):
                     logging.info(f"       {p_name}")
         groups = []
         groups_id = 1
-        grouped = set()
         for name in self.__procs:
-            if name not in grouped:
+            if name not in self.grouped:
                 proc = self.__context.get_global(name)
                 if proc.group:
+                    label = op.label(name, proc=proc, isproc=False, line_number=proc.line_number, far=proc.far)
+                    label.used = True
+                    proc.stmts.insert(0, label)
+                    self.__context.reset_global(name, label)
                     group_name = f'_group{groups_id}'
-                    grouped |= proc.group
+                    self.grouped |= proc.group
                     for p in proc.group:
+                        self.groups[p] = group_name
                         if p != name:
-                            proc.merge(group_name, self.__context.get_global(p))
+                            g = self.__context.get_global(p)
+                            label = op.label(p, proc=proc, isproc=False, line_number=g.line_number, far=g.far)
+                            label.used = True
+                            proc.stmts += [label]
+                            proc.merge(group_name, g)
+                            self.__context.reset_global(p, label)
                     groups += [group_name]
                     self.__context.set_global(group_name, proc)
                     groups_id += 1
-        self.__procs = [x for x in self.__procs if x not in grouped]
+        self.__procs = [x for x in self.__procs if x not in self.grouped]
         self.__procs += groups
 
     def write_segment(self, segments, structs):

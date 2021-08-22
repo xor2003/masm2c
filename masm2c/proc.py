@@ -10,7 +10,7 @@ from builtins import str
 from masm2c.Token import Token
 from masm2c import op
 
-label_re = re.compile(r'^([\S@]+)::?(.*)$')  # speed
+#label_re = re.compile(r'^([\S@]+)::?(.*)$')  # speed
 PTRDIR = 'ptrdir'
 
 
@@ -18,9 +18,9 @@ class Proc(object):
     last_addr = 0xc000
     elements = 1  # how many
 
-    def __init__(self, name, far=False, line_number=0, extern: bool = False):
+    def __init__(self, name: str, far: bool = False, line_number: int = 0, extern: bool = False):
         '''
-        Procedure object
+        Represent asm procedure
 
         :param name: Name
         :param far: is Far proc?
@@ -49,7 +49,7 @@ class Proc(object):
         self.provided_labels |= other.provided_labels
         self.used_labels |= other.used_labels
         self.extern = other.extern
-        #self.group = None
+        # self.group = None
         del other
 
     def add_label(self, name, label):
