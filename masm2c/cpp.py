@@ -52,7 +52,7 @@ class CrossJump(Exception):
     pass
 
 
-def produce_jump_table(globals):
+def produce_jump_table(labels):
     # Produce jump table
     result = """
     return;
@@ -60,10 +60,9 @@ def produce_jump_table(globals):
     switch (__disp) {
 """
     offsets = []
-    for k, v in globals:
-        if isinstance(v, op.label):
-            k = re.sub(r'[^A-Za-z0-9_]', '_', k)
-            offsets.append((k.lower(), k))
+    for k in labels:
+        k = re.sub(r'[^A-Za-z0-9_]', '_', k)
+        offsets.append((k.lower(), k))
     offsets = sorted(offsets, key=lambda t: t[1])
     for name, label in offsets:
         logging.debug(f'{name}, {label}')
@@ -1279,14 +1278,14 @@ class Cpp(object):
             # self.__unbounded = []
             self.proc.visit(self, skip)
 
+            '''
             labels = dict()
             for k, v in self.__context.get_globals().items():
                 if isinstance(v, op.label) and v.used and v.proc == self.proc:
-                    labels[k] = v
+                        labels[k] = v
+            '''
 
-            self.body += produce_jump_table(labels.items())
-
-            # self.body += self.proc_strategy.function_end()
+            self.body += produce_jump_table(self.proc.provided_labels)
 
             if name not in self.__skip_output:
                 self.__translated.append(self.body)
@@ -1488,9 +1487,10 @@ class Cpp(object):
             if name not in self.grouped:
                 proc = self.__context.get_global(name)
                 if proc.group:
-                    label = op.label(name, proc=proc, isproc=False, line_number=proc.line_number, far=proc.far)
+                    label = op.label(name, proc=name, isproc=False, line_number=proc.line_number, far=proc.far)
                     label.used = True
                     proc.stmts.insert(0, label)
+                    proc.provided_labels.add(name)
                     self.__context.reset_global(name, label)
                     group_name = f'_group{groups_id}'
                     self.grouped |= proc.group
@@ -1500,7 +1500,7 @@ class Cpp(object):
                             g = self.__context.get_global(p)
                             label = op.label(p, proc=proc, isproc=False, line_number=g.line_number, far=g.far)
                             label.used = True
-                            proc.stmts += [label]
+                            proc.add_label(p, label)
                             proc.merge(group_name, g)
                             self.__context.reset_global(p, label)
                     groups += [group_name]
@@ -1607,7 +1607,8 @@ db(& heap)[HEAP_SIZE]=m.heap;
         offsets = sorted(offsets, key=lambda t: t[1])
         '''
         for k, v in list(self.__context.get_globals().items()):
-            if isinstance(v, (op.label, proc_module.Proc)) and v.used:
+            #if isinstance(v, (op.label, proc_module.Proc)) and v.used:
+            if isinstance(v, (op.label, proc_module.Proc)):
                 k = re.sub(r'[^A-Za-z0-9_]', '_', k)
                 offsets.append(k.lower())
         offsets = sorted(offsets)
