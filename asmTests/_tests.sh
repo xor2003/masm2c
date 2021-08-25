@@ -1,5 +1,9 @@
 #!/bin/bash -ex
 
+if [ -z "$CXX" ];then
+  export CXX=g++
+fi
+
 filename="$1"
 
 > _result.log

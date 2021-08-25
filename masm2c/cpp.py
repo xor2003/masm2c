@@ -133,12 +133,6 @@ class SeparateProcStrategy:
         return addtobody, name
 
     def fix_call_label(self, dst):
-        if dst == "__dispatch_call":
-            # procedure id in variable __disp
-            pass  # dst = "__disp"  # [Token('expr', 'Token(sqexpr, [[Token('LABEL', 'table'), ['+', Token('register', 'ax')]]])')]
-        else:
-            # procedure id is an immediate value
-            pass  # [Token('expr', 'Token(LABEL, exec_adc)')]
         return dst
 
     def produce_proc_start(self, name):
@@ -178,10 +172,16 @@ class SeparateProcStrategy:
             k = re.sub(r'[^A-Za-z0-9_]', '_', k)
             if isinstance(v, proc_module.Proc) and v.used:
                 offsets.append((k.lower(), k))
+
+                for label in v.provided_labels:
+                    if label != v.name:
+                        result += f"        case k{label}: \t{v.name}(__disp, _state); break;\n"
+
         offsets = sorted(offsets, key=lambda t: t[1])
         for name, label in offsets:
             logging.debug(f'{name}, {label}')
             result += "        case k%s: \t%s(0, _state); break;\n" % (name, cpp_mangle_label(label))
+
         result += "        default: log_error(\"Call to nowhere to 0x%x. See line %d\\n\", __disp, __LINE__);stackDump(_state); abort();\n"
         result += "     };\n}\n"
         return result
@@ -1052,6 +1052,11 @@ class Cpp(object):
         dst, far = self.jump_to_label(name)
         dst = self.proc_strategy.fix_call_label(dst)
         dst = cpp_mangle_label(dst)
+
+        if dst in self.proc.provided_labels:
+            ret += f"__disp=k{dst};\n"
+            dst = self.proc.name
+
         if far:
             ret += "\tR(CALLF(%s));\n" % (dst)
         else:

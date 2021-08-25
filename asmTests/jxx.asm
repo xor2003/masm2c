@@ -3,6 +3,7 @@
 _TEXT   segment use16 public 'CODE' ;IGNORE
 assume  cs:_TEXT,ds:_DATA
 @df@@@@9 proc
+mylabel3::
 ret
 @df@@@@9 endp
 
@@ -26,6 +27,7 @@ mov ds,ax
 jmp mylabel1
 mylabel2::
 
+call mylabel3
 
 mov ax, [cs:jtable+bx]
 

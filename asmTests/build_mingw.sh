@@ -1,4 +1,5 @@
-#!/bin/sh -ex
+#!/bin/sh
+set -ex
 #export OPT="-mno-ms-bitfields -Wno-multichar -I/MinGW/include/ -L/MinGW/lib -I../ -L../ ../pdcurses.a -lmingw32 -lSDL2main -lSDL2 -ggdb"
 #export OPT="-Og -m32 -mno-ms-bitfields -Wno-multichar -Wno-narrowing -I../ -L../ -I/mingw32/include/pdcurses  -L/mingw32/lib -I. -L.  -ggdb3 -lSDL -lSDLmain"
 #export OPT="-Og -mno-ms-bitfields -Wno-multichar -Wno-address-of-packed-member   -I. -I.. -L. -lmingw32 -mconsole   -ggdb3 -lSDL -lSDLmain -DDEBUG=3"
@@ -25,6 +26,8 @@ export OPT="-m32 -Wno-narrowing -mno-ms-bitfields  -Wno-multichar $SDL $CURSES -
      
 #$CC $OPT $1.cpp -E >$1.e
 $CXX $OPT $1.cpp -c
-$CXX  $1.o ../asm.o ../memmgr.o /MinGW/lib/pdcurses.a -o $1 $OPT
+$CXX $OPT data.cpp -c
+#$CXX data.o $1.o ../asm.o ../memmgr.o /MinGW/lib/pdcurses.a -o $1 $OPT
+$CXX data.o $1.o ../asm.o ../memmgr.o C:\\MinGW\\lib\\pdcurses.a -o $1 $OPT
 
 
