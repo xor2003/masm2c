@@ -15,6 +15,9 @@ test3 proc
 jmp mylabel1
 test3 endp
 
+test4 proc
+test4 endp
+
 start proc near
 
 mov ax,_DATA
@@ -22,6 +25,7 @@ mov ds,ax
 
 jmp mylabel1
 mylabel2::
+
 
 mov ax, [cs:jtable+bx]
 
@@ -219,6 +223,7 @@ exitLabel:
 mov ah,4ch                    ; AH=4Ch - Exit To DOS
 int 21h
 
+jmp test4
 
 jtable   dw 0
 	dw offset failure

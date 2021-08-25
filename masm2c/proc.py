@@ -31,7 +31,7 @@ class Proc(object):
         self.original_name = name
 
         self.stmts = []
-        self.provided_labels = set()
+        self.provided_labels = set([name])
         self.line_number = line_number
         self.far = far
         self.used = False

@@ -1434,7 +1434,8 @@ class Parser:
         for arg in operation.args:
             s = Token.find_tokens(arg, 'LABEL')
             if s:
-                target.add(self.mangle_label(s[0]))
+                label = s[0]
+                target.add(self.mangle_label(label))
 
     def action_ends(self):
         if len(self.struct_names_stack):  # if it is not a structure then it is end of segment

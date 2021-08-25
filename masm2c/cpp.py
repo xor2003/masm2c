@@ -96,9 +96,10 @@ class SingleProcStrategy:
         header = """
 
  void %s(_offsets _i, struct _STATE* _state){
+    %s:
     X86_REGREF
     __disp = _i;
-""" % cpp_mangle_label(name)
+""" % (cpp_mangle_label(name), cpp_mangle_label(name))
         if entry_point != '':
             header += """
     if (__disp == kbegin) goto %s;
@@ -148,9 +149,10 @@ class SeparateProcStrategy:
         header = """
 
  void %s(_offsets _i, struct _STATE* _state){
+    %s:
     X86_REGREF
     __disp = _i;
-""" % cpp_mangle_label(name)
+""" % (cpp_mangle_label(name), cpp_mangle_label(name))
         if entry_point != '':
             header += """
     if (__disp == kbegin) goto %s;
@@ -1445,7 +1447,7 @@ class Cpp(object):
             labels = set()  # leave only real labels
             for label_name in proc.used_labels:
                 label = self.__context.get_global(label_name)
-                if isinstance(label, op.label):
+                if isinstance(label, (op.label, proc_module.Proc)):
                     labels.add(label_name)
             proc.used_labels = labels
 
@@ -1455,7 +1457,10 @@ class Cpp(object):
                 proc_to_merge.add(name)
                 for l in missing:
                     label = self.__context.get_global(l)
-                    proc_to_merge.add(label.proc.name)
+                    if isinstance(label, op.label):
+                        proc_to_merge.add(label.proc.name)
+                    elif isinstance(label, proc_module.Proc):
+                        proc_to_merge.add(label.name)
 
             proc.group = proc_to_merge
         changed = True
