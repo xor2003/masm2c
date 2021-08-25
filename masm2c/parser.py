@@ -121,11 +121,11 @@ def integertok(context, nodes):
 
 def commentkw(head, s, pos):
     # multiline comment
-    mtch = commentid.match(s[pos:])
-    if mtch:
-        return mtch.group(0)
-    else:
-        return None
+    if s[pos:].startswith('COMMENT'):
+        mtch = commentid.match(s[pos:])
+        if mtch:
+            return mtch.group(0)
+    return None
 
 
 def macroname(context, s, pos):
@@ -137,10 +137,7 @@ def macroname(context, s, pos):
         if result in macroses.keys():
             logging.debug(" ~^~" + result + "~^~ in macronames")
             return result
-        else:
-            return None
-    else:
-        return None
+    return None
 
 
 def macrodirhead(context, nodes, name, parms):
@@ -200,10 +197,7 @@ def structname(context, s, pos):
         if result in context.extra.structures.keys():
             logging.debug(" ~^~" + result + "~^~ in structures")
             return result
-        else:
-            return None
-    else:
-        return None
+    return None
 
 
 def structdirhdr(context, nodes, name, type):
