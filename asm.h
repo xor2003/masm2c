@@ -918,9 +918,16 @@ int8_t asm2C_IN(int16_t data);
 #if DEBUG==2
     #define R(a) {log_debug("l:%s%d:%s\n",_state->_str,__LINE__,#a);}; a
 #elif DEBUG>=3
-    #define R(a) {log_debug("l:%s%x:%d:%s eax: %x ebx: %x ecx: %x edx: %x ebp: %x ds: %x esi: %x es: %x edi: %x fs: %x esp: %x\n",_state->_str,0/*pthread_self()*/,__LINE__,#a, \
-eax, ebx, ecx, edx, ebp, ds, esi, es, edi, fs, esp);} \
+// clean format
+//    #define R(a) {log_debug("%s%x:%d:%s eax: %x ebx: %x ecx: %x edx: %x ebp: %x ds: %x esi: %x es: %x edi: %x fs: %x esp: %x\n",_state->_str,cs/*pthread_self()*/,__LINE__,#a, \
+//eax, ebx, ecx, edx, ebp, ds, esi, es, edi, fs, esp);} \
+//	a 
+
+// dosbox logcpu format
+    #define R(a) {log_debug("%04X:%08X  %-54s EAX:%08X EBX:%08X ECX:%08X EDX:%08X ESI:%08X EDI:%08X EBP:%08X ESP:%08X DS:%04X ES:%04X FS:%04X GS:%04X SS:%04X CF:%d ZF:%d SF:%d OF:%d AF:%d PF:%d IF:%d\n", \
+                             cs,eip,#a,       eax,     ebx,     ecx,     edx,     esi,     edi,     ebp,     esp,     ds,     es,     fs,     gs,     ss,     CF   ,ZF   ,SF   ,OF   ,AF   ,PF,   IF);} \
 	a 
+
 #else
     #define R(a) a
 #endif
@@ -982,6 +989,7 @@ bool ZF;
 bool SF;       
 bool DF;       
 bool OF;       
+bool IF;       
 db _indent; 
 const char *_str;
 };
@@ -1085,6 +1093,7 @@ bool& ZF = _state->ZF;       \
 bool& SF = _state->SF;       \
 bool& DF = _state->DF;       \
 bool& OF = _state->OF;       \
+bool& IF = _state->IF;       \
 dd& stackPointer = _state->esp;\
 _offsets __disp; \
 dw _source;

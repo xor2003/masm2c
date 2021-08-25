@@ -1412,6 +1412,7 @@ int main(int argc, char *argv[]) {
     _state->_indent = 0;
 
     eax = ebx = ecx = edx = ebp = esi = edi = DF = fs = gs = 0; // according to ms-dos 6.22 debuger
+    CF = ZF = SF = OF = AF = PF = IF = 0;
     cx = 0xff; // dummy size of executable
 
 

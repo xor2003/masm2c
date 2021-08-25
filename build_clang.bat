@@ -3,6 +3,7 @@ set CC="C:\LLVM\bin\clang++.exe"
 rem -DDEBUG=1
 %CC% asm.cpp  -c %OPT%
 %CC% memmgr.cpp -c %OPT%
+%CC% _data.cpp -c %OPT%
 %CC% %1.cpp -c %OPT%
-%CC% %1.o asm.o memmgr.o -o %1 %OPT% pdcurses.lib
+%CC% _data.o %1.o asm.o memmgr.o -o %1 %OPT% pdcurses.lib
 rem  -lgdi32 -lcomdlg32
