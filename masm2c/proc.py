@@ -41,6 +41,7 @@ class Proc(object):
 
         self.offset = Proc.last_addr
         Proc.last_addr += 4
+        self.real_offset, self.real_seg = None, None
         # self.retlabels = set()
 
     def merge(self, newname, other):
@@ -180,6 +181,8 @@ class Proc(object):
             stmt = self.stmts[i]
             from masm2c.cpp import InjectCode, SkipCode
             try:
+                if stmt.real_offset and stmt.real_seg:
+                    visitor.body += f'cs={stmt.real_seg:#04x};eip={stmt.real_offset:#08x}; '
                 s = self.generate_c_cmd(visitor, stmt)
                 visitor.body += s
             except InjectCode as ex:

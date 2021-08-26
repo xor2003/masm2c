@@ -180,7 +180,8 @@ class SeparateProcStrategy:
         offsets = sorted(offsets, key=lambda t: t[1])
         for name, label in offsets:
             logging.debug(f'{name}, {label}')
-            result += "        case k%s: \t%s(0, _state); break;\n" % (name, cpp_mangle_label(label))
+            if not name.startswith('_group'):  # TODO remove dirty hack. properly check for group
+                result += "        case k%s: \t%s(0, _state); break;\n" % (name, cpp_mangle_label(label))
 
         result += "        default: log_error(\"Call to nowhere to 0x%x. See line %d\\n\", __disp, __LINE__);stackDump(_state); abort();\n"
         result += "     };\n}\n"
@@ -1377,9 +1378,8 @@ class Cpp(object):
 
         for p in self.grouped:
             self.body += f"""
-
-         void {p}(_offsets, struct _STATE* _state){{{self.groups[p]}(k{p}, _state);}}
-        """
+ void {p}(_offsets, struct _STATE* _state){{{self.groups[p]}(k{p}, _state);}}
+"""
         self.__translated.append(self.body)
 
         for name in self.__procs:
@@ -1498,6 +1498,8 @@ class Cpp(object):
                 proc = self.__context.get_global(name)
                 if proc.group:
                     label = op.label(name, proc=name, isproc=False, line_number=proc.line_number, far=proc.far)
+                    label.real_offset, label.real_seg = proc.real_offset, proc.real_seg
+
                     label.used = True
                     proc.stmts.insert(0, label)
                     proc.provided_labels.add(name)
@@ -1616,17 +1618,16 @@ db(& heap)[HEAP_SIZE]=m.heap;
                 offsets.append((k.lower(), hex(v.line_number)))
         offsets = sorted(offsets, key=lambda t: t[1])
         '''
+        labeloffsets = "static const uint16_t kbegin = 0x1001;\n"
+        i = 0x1001
         for k, v in list(self.__context.get_globals().items()):
             #if isinstance(v, (op.label, proc_module.Proc)) and v.used:
             if isinstance(v, (op.label, proc_module.Proc)):
-                k = re.sub(r'[^A-Za-z0-9_]', '_', k)
-                offsets.append(k.lower())
-        offsets = sorted(offsets)
-        labeloffsets = "static const uint16_t kbegin = 0x1001;\n"
-        i = 0x1001
-        for o in offsets:
-            i += 1
-            labeloffsets += "static const uint16_t k%s = 0x%x;\n" % (o, i)
+                k = re.sub(r'[^A-Za-z0-9_]', '_', k).lower()
+                i += 1
+                if v.real_offset or v.real_seg:
+                    i = v.real_offset
+                labeloffsets += "static const uint16_t k%s = 0x%x;\n" % (k, i)
         return labeloffsets
 
     def produce_structures(self, strucs):

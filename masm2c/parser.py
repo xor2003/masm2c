@@ -64,6 +64,12 @@ def get_line_number(context):
 def get_raw(context):
     return context.input_str[context.start_position: context.end_position]
 
+def get_raw_line(context):
+    line_eol_pos = context.input_str.find('\n', context.end_position)
+    if line_eol_pos == -1:
+        line_eol_pos = context.end_position
+    return context.input_str[context.start_position: line_eol_pos]
+
 
 '''
 def build_ast(nodes, type=''):
@@ -301,7 +307,7 @@ def endsdir(context, nodes, name):
 
 def procdir(context, nodes, name, type):
     logging.debug("procdir " + str(nodes) + " ~~")
-    context.extra.action_proc(name, type, line_number=get_line_number(context))
+    context.extra.action_proc(name, type, line_number=get_line_number(context), raw=get_raw_line(context))
     return nodes
 
 
@@ -323,7 +329,7 @@ def assdir(context, nodes, name, value):
 
 def labeldef(context, nodes, name):
     logging.debug("labeldef " + str(nodes) + " ~~")
-    return context.extra.action_label(name.value, isproc=False, raw=get_raw(context))
+    return context.extra.action_label(name.value, isproc=False, raw=get_raw_line(context))
 
 
 def instrprefix(context, nodes):
@@ -333,7 +339,7 @@ def instrprefix(context, nodes):
     # o.line = get_raw(context)
     # o.line_number = get_line_number(context)
     # context.extra.proc.stmts.append(o)
-    context.extra.action_instruction(instruction, [], raw=get_raw(context), line_number=get_line_number(context))
+    context.extra.action_instruction(instruction, [], raw=get_raw_line(context), line_number=get_line_number(context))
     return []
 
 
@@ -344,7 +350,7 @@ def asminstruction(context, nodes, instruction, args):
         return nodes
     if args is None:
         args = []
-    return context.extra.action_instruction(instruction, args, raw=get_raw(context),
+    return context.extra.action_instruction(instruction, args, raw=get_raw_line(context),
                                             line_number=get_line_number(context))
 
 
@@ -902,9 +908,9 @@ class Parser:
                 self.set_global(nname, self.proc)
         '''
         if self.proc:
-            absolute_offset, real_offset = self.get_lst_offsets(raw)
-
             l = op.label(name, proc=self.proc, isproc=isproc, line_number=self.__offset_id, far=far)
+            _, l.real_offset, l.real_seg = self.get_lst_offsets(raw)
+
             self.proc.add_label(name, l)
             self.set_offset(name,
                             ("&m." + name.lower() + " - &m." + self.__segment_name, self.proc, self.__offset_id))
@@ -1050,7 +1056,7 @@ class Parser:
 
         self.set_global(name, op.var(binary_width, offset, name, issegment=True))
 
-    def action_proc(self, name, type, line_number=0):
+    def action_proc(self, name, type, line_number=0, raw=''):
         logging.info("     Found proc %s" % name.value)
         name = self.mangle_label(name.value)
         far = False
@@ -1060,6 +1066,7 @@ class Parser:
 
         if self.__separate_proc:
             self.proc = Proc(name, far=far, line_number=line_number)
+            _, self.proc.real_offset, self.proc.real_seg = self.get_lst_offsets(raw)
             self.proc_list.append(name)
             self.__proc_stack.append(self.proc)
             self.set_global(name, self.proc)
@@ -1250,7 +1257,7 @@ class Parser:
         return data  # c, h, size
 
     def adjust_offset_to_real(self, raw):
-        absolute_offset, real_offset = self.get_lst_offsets(raw)
+        absolute_offset, real_offset, _ = self.get_lst_offsets(raw)
         if absolute_offset:
             self.move_offset(absolute_offset)
             if self.__cur_seg_offset > real_offset:
@@ -1260,11 +1267,13 @@ class Parser:
     def get_lst_offsets(self, raw):
         real_offset = None
         absolute_offset = None
+        real_seg = None
         m = re.match(r'.* ;~ (?P<segment>[0-9A-F]{4}):(?P<offset>[0-9A-F]{4})', raw)
         if m:
             real_offset = int(m.group('offset'), 16)
-            absolute_offset = int(m.group('segment'), 16) * 0x10 + real_offset
-        return absolute_offset, real_offset
+            real_seg = int(m.group('segment'), 16)
+            absolute_offset = real_seg * 0x10 + real_offset
+        return absolute_offset, real_offset, real_seg
 
     '''
     def link(self):
@@ -1427,6 +1436,8 @@ class Parser:
         o.line_number = line_number
         if self.current_macro == None:
             self.proc.stmts.append(o)
+
+            _, o.real_offset, o.real_seg = self.get_lst_offsets(raw)
 
             self.collect_labels(self.proc.used_labels, o)
         else:

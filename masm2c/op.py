@@ -25,6 +25,8 @@ class baseop(object):
         self.elements = 1
         self.args = []
         self.size = 0
+        self.real_offset = None
+        self.real_seg = None
 
     def getsize(self):
         return self.size
