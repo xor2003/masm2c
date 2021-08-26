@@ -323,7 +323,7 @@ def assdir(context, nodes, name, value):
 
 def labeldef(context, nodes, name):
     logging.debug("labeldef " + str(nodes) + " ~~")
-    return context.extra.action_label(name.value, isproc=False)
+    return context.extra.action_label(name.value, isproc=False, raw=get_raw(context))
 
 
 def instrprefix(context, nodes):
@@ -884,7 +884,7 @@ class Parser:
                 res.append(value)
         return n * len(values), res
 
-    def action_label(self, name, far=False, isproc=False):
+    def action_label(self, name, far=False, isproc=False, raw=''):
         logging.debug("label name: %s" % name)
         if name == '@@':
             name = self.get_dummy_jumplabel()
@@ -902,6 +902,8 @@ class Parser:
                 self.set_global(nname, self.proc)
         '''
         if self.proc:
+            absolute_offset, real_offset = self.get_lst_offsets(raw)
+
             l = op.label(name, proc=self.proc, isproc=isproc, line_number=self.__offset_id, far=far)
             self.proc.add_label(name, l)
             self.set_offset(name,
@@ -1248,14 +1250,21 @@ class Parser:
         return data  # c, h, size
 
     def adjust_offset_to_real(self, raw):
-        m = re.match(r'.* ;~ (?P<segment>[0-9A-F]{4}):(?P<offset>[0-9A-F]{4})', raw)
-        if m:
-            real_offset = int(m.group('offset'), 16)
-            absolute_offset = int(m.group('segment'), 16) * 0x10 + real_offset
+        absolute_offset, real_offset = self.get_lst_offsets(raw)
+        if absolute_offset:
             self.move_offset(absolute_offset)
             if self.__cur_seg_offset > real_offset:
                 logging.warning('Current offset does not equal to required')
             self.__cur_seg_offset = real_offset
+
+    def get_lst_offsets(self, raw):
+        real_offset = None
+        absolute_offset = None
+        m = re.match(r'.* ;~ (?P<segment>[0-9A-F]{4}):(?P<offset>[0-9A-F]{4})', raw)
+        if m:
+            real_offset = int(m.group('offset'), 16)
+            absolute_offset = int(m.group('segment'), 16) * 0x10 + real_offset
+        return absolute_offset, real_offset
 
     '''
     def link(self):

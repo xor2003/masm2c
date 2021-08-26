@@ -1353,7 +1353,7 @@ class Cpp(object):
  {
     X86_REGREF
     
-    log_debug("~~~ heap_size=%%d heap_para=%%d heap_seg=%%s\n", HEAP_SIZE, (HEAP_SIZE >> 4), seg_offset(heap) );
+    log_debug("~~~ heap_size=%%d heap_para=%%d heap_seg=%%s\\n", HEAP_SIZE, (HEAP_SIZE >> 4), seg_offset(heap) );
     /* We expect ram_top as Kbytes, so convert to paragraphs */
     mcb_init(seg_offset(heap), (HEAP_SIZE >> 4) - seg_offset(heap) - 1, MCB_LAST);
     
