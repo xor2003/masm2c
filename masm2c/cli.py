@@ -114,6 +114,7 @@ def process(i):
 
     generator = Cpp(context, outfile=outname, skip_output=[], function_name_remapping={})
     generator.generate('mainproc')  # start routine
+    generator.dump_globals()
     return generator
 
 

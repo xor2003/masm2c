@@ -218,7 +218,7 @@ instruction: asminstruction=asminstruction linereminder;
 invokearg: anyregister '::' register| ADDR expr | expr;
 invokedir: INVOKE expr commainvokelist? linereminder;
 invokelist: invokearg+[COMMAOEOL];
-labeldef: name=LABEL ':' | name=LABEL '::'; // | name=MONKEY ':';
+labeldef: name=LABEL colon=':' | name=LABEL colon='::'; // | name=MONKEY colon=2':';
 labeldir: LABEL LABELKW qualifiedtype linereminder;
 langtype: C | PASCAL | FORTRAN | BASIC | SYSCALL | STDCALL ;
 linereminder: ENDOFLINE | Comment ENDOFLINE;

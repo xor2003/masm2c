@@ -4,9 +4,10 @@ import logging
 from builtins import str
 from builtins import object
 
-#from masm2c import parser
+# from masm2c import parser
 from masm2c.Token import Token
 from enum import Enum
+
 
 # import traceback
 
@@ -79,8 +80,311 @@ class var(object):
     def gettype(self):
         return self.original_type
 
+
 class Segment(object):
     # __slots__ = ['name', 'offset', '__data', 'original_name', 'used']
+    simple_segments = {
+        "tiny": {
+            ".CODE": {
+                "Name": "_TEXT",
+                "Align": 2,
+                "Combine": "public",
+                "Class": "CODE",
+                "Group": "DGROUP"
+            },
+            ".FARDATA": {
+                "Name": "FAR_DATA",
+                "Align": 0x10,
+                "Combine": "private",
+                "Class": "FAR_DATA",
+                "Group": ""
+            },
+            ".FARDATA?": {
+                "Name": "FAR_BSS",
+                "Align": 0x10,
+                "Combine": "private",
+                "Class": "FAR_BSS",
+                "Group": ""
+            },
+            ".DATA": {
+                "Name": "_DATA",
+                "Align": 2,
+                "Combine": "public",
+                "Class": "DATA",
+                "Group": "DGROUP"
+            },
+            ".CONST": {
+                "Name": "CONST",
+                "Align": 2,
+                "Combine": "public",
+                "Class": "CONST",
+                "Group": "DGROUP"
+            },
+            ".DATA?": {
+                "Name": "_BSS",
+                "Align": 2,
+                "Combine": "public",
+                "Class": "BSS",
+                "Group": "DGROUP"
+            }
+        },
+        "small": {
+            ".CODE": {
+                "Name": "_TEXT",
+                "Align": 2,
+                "Combine": "public",
+                "Class": "CODE",
+                "Group": ""
+            },
+            ".FARDATA": {
+                "Name": "FAR_DATA",
+                "Align": 0x10,
+                "Combine": "private",
+                "Class": "FAR_DATA",
+                "Group": ""
+            },
+            ".FARDATA?": {
+                "Name": "FAR_BSS",
+                "Align": 0x10,
+                "Combine": "private",
+                "Class": "FAR_BSS",
+                "Group": ""
+            },
+            ".DATA": {
+                "Name": "_DATA",
+                "Align": 2,
+                "Combine": "public",
+                "Class": "DATA",
+                "Group": "DGROUP"
+            },
+            ".CONST": {
+                "Name": "CONST",
+                "Align": 2,
+                "Combine": "public",
+                "Class": "CONST",
+                "Group": "DGROUP"
+            },
+            ".DATA?": {
+                "Name": "_BSS",
+                "Align": 2,
+                "Combine": "public",
+                "Class": "BSS",
+                "Group": "DGROUP"
+            },
+            ".STACK": {
+                "Name": "STACK",
+                "Align": 0x10,
+                "Combine": "STACK",
+                "Class": "STACK",
+                "Group": "DGROUP*"
+            }
+        },
+        "medium": {
+            ".CODE": {
+                "Name": "name_TEXT",
+                "Align": 2,
+                "Combine": "public",
+                "Class": "CODE",
+                "Group": ""
+            },
+
+            ".FARDATA": {
+                "Name": "FAR_DATA",
+                "Align": 0x10,
+                "Combine": "private",
+                "Class": "FAR_DATA",
+                "Group": ""
+            },
+            ".FARDATA?": {
+                "Name": "FAR_BSS",
+                "Align": 0x10,
+                "Combine": "private",
+                "Class": "FAR_BSS",
+                "Group": ""
+            },
+            ".DATA": {
+                "Name": "_DATA",
+                "Align": 2,
+                "Combine": "public",
+                "Class": "DATA",
+                "Group": "DGROUP"
+            },
+            ".CONST": {
+                "Name": "CONST",
+                "Align": 2,
+                "Combine": "public",
+                "Class": "CONST",
+                "Group": "DGROUP"
+            },
+            ".DATA?": {
+                "Name": "_BSS",
+                "Align": 2,
+                "Combine": "public",
+                "Class": "BSS",
+                "Group": "DGROUP"
+            },
+            ".STACK": {
+                "Name": "STACK",
+                "Align": 0x10,
+                "Combine": "STACK",
+                "Class": "STACK",
+                "Group": "DGROUP*"
+            }
+        },
+        "compact": {
+            ".CODE": {
+                "Name": "_TEXT",
+                "Align": 2,
+                "Combine": "public",
+                "Class": "CODE",
+                "Group": ""
+            },
+            ".FARDATA": {
+                "Name": "FAR_DATA",
+                "Align": 0x10,
+                "Combine": "private",
+                "Class": "FAR_DATA",
+                "Group": ""
+            },
+            ".FARDATA?": {
+                "Name": "FAR_BSS",
+                "Align": 0x10,
+                "Combine": "private",
+                "Class": "FAR_BSS",
+                "Group": ""
+            },
+            ".DATA": {
+                "Name": "_DATA",
+                "Align": 2,
+                "Combine": "public",
+                "Class": "DATA",
+                "Group": "DGROUP"
+            },
+            ".CONST": {
+                "Name": "CONST",
+                "Align": 2,
+                "Combine": "public",
+                "Class": "CONST",
+                "Group": "DGROUP"
+            },
+            ".DATA?": {
+                "Name": "_BSS",
+                "Align": 2,
+                "Combine": "public",
+                "Class": "BSS",
+                "Group": "DGROUP"
+            },
+            ".STACK": {
+                "Name": "STACK",
+                "Align": 0x10,
+                "Combine": "STACK",
+                "Class": "STACK",
+                "Group": "DGROUP*"
+            }
+        },
+        "large": {  # or huge
+            ".CODE": {
+                "Name": "name_TEXT",
+                "Align": 2,
+                "Combine": "public",
+                "Class": "CODE",
+                "Group": ""
+            },
+            ".FARDATA": {
+                "Name": "FAR_DATA",
+                "Align": 0x10,
+                "Combine": "private",
+                "Class": "FAR_DATA",
+                "Group": ""
+            },
+            ".FARDATA?": {
+                "Name": "FAR_BSS",
+                "Align": 0x10,
+                "Combine": "private",
+                "Class": "FAR_BSS",
+                "Group": ""
+            },
+            ".DATA": {
+                "Name": "_DATA",
+                "Align": 2,
+                "Combine": "public",
+                "Class": "DATA",
+                "Group": "DGROUP"
+            },
+            ".CONST": {
+                "Name": "CONST",
+                "Align": 2,
+                "Combine": "public",
+                "Class": "CONST",
+                "Group": "DGROUP"
+            },
+            ".DATA?": {
+                "Name": "_BSS",
+                "Align": 2,
+                "Combine": "public",
+                "Class": "BSS",
+                "Group": "DGROUP"
+            },
+            ".STACK": {
+                "Name": "STACK",
+                "Align": 0x10,
+                "Combine": "STACK",
+                "Class": "STACK",
+                "Group": "DGROUP*"
+            }
+        },
+        "flat": {
+            ".CODE": {
+                "Name": "_TEXT",
+                "Align": 4,
+                "Combine": "public",
+                "Class": "CODE",
+                "Group": ""
+            },
+            ".FARDATA": {
+                "Name": "_DATA",
+                "Align": 4,
+                "Combine": "public",
+                "Class": "DATA",
+                "Group": ""
+            },
+            ".FARDATA?": {
+                "Name": "_BSS",
+                "Align": 4,
+                "Combine": "public",
+                "Class": "BSS",
+                "Group": ""
+            },
+            ".DATA": {
+                "Name": "_DATA",
+                "Align": 4,
+                "Combine": "public",
+                "Class": "DATA",
+                "Group": ""
+            },
+            ".CONST": {
+                "Name": "CONST",
+                "Align": 4,
+                "Combine": "public",
+                "Class": "CONST",
+                "Group": ""
+            },
+            ".DATA?": {
+                "Name": "_BSS",
+                "Align": 4,
+                "Combine": "public",
+                "Class": "BSS",
+                "Group": ""
+            },
+            ".STACK": {
+                "Name": "STACK",
+                "Align": 4,
+                "Combine": "public",
+                "Class": "STACK",
+                "Group": ""
+            }
+        }
+    }
 
     def __init__(self, name, offset, options=None, segclass=None, comment=''):
         '''
@@ -93,13 +397,13 @@ class Segment(object):
         :param comment: Source of element
         '''
         self.name = name.lower()
-        #self.offset = offset
+        # self.offset = offset
         self.original_name = name
         self.used = False
         self.__data = list()
         self.options = options
         self.segclass = segclass
-        #self.comment = comment
+        # self.comment = comment
         self.seglabels = set([self.name])
         self.size = 0  # Check if needed
 
@@ -158,7 +462,7 @@ class Data(baseop):
         self.filename = filename
         self.raw_line = raw_line
         self.line_number = line_number
-        #self.comment = comment
+        # self.comment = comment
 
     def isobject(self):
         return self.data_internal_type == DataType.OBJECT
@@ -342,6 +646,7 @@ class _jnb(basejmp):
 
     def visit(self, visitor):
         return visitor._jnc(*self.args)
+
 
 '''
 def flatten(s):
@@ -556,15 +861,26 @@ class _nop(baseop):
 
 class label(baseop):
 
-    def __init__(self, name, proc=None, isproc=False, line_number=0, far=False):
+    def __init__(self, name, proc:str=None, isproc=False, line_number=0, far=False, globl=True):
+        '''
+        Label
+
+        :param name:
+        :param proc:
+        :param isproc:
+        :param line_number:
+        :param far:
+        :param globl:
+        '''
         super().__init__()
         self.name = name
         self.original_name = name
         self.line_number = line_number
         self.far = far
-        self.proc = proc
+        self.proc:str = proc
         self.isproc = isproc
         self.used = False
+        self.globl = globl
 
     def visit(self, visitor):
         return visitor._label(self.name, self.isproc)

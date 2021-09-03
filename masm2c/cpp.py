@@ -1349,7 +1349,12 @@ class Cpp(object):
 """)
 
         if self.__context.main_file:
-            cppd.write("""
+            cppd.write(f""" m2cf* _ENTRY_POINT_ = &{self.__context.entry_point};
+""")
+
+        '''
+        if self.__context.main_file:
+#            cppd.write("""
  int init(struct _STATE* _state)
  {
     X86_REGREF
@@ -1370,8 +1375,8 @@ class Cpp(object):
     
     return(0);
  }
-""")
-
+#""")
+'''
         # self.__proc_queue.append(start)
         # while len(self.__proc_queue):
         self.merge_procs()
@@ -1463,7 +1468,7 @@ class Cpp(object):
                 for l in missing:
                     label = self.__context.get_global(l)
                     if isinstance(label, op.label):
-                        proc_to_merge.add(label.proc.name)
+                        proc_to_merge.add(label.proc)
                     elif isinstance(label, proc_module.Proc):
                         proc_to_merge.add(label.name)
 
@@ -1510,7 +1515,7 @@ class Cpp(object):
                         self.groups[p] = group_name
                         if p != name:
                             g = self.__context.get_global(p)
-                            label = op.label(p, proc=proc, isproc=False, line_number=g.line_number, far=g.far)
+                            label = op.label(p, proc=name, isproc=False, line_number=g.line_number, far=g.far)
                             label.used = True
                             proc.add_label(p, label)
                             proc.merge(group_name, g)
@@ -1866,3 +1871,31 @@ struct Memory{
                 vvv = c
             # vvv = "'" + vvv + "'"
         return vvv
+
+    def dump_globals(self):
+        fname = self.__namespace.lower() + ".list"
+        logging.info(f' *** Generating globals listing {fname}')
+
+        jsonpickle.set_encoder_options('json', indent=2)
+        with open(fname, 'w') as lst:
+            lst.write(f'Segment:\n')
+            for v in self.__context.segments:
+                lst.write(f'{v}\n')
+
+            lst.write(f'\nLabels:\n')
+            for k, v in self.__context.get_globals().items():
+                if isinstance(v, op.label):
+                    lst.write(f'{v.name}\n')
+
+            lst.write(f'\nProcs:\n')
+            for k, v in self.__context.get_globals().items():
+                if isinstance(v, proc_module.Proc):
+                    lst.write(f'{v.name} {v.offset}\n')
+
+            lst.write(f'\nVars:\n')
+            for k, v in self.__context.get_globals().items():
+                if isinstance(v, op.var):
+                    lst.write(f'{v.name} {v.offset}\n')
+
+            lst.write(jsonpickle.encode((self.__context.get_globals(), self.__context.segments, self.__context.structures)))
+

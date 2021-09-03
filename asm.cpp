@@ -1446,7 +1446,7 @@ int main(int argc, char *argv[]) {
             *(dw *)((db*)&m + 0x81 + s) = 0xD;
 
         }
-        mainproc((_offsets) 0, _state);
+        (*_ENTRY_POINT_)((_offsets) 0, _state);
     }
     catch (const std::exception &e) {
         printf("std::exception& %s\n", e.what());
@@ -1504,3 +1504,23 @@ void prepare_cp437_to_curses() {
     vga_to_curses[0xfe] = ACS_BULLET;
 }
 
+ int init(struct _STATE* _state)
+ {
+    X86_REGREF
+    
+    log_debug("~~~ heap_size=%%d heap_para=%%d heap_seg=%%s\n", HEAP_SIZE, (HEAP_SIZE >> 4), seg_offset(heap) );
+    /* We expect ram_top as Kbytes, so convert to paragraphs */
+    mcb_init(seg_offset(heap), (HEAP_SIZE >> 4) - seg_offset(heap) - 1, MCB_LAST);
+    
+    R(MOV(ss, seg_offset(stack)));
+ #if _BITS == 32
+    esp = ((dd)(db*)&stack[STACK_SIZE - 4]);
+ #else
+    esp = 0;
+    sp = STACK_SIZE - 4;
+    es = 0;
+    *(dw*)(raddr(0, 0x408)) = 0x378; //LPT
+ #endif
+    
+    return(0);
+ }

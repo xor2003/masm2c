@@ -327,9 +327,9 @@ def assdir(context, nodes, name, value):
     return context.extra.action_assign(name.value, value, raw=get_raw(context), line_number=get_line_number(context))
 
 
-def labeldef(context, nodes, name):
+def labeldef(context, nodes, name, colon):
     logging.debug("labeldef " + str(nodes) + " ~~")
-    return context.extra.action_label(name.value, isproc=False, raw=get_raw_line(context))
+    return context.extra.action_label(name.value, isproc=False, raw=get_raw_line(context), globl=(colon=='::'))
 
 
 def instrprefix(context, nodes):
@@ -568,6 +568,7 @@ class Parser:
         self.externals_procs = set()
         self.__files = set()
         self.__separate_proc = True
+        self.merge_data_segments = True
 
         self.next_pass(Parser.c_dummy_label)
 
@@ -890,7 +891,7 @@ class Parser:
                 res.append(value)
         return n * len(values), res
 
-    def action_label(self, name, far=False, isproc=False, raw=''):
+    def action_label(self, name, far=False, isproc=False, raw='', globl=True):
         logging.debug("label name: %s" % name)
         if name == '@@':
             name = self.get_dummy_jumplabel()
@@ -908,7 +909,7 @@ class Parser:
                 self.set_global(nname, self.proc)
         '''
         if self.proc:
-            l = op.label(name, proc=self.proc, isproc=isproc, line_number=self.__offset_id, far=far)
+            l = op.label(name, proc=self.proc.name, isproc=isproc, line_number=self.__offset_id, far=far, globl=globl)
             _, l.real_offset, l.real_seg = self.get_lst_offsets(raw)
 
             self.proc.add_label(name, l)
@@ -980,6 +981,7 @@ class Parser:
         content = read_whole_file(file_name)
         if file_name.lower().endswith('.lst'):  # for .lst provided by IDA move address to comments after ;~
             # we want exact placement so program could work
+            self.merge_data_segments = False
             segmap = dict(
                 x.split(' ') for x in read_whole_file(re.sub(r'\.lst', '.segmap', file_name, flags=re.I)).splitlines())
             content = re.sub(r'^(?P<segment>[_0-9A-Za-z]+):(?P<offset>[0-9A-F]{4})(?P<remain>.*)',
@@ -1412,7 +1414,7 @@ class Parser:
                 logging.debug("procedure %s, extern" % label)
                 self.reset_global(label, proc)
             else:
-                self.reset_global(label, op.label(label, proc=self.proc, isproc=True))
+                self.reset_global(label, op.label(label, proc=self.proc.name, isproc=True))
 
     def add_call_to_entrypoint(self):
         if self.__separate_proc:

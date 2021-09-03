@@ -19,6 +19,8 @@ test3 endp
 test4 proc
 test4 endp
 
+mov bp, 34
+jmp failure
 start proc near
 
 mov ax,_DATA
@@ -219,7 +221,7 @@ jmp failure
 good:
 MOV al,0
 JMP exitLabel
-failure:
+failure::
 mov ax,bp
 exitLabel:
 mov ah,4ch                    ; AH=4Ch - Exit To DOS

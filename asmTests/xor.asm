@@ -5,8 +5,11 @@ _DATA   ends ;IGNORE
 
 _TEXT   segment use16 word public 'CODE' ;IGNORE
 assume  cs:_TEXT,ds:_DATA
-start proc near
+;start proc near
+false_start:
+jmp failure
 
+start:
 mov eax,2
 xor eax,eax
 jnz failure
@@ -56,7 +59,7 @@ mov al,1
 exitLabel:
 mov ah,4ch                    ; AH=4Ch - Exit To DOS
 int 21h
-start endp
+;start endp
 
 _TEXT   ends ;IGNORE
 

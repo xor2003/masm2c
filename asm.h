@@ -310,7 +310,8 @@ static const uint32_t MASK[]={0, 0xff, 0xffff, 0xffffff, 0xffffffff};
 #ifdef DEBUG
  #define PUSH(a) {dd averytemporary=a;stackPointer-=sizeof(a); \
 		memcpy (raddr(ss,stackPointer), &averytemporary, sizeof (a)); \
-		assert((raddr(ss,stackPointer) - ((db*)&stack))>8);log_debug("after push %x\n",stackPointer);}
+		log_debug("after push %x\n",stackPointer);}
+//		assert((raddr(ss,stackPointer) - ((db*)&stack))>8);}
 
  #define POP(a) { log_debug("before pop %x\n",stackPointer);memcpy (&a, raddr(ss,stackPointer), sizeof (a));stackPointer+=sizeof(a);}
 #else
@@ -1177,6 +1178,8 @@ struct /*__attribute__((__packed__))*/ Memory;
 extern Memory& m;
 extern db(& stack)[STACK_SIZE];
 extern db(& heap)[HEAP_SIZE];
+typedef void m2cf(_offsets, struct _STATE*);
+extern  m2cf* _ENTRY_POINT_;
 
 namespace mc {
 
