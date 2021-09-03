@@ -323,6 +323,8 @@ class Cpp(object):
         self.grouped = set()
         self.groups = dict()
 
+        self.prefix = ''
+
     def produce_c_data(self, segments):
         cdata_seg = ""
         hdata_seg = ""
@@ -1201,7 +1203,9 @@ class Cpp(object):
     '''
 
     def _rep(self):
-        return "\tREP\n"
+        #return "\tREP\n"
+        self.prefix = '\tREP '
+        return ''
 
     def _cmpsb(self):
         return "CMPSB;\n"
@@ -1690,10 +1694,14 @@ struct Memory{
         return "MOVS(%s, %s, %d);\n" % (a, b, size)
 
     def _repe(self):
-        return "\tREPE\n"
+        #return "\tREPE\n"
+        self.prefix = '\tREPE '
+        return ''
 
     def _repne(self):
-        return "\tREPNE\n"
+        #return "\tREPNE\n"
+        self.prefix = '\tREPNE '
+        return ''
 
     def _lods(self, src):
         size = self.get_size(src)

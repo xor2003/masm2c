@@ -181,10 +181,14 @@ class Proc(object):
             stmt = self.stmts[i]
             from masm2c.cpp import InjectCode, SkipCode
             try:
-                if stmt.real_offset and stmt.real_seg:
+                prefix = visitor.prefix
+                visitor.prefix = ''
+                command = self.generate_c_cmd(visitor, stmt)
+
+                if command and stmt.real_offset and stmt.real_seg:
                     visitor.body += f'cs={stmt.real_seg:#04x};eip={stmt.real_offset:#08x}; '
-                s = self.generate_c_cmd(visitor, stmt)
-                visitor.body += s
+
+                visitor.body += prefix + command
             except InjectCode as ex:
                 logging.debug(f'Injecting code {ex.cmd} before {stmt}')
                 s = self.generate_c_cmd(visitor, ex.cmd)
