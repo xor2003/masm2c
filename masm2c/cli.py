@@ -132,13 +132,16 @@ def main(args):
     args = parse_args(args)
     logging.info(f"Masm source to C source translator V{__version__} {__license__}")
     # Process .asm
+    merge_data_segments = True
     for i in args.filenames:
+        if i.lower().endswith('.lst'):
+            merge_data_segments = False
         if i.lower().endswith('.asm') or i.lower().endswith('.lst'):
             setup_logging(i, args.loglevel)
             process(i)
 
     # Process .seg files
-    generator = Cpp(Parser())
+    generator = Cpp(Parser(), merge_data_segments=merge_data_segments)
     generator.produce_data_cpp(args.filenames)
 
     logging.info(f" *** Finished")

@@ -280,7 +280,7 @@ class Cpp(object):
     ''' Visitor for all operations to produce C++ code '''
 
     def __init__(self, context, outfile="", skip_output=None, function_name_remapping=None,
-                 proc_strategy=SeparateProcStrategy()):
+                 proc_strategy=SeparateProcStrategy(), merge_data_segments=True):
         # proc_strategy = SingleProcStrategy()):
         '''
 
@@ -324,6 +324,7 @@ class Cpp(object):
         self.groups = dict()
 
         self.prefix = ''
+        self.merge_data_segments = merge_data_segments
 
     def produce_c_data(self, segments):
         cdata_seg = ""
@@ -1550,10 +1551,12 @@ class Cpp(object):
         return segments, structures
 
     def merge_segments(self, allsegments: dict, allstructs: dict, newsegments: dict, newstructs: dict):
+        if self.merge_data_segments:
+            logging.info('Will merge public data segments')
         for k, v in newsegments.items():
             segclass = v.segclass
             ispublic = v.options and 'public' in v.options
-            if segclass and ispublic:
+            if segclass and ispublic and self.merge_data_segments:
                 if segclass not in allsegments:
                     allsegments[segclass] = v
                 else:
@@ -1569,7 +1572,6 @@ class Cpp(object):
                         logging.error(f'Overwritting segment {k}')
                 allsegments[k] = v
 
-        # allsegments.update(newsegments)
         if allstructs != newstructs and set(allstructs.keys()) & set(newstructs.keys()):
             for k, v in newstructs.items():
                 if k in allstructs:

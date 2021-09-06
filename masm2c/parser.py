@@ -568,7 +568,6 @@ class Parser:
         self.externals_procs = set()
         self.__files = set()
         self.__separate_proc = True
-        self.merge_data_segments = True
 
         self.next_pass(Parser.c_dummy_label)
 
@@ -981,7 +980,6 @@ class Parser:
         content = read_whole_file(file_name)
         if file_name.lower().endswith('.lst'):  # for .lst provided by IDA move address to comments after ;~
             # we want exact placement so program could work
-            self.merge_data_segments = False
             segmap = dict(
                 x.split(' ') for x in read_whole_file(re.sub(r'\.lst', '.segmap', file_name, flags=re.I)).splitlines())
             content = re.sub(r'^(?P<segment>[_0-9A-Za-z]+):(?P<offset>[0-9A-F]{4})(?P<remain>.*)',

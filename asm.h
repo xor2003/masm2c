@@ -856,11 +856,11 @@ int8_t asm2C_IN(int16_t data);
 
 #if DEBUG
 
- #define RET {log_debug("before ret %x\n",stackPointer); MWORDSIZE averytemporary9=0; POP(averytemporary9); if (averytemporary9!='xy') {log_error("Stack corrupted.\n");exit(1);} \
+ #define RET {log_debug("before ret %x\n",stackPointer); MWORDSIZE averytemporary9=0; POP(averytemporary9); if (averytemporary9!='xy') {log_error("Emulated stack corruption detected %x.\n",averytemporary9);exit(1);} \
 	log_debug("after ret %x\n",stackPointer); \
 	--_state->_indent;_state->_str=log_spaces(_state->_indent);return;}
 
- #define RETF {log_debug("before retf %x\n",stackPointer); MWORDSIZE averytemporary9=0; POP(averytemporary9); if (averytemporary9!='xy') {log_error("Stack corrupted.\n");exit(1);} \
+ #define RETF {log_debug("before retf %x\n",stackPointer); MWORDSIZE averytemporary9=0; POP(averytemporary9); if (averytemporary9!='xy') {log_error("Emulated stack corruption detected %x.\n",averytemporary9);exit(1);} \
 	dw averytemporary11;POP(averytemporary11); \
 	log_debug("after retf %x\n",stackPointer); \
 	--_state->_indent;_state->_str=log_spaces(_state->_indent);return;}
@@ -925,8 +925,8 @@ int8_t asm2C_IN(int16_t data);
 //	a 
 
 // dosbox logcpu format
-    #define R(a) {log_debug("%04X:%08X  %-54s EAX:%08X EBX:%08X ECX:%08X EDX:%08X ESI:%08X EDI:%08X EBP:%08X ESP:%08X DS:%04X ES:%04X FS:%04X GS:%04X SS:%04X CF:%d ZF:%d SF:%d OF:%d AF:%d PF:%d IF:%d\n", \
-                             cs,eip,#a,       eax,     ebx,     ecx,     edx,     esi,     edi,     ebp,     esp,     ds,     es,     fs,     gs,     ss,     CF   ,ZF   ,SF   ,OF   ,AF   ,PF,   IF);} \
+    #define R(a) {log_debug("%05d %04X:%08X  %-54s EAX:%08X EBX:%08X ECX:%08X EDX:%08X ESI:%08X EDI:%08X EBP:%08X ESP:%08X DS:%04X ES:%04X FS:%04X GS:%04X SS:%04X CF:%d ZF:%d SF:%d OF:%d AF:%d PF:%d IF:%d\n", \
+                         __LINE__,cs,eip,#a,       eax,     ebx,     ecx,     edx,     esi,     edi,     ebp,     esp,     ds,     es,     fs,     gs,     ss,     CF   ,ZF   ,SF   ,OF   ,AF   ,PF,   IF);} \
 	a 
 
 #else
