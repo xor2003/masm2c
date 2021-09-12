@@ -658,9 +658,9 @@ void MOV_(D* dest, const S& src)
 
 void asm2C_OUT(int16_t address, int data);
 
-#define OUT(a,b) asm2C_OUT(a,b)
+#define OUT(a,b) m2c::asm2C_OUT(a,b)
 int8_t asm2C_IN(int16_t data);
-#define IN(a,b) a = asm2C_IN(b); TESTJUMPTOBACKGROUND
+#define IN(a,b) a = m2c::asm2C_IN(b); TESTJUMPTOBACKGROUND
 
 //#define PUSHF {dd averytemporary = CF+(ZF<<1)+(DF<<2)+(SF<<3); PUSH(averytemporary);}
 //#define POPF {dd averytemporary; POP(averytemporary); CF=averytemporary&1; ZF=(averytemporary>>1)&1; DF=(averytemporary>>2)&1; SF=(averytemporary>>3)&1;}
