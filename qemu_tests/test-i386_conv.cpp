@@ -98,11 +98,13 @@ db(& stack)[STACK_SIZE]=m.stack;
 db(& heap)[HEAP_SIZE]=m.heap;
 
 
-_STATE sstate;
-_STATE* _state=&sstate;
+m2c::_STATE sstate;
+m2c::_STATE* _state=&sstate;
 X86_REGREF
 
+namespace m2c{
 void log_debug(const char *fmt, ...){printf("unimp ");}
+}
 //--------------------------------------------
 
 #if defined(__x86_64__)

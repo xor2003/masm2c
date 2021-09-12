@@ -66,12 +66,12 @@ def produce_jump_table(labels):
     offsets = sorted(offsets, key=lambda t: t[1])
     for name, label in offsets:
         logging.debug(f'{name}, {label}')
-        result += "        case k%s: \tgoto %s;\n" % (name, cpp_mangle_label(label))
-    result += "        default: log_error(\"Jump to nowhere to 0x%x. See line %d\\n\", __disp, __LINE__);stackDump(_state); abort();\n"
+        result += "        case m2c::k%s: \tgoto %s;\n" % (name, cpp_mangle_label(label))
+    result += "        default: m2c::log_error(\"Jump to nowhere to 0x%x. See line %d\\n\", __disp, __LINE__);stackDump(_state); abort();\n"
     result += "    };\n}\n"
     return result
 
-
+'''
 class SingleProcStrategy:
 
     def forward_to_dispatcher(self, name):
@@ -95,7 +95,7 @@ class SingleProcStrategy:
     def function_header(self, name, entry_point=''):
         header = """
 
- void %s(_offsets _i, struct _STATE* _state){
+ void %s(m2c::_offsets _i, struct m2c::_STATE* _state){
     %s:
     X86_REGREF
     __disp = _i;
@@ -123,7 +123,7 @@ class SingleProcStrategy:
 
     def get_strategy(self):
         return "#define SINGLEPROCSTRATEGY\n"
-
+'''
 
 class SeparateProcStrategy:
 
@@ -142,7 +142,7 @@ class SeparateProcStrategy:
     def function_header(self, name, entry_point=''):
         header = """
 
- void %s(_offsets _i, struct _STATE* _state){
+ void %s(m2c::_offsets _i, struct m2c::_STATE* _state){
     %s:
     X86_REGREF
     __disp = _i;
@@ -164,7 +164,7 @@ class SeparateProcStrategy:
     def produce_global_jump_table(self, globals):
         # Produce call table
         result = """
- void __dispatch_call(_offsets __disp, struct _STATE* _state){
+ void __dispatch_call(m2c::_offsets __disp, struct m2c::_STATE* _state){
     switch (__disp) {
 """
         offsets = []
@@ -175,15 +175,15 @@ class SeparateProcStrategy:
 
                 for label in v.provided_labels:
                     if label != v.name:
-                        result += f"        case k{label}: \t{v.name}(__disp, _state); break;\n"
+                        result += f"        case m2c::k{label}: \t{v.name}(__disp, _state); break;\n"
 
         offsets = sorted(offsets, key=lambda t: t[1])
         for name, label in offsets:
             logging.debug(f'{name}, {label}')
             if not name.startswith('_group'):  # TODO remove dirty hack. properly check for group
-                result += "        case k%s: \t%s(0, _state); break;\n" % (name, cpp_mangle_label(label))
+                result += "        case m2c::k%s: \t%s(0, _state); break;\n" % (name, cpp_mangle_label(label))
 
-        result += "        default: log_error(\"Call to nowhere to 0x%x. See line %d\\n\", __disp, __LINE__);stackDump(_state); abort();\n"
+        result += "        default: m2c::log_error(\"Call to nowhere to 0x%x. See line %d\\n\", __disp, __LINE__);stackDump(_state); abort();\n"
         result += "     };\n}\n"
         return result
 
@@ -192,14 +192,14 @@ class SeparateProcStrategy:
         for p in procs:  # TODO only if used or public
             if p == 'mainproc' and not context.main_file:
                 result += 'static '
-            result += "void %s(_offsets, struct _STATE*);\n" % cpp_mangle_label(p)
+            result += "void %s(m2c::_offsets, struct m2c::_STATE*);\n" % cpp_mangle_label(p)
 
         for i in context.externals_procs:
             v = context.get_globals()[i]
             if v.used:
-                result += f"extern void {v.name}(_offsets, struct _STATE*);\n"
+                result += f"extern void {v.name}(m2c::_offsets, struct m2c::_STATE*);\n"
 
-        result += "void __dispatch_call(_offsets __disp, struct _STATE* _state);\n"
+        result += "void __dispatch_call(m2c::_offsets __disp, struct m2c::_STATE* _state);\n"
         return result
 
     def get_strategy(self):
@@ -362,8 +362,8 @@ class Cpp(object):
                 hdata_seg += h
                 # char (& bb)[5] = group.bb;
                 # int& caa = group.aaa;
-                r = re.sub(r'^([0-9A-Za-z_]+)\s+([0-9A-Za-z_\[\]]+)(\[\d+\]);', r'\g<1> (& \g<2>)\g<3> = m.\g<2>;', h)
-                rdata_seg += re.sub(r'^([0-9A-Za-z_]+)\s+([0-9A-Za-z_\[\]]+);', r'\g<1>& \g<2> = m.\g<2>;', r)
+                r = re.sub(r'^([0-9A-Za-z_]+)\s+([0-9A-Za-z_\[\]]+)(\[\d+\]);', r'\g<1> (& \g<2>)\g<3> = m2c::m.\g<2>;', h)
+                rdata_seg += re.sub(r'^([0-9A-Za-z_]+)\s+([0-9A-Za-z_\[\]]+);', r'\g<1>& \g<2> = m2c::m.\g<2>;', r)
                 e = re.sub(r'^([0-9A-Za-z_]+)\s+([0-9A-Za-z_\[\]]+)(\[\d+\]);', r'extern \g<1> (& \g<2>)\g<3>;', h)
                 edata_seg += re.sub(r'^([0-9A-Za-z_]+)\s+([0-9A-Za-z_\[\]]+);', r'extern \g<1>& \g<2>;', e)
 
@@ -383,7 +383,7 @@ class Cpp(object):
                 logging.debug("OFFSET = %s" % offset)
                 self.__indirection = IndirectionType.VALUE
                 self.__used_data_offsets.add((name, offset))
-                return Token('LABEL', "k" + name)
+                return Token('LABEL', "m2c::k" + name)
 
         try:
             g = self.__context.get_global(name)
@@ -452,7 +452,7 @@ class Cpp(object):
                         self.body += '\tcs=seg_offset(' + g.segment + ');\n'
             # ?self.__indirection = 1
         elif isinstance(g, op.label):
-            value = "k" + g.name.lower()  # .capitalize()
+            value = "m2c::k" + g.name.lower()  # .capitalize()
         else:
             size = g.getsize()
             if size == 0:
@@ -1354,7 +1354,7 @@ class Cpp(object):
 """)
 
         if self.__context.main_file:
-            cppd.write(f""" m2cf* _ENTRY_POINT_ = &{self.__context.entry_point};
+            cppd.write(f"""namespace m2c{{ m2cf* _ENTRY_POINT_ = &{self.__context.entry_point};}}
 """)
 
         '''
@@ -1364,7 +1364,7 @@ class Cpp(object):
  {
     X86_REGREF
     
-    log_debug("~~~ heap_size=%%d heap_para=%%d heap_seg=%%s\\n", HEAP_SIZE, (HEAP_SIZE >> 4), seg_offset(heap) );
+    m2c::log_debug("~~~ heap_size=%%d heap_para=%%d heap_seg=%%s\\n", HEAP_SIZE, (HEAP_SIZE >> 4), seg_offset(heap) );
     /* We expect ram_top as Kbytes, so convert to paragraphs */
     mcb_init(seg_offset(heap), (HEAP_SIZE >> 4) - seg_offset(heap) - 1, MCB_LAST);
     
@@ -1595,12 +1595,13 @@ class Cpp(object):
             hd = open(header, "wt")
 
         data_impl = f'''#include "_data.h"
+namespace m2c{{
 static struct Memory mm;
 struct Memory& m = mm;
 
 db(& stack)[STACK_SIZE]=m.stack;
 db(& heap)[HEAP_SIZE]=m.heap;
-
+}}
 {data_cpp_reference}
         '''
 
@@ -1629,7 +1630,9 @@ db(& heap)[HEAP_SIZE]=m.heap;
                 offsets.append((k.lower(), hex(v.line_number)))
         offsets = sorted(offsets, key=lambda t: t[1])
         '''
-        labeloffsets = "static const uint16_t kbegin = 0x1001;\n"
+        labeloffsets = """namespace m2c{
+static const uint16_t kbegin = 0x1001;
+"""
         i = 0x1001
         for k, v in list(self.__context.get_globals().items()):
             #if isinstance(v, (op.label, proc_module.Proc)) and v.used:
@@ -1639,6 +1642,7 @@ db(& heap)[HEAP_SIZE]=m.heap;
                 if v.real_offset or v.real_seg:
                     i = v.real_offset
                 labeloffsets += "static const uint16_t k%s = 0x%x;\n" % (k, i)
+        labeloffsets += "}\n"
         return labeloffsets
 
     def produce_structures(self, strucs):
@@ -1664,6 +1668,7 @@ db(& heap)[HEAP_SIZE]=m.heap;
     def produce_data(self, hdata_bin):
         data_head = """
 #pragma pack(push, 1)
+namespace m2c{
 struct Memory{
 """
         data_head += "".join(hdata_bin)
@@ -1672,6 +1677,7 @@ struct Memory{
                         db heap[HEAP_SIZE];
                 '''
         data_head += """};
+}
 #pragma pack(pop)
 """
         return data_head

@@ -225,7 +225,7 @@ static const uint32_t MASK[]={0, 0xff, 0xffff, 0xffffff, 0xffffffff};
 #define ROL(a,b) {if (b) {a=(((a)<<(shiftmodule(a,b))) | (a)>>(bitsizeof(a)-(shiftmodule(a,b))));\
 		AFFECT_CF(LSB(a));}}
 
-#define RCL(a, b) RCL_(a, b, CF)
+#define RCL(a, b) m2c::RCL_(a, b, CF)
 template <class D, class C>
 void RCL_(D& Destination, C Count, bool& CF_)
 { 
@@ -238,7 +238,7 @@ void RCL_(D& Destination, C Count, bool& CF_)
 			}
 }
 
-#define RCR(a, b) RCR_(a, b, CF)
+#define RCR(a, b) m2c::RCR_(a, b, CF)
 template <class D, class C>
 void RCR_(D& Destination, C Count, bool& CF_)
 { 
@@ -286,8 +286,8 @@ else
  }
 }
 
-#define SHRD(a, b, c) {SHRD_(a, b, c, CF);if (c) {AFFECT_ZF(a);AFFECT_SF(a,a);}}
-#define SHLD(a, b, c) {SHLD_(a, b, c, CF);if (c) {AFFECT_ZF(a);AFFECT_SF(a,a);}}
+#define SHRD(a, b, c) {m2c::SHRD_(a, b, c, CF);if (c) {AFFECT_ZF(a);AFFECT_SF(a,a);}}
+#define SHLD(a, b, c) {m2c::SHLD_(a, b, c, CF);if (c) {AFFECT_ZF(a);AFFECT_SF(a,a);}}
 /*
  //TODO CF=(a) & (1 << (sizeof(f)*8-b));
 #define SHRD(a,b,c) {if(c) {\
