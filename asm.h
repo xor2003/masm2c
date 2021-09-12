@@ -3,16 +3,33 @@
 
 
 
+//#include <setjmp.h>
+/*
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
 #include <math.h>
-#include <setjmp.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <assert.h>
+*/
+#include <cstdlib>
+#include <cstdarg>
+#include <cmath>
+#include <cstddef>
+#include <cstdio>
+#include <cassert>
+
 #include <cstring>
 
+#ifndef NOSDL
+ #ifdef __LIBSDL2__
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_mixer.h>
+ #endif
+#endif
+
+// Types
 #ifdef __BORLANDC__
  typedef unsigned long uint32_t;
  typedef long int32_t;
@@ -29,8 +46,10 @@
  #define MYPACKED
  #define MYINT_ENUM
 #else
- #include <stdint.h>
- #include <stdbool.h>
+// #include <stdint.h>
+// #include <stdbool.h>
+ #include <cstdint>
+ #include <cstdbool>
  #define MYPACKED __attribute__((__packed__))
  #define MYINT_ENUM : int
 #endif
@@ -51,20 +70,13 @@ typedef float real4;
 typedef double real8;
 typedef long double real10;
 
-#ifndef NOSDL
- #ifdef __LIBSDL2__
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_mixer.h>
- #endif
-#endif
 
-#ifdef __LIBRETRO__
-#include "libretro.h"
-extern retro_log_printf_t log_cb;
-#else
+#include "memmgr.h"
+
+namespace m2c {
 extern FILE * logDebug;
-#endif
 
+// Asm functions
 void log_error(const char *fmt, ...);
 void log_debug(const char *fmt, ...);
 void log_info(const char *fmt, ...);
@@ -108,26 +120,14 @@ static const uint32_t MASK[]={0, 0xff, 0xffff, 0xffffff, 0xffffffff};
  #define INLINE
 #endif
 
-#if defined(_PROTECTED_MODE)
- #if _BITS == 32
-  #define raddr(segment,offset) (reinterpret_cast<db *>(offset))
- #else
-  #define raddr(segment,offset) ((db *)&m+(db)(offset)+selectors[segment])
- #endif
+#if _BITS == 32
+  #include "asm_32.h"
 #else
- #define raddr(segment,offset) (((db *)&m + ((segment)<<4) + (offset) ))
+  #include "asm_16.h"
 #endif
 
 #define realAddress(offset, segment) raddr(segment,offset)
 
-#if _BITS == 32
- typedef dd MWORDSIZE;
- #define offset(segment,name) ((size_t)(db*)&name)
-#else
- typedef dw MWORDSIZE;
- //#define offset(segment,name) (offsetof(struct Memory,name)-offsetof(struct Memory,segment))
- #define offset(segment,name) ((db*)(&name)-(db*)(&segment))
-#endif
 
 #define seg_offset(segment) ((offset(m,(segment)))>>4)
 
@@ -137,163 +137,12 @@ static const uint32_t MASK[]={0, 0xff, 0xffff, 0xffffff, 0xffffffff};
 #define RM_OFFSET(addr)       (((size_t)addr) & 0xF)
 #define RM_SEGMENT(addr)      ((((size_t)addr) >> 4) & 0xFFFF)
 
-#if _BITS == 32
- #define MOVSS(a) {void * dest;void * src;src=realAddress(esi,ds); dest=realAddress(edi,es); \
-		memmove(dest,src,a); edi+=(DF==0)?a:-a; esi+=(DF==0)?a:-a; }
- #define STOS(a,b) {memcpy (realAddress(edi,es), ((db *)&eax)+b, a); edi+=(DF==0)?a:-a;}
-
- #define REP ecx++;while (--ecx != 0)
- #define REPE AFFECT_ZF(0);ecx++;while (--ecx != 0 && ZF)
- #define REPNE AFFECT_ZF(1);ecx++;while (--ecx != 0 && !ZF)
- #define XLAT {al = *raddr(ds,ebx+al);}
- #define CMPSB \
-	{  \
-			db* src=realAddress(esi,ds); db* dest=realAddress(edi,es); \
-			CMP(*src, *dest); edi+=(DF==0)?1:-1; esi+=(DF==0)?1:-1; \
-	}
- #define CMPSW \
-	{  \
-			dw* src=(dw*)realAddress(esi,ds); dw* dest=(dw*)realAddress(edi,es); \
-			CMP(*src, *dest); edi+=(DF==0)?2:-2; esi+=(DF==0)?2:-2; \
-	}
-
-//  printf("~%08X_",*(dd*)realAddress(esi,ds)); printf("%08X~",*(dd*)realAddress(edi,es)); \
-
- #define CMPSD \
-	{ \
-			dd* src=(dd*)realAddress(esi,ds); dd* dest=(dd*)realAddress(edi,es); \
-			CMP(*src, *dest); edi+=(DF==0)?4:-4; esi+=(DF==0)?4:-4; \
-	}
-
-//printf("~%02X",al);printf("%02X~",*realAddress(edi,es));
-
- #define SCASB \
-	{  \
-			CMP(al, *(db*)realAddress(edi,es)); edi+=(DF==0)?1:-1; \
-	}
- #define SCASW \
-	{  \
-			CMP(ax, *(dw*)realAddress(edi,es)); edi+=(DF==0)?2:-2; \
-	}
- #define SCASD \
-	{  \
-			CMP(eax, *(dd*)realAddress(edi,es)); edi+=(DF==0)?4:-4; \
-	}
-
- #define LODS(addr,s) {memcpy (((db *)&eax), &(addr), s);; esi+=(DF==0)?s:-s;} // TODO not always si!!!
- #define LODSS(a,b) {memcpy (((db *)&eax)+b, realAddress(esi,ds), a); esi+=(DF==0)?a:-a;}
-
- #ifdef MSB_FIRST
-  #define STOSB STOS(1,3)
-  #define STOSW STOS(2,2)
- #else
-  #define STOSB STOS(1,0)
-   #ifdef A_NORMAL
-    #define STOSW {if (es>=0xB800) {STOS(2,0);} else {attron(COLOR_PAIR(ah)); mvaddch(edi/160, (edi/2)%80, al); /*attroff(COLOR_PAIR(ah))*/;edi+=(DF==0)?2:-2;refresh();}}
-   #else
-    #define STOSW STOS(2,0)
-   #endif
- #endif
- #define STOSD STOS(4,0)
-
- #define INSB {db averytemporary3 = asm2C_IN(dx);*realAddress(edi,es)=averytemporary3;edi+=(DF==0)?1:-1;}
- #define INSW {dw averytemporary3 = asm2C_INW(dx);*realAddress(edi,es)=averytemporary3;edi+=(DF==0)?2:-2;}
-
- #define LOOP(label) DEC(ecx); JNZ(label)
- #define LOOPE(label) --ecx; if (ecx!=0 && ZF) GOTOLABEL(label) //TODO
- #define LOOPNE(label) --ecx; if (ecx!=0 && !ZF) GOTOLABEL(label) //TODO
-
-#else // 16 bit
- #define MOVSS(a) {void * dest;void * src;src=realAddress(si,ds); dest=realAddress(di,es); \
-		memmove(dest,src,a); di+=(DF==0)?a:-a; si+=(DF==0)?a:-a; }
- #define STOS(a,b) {memcpy (realAddress(di,es), ((db *)&eax)+b, a); di+=(DF==0)?a:-a;}
-
- #define REP cx++;while (--cx != 0)
- #define REPE AFFECT_ZF(0);cx++;while (--cx != 0 && ZF)
- #define REPNE AFFECT_ZF(1);cx++;while (--cx != 0 && !ZF)
- #define XLAT {al = *raddr(ds,bx+al);}
- #define CMPSB \
-	{  \
-			db* src=realAddress(si,ds); db* dest=realAddress(di,es); \
-			CMP(*src, *dest); di+=(DF==0)?1:-1; si+=(DF==0)?1:-1; \
-	}
- #define CMPSW \
-	{  \
-			dw* src=(dw*)realAddress(si,ds); dw* dest=(dw*)realAddress(di,es); \
-			CMP(*src, *dest); di+=(DF==0)?2:-2; si+=(DF==0)?2:-2; \
-	}
- #define CMPSD \
-	{  \
-			dd* src=(dd*)realAddress(si,ds); dd* dest=(dd*)realAddress(di,es); \
-			CMP(*src, *dest); di+=(DF==0)?4:-4; si+=(DF==0)?4:-4; \
-	}
-
- #define SCASB \
-	{  \
-			CMP(al, *realAddress(di,es)); di+=(DF==0)?1:-1; \
-	}
- #define SCASW \
-	{  \
-			CMP(ax, *(dw*)realAddress(di,es)); di+=(DF==0)?2:-2; \
-	}
- #define SCASD \
-	{  \
-			CMP(eax, *(dd*)realAddress(di,es)); di+=(DF==0)?4:-4; \
-	}
-
- #define LODS(addr,s) {memcpy (((db *)&eax), &(addr), s);; si+=(DF==0)?s:-s;} // TODO not always si!!!
- #define LODSS(a,b) {memcpy (((db *)&eax)+b, realAddress(si,ds), a); si+=(DF==0)?a:-a;}
-
- #ifdef MSB_FIRST
-  #define STOSB STOS(1,3)
-  #define STOSW STOS(2,2)
- #else
-
- //SDL2 VGA
-  #if SDL_MAJOR_VERSION == 2 && !defined(NOSDL)
-   #define STOSB { \
-	if (es==0xa000)\
-		{ \
-	  SDL_SetRenderDrawColor(renderer, vgaPalette[3*al+2], vgaPalette[3*al+1], vgaPalette[3*al], 255); \
-          SDL_RenderDrawPoint(renderer, di%320, di/320); \
-  	  SDL_RenderPresent(renderer); \
-	  di+=(DF==0)?1:-1;} \
-	else \
-		{STOS(1,0);} \
-	}
-  #else
-   #define STOSB STOS(1,0)
-  #endif
-
-   #ifdef A_NORMAL
-    #define STOSW { \
-	if (es==0xB800)  \
-		{dd averytemporary=(di>>1);attrset(COLOR_PAIR(ah)); mvaddch(averytemporary/80, averytemporary%80, al); /*attroff(COLOR_PAIR(ah))*/;di+=(DF==0)?2:-2;refresh();} \
-	else \
-		{STOS(2,0);} \
-	}
-   #else
-    #define STOSW STOS(2,0)
-   #endif
- #endif
- #define STOSD STOS(4,0)
-
- #define INSB {db averytemporary3 = asm2C_IN(dx);*realAddress(di,es)=averytemporary3;di+=(DF==0)?1:-1;}
- #define INSW {dw averytemporary3 = asm2C_INW(dx);*realAddress(di,es)=averytemporary3;di+=(DF==0)?2:-2;}
-
-#define LOOP(label) DEC(cx); JNZ(label)
-#define LOOPE(label) --cx; if (cx!=0 && ZF) GOTOLABEL(label) //TODO
-#define LOOPNE(label) --cx; if (cx!=0 && !ZF) GOTOLABEL(label) //TODO
-
-#endif
 
 
 
-//#define PUSHAD memcpy (&m.stack[m.stackPointer], &m.eax.dd.val, sizeof (dd)*8); m.stackPointer+=sizeof(dd)*8; assert(m.stackPointer<STACK_SIZE)
 //pusha AX, CX, DX, BX, SP, BP, SI, DI
 //pushad EAX, ECX, EDX, EBX, ESP, EBP, ESI, EDI
 #define PUSHAD {PUSH(eax);PUSH(ecx);PUSH(edx);PUSH(ebx); PUSH(esp);PUSH(ebp);PUSH(esi);PUSH(edi);}
-//#define POPAD m.stackPointer-=sizeof(dd)*8; memcpy (&m.eax.dd.val, &m.stack[m.stackPointer], sizeof (dd)*8)
 #define POPAD {POP(edi);POP(esi);POP(ebp); POP(ebx); POP(ebx);POP(edx);POP(ecx);POP(eax); }
 
 #define PUSHA {PUSH(ax);PUSH(cx);PUSH(dx);PUSH(bx); PUSH(sp);PUSH(bp);PUSH(si);PUSH(di);}
@@ -310,10 +159,10 @@ static const uint32_t MASK[]={0, 0xff, 0xffff, 0xffffff, 0xffffffff};
 #ifdef DEBUG
  #define PUSH(a) {dd averytemporary=a;stackPointer-=sizeof(a); \
 		memcpy (raddr(ss,stackPointer), &averytemporary, sizeof (a)); \
-		log_debug("after push %x\n",stackPointer);}
+		m2c::log_debug("after push %x\n",stackPointer);}
 //		assert((raddr(ss,stackPointer) - ((db*)&stack))>8);}
 
- #define POP(a) { log_debug("before pop %x\n",stackPointer);memcpy (&a, raddr(ss,stackPointer), sizeof (a));stackPointer+=sizeof(a);}
+ #define POP(a) { m2c::log_debug("before pop %x\n",stackPointer);memcpy (&a, raddr(ss,stackPointer), sizeof (a));stackPointer+=sizeof(a);}
 #else
  #define PUSH(a) {dd averytemporary=a;stackPointer-=sizeof(a); \
 		memcpy (raddr(ss,stackPointer), &averytemporary, sizeof (a));}
@@ -331,7 +180,7 @@ static const uint32_t MASK[]={0, 0xff, 0xffff, 0xffffff, 0xffffffff};
 #define ISNEGATIVE(f,a) ( (a) & (1 << (bitsizeof(f)-1)) )
 #define AFFECT_SF(f, a) {SF=ISNEGATIVE(f,a);}
 
-#define CMP(a,b) {dd averytemporary=((a)-(b))& MASK[sizeof(a)]; \
+#define CMP(a,b) {dd averytemporary=((a)-(b))& m2c::MASK[sizeof(a)]; \
 		AFFECT_CF((averytemporary)>(a)); \
 		AFFECT_ZF(averytemporary); \
 		AFFECT_SF(a,averytemporary);}
@@ -590,32 +439,32 @@ else
 #define AAD AAD1(10)
 
 #define ADD(a,b) {dq averytemporary=(dq)a+(dq)b; \
-		AFFECT_CF((averytemporary)>MASK[sizeof(a)]); \
+		AFFECT_CF((averytemporary)>m2c::MASK[sizeof(a)]); \
 		a=averytemporary; \
 		AFFECT_ZF(a); \
 		AFFECT_SF(a,a);}
 
 #define XADD(a,b) {dq averytemporary=(dq)a+(dq)b; \
-		AFFECT_CF((averytemporary)>MASK[sizeof(a)]); \
+		AFFECT_CF((averytemporary)>m2c::MASK[sizeof(a)]); \
 		b=a; \
 		a=averytemporary; \
 		AFFECT_ZF(a); \
 		AFFECT_SF(a,a);}
 
-#define SUB(a,b) {dd averytemporary=(a-b)& MASK[sizeof(a)]; \
+#define SUB(a,b) {dd averytemporary=(a-b)& m2c::MASK[sizeof(a)]; \
 		AFFECT_CF((averytemporary)>(a)); \
 		a=averytemporary; \
 		AFFECT_ZF(a); \
 		AFFECT_SF(a,a);}
 
 #define ADC(a,b) {dq averytemporary=(dq)a+(dq)b+(dq)CF; \
-		AFFECT_CF((averytemporary)>MASK[sizeof(a)]); \
+		AFFECT_CF((averytemporary)>m2c::MASK[sizeof(a)]); \
 		a=averytemporary; \
 		AFFECT_ZF(a); \
 		AFFECT_SF(a,a);}
 
 #define SBB(a,b) {dq averytemporary=(dq)a-(dq)b-(dq)CF; \
-		AFFECT_CF((averytemporary)>MASK[sizeof(a)]); \
+		AFFECT_CF((averytemporary)>m2c::MASK[sizeof(a)]); \
 		a=averytemporary; \
 		AFFECT_ZF(a); \
 		AFFECT_SF(a,a);} 
@@ -733,9 +582,9 @@ else
 */
 
 #if DEBUG >= 3
-#define MOV(dest,src) {log_debug("%x := (%x)\n",&dest, src); MOV_(&dest,src);}
+#define MOV(dest,src) {m2c::log_debug("%x := (%x)\n",&dest, src); m2c::MOV_(&dest,src);}
 #else
-#define MOV(dest,src) {MOV_(&dest,src);}
+#define MOV(dest,src) {m2c::MOV_(&dest,src);}
 #endif
 template <class D, class S>
 void MOV_(D* dest, const S& src)
@@ -803,7 +652,7 @@ void MOV_(D* dest, const S& src)
 
 // directjeu nosetjmp,2
 // directmenu
-#define _INT(a) {asm2C_INT(_state,a); TESTJUMPTOBACKGROUND;}
+#define _INT(a) {m2c::asm2C_INT(_state,a); TESTJUMPTOBACKGROUND;}
 
 #define TESTJUMPTOBACKGROUND  //if (jumpToBackGround) CALL(moveToBackGround);
 
@@ -856,24 +705,25 @@ int8_t asm2C_IN(int16_t data);
 
 #if DEBUG
 
- #define RET {log_debug("before ret %x\n",stackPointer); MWORDSIZE averytemporary9=0; POP(averytemporary9); if (averytemporary9!='xy') {log_error("Emulated stack corruption detected %x.\n",averytemporary9);exit(1);} \
-	log_debug("after ret %x\n",stackPointer); \
-	--_state->_indent;_state->_str=log_spaces(_state->_indent);return;}
+ #define RET {m2c::log_debug("before ret %x\n",stackPointer); m2c::MWORDSIZE averytemporary9=0; POP(averytemporary9); if (averytemporary9!='xy') {m2c::log_error("Emulated stack corruption detected %x.\n",averytemporary9);exit(1);} \
+	m2c::log_debug("after ret %x\n",stackPointer); \
+	--_state->_indent;_state->_str=m2c::log_spaces(_state->_indent);return;}
 
- #define RETF {log_debug("before retf %x\n",stackPointer); MWORDSIZE averytemporary9=0; POP(averytemporary9); if (averytemporary9!='xy') {log_error("Emulated stack corruption detected %x.\n",averytemporary9);exit(1);} \
+ #define RETF {m2c::log_debug("before retf %x\n",stackPointer); m2c::MWORDSIZE averytemporary9=0; POP(averytemporary9); if (averytemporary9!='xy') {m2c::log_error("Emulated stack corruption detected %x.\n",averytemporary9);exit(1);} \
 	dw averytemporary11;POP(averytemporary11); \
-	log_debug("after retf %x\n",stackPointer); \
-	--_state->_indent;_state->_str=log_spaces(_state->_indent);return;}
+	m2c::log_debug("after retf %x\n",stackPointer); \
+	--_state->_indent;_state->_str=m2c::log_spaces(_state->_indent);return;}
 #else
 
- #define RET {MWORDSIZE averytemporary11=0; POP(averytemporary11);  \
+ #define RET {m2c::MWORDSIZE averytemporary11=0; POP(averytemporary11);  \
 	return;}
 
- #define RETF {MWORDSIZE averytemporary11=0; POP(averytemporary11); \
+ #define RETF {m2c::MWORDSIZE averytemporary11=0; POP(averytemporary11); \
 	dw averytemporary2;POP(averytemporary2); \
 	return;}
 #endif
 
+/*
 #ifdef SINGLEPROCSTRATEGY
 
 #if DEBUG
@@ -891,22 +741,22 @@ int8_t asm2C_IN(int16_t data);
 #endif
 
 #else // SINGLEPROCSTRATEGY end separate procs start
-
+*/
 #if DEBUG
  #define CALL(label) \
-	{ MWORDSIZE averytemporary8='xy'; PUSH(averytemporary8); \
-	  log_debug("after call %x\n",stackPointer); \
-	  ++_state->_indent;_state->_str=log_spaces(_state->_indent);\
+	{ m2c::MWORDSIZE averytemporary8='xy'; PUSH(averytemporary8); \
+	  m2c::log_debug("after call %x\n",stackPointer); \
+	  ++_state->_indent;_state->_str=m2c::log_spaces(_state->_indent);\
 	  label(__disp, _state); \
 	}
 #else
  #define CALL(label) \
-	{ MWORDSIZE averytemporary10='xy'; PUSH(averytemporary10); \
+	{ m2c::MWORDSIZE averytemporary10='xy'; PUSH(averytemporary10); \
 	  label(__disp, _state); \
 	}
 #endif
 
-#endif // end separate procs
+//#endif // end separate procs
 
 #define RETN RET
 #define IRET RETF
@@ -917,7 +767,7 @@ int8_t asm2C_IN(int16_t data);
 #define RDTSC {dq averytemporary = realElapsedTime(); eax=averytemporary&0xffffffff; edx=(averytemporary>32)&0xffffffff;}
 
 #if DEBUG==2
-    #define R(a) {log_debug("l:%s%d:%s\n",_state->_str,__LINE__,#a);}; a
+    #define R(a) {m2c::log_debug("l:%s%d:%s\n",_state->_str,__LINE__,#a);}; a
 #elif DEBUG>=3
 // clean format
 //    #define R(a) {log_debug("%s%x:%d:%s eax: %x ebx: %x ecx: %x edx: %x ebp: %x ds: %x esi: %x es: %x edi: %x fs: %x esp: %x\n",_state->_str,cs/*pthread_self()*/,__LINE__,#a, \
@@ -925,7 +775,7 @@ int8_t asm2C_IN(int16_t data);
 //	a 
 
 // dosbox logcpu format
-    #define R(a) {log_debug("%05d %04X:%08X  %-54s EAX:%08X EBX:%08X ECX:%08X EDX:%08X ESI:%08X EDI:%08X EBP:%08X ESP:%08X DS:%04X ES:%04X FS:%04X GS:%04X SS:%04X CF:%d ZF:%d SF:%d OF:%d AF:%d PF:%d IF:%d\n", \
+    #define R(a) {m2c::log_debug("%05d %04X:%08X  %-54s EAX:%08X EBX:%08X ECX:%08X EDX:%08X ESI:%08X EDI:%08X EBP:%08X ESP:%08X DS:%04X ES:%04X FS:%04X GS:%04X SS:%04X CF:%d ZF:%d SF:%d OF:%d AF:%d PF:%d IF:%d\n", \
                          __LINE__,cs,eip,#a,       eax,     ebx,     ecx,     edx,     esi,     edi,     ebp,     esp,     ds,     es,     fs,     gs,     ss,     CF   ,ZF   ,SF   ,OF   ,AF   ,PF,   IF);} \
 	a 
 
@@ -951,6 +801,52 @@ bool is_little_endian();
 			   ))
 #endif
 
+// ---------unimplemented
+#define UNIMPLEMENTED m2c::log_debug("unimplemented\n");
+/*
+#define CMPXCHG8B(a) UNIMPLEMENTED // not in dosbox
+#define CMOVA(a,b) UNIMPLEMENTED // not in dosbox
+#define CMOVB(a,b) UNIMPLEMENTED
+#define CMOVBE(a,b) UNIMPLEMENTED
+#define CMOVG(a,b) UNIMPLEMENTED
+#define CMOVGE(a,b) UNIMPLEMENTED
+#define CMOVL(a,b) UNIMPLEMENTED
+#define CMOVLE(a,b) UNIMPLEMENTED
+#define CMOVNB(a,b) UNIMPLEMENTED
+#define CMOVNO(a,b) UNIMPLEMENTED
+#define CMOVNP(a,b) UNIMPLEMENTED
+#define CMOVNS(a,b) UNIMPLEMENTED
+#define CMOVNZ(a,b) UNIMPLEMENTED
+#define CMOVO(a,b) UNIMPLEMENTED
+#define CMOVP(a,b) UNIMPLEMENTED
+#define CMOVS(a,b) UNIMPLEMENTED
+#define CMOVZ(a,b) UNIMPLEMENTED
+
+#define JNO(x) UNIMPLEMENTED
+#define JNP(x) UNIMPLEMENTED
+#define JO(x) UNIMPLEMENTED
+#define JP(x) UNIMPLEMENTED
+
+
+#define BSR(a,b) UNIMPLEMENTED
+
+
+#define CMPXCHG UNIMPLEMENTED
+
+#define LOOPW(x) UNIMPLEMENTED
+#define LOOPWE(x) UNIMPLEMENTED
+#define LOOPWNE(x) UNIMPLEMENTED
+*/
+#define DAA UNIMPLEMENTED
+#define DAS UNIMPLEMENTED
+#define CDQ UNIMPLEMENTED
+
+#define STI UNIMPLEMENTED
+#define CLI UNIMPLEMENTED
+
+#define ORG(x) 
+#define XLATB XLAT
+
 typedef unsigned short _offsets;
 /*
 #ifndef __BORLANDC__
@@ -960,6 +856,7 @@ enum  _offsets;
 #endif
 */
 
+// Regs
 struct _STATE{
        _STATE()
        {_str="";
@@ -995,63 +892,6 @@ db _indent;
 const char *_str;
 };
 
-/*
-#define eax (_state->_eax)
-#define ax  (*(dw*)&(_state->_eax))
-#define al  (*(db*)&(_state->_eax))
-#define ah  (*((db*)&(_state->_eax)+1))
-
-#define ebx (_state->_ebx)
-#define bx  (*(dw*)&(_state->_ebx))
-#define bl  (*(db*)&(_state->_ebx))
-#define bh  (*((db*)&(_state->_ebx)+1))
-
-#define ecx (_state->_ecx)
-#define cx  (*(dw*)&(_state->_ecx))
-#define cl  (*(db*)&(_state->_ecx))
-#define ch  (*((db*)&(_state->_ecx) +1))
-
-#define edx (_state->_edx)
-#define dx  (*(dw*)&(_state->_edx))
-#define dl  (*(db*)&(_state->_edx))
-#define dh  (*((db*)&(_state->_edx)+1))
-
-#define esi (_state->_esi)
-#define si  (*(dw*)&(_state->_esi))
-#define sil (*(db*)&(_state->_esi))
-
-#define edi (_state->_edi)
-#define di  (*(dw*)&(_state->_edi))
-#define dil (*(db*)&(_state->_edi))
-
-#define ebp (_state->_ebp)
-#define bp  (*(dw*)&(_state->_ebp))
-#define bpl (*(db*)&(_state->_ebp))
-
-#define esp (_state->_esp)
-#define sp  (*(dw*)&(_state->_esp))
-#define spl (*(db*)&(_state->_esp))
-
-#define eip (_state->_eip)
-#define ip  (*(dw*)&(_state->_eip))
-
-#define cs  (_state->_cs)
-#define ds  (_state->_ds)
-#define es  (_state->_es)
-#define fs  (_state->_fs)
-#define gs  (_state->_gs)
-#define ss  (_state->_ss)
-                      
-#define CF  (_state->_CF)
-#define PF  (_state->_PF)
-#define AF  (_state->_AF)
-#define ZF  (_state->_ZF)
-#define SF  (_state->_SF)
-#define DF  (_state->_DF)
-#define OF  (_state->_OF)
-#define stackPointer (_state->_esp)
-
-*/
 #define REGDEF_hl(Z)   \
 uint32_t& e##Z##x = _state->e##Z##x; \
 uint16_t& Z##x = *(uint16_t *)& e##Z##x; \
@@ -1096,7 +936,7 @@ bool& DF = _state->DF;       \
 bool& OF = _state->OF;       \
 bool& IF = _state->IF;       \
 dd& stackPointer = _state->esp;\
-_offsets __disp; \
+m2c::_offsets __disp; \
 dw _source;
 
 /*
@@ -1116,72 +956,24 @@ dw getscan();
 
 // SDL2 VGA
 //struct SDL_Renderer;
-extern struct SDL_Renderer *renderer;
 
 extern db vgaPalette[256*3];
 
 //extern chtype vga_to_curses[256];
-#include "memmgr.h"
 
 #ifdef __cplusplus
 //}
 #endif
 
-// ---------unimplemented
-#define UNIMPLEMENTED log_debug("unimplemented\n");
-/*
-#define CMPXCHG8B(a) UNIMPLEMENTED // not in dosbox
-#define CMOVA(a,b) UNIMPLEMENTED // not in dosbox
-#define CMOVB(a,b) UNIMPLEMENTED
-#define CMOVBE(a,b) UNIMPLEMENTED
-#define CMOVG(a,b) UNIMPLEMENTED
-#define CMOVGE(a,b) UNIMPLEMENTED
-#define CMOVL(a,b) UNIMPLEMENTED
-#define CMOVLE(a,b) UNIMPLEMENTED
-#define CMOVNB(a,b) UNIMPLEMENTED
-#define CMOVNO(a,b) UNIMPLEMENTED
-#define CMOVNP(a,b) UNIMPLEMENTED
-#define CMOVNS(a,b) UNIMPLEMENTED
-#define CMOVNZ(a,b) UNIMPLEMENTED
-#define CMOVO(a,b) UNIMPLEMENTED
-#define CMOVP(a,b) UNIMPLEMENTED
-#define CMOVS(a,b) UNIMPLEMENTED
-#define CMOVZ(a,b) UNIMPLEMENTED
-
-#define JNO(x) UNIMPLEMENTED
-#define JNP(x) UNIMPLEMENTED
-#define JO(x) UNIMPLEMENTED
-#define JP(x) UNIMPLEMENTED
-
-
-#define BSR(a,b) UNIMPLEMENTED
-
-
-#define CMPXCHG UNIMPLEMENTED
-
-#define LOOPW(x) UNIMPLEMENTED
-#define LOOPWE(x) UNIMPLEMENTED
-#define LOOPWNE(x) UNIMPLEMENTED
-*/
-#define DAA UNIMPLEMENTED
-#define DAS UNIMPLEMENTED
-#define CDQ UNIMPLEMENTED
-
-#define STI UNIMPLEMENTED
-#define CLI UNIMPLEMENTED
-
-#define ORG(x) 
-#define XLATB XLAT
 // ---------
 
 struct /*__attribute__((__packed__))*/ Memory;
 extern Memory& m;
 extern db(& stack)[STACK_SIZE];
 extern db(& heap)[HEAP_SIZE];
-typedef void m2cf(_offsets, struct _STATE*);
+typedef void m2cf(_offsets, struct _STATE*); // common masm2c function
 extern  m2cf* _ENTRY_POINT_;
 
-namespace mc {
 
 #define TODB(X) (*(db*)(&(X)))
 #define TODW(X) (*(dw*)(&(X)))
@@ -1189,6 +981,8 @@ namespace mc {
 #define TODQ(X) (*(dq*)(&(X)))
 
 }
+
+extern struct SDL_Renderer *renderer;
 
 #endif
 

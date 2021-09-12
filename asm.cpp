@@ -1,9 +1,9 @@
 #include "asm.h"
 
-
 #include <exception>
 
 #ifndef __BORLANDC__
+ #include <sys/time.h>
  #ifndef __DJGPP__
   #ifndef NOSDL
    #include <SDL2/SDL.h>
@@ -20,9 +20,15 @@
  #include <sys/farptr.h>
 #endif
 
-#include <assert.h>
+#ifdef _WIN32
+#include <windows.h>
+#endif
 
-#include <time.h>
+//#include <assert.h>
+//#include <time.h>
+#include <cassert>
+#include <ctime>
+
 
 #include <curses.h>
 
@@ -79,6 +85,9 @@ db vgaRam[VGARAM_SIZE];
 db vgaRamPaddingAfter[VGARAM_SIZE];
  #endif
 #endif
+
+namespace m2c {
+
 
 //db vgaPalette[256*3];
 #include "vgapal.h"
@@ -174,7 +183,7 @@ X86_REGREF
 	log_debug("sizeof(dd *)=%zu\n",sizeof(dd *));
 	log_debug("sizeof(dw)=%zu\n",sizeof(dw));
 	log_debug("sizeof(db)=%zu\n",sizeof(db));
-	log_debug("sizeof(jmp_buf)=%zu\n",sizeof(jmp_buf));
+//	log_debug("sizeof(jmp_buf)=%zu\n",sizeof(jmp_buf));
 //	log_debug("sizeof(mem)=%zu\n",sizeof(m));
 	log_debug("eax: %x\n",eax);
 //	hexDump(&eax,sizeof(dd));
@@ -274,7 +283,7 @@ void asm2C_OUT(int16_t address, int data) {
 		}
 		break;
 	default:
-		log_debug("unknown OUT %d,%d\n",address, data);
+		log_debug("unknown OUT %x,%x\n",address, data);
 		break;
 	}
 #endif
@@ -297,7 +306,7 @@ int8_t asm2C_IN(int16_t address) {
 		}
 		//break;
 	default:
-		log_error("Unknown IN %d\n",address);
+		log_error("Unknown IN %x\n",address);
 		return 0;
 	}
 #endif
@@ -311,7 +320,7 @@ uint16_t asm2C_INW(uint16_t address) {
 	case 0x3DA:
 		break;
 	default:
-		log_error("Unknown INW %d\n",address);
+		log_error("Unknown INW %x\n",address);
 		return 0;
 	}
 #endif
@@ -351,7 +360,6 @@ bool is_little_endian()
 
 #ifndef __BORLANDC__ //TODO
 //#if !CYGWIN
-  #include <sys/time.h>
 double realElapsedTime(void) {              // returns 0 first time called
 //    static struct timeval t0;
     struct timeval tv;
@@ -481,6 +489,27 @@ X86_REGREF
 				log_debug2("Switch to text mode\n");
 				return;
 			}
+			
+			case 0x04: {
+				log_debug2("Switch to CGA\n");
+#ifdef __DJGPP__
+        call_dos_realint(_state, a);
+#endif
+
+#ifndef NOSDL
+ #if SDL_MAJOR_VERSION == 2
+
+				SDL_Init(SDL_INIT_VIDEO);
+				SDL_CreateWindowAndRenderer(320, 200, 0, &window, &renderer);
+				SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+				SDL_RenderClear(renderer);
+			        SDL_RenderPresent(renderer);
+ #endif
+#endif
+				//stackDump(_state);
+				return;
+			}
+
 			case 0x83: {
 				resize_term(25, 80);
 				refresh();
@@ -1404,70 +1433,6 @@ int init(struct _STATE *state);
 
 void mainproc(_offsets _i, struct _STATE *state);
 
-int main(int argc, char *argv[]) {
-    struct _STATE state;
-    struct _STATE *_state = &state;
-    X86_REGREF
-
-    _state->_indent = 0;
-
-    eax = ebx = ecx = edx = ebp = esi = edi = DF = fs = gs = 0; // according to ms-dos 6.22 debuger
-    CF = ZF = SF = OF = AF = PF = IF = 0;
-    cx = 0xff; // dummy size of executable
-
-
-    try {
-        _state->_indent = 0;
-        logDebug = fopen("asm.log", "w");
-
-        initscr();
-        resize_term(25, 80);
-        cbreak(); // put keys directly to program
-        noecho(); // do not echo
-        keypad(stdscr, TRUE); // provide keypad buttons
-
-        if (!has_colors()) {
-            printw("Unable to use colors");
-        }
-        start_color();
-
-        realtocurs();
-        curs_set(0);
-
-        refresh();
-
-
-        init(_state);
-
-        if (argc >= 2) {
-            db s = strlen(argv[1]);
-            *(((db *) &m) + 0x80) = s + 1;
-            strcpy(((char *) &m) + 0x81, argv[1]);
-            *(dw *)((db*)&m + 0x81 + s) = 0xD;
-
-        }
-        (*_ENTRY_POINT_)((_offsets) 0, _state);
-    }
-    catch (const std::exception &e) {
-        printf("std::exception& %s\n", e.what());
-    }
-    catch (...) {
-        printf("some exception\n");
-    }
-    return (0);
-}
-
-#ifdef _WIN32
-#include <windows.h>
-int  WinMain(
-  HINSTANCE hInstance,
-  HINSTANCE hPrevInstance,
-  LPSTR     lpCmdLine,
-  int       nShowCmd
-)
-{return main(0,0);
-}
-#endif
 
 chtype vga_to_curses[256];
 
@@ -1503,7 +1468,41 @@ void prepare_cp437_to_curses() {
     vga_to_curses[0xf8] = ACS_DEGREE;
     vga_to_curses[0xfe] = ACS_BULLET;
 }
+/*
+#include <thread>         // std::thread
+std::thread int8_thread;
+void int8_thread_proc()
+{
+_STATE state;
+_STATE* _state = &state;
+X86_REGREF
 
+//R(MOV(cs, seg_offset(_text)));	// mov cs,_TEXT
+
+  R(MOV(ss, seg_offset(int8stack)));	// mov cs,_TEXT
+#if _BITS == 32
+  esp = ((dd)(db*)&m.int8stack[STACK_SIZE - 4]);
+#else
+  esp=0;
+  sp = STACK_SIZE - 4;
+#endif
+
+  es=0;
+
+while(true)
+	{
+		bx=*(dw *)realAddress(8*4,0);
+//		es=(dw *)realAddress(8*4+2,0);
+
+		if (bx)
+		{
+
+			CALL(static_cast<_offsets>(bx));
+std::this_thread::sleep_for(std::chrono::microseconds(1));
+		}
+	}
+}
+*/
  int init(struct _STATE* _state)
  {
     X86_REGREF
@@ -1521,6 +1520,75 @@ void prepare_cp437_to_curses() {
     es = 0;
     *(dw*)(raddr(0, 0x408)) = 0x378; //LPT
  #endif
+
+//	*(dw *)realAddress(8*4,0)=k_int8old;
+//    int8_thread = std::thread(int8_thread_proc);
+//	int8_thread.detach();
     
     return(0);
  }
+}
+
+int main(int argc, char *argv[]) {
+    struct m2c::_STATE state;
+    struct m2c::_STATE *_state = &state;
+    X86_REGREF
+
+    _state->_indent = 0;
+
+    eax = ebx = ecx = edx = ebp = esi = edi = DF = fs = gs = 0; // according to ms-dos 6.22 debuger
+    CF = ZF = SF = OF = AF = PF = IF = 0;
+    cx = 0xff; // dummy size of executable
+
+
+    try {
+        _state->_indent = 0;
+        m2c::logDebug = fopen("asm.log", "w");
+
+        initscr();
+        resize_term(25, 80);
+        cbreak(); // put keys directly to program
+        noecho(); // do not echo
+        keypad(stdscr, TRUE); // provide keypad buttons
+
+        if (!has_colors()) {
+            printw("Unable to use colors");
+        }
+        start_color();
+
+        m2c::realtocurs();
+        curs_set(0);
+
+        refresh();
+
+
+        m2c::init(_state);
+
+        if (argc >= 2) {
+            db s = strlen(argv[1]);
+            *(((db *) &m2c::m) + 0x80) = s + 1;
+            strcpy(((char *) &m2c::m) + 0x81, argv[1]);
+            *(dw *)((db*)&m2c::m + 0x81 + s) = 0xD;
+
+        }
+        (*m2c::_ENTRY_POINT_)((m2c::_offsets) 0, _state);
+    }
+    catch (const std::exception &e) {
+        printf("std::exception& %s\n", e.what());
+    }
+    catch (...) {
+        printf("some exception\n");
+    }
+    return (0);
+}
+
+#ifdef _WIN32
+int  WinMain(
+  HINSTANCE hInstance,
+  HINSTANCE hPrevInstance,
+  LPSTR     lpCmdLine,
+  int       nShowCmd
+)
+{return main(0,0);
+}
+#endif
