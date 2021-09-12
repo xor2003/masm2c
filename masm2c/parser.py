@@ -765,7 +765,7 @@ class Parser:
             else:
                 v = "offset(%s,%s)" % (g.segment, g.name)
         elif isinstance(g, (op.label, proc.Proc)):
-            v = "k%s" % (g.name.lower())
+            v = "m2c::k%s" % (g.name.lower())
         else:
             v = g.offset
         logging.debug(v)
