@@ -34,6 +34,8 @@
 struct Memory;
 extern Memory& m;
 
+namespace m2c {
+
 #ifdef VERSION_STRING
 static BYTE *memmgrRcsId =
     "$Id: memmgr.c 1338 2007-07-20 20:52:33Z mceric $";
@@ -368,7 +370,7 @@ int DosMemCheck(void)
     /* check for corruption                         */
     if (p->m_type != MCB_NORMAL)
     {
-      log_error("dos mem corrupt, first_mcb=%x \nprev %x notMZ %x",first_mcb, pprev, p);
+      m2c::log_error("dos mem corrupt, first_mcb=%x \nprev %x notMZ %x",first_mcb, pprev, p);
       return DE_MCBDESTRY;
     }
 
@@ -424,4 +426,6 @@ void mcb_init(dw seg, dw size, BYTE type)
   first_mcb = seg;
   near_mcb.m_type = type;
   mcb_init_copy(seg, size, &near_mcb);
+}
+
 }

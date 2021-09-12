@@ -129,7 +129,7 @@ static const uint32_t MASK[]={0, 0xff, 0xffff, 0xffffff, 0xffffffff};
 #define realAddress(offset, segment) raddr(segment,offset)
 
 
-#define seg_offset(segment) ((offset(m,(segment)))>>4)
+#define seg_offset(segment) ((offset(m2c::m,(segment)))>>4)
 
 // DJGPP
 #define MASK_LINEAR(addr)     (((size_t)addr) & 0x000FFFFF)

@@ -32,6 +32,8 @@ extern "C" {
 
 #include "mcb.h"
 
+namespace m2c {
+
 typedef uint8_t db;
 typedef uint16_t dw;
 
@@ -40,7 +42,7 @@ typedef uint16_t dw;
 
 
 //#define MK_FP(seg,ofs)      (&(raddr(seg,ofs))) //  ( (ULONG(seg)<<4)+(UWORD)(ofs) )
-#define FP_SEG(fp)           ( (  ((uint8_t*)(fp)) - ((uint8_t*)(&m)) )>>4)
+#define FP_SEG(fp)           ( (  ((uint8_t*)(fp)) - ((uint8_t*)(&m2c::m)) )>>4)
 //#define FP_OFF(fp)            ( (UWORD) (fp) )
 #define SUCCESS 0
 //#define NULL 0
@@ -57,7 +59,7 @@ extern db mem_access_mode;
 #define mcbFreeable(mcbp) \
 	((mcbp)->m_type == MCB_NORMAL || (mcbp)->m_type == MCB_LAST)
 
-#define para2far(seg) ( (mcb *)((db *)&m + ((seg)<<4)) ) //(seg<<4)
+#define para2far(seg) ( (mcb *)((db *)&m2c::m + ((seg)<<4)) ) //(seg<<4)
 
 typedef mcb * mcb_p;
 
@@ -123,6 +125,7 @@ static void mcb_init_copy(dw seg, dw size, mcb *near_mcb);
 
 void mcb_init(dw seg, dw size, BYTE type);
 
+}
 #ifdef __cplusplus
 }
 #endif
