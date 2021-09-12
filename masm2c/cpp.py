@@ -1058,7 +1058,7 @@ class Cpp(object):
         dst = cpp_mangle_label(dst)
 
         if dst in self.proc.provided_labels:
-            ret += f"__disp=k{dst};\n"
+            ret += f"__disp=m2c::k{dst};\n"
             dst = self.proc.name
 
         if far:
@@ -1388,7 +1388,7 @@ class Cpp(object):
 
         for p in self.grouped:
             self.body += f"""
- void {p}(_offsets, struct _STATE* _state){{{self.groups[p]}(k{p}, _state);}}
+ void {p}(m2c::_offsets, struct m2c::_STATE* _state){{{self.groups[p]}(m2c::k{p}, _state);}}
 """
         self.__translated.append(self.body)
 
