@@ -190,7 +190,7 @@ class SeparateProcStrategy:
     def write_declarations(self, procs, context):
         result = ""
         for p in procs:  # TODO only if used or public
-            if p == 'mainproc' and not context.main_file:
+            if p == 'mainproc': # and not context.main_file:
                 result += 'static '
             result += "void %s(m2c::_offsets, struct m2c::_STATE*);\n" % cpp_mangle_label(p)
 
@@ -199,7 +199,7 @@ class SeparateProcStrategy:
             if v.used:
                 result += f"extern void {v.name}(m2c::_offsets, struct m2c::_STATE*);\n"
 
-        result += "void __dispatch_call(m2c::_offsets __disp, struct m2c::_STATE* _state);\n"
+        result += "static void __dispatch_call(m2c::_offsets __disp, struct m2c::_STATE* _state);\n"
         return result
 
     def get_strategy(self):
