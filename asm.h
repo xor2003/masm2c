@@ -847,7 +847,7 @@ bool is_little_endian();
 #define ORG(x) 
 #define XLATB XLAT
 
-typedef unsigned short _offsets;
+typedef dd _offsets;
 /*
 #ifndef __BORLANDC__
 enum  _offsets : int;

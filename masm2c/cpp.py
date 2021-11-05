@@ -1631,7 +1631,7 @@ db(& heap)[HEAP_SIZE]=m.heap;
         offsets = sorted(offsets, key=lambda t: t[1])
         '''
         labeloffsets = """namespace m2c{
-static const uint16_t kbegin = 0x1001;
+static const dd kbegin = 0x1001;
 """
         i = 0x1001
         for k, v in list(self.__context.get_globals().items()):
@@ -1640,8 +1640,8 @@ static const uint16_t kbegin = 0x1001;
                 k = re.sub(r'[^A-Za-z0-9_]', '_', k).lower()
                 i += 1
                 if v.real_offset or v.real_seg:
-                    i = v.real_offset
-                labeloffsets += "static const uint16_t k%s = 0x%x;\n" % (k, i)
+                    i = v.real_seg * 0x10000 + v.real_offset
+                labeloffsets += "static const dd k%s = 0x%x;\n" % (k, i)
         labeloffsets += "}\n"
         return labeloffsets
 
