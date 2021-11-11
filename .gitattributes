@@ -1,5 +1,8 @@
 # Declare files that will always have LF Only line endings on checkout.
 *.sh text eol=lf
+*.asm text eol=crlf
+*.cpp text eol=lf
+*.h text eol=lf
 *.py text eol=lf
 *.diff text eol=lf
 *.txt text eol=lf

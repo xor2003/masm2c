@@ -44,7 +44,7 @@ class Proc(object):
         self.real_offset, self.real_seg = None, None
         # self.retlabels = set()
 
-    def merge(self, newname, other):
+    def merge_two_procs(self, newname, other):
         self.name, self.original_name = newname, newname
         self.stmts += other.stmts
         self.provided_labels |= other.provided_labels

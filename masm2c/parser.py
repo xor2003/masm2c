@@ -568,6 +568,7 @@ class Parser:
         self.externals_procs = set()
         self.__files = set()
         self.__separate_proc = True
+        self.itislst = False
 
         self.next_pass(Parser.c_dummy_label)
 
@@ -925,6 +926,8 @@ class Parser:
         self.org(num)
 
     def org(self, num):
+        if self.itislst:
+            return
         if num:
             self.__binary_data_size += num
 
@@ -933,7 +936,7 @@ class Parser:
             self.__segment.append(
                 op.Data(label, 'db', DataType.ARRAY, num * [0], num, num, comment='for alignment'))
 
-    def move_offset(self, pointer):
+    def move_offset(self, pointer, raw):
         if pointer > self.__binary_data_size:
             num = pointer - self.__binary_data_size
             self.__binary_data_size += num
@@ -943,7 +946,7 @@ class Parser:
             self.__segment.append(
                 op.Data(label, 'db', DataType.ARRAY, num * [0], num, num, comment='move_offset'))
         elif pointer < self.__binary_data_size:
-            logging.warning(f'Maybe wrong offset {pointer} {self.__binary_data_size}')
+            logging.warning(f'Maybe wrong offset current:{self.__binary_data_size:x} should be:{pointer:x} ~{raw}~')
 
     def get_dummy_label(self):
         Parser.c_dummy_label += 1
@@ -980,9 +983,10 @@ class Parser:
         content = read_whole_file(file_name)
         if file_name.lower().endswith('.lst'):  # for .lst provided by IDA move address to comments after ;~
             # we want exact placement so program could work
+            self.itislst = True
             segmap = dict(
                 x.split(' ') for x in read_whole_file(re.sub(r'\.lst', '.segmap', file_name, flags=re.I)).splitlines())
-            content = re.sub(r'^(?P<segment>[_0-9A-Za-z]+):(?P<offset>[0-9A-F]{4})(?P<remain>.*)',
+            content = re.sub(r'^(?P<segment>[_0-9A-Za-z]+):(?P<offset>[0-9A-F]{4,8})(?P<remain>.*)',
                              lambda m: f'{m.group("remain")} ;~ {segmap.get(m.group("segment"))}:{m.group("offset")}',
                              content, flags=re.MULTILINE)
         self.parse_args_new_data(content, file_name=file_name)
@@ -1045,7 +1049,7 @@ class Parser:
         self.__segment_name = name
         self.align()
         self.__cur_seg_offset = 0
-        self.adjust_offset_to_real(raw)
+        self.adjust_offset_to_real(raw, name)
         offset = self.__binary_data_size // 16
         logging.debug("segment %s %x" % (name, offset))
         binary_width = 0
@@ -1214,7 +1218,7 @@ class Parser:
 
         offset = self.__cur_seg_offset
         if not isstruct:
-            self.adjust_offset_to_real(raw)
+            self.adjust_offset_to_real(raw, label)
 
             offset = self.__cur_seg_offset
 
@@ -1256,23 +1260,29 @@ class Parser:
         # logging.debug("~~        self.assertEqual(parser_instance.parse_data_line_whole(line='"+str(line)+"'),"+str(("".join(c), "".join(h), offset2 - offset))+")")
         return data  # c, h, size
 
-    def adjust_offset_to_real(self, raw):
+    def adjust_offset_to_real(self, raw, label):
         absolute_offset, real_offset, _ = self.get_lst_offsets(raw)
         if absolute_offset:
-            self.move_offset(absolute_offset)
+            self.move_offset(absolute_offset, raw)
             if self.__cur_seg_offset > real_offset:
-                logging.warning('Current offset does not equal to required')
+                logging.warning(f'Current offset does not equal to required for {label}')
             self.__cur_seg_offset = real_offset
 
     def get_lst_offsets(self, raw):
+        '''
+        Get required offsets from .LST file
+        :param raw: raw string
+        :return: offset from memory begging, offset starting from segment, segment in para
+        '''
         real_offset = None
         absolute_offset = None
         real_seg = None
-        m = re.match(r'.* ;~ (?P<segment>[0-9A-F]{4}):(?P<offset>[0-9A-F]{4})', raw)
-        if m:
-            real_offset = int(m.group('offset'), 16)
-            real_seg = int(m.group('segment'), 16)
-            absolute_offset = real_seg * 0x10 + real_offset
+        if self.itislst:
+            m = re.match(r'.* ;~ (?P<segment>[0-9A-F]{4}):(?P<offset>[0-9A-F]{4})', raw)
+            if m:
+                real_offset = int(m.group('offset'), 16)
+                real_seg = int(m.group('segment'), 16)
+                absolute_offset = real_seg * 0x10 + real_offset
         return absolute_offset, real_offset, real_seg
 
     '''

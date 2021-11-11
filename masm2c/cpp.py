@@ -1107,14 +1107,14 @@ class Cpp(object):
         # if self.d in ['sp', 'esp'] and check_int(self.s):
         #    self.__pushpop_count += int(self.s)
         if self.d == self.s:
-            return "\t%s = 0;AFFECT_ZF(0); AFFECT_SF(%s,0);\n" % (self.d, self.d)
+            return "\t%s = 0;AFFECT_ZFifz(0); AFFECT_SF(%s,0);\n" % (self.d, self.d)
         else:
             return "\tR(SUB(%s, %s));\n" % (self.d, self.s)
 
     def _xor(self, dst, src):
         self.d, self.s = self.parse2(dst, src)
         if self.d == self.s:
-            return "\t%s = 0;AFFECT_ZF(0); AFFECT_SF(%s,0);\n" % (self.d, self.d)
+            return "\t%s = 0;AFFECT_ZFifz(0); AFFECT_SF(%s,0);\n" % (self.d, self.d)
         else:
             return "\tR(XOR(%s, %s));\n" % (self.d, self.s)
 
@@ -1516,15 +1516,16 @@ class Cpp(object):
                     self.__context.reset_global(name, label)
                     group_name = f'_group{groups_id}'
                     self.grouped |= proc.group
-                    for p in proc.group:
-                        self.groups[p] = group_name
-                        if p != name:
-                            g = self.__context.get_global(p)
-                            label = op.label(p, proc=name, isproc=False, line_number=g.line_number, far=g.far)
-                            label.used = True
-                            proc.add_label(p, label)
-                            proc.merge(group_name, g)
-                            self.__context.reset_global(p, label)
+                    for p in self.__procs:
+                        if p in proc.group:  # Maintain initial proc order
+                            self.groups[p] = group_name
+                            if p != name:
+                                g = self.__context.get_global(p)
+                                label = op.label(p, proc=name, isproc=False, line_number=g.line_number, far=g.far)
+                                label.used = True
+                                proc.add_label(p, label)
+                                proc.merge_two_procs(group_name, g)
+                                self.__context.reset_global(p, label)
                     groups += [group_name]
                     self.__context.set_global(group_name, proc)
                     groups_id += 1

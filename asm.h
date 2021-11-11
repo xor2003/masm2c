@@ -171,7 +171,7 @@ static const uint32_t MASK[]={0, 0xff, 0xffff, 0xffffff, 0xffffffff};
 #endif
 
 
-#define AFFECT_ZF(a) {ZF=((a)==0);}
+#define AFFECT_ZFifz(a) {ZF=((a)==0);}
 #define AFFECT_CF(a) {CF=(a);}
 #define AFFECT_AF(a) {AF=(a);}
 #define AFFECT_OF(a) {OF=(a);}
@@ -503,7 +503,7 @@ else
 #define DIV2(a) {dd averytemporary=((((dd)dx)<<16)|ax);ax=averytemporary/(a);dx=averytemporary%(a); AFFECT_OF(false);}
 #define DIV4(a) {uint64_t averytemporary=((((dq)edx)<<32)|eax);eax=averytemporary/(a);edx=averytemporary%(a); AFFECT_OF(false);}
 
-#define NOT(a) a= ~(a);// AFFECT_ZF(a) //TODO
+#define NOT(a) {a= ~(a);}// AFFECT_ZF(a) //TODO
 
 #define SETA(a) a=CF==0 && ZF==0;
 #define SETNBE(a) a=CF==0 && ZF==0;
