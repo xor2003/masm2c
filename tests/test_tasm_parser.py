@@ -367,7 +367,7 @@ extrn gameconfig:GAMEINFO
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('TEST AL,8')), u'\tR(TEST(al, 8));\n')
 
     def test_instr_560(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('XOR   al,al')), u'\tal = 0;AFFECT_ZF(0); AFFECT_SF(al,0);\n')
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('XOR   al,al')), u'\tal = 0;AFFECT_ZFifz(0); AFFECT_SF(al,0);\n')
 
     def test_instr_570(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('aaa')), '\tR(AAA);\n')
@@ -3253,7 +3253,7 @@ extrn gameconfig:GAMEINFO
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('sub     esp, 14h')), u'\tR(SUB(esp, 0x14));\n')
 
     def test_instr_10290(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('sub eax,eax')), u'\teax = 0;AFFECT_ZF(0); AFFECT_SF(eax,0);\n')
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('sub eax,eax')), u'\teax = 0;AFFECT_ZFifz(0); AFFECT_SF(eax,0);\n')
 
     def test_instr_10300(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('sub eax,ebx')), u'\tR(SUB(eax, ebx));\n')
@@ -3337,37 +3337,37 @@ extrn gameconfig:GAMEINFO
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('xor     dx, cx')), u'\tR(XOR(dx, cx));\n')
 
     def test_instr_10570(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('xor     eax, eax')), u'\teax = 0;AFFECT_ZF(0); AFFECT_SF(eax,0);\n')
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('xor     eax, eax')), u'\teax = 0;AFFECT_ZFifz(0); AFFECT_SF(eax,0);\n')
 
     def test_instr_10580(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('xor     ebx, ebx')), u'\tebx = 0;AFFECT_ZF(0); AFFECT_SF(ebx,0);\n')
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('xor     ebx, ebx')), u'\tebx = 0;AFFECT_ZFifz(0); AFFECT_SF(ebx,0);\n')
 
     def test_instr_10590(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('xor     ecx, ecx')), u'\tecx = 0;AFFECT_ZF(0); AFFECT_SF(ecx,0);\n')
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('xor     ecx, ecx')), u'\tecx = 0;AFFECT_ZFifz(0); AFFECT_SF(ecx,0);\n')
 
     def test_instr_10600(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('xor     edi, edi')), u'\tedi = 0;AFFECT_ZF(0); AFFECT_SF(edi,0);\n')
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('xor     edi, edi')), u'\tedi = 0;AFFECT_ZFifz(0); AFFECT_SF(edi,0);\n')
 
     def test_instr_10610(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('xor     edx, ecx')), u'\tR(XOR(edx, ecx));\n')
 
     def test_instr_10620(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('xor     edx, edx')), u'\tedx = 0;AFFECT_ZF(0); AFFECT_SF(edx,0);\n')
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('xor     edx, edx')), u'\tedx = 0;AFFECT_ZFifz(0); AFFECT_SF(edx,0);\n')
 
     def test_instr_10630(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('xor     esi, esi')), u'\tesi = 0;AFFECT_ZF(0); AFFECT_SF(esi,0);\n')
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('xor     esi, esi')), u'\tesi = 0;AFFECT_ZFifz(0); AFFECT_SF(esi,0);\n')
 
     def test_instr_10640(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('xor     i, i')), u'\ti = 0;AFFECT_ZF(0); AFFECT_SF(i,0);\n')
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('xor     i, i')), u'\ti = 0;AFFECT_ZFifz(0); AFFECT_SF(i,0);\n')
 
     def test_instr_10650(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('xor     res, res')), u'\tres = 0;AFFECT_ZF(0); AFFECT_SF(res,0);\n')
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('xor     res, res')), u'\tres = 0;AFFECT_ZFifz(0); AFFECT_SF(res,0);\n')
 
     def test_instr_10660(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('xor al,bl')), u'\tR(XOR(al, bl));\n')
 
     def test_instr_10670(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('xor ax,ax')), u'\tax = 0;AFFECT_ZF(0); AFFECT_SF(ax,0);\n')
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('xor ax,ax')), u'\tax = 0;AFFECT_ZFifz(0); AFFECT_SF(ax,0);\n')
 
     def test_instr_10680(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('xor ax,bx')), u'\tR(XOR(ax, bx));\n')
@@ -3376,31 +3376,31 @@ extrn gameconfig:GAMEINFO
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('xor ch,bh')), u'\tR(XOR(ch, bh));\n')
 
     def test_instr_10700(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('xor cx,cx')), u'\tcx = 0;AFFECT_ZF(0); AFFECT_SF(cx,0);\n')
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('xor cx,cx')), u'\tcx = 0;AFFECT_ZFifz(0); AFFECT_SF(cx,0);\n')
 
     def test_instr_10710(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('xor eax,eax')), u'\teax = 0;AFFECT_ZF(0); AFFECT_SF(eax,0);\n')
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('xor eax,eax')), u'\teax = 0;AFFECT_ZFifz(0); AFFECT_SF(eax,0);\n')
 
     def test_instr_10720(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('xor eax,ebx')), u'\tR(XOR(eax, ebx));\n')
 
     def test_instr_10730(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('xor ebp,ebp')), u'\tebp = 0;AFFECT_ZF(0); AFFECT_SF(ebp,0);\n')
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('xor ebp,ebp')), u'\tebp = 0;AFFECT_ZFifz(0); AFFECT_SF(ebp,0);\n')
 
     def test_instr_10740(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('xor ebx,ebx')), u'\tebx = 0;AFFECT_ZF(0); AFFECT_SF(ebx,0);\n')
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('xor ebx,ebx')), u'\tebx = 0;AFFECT_ZFifz(0); AFFECT_SF(ebx,0);\n')
 
     def test_instr_10750(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('xor ecx,ecx')), u'\tecx = 0;AFFECT_ZF(0); AFFECT_SF(ecx,0);\n')
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('xor ecx,ecx')), u'\tecx = 0;AFFECT_ZFifz(0); AFFECT_SF(ecx,0);\n')
 
     def test_instr_10760(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('xor edi,edi')), u'\tedi = 0;AFFECT_ZF(0); AFFECT_SF(edi,0);\n')
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('xor edi,edi')), u'\tedi = 0;AFFECT_ZFifz(0); AFFECT_SF(edi,0);\n')
 
     def test_instr_10770(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('xor edx,edx')), u'\tedx = 0;AFFECT_ZF(0); AFFECT_SF(edx,0);\n')
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('xor edx,edx')), u'\tedx = 0;AFFECT_ZFifz(0); AFFECT_SF(edx,0);\n')
 
     def test_instr_10780(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('xor esi,esi')), u'\tesi = 0;AFFECT_ZF(0); AFFECT_SF(esi,0);\n')
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('xor esi,esi')), u'\tesi = 0;AFFECT_ZFifz(0); AFFECT_SF(esi,0);\n')
 
     def test_instr_10790(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code(u'iret')), '\tR(IRET);\n')
