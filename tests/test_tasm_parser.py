@@ -202,7 +202,7 @@ extrn gameconfig:GAMEINFO
         self.__class__.parser.action_label(far=True, name=u'test_bcd', isproc=True)
 
     def test_instr_09(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov    ax, offset     failure')), u'\tR(MOV(ax, kfailure));\n')
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov    ax, offset     failure')), u'\tR(MOV(ax, m2c::kfailure));\n')
 
     #def test_instr_10(self):
     #    self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('pop     small word ptr [esp]')), u'\tR(POP(*(dw*)(raddr(ss,esp))));\n')
