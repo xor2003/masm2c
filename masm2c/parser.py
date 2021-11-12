@@ -1457,7 +1457,9 @@ class Parser:
     def collect_labels(self, target, operation):
         for arg in operation.args:
             s = Token.find_tokens(arg, 'LABEL')
-            if s:
+            #  If it is call to a proc then does not take it into account
+            #  TODO: check for calls into middle of proc
+            if s and not operation.cmd.startswith('call'):
                 label = s[0]
                 target.add(self.mangle_label(label))
 
