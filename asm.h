@@ -182,41 +182,41 @@ static const uint32_t MASK[]={0, 0xff, 0xffff, 0xffffff, 0xffffffff};
 
 #define CMP(a,b) {dd averytemporary=((a)-(b))& m2c::MASK[sizeof(a)]; \
 		AFFECT_CF((averytemporary)>(a)); \
-		AFFECT_ZF(averytemporary); \
+		AFFECT_ZFifz(averytemporary); \
 		AFFECT_SF(a,averytemporary);}
 
 #define OR(a,b) {a=(a)|(b); \
-		AFFECT_ZF(a); \
+		AFFECT_ZFifz(a); \
 		AFFECT_SF(a,a); \
 		AFFECT_CF(0);}
 
 #define XOR(a,b) {a=(a)^(b); \
-		AFFECT_ZF(a); \
+		AFFECT_ZFifz(a); \
 		AFFECT_SF(a,a) \
 		AFFECT_CF(0);}
 
 #define AND(a,b) {a=(a)&(b); \
-		AFFECT_ZF(a); \
+		AFFECT_ZFifz(a); \
 		AFFECT_SF(a,a) \
 		AFFECT_CF(0);}
 
 #define NEG(a) {AFFECT_CF((a)!=0); \
 		a=-a;\
-		AFFECT_ZF(a); \
+		AFFECT_ZFifz(a); \
 		AFFECT_SF(a,a)}
 
-#define TEST(a,b) {AFFECT_ZF((a)&(b)); \
+#define TEST(a,b) {AFFECT_ZFifz((a)&(b)); \
 		AFFECT_CF(0); \
 		AFFECT_SF(a,(a)&(b))}
 
 #define SHR(a,b) {if (b) {CF=(a>>(b-1))&1;\
 		a=a>>b;\
-		AFFECT_ZF(a);\
+		AFFECT_ZFifz(a);\
 		AFFECT_SF(a,a)}}
 
 #define SHL(a,b) {if (b) {CF=(a) & (1 << (bitsizeof(a)-(b)));\
 		a=a<<b;\
-		AFFECT_ZF(a);\
+		AFFECT_ZFifz(a);\
 		AFFECT_SF(a,a)}}
 
 #define ROR(a,b) {if (b) {CF=((a)>>(shiftmodule(a,b)-1))&1;\
@@ -286,15 +286,15 @@ else
  }
 }
 
-#define SHRD(a, b, c) {m2c::SHRD_(a, b, c, CF);if (c) {AFFECT_ZF(a);AFFECT_SF(a,a);}}
-#define SHLD(a, b, c) {m2c::SHLD_(a, b, c, CF);if (c) {AFFECT_ZF(a);AFFECT_SF(a,a);}}
+#define SHRD(a, b, c) {m2c::SHRD_(a, b, c, CF);if (c) {AFFECT_ZFifz(a);AFFECT_SF(a,a);}}
+#define SHLD(a, b, c) {m2c::SHLD_(a, b, c, CF);if (c) {AFFECT_ZFifz(a);AFFECT_SF(a,a);}}
 /*
  //TODO CF=(a) & (1 << (sizeof(f)*8-b));
 #define SHRD(a,b,c) {if(c) {\
 			int shift = c&(2*bitsizeof(a)-1); \
 			dd a1=a>>shift; \
 			a=a1 | ( (b& ((1<<shift)-1) ) << (bitsizeof(a)-shift) ); \
-		AFFECT_ZF(a|b);\
+		AFFECT_ZFifz(a|b);\
 		AFFECT_SF(a,a);}} //TODO optimize
 */
 
@@ -305,7 +305,7 @@ else
          a = b>bitsizeof(a)?0:a;\
 	 AFFECT_CF((a >> (b-1))&1);\
 	 a=sigg | (a >> b);\
-		AFFECT_ZF(a);\
+		AFFECT_ZFifz(a);\
 		AFFECT_SF(a,a);}} // TODO optimize
 
 #define SAL(a,b) SHL(a,b)
@@ -333,7 +333,7 @@ else
 		AFFECT_AF(false);								\
 	}														\
 	SF=(al&0x80);							\
-	AFFECT_ZF(al);}
+	AFFECT_ZFifz(al);}
 
 
 #define DAS												\
@@ -359,7 +359,7 @@ else
 	}														\
 	AFFECT_OF(osigned && ((al&0x80)==0));			\
 	SF=(al&0x80);							\
-	AFFECT_ZF(al); \
+	AFFECT_ZFifz(al); \
 }
 */
 
@@ -371,7 +371,7 @@ else
 		AFFECT_OF((al&0xf0)==0x70);					\
 		ax += 0x106;									\
 		AFFECT_CF(true);								\
-		AFFECT_ZF(al);						\
+		AFFECT_ZFifz(al);						\
 		AFFECT_AF(true);								\
 	} else if (AF) {									\
 		ax += 0x106;									\
@@ -382,7 +382,7 @@ else
 	} else {												\
 		AFFECT_OF(false);								\
 		AFFECT_CF(false);								\
-		AFFECT_ZF(al);						\
+		AFFECT_ZFifz(al);						\
 		AFFECT_AF(false);								\
 	}														\
 	al &= 0x0F;}
@@ -406,7 +406,7 @@ else
 		AFFECT_CF(false);								\
 		AFFECT_AF(false);								\
 	}														\
-	AFFECT_ZF((al == 0));							\
+	AFFECT_ZFifz((al == 0));							\
 	al &= 0x0F;}
 
 #define AAM1(x)											\
@@ -416,7 +416,7 @@ else
 		ah=al / dv;									\
 		al=al % dv;									\
 		SF=(al & 0x80);						\
-		AFFECT_ZF(al);						\
+		AFFECT_ZFifz(al);						\
 		AFFECT_CF(false);								\
 		AFFECT_OF(false);								\
 		AFFECT_AF(false);								\
@@ -433,7 +433,7 @@ else
 		AFFECT_OF(false);								\
 		AFFECT_AF(false);								\
 		SF=(al >= 0x80);						\
-		AFFECT_ZF(al);							\
+		AFFECT_ZFifz(al);							\
 	}
 
 #define AAD AAD1(10)
@@ -441,41 +441,41 @@ else
 #define ADD(a,b) {dq averytemporary=(dq)a+(dq)b; \
 		AFFECT_CF((averytemporary)>m2c::MASK[sizeof(a)]); \
 		a=averytemporary; \
-		AFFECT_ZF(a); \
+		AFFECT_ZFifz(a); \
 		AFFECT_SF(a,a);}
 
 #define XADD(a,b) {dq averytemporary=(dq)a+(dq)b; \
 		AFFECT_CF((averytemporary)>m2c::MASK[sizeof(a)]); \
 		b=a; \
 		a=averytemporary; \
-		AFFECT_ZF(a); \
+		AFFECT_ZFifz(a); \
 		AFFECT_SF(a,a);}
 
 #define SUB(a,b) {dd averytemporary=(a-b)& m2c::MASK[sizeof(a)]; \
 		AFFECT_CF((averytemporary)>(a)); \
 		a=averytemporary; \
-		AFFECT_ZF(a); \
+		AFFECT_ZFifz(a); \
 		AFFECT_SF(a,a);}
 
 #define ADC(a,b) {dq averytemporary=(dq)a+(dq)b+(dq)CF; \
 		AFFECT_CF((averytemporary)>m2c::MASK[sizeof(a)]); \
 		a=averytemporary; \
-		AFFECT_ZF(a); \
+		AFFECT_ZFifz(a); \
 		AFFECT_SF(a,a);}
 
 #define SBB(a,b) {dq averytemporary=(dq)a-(dq)b-(dq)CF; \
 		AFFECT_CF((averytemporary)>m2c::MASK[sizeof(a)]); \
 		a=averytemporary; \
-		AFFECT_ZF(a); \
+		AFFECT_ZFifz(a); \
 		AFFECT_SF(a,a);} 
 
 // TODO: should affects OF, SF, ZF, AF, and PF
 #define INC(a) {a+=1; \
-		AFFECT_ZF(a);\
+		AFFECT_ZFifz(a);\
 		AFFECT_SF(a,a);} 
 
 #define DEC(a) {a-=1; \
-		AFFECT_ZF(a);\
+		AFFECT_ZFifz(a);\
 		AFFECT_SF(a,a);} 
 
 // #num_args _ #bytes
@@ -503,7 +503,7 @@ else
 #define DIV2(a) {dd averytemporary=((((dd)dx)<<16)|ax);ax=averytemporary/(a);dx=averytemporary%(a); AFFECT_OF(false);}
 #define DIV4(a) {uint64_t averytemporary=((((dq)edx)<<32)|eax);eax=averytemporary/(a);edx=averytemporary%(a); AFFECT_OF(false);}
 
-#define NOT(a) {a= ~(a);}// AFFECT_ZF(a) //TODO
+#define NOT(a) {a= ~(a);}// AFFECT_ZFifz(a) //TODO
 
 #define SETA(a) a=CF==0 && ZF==0;
 #define SETNBE(a) a=CF==0 && ZF==0;

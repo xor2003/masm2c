@@ -11,8 +11,8 @@
  #define STOS(a,b) {memcpy (realAddress(edi,es), ((db *)&eax)+b, a); edi+=(DF==0)?a:-a;}
 
  #define REP ecx++;while (--ecx != 0)
- #define REPE AFFECT_ZF(0);ecx++;while (--ecx != 0 && ZF)
- #define REPNE AFFECT_ZF(1);ecx++;while (--ecx != 0 && !ZF)
+ #define REPE AFFECT_ZFifz(0);ecx++;while (--ecx != 0 && ZF)
+ #define REPNE AFFECT_ZFifz(1);ecx++;while (--ecx != 0 && !ZF)
  #define XLAT {al = *raddr(ds,ebx+al);}
  #define CMPSB \
 	{  \
