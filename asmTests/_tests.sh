@@ -24,15 +24,15 @@ do
   export n
 #  (
 echo "Testing $n:"
-./_singletest.sh $n 2>&1 >> _result.log
+./_singletest.sh $n 2>&1 | tee -a _result.log
 res=$?
 if [ $res -ne 0 ];then
-  echo "$n failed $res" >> _result.log
+  echo "$n failed with code $res" | tee -a _result.log
   result=$(( $result + 1 ))
   export result
 fi
-cat _result.log
 done
+#cat _result.log
 
 echo "Total result: $result"
 exit $result
