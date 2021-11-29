@@ -798,6 +798,14 @@ class Parser:
                 reslist += rr2
         elif isinstance(v, Token):
             if v.type in ['offsetdir', 'segmdir']:
+                if isinstance(v.value, list):  # hack when '+' is glued to integer
+                    v.value = Token.remove_tokens(v.value, ['expr'])
+                    lst = [v.value[0]]
+                    for val in v.value[1:]:
+                        if isinstance(val, Token) and val.type == 'INTEGER':
+                            lst += ['+']
+                        lst += [val]
+                    v.value = lst
                 elements, is_string, reslist = self.process_data_tokens(v.value, width)
             elif v.type == 'expr':
                 el, is_string, res = self.process_data_tokens(v.value, width)
@@ -934,7 +942,7 @@ class Parser:
             label = self.get_dummy_label()
 
             self.__segment.append(
-                op.Data(label, 'db', DataType.ARRAY, num * [0], num, num, comment='for alignment'))
+                op.Data(label, 'db', DataType.ARRAY, num * [0], num, num, comment='for alignment', align=True))
 
     def move_offset(self, pointer, raw):
         if pointer > self.__binary_data_size:
@@ -944,8 +952,8 @@ class Parser:
             label = self.get_dummy_label()
 
             self.__segment.append(
-                op.Data(label, 'db', DataType.ARRAY, num * [0], num, num, comment='move_offset'))
-        elif pointer < self.__binary_data_size:
+                op.Data(label, 'db', DataType.ARRAY, num * [0], num, num, comment='move_offset', align=True))
+        elif pointer < self.__binary_data_size and not self.itislst:
             logging.warning(f'Maybe wrong offset current:{self.__binary_data_size:x} should be:{pointer:x} ~{raw}~')
 
     def get_dummy_label(self):
@@ -1047,9 +1055,12 @@ class Parser:
     def create_segment(self, name, options=None, segclass=None, raw=''):
         name = name.lower()
         self.__segment_name = name
+        _, _, real_seg = self.get_lst_offsets(raw)
+        if real_seg:
+            self.move_offset(real_seg * 0x10, raw)
         self.align()
         self.__cur_seg_offset = 0
-        self.adjust_offset_to_real(raw, name)
+
         offset = self.__binary_data_size // 16
         logging.debug("segment %s %x" % (name, offset))
         binary_width = 0
@@ -1069,8 +1080,8 @@ class Parser:
                 far = True
 
         if self.__separate_proc:
-            self.proc = Proc(name, far=far, line_number=line_number)
-            _, self.proc.real_offset, self.proc.real_seg = self.get_lst_offsets(raw)
+            offset, real_offset, real_seg = self.get_lst_offsets(raw)
+            self.proc = Proc(name, far=far, line_number=line_number, offset=offset, real_offset=real_offset, real_seg=real_seg)
             self.proc_list.append(name)
             self.__proc_stack.append(self.proc)
             self.set_global(name, self.proc)
@@ -1265,7 +1276,8 @@ class Parser:
         if absolute_offset:
             self.move_offset(absolute_offset, raw)
             if self.__cur_seg_offset > real_offset:
-                logging.warning(f'Current offset does not equal to required for {label}')
+                if not self.itislst:
+                    logging.warning(f'Current offset does not equal to required for {label}')
             self.__cur_seg_offset = real_offset
 
     def get_lst_offsets(self, raw):

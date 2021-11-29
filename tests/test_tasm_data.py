@@ -1041,5 +1041,9 @@ class ParserDataTest(unittest.TestCase):
     def test_data_15930(self):
         self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 7,'¬¬êê',16,'éÇÇÇ',0")), ('"\\x07\\xaa\\xaa\\x88\\x88\\x10\\x82\\x80\\x80\\x80", // dummy1\n', 'char dummy1[11];\n', 11))
 
+    def test_data_15940(self):
+        self.parser.action_data(line="byte_10F8E db 131")
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="dw offset byte_10F8E+0F3h")), ('offset(default_seg,byte_10f8e)+243, // dummy1\n', 'dw dummy1;\n', 2))
+
 if __name__ == "__main__":
     unittest.main()

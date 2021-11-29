@@ -436,7 +436,7 @@ class Data(baseop):
     #             'filename', 'line', 'line_number']
 
     def __init__(self, label, type, data_internal_type: DataType, array, elements, size, filename='', raw_line='',
-                 line_number=0, comment=''):
+                 line_number=0, comment='', align=False):
         '''
         One element of data
 
@@ -462,6 +462,7 @@ class Data(baseop):
         self.filename = filename
         self.raw_line = raw_line
         self.line_number = line_number
+        self.align = align
         # self.comment = comment
 
     def isobject(self):
@@ -498,6 +499,8 @@ class Data(baseop):
     def getsize(self):
         return self.size
 
+    def getalign(self):
+        return self.align
 
 class Struct:
     class Type(Enum):

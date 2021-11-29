@@ -4,7 +4,7 @@ from __future__ import print_function
 
 import logging
 import re
-import sys
+import sys, os
 from enum import Enum
 
 import jsonpickle
@@ -128,7 +128,7 @@ class SingleProcStrategy:
 class SeparateProcStrategy:
 
     def forward_to_dispatcher(self, name):
-        addtobody = "__disp = (dw)(" + name + ");\n"
+        addtobody = "__disp = (dd)(" + name + ");\n"
         name = "__dispatch_call"
         return addtobody, name
 
@@ -164,7 +164,7 @@ class SeparateProcStrategy:
     def produce_global_jump_table(self, globals):
         # Produce call table
         result = """
- void __dispatch_call(m2c::_offsets __disp, struct m2c::_STATE* _state){
+ bool __dispatch_call(m2c::_offsets __disp, struct m2c::_STATE* _state){
     switch (__disp) {
 """
         offsets = []
@@ -184,7 +184,7 @@ class SeparateProcStrategy:
                 result += "        case m2c::k%s: \t%s(0, _state); break;\n" % (name, cpp_mangle_label(label))
 
         result += "        default: m2c::log_error(\"Call to nowhere to 0x%x. See line %d\\n\", __disp, __LINE__);stackDump(_state); abort();\n"
-        result += "     };\n}\n"
+        result += "     };\n     return true;\n}\n"
         return result
 
     def write_declarations(self, procs, context):
@@ -199,7 +199,7 @@ class SeparateProcStrategy:
             if v.used:
                 result += f"extern void {v.name}(m2c::_offsets, struct m2c::_STATE*);\n"
 
-        result += "static void __dispatch_call(m2c::_offsets __disp, struct m2c::_STATE* _state);\n"
+        result += "static bool __dispatch_call(m2c::_offsets __disp, struct m2c::_STATE* _state);\n"
         return result
 
     def get_strategy(self):
@@ -291,7 +291,7 @@ class Cpp(object):
         :param proc_strategy: Strategy to Single/Separate functions
         '''
 
-        self.__namespace = outfile
+        self.__namespace = os.path.basename(outfile)
         self.__indirection: IndirectionType = IndirectionType.VALUE
         self.__current_size = 0
         self.__work_segment = ""
@@ -358,12 +358,17 @@ class Cpp(object):
                     c += "\n"
                     # c += " // " + j.getlabel() + "\n"  # TODO can put original_label
 
-                cdata_seg += c
-                hdata_seg += h
+                if j.getalign():  # if align do not assign it
+                    c = ''
+
+                cdata_seg += c  # cpp source - assigning
+                hdata_seg += h  # headers
                 # char (& bb)[5] = group.bb;
                 # int& caa = group.aaa;
+                # references
                 r = re.sub(r'^([0-9A-Za-z_]+)\s+([0-9A-Za-z_\[\]]+)(\[\d+\]);', r'\g<1> (& \g<2>)\g<3> = m2c::m.\g<2>;', h)
                 rdata_seg += re.sub(r'^([0-9A-Za-z_]+)\s+([0-9A-Za-z_\[\]]+);', r'\g<1>& \g<2> = m2c::m.\g<2>;', r)
+                # externs
                 e = re.sub(r'^([0-9A-Za-z_]+)\s+([0-9A-Za-z_\[\]]+)(\[\d+\]);', r'extern \g<1> (& \g<2>)\g<3>;', h)
                 edata_seg += re.sub(r'^([0-9A-Za-z_]+)\s+([0-9A-Za-z_\[\]]+);', r'extern \g<1>& \g<2>;', e)
 
@@ -408,10 +413,11 @@ class Cpp(object):
         elif isinstance(g, proc_module.Proc):
             logging.debug("it is proc")
             if self.__indirection != IndirectionType.OFFSET:
-                logging.error("proc %s offset %s" % (str(proc_module.Proc), str(g.offset)))
-                raise Exception("invalid proc label usage")
-            value = str(g.offset)
-            self.__indirection = IndirectionType.VALUE
+                logging.error("Invalid proc label usage proc %s offset %s" % (g.name, str(g.offset)))
+                value = "m2c::k" + g.name.lower()  # .capitalize()
+            else:
+                value = str(g.offset)
+                self.__indirection = IndirectionType.VALUE
         elif isinstance(g, op.var):
             logging.debug("it is var " + str(g.size))
             size = g.size

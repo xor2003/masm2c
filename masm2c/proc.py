@@ -18,7 +18,8 @@ class Proc(object):
     last_addr = 0xc000
     elements = 1  # how many
 
-    def __init__(self, name: str, far: bool = False, line_number: int = 0, extern: bool = False):
+    def __init__(self, name: str, far: bool = False, line_number: int = 0, extern: bool = False, offset=0, real_offset=0,
+                 real_seg=0):
         '''
         Represent asm procedure
 
@@ -39,9 +40,12 @@ class Proc(object):
         self.used_labels = set()
         self.group = None
 
-        self.offset = Proc.last_addr
+        if offset:
+            self.offset = offset
+        else:
+            self.offset = Proc.last_addr
         Proc.last_addr += 4
-        self.real_offset, self.real_seg = None, None
+        self.real_offset, self.real_seg = real_offset, real_seg
         # self.retlabels = set()
 
     def merge_two_procs(self, newname, other):
