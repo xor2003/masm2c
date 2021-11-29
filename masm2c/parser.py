@@ -880,6 +880,8 @@ class Parser:
 
     def action_dup(self, n, values):
         res = []
+        if values in [[0], ['?']]:
+            return n, [0]
         for i in range(0, n):
             for value in values:
                 if value == '?':
@@ -942,7 +944,7 @@ class Parser:
             label = self.get_dummy_label()
 
             self.__segment.append(
-                op.Data(label, 'db', DataType.ARRAY, num * [0], num, num, comment='for alignment', align=True))
+                op.Data(label, 'db', DataType.ARRAY, [0], num, num, comment='for alignment', align=True))
 
     def move_offset(self, pointer, raw):
         if pointer > self.__binary_data_size:
@@ -952,7 +954,7 @@ class Parser:
             label = self.get_dummy_label()
 
             self.__segment.append(
-                op.Data(label, 'db', DataType.ARRAY, num * [0], num, num, comment='move_offset', align=True))
+                op.Data(label, 'db', DataType.ARRAY, [0], num, num, comment='move_offset', align=True))
         elif pointer < self.__binary_data_size and not self.itislst:
             logging.warning(f'Maybe wrong offset current:{self.__binary_data_size:x} should be:{pointer:x} ~{raw}~')
 

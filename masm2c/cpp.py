@@ -1819,7 +1819,7 @@ struct Memory{
 
     @staticmethod
     def produce_c_data_array(data: op.Data):
-        label, data_ctype, _, r, _, _ = data.getdata()
+        label, data_ctype, _, r, elements, _ = data.getdata()
         rc = '{'
         for i, v in enumerate(r):
             if i != 0:
@@ -1831,7 +1831,7 @@ struct Memory{
                 rc += str(v)
         rc += '}'
         # assert(len(r)==elements)
-        rh = f'{data_ctype} {label}[{str(len(r))}]'
+        rh = f'{data_ctype} {label}[{elements}]'
         return rc, rh
 
     @staticmethod

@@ -479,7 +479,7 @@ class ParserDataTest(unittest.TestCase):
         self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="_byte_1D66B	db 20h			; DATA XREF: _useless_197F2+18w")), ('32, // _byte_1d66b\n', 'db _byte_1d66b;\n', 1))
 
     def test_data_13020(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="_byte_1DC0A	db 62h dup(0)		; DATA XREF: _find_mods+6Fo")), ('{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // _byte_1dc0a\n', 'db _byte_1dc0a[98];\n', 98))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="_byte_1DC0A	db 62h dup(0)		; DATA XREF: _find_mods+6Fo")), ('{0}, // _byte_1dc0a\n', 'db _byte_1dc0a[98];\n', 98))
 
     def test_data_13030(self):
         self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="_byte_1DCF7	db 0FFh			; DATA XREF: _callsubx+1Cr _callsubx+55w")), ('255, // _byte_1dcf7\n', 'db _byte_1dcf7;\n', 1))
@@ -488,10 +488,7 @@ class ParserDataTest(unittest.TestCase):
         self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="_byte_280E7	db ?			; DATA XREF: _s3m_module+1F3w")), ('0, // _byte_280e7\n', 'db _byte_280e7;\n', 1))
 
     def test_data_13100(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="_byte_282E8	db 20h dup( ?)		; DATA XREF: _clean_11C43+AEo")), ('{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // _byte_282e8\n', 'db _byte_282e8[32];\n', 32))
-
-    def test_data_13120(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="_byte_30579	db 21h dup( ?)		; DATA XREF: _e669_module:loc_1096Fr")), ('{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // _byte_30579\n', 'db _byte_30579[33];\n', 33))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="_byte_282E8	db 20h dup( ?)		; DATA XREF: _clean_11C43+AEo")), ('{0}, // _byte_282e8\n', 'db _byte_282e8[32];\n', 32))
 
     def test_data_13140(self):
         self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="_byte_3150A	db ?			; DATA XREF: _psm_module+139r")), ('0, // _byte_3150a\n', 'db _byte_3150a;\n', 1))
@@ -534,9 +531,6 @@ class ParserDataTest(unittest.TestCase):
     def test_data_13700(self):
         self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="_module_type_txt	db '    '               ; DATA XREF: _read_module+6Fw")), ("{' ',' ',' ',' '}, // _module_type_txt\n", 'char _module_type_txt[4];\n', 4))
 
-    def test_data_13730(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="_mouse_visible	db 0Ah dup(0)		; DATA XREF: _mouse_initw")), ('{0,0,0,0,0,0,0,0,0,0}, // _mouse_visible\n', 'db _mouse_visible[10];\n', 10))
-
     def test_data_13760(self):
         self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="_msg		db 'Searching directory for modules  ',0 ; DATA XREF: _start+2F7o")), ('"Searching directory for modules  ", // _msg\n', 'char _msg[34];\n', 34))
 
@@ -548,9 +542,6 @@ class ParserDataTest(unittest.TestCase):
 
     def test_data_13840(self):
         self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="_myin_0		db ?			; DATA XREF: _ult_module+3Ao")), ('0, // _myin_0\n', 'db _myin_0;\n', 1))
-
-    def test_data_13860(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="_mystr		db 42h dup(0)		; DATA XREF: _start:loc_192E0o")), ('{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // _mystr\n', 'db _mystr[66];\n', 66))
 
     def test_data_13870(self):
         self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="_notes		db '  C-C#D-D#E-F-F#G-G#A-A#B-' ; DATA XREF: seg001:1930r")), ("{' ',' ','C','-','C','#','D','-','D','#','E','-','F','-','F','#','G','-','G','#','A','-','A','#','B','-'}, // _notes\n", 'char _notes[26];\n', 26))
@@ -1013,13 +1004,10 @@ class ParserDataTest(unittest.TestCase):
         self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="var db 4 dup (5)")), ('{5,5,5,5}, // var\n', 'db var[4];\n', 4))
 
     def test_data_15850(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="var0 db 10 dup (?)")), ('{0,0,0,0,0,0,0,0,0,0}, // var0\n', 'db var0[10];\n', 10))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="var0 db 10 dup (?)")), ('{0}, // var0\n', 'db var0[10];\n', 10))
 
     def test_data_15860(self):
         self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="var1 db 1,2,3")), ('{1,2,3}, // var1\n', 'db var1[3];\n', 3))
-
-    def test_data_15870(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="var2 db 5 dup (0)")), ('{0,0,0,0,0}, // var2\n', 'db var2[5];\n', 5))
 
     def test_data_15880(self):
         self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="var3 db 5*5 dup (0,testEqu*2,2*2*3,3)")),
