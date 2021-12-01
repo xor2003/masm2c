@@ -57,6 +57,15 @@ def parse_args(args):
         default=logging.INFO,
         const=logging.DEBUG,
     )
+    aparser.add_argument(
+        "-l",
+        "--list",
+        dest="list",
+        help="Generate all globals to .list file",
+        action="store_const",
+        default=False,
+        const=True,
+    )
     return aparser.parse_args(args)
 
 
@@ -98,7 +107,7 @@ def setup_logging(name, loglevel):
         )
 
 
-def process(i):
+def process(i, args):
     name = i
     m = re.match(r'(.+)\.(?:asm|lst)', name.lower())
     outname = ""
@@ -114,7 +123,8 @@ def process(i):
 
     generator = Cpp(context, outfile=outname, skip_output=[], function_name_remapping={})
     generator.generate('mainproc')  # start routine
-    generator.dump_globals()
+    if args.list:
+        generator.dump_globals()
     return generator
 
 
@@ -138,7 +148,7 @@ def main(args):
             merge_data_segments = False
         if i.lower().endswith('.asm') or i.lower().endswith('.lst'):
             setup_logging(i, args.loglevel)
-            process(i)
+            process(i, args)
 
     # Process .seg files
     generator = Cpp(Parser(), merge_data_segments=merge_data_segments)
