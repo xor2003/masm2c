@@ -336,46 +336,42 @@ class Cpp(object):
                 c, h, size = self.produce_c_data_single_(j)
                 h += ";\n"
 
-                #  mycopy(bb, {'1','2','3','4','5'});
-                #  caa=3;
-                m = re.match(r'^([0-9A-Za-z_]+)\s+([0-9A-Za-z_]+)(\[\d+\])?;\n', h)
-                name = m.group(2)
+                if not j.getalign():  # if align do not assign it
+                    #  mycopy(bb, {'1','2','3','4','5'});
+                    #  caa=3;
+                    m = re.match(r'^([0-9A-Za-z_]+)\s+([0-9A-Za-z_]+)(\[\d+\])?;\n', h)
+                    name = m.group(2)
 
-                asgn = re.sub(r'^([0-9A-Za-z_]+)\s+(?:[0-9A-Za-z_]+(\[\d+\])?);\n', r'\g<1> tmp999\g<2>', h)
+                    asgn = re.sub(r'^([0-9A-Za-z_]+)\s+(?:[0-9A-Za-z_]+(\[\d+\])?);\n', r'\g<1> tmp999\g<2>', h)
 
-                if name.startswith('dummy') and c == '0':
-                    c = ''
-                else:
-                    if m.group(3):
-                        if c == '{}':
-                            c = ''
-                        else:
-                            c = f'    {{{asgn}={c};MYCOPY({name})}}'
+                    if name.startswith('dummy') and c == '0':
+                        c = ''
                     else:
-                        c = f'    {name}={c};'
+                        if m.group(3):
+                            if c == '{}':
+                                c = ''
+                            else:
+                                c = f'    {{{asgn}={c};MYCOPY({name})}}'
+                        else:
+                            c = f'    {name}={c};'
 
-                if c != '':
-                    c += "\n"
-                    # c += " // " + j.getlabel() + "\n"  # TODO can put original_label
+                    if c != '':
+                        c += "\n"
+                        # c += " // " + j.getlabel() + "\n"  # TODO can put original_label
 
-                # char (& bb)[5] = group.bb;
-                # int& caa = group.aaa;
-                # references
-                r = re.sub(r'^([0-9A-Za-z_]+)\s+([0-9A-Za-z_\[\]]+)(\[\d+\]);', r'\g<1> (& \g<2>)\g<3> = m2c::m.\g<2>;', h)
-                r = re.sub(r'^([0-9A-Za-z_]+)\s+([0-9A-Za-z_\[\]]+);', r'\g<1>& \g<2> = m2c::m.\g<2>;', r)
-                # externs
-                e = re.sub(r'^([0-9A-Za-z_]+)\s+([0-9A-Za-z_\[\]]+)(\[\d+\]);', r'extern \g<1> (& \g<2>)\g<3>;', h)
-                e = re.sub(r'^([0-9A-Za-z_]+)\s+([0-9A-Za-z_\[\]]+);', r'extern \g<1>& \g<2>;', e)
+                    # char (& bb)[5] = group.bb;
+                    # int& caa = group.aaa;
+                    # references
+                    r = re.sub(r'^([0-9A-Za-z_]+)\s+([0-9A-Za-z_\[\]]+)(\[\d+\]);', r'\g<1> (& \g<2>)\g<3> = m2c::m.\g<2>;', h)
+                    r = re.sub(r'^([0-9A-Za-z_]+)\s+([0-9A-Za-z_\[\]]+);', r'\g<1>& \g<2> = m2c::m.\g<2>;', r)
+                    # externs
+                    e = re.sub(r'^([0-9A-Za-z_]+)\s+([0-9A-Za-z_\[\]]+)(\[\d+\]);', r'extern \g<1> (& \g<2>)\g<3>;', h)
+                    e = re.sub(r'^([0-9A-Za-z_]+)\s+([0-9A-Za-z_\[\]]+);', r'extern \g<1>& \g<2>;', e)
 
-                if j.getalign():  # if align do not assign it
-                    c = ''
-                    r = ''
-                    e = ''
-
-                cdata_seg += c  # cpp source - assigning
+                    cdata_seg += c  # cpp source - assigning
+                    rdata_seg += r  # reference in _data.cpp
+                    edata_seg += e  # extern for header
                 hdata_seg += h  # headers in _data.h
-                rdata_seg += r  # reference in _data.cpp
-                edata_seg += e  # extern for header
 
         return cdata_seg, hdata_seg, rdata_seg, edata_seg
 
