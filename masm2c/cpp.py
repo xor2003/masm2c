@@ -358,19 +358,24 @@ class Cpp(object):
                     c += "\n"
                     # c += " // " + j.getlabel() + "\n"  # TODO can put original_label
 
-                if j.getalign():  # if align do not assign it
-                    c = ''
-
-                cdata_seg += c  # cpp source - assigning
-                hdata_seg += h  # headers
                 # char (& bb)[5] = group.bb;
                 # int& caa = group.aaa;
                 # references
                 r = re.sub(r'^([0-9A-Za-z_]+)\s+([0-9A-Za-z_\[\]]+)(\[\d+\]);', r'\g<1> (& \g<2>)\g<3> = m2c::m.\g<2>;', h)
-                rdata_seg += re.sub(r'^([0-9A-Za-z_]+)\s+([0-9A-Za-z_\[\]]+);', r'\g<1>& \g<2> = m2c::m.\g<2>;', r)
+                r = re.sub(r'^([0-9A-Za-z_]+)\s+([0-9A-Za-z_\[\]]+);', r'\g<1>& \g<2> = m2c::m.\g<2>;', r)
                 # externs
                 e = re.sub(r'^([0-9A-Za-z_]+)\s+([0-9A-Za-z_\[\]]+)(\[\d+\]);', r'extern \g<1> (& \g<2>)\g<3>;', h)
-                edata_seg += re.sub(r'^([0-9A-Za-z_]+)\s+([0-9A-Za-z_\[\]]+);', r'extern \g<1>& \g<2>;', e)
+                e = re.sub(r'^([0-9A-Za-z_]+)\s+([0-9A-Za-z_\[\]]+);', r'extern \g<1>& \g<2>;', e)
+
+                if j.getalign():  # if align do not assign it
+                    c = ''
+                    r = ''
+                    e = ''
+
+                cdata_seg += c  # cpp source - assigning
+                hdata_seg += h  # headers in _data.h
+                rdata_seg += r  # reference in _data.cpp
+                edata_seg += e  # extern for header
 
         return cdata_seg, hdata_seg, rdata_seg, edata_seg
 
