@@ -959,7 +959,7 @@ class Parser:
 
     def get_dummy_label(self):
         #Parser.c_dummy_label += 1
-        label = "dummy" + str(hash(self.__current_file))[0:2]+'_'+str(hex(self.__binary_data_size))[2:]
+        label = "dummy" + str(abs(hash(self.__current_file)))[0:2]+'_'+str(hex(self.__binary_data_size))[2:]
         return label
 
     def get_dummy_jumplabel(self):
