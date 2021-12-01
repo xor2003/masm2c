@@ -939,19 +939,18 @@ class Parser:
         if self.itislst:
             return
         if num:
-            self.__binary_data_size += num
-
             label = self.get_dummy_label()
+            self.__binary_data_size += num
 
             self.__segment.append(
                 op.Data(label, 'db', DataType.ARRAY, [0], num, num, comment='for alignment', align=True))
 
     def move_offset(self, pointer, raw):
         if pointer > self.__binary_data_size:
+            label = self.get_dummy_label()
+
             num = pointer - self.__binary_data_size
             self.__binary_data_size += num
-
-            label = self.get_dummy_label()
 
             self.__segment.append(
                 op.Data(label, 'db', DataType.ARRAY, [0], num, num, comment='move_offset', align=True))
@@ -959,8 +958,8 @@ class Parser:
             logging.warning(f'Maybe wrong offset current:{self.__binary_data_size:x} should be:{pointer:x} ~{raw}~')
 
     def get_dummy_label(self):
-        Parser.c_dummy_label += 1
-        label = "dummy" + str(Parser.c_dummy_label)
+        #Parser.c_dummy_label += 1
+        label = "dummy" + str(hash(self.__current_file))[0:2]+'_'+str(hex(self.__binary_data_size))[2:]
         return label
 
     def get_dummy_jumplabel(self):
@@ -1237,9 +1236,6 @@ class Parser:
 
             logging.debug("args %s offset %d" % (str(args), offset))
 
-            self.__binary_data_size += size
-            self.__cur_seg_offset += size
-
         logging.debug("convert_data %s %d %s" % (label, binary_width, args))
         # original_label = label
 
@@ -1254,9 +1250,12 @@ class Parser:
 
         if len(label) == 0:
             label = self.get_dummy_label()
+
         if isstruct:
             data_type = 'struct data'
         else:
+            self.__binary_data_size += size
+            self.__cur_seg_offset += size
             data_type = 'usual data'
         data = op.Data(label, type, data_internal_type, array, elements, size, filename=self.__current_file,
                        raw_line=raw,

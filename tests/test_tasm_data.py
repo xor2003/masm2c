@@ -19,11 +19,11 @@ class ParserDataTest(unittest.TestCase):
         self.cpp = Cpp(self.parser)
 
     def test_data_10012(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="Dw seg default_seg")), ('seg_offset(default_seg), // dummy1\n', 'dw dummy1;\n', 2))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="Dw seg default_seg")), ('seg_offset(default_seg), // dummy0_0\n', 'dw dummy0_0;\n', 2))
 
     def test_data_10011(self):
         self.parser.action_label(far=False, name='@df@@@@8', isproc=False)
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="dw @df@@@@8")), ('m2c::karbdfarbarbarbarb8, // dummy1\n', 'dw dummy1;\n', 2))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="dw @df@@@@8")), ('m2c::karbdfarbarbarbarb8, // dummy0_0\n', 'dw dummy0_0;\n', 2))
 
     def test_data_10010(self):
         self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="ASCII DB '00000000',0Dh,0Ah,'$' ; buffer for ASCII string")), ("{'0','0','0','0','0','0','0','0','\\r','\\n','$'}, // ascii\n", 'char ascii[11];\n', 11))
@@ -719,209 +719,209 @@ class ParserDataTest(unittest.TestCase):
         self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="d db 4")), ('4, // d\n', 'db d;\n', 1))
 
     def test_data_14840(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db    0")), ('0, // dummy1\n', 'db dummy1;\n', 1))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db    0")), ('0, // dummy0_0\n', 'db dummy0_0;\n', 1))
 
     def test_data_14850(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db    ?	;")), ('0, // dummy1\n', 'db dummy1;\n', 1))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db    ?	;")), ('0, // dummy0_0\n', 'db dummy0_0;\n', 1))
 
     def test_data_14860(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db  0Ah")), ('10, // dummy1\n', 'db dummy1;\n', 1))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db  0Ah")), ('10, // dummy0_0\n', 'db dummy0_0;\n', 1))
 
     def test_data_14870(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db  20h")), ('32, // dummy1\n', 'db dummy1;\n', 1))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db  20h")), ('32, // dummy0_0\n', 'db dummy0_0;\n', 1))
 
     def test_data_14880(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db  20h")), ('32, // dummy1\n', 'db dummy1;\n', 1))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db  20h")), ('32, // dummy0_0\n', 'db dummy0_0;\n', 1))
 
     def test_data_14890(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db  2Ch	; ,")), ('44, // dummy1\n', 'db dummy1;\n', 1))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db  2Ch	; ,")), ('44, // dummy0_0\n', 'db dummy0_0;\n', 1))
 
     def test_data_14900(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db  80h	; Ç")), ('128, // dummy1\n', 'db dummy1;\n', 1))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db  80h	; Ç")), ('128, // dummy0_0\n', 'db dummy0_0;\n', 1))
 
     def test_data_14910(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db  8Ah	; è")), ('138, // dummy1\n', 'db dummy1;\n', 1))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db  8Ah	; è")), ('138, // dummy0_0\n', 'db dummy0_0;\n', 1))
 
     def test_data_14920(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db ' '")), ("{' '}, // dummy1\n", 'char dummy1[1];\n', 1))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db ' '")), ("{' '}, // dummy0_0\n", 'char dummy0_0[1];\n', 1))
 
     def test_data_14930(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db ' /?  This help screen',0Dh,0Ah")), ("{' ','/','?',' ',' ','T','h','i','s',' ','h','e','l','p',' ','s','c','r','e','e','n','\\r','\\n'}, // dummy1\n", 'char dummy1[23];\n', 23))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db ' /?  This help screen',0Dh,0Ah")), ("{' ','/','?',' ',' ','T','h','i','s',' ','h','e','l','p',' ','s','c','r','e','e','n','\\r','\\n'}, // dummy0_0\n", 'char dummy0_0[23];\n', 23))
 
     def test_data_14940(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db ','")), ("{','}, // dummy1\n", 'char dummy1[1];\n', 1))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db ','")), ("{','}, // dummy0_0\n", 'char dummy0_0[1];\n', 1))
 
     def test_data_14950(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db '- +'")), ("{'-',' ','+'}, // dummy1\n", 'char dummy1[3];\n', 3))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db '- +'")), ("{'-',' ','+'}, // dummy0_0\n", 'char dummy0_0[3];\n', 3))
 
     def test_data_14960(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db ':'")), ("{':'}, // dummy1\n", 'char dummy1[1];\n', 1))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db ':'")), ("{':'}, // dummy0_0\n", 'char dummy0_0[1];\n', 1))
 
     def test_data_14970(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 'ABC',0")), ('"ABC", // dummy1\n', 'char dummy1[4];\n', 4))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 'ABC',0")), ('"ABC", // dummy0_0\n', 'char dummy0_0[4];\n', 4))
 
     def test_data_14980(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 'Close this DOS session first with the \"EXIT\" command.',0Dh,0Ah")), ("{'C','l','o','s','e',' ','t','h','i','s',' ','D','O','S',' ','s','e','s','s','i','o','n',' ','f','i','r','s','t',' ','w','i','t','h',' ','t','h','e',' ','\\\"','E','X','I','T','\\\"',' ','c','o','m','m','a','n','d','.','\\r','\\n'}, // dummy1\n", 'char dummy1[55];\n', 55))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 'Close this DOS session first with the \"EXIT\" command.',0Dh,0Ah")), ("{'C','l','o','s','e',' ','t','h','i','s',' ','D','O','S',' ','s','e','s','s','i','o','n',' ','f','i','r','s','t',' ','w','i','t','h',' ','t','h','e',' ','\\\"','E','X','I','T','\\\"',' ','c','o','m','m','a','n','d','.','\\r','\\n'}, // dummy0_0\n", 'char dummy0_0[55];\n', 55))
 
     def test_data_14990(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 'OKOKOKOK'")), ("{'O','K','O','K','O','K','O','K'}, // dummy1\n", 'char dummy1[8];\n', 8))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 'OKOKOKOK'")), ("{'O','K','O','K','O','K','O','K'}, // dummy0_0\n", 'char dummy0_0[8];\n', 8))
 
     def test_data_15000(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 'OKOKOKOK',10,13")), ("{'O','K','O','K','O','K','O','K','\\n','\\r'}, // dummy1\n", 'char dummy1[10];\n', 10))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 'OKOKOKOK',10,13")), ("{'O','K','O','K','O','K','O','K','\\n','\\r'}, // dummy0_0\n", 'char dummy0_0[10];\n', 10))
 
     def test_data_15010(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 'Try changing the AT-BUS Clock in the CMOS Setup.',0Dh,0Ah,0")), ('"Try changing the AT-BUS Clock in the CMOS Setup.\\r\\n", // dummy1\n', 'char dummy1[51];\n', 51))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 'Try changing the AT-BUS Clock in the CMOS Setup.',0Dh,0Ah,0")), ('"Try changing the AT-BUS Clock in the CMOS Setup.\\r\\n", // dummy0_0\n', 'char dummy0_0[51];\n', 51))
 
     def test_data_15020(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 'Usage: IPLAY [Switches] [FileName.Ext|@FileList.Ext]',0Dh,0Ah")), ("{'U','s','a','g','e',':',' ','I','P','L','A','Y',' ','[','S','w','i','t','c','h','e','s',']',' ','[','F','i','l','e','N','a','m','e','.','E','x','t','|','@','F','i','l','e','L','i','s','t','.','E','x','t',']','\\r','\\n'}, // dummy1\n", 'char dummy1[54];\n', 54))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 'Usage: IPLAY [Switches] [FileName.Ext|@FileList.Ext]',0Dh,0Ah")), ("{'U','s','a','g','e',':',' ','I','P','L','A','Y',' ','[','S','w','i','t','c','h','e','s',']',' ','[','F','i','l','e','N','a','m','e','.','E','x','t','|','@','F','i','l','e','L','i','s','t','.','E','x','t',']','\\r','\\n'}, // dummy0_0\n", 'char dummy0_0[54];\n', 54))
 
     def test_data_15030(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db '[ ]'")), ("{'[',' ',']'}, // dummy1\n", 'char dummy1[3];\n', 3))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db '[ ]'")), ("{'[',' ',']'}, // dummy0_0\n", 'char dummy0_0[3];\n', 3))
 
     def test_data_15040(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db '[ ]',0")), ('"[ ]", // dummy1\n', 'char dummy1[4];\n', 4))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db '[ ]',0")), ('"[ ]", // dummy0_0\n', 'char dummy0_0[4];\n', 4))
 
     def test_data_15050(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 'ed again.',0Dh,0Ah")), ("{'e','d',' ','a','g','a','i','n','.','\\r','\\n'}, // dummy1\n", 'char dummy1[11];\n', 11))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 'ed again.',0Dh,0Ah")), ("{'e','d',' ','a','g','a','i','n','.','\\r','\\n'}, // dummy0_0\n", 'char dummy0_0[11];\n', 11))
 
     def test_data_15060(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 'h'")), ("{'h'}, // dummy1\n", 'char dummy1[1];\n', 1))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 'h'")), ("{'h'}, // dummy0_0\n", 'char dummy0_0[1];\n', 1))
 
     def test_data_15070(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 'o:'")), ("{'o',':'}, // dummy1\n", 'char dummy1[2];\n', 2))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 'o:'")), ("{'o',':'}, // dummy0_0\n", 'char dummy0_0[2];\n', 2))
 
     def test_data_15080(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 's'")), ("{'s'}, // dummy1\n", 'char dummy1[1];\n', 1))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 's'")), ("{'s'}, // dummy0_0\n", 'char dummy0_0[1];\n', 1))
 
     def test_data_15090(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 's',0Dh,0Ah,0")), ('"s\\r\\n", // dummy1\n', 'char dummy1[4];\n', 4))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 's',0Dh,0Ah,0")), ('"s\\r\\n", // dummy0_0\n', 'char dummy0_0[4];\n', 4))
 
     def test_data_15100(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db '─asdkweorjwoerj3434',13,10,92")), ("{'\\xc4','a','s','d','k','w','e','o','r','j','w','o','e','r','j','3','4','3','4','\\r','\\n',92}, // dummy1\n", 'char dummy1[22];\n', 22))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db '─asdkweorjwoerj3434',13,10,92")), ("{'\\xc4','a','s','d','k','w','e','o','r','j','w','o','e','r','j','3','4','3','4','\\r','\\n',92}, // dummy0_0\n", 'char dummy0_0[22];\n', 22))
 
     def test_data_15110(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 0")), ('0, // dummy1\n', 'db dummy1;\n', 1))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 0")), ('0, // dummy0_0\n', 'db dummy0_0;\n', 1))
 
     def test_data_15120(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 0,2Ah,2Ah")), ('{0,42,42}, // dummy1\n', 'db dummy1[3];\n', 3))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 0,2Ah,2Ah")), ('{0,42,42}, // dummy0_0\n', 'db dummy0_0[3];\n', 3))
 
     def test_data_15130(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 0A0h	; á		; self modifying")), ('160, // dummy1\n', 'db dummy1;\n', 1))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 0A0h	; á		; self modifying")), ('160, // dummy0_0\n', 'db dummy0_0;\n', 1))
 
     def test_data_15140(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 0A0h	; á")), ('160, // dummy1\n', 'db dummy1;\n', 1))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 0A0h	; á")), ('160, // dummy0_0\n', 'db dummy0_0;\n', 1))
 
     def test_data_15150(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 0A0h,0A4h,0A8h,0ACh,0B0h,0B4h,0B8h,0BCh,0C0h,0C4h,0C8h")), ('{160,164,168,172,176,180,184,188,192,196,200}, // dummy1\n', 'db dummy1[11];\n', 11))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 0A0h,0A4h,0A8h,0ACh,0B0h,0B4h,0B8h,0BCh,0C0h,0C4h,0C8h")), ('{160,164,168,172,176,180,184,188,192,196,200}, // dummy0_0\n', 'db dummy0_0[11];\n', 11))
 
     def test_data_15160(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 0A1h")), ('161, // dummy1\n', 'db dummy1;\n', 1))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 0A1h")), ('161, // dummy0_0\n', 'db dummy0_0;\n', 1))
 
     def test_data_15170(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 0A1h,0A5h,0AAh,0AEh,0B2h,0B6h,0BAh,0BEh,0C2h,0C6h,0CAh")), ('{161,165,170,174,178,182,186,190,194,198,202}, // dummy1\n', 'db dummy1[11];\n', 11))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 0A1h,0A5h,0AAh,0AEh,0B2h,0B6h,0BAh,0BEh,0C2h,0C6h,0CAh")), ('{161,165,170,174,178,182,186,190,194,198,202}, // dummy0_0\n', 'db dummy0_0[11];\n', 11))
 
     def test_data_15180(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 0AAh	; ¬")), ('170, // dummy1\n', 'db dummy1;\n', 1))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 0AAh	; ¬")), ('170, // dummy0_0\n', 'db dummy0_0;\n', 1))
 
     def test_data_15190(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 0Ah")), ('10, // dummy1\n', 'db dummy1;\n', 1))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 0Ah")), ('10, // dummy0_0\n', 'db dummy0_0;\n', 1))
 
     def test_data_15200(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 0Ah,'$'")), ("{'\\n','$'}, // dummy1\n", 'char dummy1[2];\n', 2))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 0Ah,'$'")), ("{'\\n','$'}, // dummy0_0\n", 'char dummy0_0[2];\n', 2))
 
     def test_data_15210(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 0Ah,0Bh,1Bh")), ('{10,11,27}, // dummy1\n', 'db dummy1[3];\n', 3))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 0Ah,0Bh,1Bh")), ('{10,11,27}, // dummy0_0\n', 'db dummy0_0[3];\n', 3))
 
     def test_data_15220(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 0B8h,0BBh,0BEh,0C1h,0C3h,0C6h,0C9h,0CCh,0CFh,0D1h,0D4h")), ('{184,187,190,193,195,198,201,204,207,209,212}, // dummy1\n', 'db dummy1[11];\n', 11))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 0B8h,0BBh,0BEh,0C1h,0C3h,0C6h,0C9h,0CCh,0CFh,0D1h,0D4h")), ('{184,187,190,193,195,198,201,204,207,209,212}, // dummy0_0\n', 'db dummy0_0[11];\n', 11))
 
     def test_data_15230(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 0C5h,0B4h,0A1h,8Dh,78h,61h,4Ah,31h,18h")), ('{197,180,161,141,120,97,74,49,24}, // dummy1\n', 'db dummy1[9];\n', 9))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 0C5h,0B4h,0A1h,8Dh,78h,61h,4Ah,31h,18h")), ('{197,180,161,141,120,97,74,49,24}, // dummy0_0\n', 'db dummy0_0[9];\n', 9))
 
     def test_data_15240(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 0Dh,0Ah")), ('{13,10}, // dummy1\n', 'db dummy1[2];\n', 2))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 0Dh,0Ah")), ('{13,10}, // dummy0_0\n', 'db dummy0_0[2];\n', 2))
 
     def test_data_15250(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 0Dh,0Ah,'$'")), ("{'\\r','\\n','$'}, // dummy1\n", 'char dummy1[3];\n', 3))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 0Dh,0Ah,'$'")), ("{'\\r','\\n','$'}, // dummy0_0\n", 'char dummy0_0[3];\n', 3))
 
     def test_data_15260(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 1")), ('1, // dummy1\n', 'db dummy1;\n', 1))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 1")), ('1, // dummy0_0\n', 'db dummy0_0;\n', 1))
 
     def test_data_15270(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 1,1,1,1,1")), ('{1,1,1,1,1}, // dummy1\n', 'db dummy1[5];\n', 5))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 1,1,1,1,1")), ('{1,1,1,1,1}, // dummy0_0\n', 'db dummy0_0[5];\n', 5))
 
     def test_data_15280(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 1,2,3,4")), ('{1,2,3,4}, // dummy1\n', 'db dummy1[4];\n', 4))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 1,2,3,4")), ('{1,2,3,4}, // dummy0_0\n', 'db dummy0_0[4];\n', 4))
 
     def test_data_15290(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 10h,11h,2Ah")), ('{16,17,42}, // dummy1\n', 'db dummy1[3];\n', 3))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 10h,11h,2Ah")), ('{16,17,42}, // dummy0_0\n', 'db dummy0_0[3];\n', 3))
 
     def test_data_15300(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 12")), ('12, // dummy1\n', 'db dummy1;\n', 1))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 12")), ('12, // dummy0_0\n', 'db dummy0_0;\n', 1))
 
     def test_data_15310(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 141")), ('141, // dummy1\n', 'db dummy1;\n', 1))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 141")), ('141, // dummy0_0\n', 'db dummy0_0;\n', 1))
 
     def test_data_15320(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 7Fh")), ('127, // dummy1\n', 'db dummy1;\n', 1))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 7Fh")), ('127, // dummy0_0\n', 'db dummy0_0;\n', 1))
 
     def test_data_15330(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 8,8,8,7,7,7,7,6,6,6,6,6,6,5,5,5")), ('{8,8,8,7,7,7,7,6,6,6,6,6,6,5,5,5}, // dummy1\n', 'db dummy1[16];\n', 16))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 8,8,8,7,7,7,7,6,6,6,6,6,6,5,5,5")), ('{8,8,8,7,7,7,7,6,6,6,6,6,6,5,5,5}, // dummy0_0\n', 'db dummy0_0[16];\n', 16))
 
     def test_data_15340(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 80h")), ('128, // dummy1\n', 'db dummy1;\n', 1))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 80h")), ('128, // dummy0_0\n', 'db dummy0_0;\n', 1))
 
     def test_data_15350(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 9,9,8")), ('{9,9,8}, // dummy1\n', 'db dummy1[3];\n', 3))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 9,9,8")), ('{9,9,8}, // dummy0_0\n', 'db dummy0_0[3];\n', 3))
 
     def test_data_15360(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="dd   -2,  -1,  -1,  -1,	 -1,   0")), ('{4294967294,4294967295,4294967295,4294967295,4294967295,0}, // dummy1\n', 'dd dummy1[6];\n', 24))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="dd   -2,  -1,  -1,  -1,	 -1,   0")), ('{4294967294,4294967295,4294967295,4294967295,4294967295,0}, // dummy0_0\n', 'dd dummy0_0[6];\n', 24))
 
     def test_data_15370(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="dd  201, 100,  50,  25,	 12")), ('{201,100,50,25,12}, // dummy1\n', 'dd dummy1[5];\n', 20))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="dd  201, 100,  50,  25,	 12")), ('{201,100,50,25,12}, // dummy0_0\n', 'dd dummy0_0[5];\n', 20))
 
     def test_data_15380(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="dd 111,1")), ('{111,1}, // dummy1\n', 'dd dummy1[2];\n', 8))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="dd 111,1")), ('{111,1}, // dummy0_0\n', 'dd dummy0_0[2];\n', 8))
 
     @unittest.skip("to check")
     def test_data_15390(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="dd offset var5")), ('offset(_data,var5), // dummy1\n', 'dw dummy1;\n', 4))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="dd offset var5")), ('offset(_data,var5), // dummy0_0\n', 'dw dummy0_0;\n', 4))
 
     def test_data_15400(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="dd unk_24453")), ('unk_24453, // dummy1\n', 'dd dummy1;\n', 4))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="dd unk_24453")), ('unk_24453, // dummy0_0\n', 'dd dummy0_0;\n', 4))
 
     def test_data_15410(self):
         self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="doublequote db 'ab''cd',\"e\"")), ("{'a','b','\\'','c','d','e'}, // doublequote\n", 'char doublequote[6];\n', 6))
 
     def test_data_15420(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="dw  0, 0, 0, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, 0, 0, 0")), ('{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // dummy1\n', 'dw dummy1[16];\n', 32))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="dw  0, 0, 0, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, 0, 0, 0")), ('{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // dummy0_0\n', 'dw dummy0_0[16];\n', 32))
 
     def test_data_15430(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="dw  5,5622h, 7,6B25h, 4,7D00h, 6,8133h,0Dh,93A8h, 9,0AC44h")), ('{5,22050,7,27429,4,32000,6,33075,13,37800,9,44100}, // dummy1\n', 'dw dummy1[12];\n', 24))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="dw  5,5622h, 7,6B25h, 4,7D00h, 6,8133h,0Dh,93A8h, 9,0AC44h")), ('{5,22050,7,27429,4,32000,6,33075,13,37800,9,44100}, // dummy0_0\n', 'dw dummy0_0[12];\n', 24))
 
     def test_data_15440(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="dw 0A06h")), ('2566, // dummy1\n', 'dw dummy1;\n', 2))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="dw 0A06h")), ('2566, // dummy0_0\n', 'dw dummy0_0;\n', 2))
 
     def test_data_15450(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="dw 0BE0h,0B40h,0AA0h,0A00h,970h,8F0h,870h,7F0h,780h,710h")), ('{3040,2880,2720,2560,2416,2288,2160,2032,1920,1808}, // dummy1\n', 'dw dummy1[10];\n', 20))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="dw 0BE0h,0B40h,0AA0h,0A00h,970h,8F0h,870h,7F0h,780h,710h")), ('{3040,2880,2720,2560,2416,2288,2160,2032,1920,1808}, // dummy0_0\n', 'dw dummy0_0[10];\n', 20))
 
     def test_data_15460(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="dw 0Bh,0BB80h,0Ch")), ('{11,48000,12}, // dummy1\n', 'dw dummy1[3];\n', 6))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="dw 0Bh,0BB80h,0Ch")), ('{11,48000,12}, // dummy0_0\n', 'dw dummy0_0[3];\n', 6))
 
     def test_data_15470(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="dw 32Ah")), ('810, // dummy1\n', 'dw dummy1;\n', 2))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="dw 32Ah")), ('810, // dummy0_0\n', 'dw dummy0_0;\n', 2))
 
     @unittest.skip("to check")
     def test_data_15480(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="dw @df@@@@8")), ('karbdfarbarbarbarb8, // dummy1\n', 'dw dummy1;\n', 2))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="dw @df@@@@8")), ('karbdfarbarbarbarb8, // dummy0_0\n', 'dw dummy0_0;\n', 2))
 
     @unittest.skip("to check")
     def test_data_15490(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="dw offset __2stm_module	; 2STM")), ('k__2stm_module, // dummy1\n', 'dw dummy1;\n', 2))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="dw offset __2stm_module	; 2STM")), ('k__2stm_module, // dummy0_0\n', 'dw dummy0_0;\n', 2))
 
     @unittest.skip("to check")
     def test_data_15500(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="dw offset loc_17BEB")), ('kloc_17beb, // dummy1\n', 'dw dummy1;\n', 2))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="dw offset loc_17BEB")), ('kloc_17beb, // dummy0_0\n', 'dw dummy0_0;\n', 2))
 
     def test_data_15510(self):
         self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="e db 5")), ('5, // e\n', 'db e;\n', 1))
@@ -1024,14 +1024,14 @@ class ParserDataTest(unittest.TestCase):
         self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="var6 dd 9,8,7,1")), ('{9,8,7,1}, // var6\n', 'dd var6[4];\n', 16))
 
     def test_data_15920(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 000,009,000,000,009,021,000,009,042,000,009,063,009,009,000,009")), ('{0,9,0,0,9,21,0,9,42,0,9,63,9,9,0,9}, // dummy1\n', 'db dummy1[16];\n', 16))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 000,009,000,000,009,021,000,009,042,000,009,063,009,009,000,009")), ('{0,9,0,0,9,21,0,9,42,0,9,63,9,9,0,9}, // dummy0_0\n', 'db dummy0_0[16];\n', 16))
 
     def test_data_15930(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 7,'¬¬êê',16,'éÇÇÇ',0")), ('"\\x07\\xaa\\xaa\\x88\\x88\\x10\\x82\\x80\\x80\\x80", // dummy1\n', 'char dummy1[11];\n', 11))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 7,'¬¬êê',16,'éÇÇÇ',0")), ('"\\x07\\xaa\\xaa\\x88\\x88\\x10\\x82\\x80\\x80\\x80", // dummy0_0\n', 'char dummy0_0[11];\n', 11))
 
     def test_data_15940(self):
         self.parser.action_data(line="byte_10F8E db 131")
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="dw offset byte_10F8E+0F3h")), ('offset(default_seg,byte_10f8e)+243, // dummy1\n', 'dw dummy1;\n', 2))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="dw offset byte_10F8E+0F3h")), ('offset(default_seg,byte_10f8e)+243, // dummy0_0\n', 'dw dummy0_0;\n', 2))
 
 if __name__ == "__main__":
     unittest.main()
