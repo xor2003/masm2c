@@ -1365,6 +1365,11 @@ class Cpp(object):
 """)
 
         if self.__context.main_file:
+            g = self.__context.get_global(self.__context.entry_point)
+            if isinstance(g, op.label):
+                self.body += f"""
+                 void {self.__context.entry_point}(m2c::_offsets, struct m2c::_STATE* _state){{{g.proc}(m2c::k{self.__context.entry_point}, _state);}}
+                """
             cppd.write(f"""namespace m2c{{ m2cf* _ENTRY_POINT_ = &{self.__context.entry_point};}}
 """)
 

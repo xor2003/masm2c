@@ -11,7 +11,7 @@ _DATA   ends ;IGNORE
 
 _TEXT   segment use16 word public 'CODE' ;IGNORE
 assume  cs:_TEXT,ds:_DATA
-start proc near
+start:
 
 add word ptr [var5+2],50
 cmp word ptr [var5+2],50
@@ -70,7 +70,7 @@ exitLabel:
 mov ah,4ch                    ; AH=4Ch - Exit To DOS
 int 21h
 
-start endp
+
 _TEXT   ends ;IGNORE
 
 stackseg   segment para stack 'STACK' ;IGNORE
