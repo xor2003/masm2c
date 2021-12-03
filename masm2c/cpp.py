@@ -359,7 +359,7 @@ class Cpp(object):
                     if c:
                         real_seg, real_offset = j.getrealaddr()
                         if real_seg:
-                            c += f' // {real_seg:04x}:{real_offset:x}'
+                            c += f' // {real_seg:04x}:{real_offset:04x}'
                         c += "\n"
                         # c += " // " + j.getlabel() + "\n"  # TODO can put original_label
 
@@ -1367,9 +1367,9 @@ class Cpp(object):
         if self.__context.main_file:
             g = self.__context.get_global(self.__context.entry_point)
             if isinstance(g, op.label):
-                self.body += f"""
+                cppd.write(f"""
                  void {self.__context.entry_point}(m2c::_offsets, struct m2c::_STATE* _state){{{g.proc}(m2c::k{self.__context.entry_point}, _state);}}
-                """
+                """)
             cppd.write(f"""namespace m2c{{ m2cf* _ENTRY_POINT_ = &{self.__context.entry_point};}}
 """)
 
