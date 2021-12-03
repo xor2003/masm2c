@@ -464,6 +464,7 @@ class Data(baseop):
         self.line_number = line_number
         self.align = align
         # self.comment = comment
+        self.real_seg, self.real_offset = None, None
 
     def isobject(self):
         return self.data_internal_type == DataType.OBJECT
@@ -501,6 +502,9 @@ class Data(baseop):
 
     def getalign(self):
         return self.align
+
+    def getrealaddr(self):
+        return self.real_seg, self.real_offset
 
 class Struct:
     class Type(Enum):

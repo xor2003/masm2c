@@ -127,7 +127,7 @@ def integertok(context, nodes):
 
 def commentkw(head, s, pos):
     # multiline comment
-    if s[pos:].startswith('COMMENT'):
+    if s[pos:pos+7] == 'COMMENT':
         mtch = commentid.match(s[pos:])
         if mtch:
             return mtch.group(0)
@@ -135,14 +135,15 @@ def commentkw(head, s, pos):
 
 
 def macroname(context, s, pos):
-    # macro usage identifier
-    mtch = macronamere.match(s[pos:])
-    if mtch:
-        result = mtch.group().lower()
-        # logging.debug ("matched ~^~" + result+"~^~")
-        if result in macroses.keys():
-            logging.debug(" ~^~" + result + "~^~ in macronames")
-            return result
+    if macroses:
+        # macro usage identifier
+        mtch = macronamere.match(s[pos:])
+        if mtch:
+            result = mtch.group().lower()
+            # logging.debug ("matched ~^~" + result+"~^~")
+            if result in macroses.keys():
+                logging.debug(" ~^~" + result + "~^~ in macronames")
+                return result
     return None
 
 
@@ -196,13 +197,14 @@ def macrocall(context, nodes, name, args):
 
 
 def structname(context, s, pos):
-    mtch = macronamere.match(s[pos:])
-    if mtch:
-        result = mtch.group().lower()
-        # logging.debug ("matched ~^~" + result+"~^~")
-        if result in context.extra.structures.keys():
-            logging.debug(" ~^~" + result + "~^~ in structures")
-            return result
+    if context.extra.structures:
+        mtch = macronamere.match(s[pos:])
+        if mtch:
+            result = mtch.group().lower()
+            # logging.debug ("matched ~^~" + result+"~^~")
+            if result in context.extra.structures.keys():
+                logging.debug(" ~^~" + result + "~^~ in structures")
+                return result
     return None
 
 
@@ -995,7 +997,7 @@ class Parser:
             self.itislst = True
             segmap = dict(
                 x.split(' ') for x in read_whole_file(re.sub(r'\.lst', '.segmap', file_name, flags=re.I)).splitlines())
-            content = re.sub(r'^(?P<segment>[_0-9A-Za-z]+):(?P<offset>[0-9A-F]{4,8})(?P<remain>.*)',
+            content = re.sub(r'^(?P<segment>[_0-9A-Za-z]+):(?P<offset>[0-9A-Fa-f]{4,8})(?P<remain>.*)',
                              lambda m: f'{m.group("remain")} ;~ {segmap.get(m.group("segment"))}:{m.group("offset")}',
                              content, flags=re.MULTILINE)
         self.parse_args_new_data(content, file_name=file_name)
@@ -1054,6 +1056,7 @@ class Parser:
         return o
 
     def create_segment(self, name, options=None, segclass=None, raw=''):
+        logging.info("     Found segment %s" % name)
         name = name.lower()
         self.__segment_name = name
         _, _, real_seg = self.get_lst_offsets(raw)
@@ -1222,6 +1225,8 @@ class Parser:
         return result
 
     def datadir_action(self, label, type, args, raw='', line_number=0):
+        if self.__cur_seg_offset & 0xff == 0:
+            logging.info("     Current offset %04x" % self.__cur_seg_offset)
         isstruct = len(self.struct_names_stack) != 0
 
         label = self.mangle_label(label)
@@ -1263,6 +1268,7 @@ class Parser:
         if isstruct:
             self.current_struct.append(data)
         else:
+            _, data.real_offset, data.real_seg = self.get_lst_offsets(raw)
             self.__segment.append(data)
 
         # c, h, size = cpp.Cpp.produce_c_data(data) # TO REMOVE
@@ -1291,7 +1297,7 @@ class Parser:
         absolute_offset = None
         real_seg = None
         if self.itislst:
-            m = re.match(r'.* ;~ (?P<segment>[0-9A-F]{4}):(?P<offset>[0-9A-F]{4})', raw)
+            m = re.match(r'.* ;~ (?P<segment>[0-9A-Fa-f]{4}):(?P<offset>[0-9A-Fa-f]{4})', raw)
             if m:
                 real_offset = int(m.group('offset'), 16)
                 real_seg = int(m.group('segment'), 16)

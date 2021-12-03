@@ -334,6 +334,7 @@ class Cpp(object):
         for i in segments.values():
             for j in i.getdata():
                 c, h, size = self.produce_c_data_single_(j)
+
                 h += ";\n"
 
                 if not j.getalign():  # if align do not assign it
@@ -355,7 +356,10 @@ class Cpp(object):
                         else:
                             c = f'    {name}={c};'
 
-                    if c != '':
+                    if c:
+                        real_seg, real_offset = j.getrealaddr()
+                        if real_offset:
+                            c += f' // {real_seg:04x}:{real_offset:x}'
                         c += "\n"
                         # c += " // " + j.getlabel() + "\n"  # TODO can put original_label
 
