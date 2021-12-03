@@ -620,7 +620,7 @@ class ParserDataTest(unittest.TestCase):
         self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="_tabledword_24562 dd -131072,-65536,-19196,-4989,-1260,-316, -79, -20,  -5")), ('{4294836224,4294901760,4294948100,4294962307,4294966036,4294966980,4294967217,4294967276,4294967291}, // _tabledword_24562\n', 'dd _tabledword_24562[9];\n', 36))
 
     def test_data_14420(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="_vga_palette	db 0,0,0		; DATA XREF: _init_vga_waves+1Fo")), ('{0,0,0}, // _vga_palette\n', 'db _vga_palette[3];\n', 3))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="_vga_palette	db 0,0,0		; DATA XREF: _init_vga_waves+1Fo")), ('{0}, // _vga_palette\n', 'db _vga_palette[3];\n', 3))
 
     def test_data_14460(self):
         self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="_volume_245FC	dw 100h			; DATA XREF: sub_1265D+5r")), ('256, // _volume_245fc\n', 'dw _volume_245fc;\n', 2))
@@ -677,7 +677,7 @@ class ParserDataTest(unittest.TestCase):
         self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="_wss_freq_table2	dw  1,19D7h,0Fh,1F40h, 0,2580h,0Eh,2B11h, 3,3E80h, 2,49D4h")), ('{1,6615,15,8000,0,9600,14,11025,3,16000,2,18900}, // _wss_freq_table2\n', 'dw _wss_freq_table2[12];\n', 24))
 
     def test_data_14690(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="_x_storage	dw  0, 0, 0, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, 0, 0, 0, 0")), ('{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // _x_storage\n', 'dw _x_storage[17];\n', 34))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="_x_storage	dw  0, 0, 0, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, 0, 0, 0, 0")), ('{0}, // _x_storage\n', 'dw _x_storage[17];\n', 34))
 
     def test_data_14700(self):
         self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="a db 0ffh,0dfh,0h")), ('{255,223,0}, // a\n', 'db a[3];\n', 3))
@@ -894,7 +894,7 @@ class ParserDataTest(unittest.TestCase):
         self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="doublequote db 'ab''cd',\"e\"")), ("{'a','b','\\'','c','d','e'}, // doublequote\n", 'char doublequote[6];\n', 6))
 
     def test_data_15420(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="dw  0, 0, 0, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, 0, 0, 0")), ('{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // dummy0_0\n', 'dw dummy0_0[16];\n', 32))
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="dw  0, 0, 0, 0,	0, 0, 0, 0, 0, 0, 0, 0,	0, 0, 0, 0")), ('{0}, // dummy0_0\n', 'dw dummy0_0[16];\n', 32))
 
     def test_data_15430(self):
         self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="dw  5,5622h, 7,6B25h, 4,7D00h, 6,8133h,0Dh,93A8h, 9,0AC44h")), ('{5,22050,7,27429,4,32000,6,33075,13,37800,9,44100}, // dummy0_0\n', 'dw dummy0_0[12];\n', 24))
@@ -1032,6 +1032,9 @@ class ParserDataTest(unittest.TestCase):
     def test_data_15940(self):
         self.parser.action_data(line="byte_10F8E db 131")
         self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="dw offset byte_10F8E+0F3h")), ('offset(default_seg,byte_10f8e)+243, // dummy0_0\n', 'dw dummy0_0;\n', 2))
+
+    def test_data_15950(self):
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line='db 0A0h,3 dup(0),88h,3 dup(0),82h')), ('{160,0,0,0,136,0,0,0,130}, // dummy0_0\n', 'db dummy0_0[9];\n', 9))
 
 if __name__ == "__main__":
     unittest.main()

@@ -882,8 +882,6 @@ class Parser:
 
     def action_dup(self, n, values):
         res = []
-        if values in [[0], ['?']]:
-            return n, [0]
         for i in range(0, n):
             for value in values:
                 if value == '?':
@@ -1246,6 +1244,8 @@ class Parser:
 
         elements, is_string, array = self.process_data_tokens(args, binary_width)
         data_internal_type = self.identify_data_internal_type(array, elements, is_string)
+        if data_internal_type == DataType.ARRAY and not any(array):  # all zeros
+            array = [0]
 
         logging.debug("~size %d elements %d" % (binary_width, elements))
         if label and not isstruct:

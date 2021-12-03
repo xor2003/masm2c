@@ -358,7 +358,7 @@ class Cpp(object):
 
                     if c:
                         real_seg, real_offset = j.getrealaddr()
-                        if real_offset:
+                        if real_seg:
                             c += f' // {real_seg:04x}:{real_offset:x}'
                         c += "\n"
                         # c += " // " + j.getlabel() + "\n"  # TODO can put original_label
