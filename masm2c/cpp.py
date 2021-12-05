@@ -71,60 +71,6 @@ def produce_jump_table(labels):
     result += "    };\n}\n"
     return result
 
-'''
-class SingleProcStrategy:
-
-    def forward_to_dispatcher(self, name):
-        addtobody = "__disp = (dw)(" + name + ");\n"
-        name = "__dispatch_call"
-        return addtobody, name
-
-    def fix_call_label(self, dst):
-        if dst == "__dispatch_call":
-            # procedure id in variable __disp
-            dst = "__disp"  # [Token('expr', 'Token(sqexpr, [[Token('LABEL', 'table'), ['+', Token('register', 'ax')]]])')]
-        else:
-            # procedure id is an immediate value
-            dst = "k" + dst  # [Token('expr', 'Token(LABEL, exec_adc)')]
-        return dst
-
-    def produce_proc_start(self, name):
-        ret = " // Procedure %s() start\n%s:\n" % (name, cpp_mangle_label(name))
-        return ret
-
-    def function_header(self, name, entry_point=''):
-        header = """
-
- void %s(m2c::_offsets _i, struct m2c::_STATE* _state){
-    %s:
-    X86_REGREF
-    __disp = _i;
-""" % (cpp_mangle_label(name), cpp_mangle_label(name))
-        if entry_point != '':
-            header += """
-    if (__disp == kbegin) goto %s;
-        """ % entry_point
-        header += """
-    if (__disp == 0) goto _begin;
-    else goto __dispatch_call;
-    _begin:
-"""
-        return header
-
-    def function_end(self):
-        return ''
-
-    def produce_global_jump_table(self, globals):
-        return ""
-        # return produce_jump_table(globals)
-
-    def write_declarations(self, procs, context):
-        return ""
-
-    def get_strategy(self):
-        return "#define SINGLEPROCSTRATEGY\n"
-'''
-
 class SeparateProcStrategy:
 
     def forward_to_dispatcher(self, name):
@@ -143,10 +89,9 @@ class SeparateProcStrategy:
         header = """
 
  void %s(m2c::_offsets _i, struct m2c::_STATE* _state){
-    %s:
     X86_REGREF
     __disp = _i;
-""" % (cpp_mangle_label(name), cpp_mangle_label(name))
+""" % cpp_mangle_label(name)
         if entry_point != '':
             header += """
     if (__disp == kbegin) goto %s;
@@ -154,8 +99,9 @@ class SeparateProcStrategy:
         header += """
     if (__disp == 0) goto _begin;
     else goto __dispatch_call;
+    %s:
     _begin:
-"""
+""" % cpp_mangle_label(name)
         return header
 
     def function_end(self):
@@ -965,6 +911,30 @@ class Cpp(object):
 
         return expr
 
+    def jump_post(self, name):
+        name, far = self.jump_to_label(name)
+        hasglobal = self.__context.has_global(name)
+        if not hasglobal:
+        # jumps feat purpose:
+        # * in sub __dispatch_call - for address based jumps or grouped subs
+        # * direct jumps
+
+        # how to handle jumps:
+        # subs - direct jump to internal sub (maybe merged) - directly
+        # labels - directly
+        # offset - internal sub __dispatch_call disp=cs + offset
+        #   register
+        #   exact value
+        # seg:offset - in sub __dispatch_call disp= seg:offset ?
+            #ret += f"__disp={dst};\n"
+            #dst = "__dispatch_call"
+            #if self.__context.has_global(name):
+            #name = 'm2c::k'+name
+            addtobody, name = self.proc_strategy.forward_to_dispatcher(name)
+            self.body += addtobody
+
+        return name, far
+
     def jump_to_label(self, name):
         '''
         Convert argument tokens which for jump operations into C string
@@ -1034,9 +1004,6 @@ class Cpp(object):
         if hasglobal:
             if isinstance(g, op.label):
                 far = g.far  # make far calls to far procs
-        else:
-            addtobody, name = self.proc_strategy.forward_to_dispatcher(name)
-            self.body += addtobody
 
         if ptrdir:
             if any(isinstance(x, str) and x.lower() == 'far' for x in ptrdir):
@@ -1065,28 +1032,49 @@ class Cpp(object):
         ret = ""
         # dst = self.expand(name, destination = False)
         dst, far = self.jump_to_label(name)
+
+        hasglobal = self.__context.has_global(dst)
+        if hasglobal:
+            g = self.__context.get_global(dst)
+            if isinstance(g, op.label):
+                far = g.far  # make far calls to far procs
+                self.body += f"__disp=m2c::k{dst};\n"
+                dst = g.proc
+
+            # calls feat purpose:
+        # * grouped sub wrapper, exact subs  - direct name for external references
+        #   intern sub jump dispatcher - for grouped subs
+        # * global __dispatch_call - for address based calls CALL[es:bx]
+
+        # how to handle call instr:
+        # subs - (disp = 0) direct calls CALL(sub_0123)
+        # labels
+        #    in sub - self call the sub( with disp= klabel) ? or global dispatcher?
+        #    other sub - __dispatch_call the sub( with disp= klabel)
+        # offset - __dispatch_call disp=cs + offset
+        #   register
+        #   memory reference
+        # seg:offset  - __dispatch_call disp= seg:offset
+            elif isinstance(g, proc_module.Proc) or dst in self.__procs or dst in self.grouped:
+                self.body += f"__disp=0;\n"
+        else:
+            #ret += f"__disp={dst};\n"
+            #dst = "__dispatch_call"
+            #if self.__context.has_global(name):
+            #name = 'm2c::k'+name
+            addtobody, dst = self.proc_strategy.forward_to_dispatcher(dst)
+            self.body += addtobody
+        #else:
+        #    addtobody, name = self.proc_strategy.forward_to_dispatcher(name)
+        #    self.body += addtobody
+
         dst = self.proc_strategy.fix_call_label(dst)
         dst = cpp_mangle_label(dst)
-
-        if dst in self.proc.provided_labels:
-            ret += f"__disp=m2c::k{dst};\n"
-            dst = self.proc.name
 
         if far:
             ret += "\tR(CALLF(%s));\n" % (dst)
         else:
             ret += "\tR(CALL(%s));\n" % (dst)
-        '''
-                name = name.lower()
-                if self.is_register(name):
-                        ret += "\t__dispatch_call(%s);\n" %self.expand(name, 2)
-                        return
-                if name in self.__function_name_remapping:
-                        ret += "\tR(CALL(%s));\n" %self.__function_name_remapping[name]
-                else:
-                        ret += "\tR(CALL(%s));\n" %name
-                self.schedule(name)
-        '''
         return ret
 
     @staticmethod
@@ -1172,27 +1160,27 @@ class Cpp(object):
         if result:
             return "\n"
         else:
-            label, far = self.jump_to_label(label)  # TODO
+            label, far = self.jump_post(label)  # TODO
             return "\t\tR(JZ(%s));\n" % label
 
     def _jnz(self, label):
-        label, far = self.jump_to_label(label)
+        label, far = self.jump_post(label)
         return "\t\tR(JNZ(%s));\n" % label
 
     def _jbe(self, label):
-        label, far = self.jump_to_label(label)
+        label, far = self.jump_post(label)
         return "\t\tR(JBE(%s));\n" % label
 
     def _ja(self, label):
-        label, far = self.jump_to_label(label)
+        label, far = self.jump_post(label)
         return "\t\tR(JA(%s));\n" % label
 
     def _jc(self, label):
-        label, far = self.jump_to_label(label)
+        label, far = self.jump_post(label)
         return "\t\tR(JC(%s));\n" % label
 
     def _jnc(self, label):
-        label, far = self.jump_to_label(label)
+        label, far = self.jump_post(label)
         return "\t\tR(JNC(%s));\n" % label
 
     '''
@@ -1752,7 +1740,7 @@ struct Memory{
         if result:
             return "\n"
         else:
-            label, far = self.jump_to_label(label)  # TODO
+            label, far = self.jump_post(label)  # TODO
             return "\t\tR(%s(%s));\n" % (cmd.upper(), label)
 
     def isrelativejump(self, label):
