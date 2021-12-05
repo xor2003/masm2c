@@ -11,12 +11,6 @@ start proc near
 
 
 
-sti                             ; Set The Interrupt Flag
-cld                             ; Clear The Direction Flag
-
-mov cx,0
-;div cx
-
 push _data
 pop ds
 mov ah,9                        ; AH=09h - Print DOS Message

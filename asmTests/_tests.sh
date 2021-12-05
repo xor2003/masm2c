@@ -18,7 +18,7 @@ $CXX $OPT memmgr.cpp -c
 
 result=0
 
-for name in $(ls *.asm|xargs)
+for name in $(ls *.asm *.lst|xargs)
 do 
   n=$(echo $name| perl -pe 's!\.asm!!');
   export n
