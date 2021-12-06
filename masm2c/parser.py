@@ -1,5 +1,6 @@
 from __future__ import print_function
 
+import hashlib
 import logging
 import os
 import re
@@ -7,6 +8,7 @@ import sys
 from builtins import object
 from builtins import range
 from builtins import str
+from collections import OrderedDict
 from copy import copy, deepcopy
 
 import parglare
@@ -45,7 +47,7 @@ def read_whole_file(file_name):
     return content
 
 
-macroses = dict()
+macroses = OrderedDict()
 macronamere = re.compile(r'([A-Za-z@_\$\?][A-Za-z0-9@_\$\?]*)')
 commentid = re.compile(r'COMMENT\s+([^ ]).*?\1[^\r\n]*', flags=re.DOTALL)
 
@@ -178,7 +180,7 @@ def endm(context, nodes):
 class Getmacroargval:
 
     def __init__(self, params, args):
-        self.argvaluedict = dict(zip(params, args))
+        self.argvaluedict = OrderedDict(zip(params, args))
 
     def __call__(self, token):
         return self.argvaluedict[token.value]
@@ -561,11 +563,11 @@ class Parser:
         '''
         Assembler parser
         '''
-        self.__globals = {}
-        self.__offsets = {}
+        self.__globals = OrderedDict()
+        self.__offsets = OrderedDict()
         self.pass_number = 0
         self.__lex = ParglareParser()
-        self.segments = dict()
+        self.segments = OrderedDict()
         self.externals_vars = set()
         self.externals_procs = set()
         self.__files = set()
@@ -585,7 +587,7 @@ class Parser:
         logging.info(f"     Pass number {self.pass_number}")
         Parser.c_dummy_label = counter
 
-        self.structures = dict()
+        self.structures = OrderedDict()
         self.macro_names_stack = set()
         self.proc_list = []
 
@@ -959,7 +961,7 @@ class Parser:
 
     def get_dummy_label(self):
         #Parser.c_dummy_label += 1
-        label = "dummy" + str(abs(hash(self.__current_file)))[0]+'_'+str(hex(self.__binary_data_size))[2:]
+        label = "dummy" + self.__current_file_hash[0]+'_'+str(hex(self.__binary_data_size))[2:]
         return label
 
     def get_dummy_jumplabel(self):
@@ -989,11 +991,12 @@ class Parser:
 
     def parse_file_lines(self, file_name):
         self.__current_file = file_name
+        self.__current_file_hash = hashlib.blake2s(self.__current_file.encode('utf8')).hexdigest()
         content = read_whole_file(file_name)
         if file_name.lower().endswith('.lst'):  # for .lst provided by IDA move address to comments after ;~
             # we want exact placement so program could work
             self.itislst = True
-            segmap = dict(
+            segmap = OrderedDict(
                 x.split(' ') for x in read_whole_file(re.sub(r'\.lst', '.segmap', file_name, flags=re.I)).splitlines())
             content = re.sub(r'^(?P<segment>[_0-9A-Za-z]+):(?P<offset>[0-9A-Fa-f]{4,8})(?P<remain>.*)',
                              lambda m: f'{m.group("remain")} ;~ {segmap.get(m.group("segment"))}:{m.group("offset")}',

@@ -5,6 +5,8 @@ from builtins import str
 from builtins import object
 
 # from masm2c import parser
+from collections import OrderedDict
+
 from masm2c.Token import Token
 from enum import Enum
 
@@ -519,7 +521,7 @@ class Struct:
         :param type: Structure or Union?
         '''
         self.__name = name
-        self.__fields = dict()
+        self.__fields = OrderedDict()
         self.__size = 0
         self.__type = Struct.Type.UNION if type.lower() == 'union' else Struct.Type.STRUCT
 

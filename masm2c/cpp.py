@@ -5,6 +5,7 @@ from __future__ import print_function
 import logging
 import re
 import sys, os
+from collections import OrderedDict
 from enum import Enum
 
 import jsonpickle
@@ -267,7 +268,7 @@ class Cpp(object):
         self.body = ""
         self.struct_type = None
         self.grouped = set()
-        self.groups = dict()
+        self.groups = OrderedDict()
 
         self.prefix = ''
         self.merge_data_segments = merge_data_segments
@@ -1291,7 +1292,7 @@ class Cpp(object):
             self.proc.visit(self, skip)
 
             '''
-            labels = dict()
+            labels = OrderedDict()
             for k, v in self.__context.get_globals().items():
                 if isinstance(v, op.label) and v.used and v.proc == self.proc:
                         labels[k] = v
@@ -1546,8 +1547,8 @@ class Cpp(object):
 
     def read_segments(self, asm_files):
         logging.info(" *** Merging .seg files")
-        segments = dict()
-        structs = dict()
+        segments = OrderedDict()
+        structs = OrderedDict()
         for file in asm_files:
             file = file.replace('.asm', '.seg').replace('.lst', '.seg')
             logging.info(f'     Merging data from {file}')
@@ -1555,7 +1556,7 @@ class Cpp(object):
                 segments, structures = self.merge_segments(segments, structs, *jsonpickle.decode(infile.read()))
         return segments, structures
 
-    def merge_segments(self, allsegments: dict, allstructs: dict, newsegments: dict, newstructs: dict):
+    def merge_segments(self, allsegments: OrderedDict, allstructs: OrderedDict, newsegments: OrderedDict, newstructs: OrderedDict):
         if self.merge_data_segments:
             logging.info('Will merge public data segments')
         for k, v in newsegments.items():
