@@ -120,7 +120,7 @@ class SeparateProcStrategy:
             if isinstance(v, proc_module.Proc) and v.used:
                 offsets.append((k.lower(), k))
 
-                for label in v.provided_labels:
+                for label in sorted(v.provided_labels):
                     if label != v.name:
                         result += f"        case m2c::k{label}: \t{v.name}(__disp, _state); break;\n"
 
@@ -136,12 +136,12 @@ class SeparateProcStrategy:
 
     def write_declarations(self, procs, context):
         result = ""
-        for p in procs:  # TODO only if used or public
+        for p in sorted(procs):  # TODO only if used or public
             if p == 'mainproc': # and not context.main_file:
                 result += 'static '
             result += "void %s(m2c::_offsets, struct m2c::_STATE*);\n" % cpp_mangle_label(p)
 
-        for i in context.externals_procs:
+        for i in sorted(context.externals_procs):
             v = context.get_globals()[i]
             if v.used:
                 result += f"extern void {v.name}(m2c::_offsets, struct m2c::_STATE*);\n"
@@ -1037,7 +1037,7 @@ class Cpp(object):
         hasglobal = self.__context.has_global(dst)
         if hasglobal:
             g = self.__context.get_global(dst)
-            if isinstance(g, op.label):
+            if isinstance(g, op.label) and not g.isproc:
                 far = g.far  # make far calls to far procs
                 self.body += f"__disp=m2c::k{dst};\n"
                 dst = g.proc
@@ -1056,8 +1056,8 @@ class Cpp(object):
         #   register
         #   memory reference
         # seg:offset  - __dispatch_call disp= seg:offset
-            elif isinstance(g, proc_module.Proc) or dst in self.__procs or dst in self.grouped:
-                self.body += f"__disp=0;\n"
+            #elif isinstance(g, proc_module.Proc) or dst in self.__procs or dst in self.grouped:
+            #    self.body += f"__disp=0;\n"
         else:
             #ret += f"__disp={dst};\n"
             #dst = "__dispatch_call"
@@ -1391,7 +1391,7 @@ class Cpp(object):
         # while len(self.__proc_queue):
         self.merge_procs()
 
-        for p in self.grouped:
+        for p in sorted(self.grouped):
             self.body += f"""
  void {p}(m2c::_offsets, struct m2c::_STATE* _state){{{self.groups[p]}(m2c::k{p}, _state);}}
 """
