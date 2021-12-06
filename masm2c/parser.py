@@ -622,6 +622,7 @@ class Parser:
         self.struct_names_stack = set()
 
         self.__current_file = ''
+        self.__current_file_hash = '0'
 
     def visible(self):
         for i in self.__stack:
