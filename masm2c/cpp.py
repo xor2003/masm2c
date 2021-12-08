@@ -75,7 +75,7 @@ def produce_jump_table(labels):
 class SeparateProcStrategy:
 
     def forward_to_dispatcher(self, name):
-        addtobody = "__disp = (dd)(" + name + ");\n"
+        addtobody = "__disp = (dw)(" + name + ");\n"
         name = "__dispatch_call"
         return addtobody, name
 
@@ -1037,7 +1037,7 @@ class Cpp(object):
         hasglobal = self.__context.has_global(dst)
         if hasglobal:
             g = self.__context.get_global(dst)
-            if isinstance(g, op.label) and not g.isproc:
+            if isinstance(g, op.label) and not g.isproc and not dst in self.__procs and not dst in self.grouped:
                 far = g.far  # make far calls to far procs
                 self.body += f"__disp=m2c::k{dst};\n"
                 dst = g.proc

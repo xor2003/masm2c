@@ -12,50 +12,50 @@
  #define offset(segment,name) ((db*)(&name)-(db*)(&segment))
 
  #define MOVSS(a) {void * dest;void * src;src=realAddress(si,ds); dest=realAddress(di,es); \
-		memmove(dest,src,a); di+=(DF==0)?a:-a; si+=(DF==0)?a:-a; }
- #define STOS(a,b) {memcpy (realAddress(di,es), ((db *)&eax)+b, a); di+=(DF==0)?a:-a;}
+		memmove(dest,src,a); di+=(GET_DF()==0)?a:-a; si+=(GET_DF()==0)?a:-a; }
+ #define STOS(a,b) {memcpy (realAddress(di,es), ((db *)&eax)+b, a); di+=(GET_DF()==0)?a:-a;}
 
  #define REP cx++;while (--cx != 0)
- #define REPE AFFECT_ZFifz(0);cx++;while (--cx != 0 && ZF)
- #define REPNE AFFECT_ZFifz(1);cx++;while (--cx != 0 && !ZF)
+ #define REPE AFFECT_ZFifz(0);cx++;while (--cx != 0 && GET_ZF())
+ #define REPNE AFFECT_ZFifz(1);cx++;while (--cx != 0 && !GET_ZF())
  #define XLAT {al = *raddr(ds,bx+al);}
  #define CMPSB \
 	{  \
 			db* src=realAddress(si,ds); db* dest=realAddress(di,es); \
-			CMP(*src, *dest); di+=(DF==0)?1:-1; si+=(DF==0)?1:-1; \
+			CMP(*src, *dest); di+=(GET_DF()==0)?1:-1; si+=(GET_DF()==0)?1:-1; \
 	}
  #define CMPSW \
 	{  \
 			dw* src=(dw*)realAddress(si,ds); dw* dest=(dw*)realAddress(di,es); \
-			CMP(*src, *dest); di+=(DF==0)?2:-2; si+=(DF==0)?2:-2; \
+			CMP(*src, *dest); di+=(GET_DF()==0)?2:-2; si+=(GET_DF()==0)?2:-2; \
 	}
  #define CMPSD \
 	{  \
 			dd* src=(dd*)realAddress(si,ds); dd* dest=(dd*)realAddress(di,es); \
-			CMP(*src, *dest); di+=(DF==0)?4:-4; si+=(DF==0)?4:-4; \
+			CMP(*src, *dest); di+=(GET_DF()==0)?4:-4; si+=(GET_DF()==0)?4:-4; \
 	}
 
  #define SCASB \
 	{  \
-			CMP(al, *realAddress(di,es)); di+=(DF==0)?1:-1; \
+			CMP(al, *realAddress(di,es)); di+=(GET_DF()==0)?1:-1; \
 	}
  #define SCASW \
 	{  \
-			CMP(ax, *(dw*)realAddress(di,es)); di+=(DF==0)?2:-2; \
+			CMP(ax, *(dw*)realAddress(di,es)); di+=(GET_DF()==0)?2:-2; \
 	}
  #define SCASD \
 	{  \
-			CMP(eax, *(dd*)realAddress(di,es)); di+=(DF==0)?4:-4; \
+			CMP(eax, *(dd*)realAddress(di,es)); di+=(GET_DF()==0)?4:-4; \
 	}
 
- #define LODS(addr,s) {memcpy (((db *)&eax), &(addr), s);; si+=(DF==0)?s:-s;} // TODO not always si!!!
- #define LODSS(a,b) {memcpy (((db *)&eax)+b, realAddress(si,ds), a); si+=(DF==0)?a:-a;}
+ #define LODS(addr,s) {memcpy (((db *)&eax), &(addr), s);; si+=(GET_DF()==0)?s:-s;} // TODO not always si!!!
+ #define LODSS(a,b) {memcpy (((db *)&eax)+b, realAddress(si,ds), a); si+=(GET_DF()==0)?a:-a;}
 
  #ifdef MSB_FIRST
   #define STOSB STOS(1,3)
   #define STOSW STOS(2,2)
  #else
-
+/*
  //SDL2 VGA
   #if SDL_MAJOR_VERSION == 2 && !defined(NOSDL)
    #define STOSB { \
@@ -75,7 +75,7 @@
    #ifdef A_NORMAL
     #define STOSW { \
 	if (es==0xB800)  \
-		{dd averytemporary=(di>>1);attrset(COLOR_PAIR(ah)); mvaddch(averytemporary/80, averytemporary%80, al); /*attroff(COLOR_PAIR(ah))*/;di+=(DF==0)?2:-2;refresh();} \
+		{dd averytemporary=(di>>1);attrset(COLOR_PAIR(ah)); mvaddch(averytemporary/80, averytemporary%80, al); /*attroff(COLOR_PAIR(ah))*/;di+=(GET_DF()==0)?2:-2;refresh();} \
 	else \
 		{STOS(2,0);} \
 	}
@@ -89,8 +89,8 @@
  #define INSW {dw averytemporary3 = asm2C_INW(dx);*realAddress(di,es)=averytemporary3;di+=(DF==0)?2:-2;}
 
 #define LOOP(label) DEC(cx); JNZ(label)
-#define LOOPE(label) --cx; if (cx!=0 && ZF) GOTOLABEL(label) //TODO
-#define LOOPNE(label) --cx; if (cx!=0 && !ZF) GOTOLABEL(label) //TODO
+#define LOOPE(label) --cx; if (cx!=0 && GET_ZF()) GOTOLABEL(label) //TODO
+#define LOOPNE(label) --cx; if (cx!=0 && !GET_ZF()) GOTOLABEL(label) //TODO
 
 
 #endif

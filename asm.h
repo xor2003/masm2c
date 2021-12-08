@@ -74,6 +74,40 @@ typedef long double real10;
 #include "memmgr.h"
 
 namespace m2c {
+
+template<class S>
+S getdata(const S& s);
+
+template<>
+inline db getdata<db>(const db& s)
+{ return s; }
+template<>
+inline dw getdata<dw>(const dw& s)
+{ return s; }
+template<>
+inline dd getdata<dd>(const dd& s)
+{ return s; }
+template<>
+inline char getdata<char>(const char& s)
+{ return s; }
+template<>
+inline short int getdata<short int>(const short int& s)
+{ return s; }
+template<>
+inline int getdata<int>(const int& s)
+{ return s; }
+template<>
+inline long getdata<long>(const long& s)
+{ return s; }
+
+
+static void setdata(db* d, db s)
+{ *d = s; }
+static void setdata(dw* d, dw s)
+{ *d = s; }
+static void setdata(dd* d, dd s)
+{ *d = s; }
+
 extern FILE * logDebug;
 
 // Asm functions
@@ -137,6 +171,41 @@ static const uint32_t MASK[]={0, 0xff, 0xffff, 0xffffff, 0xffffffff};
 #define RM_OFFSET(addr)       (((size_t)addr) & 0xF)
 #define RM_SEGMENT(addr)      ((((size_t)addr) >> 4) & 0xFFFF)
 
+class Bits{
+unsigned int _CF : 1,
+unused1:1,
+_PF:1,
+unused2:1,
+_AF:1,
+unused3:1,
+_ZF:1,
+_SF:1,
+_TF:1,
+_IF:1,
+_DF:1,
+_OF:1;
+public:
+#define REGDEF_flags(Z) \
+    inline bool set##Z##F(bool i){return (_##Z##F=i);} \
+    inline bool get##Z##F(){return _##Z##F;}
+    inline void reset(){_CF=false;_PF=false;_AF=false;_ZF=false;_SF=false;_TF=false;
+    _IF=false;_DF=false;_OF=false;}
+ 
+ REGDEF_flags(C)
+ REGDEF_flags(P)
+ REGDEF_flags(A)
+ REGDEF_flags(Z)
+ REGDEF_flags(S)
+ REGDEF_flags(T)
+ REGDEF_flags(I)
+ REGDEF_flags(D)
+ REGDEF_flags(O)
+};
+
+union eflags{
+ Bits bits;
+ dd value;
+};
 
 
 
@@ -171,132 +240,146 @@ static const uint32_t MASK[]={0, 0xff, 0xffff, 0xffffff, 0xffffffff};
 #endif
 
 
-#define AFFECT_ZFifz(a) {ZF=((a)==0);}
-#define AFFECT_CF(a) {CF=(a);}
-#define AFFECT_AF(a) {AF=(a);}
-#define AFFECT_OF(a) {OF=(a);}
-//#define ISNEGATIVE(a) (a & (1 << (sizeof(a)*8-1)))
+#define GET_DF() m2cflags.bits.getDF()
+#define GET_CF() m2cflags.bits.getCF()
+#define GET_AF() m2cflags.bits.getAF()
+#define GET_OF() m2cflags.bits.getOF()
+#define GET_SF() m2cflags.bits.getSF()
+#define GET_ZF() m2cflags.bits.getZF()
+#define GET_PF() m2cflags.bits.getPF()
+#define GET_IF() m2cflags.bits.getIF()
+#define AFFECT_DF(a) m2cflags.bits.setDF(a)
+#define AFFECT_CF(a) m2cflags.bits.setCF(a)
+#define AFFECT_AF(a) m2cflags.bits.setAF(a)
+#define AFFECT_OF(a) m2cflags.bits.setOF(a)
+
 //#define AFFECT_SF(a) {SF=ISNEGATIVE(a);}
 #define ISNEGATIVE(f,a) ( (a) & (1 << (bitsizeof(f)-1)) )
-#define AFFECT_SF(f, a) {SF=ISNEGATIVE(f,a);}
+#define AFFECT_SF(a) m2cflags.bits.setSF(a)
+#define AFFECT_SF_(f, a) {AFFECT_SF(ISNEGATIVE(f,a));}
+#define AFFECT_ZFifz(a) m2cflags.bits.setZF((a)==0)
+#define AFFECT_PF(a) m2cflags.bits.setPF(a)
 
 #define CMP(a,b) {dd averytemporary=((a)-(b))& m2c::MASK[sizeof(a)]; \
 		AFFECT_CF((averytemporary)>(a)); \
 		AFFECT_ZFifz(averytemporary); \
-		AFFECT_SF(a,averytemporary);}
+		AFFECT_SF_(a,averytemporary);}
 
-#define OR(a,b) {a=(a)|(b); \
-		AFFECT_ZFifz(a); \
-		AFFECT_SF(a,a); \
-		AFFECT_CF(0);}
+#define OR(a, b) m2c::OR_(a, b, m2cflags)
+template <class D, class S>
+inline void OR_(D& dest, const S& src, m2c::eflags& m2cflags)
+{
+   D d = m2c::getdata<D>(dest);
+   m2c::setdata(&dest, d | static_cast<D>(m2c::getdata<S>(src)));
+		AFFECT_ZFifz(dest); 
+		AFFECT_SF_(dest,dest); 
+		AFFECT_CF(0);
+ }
 
 #define XOR(a,b) {a=(a)^(b); \
 		AFFECT_ZFifz(a); \
-		AFFECT_SF(a,a) \
+		AFFECT_SF_(a,a); \
 		AFFECT_CF(0);}
 
-#define AND(a,b) {a=(a)&(b); \
-		AFFECT_ZFifz(a); \
-		AFFECT_SF(a,a) \
-		AFFECT_CF(0);}
+#define AND(a, b) m2c::AND_(a, b, m2cflags)
+template <class D, class S>
+inline void AND_(D& dest, const S& src, m2c::eflags& m2cflags)
+{
+   D d = m2c::getdata<D>(dest);
+   m2c::setdata(&dest, d & static_cast<D>(m2c::getdata<S>(src)));
+		AFFECT_ZFifz(dest); 
+		AFFECT_SF_(dest,dest); 
+		AFFECT_CF(0);
+ }
 
 #define NEG(a) {AFFECT_CF((a)!=0); \
 		a=-a;\
 		AFFECT_ZFifz(a); \
-		AFFECT_SF(a,a)}
+		AFFECT_SF_(a,a);}
 
 #define TEST(a,b) {AFFECT_ZFifz((a)&(b)); \
 		AFFECT_CF(0); \
-		AFFECT_SF(a,(a)&(b))}
+		AFFECT_SF(a,(a)&(b));}
 
-#define SHR(a,b) {if (b) {CF=(a>>(b-1))&1;\
+#define SHR(a,b) {if (b) {AFFECT_CF((a>>(b-1))&1);\
 		a=a>>b;\
 		AFFECT_ZFifz(a);\
-		AFFECT_SF(a,a)}}
+		AFFECT_SF_(a,a);}}
 
-#define SHL(a,b) {if (b) {CF=(a) & (1 << (bitsizeof(a)-(b)));\
+#define SHL(a,b) {if (b) {AFFECT_CF((a) & (1 << (bitsizeof(a)-(b))));\
 		a=a<<b;\
 		AFFECT_ZFifz(a);\
-		AFFECT_SF(a,a)}}
+		AFFECT_SF_(a,a);}}
 
-#define ROR(a,b) {if (b) {CF=((a)>>(shiftmodule(a,b)-1))&1;\
+#define ROR(a,b) {if (b) {AFFECT_CF(((a)>>(shiftmodule(a,b)-1))&1);\
 		a=((a)>>(shiftmodule(a,b)) | a<<(bitsizeof(a)-(shiftmodule(a,b))));}}
 
 #define ROL(a,b) {if (b) {a=(((a)<<(shiftmodule(a,b))) | (a)>>(bitsizeof(a)-(shiftmodule(a,b))));\
 		AFFECT_CF(LSB(a));}}
 
-#define RCL(a, b) m2c::RCL_(a, b, CF)
+#define RCL(a, b) m2c::RCL_(a, b, m2cflags)
 template <class D, class C>
-void RCL_(D& Destination, C Count, bool& CF_)
+inline void RCL_(D& Destination, C Count, m2c::eflags& m2cflags)
 { 
 		int TemporaryCount = Count % (bitsizeof(Destination) + 1);
 			while(TemporaryCount) {
 				bool TemporaryCF = MSB(Destination);
-				Destination = (Destination << 1) + CF_;
-				CF_ = TemporaryCF;
+				Destination = (Destination << 1) + GET_CF();
+				AFFECT_CF(TemporaryCF);
 				--TemporaryCount;
 			}
 }
 
-#define RCR(a, b) m2c::RCR_(a, b, CF)
+#define RCR(a, b) m2c::RCR_(a, b, m2cflags)
 template <class D, class C>
-void RCR_(D& Destination, C Count, bool& CF_)
+inline void RCR_(D& Destination, C Count, m2c::eflags& m2cflags)
 { 
 		int TemporaryCount = Count % (bitsizeof(Destination) + 1);
 			while(TemporaryCount != 0) {
 				bool TemporaryCF = LSB(Destination);
-				Destination = (Destination >> 1) + (CF_ << (bitsizeof(Destination)-1));
-				CF_ = TemporaryCF;
+				Destination = (Destination >> 1) + (GET_CF() << (bitsizeof(Destination)-1));
+				AFFECT_CF(TemporaryCF);
 				--TemporaryCount;
 			}
 }
 
 template <class D>
-void SHLD_(D& Destination, D Source, int Count, bool& CF_);
+void SHLD_(D& Destination, D Source, size_t Count, m2c::eflags& m2cflags);
 
 template <class D>
-void SHRD_(D& Destination, D Source, int Count, bool& CF_)
+inline void SHRD_(D& Destination, D Source, size_t Count, m2c::eflags& m2cflags)
 { 
  if(Count != 0) {
 int TCount = Count&(2*bitsizeof(D)-1);
 
-if (TCount>bitsizeof(D)) {SHLD_(Destination, Source, 2*bitsizeof(D)-TCount, CF_);} 
+if (TCount>bitsizeof(D)) {SHLD_(Destination, Source, 2*bitsizeof(D)-TCount, m2cflags);} 
 else
 {
-		CF_ = bitget(Destination,TCount-1); Destination>>=TCount;
+		AFFECT_CF(bitget(Destination,TCount-1)); Destination>>=TCount;
 		for(int i = bitsizeof(D) - TCount; i <= bitsizeof(D) - 1; ++i) 
 			if (i>=0) {bitset(Destination,bitget(Source,i + TCount - bitsizeof(D)),i);}
-		if (bitsizeof(D) - TCount<0)	 {CF_ = bitget(Source,TCount-bitsizeof(D)-1);}
+		if (bitsizeof(D) - TCount<0)	 {AFFECT_CF(bitget(Source,TCount-bitsizeof(D)-1));}
 }
  }
 }
 
 template <class D>
-void SHLD_(D& Destination, D Source, int Count, bool& CF_)
+inline void SHLD_(D& Destination, D Source, size_t Count, m2c::eflags& m2cflags)
 { 
  if(Count != 0) {
 int TCount = Count&(2*bitsizeof(D)-1);
-if (TCount>bitsizeof(D)) {SHRD_(Destination, Source, 2*bitsizeof(D)-TCount, CF_);} 
+if (TCount>bitsizeof(D)) {SHRD_(Destination, Source, 2*bitsizeof(D)-TCount, m2cflags);} 
 else
 {
-		CF_ = bitget(Destination,bitsizeof(D)-TCount); Destination<<=TCount;
+		AFFECT_CF(bitget(Destination,bitsizeof(D)-TCount)); Destination<<=TCount;
 		for(int i = 0; i < TCount; ++i) 
 			if (i>=0) {bitset(Destination,bitget(Source,bitsizeof(D) - TCount + i),i);}
 }
  }
 }
 
-#define SHRD(a, b, c) {m2c::SHRD_(a, b, c, CF);if (c) {AFFECT_ZFifz(a);AFFECT_SF(a,a);}}
-#define SHLD(a, b, c) {m2c::SHLD_(a, b, c, CF);if (c) {AFFECT_ZFifz(a);AFFECT_SF(a,a);}}
-/*
- //TODO CF=(a) & (1 << (sizeof(f)*8-b));
-#define SHRD(a,b,c) {if(c) {\
-			int shift = c&(2*bitsizeof(a)-1); \
-			dd a1=a>>shift; \
-			a=a1 | ( (b& ((1<<shift)-1) ) << (bitsizeof(a)-shift) ); \
-		AFFECT_ZFifz(a|b);\
-		AFFECT_SF(a,a);}} //TODO optimize
-*/
+#define SHRD(a, b, c) {m2c::SHRD_(a, b, c, m2cflags);if (c) {AFFECT_ZFifz(a);AFFECT_SF_(a,a);}}
+#define SHLD(a, b, c) {m2c::SHLD_(a, b, c, m2cflags);if (c) {AFFECT_ZFifz(a);AFFECT_SF_(a,a);}}
 
 #define SAR(a,b) {if (b) {bool sign = MSB(a);\
 	 int shift = (bitsizeof(a)-b);\
@@ -306,16 +389,14 @@ else
 	 AFFECT_CF((a >> (b-1))&1);\
 	 a=sigg | (a >> b);\
 		AFFECT_ZFifz(a);\
-		AFFECT_SF(a,a);}} // TODO optimize
+		AFFECT_SF_(a,a);}} // TODO optimize
 
 #define SAL(a,b) SHL(a,b)
 
 
-//#define AAD {al = al + (ah * 10) & 0xFF; ah = 0;} //TODO
-/*
 #define DAA	{											\
-	if (((al & 0x0F)>0x09) || AF) {				\
-		if ((al > 0x99) || CF) {					\
+	if (((al & 0x0F)>0x09) || GET_AF()) {				\
+		if ((al > 0x99) || GET_CF()) {					\
 			al+=0x60;									\
 			AFFECT_CF(true);							\
 		} else {											\
@@ -324,7 +405,7 @@ else
 		al+=0x06;										\
 		AFFECT_AF(true);								\
 	} else {												\
-		if ((al > 0x99) || CF) {					\
+		if ((al > 0x99) || GET_CF()) {					\
 			al+=0x60;									\
 			AFFECT_CF(true);							\
 		} else {											\
@@ -332,15 +413,14 @@ else
 		}													\
 		AFFECT_AF(false);								\
 	}														\
-	SF=(al&0x80);							\
+	AFFECT_SF(al&0x80);							\
 	AFFECT_ZFifz(al);}
-
 
 #define DAS												\
 {															\
 	db osigned=al & 0x80;							\
-	if (((al & 0x0f) > 9) || AF) {				\
-		if ((al>0x99) || CF) {					\
+	if (((al & 0x0f) > 9) || GET_AF()) {				\
+		if ((al>0x99) || GET_CF()) {					\
 			al-=0x60;									\
 			AFFECT_CF(true);							\
 		} else {											\
@@ -349,7 +429,7 @@ else
 		al-=6;											\
 		AFFECT_AF(true);								\
 	} else {												\
-		if ((al>0x99) || CF) {					\
+		if ((al>0x99) || GET_CF()) {					\
 			al-=0x60;									\
 			AFFECT_CF(true);							\
 		} else {											\
@@ -358,26 +438,26 @@ else
 		AFFECT_AF(false);								\
 	}														\
 	AFFECT_OF(osigned && ((al&0x80)==0));			\
-	SF=(al&0x80);							\
+	AFFECT_SF(al&0x80);							\
 	AFFECT_ZFifz(al); \
 }
-*/
 
-#define SALC	{AL=CF?0xff:0;}
+
+#define SALC	{AL=GET_CF()?0xff:0;}
 
 #define AAA	{											\
-	SF=((al>=0x7a) && (al<=0xf9));		\
+	AFFECT_SF(((al>=0x7a) && (al<=0xf9)));		\
 	if ((al & 0xf) > 9) {								\
 		AFFECT_OF((al&0xf0)==0x70);					\
 		ax += 0x106;									\
 		AFFECT_CF(true);								\
 		AFFECT_ZFifz(al);						\
 		AFFECT_AF(true);								\
-	} else if (AF) {									\
+	} else if (GET_AF()) {									\
 		ax += 0x106;									\
 		AFFECT_OF(false);								\
 		AFFECT_CF(true);								\
-		ZF=false;								\
+		AFFECT_ZFifz(-1);								\
 		AFFECT_AF(true);								\
 	} else {												\
 		AFFECT_OF(false);								\
@@ -389,19 +469,19 @@ else
 
 #define AAS {												\
 	if ((al & 0x0f)>9) {								\
-		SF=(al>0x85);						\
+		AFFECT_SF(al>0x85);						\
 		ax -= 0x106;									\
 		AFFECT_OF(false);								\
 		AFFECT_CF(true);								\
 		AFFECT_AF(true);								\
-	} else if (AF) {									\
+	} else if (GET_AF()) {									\
 		AFFECT_OF(((al>=0x80) && (al<=0x85)));	\
-		SF=(al<0x06) || (al>0x85);		\
+		AFFECT_SF((al<0x06) || (al>0x85));		\
 		ax -= 0x106;									\
 		AFFECT_CF(true);								\
 		AFFECT_AF(true);								\
 	} else {												\
-		SF=(al>=0x80);						\
+		AFFECT_SF(al>=0x80);						\
 		AFFECT_OF(false);								\
 		AFFECT_CF(false);								\
 		AFFECT_AF(false);								\
@@ -415,7 +495,7 @@ else
 	if (dv!=0) {											\
 		ah=al / dv;									\
 		al=al % dv;									\
-		SF=(al & 0x80);						\
+		AFFECT_SF(al & 0x80);						\
 		AFFECT_ZFifz(al);						\
 		AFFECT_CF(false);								\
 		AFFECT_OF(false);								\
@@ -432,68 +512,79 @@ else
 		AFFECT_CF(false);								\
 		AFFECT_OF(false);								\
 		AFFECT_AF(false);								\
-		SF=(al >= 0x80);						\
+		AFFECT_SF(al >= 0x80);						\
 		AFFECT_ZFifz(al);							\
 	}
 
 #define AAD AAD1(10)
 
-#define ADD(a,b) {dq averytemporary=(dq)a+(dq)b; \
-		AFFECT_CF((averytemporary)>m2c::MASK[sizeof(a)]); \
-		a=averytemporary; \
-		AFFECT_ZFifz(a); \
-		AFFECT_SF(a,a);}
+#define ADD(a, b) m2c::ADD_(a, b, m2cflags)
+template <class D, class S>
+inline void ADD_(D& dest, const S& src, m2c::eflags& m2cflags)
+{
+ dq result=(dq)dest+(dq)src; 
+		AFFECT_CF((result)>m2c::MASK[sizeof(dest)]); 
+   dest = result;
+		AFFECT_ZFifz(dest); 
+		AFFECT_SF_(dest,dest); 
+}
+
 
 #define XADD(a,b) {dq averytemporary=(dq)a+(dq)b; \
 		AFFECT_CF((averytemporary)>m2c::MASK[sizeof(a)]); \
 		b=a; \
 		a=averytemporary; \
 		AFFECT_ZFifz(a); \
-		AFFECT_SF(a,a);}
+		AFFECT_SF_(a,a);}
 
-#define SUB(a,b) {dd averytemporary=(a-b)& m2c::MASK[sizeof(a)]; \
-		AFFECT_CF((averytemporary)>(a)); \
-		a=averytemporary; \
-		AFFECT_ZFifz(a); \
-		AFFECT_SF(a,a);}
+#define SUB(a, b) m2c::SUB_(a, b, m2cflags)
+template <class D, class S>
+inline void SUB_(D& dest, const S& src, m2c::eflags& m2cflags)
+{
+ dd result=(dest-src) & m2c::MASK[sizeof(dest)]; 
+		AFFECT_CF(result>dest); 
+   dest = result;
+		AFFECT_ZFifz(dest); 
+		AFFECT_SF_(dest,dest); 
+}
 
-#define ADC(a,b) {dq averytemporary=(dq)a+(dq)b+(dq)CF; \
+#define ADC(a,b) {dq averytemporary=(dq)a+(dq)b+(dq)GET_CF(); \
 		AFFECT_CF((averytemporary)>m2c::MASK[sizeof(a)]); \
 		a=averytemporary; \
 		AFFECT_ZFifz(a); \
-		AFFECT_SF(a,a);}
+		AFFECT_SF_(a,a);}
 
-#define SBB(a,b) {dq averytemporary=(dq)a-(dq)b-(dq)CF; \
+#define SBB(a,b) {dq averytemporary=(dq)a-(dq)b-(dq)GET_CF(); \
 		AFFECT_CF((averytemporary)>m2c::MASK[sizeof(a)]); \
 		a=averytemporary; \
 		AFFECT_ZFifz(a); \
-		AFFECT_SF(a,a);} 
+		AFFECT_SF_(a,a);} 
 
 // TODO: should affects OF, SF, ZF, AF, and PF
 #define INC(a) {a+=1; \
 		AFFECT_ZFifz(a);\
-		AFFECT_SF(a,a);} 
+		AFFECT_SF_(a,a);} 
 
 #define DEC(a) {a-=1; \
 		AFFECT_ZFifz(a);\
-		AFFECT_SF(a,a);} 
+		AFFECT_SF_(a,a);} 
 
 // #num_args _ #bytes
-#define IMUL1_1(a) {ax=((int8_t)al)*((int8_t)(a)); OF=CF=(ax & 0xff80)==0xff80||(ax & 0xff80)==0?false:true;}
-#define IMUL1_2(a) {int32_t averytemporary=(int32_t)((int16_t)ax)*((int16_t)(a));ax=averytemporary;dx=averytemporary>>16; OF=CF=(averytemporary & 0xffff8000)==0xffff8000||(averytemporary & 0xffff8000)==0?false:true;}
-#define IMUL1_4(a) {int64_t averytemporary=(int64_t)((int32_t)eax)*((int32_t)(a));eax=averytemporary;edx=averytemporary>>32; OF=CF=(averytemporary & 0xffffffff80000000)==0xffffffff80000000||(averytemporary & 0xffffffff80000000)==0?false:true;}
-#define IMUL2_2(a,b) {int32_t averytemporary = ((int16_t)(a)) * ((int16_t)(b)); a=averytemporary;OF=CF=(averytemporary>= -32768)  && (averytemporary<=32767)?false:true;}
-#define IMUL2_4(a,b) {int64_t averytemporary = ((int64_t)(a)) * ((int32_t)(b)); a=averytemporary;OF=CF=(averytemporary>=-((int64_t)(2147483647)+1)) && (averytemporary<=(int64_t)2147483647)?false:true;}
-#define IMUL3_2(a,b,c) {int32_t averytemporary = ((int16_t)(b)) * ((int16_t)(c)); a=averytemporary;OF=CF=(averytemporary>= -32768)  && (averytemporary<=32767)?false:true;}
-#define IMUL3_4(a,b,c) {int64_t averytemporary = ((int64_t)(b)) * ((int32_t)(c)); a=averytemporary;OF=CF=(averytemporary>=-((int64_t)(2147483647)+1)) && (averytemporary<=(int64_t)2147483647)?false:true;}
+#define IMUL1_1(a) {ax=((int8_t)al)*((int8_t)(a)); AFFECT_OF(AFFECT_CF((ax & 0xff80)!=0xff80&&(ax & 0xff80)!=0));}
+#define IMUL1_2(a) {int32_t averytemporary=(int32_t)((int16_t)ax)*((int16_t)(a));ax=averytemporary;dx=averytemporary>>16; AFFECT_OF(AFFECT_CF((averytemporary & 0xffff8000)!=0xffff8000&&(averytemporary & 0xffff8000)!=0));}
+#define IMUL1_4(a) {int64_t averytemporary=(int64_t)((int32_t)eax)*((int32_t)(a));eax=averytemporary;edx=averytemporary>>32; AFFECT_OF(AFFECT_CF((averytemporary & 0xffffffff80000000)!=0xffffffff80000000&&(averytemporary & 0xffffffff80000000)!=0));}
+#define IMUL2_2(a,b) {int32_t averytemporary = ((int16_t)(a)) * ((int16_t)(b)); a=averytemporary;AFFECT_OF(AFFECT_CF((averytemporary>= -32768)  && (averytemporary<=32767)?false:true));}
+#define IMUL2_4(a,b) {int64_t averytemporary = ((int64_t)(a)) * ((int32_t)(b)); a=averytemporary;AFFECT_OF(AFFECT_CF((averytemporary>=-((int64_t)(2147483647)+1)) && (averytemporary<=(int64_t)2147483647)?false:true));}
+#define IMUL3_2(a,b,c) {int32_t averytemporary = ((int16_t)(b)) * ((int16_t)(c)); a=averytemporary;AFFECT_OF(AFFECT_CF((averytemporary>= -32768)  && (averytemporary<=32767)?false:true));}
+#define IMUL3_4(a,b,c) {int64_t averytemporary = ((int64_t)(b)) * ((int32_t)(c)); a=averytemporary;AFFECT_OF(AFFECT_CF((averytemporary>=-((int64_t)(2147483647)+1)) && (averytemporary<=(int64_t)2147483647)?false:true));}
 
-#define MUL1_1(a) {ax=(dw)al*(a); OF=CF=ah;}
-#define MUL1_2(a) {dd averytemporary=(dd)ax*(a);ax=averytemporary;dx=averytemporary>>16; OF=CF=dx;}
-#define MUL1_4(a) {dq averytemporary=(dq)eax*(a);eax=averytemporary;edx=averytemporary>>32; OF=CF=edx;}
-#define MUL2_2(a,b) {dd averytemporary=(dd)(a)*(b);a=averytemporary; OF=CF=averytemporary>>16;}
-#define MUL2_4(a,b) {dq averytemporary=(dq)(a)*(b);a=averytemporary; OF=CF=averytemporary>>32;}
-#define MUL3_2(a,b,c) {dd averytemporary=(dd)(b)*(c);a=averytemporary; OF=CF=averytemporary>>16;}
-#define MUL3_4(a,b,c) {dq averytemporary=(dq)(b)*(c);a=averytemporary; OF=CF=averytemporary>>32;}
+#define MUL1_1(a) {ax=(dw)al*(a); AFFECT_OF(AFFECT_CF(ah));}
+#define MUL1_2(a) {dd averytemporary=(dd)ax*(a);ax=averytemporary;dx=averytemporary>>16; AFFECT_OF(AFFECT_CF(dx));}
+#define MUL1_4(a) {dq averytemporary=(dq)eax*(a);eax=averytemporary;edx=averytemporary>>32; AFFECT_OF(AFFECT_CF(edx));}
+#define MUL2_2(a,b) {dd averytemporary=(dd)(a)*(b);a=averytemporary; AFFECT_OF(AFFECT_CF(averytemporary>>16));}
+#define MUL2_4(a,b) {dq averytemporary=(dq)(a)*(b);a=averytemporary; AFFECT_OF(AFFECT_CF(averytemporary>>32));}
+#define MUL3_2(a,b,c) {dd averytemporary=(dd)(b)*(c);a=averytemporary; AFFECT_OF(AFFECT_CF(averytemporary>>16));}
+#define MUL3_4(a,b,c) {dq averytemporary=(dq)(b)*(c);a=averytemporary; AFFECT_OF(AFFECT_CF(averytemporary>>32));}
 
 #define IDIV1(a) {int16_t averytemporary=ax;al=averytemporary/((int8_t)a); ah=averytemporary%((int8_t)a); AFFECT_OF(false);}
 #define IDIV2(a) {int32_t averytemporary=(((int32_t)(int16_t)dx)<<16)|ax; ax=averytemporary/((int16_t)a);dx=averytemporary%((int16_t)a); AFFECT_OF(false);}
@@ -503,75 +594,75 @@ else
 #define DIV2(a) {dd averytemporary=((((dd)dx)<<16)|ax);ax=averytemporary/(a);dx=averytemporary%(a); AFFECT_OF(false);}
 #define DIV4(a) {uint64_t averytemporary=((((dq)edx)<<32)|eax);eax=averytemporary/(a);edx=averytemporary%(a); AFFECT_OF(false);}
 
-#define NOT(a) {a= ~(a);}// AFFECT_ZFifz(a) //TODO
+#define NOT(a) {a= ~(a);};// AFFECT_ZFifz(a) //TODO
 
-#define SETA(a) a=CF==0 && ZF==0;
-#define SETNBE(a) a=CF==0 && ZF==0;
-#define SETAE(a) a=CF==0;
-#define SETNB(a) a=CF==0;
-#define SETNC(a) a=CF==0;
-#define SETBE(a) a=CF || ZF;
-#define SETNA(a) a=CF || ZF;
-#define SETB(a) a=CF;
-#define SETNAE(a) a=CF;
-#define SETC(a) a=CF;
-#define SETL(a) a=SF!=OF;
-#define SETNGE(a) a=SF!=OF;
-#define SETNS(a) a=SF==0;
-#define SETS(a) a=SF;
-#define SETGE(a) a=SF==OF;
-#define SETNL(a) a=SF==OF;
-#define SETG(a) a=ZF==0 && SF==OF;
-#define SETNLE(a) a=ZF==0 && SF==OF;
-#define SETNE(a) a=ZF==0;
-#define SETNZ(a) a=ZF==0;
-#define SETLE(a) a=ZF || SF!=OF;
-#define SETNG(a) a=ZF || SF!=OF;
-#define SETE(a) a=ZF;
-#define SETZ(a) a=ZF;
-#define SETNO(x) a=!OF;
-#define SETNP(x) a=!PF;
-#define SETO(x) a=OF;
-#define SETP(x) a=PF;
+#define SETA(a) {a=GET_CF()==0 && GET_ZF()==0;}
+#define SETNBE(a) {a=GET_CF()==0 && GET_ZF()==0;}
+#define SETAE(a) {a=GET_CF()==0;}
+#define SETNB(a) {a=GET_CF()==0;}
+#define SETNC(a) {a=GET_CF()==0;}
+#define SETBE(a) {a=GET_CF() || GET_ZF();}
+#define SETNA(a) {a=GET_CF() || GET_ZF();}
+#define SETB(a) {a=GET_CF();}
+#define SETNAE(a) {a=GET_CF();}
+#define SETC(a) {a=GET_CF();}
+#define SETL(a) {a=GET_SF()!=GET_OF();}
+#define SETNGE(a) {a=GET_SF()!=GET_OF();}
+#define SETNS(a) {a=GET_SF()==0;}
+#define SETS(a) {a=GET_SF();}
+#define SETGE(a) {a=GET_SF()==GET_OF();}
+#define SETNL(a) {a=GET_SF()==GET_OF();}
+#define SETG(a) {a=GET_ZF()==0 && GET_SF()==GET_OF();}
+#define SETNLE(a) {a=GET_ZF()==0 && GET_SF()==GET_OF();}
+#define SETNE(a) {a=GET_ZF()==0;}
+#define SETNZ(a) {a=GET_ZF()==0;}
+#define SETLE(a) {a=GET_ZF() || GET_SF()!=GET_OF();}
+#define SETNG(a) {a=GET_ZF() || GET_SF()!=GET_OF();}
+#define SETE(a) {a=GET_ZF();}
+#define SETZ(a) {a=GET_ZF();}
+#define SETNO(a) {a=!GET_OF();}
+#define SETNP(a) {a=!GET_PF();}
+#define SETO(a) {a=GET_OF();}
+#define SETP(a) {a=GET_PF();}
 
 
-#define JE(label) if (ZF) GOTOLABEL(label)
+#define JE(label) if (GET_ZF()) GOTOLABEL(label)
 #define JZ(label) JE(label)
 
-#define JNE(label) if (!ZF) GOTOLABEL(label)
+#define JNE(label) if (!GET_ZF()) GOTOLABEL(label)
 #define JNZ(label) JNE(label)
 
-#define JNB(label) if (!CF) GOTOLABEL(label)
+#define JNB(label) if (!GET_CF()) GOTOLABEL(label)
 #define JAE(label) JNB(label)
 #define JNC(label) JNB(label)
 
-#define JB(label) if (CF) GOTOLABEL(label)
+#define JB(label) if (GET_CF()) GOTOLABEL(label)
 #define JC(label) JB(label)
 #define JNAE(label) JB(label)
 
-#define JA(label) if (!CF && !ZF) GOTOLABEL(label)
+#define JA(label) if (!GET_CF() && !GET_ZF()) GOTOLABEL(label)
 #define JNBE(label) JA(label)
 
-#define JNA(label) if (CF || ZF) GOTOLABEL(label)
+#define JNA(label) if (GET_CF() || GET_ZF()) GOTOLABEL(label)
 #define JBE(label) JNA(label)
 
-#define JGE(label) if (!SF) GOTOLABEL(label)
+#define JGE(label) if (!GET_SF()) GOTOLABEL(label)
 #define JNL(label) JGE(label)
 
-#define JG(label) if (!ZF && !SF) GOTOLABEL(label)
+#define JG(label) if (!GET_ZF() && !GET_SF()) GOTOLABEL(label)
 #define JNLE(label) JG(label)
 
-#define JLE(label) if (ZF || SF) GOTOLABEL(label) // TODO
+#define JLE(label) if (GET_ZF() || GET_SF()) GOTOLABEL(label) // TODO
 #define JNG(label) JLE(label)
 
-#define JL(label) if (SF) GOTOLABEL(label) // TODO
+#define JL(label) if (GET_SF()) GOTOLABEL(label) // TODO
 #define JNGE(label) JL(label)
 
 #define JCXZ(label) if (cx == 0) GOTOLABEL(label) // TODO
 #define JECXZ(label) if (ecx == 0) GOTOLABEL(label) // TODO
 
-#define JS(label) if (SF) GOTOLABEL(label)
-#define JNS(label) if (!SF) GOTOLABEL(label)
+#define JS(label) if (GET_SF()) GOTOLABEL(label)
+#define JNS(label) if (!GET_SF()) GOTOLABEL(label)
 
 /*
 #if DEBUG >= 3
@@ -598,10 +689,10 @@ void MOV_(D* dest, const S& src)
 #define MOVZX(dest,src) dest = src
 #define MOVSX(dest,src) {if (ISNEGATIVE(src,src)) { dest = ((-1 ^ (( 1 << (bitsizeof(src)) )-1)) | src ); } else { dest = src; }}
 
-#define BT(dest,src) {CF = dest & nthbitone(dest,src);} //TODO
-#define BTS(dest,src) {CF = dest & nthbitone(dest,src); dest |= nthbitone(dest,src);}
-#define BTC(dest,src) {CF = dest & nthbitone(dest,src); dest ^= nthbitone(dest,src);}
-#define BTR(dest,src) {CF = dest & nthbitone(dest,src); dest &= ~(nthbitone(dest,src));}
+#define BT(dest,src) {AFFECT_CF(dest & nthbitone(dest,src));} //TODO
+#define BTS(dest,src) {AFFECT_CF(dest & nthbitone(dest,src)); dest |= nthbitone(dest,src);}
+#define BTC(dest,src) {AFFECT_CF(dest & nthbitone(dest,src)); dest ^= nthbitone(dest,src);}
+#define BTR(dest,src) {AFFECT_CF(dest & nthbitone(dest,src)); dest &= ~(nthbitone(dest,src));}
 
 // LEA - Load Effective Address
 #define LEA(dest,src) dest = src
@@ -609,7 +700,7 @@ void MOV_(D* dest, const S& src)
 #define XCHG(dest,src) {dd averytemporary = (dd) dest; dest = src; src = averytemporary;}//std::swap(dest,src); TODO
 
 
-#define MOVS(dest,src,s)  {dest=src; dest+=(DF==0)?s:-s; src+=(DF==0)?s:-s; }
+#define MOVS(dest,src,s)  {dest=src; dest+=(GET_DF()==0)?s:-s; src+=(GET_DF()==0)?s:-s; }
 //                        {memmove(dest,src,s); dest+=s; src+=s; } \
 
 
@@ -641,14 +732,15 @@ void MOV_(D* dest, const S& src)
 #define GOTOLABEL(a) {_source=__LINE__;goto a;}
 
 
-#define CLD {DF=0;}
-#define STD {DF=1;}
+#define CLD {AFFECT_DF(0);}
+#define STD {AFFECT_DF(1);}
 
-#define STC {CF=1;}
-#define CLC {CF=0;}
-#define CMC {CF ^= 1;}
+#define STC {AFFECT_CF(1);}
+#define CLC {AFFECT_CF(0);}
+#define CMC {AFFECT_CF(GET_CF() ^ 1);}
 
-//struct _STATE;
+#define PUSHF {PUSH( m2cflags.value );}
+#define POPF {dd averytemporary; POP(averytemporary); m2cflags.value=averytemporary;}
 
 // directjeu nosetjmp,2
 // directmenu
@@ -662,11 +754,6 @@ void asm2C_OUT(int16_t address, int data);
 int8_t asm2C_IN(int16_t data);
 #define IN(a,b) a = m2c::asm2C_IN(b); TESTJUMPTOBACKGROUND
 
-//#define PUSHF {dd averytemporary = CF+(ZF<<1)+(DF<<2)+(SF<<3); PUSH(averytemporary);}
-//#define POPF {dd averytemporary; POP(averytemporary); CF=averytemporary&1; ZF=(averytemporary>>1)&1; DF=(averytemporary>>2)&1; SF=(averytemporary>>3)&1;}
-
-#define PUSHF {PUSH( (dd) ((CF?1:0)|(PF?4:0)|(AF?0x10:0)|(ZF?0x40:0)|(SF?0x80:0)|(DF?0x400:0)|(OF?0x800:0)) );}
-#define POPF {dd averytemporary; POP(averytemporary); CF=averytemporary&1;  PF=(averytemporary&4);AF=(averytemporary&0x10);ZF=(averytemporary&0x40);SF=(averytemporary&0x80);DF=(averytemporary&0x400);OF=(averytemporary&0x800);}
 #define NOP
 
 #define LAHF {ah= ((CF?1:0)|2|(PF?4:0)|(AF?0x10:0)|(ZF?0x40:0)|(SF?0x80:0)) ;}
@@ -837,8 +924,6 @@ bool is_little_endian();
 #define LOOPWE(x) UNIMPLEMENTED
 #define LOOPWNE(x) UNIMPLEMENTED
 */
-#define DAA UNIMPLEMENTED
-#define DAS UNIMPLEMENTED
 #define CDQ UNIMPLEMENTED
 
 #define STI UNIMPLEMENTED
@@ -880,14 +965,7 @@ dw fs;
 dw gs;         
 dw ss;         
                       
-bool CF;       
-bool PF;       
-bool AF;       
-bool ZF;       
-bool SF;       
-bool DF;       
-bool OF;       
-bool IF;       
+m2c::eflags flags;
 db _indent; 
 const char *_str;
 };
@@ -926,15 +1004,7 @@ dw& es = _state->es;         \
 dw& fs = _state->fs;         \
 dw& gs = _state->gs;         \
 dw& ss = _state->ss;         \
-                      \
-bool& CF = _state->CF;       \
-bool& PF = _state->PF;       \
-bool& AF = _state->AF;       \
-bool& ZF = _state->ZF;       \
-bool& SF = _state->SF;       \
-bool& DF = _state->DF;       \
-bool& OF = _state->OF;       \
-bool& IF = _state->IF;       \
+m2c::eflags& m2cflags = _state->flags;   \
 dd& stackPointer = _state->esp;\
 m2c::_offsets __disp; \
 dw _source;
