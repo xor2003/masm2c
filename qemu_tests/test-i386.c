@@ -1060,33 +1060,33 @@ void test_floats(void)
 
 void test_bcd(void)
 {
-    TEST_BCD(daa, 0x12340503, CC_A, (CC_C | CC_P | CC_Z | CC_S | CC_A));
-    TEST_BCD(daa, 0x12340506, CC_A, (CC_C | CC_P | CC_Z | CC_S | CC_A));
-    TEST_BCD(daa, 0x12340507, CC_A, (CC_C | CC_P | CC_Z | CC_S | CC_A));
-    TEST_BCD(daa, 0x12340559, CC_A, (CC_C | CC_P | CC_Z | CC_S | CC_A));
-    TEST_BCD(daa, 0x12340560, CC_A, (CC_C | CC_P | CC_Z | CC_S | CC_A));
-    TEST_BCD(daa, 0x1234059f, CC_A, (CC_C | CC_P | CC_Z | CC_S | CC_A));
-    TEST_BCD(daa, 0x123405a0, CC_A, (CC_C | CC_P | CC_Z | CC_S | CC_A));
-    TEST_BCD(daa, 0x12340503, 0, (CC_C | CC_P | CC_Z | CC_S | CC_A));
-    TEST_BCD(daa, 0x12340506, 0, (CC_C | CC_P | CC_Z | CC_S | CC_A));
-    TEST_BCD(daa, 0x12340503, CC_C, (CC_C | CC_P | CC_Z | CC_S | CC_A));
-    TEST_BCD(daa, 0x12340506, CC_C, (CC_C | CC_P | CC_Z | CC_S | CC_A));
-    TEST_BCD(daa, 0x12340503, CC_C | CC_A, (CC_C | CC_P | CC_Z | CC_S | CC_A));
-    TEST_BCD(daa, 0x12340506, CC_C | CC_A, (CC_C | CC_P | CC_Z | CC_S | CC_A));
+    TEST_BCD(daa, 0x12340503, CC_A, (CC_C | CC_Z | CC_S | CC_A));
+    TEST_BCD(daa, 0x12340506, CC_A, (CC_C | CC_Z | CC_S | CC_A));
+    TEST_BCD(daa, 0x12340507, CC_A, (CC_C | CC_Z | CC_S | CC_A));
+    TEST_BCD(daa, 0x12340559, CC_A, (CC_C | CC_Z | CC_S | CC_A));
+    TEST_BCD(daa, 0x12340560, CC_A, (CC_C | CC_Z | CC_S | CC_A));
+    TEST_BCD(daa, 0x1234059f, CC_A, (CC_C | CC_Z | CC_S | CC_A));
+    TEST_BCD(daa, 0x123405a0, CC_A, (CC_C | CC_Z | CC_S | CC_A));
+    TEST_BCD(daa, 0x12340503, 0, (CC_C | CC_Z | CC_S | CC_A));
+    TEST_BCD(daa, 0x12340506, 0, (CC_C | CC_Z | CC_S | CC_A));
+    TEST_BCD(daa, 0x12340503, CC_C, (CC_C | CC_Z | CC_S | CC_A));
+    TEST_BCD(daa, 0x12340506, CC_C, (CC_C | CC_Z | CC_S | CC_A));
+    TEST_BCD(daa, 0x12340503, CC_C | CC_A, (CC_C | CC_Z | CC_S | CC_A));
+    TEST_BCD(daa, 0x12340506, CC_C | CC_A, (CC_C | CC_Z | CC_S | CC_A));
 
-    TEST_BCD(das, 0x12340503, CC_A, (CC_C | CC_P | CC_Z | CC_S | CC_A));
-    TEST_BCD(das, 0x12340506, CC_A, (CC_C | CC_P | CC_Z | CC_S | CC_A));
-    TEST_BCD(das, 0x12340507, CC_A, (CC_C | CC_P | CC_Z | CC_S | CC_A));
-    TEST_BCD(das, 0x12340559, CC_A, (CC_C | CC_P | CC_Z | CC_S | CC_A));
-    TEST_BCD(das, 0x12340560, CC_A, (CC_C | CC_P | CC_Z | CC_S | CC_A));
-    TEST_BCD(das, 0x1234059f, CC_A, (CC_C | CC_P | CC_Z | CC_S | CC_A));
-    TEST_BCD(das, 0x123405a0, CC_A, (CC_C | CC_P | CC_Z | CC_S | CC_A));
-    TEST_BCD(das, 0x12340503, 0, (CC_C | CC_P | CC_Z | CC_S | CC_A));
-    TEST_BCD(das, 0x12340506, 0, (CC_C | CC_P | CC_Z | CC_S | CC_A));
-    TEST_BCD(das, 0x12340503, CC_C, (CC_C | CC_P | CC_Z | CC_S | CC_A));
-    TEST_BCD(das, 0x12340506, CC_C, (CC_C | CC_P | CC_Z | CC_S | CC_A));
-    TEST_BCD(das, 0x12340503, CC_C | CC_A, (CC_C | CC_P | CC_Z | CC_S | CC_A));
-    TEST_BCD(das, 0x12340506, CC_C | CC_A, (CC_C | CC_P | CC_Z | CC_S | CC_A));
+    TEST_BCD(das, 0x12340503, CC_A, (CC_C | CC_Z | CC_S | CC_A));
+    TEST_BCD(das, 0x12340506, CC_A, (CC_C | CC_Z | CC_S | CC_A));
+    TEST_BCD(das, 0x12340507, CC_A, (CC_C | CC_Z | CC_S | CC_A));
+    TEST_BCD(das, 0x12340559, CC_A, (CC_C | CC_Z | CC_S | CC_A));
+    TEST_BCD(das, 0x12340560, CC_A, (CC_C | CC_Z | CC_S | CC_A));
+    TEST_BCD(das, 0x1234059f, CC_A, (CC_C | CC_Z | CC_S | CC_A));
+    TEST_BCD(das, 0x123405a0, CC_A, (CC_C | CC_Z | CC_S | CC_A));
+    TEST_BCD(das, 0x12340503, 0, (CC_C | CC_Z | CC_S | CC_A));
+    TEST_BCD(das, 0x12340506, 0, (CC_C | CC_Z | CC_S | CC_A));
+    TEST_BCD(das, 0x12340503, CC_C, (CC_C | CC_Z | CC_S | CC_A));
+    TEST_BCD(das, 0x12340506, CC_C, (CC_C | CC_Z | CC_S | CC_A));
+    TEST_BCD(das, 0x12340503, CC_C | CC_A, (CC_C | CC_Z | CC_S | CC_A));
+    TEST_BCD(das, 0x12340506, CC_C | CC_A, (CC_C | CC_Z | CC_S | CC_A));
 
     TEST_BCD(aaa, 0x12340205, CC_A, (CC_C | CC_A));
     TEST_BCD(aaa, 0x12340306, CC_A, (CC_C | CC_A));
@@ -1106,8 +1106,8 @@ void test_bcd(void)
     TEST_BCD(aas, 0x1234040a, 0, (CC_C | CC_A));
     TEST_BCD(aas, 0x123405fa, 0, (CC_C | CC_A));
 
-    TEST_BCD(aam, 0x12340547, CC_A, (CC_C | CC_P | CC_Z | CC_S | CC_O | CC_A));
-    TEST_BCD(aad, 0x12340407, CC_A, (CC_C | CC_P | CC_Z | CC_S | CC_O | CC_A));
+    TEST_BCD(aam, 0x12340547, CC_A, (CC_C | CC_Z | CC_S | CC_O | CC_A));
+    TEST_BCD(aad, 0x12340407, CC_A, (CC_C | CC_Z | CC_S | CC_O | CC_A));
 }
 #endif
 

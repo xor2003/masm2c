@@ -106,6 +106,7 @@ namespace m2c{
 void log_debug(const char *fmt, ...){printf("unimp ");}
 }
 //--------------------------------------------
+#define __init_call	__attribute__ ((unused,__section__ ("initcall")))
 
 #if defined(__x86_64__)
 static inline dd i2l(dd v)
@@ -125,7 +126,7 @@ void exec_addl(dd s0, dd s1, dd iflags)
     res = s0;
     flags = iflags; 
     PUSH(iflags);POPF;ADD(*(dd*)&res, (dd)s1);PUSHF;POP(flags);
- printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "addl", s0, s1, res, iflags, flags & (0x0001 | 0x0040 | 0x0080));;
+ printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "addl", s0, s1, res, iflags, flags & (CC_MASK));;
 }
 
 void exec_addw(dd s0, dd s1, dd iflags)
@@ -134,7 +135,7 @@ void exec_addw(dd s0, dd s1, dd iflags)
     res = s0;
     flags = iflags;
     PUSH(iflags);POPF;ADD(*(dw*)&res, (dw)s1);PUSHF;POP(flags);
- printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "addw", s0, s1, res, iflags, flags & (0x0001 | 0x0040 | 0x0080));;
+ printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "addw", s0, s1, res, iflags, flags & (CC_MASK));;
 }
 
 void exec_addb(dd s0, dd s1, dd iflags)
@@ -143,7 +144,7 @@ void exec_addb(dd s0, dd s1, dd iflags)
     res = s0;
     flags = iflags;
     PUSH(iflags);POPF;ADD(*(db*)&res, (db)s1);PUSHF;POP(flags);
- printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "addb", s0, s1, res, iflags, flags & (0x0001 | 0x0040 | 0x0080));;
+ printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "addb", s0, s1, res, iflags, flags & (CC_MASK));;
 }
 
 
@@ -201,7 +202,7 @@ void exec_subl(dd s0, dd s1, dd iflags)
     res = s0;
     flags = iflags;
     PUSH(iflags);POPF;SUB(*(dd*)&res, (dd)s1);PUSHF;POP(flags);
- printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "subl", s0, s1, res, iflags, flags & (0x0001 | 0x0040 | 0x0080));;
+ printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "subl", s0, s1, res, iflags, flags & (CC_MASK));;
 }
 
 void exec_subw(dd s0, dd s1, dd iflags)
@@ -210,7 +211,7 @@ void exec_subw(dd s0, dd s1, dd iflags)
     res = s0;
     flags = iflags;
     PUSH(iflags);POPF;SUB(*(dw*)&res, (dw)s1);PUSHF;POP(flags);
- printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "subw", s0, s1, res, iflags, flags & (0x0001 | 0x0040 | 0x0080));;
+ printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "subw", s0, s1, res, iflags, flags & (CC_MASK));;
 }
 
 void exec_subb(dd s0, dd s1, dd iflags)
@@ -219,7 +220,7 @@ void exec_subb(dd s0, dd s1, dd iflags)
     res = s0;
     flags = iflags;
     PUSH(iflags);POPF;SUB(*(db*)&res, (db)s1);PUSHF;POP(flags);
- printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "subb", s0, s1, res, iflags, flags & (0x0001 | 0x0040 | 0x0080));;
+ printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "subb", s0, s1, res, iflags, flags & (CC_MASK));;
 }
 
 
@@ -277,7 +278,7 @@ void exec_xorl(dd s0, dd s1, dd iflags)
     res = s0;
     flags = iflags;
     PUSH(iflags);POPF;XOR(*(dd*)&res, (dd)s1);PUSHF;POP(flags);
- printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "xorl", s0, s1, res, iflags, flags & (0x0001 | 0x0040 | 0x0080));;
+ printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "xorl", s0, s1, res, iflags, flags & (CC_MASK));;
 }
 
 void exec_xorw(dd s0, dd s1, dd iflags)
@@ -286,7 +287,7 @@ void exec_xorw(dd s0, dd s1, dd iflags)
     res = s0;
     flags = iflags;
     PUSH(iflags);POPF;XOR(*(dw*)&res, (dw)s1);PUSHF;POP(flags);
- printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "xorw", s0, s1, res, iflags, flags & (0x0001 | 0x0040 | 0x0080));;
+ printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "xorw", s0, s1, res, iflags, flags & (CC_MASK));;
 }
 
 void exec_xorb(dd s0, dd s1, dd iflags)
@@ -295,7 +296,7 @@ void exec_xorb(dd s0, dd s1, dd iflags)
     res = s0;
     flags = iflags;
     PUSH(iflags);POPF;XOR(*(db*)&res, (db)s1);PUSHF;POP(flags);
- printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "xorb", s0, s1, res, iflags, flags & (0x0001 | 0x0040 | 0x0080));;
+ printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "xorb", s0, s1, res, iflags, flags & (CC_MASK));;
 }
 
 
@@ -353,7 +354,7 @@ void exec_andl(dd s0, dd s1, dd iflags)
     res = s0;
     flags = iflags;
     PUSH(iflags);POPF;AND(*(dd*)&res, (dd)s1);PUSHF;POP(flags);
- printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "andl", s0, s1, res, iflags, flags & (0x0001 | 0x0040 | 0x0080));;
+ printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "andl", s0, s1, res, iflags, flags & (CC_MASK));;
 }
 
 void exec_andw(dd s0, dd s1, dd iflags)
@@ -362,7 +363,7 @@ void exec_andw(dd s0, dd s1, dd iflags)
     res = s0;
     flags = iflags;
     PUSH(iflags);POPF;AND(*(dw*)&res, (dw)s1);PUSHF;POP(flags);
- printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "andw", s0, s1, res, iflags, flags & (0x0001 | 0x0040 | 0x0080));;
+ printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "andw", s0, s1, res, iflags, flags & (CC_MASK));;
 }
 
 void exec_andb(dd s0, dd s1, dd iflags)
@@ -371,7 +372,7 @@ void exec_andb(dd s0, dd s1, dd iflags)
     res = s0;
     flags = iflags;
     PUSH(iflags);POPF;AND(*(db*)&res, (db)s1);PUSHF;POP(flags);
- printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "andb", s0, s1, res, iflags, flags & (0x0001 | 0x0040 | 0x0080));;
+ printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "andb", s0, s1, res, iflags, flags & (CC_MASK));;
 }
 
 
@@ -429,7 +430,7 @@ void exec_orl(dd s0, dd s1, dd iflags)
     res = s0;
     flags = iflags;
     PUSH(iflags);POPF;OR(*(dd*)&res, (dd)s1);PUSHF;POP(flags);
- printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "orl", s0, s1, res, iflags, flags & (0x0001 | 0x0040 | 0x0080));;
+ printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "orl", s0, s1, res, iflags, flags & (CC_MASK));;
 }
 
 void exec_orw(dd s0, dd s1, dd iflags)
@@ -438,7 +439,7 @@ void exec_orw(dd s0, dd s1, dd iflags)
     res = s0;
     flags = iflags;
     PUSH(iflags);POPF;OR(*(dw*)&res, (dw)s1);PUSHF;POP(flags);
- printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "orw", s0, s1, res, iflags, flags & (0x0001 | 0x0040 | 0x0080));;
+ printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "orw", s0, s1, res, iflags, flags & (CC_MASK));;
 }
 
 void exec_orb(dd s0, dd s1, dd iflags)
@@ -447,7 +448,7 @@ void exec_orb(dd s0, dd s1, dd iflags)
     res = s0;
     flags = iflags;
     PUSH(iflags);POPF;OR(*(db*)&res, (db)s1);PUSHF;POP(flags);
- printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "orb", s0, s1, res, iflags, flags & (0x0001 | 0x0040 | 0x0080));;
+ printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "orb", s0, s1, res, iflags, flags & (CC_MASK));;
 }
 
 
@@ -505,7 +506,7 @@ void exec_cmpl(dd s0, dd s1, dd iflags)
     res = s0;
     flags = iflags;
     PUSH(iflags);POPF;CMP(*(dd*)&res, (dd)s1);PUSHF;POP(flags);
- printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "cmpl", s0, s1, res, iflags, flags & (0x0001 | 0x0040 | 0x0080));;
+ printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "cmpl", s0, s1, res, iflags, flags & (CC_MASK));;
 }
 
 void exec_cmpw(dd s0, dd s1, dd iflags)
@@ -514,7 +515,7 @@ void exec_cmpw(dd s0, dd s1, dd iflags)
     res = s0;
     flags = iflags;
     PUSH(iflags);POPF;CMP(*(dw*)&res, (dw)s1);PUSHF;POP(flags);
- printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "cmpw", s0, s1, res, iflags, flags & (0x0001 | 0x0040 | 0x0080));;
+ printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "cmpw", s0, s1, res, iflags, flags & (CC_MASK));;
 }
 
 void exec_cmpb(dd s0, dd s1, dd iflags)
@@ -523,7 +524,7 @@ void exec_cmpb(dd s0, dd s1, dd iflags)
     res = s0;
     flags = iflags;
     PUSH(iflags);POPF;CMP(*(db*)&res, (db)s1);PUSHF;POP(flags);
- printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "cmpb", s0, s1, res, iflags, flags & (0x0001 | 0x0040 | 0x0080));;
+ printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "cmpb", s0, s1, res, iflags, flags & (CC_MASK));;
 }
 
 
@@ -582,7 +583,7 @@ void exec_adcl(dd s0, dd s1, dd iflags)
     res = s0;
     flags = iflags;
     PUSH(iflags);POPF;ADC(*(dd*)&res, (dd)s1);PUSHF;POP(flags);
- printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "adcl", s0, s1, res, iflags, flags & (0x0001 | 0x0040 | 0x0080));;
+ printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "adcl", s0, s1, res, iflags, flags & (CC_MASK));;
 }
 
 void exec_adcw(dd s0, dd s1, dd iflags)
@@ -591,7 +592,7 @@ void exec_adcw(dd s0, dd s1, dd iflags)
     res = s0;
     flags = iflags;
     PUSH(iflags);POPF;ADC(*(dw*)&res, (dw)s1);PUSHF;POP(flags);
- printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "adcw", s0, s1, res, iflags, flags & (0x0001 | 0x0040 | 0x0080));;
+ printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "adcw", s0, s1, res, iflags, flags & (CC_MASK));;
 }
 
 void exec_adcb(dd s0, dd s1, dd iflags)
@@ -600,7 +601,7 @@ void exec_adcb(dd s0, dd s1, dd iflags)
     res = s0;
     flags = iflags;
     PUSH(iflags);POPF;ADC(*(db*)&res, (db)s1);PUSHF;POP(flags);
- printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "adcb", s0, s1, res, iflags, flags & (0x0001 | 0x0040 | 0x0080));;
+ printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "adcb", s0, s1, res, iflags, flags & (CC_MASK));;
 }
 
 
@@ -666,7 +667,7 @@ void exec_sbbl(dd s0, dd s1, dd iflags)
     res = s0;
     flags = iflags;
     PUSH(iflags);POPF;SBB(*(dd*)&res, (dd)s1);PUSHF;POP(flags);
- printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "sbbl", s0, s1, res, iflags, flags & (0x0001 | 0x0040 | 0x0080));;
+ printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "sbbl", s0, s1, res, iflags, flags & (CC_MASK));;
 }
 
 void exec_sbbw(dd s0, dd s1, dd iflags)
@@ -675,7 +676,7 @@ void exec_sbbw(dd s0, dd s1, dd iflags)
     res = s0;
     flags = iflags;
     PUSH(iflags);POPF;SBB(*(dw*)&res, (dw)s1);PUSHF;POP(flags);
- printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "sbbw", s0, s1, res, iflags, flags & (0x0001 | 0x0040 | 0x0080));;
+ printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "sbbw", s0, s1, res, iflags, flags & (CC_MASK));;
 }
 
 void exec_sbbb(dd s0, dd s1, dd iflags)
@@ -684,7 +685,7 @@ void exec_sbbb(dd s0, dd s1, dd iflags)
     res = s0;
     flags = iflags;
     PUSH(iflags);POPF;SBB(*(db*)&res, (db)s1);PUSHF;POP(flags);
- printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "sbbb", s0, s1, res, iflags, flags & (0x0001 | 0x0040 | 0x0080));;
+ printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "sbbb", s0, s1, res, iflags, flags & (CC_MASK));;
 }
 
 
@@ -751,7 +752,7 @@ void exec_incl(dd s0, dd s1, dd iflags)
     res = s0;
     flags = iflags;
     PUSH(iflags);POPF;INC(*(dd*)&res);PUSHF;POP(flags);
- printf("%-10s A=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "incl", s0, res, iflags, flags & (0x0001 | 0x0040 | 0x0080));;
+ printf("%-10s A=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "incl", s0, res, iflags, flags & (CC_MASK));;
 }
 
 void exec_incw(dd s0, dd s1, dd iflags)
@@ -760,7 +761,7 @@ void exec_incw(dd s0, dd s1, dd iflags)
     res = s0;
     flags = iflags;
     PUSH(iflags);POPF;INC(*(dw*)&res);PUSHF;POP(flags);
- printf("%-10s A=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "incw", s0, res, iflags, flags & (0x0001 | 0x0040 | 0x0080));;
+ printf("%-10s A=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "incw", s0, res, iflags, flags & (CC_MASK));;
 }
 
 void exec_incb(dd s0, dd s1, dd iflags)
@@ -769,7 +770,7 @@ void exec_incb(dd s0, dd s1, dd iflags)
     res = s0;
     flags = iflags;
     PUSH(iflags);POPF;INC(*(db*)&res);PUSHF;POP(flags);
- printf("%-10s A=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "incb", s0, res, iflags, flags & (0x0001 | 0x0040 | 0x0080));;
+ printf("%-10s A=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "incb", s0, res, iflags, flags & (CC_MASK));;
 }
 
 void exec_inc(dd s0, dd s1)
@@ -835,7 +836,7 @@ void exec_decl(dd s0, dd s1, dd iflags)
     res = s0;
     flags = iflags;
     PUSH(iflags);POPF;DEC(*(dd*)&res);PUSHF;POP(flags);
- printf("%-10s A=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "decl", s0, res, iflags, flags & (0x0001 | 0x0040 | 0x0080));;
+ printf("%-10s A=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "decl", s0, res, iflags, flags & (CC_MASK));;
 }
 
 void exec_decw(dd s0, dd s1, dd iflags)
@@ -844,7 +845,7 @@ void exec_decw(dd s0, dd s1, dd iflags)
     res = s0;
     flags = iflags;
     PUSH(iflags);POPF;DEC(*(dw*)&res);PUSHF;POP(flags);
- printf("%-10s A=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "decw", s0, res, iflags, flags & (0x0001 | 0x0040 | 0x0080));;
+ printf("%-10s A=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "decw", s0, res, iflags, flags & (CC_MASK));;
 }
 
 void exec_decb(dd s0, dd s1, dd iflags)
@@ -853,7 +854,7 @@ void exec_decb(dd s0, dd s1, dd iflags)
     res = s0;
     flags = iflags;
     PUSH(iflags);POPF;DEC(*(db*)&res);PUSHF;POP(flags);
- printf("%-10s A=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "decb", s0, res, iflags, flags & (0x0001 | 0x0040 | 0x0080));;
+ printf("%-10s A=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "decb", s0, res, iflags, flags & (CC_MASK));;
 }
 
 void exec_dec(dd s0, dd s1)
@@ -919,7 +920,7 @@ void exec_negl(dd s0, dd s1, dd iflags)
     res = s0;
     flags = iflags;
     PUSH(iflags);POPF;NEG(*(dd*)&res);PUSHF;POP(flags);
- printf("%-10s A=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "negl", s0, res, iflags, flags & (0x0001 | 0x0040 | 0x0080));;
+ printf("%-10s A=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "negl", s0, res, iflags, flags & (CC_MASK));;
 }
 
 void exec_negw(dd s0, dd s1, dd iflags)
@@ -928,7 +929,7 @@ void exec_negw(dd s0, dd s1, dd iflags)
     res = s0;
     flags = iflags;
     PUSH(iflags);POPF;NEG(*(dw*)&res);PUSHF;POP(flags);
- printf("%-10s A=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "negw", s0, res, iflags, flags & (0x0001 | 0x0040 | 0x0080));;
+ printf("%-10s A=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "negw", s0, res, iflags, flags & (CC_MASK));;
 }
 
 void exec_negb(dd s0, dd s1, dd iflags)
@@ -937,7 +938,7 @@ void exec_negb(dd s0, dd s1, dd iflags)
     res = s0;
     flags = iflags;
     PUSH(iflags);POPF;NEG(*(db*)&res);PUSHF;POP(flags);
- printf("%-10s A=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "negb", s0, res, iflags, flags & (0x0001 | 0x0040 | 0x0080));;
+ printf("%-10s A=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "negb", s0, res, iflags, flags & (CC_MASK));;
 }
 
 void exec_neg(dd s0, dd s1)
@@ -1003,7 +1004,7 @@ void exec_notl(dd s0, dd s1, dd iflags)
     res = s0;
     flags = iflags;
     PUSH(iflags);POPF;NOT(*(dd*)&res);PUSHF;POP(flags);
- printf("%-10s A=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "notl", s0, res, iflags, flags & (0x0001 | 0x0040 | 0x0080));;
+ printf("%-10s A=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "notl", s0, res, iflags, flags & (CC_MASK));;
 }
 
 void exec_notw(dd s0, dd s1, dd iflags)
@@ -1012,7 +1013,7 @@ void exec_notw(dd s0, dd s1, dd iflags)
     res = s0;
     flags = iflags;
     PUSH(iflags);POPF;NOT(*(dw*)&res);PUSHF;POP(flags);
- printf("%-10s A=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "notw", s0, res, iflags, flags & (0x0001 | 0x0040 | 0x0080));;
+ printf("%-10s A=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "notw", s0, res, iflags, flags & (CC_MASK));;
 }
 
 void exec_notb(dd s0, dd s1, dd iflags)
@@ -1021,7 +1022,7 @@ void exec_notb(dd s0, dd s1, dd iflags)
     res = s0;
     flags = iflags;
     PUSH(iflags);POPF;NOT(*(db*)&res);PUSHF;POP(flags);
- printf("%-10s A=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "notb", s0, res, iflags, flags & (0x0001 | 0x0040 | 0x0080));;
+ printf("%-10s A=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "notb", s0, res, iflags, flags & (CC_MASK));;
 }
 
 void exec_not(dd s0, dd s1)
@@ -1092,7 +1093,7 @@ void exec_shll(dd s2, dd s0, dd s1, dd iflags)
     if (s1 != 1)
       flags &= ~0x0800;
     printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n",
-           "shll", s0, s1, res, iflags, flags & (0x0001 | 0x0040 | 0x0080));
+           "shll", s0, s1, res, iflags, flags & (CC_MASK));
 }
 
 void exec_shlw(dd s2, dd s0, dd s1, dd iflags)
@@ -1105,7 +1106,7 @@ void exec_shlw(dd s2, dd s0, dd s1, dd iflags)
     if (s1 != 1)
       flags &= ~0x0800;
     printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n",
-           "shlw", s0, s1, res, iflags, flags & (0x0001 | 0x0040 | 0x0080));
+           "shlw", s0, s1, res, iflags, flags & (CC_MASK));
 }
 
 void exec_shlb(dd s0, dd s1, dd iflags)
@@ -1118,7 +1119,7 @@ void exec_shlb(dd s0, dd s1, dd iflags)
     if (s1 != 1)
       flags &= ~0x0800;
     printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n",
-           "shlb", s0, s1, res, iflags, flags & (0x0001 | 0x0040 | 0x0080));
+           "shlb", s0, s1, res, iflags, flags & (CC_MASK));
 }
 
 
@@ -1170,7 +1171,7 @@ void exec_shrl(dd s2, dd s0, dd s1, dd iflags)
     if (s1 != 1)
       flags &= ~0x0800;
     printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n",
-           "shrl", s0, s1, res, iflags, flags & (0x0001 | 0x0040 | 0x0080));
+           "shrl", s0, s1, res, iflags, flags & (CC_MASK));
 }
 
 void exec_shrw(dd s2, dd s0, dd s1, dd iflags)
@@ -1183,7 +1184,7 @@ void exec_shrw(dd s2, dd s0, dd s1, dd iflags)
     if (s1 != 1)
       flags &= ~0x0800;
     printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n",
-           "shrw", s0, s1, res, iflags, flags & (0x0001 | 0x0040 | 0x0080));
+           "shrw", s0, s1, res, iflags, flags & (CC_MASK));
 }
 
 void exec_shrb(dd s0, dd s1, dd iflags)
@@ -1196,7 +1197,7 @@ void exec_shrb(dd s0, dd s1, dd iflags)
     if (s1 != 1)
       flags &= ~0x0800;
     printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n",
-           "shrb", s0, s1, res, iflags, flags & (0x0001 | 0x0040 | 0x0080));
+           "shrb", s0, s1, res, iflags, flags & (CC_MASK));
 }
 
 
@@ -1245,7 +1246,7 @@ void exec_sall(dd s2, dd s0, dd s1, dd iflags)
     if (s1 != 1)
       flags &= ~0x0800;
     printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n",
-           "sall", s0, s1, res, iflags, flags & (0x0001 | 0x0040 | 0x0080));
+           "sall", s0, s1, res, iflags, flags & (CC_MASK));
 }
 
 void exec_salw(dd s2, dd s0, dd s1, dd iflags)
@@ -1258,7 +1259,7 @@ void exec_salw(dd s2, dd s0, dd s1, dd iflags)
     if (s1 != 1)
       flags &= ~0x0800;
     printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n",
-           "salw", s0, s1, res, iflags, flags & (0x0001 | 0x0040 | 0x0080));
+           "salw", s0, s1, res, iflags, flags & (CC_MASK));
 }
 
 void exec_salb(dd s0, dd s1, dd iflags)
@@ -1271,7 +1272,7 @@ void exec_salb(dd s0, dd s1, dd iflags)
     if (s1 != 1)
       flags &= ~0x0800;
     printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n",
-           "salb", s0, s1, res, iflags, flags & (0x0001 | 0x0040 | 0x0080));
+           "salb", s0, s1, res, iflags, flags & (CC_MASK));
 }
 
 
@@ -1321,7 +1322,7 @@ void exec_sarl(dd s2, dd s0, dd s1, dd iflags)
     if (s1 != 1)
       flags &= ~0x0800;
     printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n",
-           "sarl", s0, s1, res, iflags, flags & (0x0001 | 0x0040 | 0x0080));
+           "sarl", s0, s1, res, iflags, flags & (CC_MASK));
 }
 
 void exec_sarw(dd s2, dd s0, dd s1, dd iflags)
@@ -1334,7 +1335,7 @@ void exec_sarw(dd s2, dd s0, dd s1, dd iflags)
     if (s1 != 1)
       flags &= ~0x0800;
     printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n",
-           "sarw", s0, s1, res, iflags, flags & (0x0001 | 0x0040 | 0x0080));
+           "sarw", s0, s1, res, iflags, flags & (CC_MASK));
 }
 
 void exec_sarb(dd s0, dd s1, dd iflags)
@@ -1347,7 +1348,7 @@ void exec_sarb(dd s0, dd s1, dd iflags)
     if (s1 != 1)
       flags &= ~0x0800;
     printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n",
-           "sarb", s0, s1, res, iflags, flags & (0x0001 | 0x0040 | 0x0080));
+           "sarb", s0, s1, res, iflags, flags & (CC_MASK));
 }
 
 
@@ -1399,7 +1400,7 @@ void exec_roll(dd s2, dd s0, dd s1, dd iflags)
     if (s1 != 1)
       flags &= ~0x0800;
     printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n",
-           "roll", s0, s1, res, iflags, flags & (0x0001 | 0x0040 | 0x0080));
+           "roll", s0, s1, res, iflags, flags & (CC_MASK));
 }
 
 void exec_rolw(dd s2, dd s0, dd s1, dd iflags)
@@ -1412,7 +1413,7 @@ void exec_rolw(dd s2, dd s0, dd s1, dd iflags)
     if (s1 != 1)
       flags &= ~0x0800;
     printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n",
-           "rolw", s0, s1, res, iflags, flags & (0x0001 | 0x0040 | 0x0080));
+           "rolw", s0, s1, res, iflags, flags & (CC_MASK));
 }
 
 void exec_rolb(dd s0, dd s1, dd iflags)
@@ -1425,7 +1426,7 @@ void exec_rolb(dd s0, dd s1, dd iflags)
     if (s1 != 1)
       flags &= ~0x0800;
     printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n",
-           "rolb", s0, s1, res, iflags, flags & (0x0001 | 0x0040 | 0x0080));
+           "rolb", s0, s1, res, iflags, flags & (CC_MASK));
 }
 
 
@@ -1477,7 +1478,7 @@ void exec_rorl(dd s2, dd s0, dd s1, dd iflags)
     if (s1 != 1)
       flags &= ~0x0800;
     printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n",
-           "rorl", s0, s1, res, iflags, flags & (0x0001 | 0x0040 | 0x0080));
+           "rorl", s0, s1, res, iflags, flags & (CC_MASK));
 }
 
 void exec_rorw(dd s2, dd s0, dd s1, dd iflags)
@@ -1490,7 +1491,7 @@ void exec_rorw(dd s2, dd s0, dd s1, dd iflags)
     if (s1 != 1)
       flags &= ~0x0800;
     printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n",
-           "rorw", s0, s1, res, iflags, flags & (0x0001 | 0x0040 | 0x0080));
+           "rorw", s0, s1, res, iflags, flags & (CC_MASK));
 }
 
 void exec_rorb(dd s0, dd s1, dd iflags)
@@ -1503,7 +1504,7 @@ void exec_rorb(dd s0, dd s1, dd iflags)
     if (s1 != 1)
       flags &= ~0x0800;
     printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n",
-           "rorb", s0, s1, res, iflags, flags & (0x0001 | 0x0040 | 0x0080));
+           "rorb", s0, s1, res, iflags, flags & (CC_MASK));
 }
 
 
@@ -1556,7 +1557,7 @@ void exec_rcrl(dd s2, dd s0, dd s1, dd iflags)
     if (s1 != 1)
       flags &= ~0x0800;
     printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n",
-           "rcrl", s0, s1, res, iflags, flags & (0x0001 | 0x0040 | 0x0080));
+           "rcrl", s0, s1, res, iflags, flags & (CC_MASK));
 }
 
 void exec_rcrw(dd s2, dd s0, dd s1, dd iflags)
@@ -1569,7 +1570,7 @@ void exec_rcrw(dd s2, dd s0, dd s1, dd iflags)
     if (s1 != 1)
       flags &= ~0x0800;
     printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n",
-           "rcrw", s0, s1, res, iflags, flags & (0x0001 | 0x0040 | 0x0080));
+           "rcrw", s0, s1, res, iflags, flags & (CC_MASK));
 }
 
 void exec_rcrb(dd s0, dd s1, dd iflags)
@@ -1582,7 +1583,7 @@ void exec_rcrb(dd s0, dd s1, dd iflags)
     if (s1 != 1)
       flags &= ~0x0800;
     printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n",
-           "rcrb", s0, s1, res, iflags, flags & (0x0001 | 0x0040 | 0x0080));
+           "rcrb", s0, s1, res, iflags, flags & (CC_MASK));
 }
 
 
@@ -1643,7 +1644,7 @@ void exec_rcll(dd s2, dd s0, dd s1, dd iflags)
     if (s1 != 1)
       flags &= ~0x0800;
     printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n",
-           "rcll", s0, s1, res, iflags, flags & (0x0001 | 0x0040 | 0x0080));
+           "rcll", s0, s1, res, iflags, flags & (CC_MASK));
 }
 
 void exec_rclw(dd s2, dd s0, dd s1, dd iflags)
@@ -1656,7 +1657,7 @@ void exec_rclw(dd s2, dd s0, dd s1, dd iflags)
     if (s1 != 1)
       flags &= ~0x0800;
     printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n",
-           "rclw", s0, s1, res, iflags, flags & (0x0001 | 0x0040 | 0x0080));
+           "rclw", s0, s1, res, iflags, flags & (CC_MASK));
 }
 
 void exec_rclb(dd s0, dd s1, dd iflags)
@@ -1669,7 +1670,7 @@ void exec_rclb(dd s0, dd s1, dd iflags)
     if (s1 != 1)
       flags &= ~0x0800;
     printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n",
-           "rclb", s0, s1, res, iflags, flags & (0x0001 | 0x0040 | 0x0080));
+           "rclb", s0, s1, res, iflags, flags & (CC_MASK));
 }
 
 
@@ -1731,7 +1732,7 @@ void exec_shldl(dd s2, dd s0, dd s1, dd iflags)
     if (s1 != 1)
       flags &= ~0x0800;
     printf("%-10s A=%08lx B=%08lx C=%08lx R=%08lx CCIN=%04lx CC=%04lx\n",
-           "shldl", s0, s2, s1, res, iflags, flags & (0x0001 | 0x0040 | 0x0080));
+           "shldl", s0, s2, s1, res, iflags, flags & (CC_MASK));
 }
 
 void exec_shldw(dd s2, dd s0, dd s1, dd iflags)
@@ -1744,7 +1745,7 @@ void exec_shldw(dd s2, dd s0, dd s1, dd iflags)
     if (s1 != 1)
       flags &= ~0x0800;
     printf("%-10s A=%08lx B=%08lx C=%08lx R=%08lx CCIN=%04lx CC=%04lx\n",
-           "shldw", s0, s2, s1, res, iflags, flags & (0x0001 | 0x0040 | 0x0080));
+           "shldw", s0, s2, s1, res, iflags, flags & (CC_MASK));
 }
 
 void exec_shld(dd s2, dd s0, dd s1)
@@ -1792,7 +1793,7 @@ void exec_shrdl(dd s2, dd s0, dd s1, dd iflags)
     if (s1 != 1)
       flags &= ~0x0800;
     printf("%-10s A=%08lx B=%08lx C=%08lx R=%08lx CCIN=%04lx CC=%04lx\n",
-           "shrdl", s0, s2, s1, res, iflags, flags & (0x0001 | 0x0040 | 0x0080));
+           "shrdl", s0, s2, s1, res, iflags, flags & (CC_MASK));
 }
 
 void exec_shrdw(dd s2, dd s0, dd s1, dd iflags)
@@ -1805,7 +1806,7 @@ void exec_shrdw(dd s2, dd s0, dd s1, dd iflags)
     if (s1 != 1)
       flags &= ~0x0800;
     printf("%-10s A=%08lx B=%08lx C=%08lx R=%08lx CCIN=%04lx CC=%04lx\n",
-           "shrdw", s0, s2, s1, res, iflags, flags & (0x0001 | 0x0040 | 0x0080));
+           "shrdw", s0, s2, s1, res, iflags, flags & (CC_MASK));
 }
 
 void exec_shrd(dd s2, dd s0, dd s1)
@@ -1856,7 +1857,7 @@ void exec_btl(dd s2, dd s0, dd s1, dd iflags)
     if (s1 != 1)
       flags &= ~0x0800;
     printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n",
-           "btl", s0, s1, res, iflags, flags & (0x0001));
+           "btl", s0, s1, res, iflags, flags & (CC_C));
 }
 
 void exec_btw(dd s2, dd s0, dd s1, dd iflags)
@@ -1869,7 +1870,7 @@ void exec_btw(dd s2, dd s0, dd s1, dd iflags)
     if (s1 != 1)
       flags &= ~0x0800;
     printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n",
-           "btw", s0, s1, res, iflags, flags & (0x0001));
+           "btw", s0, s1, res, iflags, flags & (CC_C));
 }
 
 void exec_bt(dd s2, dd s0, dd s1)
@@ -1918,7 +1919,7 @@ void exec_btsl(dd s2, dd s0, dd s1, dd iflags)
     if (s1 != 1)
       flags &= ~0x0800;
     printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n",
-           "btsl", s0, s1, res, iflags, flags & (0x0001));
+           "btsl", s0, s1, res, iflags, flags & (CC_C));
 }
 
 void exec_btsw(dd s2, dd s0, dd s1, dd iflags)
@@ -1931,7 +1932,7 @@ void exec_btsw(dd s2, dd s0, dd s1, dd iflags)
     if (s1 != 1)
       flags &= ~0x0800;
     printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n",
-           "btsw", s0, s1, res, iflags, flags & (0x0001));
+           "btsw", s0, s1, res, iflags, flags & (CC_C));
 }
 
 void exec_bts(dd s2, dd s0, dd s1)
@@ -1980,7 +1981,7 @@ void exec_btrl(dd s2, dd s0, dd s1, dd iflags)
     if (s1 != 1)
       flags &= ~0x0800;
     printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n",
-           "btrl", s0, s1, res, iflags, flags & (0x0001));
+           "btrl", s0, s1, res, iflags, flags & (CC_C));
 }
 
 void exec_btrw(dd s2, dd s0, dd s1, dd iflags)
@@ -1993,7 +1994,7 @@ void exec_btrw(dd s2, dd s0, dd s1, dd iflags)
     if (s1 != 1)
       flags &= ~0x0800;
     printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n",
-           "btrw", s0, s1, res, iflags, flags & (0x0001));
+           "btrw", s0, s1, res, iflags, flags & (CC_C));
 }
 
 void exec_btr(dd s2, dd s0, dd s1)
@@ -2042,7 +2043,7 @@ void exec_btcl(dd s2, dd s0, dd s1, dd iflags)
     if (s1 != 1)
       flags &= ~0x0800;
     printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n",
-           "btcl", s0, s1, res, iflags, flags & (0x0001));
+           "btcl", s0, s1, res, iflags, flags & (CC_C));
 }
 
 void exec_btcw(dd s2, dd s0, dd s1, dd iflags)
@@ -2055,7 +2056,7 @@ void exec_btcw(dd s2, dd s0, dd s1, dd iflags)
     if (s1 != 1)
       flags &= ~0x0800;
     printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n",
-           "btcw", s0, s1, res, iflags, flags & (0x0001));
+           "btcw", s0, s1, res, iflags, flags & (CC_C));
 }
 
 void exec_btc(dd s2, dd s0, dd s1)
@@ -2093,7 +2094,7 @@ void *_test_btc __attribute__ ((unused,__section__ ("initcall"))) = test_btc;
 void test_lea(void)
 {
     dd eax, ebx, ecx, edx, esi, edi, res;
-    eax = i2l(0x0001);
+    eax = i2l(CC_C);
     ebx = i2l(0x0002);
     ecx = i2l(0x0004);
     edx = i2l(0x0008);
@@ -2681,7 +2682,7 @@ void test_mulb(dd op0, dd op1)
         res=eax;
 
     printf("%-10s A=%08lx B=%08lx R=%08lx CC=%04lx\n",
-           "mulb", s0, s1, res, flags & (0x0001));
+           "mulb", s0, s1, res, flags & (CC_MASK));
 }
 
 void test_mulw(dd op0h, dd op0, dd op1)
@@ -2701,7 +2702,7 @@ void test_mulw(dd op0h, dd op0, dd op1)
         resh=edx;
         res=eax;
     printf("%-10s AH=%08lx AL=%08lx B=%08lx RH=%08lx RL=%08lx CC=%04lx\n",
-           "mulw", op0h, op0, s1, resh, res, flags & (0x0001));
+           "mulw", op0h, op0, s1, resh, res, flags & (CC_MASK));
 }
 
 void test_mull(dd op0h, dd op0, dd op1)
@@ -2721,7 +2722,7 @@ void test_mull(dd op0h, dd op0, dd op1)
         resh=edx;
         res=eax;
     printf("%-10s AH=%08lx AL=%08lx B=%08lx RH=%08lx RL=%08lx CC=%04lx\n",
-           "mull", op0h, op0, s1, resh, res, flags & (0x0001));
+           "mull", op0h, op0, s1, resh, res, flags & (CC_MASK));
 }
 
 
@@ -2753,7 +2754,7 @@ void test_imulb(dd op0, dd op1)
         res=eax;
 
     printf("%-10s A=%08lx B=%08lx R=%08lx CC=%04lx\n",
-           "imulb", s0, s1, res, flags & (0x0001));
+           "imulb", s0, s1, res, flags & (CC_MASK));
 }
 
 void test_imulw(dd op0h, dd op0, dd op1)
@@ -2782,7 +2783,7 @@ void test_imulw(dd op0h, dd op0, dd op1)
         resh=edx;
         res=eax;
     printf("%-10s AH=%08lx AL=%08lx B=%08lx RH=%08lx RL=%08lx CC=%04lx\n",
-           "imulw", op0h, op0, s1, resh, res, flags & (0x0001));
+           "imulw", op0h, op0, s1, resh, res, flags & (CC_MASK));
 }
 
 void test_imull(dd op0h, dd op0, dd op1)
@@ -2802,7 +2803,7 @@ void test_imull(dd op0h, dd op0, dd op1)
         resh=edx;
         res=eax;
     printf("%-10s AH=%08lx AL=%08lx B=%08lx RH=%08lx RL=%08lx CC=%04lx\n",
-           "imull", op0h, op0, s1, resh, res, flags & (0x0001));
+           "imull", op0h, op0, s1, resh, res, flags & (CC_MASK));
 }
 
 
@@ -2829,7 +2830,7 @@ void test_imulw2(dd op0, dd op1)
 	R(POP(flags));	// 8692 pop     edx
 
     printf("%-10s A=%08lx B=%08lx R=%08lx CC=%04lx\n",
-           "imulw", s0, s1, res, flags & (0x0001));
+           "imulw", s0, s1, res, flags & (CC_MASK));
 }
 
 void test_imull2(dd op0, dd op1)
@@ -2855,7 +2856,7 @@ void test_imull2(dd op0, dd op1)
 	R(POP(flags));	// 8692 pop     edx
 
     printf("%-10s A=%08lx B=%08lx R=%08lx CC=%04lx\n",
-           "imull", s0, s1, res, flags & (0x0001));
+           "imull", s0, s1, res, flags & (CC_MASK));
 }
 
 
@@ -3452,144 +3453,62 @@ void test_floats(void)
 }
 #endif
 
+#define TEST_BCD(op, op0, cc_in, cc_mask)\
+    { int res, flags; res = op0; flags = cc_in; \
+    eax=res;PUSH(flags);POPF;op;PUSHF;POP(flags);res=eax; \
+printf("%-10s A=%08x R=%08x CCIN=%04x CC=%04x\n", #op, op0, res, cc_in, flags & (cc_mask));};
+
 void test_bcd(void)
 {
-    { int res, flags; res = 0x12340503; flags = 0x0010;
-    eax=res;PUSH(flags);POPF;DAA;PUSHF;POP(flags);res=eax;
-printf("%-10s A=%08x R=%08x CCIN=%04x CC=%04x\n", "daa", 0x12340503, res, 0x0010, flags & (0x0001 | 0x0040 | 0x0080));};
-    { int res, flags; res = 0x12340506; flags = 0x0010;
-    eax=res;PUSH(flags);POPF;DAA;PUSHF;POP(flags);res=eax;
-printf("%-10s A=%08x R=%08x CCIN=%04x CC=%04x\n", "daa", 0x12340506, res, 0x0010, flags & (0x0001 | 0x0040 | 0x0080));};
-    { int res, flags; res = 0x12340507; flags = 0x0010;
-    eax=res;PUSH(flags);POPF;DAA;PUSHF;POP(flags);res=eax;
-printf("%-10s A=%08x R=%08x CCIN=%04x CC=%04x\n", "daa", 0x12340507, res, 0x0010, flags & (0x0001 | 0x0040 | 0x0080));};
-    { int res, flags; res = 0x12340559; flags = 0x0010;
-    eax=res;PUSH(flags);POPF;DAA;PUSHF;POP(flags);res=eax;
-printf("%-10s A=%08x R=%08x CCIN=%04x CC=%04x\n", "daa", 0x12340559, res, 0x0010, flags & (0x0001 | 0x0040 | 0x0080));};
-    { int res, flags; res = 0x12340560; flags = 0x0010;
-    eax=res;PUSH(flags);POPF;DAA;PUSHF;POP(flags);res=eax;
-printf("%-10s A=%08x R=%08x CCIN=%04x CC=%04x\n", "daa", 0x12340560, res, 0x0010, flags & (0x0001 | 0x0040 | 0x0080));};
-    { int res, flags; res = 0x1234059f; flags = 0x0010;
-    eax=res;PUSH(flags);POPF;DAA;PUSHF;POP(flags);res=eax;
-printf("%-10s A=%08x R=%08x CCIN=%04x CC=%04x\n", "daa", 0x1234059f, res, 0x0010, flags & (0x0001 | 0x0040 | 0x0080));};
-    { int res, flags; res = 0x123405a0; flags = 0x0010;
-    eax=res;PUSH(flags);POPF;DAA;PUSHF;POP(flags);res=eax;
-printf("%-10s A=%08x R=%08x CCIN=%04x CC=%04x\n", "daa", 0x123405a0, res, 0x0010, flags & (0x0001 | 0x0040 | 0x0080));};
-    { int res, flags; res = 0x12340503; flags = 0;
-    eax=res;PUSH(flags);POPF;DAA;PUSHF;POP(flags);res=eax;
-printf("%-10s A=%08x R=%08x CCIN=%04x CC=%04x\n", "daa", 0x12340503, res, 0, flags & (0x0001 | 0x0040 | 0x0080));};
-    { int res, flags; res = 0x12340506; flags = 0;
-    eax=res;PUSH(flags);POPF;DAA;PUSHF;POP(flags);res=eax;
-printf("%-10s A=%08x R=%08x CCIN=%04x CC=%04x\n", "daa", 0x12340506, res, 0, flags & (0x0001 | 0x0040 | 0x0080));};
-    { int res, flags; res = 0x12340503; flags = 0x0001;
-    eax=res;PUSH(flags);POPF;DAA;PUSHF;POP(flags);res=eax;
-printf("%-10s A=%08x R=%08x CCIN=%04x CC=%04x\n", "daa", 0x12340503, res, 0x0001, flags & (0x0001 | 0x0040 | 0x0080));};
-    { int res, flags; res = 0x12340506; flags = 0x0001;
-    eax=res;PUSH(flags);POPF;DAA;PUSHF;POP(flags);res=eax;
-printf("%-10s A=%08x R=%08x CCIN=%04x CC=%04x\n", "daa", 0x12340506, res, 0x0001, flags & (0x0001 | 0x0040 | 0x0080));};
-    { int res, flags; res = 0x12340503; flags = 0x0001;
-    eax=res;PUSH(flags);POPF;DAA;PUSHF;POP(flags);res=eax;
-printf("%-10s A=%08x R=%08x CCIN=%04x CC=%04x\n", "daa", 0x12340503, res, 0x0001 | 0x0010, flags & (0x0001 | 0x0040 | 0x0080));};
-    { int res, flags; res = 0x12340506; flags = 0x0001;
-    eax=res;PUSH(flags);POPF;DAA;PUSHF;POP(flags);res=eax;
-printf("%-10s A=%08x R=%08x CCIN=%04x CC=%04x\n", "daa", 0x12340506, res, 0x0001 | 0x0010, flags & (0x0001 | 0x0040 | 0x0080));};
+    TEST_BCD(DAA, 0x12340503, CC_A, (CC_C | CC_Z | CC_S | CC_A));
+    TEST_BCD(DAA, 0x12340506, CC_A, (CC_C | CC_Z | CC_S | CC_A));
+    TEST_BCD(DAA, 0x12340507, CC_A, (CC_C | CC_Z | CC_S | CC_A));
+    TEST_BCD(DAA, 0x12340559, CC_A, (CC_C | CC_Z | CC_S | CC_A));
+    TEST_BCD(DAA, 0x12340560, CC_A, (CC_C | CC_Z | CC_S | CC_A));
+    TEST_BCD(DAA, 0x1234059f, CC_A, (CC_C | CC_Z | CC_S | CC_A));
+    TEST_BCD(DAA, 0x123405a0, CC_A, (CC_C | CC_Z | CC_S | CC_A));
+    TEST_BCD(DAA, 0x12340503, 0, (CC_C | CC_Z | CC_S | CC_A));
+    TEST_BCD(DAA, 0x12340506, 0, (CC_C | CC_Z | CC_S | CC_A));
+    TEST_BCD(DAA, 0x12340503, CC_C, (CC_C | CC_Z | CC_S | CC_A));
+    TEST_BCD(DAA, 0x12340506, CC_C, (CC_C | CC_Z | CC_S | CC_A));
+    TEST_BCD(DAA, 0x12340503, CC_C | CC_A, (CC_C | CC_Z | CC_S | CC_A));
+    TEST_BCD(DAA, 0x12340506, CC_C | CC_A, (CC_C | CC_Z | CC_S | CC_A));
 
-    { int res, flags; res = 0x12340503; flags = 0x0010;
-    eax=res;PUSH(flags);POPF;DAS;PUSHF;POP(flags);res=eax;
-printf("%-10s A=%08x R=%08x CCIN=%04x CC=%04x\n", "das", 0x12340503, res, 0x0010, flags & (0x0001 | 0x0040 | 0x0080));};
-    { int res, flags; res = 0x12340506; flags = 0x0010;
-    eax=res;PUSH(flags);POPF;DAS;PUSHF;POP(flags);res=eax;
-printf("%-10s A=%08x R=%08x CCIN=%04x CC=%04x\n", "das", 0x12340506, res, 0x0010, flags & (0x0001 | 0x0040 | 0x0080));};
-    { int res, flags; res = 0x12340507; flags = 0x0010;
-    eax=res;PUSH(flags);POPF;DAS;PUSHF;POP(flags);res=eax;
-printf("%-10s A=%08x R=%08x CCIN=%04x CC=%04x\n", "das", 0x12340507, res, 0x0010, flags & (0x0001 | 0x0040 | 0x0080));};
-    { int res, flags; res = 0x12340559; flags = 0x0010;
-    eax=res;PUSH(flags);POPF;DAS;PUSHF;POP(flags);res=eax;
-printf("%-10s A=%08x R=%08x CCIN=%04x CC=%04x\n", "das", 0x12340559, res, 0x0010, flags & (0x0001 | 0x0040 | 0x0080));};
-    { int res, flags; res = 0x12340560; flags = 0x0010;
-    eax=res;PUSH(flags);POPF;DAS;PUSHF;POP(flags);res=eax;
-printf("%-10s A=%08x R=%08x CCIN=%04x CC=%04x\n", "das", 0x12340560, res, 0x0010, flags & (0x0001 | 0x0040 | 0x0080));};
-    { int res, flags; res = 0x1234059f; flags = 0x0010;
-    eax=res;PUSH(flags);POPF;DAS;PUSHF;POP(flags);res=eax;
-printf("%-10s A=%08x R=%08x CCIN=%04x CC=%04x\n", "das", 0x1234059f, res, 0x0010, flags & (0x0001 | 0x0040 | 0x0080));};
-    { int res, flags; res = 0x123405a0; flags = 0x0010;
-    eax=res;PUSH(flags);POPF;DAS;PUSHF;POP(flags);res=eax;
-printf("%-10s A=%08x R=%08x CCIN=%04x CC=%04x\n", "das", 0x123405a0, res, 0x0010, flags & (0x0001 | 0x0040 | 0x0080));};
-    { int res, flags; res = 0x12340503; flags = 0;
-    eax=res;PUSH(flags);POPF;DAS;PUSHF;POP(flags);res=eax;
-printf("%-10s A=%08x R=%08x CCIN=%04x CC=%04x\n", "das", 0x12340503, res, 0, flags & (0x0001 | 0x0040 | 0x0080));};
-    { int res, flags; res = 0x12340506; flags = 0;
-    eax=res;PUSH(flags);POPF;DAS;PUSHF;POP(flags);res=eax;
-printf("%-10s A=%08x R=%08x CCIN=%04x CC=%04x\n", "das", 0x12340506, res, 0, flags & (0x0001 | 0x0040 | 0x0080));};
-    { int res, flags; res = 0x12340503; flags = 0x0001;
-    eax=res;PUSH(flags);POPF;DAS;PUSHF;POP(flags);res=eax;
-printf("%-10s A=%08x R=%08x CCIN=%04x CC=%04x\n", "das", 0x12340503, res, 0x0001, flags & (0x0001 | 0x0040 | 0x0080));};
-    { int res, flags; res = 0x12340506; flags = 0x0001;
-    eax=res;PUSH(flags);POPF;DAS;PUSHF;POP(flags);res=eax;
-printf("%-10s A=%08x R=%08x CCIN=%04x CC=%04x\n", "das", 0x12340506, res, 0x0001, flags & (0x0001 | 0x0040 | 0x0080));};
-    { int res, flags; res = 0x12340503; flags = 0x0001;
-    eax=res;PUSH(flags);POPF;DAS;PUSHF;POP(flags);res=eax;
-printf("%-10s A=%08x R=%08x CCIN=%04x CC=%04x\n", "das", 0x12340503, res, 0x0001 | 0x0010, flags & (0x0001 | 0x0040 | 0x0080));};
-    { int res, flags; res = 0x12340506; flags = 0x0001;
-    eax=res;PUSH(flags);POPF;DAS;PUSHF;POP(flags);res=eax;
-printf("%-10s A=%08x R=%08x CCIN=%04x CC=%04x\n", "das", 0x12340506, res, 0x0001 | 0x0010, flags & (0x0001 | 0x0040 | 0x0080));};
+    TEST_BCD(DAS, 0x12340503, CC_A, (CC_C | CC_Z | CC_S | CC_A));
+    TEST_BCD(DAS, 0x12340506, CC_A, (CC_C | CC_Z | CC_S | CC_A));
+    TEST_BCD(DAS, 0x12340507, CC_A, (CC_C | CC_Z | CC_S | CC_A));
+    TEST_BCD(DAS, 0x12340559, CC_A, (CC_C | CC_Z | CC_S | CC_A));
+    TEST_BCD(DAS, 0x12340560, CC_A, (CC_C | CC_Z | CC_S | CC_A));
+    TEST_BCD(DAS, 0x1234059f, CC_A, (CC_C | CC_Z | CC_S | CC_A));
+    TEST_BCD(DAS, 0x123405a0, CC_A, (CC_C | CC_Z | CC_S | CC_A));
+    TEST_BCD(DAS, 0x12340503, 0, (CC_C | CC_Z | CC_S | CC_A));
+    TEST_BCD(DAS, 0x12340506, 0, (CC_C | CC_Z | CC_S | CC_A));
+    TEST_BCD(DAS, 0x12340503, CC_C, (CC_C | CC_Z | CC_S | CC_A));
+    TEST_BCD(DAS, 0x12340506, CC_C, (CC_C | CC_Z | CC_S | CC_A));
+    TEST_BCD(DAS, 0x12340503, CC_C | CC_A, (CC_C | CC_Z | CC_S | CC_A));
+    TEST_BCD(DAS, 0x12340506, CC_C | CC_A, (CC_C | CC_Z | CC_S | CC_A));
 
-    { int res, flags; res = 0x12340205; flags = 0x0010;
-    eax=res;PUSH(flags);POPF;AAA;PUSHF;POP(flags);res=eax;
-printf("%-10s A=%08x R=%08x CCIN=%04x CC=%04x\n", "aaa", 0x12340205, res, 0x0010, flags & (0x0001 | 0x0010));};
-    { int res, flags; res = 0x12340306; flags = 0x0010;
-    eax=res;PUSH(flags);POPF;AAA;PUSHF;POP(flags);res=eax;
-printf("%-10s A=%08x R=%08x CCIN=%04x CC=%04x\n", "aaa", 0x12340306, res, 0x0010, flags & (0x0001 | 0x0010));};
-    { int res, flags; res = 0x1234040a; flags = 0x0010;
-    eax=res;PUSH(flags);POPF;AAA;PUSHF;POP(flags);res=eax;
-printf("%-10s A=%08x R=%08x CCIN=%04x CC=%04x\n", "aaa", 0x1234040a, res, 0x0010, flags & (0x0001 | 0x0010));};
-    { int res, flags; res = 0x123405fa; flags = 0x0010;
-    eax=res;PUSH(flags);POPF;AAA;PUSHF;POP(flags);res=eax;
-printf("%-10s A=%08x R=%08x CCIN=%04x CC=%04x\n", "aaa", 0x123405fa, res, 0x0010, flags & (0x0001 | 0x0010));};
-    { int res, flags; res = 0x12340205; flags = 0;
-    eax=res;PUSH(flags);POPF;AAA;PUSHF;POP(flags);res=eax;
-printf("%-10s A=%08x R=%08x CCIN=%04x CC=%04x\n", "aaa", 0x12340205, res, 0, flags & (0x0001 | 0x0010));};
-    { int res, flags; res = 0x12340306; flags = 0;
-    eax=res;PUSH(flags);POPF;AAA;PUSHF;POP(flags);res=eax;
-printf("%-10s A=%08x R=%08x CCIN=%04x CC=%04x\n", "aaa", 0x12340306, res, 0, flags & (0x0001 | 0x0010));};
-    { int res, flags; res = 0x1234040a; flags = 0;
-    eax=res;PUSH(flags);POPF;AAA;PUSHF;POP(flags);res=eax;
-printf("%-10s A=%08x R=%08x CCIN=%04x CC=%04x\n", "aaa", 0x1234040a, res, 0, flags & (0x0001 | 0x0010));};
-    { int res, flags; res = 0x123405fa; flags = 0;
-    eax=res;PUSH(flags);POPF;AAA;PUSHF;POP(flags);res=eax;
-printf("%-10s A=%08x R=%08x CCIN=%04x CC=%04x\n", "aaa", 0x123405fa, res, 0, flags & (0x0001 | 0x0010));};
+    TEST_BCD(AAA, 0x12340205, CC_A, (CC_C | CC_A));
+    TEST_BCD(AAA, 0x12340306, CC_A, (CC_C | CC_A));
+    TEST_BCD(AAA, 0x1234040a, CC_A, (CC_C | CC_A));
+    TEST_BCD(AAA, 0x123405fa, CC_A, (CC_C | CC_A));
+    TEST_BCD(AAA, 0x12340205, 0, (CC_C | CC_A));
+    TEST_BCD(AAA, 0x12340306, 0, (CC_C | CC_A));
+    TEST_BCD(AAA, 0x1234040a, 0, (CC_C | CC_A));
+    TEST_BCD(AAA, 0x123405fa, 0, (CC_C | CC_A));
 
-    { int res, flags; res = 0x12340205; flags = 0x0010;
-    eax=res;PUSH(flags);POPF;AAS;PUSHF;POP(flags);res=eax;
-printf("%-10s A=%08x R=%08x CCIN=%04x CC=%04x\n", "aas", 0x12340205, res, 0x0010, flags & (0x0001 | 0x0010));};
-    { int res, flags; res = 0x12340306; flags = 0x0010;
-    eax=res;PUSH(flags);POPF;AAS;PUSHF;POP(flags);res=eax;
-printf("%-10s A=%08x R=%08x CCIN=%04x CC=%04x\n", "aas", 0x12340306, res, 0x0010, flags & (0x0001 | 0x0010));};
-    { int res, flags; res = 0x1234040a; flags = 0x0010;
-    eax=res;PUSH(flags);POPF;AAS;PUSHF;POP(flags);res=eax;
-printf("%-10s A=%08x R=%08x CCIN=%04x CC=%04x\n", "aas", 0x1234040a, res, 0x0010, flags & (0x0001 | 0x0010));};
-    { int res, flags; res = 0x123405fa; flags = 0x0010;
-    eax=res;PUSH(flags);POPF;AAS;PUSHF;POP(flags);res=eax;
-printf("%-10s A=%08x R=%08x CCIN=%04x CC=%04x\n", "aas", 0x123405fa, res, 0x0010, flags & (0x0001 | 0x0010));};
-    { int res, flags; res = 0x12340205; flags = 0;
-    eax=res;PUSH(flags);POPF;AAS;PUSHF;POP(flags);res=eax;
-printf("%-10s A=%08x R=%08x CCIN=%04x CC=%04x\n", "aas", 0x12340205, res, 0, flags & (0x0001 | 0x0010));};
-    { int res, flags; res = 0x12340306; flags = 0;
-    eax=res;PUSH(flags);POPF;AAS;PUSHF;POP(flags);res=eax;
-printf("%-10s A=%08x R=%08x CCIN=%04x CC=%04x\n", "aas", 0x12340306, res, 0, flags & (0x0001 | 0x0010));};
-    { int res, flags; res = 0x1234040a; flags = 0;
-    eax=res;PUSH(flags);POPF;AAS;PUSHF;POP(flags);res=eax;
-printf("%-10s A=%08x R=%08x CCIN=%04x CC=%04x\n", "aas", 0x1234040a, res, 0, flags & (0x0001 | 0x0010));};
-    { int res, flags; res = 0x123405fa; flags = 0;
-    eax=res;PUSH(flags);POPF;AAS;PUSHF;POP(flags);res=eax;
-printf("%-10s A=%08x R=%08x CCIN=%04x CC=%04x\n", "aas", 0x123405fa, res, 0, flags & (0x0001 | 0x0010));};
+    TEST_BCD(AAS, 0x12340205, CC_A, (CC_C | CC_A));
+    TEST_BCD(AAS, 0x12340306, CC_A, (CC_C | CC_A));
+    TEST_BCD(AAS, 0x1234040a, CC_A, (CC_C | CC_A));
+    TEST_BCD(AAS, 0x123405fa, CC_A, (CC_C | CC_A));
+    TEST_BCD(AAS, 0x12340205, 0, (CC_C | CC_A));
+    TEST_BCD(AAS, 0x12340306, 0, (CC_C | CC_A));
+    TEST_BCD(AAS, 0x1234040a, 0, (CC_C | CC_A));
+    TEST_BCD(AAS, 0x123405fa, 0, (CC_C | CC_A));
 
-    { int res, flags; res = 0x12340547; flags = 0x0010;
-    eax=res;PUSH(flags);POPF;AAM;PUSHF;POP(flags);res=eax;
-printf("%-10s A=%08x R=%08x CCIN=%04x CC=%04x\n", "aam", 0x12340547, res, 0x0010, flags & (0x0001 | 0x0040 | 0x0080));};
-    { int res, flags; res = 0x12340407; flags = 0x0010;
-    eax=res;PUSH(flags);POPF;AAD;PUSHF;POP(flags);res=eax;
-printf("%-10s A=%08x R=%08x CCIN=%04x CC=%04x\n", "aad", 0x12340407, res, 0x0010, flags & (0x0001 | 0x0040 | 0x0080));};
+    TEST_BCD(AAM, 0x12340547, CC_A, (CC_C | CC_Z | CC_S | CC_O | CC_A));
+    TEST_BCD(AAD, 0x12340407, CC_A, (CC_C | CC_Z | CC_S | CC_O | CC_A));
+
 }
 
 void test_xchg(void)
@@ -3766,212 +3685,212 @@ void test_string(void)
 
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 PUSH((dd)0);POPF;STOSB;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "stosb", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));};
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "stosb", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));};
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 PUSH((dd)0);POPF;STOSW;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "stosw", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));};
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "stosw", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));};
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 PUSH((dd)0);POPF;STOSD;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "stosl", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));};
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "stosl", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));};
 
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 PUSH((dd)0);POPF;STD;STOSB;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "stosb", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));};
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "stosb", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));};
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 PUSH((dd)0);POPF;STD;STOSW;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "stosw", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));};
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "stosw", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));};
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 PUSH((dd)0);POPF;STD;STOSD;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "stosl", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));}; ;
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "stosl", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));}; ;
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 PUSH((dd)0);POPF;REP STOSB;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "rep stosb", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));};
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "rep stosb", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));};
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 PUSH((dd)0);POPF;REP STOSW;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "rep stosw", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));};
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "rep stosw", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));};
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 PUSH((dd)0);POPF;REP STOSD;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "rep stosl", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));};
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "rep stosl", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));};
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 PUSH((dd)0);POPF;STD;REP STOSB;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "rep stosb", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));};
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "rep stosb", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));};
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 PUSH((dd)0);POPF;STD;REP STOSW;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "rep stosw", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));};
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "rep stosw", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));};
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 PUSH((dd)0);POPF;STD;REP STOSD;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "rep stosl", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));}; ;
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "rep stosl", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));}; ;
 
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 PUSH((dd)0);POPF;LODSB;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "lodsb", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));};
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "lodsb", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));};
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 PUSH((dd)0);POPF;LODSW;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "lodsw", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));};
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "lodsw", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));};
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 PUSH((dd)0);POPF;LODSD;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "lodsl", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));};
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "lodsl", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));};
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 PUSH((dd)0);POPF;STD;LODSB;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "lodsb", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));};
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "lodsb", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));};
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 PUSH((dd)0);POPF;STD;LODSW;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "lodsw", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));};
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "lodsw", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));};
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 PUSH((dd)0);POPF;STD;LODSD;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "lodsl", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));}; ;
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "lodsl", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));}; ;
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 PUSH((dd)0);POPF;REP LODSB;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "rep lodsb", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));};
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "rep lodsb", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));};
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 PUSH((dd)0);POPF;REP LODSW;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "rep lodsw", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));};
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "rep lodsw", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));};
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 PUSH((dd)0);POPF;REP LODSD;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "rep lodsl", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));};
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "rep lodsl", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));};
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 PUSH((dd)0);POPF;STD;REP LODSB;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "rep lodsb", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));};
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "rep lodsb", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));};
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 PUSH((dd)0);POPF;STD;REP LODSW;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "rep lodsw", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));};
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "rep lodsw", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));};
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 PUSH((dd)0);POPF;STD;REP LODSD;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "rep lodsl", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));}; ;
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "rep lodsl", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));}; ;
 
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 PUSH((dd)0);POPF;MOVSB;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "movsb", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));};
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "movsb", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));};
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 PUSH((dd)0);POPF;MOVSW;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "movsw", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));};
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "movsw", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));};
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 PUSH((dd)0);POPF;MOVSD;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "movsl", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));};
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "movsl", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));};
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 PUSH((dd)0);POPF;STD;MOVSB;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "movsb", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));};
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "movsb", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));};
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 PUSH((dd)0);POPF;STD;MOVSW;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "movsw", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));};
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "movsw", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));};
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 PUSH((dd)0);POPF;STD;MOVSD;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "movsl", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));}; ;
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "movsl", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));}; ;
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 PUSH((dd)0);POPF;REP MOVSB;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "rep movsb", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));};
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "rep movsb", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));};
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 PUSH((dd)0);POPF;REP MOVSW;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "rep movsw", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));};
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "rep movsw", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));};
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 PUSH((dd)0);POPF;REP MOVSD;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "rep movsl", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));};
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "rep movsl", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));};
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 PUSH((dd)0);POPF;STD;REP MOVSB;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "rep movsb", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));};
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "rep movsb", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));};
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 PUSH((dd)0);POPF;STD;REP MOVSW;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "rep movsw", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));};
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "rep movsw", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));};
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 PUSH((dd)0);POPF;STD;REP MOVSD;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "rep movsl", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));};
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "rep movsl", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));};
 
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 PUSH((dd)0);POPF;LODSB;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "lodsb", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));};
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "lodsb", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));};
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 PUSH((dd)0);POPF;LODSW;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "lodsw", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));};
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "lodsw", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));};
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 PUSH((dd)0);POPF;LODSD;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "lodsl", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));};
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "lodsl", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));};
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 PUSH((dd)0);POPF;STD;LODSB;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "lodsb", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));};
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "lodsb", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));};
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 PUSH((dd)0);POPF;STD;LODSW;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "lodsw", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));};
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "lodsw", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));};
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 PUSH((dd)0);POPF;STD;LODSD;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "lodsl", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));}; ;
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "lodsl", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));}; ;
 
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 //print_buf(reinterpret_cast<db*>(edi),1);print_buf(reinterpret_cast<db*>(&eax),1);
     PUSH((dd)0);POPF;SCASB;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "scasb", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));};
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "scasb", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));};
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 PUSH((dd)0);POPF;SCASW;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "scasw", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));};
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "scasw", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));};
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 PUSH((dd)0);POPF;SCASD;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "scasl", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));};
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "scasl", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));};
 
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
     PUSH((dd)0);POPF;STD;SCASB;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "scasb", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));};
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "scasb", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));};
 
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 PUSH((dd)0);POPF;STD;SCASW;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "scasw", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));};
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "scasw", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));};
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 PUSH((dd)0);POPF;STD;SCASD;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "scasl", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));}; ;
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "scasl", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));}; ;
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 PUSH((dd)0);POPF;REPE SCASB;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "repz scasb", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));};
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "repz scasb", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));};
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 PUSH((dd)0);POPF;REPE SCASW;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "repz scasw", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));};
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "repz scasw", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));};
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 PUSH((dd)0);POPF;REPE SCASD;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "repz scasl", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));};
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "repz scasl", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));};
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 PUSH((dd)0);POPF;STD;REPE SCASB;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "repz scasb", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));};
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "repz scasb", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));};
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 PUSH((dd)0);POPF;STD;REPE SCASW;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "repz scasw", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));};
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "repz scasw", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));};
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 PUSH((dd)0);POPF;STD;REPE SCASD;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "repz scasl", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));}; ;
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "repz scasl", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));}; ;
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 PUSH((dd)0);POPF;REPNE SCASB;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "repnz scasb", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));};
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "repnz scasb", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));};
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 PUSH((dd)0);POPF;REPNE SCASW;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "repnz scasw", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));};
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "repnz scasw", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));};
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 PUSH((dd)0);POPF;REPNE SCASD;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "repnz scasl", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));};
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "repnz scasl", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));};
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 PUSH((dd)0);POPF;STD;REPNE SCASB;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "repnz scasb", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));};
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "repnz scasb", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));};
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 PUSH((dd)0);POPF;STD;REPNE SCASW;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "repnz scasw", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));};
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "repnz scasw", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));};
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 PUSH((dd)0);POPF;STD;REPNE SCASD;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "repnz scasl", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));}; ;
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "repnz scasl", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));}; ;
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 //PUSH((dd)0);POPF;CMPSB;CLD;PUSHF;POP(eflags);
 PUSH((dd)0);POPF;CMPSB;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "cmpsb", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));};
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "cmpsb", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));};
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 PUSH((dd)0);POPF;CMPSW;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "cmpsw", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));};
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "cmpsw", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));};
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 PUSH((dd)0);POPF;CMPSD;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "cmpsl", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));};
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "cmpsl", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));};
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 //PUSH((dd)0);POPF;STD;CMPSB;CLD;PUSHF;POP(eflags);
 PUSH((dd)0);POPF;STD;CMPSB;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "cmpsb", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));};
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "cmpsb", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));};
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 PUSH((dd)0);POPF;STD;CMPSW;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "cmpsw", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));};
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "cmpsw", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));};
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 PUSH((dd)0);POPF;STD;CMPSD;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "cmpsl", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));}; ;
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "cmpsl", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));}; ;
 
 //print_buf((long)(str_buffer + sizeof(str_buffer) / 2)-17*4, 18*4);printf("~");
 //print_buf((long)(str_buffer + sizeof(str_buffer) / 2)-17*4+16, 18*4);
@@ -3979,43 +3898,43 @@ PUSH((dd)0);POPF;STD;CMPSD;CLD;PUSHF;POP(eflags);
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 //PUSH((dd)0);POPF;REPE CMPSB;CLD;PUSHF;POP(eflags);
 PUSH((dd)0);POPF; REPE CMPSB;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "repz cmpsb", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));};
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "repz cmpsb", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));};
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 PUSH((dd)0);POPF;REPE CMPSW;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "repz cmpsw", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));};
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "repz cmpsw", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));};
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 PUSH((dd)0);POPF;REPE CMPSD;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "repz cmpsl", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));};
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "repz cmpsl", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));};
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 //PUSH((dd)0);POPF;STD;REPE CMPSB;CLD;PUSHF;POP(eflags);
 PUSH((dd)0);POPF;STD;REPE CMPSB;CLD;PUSHF;POP(eflags);
 
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "repz cmpsb", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));};
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "repz cmpsb", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));};
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 PUSH((dd)0);POPF;STD;REPE CMPSW;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "repz cmpsw", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));};
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "repz cmpsw", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));};
 
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 PUSH((dd)0);POPF;STD;REPE CMPSD;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "repz cmpsl", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));}; ;
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "repz cmpsl", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));}; ;
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 PUSH((dd)0);POPF;REPNE CMPSB;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "repnz cmpsb", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));};
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "repnz cmpsb", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));};
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 PUSH((dd)0);POPF;REPNE CMPSW;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "repnz cmpsw", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));};
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "repnz cmpsw", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));};
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 PUSH((dd)0);POPF;REPNE CMPSD;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "repnz cmpsl", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));};
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "repnz cmpsl", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));};
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 PUSH((dd)0);POPF;STD;REPNE CMPSB;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "repnz cmpsb", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));};
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "repnz cmpsb", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));};
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 PUSH((dd)0);POPF;STD;REPNE CMPSW;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "repnz cmpsw", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));};
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "repnz cmpsw", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));};
 print_buffer(); { /*dd esi, edi, eax, ecx,*/ dd eflags; esi = (dd)(str_buffer + sizeof(str_buffer) / 2); edi = (dd)(str_buffer + sizeof(str_buffer) / 2) + 16; eax = i2l(0x12345678); ecx = 17;
 PUSH((dd)0);POPF;STD;REPNE CMPSD;CLD;PUSHF;POP(eflags);
- printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "repnz cmpsl", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (0x0001 | 0x0040 | 0x0080)));}; ;
+ printf("%-10s ESI=%08lx EDI=%08lx EAX=%08lx ECX=%08lx EFL=%04x\n", "repnz cmpsl", esi - (dd)(str_buffer), edi - (dd)(str_buffer), eax, ecx, (int)(eflags & (CC_MASK)));}; ;
 }
 
 dd enter_stack[4096];
