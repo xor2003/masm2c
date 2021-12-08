@@ -1414,7 +1414,27 @@ void test_code16(void)
 }
 #endif
 
+#if 0
+#if defined(__x86_64__)
+asm(".globl func_lret\n"
+    "func_lret:\n"
+    "movl $0x87654641, %eax\n"
+    "lretq\n");
+#else
+asm(".globl func_lret\n"
+    "func_lret:\n"
+    "movl $0x87654321, %eax\n"
+    "lret\n"
 
+    ".globl func_iret\n"
+    "func_iret:\n"
+    "movl $0xabcd4321, %eax\n"
+    "iret\n");
+#endif
+
+extern char func_lret;
+extern char func_iret;
+#endif
 
 void test_misc(void)
 {
@@ -1425,7 +1445,60 @@ void test_misc(void)
     res = 0x12345678;
     asm ("xlat" : "=a" (res) : "b" (table), "0" (res));
     printf("xlat: EAX=" FMTLX "\n", res);
+#if 0
+#if defined(__x86_64__)
+#if 0
+    {
+        /* XXX: see if Intel Core2 and AMD64 behavior really
+           differ. Here we implemented the Intel way which is not
+           compatible yet with QEMU. */
+        static struct QEMU_PACKED {
+            uint64_t offset;
+            uint16_t seg;
+        } desc;
+        long cs_sel;
 
+        asm volatile ("mov %%cs, %0" : "=r" (cs_sel));
+
+        asm volatile ("push %1\n"
+                      "call func_lret\n"
+                      : "=a" (res)
+                      : "r" (cs_sel) : "memory", "cc");
+        printf("func_lret=" FMTLX "\n", res);
+
+        desc.offset = (long)&func_lret;
+        desc.seg = cs_sel;
+
+        asm volatile ("xor %%rax, %%rax\n"
+                      "rex64 lcall *(%%rcx)\n"
+                      : "=a" (res)
+                      : "c" (&desc)
+                      : "memory", "cc");
+        printf("func_lret2=" FMTLX "\n", res);
+
+        asm volatile ("push %2\n"
+                      "mov $ 1f, %%rax\n"
+                      "push %%rax\n"
+                      "rex64 ljmp *(%%rcx)\n"
+                      "1:\n"
+                      : "=a" (res)
+                      : "c" (&desc), "b" (cs_sel)
+                      : "memory", "cc");
+        printf("func_lret3=" FMTLX "\n", res);
+    }
+#endif
+#else
+    asm volatile ("push %%cs ; call %1"
+                  : "=a" (res)
+                  : "m" (func_lret): "memory", "cc");
+    printf("func_lret=" FMTLX "\n", res);
+
+    asm volatile ("pushf ; push %%cs ; call %1"
+                  : "=a" (res)
+                  : "m" (func_iret): "memory", "cc");
+    printf("func_iret=" FMTLX "\n", res);
+#endif
+#endif
 
 #if defined(__x86_64__)
     /* specific popl test */
@@ -1483,7 +1556,7 @@ uint8_t str_buffer[4096];
     X86_64_ONLY(TEST_STRING1(OP, "q", "std", REP))
 
 void print_buffer(void) { /*for(int j = 0; j < sizeof(str_buffer); j++) printf("%02X", str_buffer[j]);*/ }
-void print_buf(uint8_t* p, int s) { for(int j = 0; j < s; j++) printf("%02X", *(p+j)); }
+void print_buf(uint8_t* p, int s) { int j; for(j = 0; j < s; j++) printf("%02X", *(p+j)); }
 
 void test_string(void)
 {
@@ -1638,7 +1711,353 @@ void test_vm86(void)
     munmap(vm86_mem, 0x110000);
 }
 #endif
+#if 0
+/* exception tests */
+#if defined(__i386__) && !defined(REG_EAX)
+#define REG_EAX EAX
+#define REG_EBX EBX
+#define REG_ECX ECX
+#define REG_EDX EDX
+#define REG_ESI ESI
+#define REG_EDI EDI
+#define REG_EBP EBP
+#define REG_ESP ESP
+#define REG_EIP EIP
+#define REG_EFL EFL
+#define REG_TRAPNO TRAPNO
+#define REG_ERR ERR
+#endif
 
+#if defined(__x86_64__)
+#define REG_EIP REG_RIP
+#endif
+
+jmp_buf jmp_env;
+int v1;
+int tab[2];
+
+void sig_handler(int sig, siginfo_t *info, void *puc)
+{
+    ucontext_t *uc = puc;
+
+    printf("si_signo=%d si_errno=%d si_code=%d",
+           info->si_signo, info->si_errno, info->si_code);
+    printf(" si_addr=0x%08lx",
+           (unsigned long)info->si_addr);
+    printf("\n");
+
+    printf("trapno=" FMTLX " err=" FMTLX,
+           (long)uc->uc_mcontext.gregs[REG_TRAPNO],
+           (long)uc->uc_mcontext.gregs[REG_ERR]);
+    printf(" EIP=" FMTLX, (long)uc->uc_mcontext.gregs[REG_EIP]);
+
+    printf("\n");
+    longjmp(jmp_env, 1);
+}
+
+void test_exceptions(void)
+{
+    struct sigaction act;
+    volatile int val;
+
+    act.sa_sigaction = sig_handler;
+    sigemptyset(&act.sa_mask);
+    act.sa_flags = SA_SIGINFO | SA_NODEFER;
+    sigaction(SIGFPE, &act, NULL);
+    sigaction(SIGILL, &act, NULL);
+    sigaction(SIGSEGV, &act, NULL);
+    sigaction(SIGBUS, &act, NULL);
+    sigaction(SIGTRAP, &act, NULL);
+
+    /* test division by zero reporting */
+    printf("DIVZ exception:\n");
+    if (setjmp(jmp_env) == 0) {
+        /* now divide by zero */
+        v1 = 0;
+        v1 = 2 / v1;
+    }
+
+#if !defined(__x86_64__)
+    printf("BOUND exception:\n");
+    if (setjmp(jmp_env) == 0) {
+        /* bound exception */
+        tab[0] = 1;
+        tab[1] = 10;
+        asm volatile ("bound %0, %1" : : "r" (11), "m" (tab[0]));
+    }
+#endif
+
+#ifdef TEST_SEGS
+    printf("segment exceptions:\n");
+    if (setjmp(jmp_env) == 0) {
+        /* load an invalid segment */
+        asm volatile ("movl %0, %%fs" : : "r" ((0x1234 << 3) | 1));
+    }
+    if (setjmp(jmp_env) == 0) {
+        /* null data segment is valid */
+        asm volatile ("movl %0, %%fs" : : "r" (3));
+        /* null stack segment */
+        asm volatile ("movl %0, %%ss" : : "r" (3));
+    }
+
+    {
+        struct modify_ldt_ldt_s ldt;
+        ldt.entry_number = 1;
+        ldt.base_addr = (unsigned long)&seg_data1;
+        ldt.limit = (sizeof(seg_data1) + 0xfff) >> 12;
+        ldt.seg_32bit = 1;
+        ldt.contents = MODIFY_LDT_CONTENTS_DATA;
+        ldt.read_exec_only = 0;
+        ldt.limit_in_pages = 1;
+        ldt.seg_not_present = 1;
+        ldt.useable = 1;
+        modify_ldt(1, &ldt, sizeof(ldt)); /* write ldt entry */
+
+        if (setjmp(jmp_env) == 0) {
+            /* segment not present */
+            asm volatile ("movl %0, %%fs" : : "r" (MK_SEL(1)));
+        }
+    }
+#endif
+
+    /* test SEGV reporting */
+    printf("PF exception:\n");
+    if (setjmp(jmp_env) == 0) {
+        val = 1;
+        /* we add a nop to test a weird PC retrieval case */
+        asm volatile ("nop");
+        /* now store in an invalid address */
+        *(char *)0x1234 = 1;
+    }
+
+    /* test SEGV reporting */
+    printf("PF exception:\n");
+    if (setjmp(jmp_env) == 0) {
+        val = 1;
+        /* read from an invalid address */
+        v1 = *(char *)0x1234;
+    }
+
+    /* test illegal instruction reporting */
+    printf("UD2 exception:\n");
+    if (setjmp(jmp_env) == 0) {
+        /* now execute an invalid instruction */
+        asm volatile("ud2");
+    }
+    printf("lock nop exception:\n");
+    if (setjmp(jmp_env) == 0) {
+        /* now execute an invalid instruction */
+        asm volatile(".byte 0xf0, 0x90");
+    }
+
+    printf("INT exception:\n");
+    if (setjmp(jmp_env) == 0) {
+        asm volatile ("int $0xfd");
+    }
+    if (setjmp(jmp_env) == 0) {
+        asm volatile ("int $0x01");
+    }
+    if (setjmp(jmp_env) == 0) {
+        asm volatile (".byte 0xcd, 0x03");
+    }
+    if (setjmp(jmp_env) == 0) {
+        asm volatile ("int $0x04");
+    }
+    if (setjmp(jmp_env) == 0) {
+        asm volatile ("int $0x05");
+    }
+
+    printf("INT3 exception:\n");
+    if (setjmp(jmp_env) == 0) {
+        asm volatile ("int3");
+    }
+
+    printf("CLI exception:\n");
+    if (setjmp(jmp_env) == 0) {
+        asm volatile ("cli");
+    }
+
+    printf("STI exception:\n");
+    if (setjmp(jmp_env) == 0) {
+        asm volatile ("cli");
+    }
+
+#if !defined(__x86_64__)
+    printf("INTO exception:\n");
+    if (setjmp(jmp_env) == 0) {
+        /* overflow exception */
+        asm volatile ("addl $1, %0 ; into" : : "r" (0x7fffffff));
+    }
+#endif
+
+    printf("OUTB exception:\n");
+    if (setjmp(jmp_env) == 0) {
+        asm volatile ("outb %%al, %%dx" : : "d" (0x4321), "a" (0));
+    }
+
+    printf("INB exception:\n");
+    if (setjmp(jmp_env) == 0) {
+        asm volatile ("inb %%dx, %%al" : "=a" (val) : "d" (0x4321));
+    }
+
+    printf("REP OUTSB exception:\n");
+    if (setjmp(jmp_env) == 0) {
+        asm volatile ("rep outsb" : : "d" (0x4321), "S" (tab), "c" (1));
+    }
+
+    printf("REP INSB exception:\n");
+    if (setjmp(jmp_env) == 0) {
+        asm volatile ("rep insb" : : "d" (0x4321), "D" (tab), "c" (1));
+    }
+
+    printf("HLT exception:\n");
+    if (setjmp(jmp_env) == 0) {
+        asm volatile ("hlt");
+    }
+
+    printf("single step exception:\n");
+    val = 0;
+    if (setjmp(jmp_env) == 0) {
+        asm volatile ("pushf\n"
+                      "orl $0x00100, (%%esp)\n"
+                      "popf\n"
+                      "movl $0xabcd, %0\n"
+                      "movl $0x0, %0\n" : "=m" (val) : : "cc", "memory");
+    }
+    printf("val=0x%x\n", val);
+}
+
+#if !defined(__x86_64__)
+/* specific precise single step test */
+void sig_trap_handler(int sig, siginfo_t *info, void *puc)
+{
+    ucontext_t *uc = puc;
+//    printf("EIP=" FMTLX "\n", (long)uc->uc_mcontext.gregs[REG_EIP]);
+}
+
+
+const uint8_t sstep_buf1[4] = { 1, 2, 3, 4};
+uint8_t sstep_buf2[4];
+
+void test_single_step(void)
+{
+    struct sigaction act;
+    volatile int val;
+    int i;
+
+    val = 0;
+    act.sa_sigaction = sig_trap_handler;
+    sigemptyset(&act.sa_mask);
+    act.sa_flags = SA_SIGINFO;
+    sigaction(SIGTRAP, &act, NULL);
+    asm volatile ("pushf\n"
+                  "orl $0x00100, (%%esp)\n"
+                  "popf\n"
+                  "movl $0xabcd, %0\n"
+
+                  /* jmp test */
+                  "movl $3, %%ecx\n"
+                  "1:\n"
+                  "addl $1, %0\n"
+                  "decl %%ecx\n"
+                  "jnz 1b\n"
+
+                  /* movsb: the single step should stop at each movsb iteration */
+                  "movl $sstep_buf1, %%esi\n"
+                  "movl $sstep_buf2, %%edi\n"
+                  "movl $0, %%ecx\n"
+                  "rep movsb\n"
+                  "movl $3, %%ecx\n"
+                  "rep movsb\n"
+                  "movl $1, %%ecx\n"
+                  "rep movsb\n"
+
+                  /* cmpsb: the single step should stop at each cmpsb iteration */
+                  "movl $sstep_buf1, %%esi\n"
+                  "movl $sstep_buf2, %%edi\n"
+                  "movl $0, %%ecx\n"
+                  "rep cmpsb\n"
+                  "movl $4, %%ecx\n"
+                  "rep cmpsb\n"
+
+                  /* getpid() syscall: single step should skip one
+                     instruction */
+                  "movl $20, %%eax\n"
+                  "int $0x80\n"
+                  "movl $0, %%eax\n"
+
+                  /* when modifying SS, trace is not done on the next
+                     instruction */
+                  "movl %%ss, %%ecx\n"
+                  "movl %%ecx, %%ss\n"
+                  "addl $1, %0\n"
+                  "movl $1, %%eax\n"
+                  "movl %%ecx, %%ss\n"
+                  "jmp 1f\n"
+                  "addl $1, %0\n"
+                  "1:\n"
+                  "movl $1, %%eax\n"
+                  "pushl %%ecx\n"
+                  "popl %%ss\n"
+                  "addl $1, %0\n"
+                  "movl $1, %%eax\n"
+
+                  "pushf\n"
+                  "andl $~0x00100, (%%esp)\n"
+                  "popf\n"
+                  : "=m" (val)
+                  :
+                  : "cc", "memory", "eax", "ecx", "esi", "edi");
+    printf("val=%d\n", val);
+    for(i = 0; i < 4; i++)
+        printf("sstep_buf2[%d] = %d\n", i, sstep_buf2[i]);
+}
+
+/* self modifying code test */
+uint8_t code[] = {
+    0xb8, 0x1, 0x00, 0x00, 0x00, /* movl $1, %eax */
+    0xc3, /* ret */
+};
+
+asm(".section \".data\"\n"
+    "smc_code2:\n"
+    "movl 4(%esp), %eax\n"
+    "movl %eax, smc_patch_addr2 + 1\n"
+    "nop\n"
+    "nop\n"
+    "nop\n"
+    "nop\n"
+    "nop\n"
+    "nop\n"
+    "nop\n"
+    "nop\n"
+    "smc_patch_addr2:\n"
+    "movl $1, %eax\n"
+    "ret\n"
+    ".previous\n"
+    );
+
+typedef int FuncType(void);
+extern int smc_code2(int);
+void test_self_modifying_code(void)
+{
+    int i;
+    printf("self modifying code:\n");
+    printf("func1 = 0x%x\n", ((FuncType *)code)());
+    for(i = 2; i <= 4; i++) {
+        code[1] = i;
+        printf("func%d = 0x%x\n", i, ((FuncType *)code)());
+    }
+
+    /* more difficult test : the modified code is just after the
+       modifying instruction. It is forbidden in Intel specs, but it
+       is used by old DOS programs */
+    for(i = 2; i <= 4; i++) {
+        printf("smc_code2(%d) = %d\n", i, smc_code2(i));
+    }
+}
+#endif
+#endif
 
 long enter_stack[4096];
 
@@ -2333,6 +2752,7 @@ int main(int argc, char **argv)
         func = *ptr++;
         func();
     }
+
     test_bsx();
     test_mul();
     test_jcc();
@@ -2351,6 +2771,11 @@ int main(int argc, char **argv)
 #endif
 #ifdef TEST_VM86
     test_vm86();
+#endif
+#if !defined(__x86_64__)
+//    test_exceptions();
+//    test_self_modifying_code();
+//    test_single_step();
 #endif
     test_enter();
     test_conv();
