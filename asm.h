@@ -75,6 +75,8 @@ typedef long double real10;
 
 namespace m2c {
 
+typedef dd _offsets;
+
 template<class S>
 S getdata(const S& s);
 
@@ -157,7 +159,7 @@ template <class D, class S>
 inline void bitset(D& dest, S src, size_t bit)  // set n-th bit to 1
 {dest=(bit>=0)?(( (dest) & (~nthbitone(dest,bit))) | ((src&1) << bit)):dest;}
 
-db LSB(dd a) {return a&1;}  // get lower bit
+inline static db LSB(dd a) {return a&1;}  // get lower bit
 
 template <class D>
 inline db MSB(D a)  // get highest bit
@@ -461,28 +463,29 @@ AFFECT_CF(((Destination<<m2c::bitsizeof(Destination)+Source) >> (32 - Count)) & 
  }
 }
 */
-template <>
-void SHLD_(dw& Destination, dw Source, size_t Count, m2c::eflags& m2cflags)
+//template <>
+static void SHLD_(dw& Destination, dw Source, size_t Count, m2c::eflags& m2cflags)
 { 
  if(Count != 0) {
-int TCount = Count&(2*m2c::bitsizeof(Destination)-1);
-if (TCount>m2c::bitsizeof(Destination)) {SHRD_(Destination, Source, 2*m2c::bitsizeof(Destination)-TCount, m2cflags);} 
-else
-{
-//AFFECT_CF(((Destination<<m2c::bitsizeof(Destination)+Source) >> (32 - Count)) & 1);
-AFFECT_CF(m2c::getbit(Destination,m2c::bitsizeof(Destination)-TCount));
+   int TCount = Count&(2*m2c::bitsizeof(Destination)-1);
+   if (TCount>m2c::bitsizeof(Destination))
+      {SHRD_(Destination, Source, 2*m2c::bitsizeof(Destination)-TCount, m2cflags);} 
+   else
+   {
+      //AFFECT_CF(((Destination<<m2c::bitsizeof(Destination)+Source) >> (32 - Count)) & 1);
+      AFFECT_CF(m2c::getbit(Destination,m2c::bitsizeof(Destination)-TCount));
                 dw originalDest = Destination;
 		Destination<<=TCount;
 		for(int i = 0; i < TCount; ++i) 
 			if (i>=0) {m2c::bitset(Destination,m2c::getbit(Source,m2c::bitsizeof(Destination) - TCount + i),i);}
 //        AFFECT_CF((Destination >> (32 - TCount)) & 1);
-	AFFECT_OF((Destination ^ originalDest) & 0x8000);
-}
- }
+      AFFECT_OF((Destination ^ originalDest) & 0x8000);
+   }
+               }
 }
 
-template <>
-void SHLD_(dd& op1, dd op2, size_t op3, m2c::eflags& m2cflags)
+//template <>
+static void SHLD_(dd& op1, dd op2, size_t op3, m2c::eflags& m2cflags)
 {
 	db val=op3 & 0x1F;
 	if (!val) return;
@@ -1015,7 +1018,7 @@ int8_t asm2C_IN(int16_t data);
 
 // dosbox logcpu format
     #define R(a) {m2c::log_debug("%05d %04X:%08X  %-54s EAX:%08X EBX:%08X ECX:%08X EDX:%08X ESI:%08X EDI:%08X EBP:%08X ESP:%08X DS:%04X ES:%04X FS:%04X GS:%04X SS:%04X CF:%d ZF:%d SF:%d OF:%d AF:%d PF:%d IF:%d\n", \
-                         __LINE__,cs,eip,#a,       eax,     ebx,     ecx,     edx,     esi,     edi,     ebp,     esp,     ds,     es,     fs,     gs,     ss,     CF   ,ZF   ,SF   ,OF   ,AF   ,PF,   IF);} \
+                         __LINE__,cs,eip,#a,       eax,     ebx,     ecx,     edx,     esi,     edi,     ebp,     esp,     ds,     es,     fs,     gs,     ss,     GET_CF()   ,GET_ZF()   ,GET_SF()   ,GET_OF()   ,GET_AF()   ,GET_PF(),   GET_IF());} \
 	a 
 
 #else
@@ -1085,7 +1088,6 @@ bool is_little_endian();
 #define XLATB XLAT
 #define LOCK // TODO check
 
-typedef dd _offsets;
 /*
 #ifndef __BORLANDC__
 enum  _offsets : int;

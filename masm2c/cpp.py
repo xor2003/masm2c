@@ -1107,14 +1107,14 @@ class Cpp(object):
         # if self.d in ['sp', 'esp'] and check_int(self.s):
         #    self.__pushpop_count += int(self.s)
         if self.d == self.s:
-            return "\t%s = 0;AFFECT_ZFifz(0); AFFECT_SF(%s,0);\n" % (self.d, self.d)
+            return "\t%s = 0;AFFECT_ZFifz(1); AFFECT_SF(0);\n" % self.d
         else:
             return "\tR(SUB(%s, %s));\n" % (self.d, self.s)
 
     def _xor(self, dst, src):
         self.d, self.s = self.parse2(dst, src)
         if self.d == self.s:
-            return "\t%s = 0;AFFECT_ZFifz(0); AFFECT_SF(%s,0);\n" % (self.d, self.d)
+            return "\t%s = 0;AFFECT_ZFifz(1); AFFECT_SF(0);\n" % self.d
         else:
             return "\tR(XOR(%s, %s));\n" % (self.d, self.s)
 

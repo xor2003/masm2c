@@ -55,7 +55,7 @@
   #define STOSB STOS(1,3)
   #define STOSW STOS(2,2)
  #else
-/*
+
  //SDL2 VGA
   #if SDL_MAJOR_VERSION == 2 && !defined(NOSDL)
    #define STOSB { \
