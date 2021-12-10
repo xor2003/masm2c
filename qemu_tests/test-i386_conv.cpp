@@ -77,7 +77,7 @@
 #define __init_call	__attribute__ ((unused,__section__ ("initcall")))
 
 //#define CC_MASK (CC_C | CC_P | CC_Z | CC_S | CC_O | CC_A)
-#define CC_MASK (CC_C | CC_Z | CC_S)
+#define CC_MASK (CC_C | CC_Z | CC_S | CC_O)
 
 
 //--------------------------------------------

@@ -406,12 +406,14 @@ inline void RCL_(D& Destination, C Count, m2c::eflags& m2cflags)
 				AFFECT_CF(TemporaryCF);
 				--TemporaryCount;
 			}
+	AFFECT_OF(GET_CF() ^ m2c::MSB(Destination));
 }
 
 #define RCR(a, b) m2c::RCR_(a, b, m2cflags)
 template <class D, class C>
 inline void RCR_(D& Destination, C Count, m2c::eflags& m2cflags)
 { 
+	AFFECT_OF(GET_CF() ^ m2c::MSB(Destination));
 		int TemporaryCount = Count % (m2c::bitsizeof(Destination) + 1);
 			while(TemporaryCount != 0) {
 				bool TemporaryCF = m2c::LSB(Destination);
@@ -441,19 +443,54 @@ else
  }
 }
 
-template <class D>
-inline void SHLD_(D& Destination, D Source, size_t Count, m2c::eflags& m2cflags)
+//template <class D>
+//void SHLD_(D& op1, D op2, size_t op3, m2c::eflags& m2cflags);
+/*
 { 
  if(Count != 0) {
 int TCount = Count&(2*m2c::bitsizeof(Destination)-1);
 if (TCount>m2c::bitsizeof(Destination)) {SHRD_(Destination, Source, 2*m2c::bitsizeof(Destination)-TCount, m2cflags);} 
 else
 {
-		AFFECT_CF(m2c::getbit(Destination,m2c::bitsizeof(Destination)-TCount)); Destination<<=TCount;
+AFFECT_CF(((Destination<<m2c::bitsizeof(Destination)+Source) >> (32 - Count)) & 1);
+//		AFFECT_CF(m2c::getbit(Destination,m2c::bitsizeof(Destination)-TCount)); 
+		Destination<<=TCount;
 		for(int i = 0; i < TCount; ++i) 
 			if (i>=0) {m2c::bitset(Destination,m2c::getbit(Source,m2c::bitsizeof(Destination) - TCount + i),i);}
 }
  }
+}
+*/
+template <>
+void SHLD_(dw& Destination, dw Source, size_t Count, m2c::eflags& m2cflags)
+{ 
+ if(Count != 0) {
+int TCount = Count&(2*m2c::bitsizeof(Destination)-1);
+if (TCount>m2c::bitsizeof(Destination)) {SHRD_(Destination, Source, 2*m2c::bitsizeof(Destination)-TCount, m2cflags);} 
+else
+{
+//AFFECT_CF(((Destination<<m2c::bitsizeof(Destination)+Source) >> (32 - Count)) & 1);
+AFFECT_CF(m2c::getbit(Destination,m2c::bitsizeof(Destination)-TCount));
+                dw originalDest = Destination;
+		Destination<<=TCount;
+		for(int i = 0; i < TCount; ++i) 
+			if (i>=0) {m2c::bitset(Destination,m2c::getbit(Source,m2c::bitsizeof(Destination) - TCount + i),i);}
+//        AFFECT_CF((Destination >> (32 - TCount)) & 1);
+	AFFECT_OF((Destination ^ originalDest) & 0x8000);
+}
+ }
+}
+
+template <>
+void SHLD_(dd& op1, dd op2, size_t op3, m2c::eflags& m2cflags)
+{
+	db val=op3 & 0x1F;
+	if (!val) return;
+	db lf_var2b=val;
+        dd lf_var1d=op1;
+	op1 = (lf_var1d << lf_var2b) | (op2 >> (32-lf_var2b));
+        AFFECT_CF((lf_var1d >> (32 - lf_var2b)) & 1);
+	AFFECT_OF((op1 ^ lf_var1d) & 0x80000000);
 }
 
 #define SHRD(a, b, c) {m2c::SHRD_(a, b, c, m2cflags);if (c) {AFFECT_ZFifz(a);AFFECT_SF_(a,a);}}

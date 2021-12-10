@@ -73,7 +73,7 @@
 #define __init_call	__attribute__ ((unused,__section__ ("initcall")))
 
 //#define CC_MASK (CC_C | CC_P | CC_Z | CC_S | CC_O | CC_A)
-#define CC_MASK (CC_C | CC_Z | CC_S)
+#define CC_MASK (CC_C | CC_Z | CC_S | CC_O)
 
 #if defined(__x86_64__)
 static inline long i2l(long v)
@@ -135,7 +135,7 @@ static inline long i2l(long v)
 
 #undef CC_MASK
 //#define CC_MASK (CC_C | CC_P | CC_Z | CC_S | CC_O)
-#define CC_MASK (CC_C | CC_Z | CC_S)
+#define CC_MASK (CC_C | CC_Z | CC_S | CC_O)
 
 #define OP shl
 #include "test-i386-shift.h"
@@ -514,7 +514,7 @@ void test_loop(void)
 #define CC_MASK (CC_O | CC_C)
 #endif
 */
-#define CC_MASK (CC_C)
+#define CC_MASK (CC_O | CC_C)
 
 #define OP mul
 #include "test-i386-muldiv.h"
@@ -1520,7 +1520,7 @@ void test_misc(void)
 
 uint8_t str_buffer[4096];
 #undef CC_MASK
-#define CC_MASK (CC_C | CC_Z | CC_S)
+#define CC_MASK (CC_C | CC_Z | CC_S | CC_O)
 
 #define TEST_STRING1(OP, size, DF, REP)\
  print_buffer(); {\
