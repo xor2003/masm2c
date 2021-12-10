@@ -273,6 +273,7 @@ union eflags{
 #define AFFECT_CF(a) m2cflags.bits.setCF(a)
 #define AFFECT_AF(a) m2cflags.bits.setAF(a)
 #define AFFECT_OF(a) m2cflags.bits.setOF(a)
+#define AFFECT_IF(a) m2cflags.bits.setIF(a)
 
 //#define AFFECT_SF(a) {SF=ISNEGATIVE(a);}
 #define ISNEGATIVE(f,a) ( (a) & (1 << (m2c::bitsizeof(f)-1)) )

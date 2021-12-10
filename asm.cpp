@@ -442,7 +442,7 @@ X86_REGREF
    edi = _dpmi_reg.d.edi;
    ebx = _dpmi_reg.d.ebx;
    ebp = _dpmi_reg.d.ebp;
-   CF = _dpmi_reg.d.cflag&1;
+   AFFECT_CF(_dpmi_reg.d.cflag&1);
 #endif
 
 }
@@ -728,7 +728,7 @@ X86_REGREF
 			if (file!=NULL) {
 				eax=1; //TOFIX
 			} else {
-				CF = 1;
+				AFFECT_CF(1);
 				log_error("Error opening file %s\n",fileName);
 			}
 			/*
@@ -751,7 +751,7 @@ X86_REGREF
 			//TOFIX
 			log_debug2("Closing file. bx:%d\n",bx);
 			if (fclose(file))  {
-				CF = 1;
+				AFFECT_CF(1);
 				perror("Error");
 				log_error("Error closing file ? bx:%d %p\n",bx,(void *) file);
 			}
@@ -788,7 +788,7 @@ X86_REGREF
 					log_error("r!=cx cx:%d R:%zu \n",cx,r);
 					if(!feof(file)) {
 						log_error("Error reading ? %d %zu %p\n",cx,r,(void *) file);
-						CF = 1;
+						AFFECT_CF(1);
 					}
 				} else {
 					log_debug2("Reading OK %p\n",(void *) file);
@@ -798,7 +798,7 @@ X86_REGREF
 			/*
 			   if (ax!=cx) {
 			    log_debug("Error reading ? %d %d\n",ax,cx);
-			    m.CF = 1;
+			    m.AFFECT_CF(1);
 
 			   }
 			 */
@@ -834,7 +834,7 @@ X86_REGREF
 			log_debug2("Seeking to offset %ld %d\n",offset,seek);
 			if (fseek(file,offset,seek)!=0) {
 				log_error("Error seeking\n");
-				CF=1;
+				AFFECT_CF(1);
 			}
 			return;
 		}
@@ -855,7 +855,7 @@ X86_REGREF
 			//   ;    carry flag clear
 			//   ;    AX  =  address of allocated memory block
 			if (bx==0xffff)
-				{ CF=1;
+				{ AFFECT_CF(1);
 				  return;
 				}
 /*
@@ -863,7 +863,7 @@ X86_REGREF
 			log_debug2("Function 0501h - Allocate Memory Block: %d para\n",bx);
 
 			if (heapPointer+nbBlocks>=HEAP_SIZE) {
-				CF = 1;
+				AFFECT_CF(1);
 				log_error("Not enough memory (increase HEAP_SIZE)\n");
 				exit(1);
 				return;
@@ -884,9 +884,9 @@ X86_REGREF
         DosMemLargest(&bx);
         if (DosMemCheck() != SUCCESS)
            {log_error("MCB chain corrupted\n");exit(1);}
-           CF=1;
+           AFFECT_CF(1);
       }
-	CF=(rc!=SUCCESS);
+	AFFECT_CF(rc!=SUCCESS);
       ax++;   /* DosMemAlloc() returns seg of MCB rather than data */
 	return;
 			break;
@@ -897,9 +897,9 @@ X86_REGREF
       {
         if (DosMemCheck() != SUCCESS)
            {log_error("MCB chain corrupted\n");exit(1);}
-           CF=1;
+           AFFECT_CF(1);
       }
-	CF=(rc!=SUCCESS);
+	AFFECT_CF(rc!=SUCCESS);
 	return;
       break;
 
@@ -912,10 +912,10 @@ X86_REGREF
       {
         if (DosMemCheck() != SUCCESS)
            {log_error("after 4a: MCB chain corrupted\n");exit(1);}
-           CF=1;
+           AFFECT_CF(1);
       }
       ax = es; /* Undocumented MS-DOS behaviour expected by BRUN45! */
-	CF=(rc!=SUCCESS);
+	AFFECT_CF(rc!=SUCCESS);
 	return;
       break;
 		case 0x4E: // find first matching file
@@ -923,8 +923,8 @@ X86_REGREF
 			// cur dir is root
 			log_debug2("Find first file %s\n",(void *) (db *) realAddress(dx, ds));
 #ifdef __DJGPP__
-     CF = _dos_findfirst((const char *) raddr(ds, dx), cx,
-                                 diskTransferAddr);
+     AFFECT_CF(_dos_findfirst((const char *) raddr(ds, dx), cx,
+                                 diskTransferAddr));
 #else
 			strcpy((char*)diskTransferAddr+0x1e,"HACKER4.S3M");
 #endif
@@ -935,9 +935,9 @@ X86_REGREF
 			// cur dir is root
 			log_debug2("Find next file %s\n",(void *) (db *) realAddress(dx, ds));
 #ifdef __DJGPP__
-     CF = _dos_findnext(diskTransferAddr);
+     AFFECT_CF(_dos_findnext(diskTransferAddr));
 #else
-			CF=1;
+			AFFECT_CF(1);
 #endif
 			return;
 		}
@@ -984,7 +984,7 @@ X86_REGREF
 			 
 			log_debug2("Function 0000h - Allocate %d Descriptors\n",cx);
 			if (selectorsPointer+cx>=NB_SELECTORS) {
-				CF = 1;
+				AFFECT_CF(1);
 				log_error("Not enough free selectors (increase NB_SELECTORS)\n");
 				return;
 			} else {
@@ -1008,7 +1008,7 @@ X86_REGREF
 			 
 			log_debug2("Function 0002h - Converts a real mode segment into a protected mode descriptor real mode segment: %d\n",ebx);
 			if (selectorsPointer+1>=NB_SELECTORS) {
-				CF = 1;
+				AFFECT_CF(1);
 				log_error("Not enough free selectors (increase NB_SELECTORS)\n");
 				return;
 			}
@@ -1034,7 +1034,7 @@ X86_REGREF
 		{
 			log_debug2("Function 0007h - Set Segment Base Address: ebx: %x, edx:%x ecx:%x\n",ebx,edx,ecx);
 			if (bx>selectorsPointer) {
-				CF = 1;
+				AFFECT_CF(1);
 				log_error("Error: selector number doesnt exist\n");
 				return;
 			}
@@ -1078,7 +1078,7 @@ X86_REGREF
 			log_debug2("Function 0501h - Allocate Memory Block: %d bytes\n",nbBlocks);
 
 			if (heapPointer+nbBlocks>=HEAP_SIZE) {
-				CF = 1;
+				AFFECT_CF(1);
 				log_error("Not enough memory (increase HEAP_SIZE)\n");
 				exit(1);
 				return;
@@ -1146,7 +1146,7 @@ X86_REGREF
 #endif
 		break;
 	}
-	CF = 1;
+	AFFECT_CF(1);
 	log_debug("Error DOSInt 0x%x ah:0x%x al:0x%x: bx:0x%x not supported.\n",a,ah,al,bx);
 }
 
