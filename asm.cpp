@@ -209,7 +209,7 @@ X86_REGREF
 	log_debug("first pixels vgaRam: %x\n",*vgaRam);
  #endif
 #endif
-	log_debug("flags: ZF = %d\n",ZF);
+	log_debug("flags: ZF = %d\n",GET_ZF());
 	log_debug("top stack=%d\n",stackPointer);
 	checkIfVgaRamEmpty();
 }
@@ -468,7 +468,7 @@ void asm2C_INT(struct _STATE* _state, int a) {
 X86_REGREF
 	static FILE * file;
 	int i;
-	CF = 0;
+	AFFECT_CF(0);
 	int rc;
 #define SUCCESS         0       /* Function was successful      */
 	log_debug2("INT %x ax=%x bx=%x cx=%x dx=%x\n",a,ax,bx,cx,dx);
@@ -1536,8 +1536,15 @@ int main(int argc, char *argv[]) {
 
     _state->_indent = 0;
 
-    eax = ebx = ecx = edx = ebp = esi = edi = DF = fs = gs = 0; // according to ms-dos 6.22 debuger
-    CF = ZF = SF = OF = AF = PF = IF = 0;
+    eax = ebx = ecx = edx = ebp = esi = edi = fs = gs = 0; // according to ms-dos 6.22 debuger
+    AFFECT_DF(0);
+    AFFECT_CF(0);
+    AFFECT_ZF(0);
+    AFFECT_SF(0);
+    AFFECT_OF(0);
+    AFFECT_AF(0);
+    AFFECT_PF(0);
+    AFFECT_IF(0);
     cx = 0xff; // dummy size of executable
 
 
