@@ -312,10 +312,16 @@ inline void OR_(D& dest, const S& src, m2c::eflags& m2cflags)
 		AFFECT_CF(0);
  }
 
-#define XOR(a,b) {a=(a)^(b); \
-		AFFECT_ZFifz(a); \
-		AFFECT_SF_(a,a); \
-		AFFECT_CF(0);}
+#define XOR(a, b) m2c::XOR_(a, b, m2cflags)
+template <class D, class S>
+inline void XOR_(D& dest, const S& src, m2c::eflags& m2cflags)
+{
+   D d = m2c::getdata<D>(dest);
+   m2c::setdata(&dest, d ^ static_cast<D>(m2c::getdata<S>(src)));
+		AFFECT_ZFifz(dest); 
+		AFFECT_SF_(dest,dest); 
+		AFFECT_CF(0);
+ }
 
 #define AND(a, b) m2c::AND_(a, b, m2cflags)
 template <class D, class S>
@@ -340,9 +346,13 @@ AFFECT_CF((a)!=0);
 		AFFECT_SF_(a,a);
 }
 
-#define TEST(a,b) {AFFECT_ZFifz((a)&(b)); \
-		AFFECT_CF(0); \
-		AFFECT_SF(a,(a)&(b));}
+#define TEST(a, b) m2c::TEST_(a, b, m2cflags)
+template <class D, class S>
+inline void TEST_(D& a, const S& b, m2c::eflags& m2cflags)
+{AFFECT_ZFifz((a)&(b));
+		AFFECT_CF(0);
+		AFFECT_SF_(a,(a)&(b));}
+
 /*
 #define SHR(a,b) {if (b) {AFFECT_CF((a>>(b-1))&1);\
 		a=a>>b;\
