@@ -1,7 +1,7 @@
 #ifndef __asm_32_h__
 #define __asm_32_h__
 
-  #define raddr(segment,offset) (reinterpret_cast<db *>(offset))
+static inline db* raddr(dw segment,dd offset) {return reinterpret_cast<db *>(offset);}
 
  typedef dd MWORDSIZE;
  #define offset(segment,name) ((size_t)(db*)&name)

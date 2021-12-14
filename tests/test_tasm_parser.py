@@ -208,7 +208,7 @@ extrn gameconfig:GAMEINFO
     #    self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('pop     small word ptr [esp]')), u'\tR(POP(*(dw*)(raddr(ss,esp))));\n')
 
     def test_instr_20(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('call dx')), u'\tR(CALL(__dispatch_call));\n')
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('call dx')), u'\tR(CALL(__dispatch_call,dx));\n')
 
     #def test_instr_30(self):
     #    self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('pop     dword ptr [esp] eax edx')), u'\tR(POP(*(dd*)(raddr(ss,esp))));\n\tR(POP(eax));\n\tR(POP(edx));\n')
@@ -280,7 +280,7 @@ extrn gameconfig:GAMEINFO
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('cmp b,256+3')), u'\tR(CMP(b, 256+3));\n')
 
     def test_instr_250(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('call [cs:table+ax]')), '\tR(CALL(__dispatch_call));\n')
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('call [cs:table+ax]')), '\tR(CALL(__dispatch_call,*(dw*)(((db*)&table)+ax)));\n')
 
     def test_instr_260(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('CMP eax,1')), u'\tR(CMP(eax, 1));\n')
@@ -3580,19 +3580,19 @@ extrn gameconfig:GAMEINFO
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code(u'repne lodsb')), 'LODSB;\n')
 
     def test_instr_11370(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('call    dword ptr [ebx-4]')), '\tR(CALL(__dispatch_call));\n')
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('call    dword ptr [ebx-4]')), '\tR(CALL(__dispatch_call,*(dd*)(raddr(ds,ebx-4))));\n')
 
     def test_instr_11380(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('call    exec_adc')), u'\tR(CALL(exec_adc));\n')
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('call    exec_adc')), u'\tR(CALL(exec_adc,0));\n')
 
     def test_instr_11390(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('call    printf')), '\tR(CALL(__dispatch_call));\n')
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('call    printf')), '\tR(CALL(__dispatch_call,printf));\n')
 
     def test_instr_11400(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('call    test_bcd')), u'\tR(CALLF(test_bcd));\n')
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('call    test_bcd')), u'\tR(CALLF(test_bcd,0));\n')
 
     def test_instr_11410(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('call printeax')), u'\tR(CALL(printeax));\n')
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('call printeax')), u'\tR(CALL(printeax,0));\n')
 
     def test_instr_11420(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('cmp wordarray,2')), u'\tR(CMP(*(wordarray), 2));\n')
@@ -3645,10 +3645,10 @@ extrn gameconfig:GAMEINFO
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('jmp cs:[bx]')), u'\t\tR(JMP(__dispatch_call));\n')
 
     def test_instr_11610(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('call exec_adc')),u'\tR(CALL(exec_adc));\n')
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('call exec_adc')),u'\tR(CALL(exec_adc,0));\n')
 
     def test_instr_11620(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('call far ptr test_bcd')),u'\tR(CALLF(test_bcd));\n')
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('call far ptr test_bcd')),u'\tR(CALLF(test_bcd,0));\n')
 
     def test_instr_11560(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('cmp gameconfig.game_opponenttype, 0')), u'\tR(CMP(gameconfig.game_opponenttype, 0));\n')

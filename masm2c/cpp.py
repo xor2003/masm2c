@@ -1058,7 +1058,7 @@ class Cpp(object):
             #    self.body += f"__disp=0;\n"
         else:
             disp, dst = self.proc_strategy.forward_to_dispatcher(dst)
-            self.body += addtobody
+            #self.body += addtobody
 
         dst = self.proc_strategy.fix_call_label(dst)
         dst = cpp_mangle_label(dst)
