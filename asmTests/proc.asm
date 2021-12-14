@@ -30,6 +30,12 @@ mov al,3
 cmp ebx,3
 jne failure
 
+mov al,4
+call aa
+cmp ebx,4
+jne failure
+
+
 mov al,0
 JMP exitLabel
 ;mov edx,offset exitLabel
@@ -64,6 +70,15 @@ aincedx proc near
 inc edx
 ret
 aincedx endp
+
+aa proc near
+mov ebx,555
+aa endp
+
+bb proc near
+mov ebx,4
+ret
+bb endp
 
 
 _TEXT   ends ;IGNORE

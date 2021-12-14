@@ -6,7 +6,8 @@
 #if defined(_PROTECTED_MODE)
   #define raddr(segment,offset) ((db *)&m2c::m+(db)(offset)+selectors[segment])
 #else
- #define raddr(segment,offset) (((db *)&m2c::m + ((segment)<<4) + (offset) ))
+ //#define raddr(segment,offset) (((db *)&m2c::m + ((segment)<<4) + (offset) ))
+static inline db* raddr(dw segment,dw offset) {return (db *)&m + (segment<<4) + offset;}
 #endif
 
  #define offset(segment,name) ((db*)(&name)-(db*)(&segment))
@@ -18,7 +19,7 @@
  #define REP cx++;while (--cx != 0)
  #define REPE AFFECT_ZFifz(0);cx++;while (--cx != 0 && GET_ZF())
  #define REPNE AFFECT_ZFifz(1);cx++;while (--cx != 0 && !GET_ZF())
- #define XLAT {al = *raddr(ds,bx+al);}
+ #define XLAT {al = *m2c::raddr(ds,bx+al);}
  #define CMPSB \
 	{  \
 			db* src=realAddress(si,ds); db* dest=realAddress(di,es); \
@@ -64,7 +65,7 @@
 	  SDL_SetRenderDrawColor(renderer, vgaPalette[3*al+2], vgaPalette[3*al+1], vgaPalette[3*al], 255); \
           SDL_RenderDrawPoint(renderer, di%320, di/320); \
   	  SDL_RenderPresent(renderer); \
-	  di+=(DF==0)?1:-1;} \
+	  di+=(GET_DF()==0)?1:-1;} \
 	else \
 		{STOS(1,0);} \
 	}
@@ -85,8 +86,8 @@
  #endif
  #define STOSD STOS(4,0)
 
- #define INSB {db averytemporary3 = asm2C_IN(dx);*realAddress(di,es)=averytemporary3;di+=(DF==0)?1:-1;}
- #define INSW {dw averytemporary3 = asm2C_INW(dx);*realAddress(di,es)=averytemporary3;di+=(DF==0)?2:-2;}
+ #define INSB {db averytemporary3 = asm2C_IN(dx);*realAddress(di,es)=averytemporary3;di+=(GET_DF()==0)?1:-1;}
+ #define INSW {dw averytemporary3 = asm2C_INW(dx);*realAddress(di,es)=averytemporary3;di+=(GET_DF()==0)?2:-2;}
 
 #define LOOP(label) DEC(cx); JNZ(label)
 #define LOOPE(label) --cx; if (cx!=0 && GET_ZF()) GOTOLABEL(label) //TODO

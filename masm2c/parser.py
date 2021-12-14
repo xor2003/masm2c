@@ -1454,6 +1454,10 @@ class Parser:
             o.raw_line = ''
             o.line_number = 0
             proc.stmts.append(o)
+            o = proc.create_instruction_object('ret')
+            o.raw_line = ''
+            o.line_number = 0
+            proc.stmts.append(o)
 
     def action_instruction(self, instruction, args, raw='', line_number=0):
         if instruction[0].lower() == 'j' and len(args) == 1 and isinstance(args[0], Token) and \

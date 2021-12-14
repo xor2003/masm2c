@@ -56,7 +56,7 @@ class CrossJump(Exception):
 def produce_jump_table(labels):
     # Produce jump table
     result = """
-    return;
+    assert(0);
     __dispatch_call:
     switch (__disp) {
 """
@@ -74,10 +74,8 @@ def produce_jump_table(labels):
 
 class SeparateProcStrategy:
 
-    def forward_to_dispatcher(self, name):
-        addtobody = "__disp = (dw)(" + name + ");\n"
-        name = "__dispatch_call"
-        return addtobody, name
+    def forward_to_dispatcher(self, disp):
+        return disp, "__dispatch_call"
 
     def fix_call_label(self, dst):
         return dst
@@ -1033,13 +1031,13 @@ class Cpp(object):
         ret = ""
         # dst = self.expand(name, destination = False)
         dst, far = self.jump_to_label(name)
-
+        disp = '0'
         hasglobal = self.__context.has_global(dst)
         if hasglobal:
             g = self.__context.get_global(dst)
             if isinstance(g, op.label) and not g.isproc and not dst in self.__procs and not dst in self.grouped:
                 far = g.far  # make far calls to far procs
-                self.body += f"__disp=m2c::k{dst};\n"
+                disp = f"m2c::k{dst}"
                 dst = g.proc
 
             # calls feat purpose:
@@ -1059,23 +1057,16 @@ class Cpp(object):
             #elif isinstance(g, proc_module.Proc) or dst in self.__procs or dst in self.grouped:
             #    self.body += f"__disp=0;\n"
         else:
-            #ret += f"__disp={dst};\n"
-            #dst = "__dispatch_call"
-            #if self.__context.has_global(name):
-            #name = 'm2c::k'+name
-            addtobody, dst = self.proc_strategy.forward_to_dispatcher(dst)
+            disp, dst = self.proc_strategy.forward_to_dispatcher(dst)
             self.body += addtobody
-        #else:
-        #    addtobody, name = self.proc_strategy.forward_to_dispatcher(name)
-        #    self.body += addtobody
 
         dst = self.proc_strategy.fix_call_label(dst)
         dst = cpp_mangle_label(dst)
 
         if far:
-            ret += "\tR(CALLF(%s));\n" % (dst)
+            ret += f"\tR(CALLF({dst},{disp}));\n"
         else:
-            ret += "\tR(CALL(%s));\n" % (dst)
+            ret += f"\tR(CALL({dst},{disp}));\n"
         return ret
 
     @staticmethod
@@ -1461,78 +1452,89 @@ class Cpp(object):
 
         :return:
         '''
-        for name in self.__procs:
-            proc = self.__context.get_global(name)
+        for index, first_proc_name in enumerate(self.__procs):
+            first_proc = self.__context.get_global(first_proc_name)
 
             labels = set()  # leave only real labels
-            for label_name in proc.used_labels:
-                label = self.__context.get_global(label_name)
-                if isinstance(label, (op.label, proc_module.Proc)):
+            for label_name in first_proc.used_labels:
+                first_label = self.__context.get_global(label_name)
+                if isinstance(first_label, (op.label, proc_module.Proc)):
                     labels.add(label_name)
-            proc.used_labels = labels
+            first_proc.used_labels = labels
 
-            missing = proc.used_labels - proc.provided_labels
+            missing = first_proc.used_labels - first_proc.provided_labels
             proc_to_merge = set()
+            if not first_proc.if_terminated_proc():
+                '''If execution does not terminated in the procedure range when merge it with next proc'''
+                proc_to_merge.add(self.__procs[index+1])
+                logging.info(f"Need to merge {first_proc_name} with {self.__procs[index+1]}")
             if missing:
-                proc_to_merge.add(name)
+                proc_to_merge.add(first_proc_name)
                 for l in missing:
-                    label = self.__context.get_global(l)
-                    if isinstance(label, op.label):
-                        proc_to_merge.add(label.proc)
-                    elif isinstance(label, proc_module.Proc):
-                        proc_to_merge.add(label.name)
+                    first_label = self.__context.get_global(l)
+                    if isinstance(first_label, op.label):
+                        proc_to_merge.add(first_label.proc)
+                    elif isinstance(first_label, proc_module.Proc):
+                        proc_to_merge.add(first_label.name)
 
-            proc.group = proc_to_merge
+            first_proc.group = proc_to_merge
         changed = True
         iteration = 0
         while changed:
             iteration += 1
             logging.info(f"     Identifing proc to merge #{iteration}")
             changed = False
-            for name in self.__procs:
-                proc = self.__context.get_global(name)
-                if proc.group:
-                    for p_name in proc.group:
-                        if name != p_name:
-                            p = self.__context.get_global(p_name)
-                            if not p.group:
-                                p.group = set()
-                            if p.group != proc.group:
-                                p.group.update(proc.group)
-                                changed = True
-        for name in self.__procs:
-            proc = self.__context.get_global(name)
-            if proc.group:
-                logging.info(f"     ~{name}")
-                for p_name in proc.group:
+            for first_proc_name in self.__procs:
+                first_proc = self.__context.get_global(first_proc_name)
+                if first_proc.group:
+                    for p_name in first_proc.group:
+                        if first_proc_name != p_name:
+                            next_proc_name = self.__context.get_global(p_name)
+                            if not next_proc_name.group:
+                                next_proc_name.group = set()
+                            if next_proc_name.group != first_proc.group:
+                                old = next_proc_name.group
+                                next_proc_name.group.update(first_proc.group)
+                                if old != next_proc_name.group:
+                                    changed = True
+        for first_proc_name in self.__procs:
+            first_proc = self.__context.get_global(first_proc_name)
+            if first_proc.group:
+                logging.info(f"     ~{first_proc_name}")
+                for p_name in first_proc.group:
                     logging.info(f"       {p_name}")
         groups = []
         groups_id = 1
-        for name in self.__procs:
-            if name not in self.grouped:
-                proc = self.__context.get_global(name)
-                if proc.group:
-                    label = op.label(name, proc=name, isproc=False, line_number=proc.line_number, far=proc.far)
-                    label.real_offset, label.real_seg = proc.real_offset, proc.real_seg
+        for first_proc_name in self.__procs:
+            if first_proc_name not in self.grouped:
+                first_proc = self.__context.get_global(first_proc_name)
+                if first_proc.group:
+                    first_label = op.label(first_proc_name, proc=first_proc_name, isproc=False, line_number=first_proc.line_number, far=first_proc.far)
+                    first_label.real_offset, first_label.real_seg = first_proc.real_offset, first_proc.real_seg
 
-                    label.used = True
-                    proc.stmts.insert(0, label)
-                    proc.provided_labels.add(name)
-                    self.__context.reset_global(name, label)
-                    group_name = f'_group{groups_id}'
-                    self.grouped |= proc.group
-                    for p in self.__procs:
-                        if p in proc.group:  # Maintain initial proc order
-                            self.groups[p] = group_name
-                            if p != name:
-                                g = self.__context.get_global(p)
-                                label = op.label(p, proc=name, isproc=False, line_number=g.line_number, far=g.far)
-                                label.used = True
-                                proc.add_label(p, label)
-                                proc.merge_two_procs(group_name, g)
-                                self.__context.reset_global(p, label)
-                    groups += [group_name]
-                    self.__context.set_global(group_name, proc)
+                    first_label.used = True
+                    first_proc.stmts.insert(0, first_label)
+                    first_proc.provided_labels.add(first_proc_name)
+                    self.__context.reset_global(first_proc_name, first_label)
+                    self.grouped.add(first_proc_name)
+
+                    new_group_name = f'_group{groups_id}'
+                    self.groups[first_proc_name] = new_group_name
+                    #self.grouped |= first_proc.group
+                    for next_proc_name in self.__procs:
+                        if next_proc_name in first_proc.group:  # Maintain initial proc order
+                            if next_proc_name != first_proc_name:
+                                next_proc = self.__context.get_global(next_proc_name)
+                                if isinstance(next_proc, proc_module.Proc):
+                                    self.groups[next_proc_name] = new_group_name
+                                    next_label = op.label(next_proc_name, proc=first_proc_name, isproc=False, line_number=next_proc.line_number, far=next_proc.far)
+                                    next_label.used = True
+                                    first_proc.add_label(next_proc_name, next_label)
+                                    first_proc.merge_two_procs(new_group_name, next_proc)
+                                    self.__context.reset_global(next_proc_name, next_label)
+                                    self.grouped.add(next_proc_name)
+                    groups += [new_group_name]
+                    self.__context.set_global(new_group_name, first_proc)
                     groups_id += 1
         self.__procs = [x for x in self.__procs if x not in self.grouped]
         self.__procs += groups

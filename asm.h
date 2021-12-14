@@ -75,7 +75,115 @@ typedef long double real10;
 
 namespace m2c {
 
+struct /*__attribute__((__packed__))*/ Memory;
+extern Memory& m;
+
+class Bits{
+unsigned int _CF : 1,
+unused1:1,
+_PF:1,
+unused2:1,
+_AF:1,
+unused3:1,
+_ZF:1,
+_SF:1,
+_TF:1,
+_IF:1,
+_DF:1,
+_OF:1;
+public:
+#define REGDEF_flags(Z) \
+    inline bool set##Z##F(bool i){return (_##Z##F=i);} \
+    inline bool get##Z##F(){return _##Z##F;}
+    inline void reset(){_CF=false;_PF=false;_AF=false;_ZF=false;_SF=false;_TF=false;
+    _IF=false;_DF=false;_OF=false;}
+ 
+ REGDEF_flags(C)
+ REGDEF_flags(P)
+ REGDEF_flags(A)
+ REGDEF_flags(Z)
+ REGDEF_flags(S)
+ REGDEF_flags(T)
+ REGDEF_flags(I)
+ REGDEF_flags(D)
+ REGDEF_flags(O)
+};
+
+union eflags{
+ Bits bits;
+ dd value;
+};
+
 typedef dd _offsets;
+// Regs
+struct _STATE{
+       _STATE()
+       {_str="";
+        _indent=0;
+       }
+
+dd eax;
+dd ebx;
+dd ecx;
+dd edx;
+dd esi;
+dd edi;
+dd esp;
+dd ebp;
+dd eip;
+
+dw cs;         
+dw ds;         
+dw es;         
+dw fs;         
+dw gs;         
+dw ss;         
+                      
+eflags flags;
+db _indent; 
+const char *_str;
+};
+
+#define REGDEF_hl(Z)   \
+uint32_t& e##Z##x = _state->e##Z##x; \
+uint16_t& Z##x = *(uint16_t *)& e##Z##x; \
+uint8_t& Z##l = *(uint8_t *)& e##Z##x; \
+uint8_t& Z##h = *(((uint8_t *)& e##Z##x)+1); 
+
+#define REGDEF_l(Z) \
+uint32_t& e##Z = _state->e##Z; \
+uint16_t& Z = *(uint16_t *)& e##Z ; \
+uint8_t&  Z##l = *(uint8_t *)& e##Z ;
+
+#define REGDEF_nol(Z) \
+uint32_t& e##Z = _state->e##Z; \
+uint16_t& Z = *(uint16_t *)& e##Z ;
+
+#define X86_REGREF \
+    REGDEF_hl(a);     \
+    REGDEF_hl(b);     \
+    REGDEF_hl(c);     \
+    REGDEF_hl(d);     \
+                      \
+    REGDEF_l(si);     \
+    REGDEF_l(di);     \
+    REGDEF_l(sp);     \
+    REGDEF_l(bp);     \
+                      \
+    REGDEF_nol(ip);   \
+                      \
+dw& cs = _state->cs;         \
+dw& ds = _state->ds;         \
+dw& es = _state->es;         \
+dw& fs = _state->fs;         \
+dw& gs = _state->gs;         \
+dw& ss = _state->ss;         \
+m2c::eflags& m2cflags = _state->flags;   \
+dd& stackPointer = _state->esp;\
+m2c::_offsets __disp; \
+dw _source;
+
+typedef void m2cf(_offsets, struct _STATE*); // common masm2c function
 
 template<class S>
 S getdata(const S& s);
@@ -181,7 +289,7 @@ inline db MSB(D a)  // get highest bit
   #include "asm_16.h"
 #endif
 
-#define realAddress(offset, segment) raddr(segment,offset)
+#define realAddress(offset, segment) m2c::raddr(segment,offset)
 
 
 #define seg_offset(segment) ((offset(m2c::m,(segment)))>>4)
@@ -191,43 +299,6 @@ inline db MSB(D a)  // get highest bit
 #define RM_TO_LINEAR(addr)    (((((size_t)addr) & 0xFFFF0000) >> 12) + (((size_t)addr) & 0xFFFF))
 #define RM_OFFSET(addr)       (((size_t)addr) & 0xF)
 #define RM_SEGMENT(addr)      ((((size_t)addr) >> 4) & 0xFFFF)
-
-class Bits{
-unsigned int _CF : 1,
-unused1:1,
-_PF:1,
-unused2:1,
-_AF:1,
-unused3:1,
-_ZF:1,
-_SF:1,
-_TF:1,
-_IF:1,
-_DF:1,
-_OF:1;
-public:
-#define REGDEF_flags(Z) \
-    inline bool set##Z##F(bool i){return (_##Z##F=i);} \
-    inline bool get##Z##F(){return _##Z##F;}
-    inline void reset(){_CF=false;_PF=false;_AF=false;_ZF=false;_SF=false;_TF=false;
-    _IF=false;_DF=false;_OF=false;}
- 
- REGDEF_flags(C)
- REGDEF_flags(P)
- REGDEF_flags(A)
- REGDEF_flags(Z)
- REGDEF_flags(S)
- REGDEF_flags(T)
- REGDEF_flags(I)
- REGDEF_flags(D)
- REGDEF_flags(O)
-};
-
-union eflags{
- Bits bits;
- dd value;
-};
-
 
 
 //pusha AX, CX, DX, BX, SP, BP, SI, DI
@@ -248,16 +319,16 @@ union eflags{
 */
 #ifdef DEBUG
  #define PUSH(a) {dd averytemporary=a;stackPointer-=sizeof(a); \
-		memcpy (raddr(ss,stackPointer), &averytemporary, sizeof (a)); \
+		memcpy (m2c::raddr(ss,stackPointer), &averytemporary, sizeof (a)); \
 		m2c::log_debug("after push %x\n",stackPointer);}
-//		assert((raddr(ss,stackPointer) - ((db*)&stack))>8);}
+//		assert((m2c::raddr(ss,stackPointer) - ((db*)&stack))>8);}
 
- #define POP(a) { m2c::log_debug("before pop %x\n",stackPointer);memcpy (&a, raddr(ss,stackPointer), sizeof (a));stackPointer+=sizeof(a);}
+ #define POP(a) { m2c::log_debug("before pop %x\n",stackPointer);memcpy (&a, m2c::raddr(ss,stackPointer), sizeof (a));stackPointer+=sizeof(a);}
 #else
  #define PUSH(a) {dd averytemporary=a;stackPointer-=sizeof(a); \
-		memcpy (raddr(ss,stackPointer), &averytemporary, sizeof (a));}
+		memcpy (m2c::raddr(ss,stackPointer), &averytemporary, sizeof (a));}
 
- #define POP(a) {memcpy (&a, raddr(ss,stackPointer), sizeof (a));stackPointer+=sizeof(a);}
+ #define POP(a) {memcpy (&a, m2c::raddr(ss,stackPointer), sizeof (a));stackPointer+=sizeof(a);}
 #endif
 
 
@@ -274,20 +345,14 @@ union eflags{
 #define AFFECT_AF(a) m2cflags.bits.setAF(a)
 #define AFFECT_OF(a) m2cflags.bits.setOF(a)
 #define AFFECT_IF(a) m2cflags.bits.setIF(a)
-
-//#define AFFECT_SF(a) {SF=ISNEGATIVE(a);}
 #define ISNEGATIVE(f,a) ( (a) & (1 << (m2c::bitsizeof(f)-1)) )
 #define AFFECT_SF(a) m2cflags.bits.setSF(a)
 #define AFFECT_SF_(f, a) {AFFECT_SF(ISNEGATIVE(f,a));}
 #define AFFECT_ZF(a) m2cflags.bits.setZF(a)
 #define AFFECT_ZFifz(a) m2cflags.bits.setZF((a)==0)
 #define AFFECT_PF(a) m2cflags.bits.setPF(a)
-/*
-#define CMP(a,b) {dd averytemporary=((a)-(b))& m2c::MASK[sizeof(a)]; \
-		AFFECT_CF((averytemporary)>(a)); \
-		AFFECT_ZFifz(averytemporary); \
-		AFFECT_SF_(a,averytemporary);}
-*/
+
+
 #define CMP(a, b) m2c::CMP_(a, b, m2cflags)
 template <class D, class S>
 inline void CMP_(D& dest, const S& src, m2c::eflags& m2cflags)
@@ -353,12 +418,6 @@ inline void TEST_(D& a, const S& b, m2c::eflags& m2cflags)
 		AFFECT_CF(0);
 		AFFECT_SF_(a,(a)&(b));}
 
-/*
-#define SHR(a,b) {if (b) {AFFECT_CF((a>>(b-1))&1);\
-		a=a>>b;\
-		AFFECT_ZFifz(a);\
-		AFFECT_SF_(a,a);}}
-*/
 #define SHR(a, b) m2c::SHR_(a, b, m2cflags)
 template <class D, class S>
 inline void SHR_(D& a, const S& b, m2c::eflags& m2cflags)
@@ -371,8 +430,6 @@ inline void SHR_(D& a, const S& b, m2c::eflags& m2cflags)
 		AFFECT_SF_(a,a);
 		}
 }
-
-
 
 #define SHL(a, b) m2c::SHL_(a, b, m2cflags)
 template <class D, class S>
@@ -730,11 +787,7 @@ inline void DEC_(D& a, m2c::eflags& m2cflags)
 		D a7fff = (1<<( m2c::bitsizeof(a)-1))-1;
 		AFFECT_OF(a==a7fff);
 }
-/*
-#define DEC(a) {a-=1; \
-		AFFECT_ZFifz(a);\
-		AFFECT_SF_(a,a);} 
-*/
+
 
 // #num_args _ #bytes
 #define IMUL1_1(a) {ax=((int8_t)al)*((int8_t)(a)); AFFECT_OF(AFFECT_CF((ax & 0xff80)!=0xff80&&(ax & 0xff80)!=0));}
@@ -921,11 +974,12 @@ void asm2C_OUT(int16_t address, int data);
 int8_t asm2C_IN(int16_t data);
 #define IN(a,b) a = m2c::asm2C_IN(b); TESTJUMPTOBACKGROUND
 
-#define NOP
+#define NOP {;}
 
-#define LAHF {ah= ((CF?1:0)|2|(PF?4:0)|(AF?0x10:0)|(ZF?0x40:0)|(SF?0x80:0)) ;}
-#define SAHF {CF=ah&1; PF=ah&4; AF=ah&0x10; ZF=ah&0x40; SF=ah&0x80;}
-
+//#define LAHF {ah= ((CF?1:0)|2|(PF?4:0)|(AF?0x10:0)|(ZF?0x40:0)|(SF?0x80:0)) ;}
+//#define SAHF {CF=ah&1; PF=ah&4; AF=ah&0x10; ZF=ah&0x40; SF=ah&0x80;}
+#define LAHF {ah= m2cflags.value ;}
+#define SAHF {*(db*)&m2cflags.value = ah;}
 /*
 #define CALLF(label) {log_debug("before callf %d\n",stackPointer);PUSH(cs);CALL(label);}
 #define CALL(label) \
@@ -942,7 +996,7 @@ int8_t asm2C_IN(int16_t data);
 #define RETF {log_debug("before ret %d\n",stackPointer); db averytemporary5=0; POP(averytemporary5); if (averytemporary5!='x') {log_error("Stack corrupted.\n");exit(1);} \
  		POP(jmpbuffer); stackPointer-=2; log_debug("after retf %d\n",stackPointer);longjmp(jmpbuffer, 0);}
 */
-#define CALLF(label) {PUSH(cs);CALL(label);}
+#define CALLF(label, disp) {PUSH(cs);CALL(label, disp);}
 /*
 #define CALL(label) \
 	{ db averytemporary6='x';  \
@@ -996,19 +1050,23 @@ int8_t asm2C_IN(int16_t data);
 
 #else // SINGLEPROCSTRATEGY end separate procs start
 */
+#define CALL(label, disp) {m2c::CALL_(label, _state, disp);}
+static void CALL_(m2cf* label, struct _STATE* _state, _offsets _i=0) {
+ X86_REGREF
+	  MWORDSIZE averytemporary8='xy'; PUSH(averytemporary8);
 #if DEBUG
+	  m2c::log_debug("after call %x\n",stackPointer);
+	  if (_state) {++_state->_indent;_state->_str=m2c::log_spaces(_state->_indent);};
+#endif
+	  label(_i, _state);
+ }
+/*
  #define CALL(label) \
 	{ m2c::MWORDSIZE averytemporary8='xy'; PUSH(averytemporary8); \
 	  m2c::log_debug("after call %x\n",stackPointer); \
-	  ++_state->_indent;_state->_str=m2c::log_spaces(_state->_indent);\
+	  if (_state) {++_state->_indent;_state->_str=m2c::log_spaces(_state->_indent);};\
 	  label(__disp, _state); \
-	}
-#else
- #define CALL(label) \
-	{ m2c::MWORDSIZE averytemporary10='xy'; PUSH(averytemporary10); \
-	  label(__disp, _state); \
-	}
-#endif
+	}*/
 
 //#endif // end separate procs
 
@@ -1108,73 +1166,6 @@ enum  _offsets;
 #endif
 */
 
-// Regs
-struct _STATE{
-       _STATE()
-       {_str="";
-        _indent=0;
-       }
-
-dd eax;
-dd ebx;
-dd ecx;
-dd edx;
-dd esi;
-dd edi;
-dd esp;
-dd ebp;
-dd eip;
-
-dw cs;         
-dw ds;         
-dw es;         
-dw fs;         
-dw gs;         
-dw ss;         
-                      
-m2c::eflags flags;
-db _indent; 
-const char *_str;
-};
-
-#define REGDEF_hl(Z)   \
-uint32_t& e##Z##x = _state->e##Z##x; \
-uint16_t& Z##x = *(uint16_t *)& e##Z##x; \
-uint8_t& Z##l = *(uint8_t *)& e##Z##x; \
-uint8_t& Z##h = *(((uint8_t *)& e##Z##x)+1); 
-
-#define REGDEF_l(Z) \
-uint32_t& e##Z = _state->e##Z; \
-uint16_t& Z = *(uint16_t *)& e##Z ; \
-uint8_t&  Z##l = *(uint8_t *)& e##Z ;
-
-#define REGDEF_nol(Z) \
-uint32_t& e##Z = _state->e##Z; \
-uint16_t& Z = *(uint16_t *)& e##Z ;
-
-#define X86_REGREF \
-    REGDEF_hl(a);     \
-    REGDEF_hl(b);     \
-    REGDEF_hl(c);     \
-    REGDEF_hl(d);     \
-                      \
-    REGDEF_l(si);     \
-    REGDEF_l(di);     \
-    REGDEF_l(sp);     \
-    REGDEF_l(bp);     \
-                      \
-    REGDEF_nol(ip);   \
-                      \
-dw& cs = _state->cs;         \
-dw& ds = _state->ds;         \
-dw& es = _state->es;         \
-dw& fs = _state->fs;         \
-dw& gs = _state->gs;         \
-dw& ss = _state->ss;         \
-m2c::eflags& m2cflags = _state->flags;   \
-dd& stackPointer = _state->esp;\
-m2c::_offsets __disp; \
-dw _source;
 
 /*
 #define X86_REGREF \
@@ -1204,11 +1195,8 @@ extern db vgaPalette[256*3];
 
 // ---------
 
-struct /*__attribute__((__packed__))*/ Memory;
-extern Memory& m;
 extern db(& stack)[STACK_SIZE];
 extern db(& heap)[HEAP_SIZE];
-typedef void m2cf(_offsets, struct _STATE*); // common masm2c function
 extern  m2cf* _ENTRY_POINT_;
 
 
