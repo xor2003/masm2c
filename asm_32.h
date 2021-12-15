@@ -1,7 +1,7 @@
 #ifndef __asm_32_h__
 #define __asm_32_h__
 
-static inline db* raddr(dw segment,dd offset) {return reinterpret_cast<db *>(offset);}
+static inline db* raddr_(dw segment,dd offset) {return reinterpret_cast<db *>(offset);}
 
  typedef dd MWORDSIZE;
  #define offset(segment,name) ((size_t)(db*)&name)
@@ -13,7 +13,7 @@ static inline db* raddr(dw segment,dd offset) {return reinterpret_cast<db *>(off
  #define REP ecx++;while (--ecx != 0)
  #define REPE AFFECT_ZFifz(0);ecx++;while (--ecx != 0 && GET_ZF())
  #define REPNE AFFECT_ZFifz(1);ecx++;while (--ecx != 0 && !GET_ZF())
- #define XLAT {al = *m2c::raddr(ds,ebx+al);}
+ #define XLAT {al = *m2c::raddr_(ds,ebx+al);}
  #define CMPSB \
 	{  \
 			db* src=realAddress(esi,ds); db* dest=realAddress(edi,es); \

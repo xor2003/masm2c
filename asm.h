@@ -288,8 +288,9 @@ inline db MSB(D a)  // get highest bit
 #else
   #include "asm_16.h"
 #endif
+#define raddr(s, o) m2c::raddr_(s, o)
 
-#define realAddress(offset, segment) m2c::raddr(segment,offset)
+#define realAddress(offset, segment) m2c::raddr_(segment,offset)
 
 
 #define seg_offset(segment) ((offset(m2c::m,(segment)))>>4)
@@ -319,16 +320,16 @@ inline db MSB(D a)  // get highest bit
 */
 #ifdef DEBUG
  #define PUSH(a) {dd averytemporary=a;stackPointer-=sizeof(a); \
-		memcpy (m2c::raddr(ss,stackPointer), &averytemporary, sizeof (a)); \
+		memcpy (m2c::raddr_(ss,stackPointer), &averytemporary, sizeof (a)); \
 		m2c::log_debug("after push %x\n",stackPointer);}
-//		assert((m2c::raddr(ss,stackPointer) - ((db*)&stack))>8);}
+//		assert((m2c::raddr_(ss,stackPointer) - ((db*)&stack))>8);}
 
- #define POP(a) { m2c::log_debug("before pop %x\n",stackPointer);memcpy (&a, m2c::raddr(ss,stackPointer), sizeof (a));stackPointer+=sizeof(a);}
+ #define POP(a) { m2c::log_debug("before pop %x\n",stackPointer);memcpy (&a, m2c::raddr_(ss,stackPointer), sizeof (a));stackPointer+=sizeof(a);}
 #else
  #define PUSH(a) {dd averytemporary=a;stackPointer-=sizeof(a); \
-		memcpy (m2c::raddr(ss,stackPointer), &averytemporary, sizeof (a));}
+		memcpy (m2c::raddr_(ss,stackPointer), &averytemporary, sizeof (a));}
 
- #define POP(a) {memcpy (&a, m2c::raddr(ss,stackPointer), sizeof (a));stackPointer+=sizeof(a);}
+ #define POP(a) {memcpy (&a, m2c::raddr_(ss,stackPointer), sizeof (a));stackPointer+=sizeof(a);}
 #endif
 
 
@@ -1015,12 +1016,12 @@ int8_t asm2C_IN(int16_t data);
 
  #define RET {m2c::log_debug("before ret %x\n",stackPointer); m2c::MWORDSIZE averytemporary9=0; POP(averytemporary9); if (averytemporary9!='xy') {m2c::log_error("Emulated stack corruption detected %x.\n",averytemporary9);exit(1);} \
 	m2c::log_debug("after ret %x\n",stackPointer); \
-	--_state->_indent;_state->_str=m2c::log_spaces(_state->_indent);return;}
+	if (_state) {--_state->_indent;_state->_str=m2c::log_spaces(_state->_indent);}return;}
 
  #define RETF {m2c::log_debug("before retf %x\n",stackPointer); m2c::MWORDSIZE averytemporary9=0; POP(averytemporary9); if (averytemporary9!='xy') {m2c::log_error("Emulated stack corruption detected %x.\n",averytemporary9);exit(1);} \
 	dw averytemporary11;POP(averytemporary11); \
 	m2c::log_debug("after retf %x\n",stackPointer); \
-	--_state->_indent;_state->_str=m2c::log_spaces(_state->_indent);return;}
+	if (_state) {--_state->_indent;_state->_str=m2c::log_spaces(_state->_indent);}return;}
 #else
 
  #define RET {m2c::MWORDSIZE averytemporary11=0; POP(averytemporary11);  \

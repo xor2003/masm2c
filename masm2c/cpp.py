@@ -158,8 +158,8 @@ def check_int(s):
 
 
 def parse_bin(s):
-    sign = s.group(1)
-    b = s.group(2)
+    sign = s.to_group_with(1)
+    b = s.to_group_with(2)
     v = hex(int(b, 2))
     if sign:
         v = sign + v
@@ -1473,11 +1473,11 @@ class Cpp(object):
                 for l in missing:
                     first_label = self.__context.get_global(l)
                     if isinstance(first_label, op.label):
-                        proc_to_merge.add(first_label.proc)
+                        proc_to_merge.add(first_label.proc)  # if label then merge proc implementing it
                     elif isinstance(first_label, proc_module.Proc):
                         proc_to_merge.add(first_label.name)
 
-            first_proc.group = proc_to_merge
+            first_proc.to_group_with = proc_to_merge
         changed = True
         iteration = 0
         while changed:
@@ -1486,30 +1486,29 @@ class Cpp(object):
             changed = False
             for first_proc_name in self.__procs:
                 first_proc = self.__context.get_global(first_proc_name)
-                if first_proc.group:
-                    for p_name in first_proc.group:
-                        if first_proc_name != p_name:
-                            next_proc_name = self.__context.get_global(p_name)
-                            if not next_proc_name.group:
-                                next_proc_name.group = set()
-                            if next_proc_name.group != first_proc.group:
-                                old = next_proc_name.group
-                                next_proc_name.group.update(first_proc.group)
-                                if old != next_proc_name.group:
-                                    changed = True
+                for next_proc_name in first_proc.to_group_with:
+                    if first_proc_name != next_proc_name:
+                        next_proc = self.__context.get_global(next_proc_name)
+                        if not next_proc.to_group_with:
+                            next_proc.to_group_with = set()
+                        if first_proc.to_group_with != next_proc.to_group_with:
+                            next_proc.to_group_with = set.union(next_proc.to_group_with, first_proc.to_group_with)
+                            first_proc.to_group_with = next_proc.to_group_with
+                            changed = True
         for first_proc_name in self.__procs:
             first_proc = self.__context.get_global(first_proc_name)
-            if first_proc.group:
+            if first_proc.to_group_with:
                 logging.info(f"     ~{first_proc_name}")
-                for p_name in first_proc.group:
+                for p_name in first_proc.to_group_with:
                     logging.info(f"       {p_name}")
         groups = []
         groups_id = 1
         for first_proc_name in self.__procs:
             if first_proc_name not in self.grouped:
                 first_proc = self.__context.get_global(first_proc_name)
-                if first_proc.group:
-                    first_label = op.label(first_proc_name, proc=first_proc_name, isproc=False, line_number=first_proc.line_number, far=first_proc.far)
+                if first_proc.to_group_with:
+                    new_group_name = f'_group{groups_id}'
+                    first_label = op.label(first_proc_name, proc=new_group_name, isproc=False, line_number=first_proc.line_number, far=first_proc.far)
                     first_label.real_offset, first_label.real_seg = first_proc.real_offset, first_proc.real_seg
 
                     first_label.used = True
@@ -1518,16 +1517,15 @@ class Cpp(object):
                     self.__context.reset_global(first_proc_name, first_label)
                     self.grouped.add(first_proc_name)
 
-                    new_group_name = f'_group{groups_id}'
                     self.groups[first_proc_name] = new_group_name
                     #self.grouped |= first_proc.group
                     for next_proc_name in self.__procs:
-                        if next_proc_name in first_proc.group:  # Maintain initial proc order
-                            if next_proc_name != first_proc_name:
+                        if next_proc_name != first_proc_name and next_proc_name in first_proc.to_group_with:  # Maintain initial proc order
                                 next_proc = self.__context.get_global(next_proc_name)
-                                if isinstance(next_proc, proc_module.Proc):
+                                if isinstance(next_proc, proc_module.Proc) and first_proc.far == next_proc.far:
                                     self.groups[next_proc_name] = new_group_name
                                     next_label = op.label(next_proc_name, proc=first_proc_name, isproc=False, line_number=next_proc.line_number, far=next_proc.far)
+                                    next_label.real_offset, next_label.real_seg = next_proc.real_offset, next_proc.real_seg
                                     next_label.used = True
                                     first_proc.add_label(next_proc_name, next_label)
                                     first_proc.merge_two_procs(new_group_name, next_proc)
