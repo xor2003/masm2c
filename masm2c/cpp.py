@@ -106,31 +106,6 @@ class SeparateProcStrategy:
     def function_end(self):
         return ' }\n'
 
-    def produce_global_jump_table(self, globals):
-        # Produce call table
-        result = """
- bool __dispatch_call(m2c::_offsets __disp, struct m2c::_STATE* _state){
-    switch (__disp) {
-"""
-        offsets = []
-        for k, v in globals:
-            k = re.sub(r'[^A-Za-z0-9_]', '_', k)
-            if isinstance(v, proc_module.Proc) and v.used:
-                offsets.append((k.lower(), k))
-
-                for label in sorted(v.provided_labels):
-                    if label != v.name:
-                        result += f"        case m2c::k{label}: \t{v.name}(__disp, _state); break;\n"
-
-        offsets = sorted(offsets, key=lambda t: t[1])
-        for name, label in offsets:
-            logging.debug(f'{name}, {label}')
-            if not name.startswith('_group'):  # TODO remove dirty hack. properly check for group
-                result += "        case m2c::k%s: \t%s(0, _state); break;\n" % (name, cpp_mangle_label(label))
-
-        result += "        default: m2c::log_error(\"Call to nowhere to 0x%x. See line %d\\n\", __disp, __LINE__);stackDump(_state); abort();\n"
-        result += "     };\n     return true;\n}\n"
-        return result
 
     def write_declarations(self, procs, context):
         result = ""
@@ -144,7 +119,9 @@ class SeparateProcStrategy:
             if v.used:
                 result += f"extern void {v.name}(m2c::_offsets, struct m2c::_STATE*);\n"
 
-        result += "static bool __dispatch_call(m2c::_offsets __disp, struct m2c::_STATE* _state);\n"
+        if not context.itislst:
+            result += "static "
+        result += "bool __dispatch_call(m2c::_offsets __disp, struct m2c::_STATE* _state);\n"
         return result
 
     def get_strategy(self):
@@ -930,7 +907,8 @@ class Cpp(object):
             #if self.__context.has_global(name):
             #name = 'm2c::k'+name
             addtobody, name = self.proc_strategy.forward_to_dispatcher(name)
-            self.body += addtobody
+            self.body += f'__disp={addtobody};\n'
+            logging.error(f'not sure if handle it properly {name} {addtobody}')
 
         return name, far
 
@@ -1404,7 +1382,7 @@ class Cpp(object):
             "%d ok, %d failed of %d, %3g%% translated" % (done, failed, done + failed, 100.0 * done / (done + failed)))
         logging.info("\n".join(self.__failed))
 
-        cppd.write(self.proc_strategy.produce_global_jump_table(list(self.__context.get_globals().items())))
+        cppd.write(self.produce_global_jump_table(list(self.__context.get_globals().items()), self.__context.itislst))
 
         hd.write(f"""
 #include "asm.h"
@@ -1429,19 +1407,44 @@ class Cpp(object):
         cppd.write(f"""
 #include <algorithm>
 #include <iterator>
-#define MYCOPY(x) std::copy(std::begin(tmp999),std::end(tmp999),std::begin(x));
- namespace {{
-  struct Initializer {{
-   Initializer()
-   {{
-{cpp_assign}
-   }}
-  }};
- static const Initializer i;
- }}
 """)
 
-        cppd.write("\n\n//} // End of namespace\n")
+        if self.__context.itislst:
+            cppd.write(
+"""
+#define MYCOPY(x) {int res = std::inner_product(std::begin(tmp999),std::end(tmp999),std::begin(x), 0, std::plus<int>(), std::not_equal_to<int>());\
+if (res) {printf("not equal "#x);void *p=memmem(((db*)&m2c::m)+0x1920,1024*1024,tmp999,sizeof(tmp999));if (p) {printf(" m=%p addr=%p size=%ld found at %lx ",&m2c::m,(db*)p,sizeof(tmp999),((db*)p)-((db*)&m2c::m));};};}
+
+namespace m2c {
+void   Initializer()
+{
+""")
+        else:
+            cppd.write(
+"""
+#define MYCOPY(x) std::copy(std::begin(tmp999),std::end(tmp999),std::begin(x));
+ namespace {
+  struct Initializer {
+   Initializer()
+{
+""")
+
+        cppd.write(cpp_assign)
+        if self.__context.itislst:
+            cppd.write(
+"""
+   }
+ }
+""")
+        else:
+            cppd.write(
+"""
+   }
+  };
+ static const Initializer i;
+ }
+""")
+
         cppd.close()
 
         self.write_segment(self.__context.segments, self.__context.structures)
@@ -1637,6 +1640,7 @@ db(& heap)[HEAP_SIZE]=m.heap;
         offsets = sorted(offsets, key=lambda t: t[1])
         '''
         labeloffsets = """namespace m2c{
+void   Initializer();
 static const dd kbegin = 0x1001;
 """
         i = 0x1001
@@ -1678,6 +1682,8 @@ namespace m2c{
 struct Memory{
 """
         data_head += "".join(hdata_bin)
+        #if self.__context.itislst:
+        #    data_head += 'db filll[1024*1024*16];\n'
         data_head += '''
                         db stack[STACK_SIZE];
                         db heap[HEAP_SIZE];
@@ -1921,3 +1927,37 @@ struct Memory{
 
             lst.write(jsonpickle.encode((self.__context.get_globals(), self.__context.segments, self.__context.structures)))
 
+    def produce_global_jump_table(self, globals, itislst):
+        # Produce call table
+        if itislst:
+            result = """
+bool __dispatch_call(m2c::_offsets __i, struct m2c::_STATE* _state){
+    X86_REGREF
+    if ((__i>>16) == 0) {__i |= ((dd)cs) << 16;}
+    __disp=__i;
+    switch (__i) {
+"""
+        else:
+            result = """
+ bool __dispatch_call(m2c::_offsets __disp, struct m2c::_STATE* _state){
+    switch (__disp) {
+"""
+        offsets = []
+        for k, v in globals:
+            k = re.sub(r'[^A-Za-z0-9_]', '_', k)
+            if isinstance(v, proc_module.Proc) and v.used:
+                offsets.append((k.lower(), k))
+
+                for label in sorted(v.provided_labels):
+                    if label != v.name:
+                        result += f"        case m2c::k{label}: \t{v.name}(__disp, _state); break;\n"
+
+        offsets = sorted(offsets, key=lambda t: t[1])
+        for name, label in offsets:
+            logging.debug(f'{name}, {label}')
+            if not name.startswith('_group'):  # TODO remove dirty hack. properly check for group
+                result += "        case m2c::k%s: \t%s(0, _state); break;\n" % (name, cpp_mangle_label(label))
+
+        result += "        default: m2c::log_error(\"Call to nowhere to 0x%x. See line %d\\n\", __disp, __LINE__);stackDump(_state); abort();\n"
+        result += "     };\n     return true;\n}\n"
+        return result
