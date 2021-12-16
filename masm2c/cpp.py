@@ -158,8 +158,8 @@ def check_int(s):
 
 
 def parse_bin(s):
-    sign = s.to_group_with(1)
-    b = s.to_group_with(2)
+    sign = s.group(1)
+    b = s.group(2)
     v = hex(int(b, 2))
     if sign:
         v = sign + v
