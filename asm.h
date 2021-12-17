@@ -469,16 +469,24 @@ inline void ROL_(D& a, S b, m2c::eflags& m2cflags)
 
 #define RCL(a, b) m2c::RCL_(a, b, m2cflags)
 template <class D, class C>
-inline void RCL_(D& Destination, C Count, m2c::eflags& m2cflags)
+inline void RCL_(D& op1, C op2, m2c::eflags& m2cflags)
 { 
-		int TemporaryCount = Count % (m2c::bitsizeof(Destination) + 1);
-			while(TemporaryCount) {
-				bool TemporaryCF = m2c::MSB(Destination);
-				Destination = (Destination << 1) + GET_CF();
-				AFFECT_CF(TemporaryCF);
-				--TemporaryCount;
-			}
-	AFFECT_OF(GET_CF() ^ m2c::MSB(Destination));
+	if (!(op2%(m2c::bitsizeof(op1) + 1))) return;								
+	D cf=GET_CF()&1;
+	D lf_var1w=op1;									
+	db lf_var2b=op2%(m2c::bitsizeof(op1) + 1);
+        D lf_resw;
+		if (lf_var2b == 1) {
+			lf_resw = (lf_var1w << 1) | cf;
+		} else {
+
+			lf_resw=(lf_var1w << lf_var2b) |					
+			(cf << (lf_var2b-1)) |						
+			(lf_var1w >> ((m2c::bitsizeof(op1) + 1)-lf_var2b));				
+		}
+	op1 = lf_resw;
+	AFFECT_CF((lf_var1w >> (m2c::bitsizeof(op1)-lf_var2b)) & 1);	
+	AFFECT_OF(GET_CF() ^ m2c::MSB(op1));
 }
 
 #define RCR(a, b) m2c::RCR_(a, b, m2cflags)
@@ -569,6 +577,7 @@ static void SHLD_(dd& op1, dd op2, size_t op3, m2c::eflags& m2cflags)
 #define SHRD(a, b, c) {m2c::SHRD_(a, b, c, m2cflags);if (c) {AFFECT_ZFifz(a);AFFECT_SF_(a,a);}}
 #define SHLD(a, b, c) {m2c::SHLD_(a, b, c, m2cflags);if (c) {AFFECT_ZFifz(a);AFFECT_SF_(a,a);}}
 
+/*
 #define SAR(a,b) {if (b) {bool sign = m2c::MSB(a);\
 	 int shift = (m2c::bitsizeof(a)-b);\
          shift = shift>0?shift:0;\
@@ -578,6 +587,29 @@ static void SHLD_(dd& op1, dd op2, size_t op3, m2c::eflags& m2cflags)
 	 a=sigg | (a >> b);\
 		AFFECT_ZFifz(a);\
 		AFFECT_SF_(a,a);}} // TODO optimize
+*/
+#define SAR(a, b) m2c::SAR_(a, b, m2cflags)
+template <class D, class S>
+inline void SAR_(D& op1, const S& op2, m2c::eflags& m2cflags)
+{
+if (op2){
+	D lf_var1w=op1; db lf_var2b=op2;
+        AFFECT_CF((op1>>(op2-1))&1);
+	if (lf_var2b>m2c::bitsizeof(op1)) lf_var2b=m2c::bitsizeof(op1);
+		D highestbitset = (1<<( m2c::bitsizeof(op1)-1));
+        D lf_resw;
+	if (lf_var1w & highestbitset) {
+		lf_resw=(lf_var1w >> lf_var2b)|
+		(((D)(-1)) << (m2c::bitsizeof(op1) - lf_var2b));
+	} else {
+		lf_resw=lf_var1w >> lf_var2b;
+    }
+	op1 = lf_resw;								
+        AFFECT_ZFifz(lf_resw);
+        AFFECT_SF_(lf_resw,lf_resw);
+	AFFECT_OF(false);
+        }
+}
 
 #define SAL(a,b) SHL(a,b)
 
