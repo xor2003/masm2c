@@ -471,10 +471,10 @@ inline void ROL_(D& a, S b, m2c::eflags& m2cflags)
 template <class D, class C>
 inline void RCL_(D& op1, C op2, m2c::eflags& m2cflags)
 { 
-	if (!(op2%(m2c::bitsizeof(op1) + 1))) return;								
+	db lf_var2b=op2%(m2c::bitsizeof(op1) + 1);
+	if (!lf_var2b) return;
 	D cf=GET_CF()&1;
 	D lf_var1w=op1;									
-	db lf_var2b=op2%(m2c::bitsizeof(op1) + 1);
         D lf_resw;
 		if (lf_var2b == 1) {
 			lf_resw = (lf_var1w << 1) | cf;
@@ -491,16 +491,26 @@ inline void RCL_(D& op1, C op2, m2c::eflags& m2cflags)
 
 #define RCR(a, b) m2c::RCR_(a, b, m2cflags)
 template <class D, class C>
-inline void RCR_(D& Destination, C Count, m2c::eflags& m2cflags)
+inline void RCR_(D& op1, C op2, m2c::eflags& m2cflags)
 { 
-	AFFECT_OF(GET_CF() ^ m2c::MSB(Destination));
-		int TemporaryCount = Count % (m2c::bitsizeof(Destination) + 1);
-			while(TemporaryCount != 0) {
-				bool TemporaryCF = m2c::LSB(Destination);
-				Destination = (Destination >> 1) + (GET_CF() << (m2c::bitsizeof(Destination)-1));
-				AFFECT_CF(TemporaryCF);
-				--TemporaryCount;
-			}
+	db lf_var2b=op2%(m2c::bitsizeof(op1) + 1);
+	if (!lf_var2b) return;
+	D cf=GET_CF()&1;
+	D lf_var1w=op1;									
+        D lf_resw;
+	if (lf_var2b==1)
+		{ 
+			lf_resw = (lf_var1w >> 1) | (cf << (m2c::bitsizeof(op1) - 1));
+		}
+		else                
+		{ 
+			lf_resw = (lf_var1w >> lf_var2b) | (cf << (m2c::bitsizeof(op1) - lf_var2b)) |
+			(lf_var1w << ((m2c::bitsizeof(op1) + 1) - lf_var2b));
+		}
+	op1 = lf_resw;
+	AFFECT_CF((lf_var1w >> (lf_var2b-1)) & 1);	
+	D highestbitset = (1<<( m2c::bitsizeof(op1)-1));
+	AFFECT_OF((lf_resw ^ (lf_resw << 1))&highestbitset);
 }
 
 template <class D>
