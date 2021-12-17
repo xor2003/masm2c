@@ -119,9 +119,12 @@ class SeparateProcStrategy:
             if v.used:
                 result += f"extern void {v.name}(m2c::_offsets, struct m2c::_STATE*);\n"
 
-        if not context.itislst:
-            result += "static "
-        result += "bool __dispatch_call(m2c::_offsets __disp, struct m2c::_STATE* _state);\n"
+        result += """
+#ifdef DOSBOX
+static
+#endif
+bool __dispatch_call(m2c::_offsets __disp, struct m2c::_STATE* _state);
+"""
         return result
 
     def get_strategy(self):
@@ -1319,7 +1322,6 @@ class Cpp(object):
 #include \"{header}\"
 #include <curses.h>
 
-//namespace {self.__namespace} {{
 """)
 
         if self.__context.main_file:
@@ -1387,7 +1389,6 @@ class Cpp(object):
         hd.write(f"""
 #include "asm.h"
 
-//namespace {self.__namespace} {{
 {self.produce_structures(self.__context.structures)}
 """)
 
@@ -1401,48 +1402,32 @@ class Cpp(object):
         data = self.produce_externals(self.__context)
         hd.write(data)
 
-        hd.write("//};\n\n//} // End of namespace\n\n#endif\n")
+        hd.write("\n#endif\n")
         hd.close()
 
         cppd.write(f"""
 #include <algorithm>
 #include <iterator>
-""")
+#ifdef DOSBOX
+ #define MYCOPY(x) {{int res = std::inner_product(std::begin(tmp999),std::end(tmp999),std::begin(x), 0, std::plus<int>(), std::not_equal_to<int>());\
+   if (res) {{printf("not equal "#x);void *p=memmem(((db*)&m2c::m)+0x1920,1024*1024,tmp999,sizeof(tmp999));if (p) {{printf(" m=%p addr=%p size=%ld found at %lx ",&m2c::m,(db*)p,sizeof(tmp999),((db*)p)-((db*)&m2c::m));}};}};}}
 
-        if self.__context.itislst:
-            cppd.write(
-"""
-#define MYCOPY(x) {int res = std::inner_product(std::begin(tmp999),std::end(tmp999),std::begin(x), 0, std::plus<int>(), std::not_equal_to<int>());\
-if (res) {printf("not equal "#x);void *p=memmem(((db*)&m2c::m)+0x1920,1024*1024,tmp999,sizeof(tmp999));if (p) {printf(" m=%p addr=%p size=%ld found at %lx ",&m2c::m,(db*)p,sizeof(tmp999),((db*)p)-((db*)&m2c::m));};};}
-
-namespace m2c {
-void   Initializer()
-{
-""")
-        else:
-            cppd.write(
-"""
-#define MYCOPY(x) std::copy(std::begin(tmp999),std::end(tmp999),std::begin(x));
- namespace {
-  struct Initializer {
+ namespace m2c {{
+  void   Initializer()
+#else
+ #define MYCOPY(x) std::copy(std::begin(tmp999),std::end(tmp999),std::begin(x));
+ namespace {{
+  struct Initializer {{
    Initializer()
-{
-""")
-
-        cppd.write(cpp_assign)
-        if self.__context.itislst:
-            cppd.write(
-"""
-   }
- }
-""")
-        else:
-            cppd.write(
-"""
-   }
-  };
+#endif
+{{
+{cpp_assign}
+}}
+#ifndef DOSBOX
+  }};
  static const Initializer i;
- }
+#endif
+}}
 """)
 
         cppd.close()
@@ -1626,7 +1611,7 @@ db(& heap)[HEAP_SIZE]=m.heap;
 '''
         hd.write(data)
 
-        fd.write("\n\n//} // End of namespace\n")
+        fd.write("\n")
         fd.close()
 
     def produce_label_offsets(self):
@@ -1682,9 +1667,10 @@ namespace m2c{
 struct Memory{
 """
         data_head += "".join(hdata_bin)
-        #if self.__context.itislst:
-        #    data_head += 'db filll[1024*1024*16];\n'
         data_head += '''
+#ifdef DOSBOX
+    db filll[1024*1024*16];
+#endif
                         db stack[STACK_SIZE];
                         db heap[HEAP_SIZE];
                 '''
@@ -1931,7 +1917,7 @@ struct Memory{
         # Produce call table
         if itislst:
             result = """
-bool __dispatch_call(m2c::_offsets __i, struct m2c::_STATE* _state){
+ bool __dispatch_call(m2c::_offsets __i, struct m2c::_STATE* _state){
     X86_REGREF
     if ((__i>>16) == 0) {__i |= ((dd)cs) << 16;}
     __disp=__i;
