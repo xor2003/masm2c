@@ -1352,8 +1352,8 @@ class Parser:
 
     @staticmethod
     def mangle_label(name):
-        name = name.lower()
-        return name.replace('@', "arb")
+        name = name.lower()  #([A-Za-z@_\$\?][A-Za-z0-9@_\$\?]*)
+        return name.replace('@', "arb").replace('?', "que").replace('$', "dol")
 
     @staticmethod
     def is_register(expr):
