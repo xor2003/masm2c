@@ -358,7 +358,7 @@ inline db MSB(D a)  // get highest bit
 template <class D, class S>
 inline void CMP_(D& dest, const S& src, m2c::eflags& m2cflags)
 {
- dd result=(dest-src) & m2c::MASK[sizeof(dest)]; 
+ D result=dest-src; 
 		AFFECT_CF(result>dest); 
             D highestbitset = (1<<( m2c::bitsizeof(dest)-1));
           AFFECT_OF(((dest ^ src) & (dest ^ result)) & highestbitset);
@@ -752,8 +752,8 @@ if (op2){
 template <class D, class S>
 inline void ADD_(D& dest, const S& src, m2c::eflags& m2cflags)
 {
- dq result=(dq)dest+(dq)src; 
-		AFFECT_CF((result)>m2c::MASK[sizeof(dest)]); 
+ D result=dest+(D)src; 
+		AFFECT_CF(result<dest); 
             D highestbitset = (1<<( m2c::bitsizeof(dest)-1));
           AFFECT_OF(((dest ^ src ^ highestbitset ) & (result ^ src)) & highestbitset);
    dest = result;
@@ -841,13 +841,13 @@ inline void DEC_(D& a, m2c::eflags& m2cflags)
 #define IMUL3_2(a,b,c) {int32_t averytemporary = ((int16_t)(b)) * ((int16_t)(c)); a=averytemporary;AFFECT_OF(AFFECT_CF((averytemporary>= -32768)  && (averytemporary<=32767)?false:true));}
 #define IMUL3_4(a,b,c) {int64_t averytemporary = ((int64_t)(b)) * ((int32_t)(c)); a=averytemporary;AFFECT_OF(AFFECT_CF((averytemporary>=-((int64_t)(2147483647)+1)) && (averytemporary<=(int64_t)2147483647)?false:true));}
 
-#define MUL1_1(a) {ax=(dw)al*(a); AFFECT_OF(AFFECT_CF(ah));}
-#define MUL1_2(a) {dd averytemporary=(dd)ax*(a);ax=averytemporary;dx=averytemporary>>16; AFFECT_OF(AFFECT_CF(dx));}
-#define MUL1_4(a) {dq averytemporary=(dq)eax*(a);eax=averytemporary;edx=averytemporary>>32; AFFECT_OF(AFFECT_CF(edx));}
-#define MUL2_2(a,b) {dd averytemporary=(dd)(a)*(b);a=averytemporary; AFFECT_OF(AFFECT_CF(averytemporary>>16));}
-#define MUL2_4(a,b) {dq averytemporary=(dq)(a)*(b);a=averytemporary; AFFECT_OF(AFFECT_CF(averytemporary>>32));}
-#define MUL3_2(a,b,c) {dd averytemporary=(dd)(b)*(c);a=averytemporary; AFFECT_OF(AFFECT_CF(averytemporary>>16));}
-#define MUL3_4(a,b,c) {dq averytemporary=(dq)(b)*(c);a=averytemporary; AFFECT_OF(AFFECT_CF(averytemporary>>32));}
+#define MUL1_1(a) {ax=(dw)al*(a); AFFECT_OF(AFFECT_CF(ah));AFFECT_ZFifz(ax);}
+#define MUL1_2(a) {dd averytemporary=(dd)ax*(a);ax=averytemporary;dx=averytemporary>>16; AFFECT_ZFifz(averytemporary);AFFECT_OF(AFFECT_CF(dx));}
+#define MUL1_4(a) {dq averytemporary=(dq)eax*(a);eax=averytemporary;edx=averytemporary>>32; AFFECT_ZFifz(averytemporary); AFFECT_OF(AFFECT_CF(edx));}
+#define MUL2_2(a,b) {dd averytemporary=(dd)(a)*(b);a=averytemporary; AFFECT_ZFifz(a); AFFECT_OF(AFFECT_CF(averytemporary>>16));}
+#define MUL2_4(a,b) {dq averytemporary=(dq)(a)*(b);a=averytemporary; AFFECT_ZFifz(a); AFFECT_OF(AFFECT_CF(averytemporary>>32));}
+#define MUL3_2(a,b,c) {dd averytemporary=(dd)(b)*(c);a=averytemporary; AFFECT_ZFifz(a); AFFECT_OF(AFFECT_CF(averytemporary>>16));}
+#define MUL3_4(a,b,c) {dq averytemporary=(dq)(b)*(c);a=averytemporary; AFFECT_ZFifz(a); AFFECT_OF(AFFECT_CF(averytemporary>>32));}
 
 #define IDIV1(a) {int16_t averytemporary=ax;al=averytemporary/((int8_t)a); ah=averytemporary%((int8_t)a); AFFECT_OF(false);}
 #define IDIV2(a) {int32_t averytemporary=(((int32_t)(int16_t)dx)<<16)|ax; ax=averytemporary/((int16_t)a);dx=averytemporary%((int16_t)a); AFFECT_OF(false);}
