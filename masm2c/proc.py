@@ -219,5 +219,5 @@ class Proc(object):
     def if_terminated_proc(self):
         '''Check if proc was terminated with jump or ret to know if execution flow contiues across function end'''
         if self.stmts:
-            return self.stmts[-1].cmd[0] == 'j' or self.stmts[-1].cmd.startswith('ret') or self.stmts[-1].cmd == 'iret'
+            return self.stmts[-1].cmd.startswith('jmp') or self.stmts[-1].cmd.startswith('ret') or self.stmts[-1].cmd == 'iret'
         return True
