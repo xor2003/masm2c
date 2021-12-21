@@ -68,7 +68,7 @@ def produce_jump_table(labels):
     for name, label in offsets:
         logging.debug(f'{name}, {label}')
         result += "        case m2c::k%s: \tgoto %s;\n" % (name, cpp_mangle_label(label))
-    result += "        default: m2c::log_error(\"Jump to nowhere to 0x%x. See line %d\\n\", __disp, __LINE__);stackDump(_state); abort();\n"
+    result += "        default: m2c::log_error(\"Jump to nowhere to 0x%x. See line %d\\n\", __disp, __LINE__);m2c::stackDump(_state); abort();\n"
     result += "    };\n}\n"
     return result
 
@@ -120,7 +120,7 @@ class SeparateProcStrategy:
                 result += f"extern void {v.name}(m2c::_offsets, struct m2c::_STATE*);\n"
 
         result += """
-#ifdef DOSBOX
+#ifndef DOSBOX
 static
 #endif
 bool __dispatch_call(m2c::_offsets __disp, struct m2c::_STATE* _state);
@@ -266,6 +266,8 @@ class Cpp(object):
                     #  mycopy(bb, {'1','2','3','4','5'});
                     #  caa=3;
                     m = re.match(r'^([0-9A-Za-z_]+)\s+([0-9A-Za-z_]+)(\[\d+\])?;\n', h)
+                    if not m:
+                        logging.error(f'Failed to parse {c} {h}')
                     name = m.group(2)
 
                     asgn = re.sub(r'^([0-9A-Za-z_]+)\s+(?:[0-9A-Za-z_]+(\[\d+\])?);\n', r'\g<1> tmp999\g<2>', h)
@@ -318,7 +320,7 @@ class Cpp(object):
                 logging.debug("OFFSET = %s" % offset)
                 self.__indirection = IndirectionType.VALUE
                 self.__used_data_offsets.add((name, offset))
-                return Token('LABEL', "m2c::k" + name)
+                return Token('LABEL', "(dw)m2c::k" + name)
 
         try:
             g = self.__context.get_global(name)
@@ -1410,7 +1412,7 @@ class Cpp(object):
 #include <iterator>
 #ifdef DOSBOX
  #define MYCOPY(x) {{int res = std::inner_product(std::begin(tmp999),std::end(tmp999),std::begin(x), 0, std::plus<int>(), std::not_equal_to<int>());\
-   if (res) {{printf("not equal "#x);void *p=memmem(((db*)&m2c::m)+0x1920,1024*1024,tmp999,sizeof(tmp999));if (p) {{printf(" m=%p addr=%p size=%ld found at %lx ",&m2c::m,(db*)p,sizeof(tmp999),((db*)p)-((db*)&m2c::m));}};}};}}
+   if (res) {{printf("not equal "#x);void *p=memmem(((db*)&m2c::m)+0x1920,1024*1024,tmp999,sizeof(tmp999));if (p) {{printf(" m=%p addr=%p size=%d found at %x ",&m2c::m,(db*)p,sizeof(tmp999),((db*)p)-((db*)&m2c::m));}};}};}}
 
  namespace m2c {{
   void   Initializer()
@@ -1944,6 +1946,6 @@ struct Memory{
             if not name.startswith('_group'):  # TODO remove dirty hack. properly check for group
                 result += "        case m2c::k%s: \t%s(0, _state); break;\n" % (name, cpp_mangle_label(label))
 
-        result += "        default: m2c::log_error(\"Call to nowhere to 0x%x. See line %d\\n\", __disp, __LINE__);stackDump(_state); abort();\n"
+        result += "        default: m2c::log_error(\"Call to nowhere to 0x%x. See line %d\\n\", __disp, __LINE__);m2c::stackDump(_state); abort();\n"
         result += "     };\n     return true;\n}\n"
         return result

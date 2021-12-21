@@ -13,6 +13,6 @@ try:
     dist_name = __name__
     __version__ = get_distribution(dist_name).version
 except DistributionNotFound:
-    __version__ = "0.9.2"
+    __version__ = "0.9.5"
 finally:
     del get_distribution, DistributionNotFound
