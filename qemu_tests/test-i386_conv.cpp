@@ -4007,12 +4007,39 @@ int main(int argc, char **argv)
   R(MOV(ss, seg_offset(stack)));
   esp = ((dd)(db*)&m.stack[STACK_SIZE - 4]);
 
-
+/*
     ptr = &__start_initcall;
     while (ptr != &__stop_initcall) {
         func = *ptr++;
         func();
     }
+*/
+test_add();
+test_sub();
+test_xor();
+test_and();
+test_or();
+test_cmp();
+test_adc();
+test_sbb();
+test_inc();
+test_dec();
+test_neg();
+test_not();
+test_shl();
+test_shr();
+test_sal();
+test_sar();
+test_rol();
+test_ror();
+test_rcr();
+test_rcl();
+test_shld();
+test_shrd();
+test_bt();
+test_bts();
+test_btr();
+test_btc();
     test_bsx();
     test_mul();
     test_jcc();
