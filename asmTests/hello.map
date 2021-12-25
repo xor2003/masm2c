@@ -1,0 +1,22 @@
+
+ Start  Stop   Length Name               Class
+
+ 01000H 0A889H 0A78AH _DATA              CODE
+ 01001H 0A889H 0A78AH _TEXT              CODE
+ 01004H 0A889H 0A78AH STACKSEG           CODE
+
+
+  Address         Publics by Value
+
+ 0000:0100       start
+ 0000:0C0C       nullsub_1
+ 0000:3D42       a@
+ 0000:3D4A       aB@nf
+ 0000:3D52       aBbFff
+ 0000:4B52       aVwxwyzZZ_ZZZAb
+ 0000:4BE0       a?lllllmmmmmnnn
+ 0000:4BFE       aKl
+ 0000:4C02       aMnoopqrstuvwrs
+ 0000:A60E       aPareScoreName
+
+Program entry point at 0000:0100

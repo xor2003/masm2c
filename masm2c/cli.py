@@ -66,6 +66,15 @@ def parse_args(args):
         default=False,
         const=True,
     )
+    aparser.add_argument(
+        "-s",
+        "--singleproc",
+        dest="singleproc",
+        help="Merge all procs together",
+        action="store_const",
+        default=False,
+        const=True,
+    )
     return aparser.parse_args(args)
 
 
@@ -114,7 +123,7 @@ def process(i, args):
     if m:
         outname = m.group(1).strip()
 
-    p = Parser()
+    p = Parser(args)
 
     counter = Parser.c_dummy_label
     p.parse_file(name)
@@ -151,7 +160,7 @@ def main(args):
             process(i, args)
 
     # Process .seg files
-    generator = Cpp(Parser(), merge_data_segments=merge_data_segments)
+    generator = Cpp(Parser(args), merge_data_segments=merge_data_segments)
     generator.produce_data_cpp(args.filenames)
 
     logging.info(f" *** Finished")

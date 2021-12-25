@@ -913,7 +913,12 @@ class Cpp(object):
             #name = 'm2c::k'+name
             addtobody, name = self.proc_strategy.forward_to_dispatcher(name)
             self.body += f'__disp={addtobody};\n'
-            logging.error(f'not sure if handle it properly {name} {addtobody}')
+            logging.debug(f'not sure if handle it properly {name} {addtobody}')
+        else:
+            g = self.__context.get_global(name)
+            if isinstance(g, op.var):
+                self.body += f'__disp={name};\n'
+                name = "__dispatch_call"
 
         return name, far
 
@@ -1022,6 +1027,10 @@ class Cpp(object):
                 far = g.far  # make far calls to far procs
                 disp = f"m2c::k{dst}"
                 dst = g.proc
+            elif isinstance(g, op.var):
+                disp = dst
+                dst = "__dispatch_call"
+
 
             # calls feat purpose:
         # * grouped sub wrapper, exact subs  - direct name for external references
@@ -1080,17 +1089,12 @@ class Cpp(object):
         self.d, self.s = self.parse2(dst, src)
         # if self.d in ['sp', 'esp'] and check_int(self.s):
         #    self.__pushpop_count += int(self.s)
-        if self.d == self.s:
-            return "\t%s = 0;AFFECT_ZF(0); AFFECT_SF(0);\n" % self.d
-        else:
-            return "\tR(SUB(%s, %s));\n" % (self.d, self.s)
+        return "\tR(SUB(%s, %s));\n" % (self.d, self.s)
 
     def _xor(self, dst, src):
         self.d, self.s = self.parse2(dst, src)
         if self.d == self.s:
-            return "\t%s = 0;AFFECT_ZF(0); AFFECT_SF(0);\n" % self.d
-        else:
-            return "\tR(XOR(%s, %s));\n" % (self.d, self.s)
+        return "\tR(XOR(%s, %s));\n" % (self.d, self.s)
 
     def _mul(self, src):
         res = []
@@ -1411,6 +1415,7 @@ class Cpp(object):
 #include <algorithm>
 #include <iterator>
 #ifdef DOSBOX
+#include <numeric>
  #define MYCOPY(x) {{int res = std::inner_product(std::begin(tmp999),std::end(tmp999),std::begin(x), 0, std::plus<int>(), std::not_equal_to<int>());\
    if (res) {{printf("not equal "#x);void *p=memmem(((db*)&m2c::m)+0x1920,1024*1024,tmp999,sizeof(tmp999));if (p) {{printf(" m=%p addr=%p size=%d found at %x ",&m2c::m,(db*)p,sizeof(tmp999),((db*)p)-((db*)&m2c::m));}};}};}}
 
@@ -1442,61 +1447,72 @@ class Cpp(object):
 
         :return:
         '''
-        for index, first_proc_name in enumerate(self.__procs):
-            first_proc = self.__context.get_global(first_proc_name)
+        if not self.__context.args.singleproc:
+            for index, first_proc_name in enumerate(self.__procs):
+                first_proc = self.__context.get_global(first_proc_name)
 
-            labels = set()  # leave only real labels
-            for label_name in first_proc.used_labels:
-                first_label = self.__context.get_global(label_name)
-                if isinstance(first_label, (op.label, proc_module.Proc)):
-                    labels.add(label_name)
-            first_proc.used_labels = labels
+                labels = set()  # leave only real labels
+                for label_name in first_proc.used_labels:
+                    first_label = self.__context.get_global(label_name)
+                    if isinstance(first_label, (op.label, proc_module.Proc)):
+                        labels.add(label_name)
+                first_proc.used_labels = labels
+                logging.debug(f"Proc {first_proc_name} used labels {first_proc.used_labels}")
+                logging.debug(f"                   provided labels {first_proc.provided_labels}")
 
-            missing = first_proc.used_labels - first_proc.provided_labels
-            proc_to_merge = set()
-            if not first_proc.if_terminated_proc():
-                '''If execution does not terminated in the procedure range when merge it with next proc'''
-                proc_to_merge.add(self.__procs[index+1])
-                logging.info(f"Need to merge {first_proc_name} with {self.__procs[index+1]}")
-            if missing:
-                proc_to_merge.add(first_proc_name)
-                for l in missing:
-                    first_label = self.__context.get_global(l)
-                    if isinstance(first_label, op.label):
-                        proc_to_merge.add(first_label.proc)  # if label then merge proc implementing it
-                    elif isinstance(first_label, proc_module.Proc):
-                        proc_to_merge.add(first_label.name)
+                missing = first_proc.used_labels - first_proc.provided_labels
+                logging.debug(f"                    missing labels {missing}")
+                proc_to_merge = set()
+                if not first_proc.if_terminated_proc():
+                    '''If execution does not terminated in the procedure range when merge it with next proc'''
+                    proc_to_merge.add(self.__procs[index+1])
+                    logging.info(f"Need to merge {first_proc_name} with {self.__procs[index+1]}")
+                if missing:
+                    proc_to_merge.add(first_proc_name)
+                    for l in missing:
+                        first_label = self.__context.get_global(l)
+                        if isinstance(first_label, op.label):
+                            logging.debug(f" {l} is label, will merge {first_label.proc} proc")
+                            proc_to_merge.add(first_label.proc)  # if label then merge proc implementing it
+                        elif isinstance(first_label, proc_module.Proc):
+                            logging.debug(f" {l} is proc, will merge {first_label.name} proc")
+                            proc_to_merge.add(first_label.name)
 
-            first_proc.to_group_with = proc_to_merge
-        changed = True
-        iteration = 0
-        while changed:
-            iteration += 1
-            logging.info(f"     Identifing proc to merge #{iteration}")
-            changed = False
+                first_proc.to_group_with = proc_to_merge
+                logging.debug(f" will merge {proc_to_merge}")
+            changed = True
+            iteration = 0
+            while changed:
+                iteration += 1
+                logging.info(f"     Identifing proc to merge #{iteration}")
+                changed = False
+                for first_proc_name in self.__procs:
+                    logging.debug(f"Proc {first_proc_name}")
+                    first_proc = self.__context.get_global(first_proc_name)
+                    for next_proc_name in first_proc.to_group_with:
+                        if first_proc_name != next_proc_name:
+                            logging.debug(f"  will group with {next_proc_name}")
+                            next_proc = self.__context.get_global(next_proc_name)
+                            if not next_proc.to_group_with:
+                                next_proc.to_group_with = set()
+                            if first_proc.to_group_with != next_proc.to_group_with:
+                                next_proc.to_group_with = set.union(next_proc.to_group_with, first_proc.to_group_with)
+                                first_proc.to_group_with = next_proc.to_group_with
+                                changed = True
+                    logging.debug(f"  will group with {first_proc.to_group_with}")
             for first_proc_name in self.__procs:
                 first_proc = self.__context.get_global(first_proc_name)
-                for next_proc_name in first_proc.to_group_with:
-                    if first_proc_name != next_proc_name:
-                        next_proc = self.__context.get_global(next_proc_name)
-                        if not next_proc.to_group_with:
-                            next_proc.to_group_with = set()
-                        if first_proc.to_group_with != next_proc.to_group_with:
-                            next_proc.to_group_with = set.union(next_proc.to_group_with, first_proc.to_group_with)
-                            first_proc.to_group_with = next_proc.to_group_with
-                            changed = True
-        for first_proc_name in self.__procs:
-            first_proc = self.__context.get_global(first_proc_name)
-            if first_proc.to_group_with:
-                logging.info(f"     ~{first_proc_name}")
-                for p_name in first_proc.to_group_with:
-                    logging.info(f"       {p_name}")
+                if first_proc.to_group_with:
+                    logging.info(f"     ~{first_proc_name}")
+                    for p_name in first_proc.to_group_with:
+                        logging.info(f"       {p_name}")
         groups = []
         groups_id = 1
         for first_proc_name in self.__procs:
             if first_proc_name not in self.grouped:
                 first_proc = self.__context.get_global(first_proc_name)
-                if first_proc.to_group_with:
+                if self.__context.args.singleproc or first_proc.to_group_with:
+                    logging.debug(f"Merging {first_proc_name}")
                     new_group_name = f'_group{groups_id}'
                     first_label = op.label(first_proc_name, proc=new_group_name, isproc=False, line_number=first_proc.line_number, far=first_proc.far)
                     first_label.real_offset, first_label.real_seg = first_proc.real_offset, first_proc.real_seg
@@ -1510,14 +1526,15 @@ class Cpp(object):
                     self.groups[first_proc_name] = new_group_name
                     #self.grouped |= first_proc.group
                     for next_proc_name in self.__procs:
-                        if next_proc_name != first_proc_name and next_proc_name in first_proc.to_group_with:  # Maintain initial proc order
+                        if next_proc_name != first_proc_name and (self.__context.args.singleproc or next_proc_name in first_proc.to_group_with):  # Maintaining initial proc order
                                 next_proc = self.__context.get_global(next_proc_name)
-                                if isinstance(next_proc, proc_module.Proc) and first_proc.far == next_proc.far:
+                                if isinstance(next_proc, proc_module.Proc):  # and first_proc.far == next_proc.far:
                                     self.groups[next_proc_name] = new_group_name
                                     next_label = op.label(next_proc_name, proc=first_proc_name, isproc=False, line_number=next_proc.line_number, far=next_proc.far)
                                     next_label.real_offset, next_label.real_seg = next_proc.real_offset, next_proc.real_seg
                                     next_label.used = True
                                     first_proc.add_label(next_proc_name, next_label)
+                                    logging.debug(f"     with {next_proc_name}")
                                     first_proc.merge_two_procs(new_group_name, next_proc)
                                     self.__context.reset_global(next_proc_name, next_label)
                                     self.grouped.add(next_proc_name)
@@ -1574,7 +1591,7 @@ class Cpp(object):
                     old = jsonpickle.encode(allstructs[k], unpicklable=False)
                     new = jsonpickle.encode(v, unpicklable=False)
                     if old != new:
-                        logging.error(f"Overwritting structure {k}")
+                        logging.error(f"Overwriting structure {k}")
         allstructs.update(newstructs)
         return allsegments, allstructs
 

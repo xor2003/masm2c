@@ -226,7 +226,11 @@ def structinstdir(context, nodes, label, type, values):
     if args is None:
         args = []
     # args = Token.remove(args, 'INTEGER')
-    context.extra.add_structinstance(label.value.lower(), type.lower(), args)
+    if label:
+        name = label.value.lower()
+    else:
+        name = ''
+    context.extra.add_structinstance(name, type.lower(), args)
     return nodes
 
 
@@ -559,7 +563,7 @@ def dump_object(value):
 class Parser:
     c_dummy_label = 0
 
-    def __init__(self, skip_binary_data=[]):
+    def __init__(self, args=None, skip_binary_data=[]):
         '''
         Assembler parser
         '''
@@ -573,6 +577,7 @@ class Parser:
         self.__files = set()
         self.__separate_proc = True
         self.itislst = False
+        self.args = args
 
         self.next_pass(Parser.c_dummy_label)
 
@@ -997,12 +1002,34 @@ class Parser:
         if file_name.lower().endswith('.lst'):  # for .lst provided by IDA move address to comments after ;~
             # we want exact placement so program could work
             self.itislst = True
-            segmap = OrderedDict(
-                x.split(' ') for x in read_whole_file(re.sub(r'\.lst', '.segmap', file_name, flags=re.I)).splitlines())
+            segmap = self.read_segments_map(file_name)
             content = re.sub(r'^(?P<segment>[_0-9A-Za-z]+):(?P<offset>[0-9A-Fa-f]{4,8})(?P<remain>.*)',
                              lambda m: f'{m.group("remain")} ;~ {segmap.get(m.group("segment"))}:{m.group("offset")}',
                              content, flags=re.MULTILINE)
         self.parse_args_new_data(content, file_name=file_name)
+
+    def read_segments_map(self, file_name):
+        content = read_whole_file(re.sub(r'\.lst$', '.map', file_name, flags=re.I)).splitlines()
+        DOSBOX_START_SEG = 0x192
+        strgenerator = (x for x in content)
+        segs = OrderedDict()
+        for line in strgenerator:
+            if line.strip() == 'Start  Stop   Length Name               Class':  # IDA Pro .lst magic
+                break
+        # Reads text until the end of the block:
+        for line in strgenerator:  # This keeps reading the file
+            if line.strip() == 'Address         Publics by Value':
+                break
+            else:
+                if line.strip():
+                    #print(line)
+                    m = re.match(
+                        r'^\s+(?P<start>[0-9A-F]{5})H [0-9A-F]{5}H [0-9A-F]{5}H (?P<segment>[_0-9A-Za-z]+)\s+[A-Z]+',
+                        line)
+                    segs[m.group('segment')] = f"{(int(m.group('start'), 16) // 16 + DOSBOX_START_SEG):04X}"
+                    #print(segs)
+        logging.debug(f'Results of loading .map file: {segs}')
+        return segs
 
     def parse_include_file_lines(self, file_name):
         self.__files.add(self.__current_file)
@@ -1061,11 +1088,14 @@ class Parser:
         logging.info("     Found segment %s" % name)
         name = name.lower()
         self.__segment_name = name
-        _, _, real_seg = self.get_lst_offsets(raw)
+        _, real_offset, real_seg = self.get_lst_offsets(raw)
         if real_seg:
             self.move_offset(real_seg * 0x10, raw)
         self.align()
         self.__cur_seg_offset = 0
+        if real_offset:
+            logging.warning(f"Segment {name} does not start at offset 0. Compiler compacted segments. It stating from: {real_offset}. Check mempry structure is properly generated")
+            self.__cur_seg_offset = real_offset
 
         offset = self.__binary_data_size // 16
         logging.debug("segment %s %x" % (name, offset))
@@ -1129,10 +1159,12 @@ class Parser:
 
     def action_endp(self):
         self.__proc_stack.pop()
+        ''' Support code outside procs
         if self.__proc_stack:
             self.proc = self.__proc_stack[-1]
         else:
             self.proc = None
+        '''
 
     def action_endif(self):
         self.pop_if()
@@ -1401,6 +1433,8 @@ class Parser:
             return array
 
     def add_structinstance(self, label, type, args):
+        if not label:
+            label = self.get_dummy_label()
         s = self.structures[type]
         number = 1
         if isinstance(args, list) and len(args) > 2 and isinstance(args[1], str) and args[1] == 'dup':
@@ -1422,11 +1456,13 @@ class Parser:
         if isstruct:
             self.current_struct.append(d)
         else:
-            self.set_global(label,
-                            op.var(number * s.getsize(), self.__cur_seg_offset, label, segment=self.__segment_name, \
-                                   original_type=type))
+            if label:
+                self.set_global(label,
+                                op.var(number * s.getsize(), self.__cur_seg_offset, label, segment=self.__segment_name, \
+                                       original_type=type))
             self.__segment.append(d)
             self.__cur_seg_offset += number * s.getsize()
+            self.__binary_data_size += number * s.getsize()
 
     def add_extern(self, label, type):
         strtype = type
