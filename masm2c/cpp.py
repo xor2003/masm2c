@@ -1093,7 +1093,6 @@ class Cpp(object):
 
     def _xor(self, dst, src):
         self.d, self.s = self.parse2(dst, src)
-        if self.d == self.s:
         return "\tR(XOR(%s, %s));\n" % (self.d, self.s)
 
     def _mul(self, src):
