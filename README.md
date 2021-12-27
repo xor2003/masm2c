@@ -1,14 +1,14 @@
 
 [![Build Status](https://travis-ci.com/xor2003/masm2c.svg?branch=master)](https://travis-ci.com/xor2003/masm2c)
 
-MASM 16bit assembler to C++ translator
+Masm2c - 16bit assembler to C++ translator
 ==============
 
 Portable MASM or Source-to-source_compiler https://en.wikipedia.org/wiki/Source-to-source_compiler
-Translator may be used to port your DOS x86 (MASM) assembler code to SDL C. (Since there is no working decompiler for 16 bit DOS code yet.
+Translator may be used to port your DOS x86 (MASM) assembler code to C++ and SDL (Since there is no working decompiler for 16 bit DOS code yet.
 Because of DOS segmentation model, etc)
 
-Translator generates pseudo assembler instruction which can be compiled with C compiler.
+Translator generates pseudo assembler instructions which can be compiled with C++ compiler and executed.
 
 The following assembler example:
 
@@ -63,32 +63,28 @@ and decompile to get cleaner C code without dead code like x86 flags update.
 
 Key features:
 - Most of x86 instructions (except FPU) are supported (well tested with QEMU tests).
-flags: Carry, Zero, Sign are supported for most of x86 instructions.
+x86 flags: Carry, Zero, Sign, Overflow are supported for most of x86 instructions.
 - Segment memory model and 16bit offsets.
-- Some BIOS/DOS Int 10h, 21h interrupts are supported. (Maybe I will reuse DOSBOX implementations in future)
-  Also DOS memory manager and stack emulated
-- CGA text mode is supported using Curses (PDcurses or NCurses).
-- VGA 320x200x256 support (partial)
+- Internal SDL target: Some BIOS/DOS Int 10h, 21h interrupts are supported. Also DOS memory manager and stack emulated.
+  CGA text mode is supported using Curses (PDcurses or NCurses).
+  VGA 320x200x256 support (partial)
+- Libdosbox target: Full interrupts, hardware support.
 - structures support
 - parser based on Masm EBNF
-- segment merging as Masm do during linking
+- segment merging as Masm do during linking. Many .asm sources can be converted individually and linked together using modern linker
 
-3rd-party code used from: ASM2C (x86 instruction emulation), tasm-recover (from SCUMMVM project; highly modified), QEMU x86 instructions test suit, FreeDOS memory manager.
+(3rd-party code used from: ASM2C (x86 instruction emulation), tasm-recover (from SCUMMVM project; highly modified), QEMU x86 instructions test suit, FreeDOS memory manager.)
 
-License: GPL2.
-
-Sure ASM2C have cleaner code but it written on Swift and less instructions supported, also only protected mode.
+License: GPL2+
 
 TODO: 
 - full macros support
-- full VGA/EGA
-- proper SB emulation or use DOSBOX as library
 - add FPU instructions support (may use linux 387 emulator)
 
 For easier disassembling (exe to asm) you may need to collect run-time information from dosbox or other emulator to annotate IDA disassembly. Maybe modify dosbox debugger tracing mechanism to collect:
 - current instruction is code
-- access to memory (which segment), offset which segment
-- segment register value
+- access to memory (offset of which segment)
+- segment register values
 In other repo there are scripts which can help to convert DOSBOX run-time traces into IDA annotations to simplify disassembly.
 
 Assembler source code for Stunts game https://github.com/xor2003/restunts
@@ -100,11 +96,11 @@ See list of DOS games with debug information http://bringerp.free.fr/forum/viewt
 How to convert your masm 16 bit source to C++:
 -------------------------------
 
-First your code should be compilable with uasm(jwasm)/masm6, link5/tlink and working on DOS.
+Prerequisite: your code should be compilable with uasm(jwasm)/masm6, link5/tlink and work under DOS.
 
 masm2c.py <some.asm>
 
-(Small source code modification might also be required to build)
+(Small source code modification might also be required to translate)
 
 IDA Pro Free you can find here https://www.scummvm.org/news/20180331/
 
@@ -116,9 +112,6 @@ There is disassembled source code for MASM, Nasm, C which can be built and runni
 
 TODO: finish sound support on SDL, finish porting (keyboard, graphics mode,...)
 
-Binary is available on releases page
--------------------------------
-
 Building Inertia for SDL from source:
 -------------------------------
 1. get PDCurses or other curses library+headers, SDL2, mingw32 + a lot of luck
@@ -126,7 +119,7 @@ Building Inertia for SDL from source:
 3. execute:
 iplay_m_.exe HACKER4.S3M 
 
-Or just get prebuilt
+Or just get prebuilt from release page
 
 If you want to help me please contribute or send BTC to:
 
