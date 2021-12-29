@@ -356,14 +356,14 @@ inline db MSB(D a)  // get highest bit
 
 #define CMP(a, b) m2c::CMP_(a, b, m2cflags)
 template <class D, class S>
-inline void CMP_(D& dest, const S& src, m2c::eflags& m2cflags)
+inline void CMP_(const D& dest, const S& src, m2c::eflags& m2cflags)
 {
  D result=dest-src; 
 		AFFECT_CF(result>dest); 
             D highestbitset = (1<<( m2c::bitsizeof(dest)-1));
           AFFECT_OF(((dest ^ src) & (dest ^ result)) & highestbitset);
 		AFFECT_ZFifz(result); 
-		AFFECT_SF_(dest,result); 
+		AFFECT_SF_(result,result); 
 }
 
 
@@ -927,6 +927,11 @@ inline void DEC_(D& a, m2c::eflags& m2cflags)
 #define JS(label) if (GET_SF()) GOTOLABEL(label)
 #define JNS(label) if (!GET_SF()) GOTOLABEL(label)
 
+#define JO(label) if (GET_OF()) GOTOLABEL(label)
+#define JNO(label) if (!GET_OF()) GOTOLABEL(label)
+
+//#define JP(label) if (GET_PF()) GOTOLABEL(label)
+//#define JNP(label) if (!GET_PF()) GOTOLABEL(label)
 /*
 #if DEBUG >= 3
  #define MOV(dest,src) {log_debug("%s := %x\n",#dest, src); dest = src;}

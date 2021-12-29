@@ -42,7 +42,7 @@
 #define TEST_FCOMI 1
 #else
 #undef TEST_SSE
-#define TEST_CMOV  1
+#define TEST_CMOV  0
 #define TEST_FCOMI 1
 #endif
 
@@ -362,9 +362,9 @@ void test_lea(void)
 
 #define TEST_JCC(JCC, v1, v2)\
 {\
-    int res;\
-    asm("movl $1, %0\n\t"\
-        "cmpl %2, %1\n\t"\
+    unsigned int res;\
+    asm ("cmpl %2, %1\n\t"\
+        "mov $1, %0\n\t"\
         "j" JCC " 1f\n\t"\
         "movl $0, %0\n\t"\
         "1:\n\t"\
@@ -372,8 +372,8 @@ void test_lea(void)
         : "r" (v1), "r" (v2));\
     printf("%-10s %d\n", "j" JCC, res);\
 \
-    asm("movl $0, %0\n\t"\
-        "cmpl %2, %1\n\t"\
+    asm ("cmpl %2, %1\n\t"\
+        "mov $0, %0\n\t"\
         "set" JCC " %b0\n\t"\
         : "=r" (res)\
         : "r" (v1), "r" (v2));\

@@ -2230,402 +2230,95 @@ void test_lea(void)
 
 }
 
+#define TOKENPASTE(x, y) x ## y
+#define TOKENPASTE2(x, y) TOKENPASTE(x, y)
+#define TEST_JCC(JCC, v1, v2)\
+{\
+    dd res=1; eax=v1;\
+    CMP(v1,v2); \
+    J##JCC(TOKENPASTE2(label, __LINE__)); \
+    res=0; \
+    TOKENPASTE2(label, __LINE__): \
+    printf("%-10s %d\n", "j" #JCC, res);\
+\
+    res=0;\
+        CMP(v1,v2);\
+        SET##JCC(res);\
+    printf("%-10s %d\n", "set" #JCC, res);\
+}
+/*
+ if (TEST_CMOV) {\
+    long val = i2l(1);\
+    long res = i2l(0x12345678);\
+    CMP(v1,v2);\
+    CMOV##JCC(res,val)\
+        printf("%-10s R=" FMTLX "\n", "cmov" #JCC "l", res);\
+    CMP(v1,v2);\
+        CMOV##JCC(*(dw*)&res,(dw)val)\
+        printf("%-10s R=" FMTLX "\n", "cmov" #JCC "w", res);\
+ } \
+}
+*/
 void test_jcc(void)
 {
-    { int res;
-asm("movl $1, %0\n" "cmpl %2, %1\njne 1f\nmovl $0, %0\n" "1:\n" : "=r" (res) : "r" (1), "r" (1));
- printf("%-10s %d\n", "jne", res);
-asm("movl $0, %0\n" "cmpl %2, %1\nsetne %b0\n" : "=r" (res) : "r" (1), "r" (1));
- printf("%-10s %d\n", "setne", res); if (1) { dd val = i2l(1); dd res = i2l(0x12345678);
-asm("cmpl %2, %1\ncmovnel %k3, %k0\n" : "=r" (res) : "r" (1), "r" (1), "m" (val), "0" (res));
- printf("%-10s R=%08lx\n", "cmovnel", res);
-asm("cmpl %2, %1\ncmovnew %w3, %w0\n" : "=r" (res) : "r" (1), "r" (1), "r" (1), "0" (res));
- printf("%-10s R=%08lx\n", "cmovnew", res); } };
-    { int res;
-asm("movl $1, %0\n" "cmpl %2, %1\njne 1f\nmovl $0, %0\n" "1:\n" : "=r" (res) : "r" (1), "r" (0));
- printf("%-10s %d\n", "jne", res);
-asm("movl $0, %0\n" "cmpl %2, %1\nsetne %b0\n" : "=r" (res) : "r" (1), "r" (0));
- printf("%-10s %d\n", "setne", res); if (1) { dd val = i2l(1); dd res = i2l(0x12345678);
-asm("cmpl %2, %1\ncmovnel %k3, %k0\n" : "=r" (res) : "r" (1), "r" (0), "m" (val), "0" (res));
- printf("%-10s R=%08lx\n", "cmovnel", res);
-asm("cmpl %2, %1\ncmovnew %w3, %w0\n" : "=r" (res) : "r" (1), "r" (0), "r" (1), "0" (res));
- printf("%-10s R=%08lx\n", "cmovnew", res); } };
+    TEST_JCC(NE, 1, 1);
+    TEST_JCC(NE, 1, 0);
 
-    { int res;
-asm("movl $1, %0\n" "cmpl %2, %1\nje 1f\nmovl $0, %0\n" "1:\n" : "=r" (res) : "r" (1), "r" (1));
- printf("%-10s %d\n", "je", res);
-asm("movl $0, %0\n" "cmpl %2, %1\nsete %b0\n" : "=r" (res) : "r" (1), "r" (1));
- printf("%-10s %d\n", "sete", res); if (1) { dd val = i2l(1); dd res = i2l(0x12345678);
-asm("cmpl %2, %1\ncmovel %k3, %k0\n" : "=r" (res) : "r" (1), "r" (1), "m" (val), "0" (res));
- printf("%-10s R=%08lx\n", "cmovel", res);
-asm("cmpl %2, %1\ncmovew %w3, %w0\n" : "=r" (res) : "r" (1), "r" (1), "r" (1), "0" (res));
- printf("%-10s R=%08lx\n", "cmovew", res); } };
-    { int res;
-asm("movl $1, %0\n" "cmpl %2, %1\nje 1f\nmovl $0, %0\n" "1:\n" : "=r" (res) : "r" (1), "r" (0));
- printf("%-10s %d\n", "je", res);
-asm("movl $0, %0\n" "cmpl %2, %1\nsete %b0\n" : "=r" (res) : "r" (1), "r" (0));
- printf("%-10s %d\n", "sete", res); if (1) { dd val = i2l(1); dd res = i2l(0x12345678);
-asm("cmpl %2, %1\ncmovel %k3, %k0\n" : "=r" (res) : "r" (1), "r" (0), "m" (val), "0" (res));
- printf("%-10s R=%08lx\n", "cmovel", res);
-asm("cmpl %2, %1\ncmovew %w3, %w0\n" : "=r" (res) : "r" (1), "r" (0), "r" (1), "0" (res));
- printf("%-10s R=%08lx\n", "cmovew", res); } };
+    TEST_JCC(E, 1, 1);
+    TEST_JCC(E, 1, 0);
 
-    { int res;
-asm("movl $1, %0\n" "cmpl %2, %1\njl 1f\nmovl $0, %0\n" "1:\n" : "=r" (res) : "r" (1), "r" (1));
- printf("%-10s %d\n", "jl", res);
-asm("movl $0, %0\n" "cmpl %2, %1\nsetl %b0\n" : "=r" (res) : "r" (1), "r" (1));
- printf("%-10s %d\n", "setl", res); if (1) { dd val = i2l(1); dd res = i2l(0x12345678);
-asm("cmpl %2, %1\ncmovll %k3, %k0\n" : "=r" (res) : "r" (1), "r" (1), "m" (val), "0" (res));
- printf("%-10s R=%08lx\n", "cmovll", res);
-asm("cmpl %2, %1\ncmovlw %w3, %w0\n" : "=r" (res) : "r" (1), "r" (1), "r" (1), "0" (res));
- printf("%-10s R=%08lx\n", "cmovlw", res); } };
-    { int res;
-asm("movl $1, %0\n" "cmpl %2, %1\njl 1f\nmovl $0, %0\n" "1:\n" : "=r" (res) : "r" (1), "r" (0));
- printf("%-10s %d\n", "jl", res);
-asm("movl $0, %0\n" "cmpl %2, %1\nsetl %b0\n" : "=r" (res) : "r" (1), "r" (0));
- printf("%-10s %d\n", "setl", res); if (1) { dd val = i2l(1); dd res = i2l(0x12345678);
-asm("cmpl %2, %1\ncmovll %k3, %k0\n" : "=r" (res) : "r" (1), "r" (0), "m" (val), "0" (res));
- printf("%-10s R=%08lx\n", "cmovll", res);
-asm("cmpl %2, %1\ncmovlw %w3, %w0\n" : "=r" (res) : "r" (1), "r" (0), "r" (1), "0" (res));
- printf("%-10s R=%08lx\n", "cmovlw", res); } };
-    { int res;
-asm("movl $1, %0\n" "cmpl %2, %1\njl 1f\nmovl $0, %0\n" "1:\n" : "=r" (res) : "r" (1), "r" (-1));
- printf("%-10s %d\n", "jl", res);
-asm("movl $0, %0\n" "cmpl %2, %1\nsetl %b0\n" : "=r" (res) : "r" (1), "r" (-1));
- printf("%-10s %d\n", "setl", res); if (1) { dd val = i2l(1); dd res = i2l(0x12345678);
-asm("cmpl %2, %1\ncmovll %k3, %k0\n" : "=r" (res) : "r" (1), "r" (-1), "m" (val), "0" (res));
- printf("%-10s R=%08lx\n", "cmovll", res);
-asm("cmpl %2, %1\ncmovlw %w3, %w0\n" : "=r" (res) : "r" (1), "r" (-1), "r" (1), "0" (res));
- printf("%-10s R=%08lx\n", "cmovlw", res); } };
+    TEST_JCC(L, 1, 1);
+    TEST_JCC(L, 1, 0);
+    TEST_JCC(L, 1, -1);
 
-    { int res;
-asm("movl $1, %0\n" "cmpl %2, %1\njle 1f\nmovl $0, %0\n" "1:\n" : "=r" (res) : "r" (1), "r" (1));
- printf("%-10s %d\n", "jle", res);
-asm("movl $0, %0\n" "cmpl %2, %1\nsetle %b0\n" : "=r" (res) : "r" (1), "r" (1));
- printf("%-10s %d\n", "setle", res); if (1) { dd val = i2l(1); dd res = i2l(0x12345678);
-asm("cmpl %2, %1\ncmovlel %k3, %k0\n" : "=r" (res) : "r" (1), "r" (1), "m" (val), "0" (res));
- printf("%-10s R=%08lx\n", "cmovlel", res);
-asm("cmpl %2, %1\ncmovlew %w3, %w0\n" : "=r" (res) : "r" (1), "r" (1), "r" (1), "0" (res));
- printf("%-10s R=%08lx\n", "cmovlew", res); } };
-    { int res;
-asm("movl $1, %0\n" "cmpl %2, %1\njle 1f\nmovl $0, %0\n" "1:\n" : "=r" (res) : "r" (1), "r" (0));
- printf("%-10s %d\n", "jle", res);
-asm("movl $0, %0\n" "cmpl %2, %1\nsetle %b0\n" : "=r" (res) : "r" (1), "r" (0));
- printf("%-10s %d\n", "setle", res); if (1) { dd val = i2l(1); dd res = i2l(0x12345678);
-asm("cmpl %2, %1\ncmovlel %k3, %k0\n" : "=r" (res) : "r" (1), "r" (0), "m" (val), "0" (res));
- printf("%-10s R=%08lx\n", "cmovlel", res);
-asm("cmpl %2, %1\ncmovlew %w3, %w0\n" : "=r" (res) : "r" (1), "r" (0), "r" (1), "0" (res));
- printf("%-10s R=%08lx\n", "cmovlew", res); } };
-    { int res;
-asm("movl $1, %0\n" "cmpl %2, %1\njle 1f\nmovl $0, %0\n" "1:\n" : "=r" (res) : "r" (1), "r" (-1));
- printf("%-10s %d\n", "jle", res);
-asm("movl $0, %0\n" "cmpl %2, %1\nsetle %b0\n" : "=r" (res) : "r" (1), "r" (-1));
- printf("%-10s %d\n", "setle", res); if (1) { dd val = i2l(1); dd res = i2l(0x12345678);
-asm("cmpl %2, %1\ncmovlel %k3, %k0\n" : "=r" (res) : "r" (1), "r" (-1), "m" (val), "0" (res));
- printf("%-10s R=%08lx\n", "cmovlel", res);
-asm("cmpl %2, %1\ncmovlew %w3, %w0\n" : "=r" (res) : "r" (1), "r" (-1), "r" (1), "0" (res));
- printf("%-10s R=%08lx\n", "cmovlew", res); } };
+    TEST_JCC(LE, 1, 1);
+    TEST_JCC(LE, 1, 0);
+    TEST_JCC(LE, 1, -1);
 
-    { int res;
-asm("movl $1, %0\n" "cmpl %2, %1\njge 1f\nmovl $0, %0\n" "1:\n" : "=r" (res) : "r" (1), "r" (1));
- printf("%-10s %d\n", "jge", res);
-asm("movl $0, %0\n" "cmpl %2, %1\nsetge %b0\n" : "=r" (res) : "r" (1), "r" (1));
- printf("%-10s %d\n", "setge", res); if (1) { dd val = i2l(1); dd res = i2l(0x12345678);
-asm("cmpl %2, %1\ncmovgel %k3, %k0\n" : "=r" (res) : "r" (1), "r" (1), "m" (val), "0" (res));
- printf("%-10s R=%08lx\n", "cmovgel", res);
-asm("cmpl %2, %1\ncmovgew %w3, %w0\n" : "=r" (res) : "r" (1), "r" (1), "r" (1), "0" (res));
- printf("%-10s R=%08lx\n", "cmovgew", res); } };
-    { int res;
-asm("movl $1, %0\n" "cmpl %2, %1\njge 1f\nmovl $0, %0\n" "1:\n" : "=r" (res) : "r" (1), "r" (0));
- printf("%-10s %d\n", "jge", res);
-asm("movl $0, %0\n" "cmpl %2, %1\nsetge %b0\n" : "=r" (res) : "r" (1), "r" (0));
- printf("%-10s %d\n", "setge", res); if (1) { dd val = i2l(1); dd res = i2l(0x12345678);
-asm("cmpl %2, %1\ncmovgel %k3, %k0\n" : "=r" (res) : "r" (1), "r" (0), "m" (val), "0" (res));
- printf("%-10s R=%08lx\n", "cmovgel", res);
-asm("cmpl %2, %1\ncmovgew %w3, %w0\n" : "=r" (res) : "r" (1), "r" (0), "r" (1), "0" (res));
- printf("%-10s R=%08lx\n", "cmovgew", res); } };
-    { int res;
-asm("movl $1, %0\n" "cmpl %2, %1\njge 1f\nmovl $0, %0\n" "1:\n" : "=r" (res) : "r" (-1), "r" (1));
- printf("%-10s %d\n", "jge", res);
-asm("movl $0, %0\n" "cmpl %2, %1\nsetge %b0\n" : "=r" (res) : "r" (-1), "r" (1));
- printf("%-10s %d\n", "setge", res); if (1) { dd val = i2l(1); dd res = i2l(0x12345678);
-asm("cmpl %2, %1\ncmovgel %k3, %k0\n" : "=r" (res) : "r" (-1), "r" (1), "m" (val), "0" (res));
- printf("%-10s R=%08lx\n", "cmovgel", res);
-asm("cmpl %2, %1\ncmovgew %w3, %w0\n" : "=r" (res) : "r" (-1), "r" (1), "r" (1), "0" (res));
- printf("%-10s R=%08lx\n", "cmovgew", res); } };
+    TEST_JCC(GE, 1, 1);
+    TEST_JCC(GE, 1, 0);
+    TEST_JCC(GE, -1, 1);
 
-    { int res;
-asm("movl $1, %0\n" "cmpl %2, %1\njg 1f\nmovl $0, %0\n" "1:\n" : "=r" (res) : "r" (1), "r" (1));
- printf("%-10s %d\n", "jg", res);
-asm("movl $0, %0\n" "cmpl %2, %1\nsetg %b0\n" : "=r" (res) : "r" (1), "r" (1));
- printf("%-10s %d\n", "setg", res); if (1) { dd val = i2l(1); dd res = i2l(0x12345678);
-asm("cmpl %2, %1\ncmovgl %k3, %k0\n" : "=r" (res) : "r" (1), "r" (1), "m" (val), "0" (res));
- printf("%-10s R=%08lx\n", "cmovgl", res);
-asm("cmpl %2, %1\ncmovgw %w3, %w0\n" : "=r" (res) : "r" (1), "r" (1), "r" (1), "0" (res));
- printf("%-10s R=%08lx\n", "cmovgw", res); } };
-    { int res;
-asm("movl $1, %0\n" "cmpl %2, %1\njg 1f\nmovl $0, %0\n" "1:\n" : "=r" (res) : "r" (1), "r" (0));
- printf("%-10s %d\n", "jg", res);
-asm("movl $0, %0\n" "cmpl %2, %1\nsetg %b0\n" : "=r" (res) : "r" (1), "r" (0));
- printf("%-10s %d\n", "setg", res); if (1) { dd val = i2l(1); dd res = i2l(0x12345678);
-asm("cmpl %2, %1\ncmovgl %k3, %k0\n" : "=r" (res) : "r" (1), "r" (0), "m" (val), "0" (res));
- printf("%-10s R=%08lx\n", "cmovgl", res);
-asm("cmpl %2, %1\ncmovgw %w3, %w0\n" : "=r" (res) : "r" (1), "r" (0), "r" (1), "0" (res));
- printf("%-10s R=%08lx\n", "cmovgw", res); } };
-    { int res;
-asm("movl $1, %0\n" "cmpl %2, %1\njg 1f\nmovl $0, %0\n" "1:\n" : "=r" (res) : "r" (1), "r" (-1));
- printf("%-10s %d\n", "jg", res);
-asm("movl $0, %0\n" "cmpl %2, %1\nsetg %b0\n" : "=r" (res) : "r" (1), "r" (-1));
- printf("%-10s %d\n", "setg", res); if (1) { dd val = i2l(1); dd res = i2l(0x12345678);
-asm("cmpl %2, %1\ncmovgl %k3, %k0\n" : "=r" (res) : "r" (1), "r" (-1), "m" (val), "0" (res));
- printf("%-10s R=%08lx\n", "cmovgl", res);
-asm("cmpl %2, %1\ncmovgw %w3, %w0\n" : "=r" (res) : "r" (1), "r" (-1), "r" (1), "0" (res));
- printf("%-10s R=%08lx\n", "cmovgw", res); } };
+    TEST_JCC(G, 1, 1);
+    TEST_JCC(G, 1, 0);
+    TEST_JCC(G, 1, -1);
 
-    { int res;
-asm("movl $1, %0\n" "cmpl %2, %1\njb 1f\nmovl $0, %0\n" "1:\n" : "=r" (res) : "r" (1), "r" (1));
- printf("%-10s %d\n", "jb", res);
-asm("movl $0, %0\n" "cmpl %2, %1\nsetb %b0\n" : "=r" (res) : "r" (1), "r" (1));
- printf("%-10s %d\n", "setb", res); if (1) { dd val = i2l(1); dd res = i2l(0x12345678);
-asm("cmpl %2, %1\ncmovbl %k3, %k0\n" : "=r" (res) : "r" (1), "r" (1), "m" (val), "0" (res));
- printf("%-10s R=%08lx\n", "cmovbl", res);
-asm("cmpl %2, %1\ncmovbw %w3, %w0\n" : "=r" (res) : "r" (1), "r" (1), "r" (1), "0" (res));
- printf("%-10s R=%08lx\n", "cmovbw", res); } };
-    { int res;
-asm("movl $1, %0\n" "cmpl %2, %1\njb 1f\nmovl $0, %0\n" "1:\n" : "=r" (res) : "r" (1), "r" (0));
- printf("%-10s %d\n", "jb", res);
-asm("movl $0, %0\n" "cmpl %2, %1\nsetb %b0\n" : "=r" (res) : "r" (1), "r" (0));
- printf("%-10s %d\n", "setb", res); if (1) { dd val = i2l(1); dd res = i2l(0x12345678);
-asm("cmpl %2, %1\ncmovbl %k3, %k0\n" : "=r" (res) : "r" (1), "r" (0), "m" (val), "0" (res));
- printf("%-10s R=%08lx\n", "cmovbl", res);
-asm("cmpl %2, %1\ncmovbw %w3, %w0\n" : "=r" (res) : "r" (1), "r" (0), "r" (1), "0" (res));
- printf("%-10s R=%08lx\n", "cmovbw", res); } };
-    { int res;
-asm("movl $1, %0\n" "cmpl %2, %1\njb 1f\nmovl $0, %0\n" "1:\n" : "=r" (res) : "r" (1), "r" (-1));
- printf("%-10s %d\n", "jb", res);
-asm("movl $0, %0\n" "cmpl %2, %1\nsetb %b0\n" : "=r" (res) : "r" (1), "r" (-1));
- printf("%-10s %d\n", "setb", res); if (1) { dd val = i2l(1); dd res = i2l(0x12345678);
-asm("cmpl %2, %1\ncmovbl %k3, %k0\n" : "=r" (res) : "r" (1), "r" (-1), "m" (val), "0" (res));
- printf("%-10s R=%08lx\n", "cmovbl", res);
-asm("cmpl %2, %1\ncmovbw %w3, %w0\n" : "=r" (res) : "r" (1), "r" (-1), "r" (1), "0" (res));
- printf("%-10s R=%08lx\n", "cmovbw", res); } };
+    TEST_JCC(B, 1, 1);
+    TEST_JCC(B, 1, 0);
+    TEST_JCC(B, 1, -1);
 
-    { int res;
-asm("movl $1, %0\n" "cmpl %2, %1\njbe 1f\nmovl $0, %0\n" "1:\n" : "=r" (res) : "r" (1), "r" (1));
- printf("%-10s %d\n", "jbe", res);
-asm("movl $0, %0\n" "cmpl %2, %1\nsetbe %b0\n" : "=r" (res) : "r" (1), "r" (1));
- printf("%-10s %d\n", "setbe", res); if (1) { dd val = i2l(1); dd res = i2l(0x12345678);
-asm("cmpl %2, %1\ncmovbel %k3, %k0\n" : "=r" (res) : "r" (1), "r" (1), "m" (val), "0" (res));
- printf("%-10s R=%08lx\n", "cmovbel", res);
-asm("cmpl %2, %1\ncmovbew %w3, %w0\n" : "=r" (res) : "r" (1), "r" (1), "r" (1), "0" (res));
- printf("%-10s R=%08lx\n", "cmovbew", res); } };
-    { int res;
-asm("movl $1, %0\n" "cmpl %2, %1\njbe 1f\nmovl $0, %0\n" "1:\n" : "=r" (res) : "r" (1), "r" (0));
- printf("%-10s %d\n", "jbe", res);
-asm("movl $0, %0\n" "cmpl %2, %1\nsetbe %b0\n" : "=r" (res) : "r" (1), "r" (0));
- printf("%-10s %d\n", "setbe", res); if (1) { dd val = i2l(1); dd res = i2l(0x12345678);
-asm("cmpl %2, %1\ncmovbel %k3, %k0\n" : "=r" (res) : "r" (1), "r" (0), "m" (val), "0" (res));
- printf("%-10s R=%08lx\n", "cmovbel", res);
-asm("cmpl %2, %1\ncmovbew %w3, %w0\n" : "=r" (res) : "r" (1), "r" (0), "r" (1), "0" (res));
- printf("%-10s R=%08lx\n", "cmovbew", res); } };
-    { int res;
-asm("movl $1, %0\n" "cmpl %2, %1\njbe 1f\nmovl $0, %0\n" "1:\n" : "=r" (res) : "r" (1), "r" (-1));
- printf("%-10s %d\n", "jbe", res);
-asm("movl $0, %0\n" "cmpl %2, %1\nsetbe %b0\n" : "=r" (res) : "r" (1), "r" (-1));
- printf("%-10s %d\n", "setbe", res); if (1) { dd val = i2l(1); dd res = i2l(0x12345678);
-asm("cmpl %2, %1\ncmovbel %k3, %k0\n" : "=r" (res) : "r" (1), "r" (-1), "m" (val), "0" (res));
- printf("%-10s R=%08lx\n", "cmovbel", res);
-asm("cmpl %2, %1\ncmovbew %w3, %w0\n" : "=r" (res) : "r" (1), "r" (-1), "r" (1), "0" (res));
- printf("%-10s R=%08lx\n", "cmovbew", res); } };
+    TEST_JCC(BE, 1, 1);
+    TEST_JCC(BE, 1, 0);
+    TEST_JCC(BE, 1, -1);
 
-    { int res;
-asm("movl $1, %0\n" "cmpl %2, %1\njae 1f\nmovl $0, %0\n" "1:\n" : "=r" (res) : "r" (1), "r" (1));
- printf("%-10s %d\n", "jae", res);
-asm("movl $0, %0\n" "cmpl %2, %1\nsetae %b0\n" : "=r" (res) : "r" (1), "r" (1));
- printf("%-10s %d\n", "setae", res); if (1) { dd val = i2l(1); dd res = i2l(0x12345678);
-asm("cmpl %2, %1\ncmovael %k3, %k0\n" : "=r" (res) : "r" (1), "r" (1), "m" (val), "0" (res));
- printf("%-10s R=%08lx\n", "cmovael", res);
-asm("cmpl %2, %1\ncmovaew %w3, %w0\n" : "=r" (res) : "r" (1), "r" (1), "r" (1), "0" (res));
- printf("%-10s R=%08lx\n", "cmovaew", res); } };
-    { int res;
-asm("movl $1, %0\n" "cmpl %2, %1\njae 1f\nmovl $0, %0\n" "1:\n" : "=r" (res) : "r" (1), "r" (0));
- printf("%-10s %d\n", "jae", res);
-asm("movl $0, %0\n" "cmpl %2, %1\nsetae %b0\n" : "=r" (res) : "r" (1), "r" (0));
- printf("%-10s %d\n", "setae", res); if (1) { dd val = i2l(1); dd res = i2l(0x12345678);
-asm("cmpl %2, %1\ncmovael %k3, %k0\n" : "=r" (res) : "r" (1), "r" (0), "m" (val), "0" (res));
- printf("%-10s R=%08lx\n", "cmovael", res);
-asm("cmpl %2, %1\ncmovaew %w3, %w0\n" : "=r" (res) : "r" (1), "r" (0), "r" (1), "0" (res));
- printf("%-10s R=%08lx\n", "cmovaew", res); } };
-    { int res;
-asm("movl $1, %0\n" "cmpl %2, %1\njae 1f\nmovl $0, %0\n" "1:\n" : "=r" (res) : "r" (1), "r" (-1));
- printf("%-10s %d\n", "jae", res);
-asm("movl $0, %0\n" "cmpl %2, %1\nsetae %b0\n" : "=r" (res) : "r" (1), "r" (-1));
- printf("%-10s %d\n", "setae", res); if (1) { dd val = i2l(1); dd res = i2l(0x12345678);
-asm("cmpl %2, %1\ncmovael %k3, %k0\n" : "=r" (res) : "r" (1), "r" (-1), "m" (val), "0" (res));
- printf("%-10s R=%08lx\n", "cmovael", res);
-asm("cmpl %2, %1\ncmovaew %w3, %w0\n" : "=r" (res) : "r" (1), "r" (-1), "r" (1), "0" (res));
- printf("%-10s R=%08lx\n", "cmovaew", res); } };
+    TEST_JCC(AE, 1, 1);
+    TEST_JCC(AE, 1, 0);
+    TEST_JCC(AE, 1, -1);
 
-    { int res;
-asm("movl $1, %0\n" "cmpl %2, %1\nja 1f\nmovl $0, %0\n" "1:\n" : "=r" (res) : "r" (1), "r" (1));
- printf("%-10s %d\n", "ja", res);
-asm("movl $0, %0\n" "cmpl %2, %1\nseta %b0\n" : "=r" (res) : "r" (1), "r" (1));
- printf("%-10s %d\n", "seta", res); if (1) { dd val = i2l(1); dd res = i2l(0x12345678);
-asm("cmpl %2, %1\ncmoval %k3, %k0\n" : "=r" (res) : "r" (1), "r" (1), "m" (val), "0" (res));
- printf("%-10s R=%08lx\n", "cmoval", res);
-asm("cmpl %2, %1\ncmovaw %w3, %w0\n" : "=r" (res) : "r" (1), "r" (1), "r" (1), "0" (res));
- printf("%-10s R=%08lx\n", "cmovaw", res); } };
-    { int res;
-asm("movl $1, %0\n" "cmpl %2, %1\nja 1f\nmovl $0, %0\n" "1:\n" : "=r" (res) : "r" (1), "r" (0));
- printf("%-10s %d\n", "ja", res);
-asm("movl $0, %0\n" "cmpl %2, %1\nseta %b0\n" : "=r" (res) : "r" (1), "r" (0));
- printf("%-10s %d\n", "seta", res); if (1) { dd val = i2l(1); dd res = i2l(0x12345678);
-asm("cmpl %2, %1\ncmoval %k3, %k0\n" : "=r" (res) : "r" (1), "r" (0), "m" (val), "0" (res));
- printf("%-10s R=%08lx\n", "cmoval", res);
-asm("cmpl %2, %1\ncmovaw %w3, %w0\n" : "=r" (res) : "r" (1), "r" (0), "r" (1), "0" (res));
- printf("%-10s R=%08lx\n", "cmovaw", res); } };
-    { int res;
-asm("movl $1, %0\n" "cmpl %2, %1\nja 1f\nmovl $0, %0\n" "1:\n" : "=r" (res) : "r" (1), "r" (-1));
- printf("%-10s %d\n", "ja", res);
-asm("movl $0, %0\n" "cmpl %2, %1\nseta %b0\n" : "=r" (res) : "r" (1), "r" (-1));
- printf("%-10s %d\n", "seta", res); if (1) { dd val = i2l(1); dd res = i2l(0x12345678);
-asm("cmpl %2, %1\ncmoval %k3, %k0\n" : "=r" (res) : "r" (1), "r" (-1), "m" (val), "0" (res));
- printf("%-10s R=%08lx\n", "cmoval", res);
-asm("cmpl %2, %1\ncmovaw %w3, %w0\n" : "=r" (res) : "r" (1), "r" (-1), "r" (1), "0" (res));
- printf("%-10s R=%08lx\n", "cmovaw", res); } };
+    TEST_JCC(A, 1, 1);
+    TEST_JCC(A, 1, 0);
+    TEST_JCC(A, 1, -1);
 
 
-    { int res;
-asm("movl $1, %0\n" "cmpl %2, %1\njp 1f\nmovl $0, %0\n" "1:\n" : "=r" (res) : "r" (1), "r" (1));
- printf("%-10s %d\n", "jp", res);
-asm("movl $0, %0\n" "cmpl %2, %1\nsetp %b0\n" : "=r" (res) : "r" (1), "r" (1));
- printf("%-10s %d\n", "setp", res); if (1) { dd val = i2l(1); dd res = i2l(0x12345678);
-asm("cmpl %2, %1\ncmovpl %k3, %k0\n" : "=r" (res) : "r" (1), "r" (1), "m" (val), "0" (res));
- printf("%-10s R=%08lx\n", "cmovpl", res);
-asm("cmpl %2, %1\ncmovpw %w3, %w0\n" : "=r" (res) : "r" (1), "r" (1), "r" (1), "0" (res));
- printf("%-10s R=%08lx\n", "cmovpw", res); } };
-    { int res;
-asm("movl $1, %0\n" "cmpl %2, %1\njp 1f\nmovl $0, %0\n" "1:\n" : "=r" (res) : "r" (1), "r" (0));
- printf("%-10s %d\n", "jp", res);
-asm("movl $0, %0\n" "cmpl %2, %1\nsetp %b0\n" : "=r" (res) : "r" (1), "r" (0));
- printf("%-10s %d\n", "setp", res); if (1) { dd val = i2l(1); dd res = i2l(0x12345678);
-asm("cmpl %2, %1\ncmovpl %k3, %k0\n" : "=r" (res) : "r" (1), "r" (0), "m" (val), "0" (res));
- printf("%-10s R=%08lx\n", "cmovpl", res);
-asm("cmpl %2, %1\ncmovpw %w3, %w0\n" : "=r" (res) : "r" (1), "r" (0), "r" (1), "0" (res));
- printf("%-10s R=%08lx\n", "cmovpw", res); } };
+//    TEST_JCC(P, 1, 1);
+//    TEST_JCC(P, 1, 0);
 
-    { int res;
-asm("movl $1, %0\n" "cmpl %2, %1\njnp 1f\nmovl $0, %0\n" "1:\n" : "=r" (res) : "r" (1), "r" (1));
- printf("%-10s %d\n", "jnp", res);
-asm("movl $0, %0\n" "cmpl %2, %1\nsetnp %b0\n" : "=r" (res) : "r" (1), "r" (1));
- printf("%-10s %d\n", "setnp", res); if (1) { dd val = i2l(1); dd res = i2l(0x12345678);
-asm("cmpl %2, %1\ncmovnpl %k3, %k0\n" : "=r" (res) : "r" (1), "r" (1), "m" (val), "0" (res));
- printf("%-10s R=%08lx\n", "cmovnpl", res);
-asm("cmpl %2, %1\ncmovnpw %w3, %w0\n" : "=r" (res) : "r" (1), "r" (1), "r" (1), "0" (res));
- printf("%-10s R=%08lx\n", "cmovnpw", res); } };
-    { int res;
-asm("movl $1, %0\n" "cmpl %2, %1\njnp 1f\nmovl $0, %0\n" "1:\n" : "=r" (res) : "r" (1), "r" (0));
- printf("%-10s %d\n", "jnp", res);
-asm("movl $0, %0\n" "cmpl %2, %1\nsetnp %b0\n" : "=r" (res) : "r" (1), "r" (0));
- printf("%-10s %d\n", "setnp", res); if (1) { dd val = i2l(1); dd res = i2l(0x12345678);
-asm("cmpl %2, %1\ncmovnpl %k3, %k0\n" : "=r" (res) : "r" (1), "r" (0), "m" (val), "0" (res));
- printf("%-10s R=%08lx\n", "cmovnpl", res);
-asm("cmpl %2, %1\ncmovnpw %w3, %w0\n" : "=r" (res) : "r" (1), "r" (0), "r" (1), "0" (res));
- printf("%-10s R=%08lx\n", "cmovnpw", res); } };
+//    TEST_JCC(NP, 1, 1);
+//    TEST_JCC(NP, 1, 0);
 
-    { int res;
-asm("movl $1, %0\n" "cmpl %2, %1\njo 1f\nmovl $0, %0\n" "1:\n" : "=r" (res) : "r" (0x7fffffff), "r" (0));
- printf("%-10s %d\n", "jo", res);
-asm("movl $0, %0\n" "cmpl %2, %1\nseto %b0\n" : "=r" (res) : "r" (0x7fffffff), "r" (0));
- printf("%-10s %d\n", "seto", res); if (1) { dd val = i2l(1); dd res = i2l(0x12345678);
-asm("cmpl %2, %1\ncmovol %k3, %k0\n" : "=r" (res) : "r" (0x7fffffff), "r" (0), "m" (val), "0" (res));
- printf("%-10s R=%08lx\n", "cmovol", res);
-asm("cmpl %2, %1\ncmovow %w3, %w0\n" : "=r" (res) : "r" (0x7fffffff), "r" (0), "r" (1), "0" (res));
- printf("%-10s R=%08lx\n", "cmovow", res); } };
-    { int res;
-asm("movl $1, %0\n" "cmpl %2, %1\njo 1f\nmovl $0, %0\n" "1:\n" : "=r" (res) : "r" (0x7fffffff), "r" (-1));
- printf("%-10s %d\n", "jo", res);
-asm("movl $0, %0\n" "cmpl %2, %1\nseto %b0\n" : "=r" (res) : "r" (0x7fffffff), "r" (-1));
- printf("%-10s %d\n", "seto", res); if (1) { dd val = i2l(1); dd res = i2l(0x12345678);
-asm("cmpl %2, %1\ncmovol %k3, %k0\n" : "=r" (res) : "r" (0x7fffffff), "r" (-1), "m" (val), "0" (res));
- printf("%-10s R=%08lx\n", "cmovol", res);
-asm("cmpl %2, %1\ncmovow %w3, %w0\n" : "=r" (res) : "r" (0x7fffffff), "r" (-1), "r" (1), "0" (res));
- printf("%-10s R=%08lx\n", "cmovow", res); } };
+    TEST_JCC(O, 0X7FFFFFFF, 0);
+    TEST_JCC(O, 0X7FFFFFFF, -1);
 
-    { int res;
-asm("movl $1, %0\n" "cmpl %2, %1\njno 1f\nmovl $0, %0\n" "1:\n" : "=r" (res) : "r" (0x7fffffff), "r" (0));
- printf("%-10s %d\n", "jno", res);
-asm("movl $0, %0\n" "cmpl %2, %1\nsetno %b0\n" : "=r" (res) : "r" (0x7fffffff), "r" (0));
- printf("%-10s %d\n", "setno", res); if (1) { dd val = i2l(1); dd res = i2l(0x12345678);
-asm("cmpl %2, %1\ncmovnol %k3, %k0\n" : "=r" (res) : "r" (0x7fffffff), "r" (0), "m" (val), "0" (res));
- printf("%-10s R=%08lx\n", "cmovnol", res);
-asm("cmpl %2, %1\ncmovnow %w3, %w0\n" : "=r" (res) : "r" (0x7fffffff), "r" (0), "r" (1), "0" (res));
- printf("%-10s R=%08lx\n", "cmovnow", res); } };
-    { int res;
-asm("movl $1, %0\n" "cmpl %2, %1\njno 1f\nmovl $0, %0\n" "1:\n" : "=r" (res) : "r" (0x7fffffff), "r" (-1));
- printf("%-10s %d\n", "jno", res);
-asm("movl $0, %0\n" "cmpl %2, %1\nsetno %b0\n" : "=r" (res) : "r" (0x7fffffff), "r" (-1));
- printf("%-10s %d\n", "setno", res); if (1) { dd val = i2l(1); dd res = i2l(0x12345678);
-asm("cmpl %2, %1\ncmovnol %k3, %k0\n" : "=r" (res) : "r" (0x7fffffff), "r" (-1), "m" (val), "0" (res));
- printf("%-10s R=%08lx\n", "cmovnol", res);
-asm("cmpl %2, %1\ncmovnow %w3, %w0\n" : "=r" (res) : "r" (0x7fffffff), "r" (-1), "r" (1), "0" (res));
- printf("%-10s R=%08lx\n", "cmovnow", res); } };
+    TEST_JCC(NO, 0X7FFFFFFF, 0);
+    TEST_JCC(NO, 0X7FFFFFFF, -1);
 
-    { int res;
-asm("movl $1, %0\n" "cmpl %2, %1\njs 1f\nmovl $0, %0\n" "1:\n" : "=r" (res) : "r" (0), "r" (1));
- printf("%-10s %d\n", "js", res);
-asm("movl $0, %0\n" "cmpl %2, %1\nsets %b0\n" : "=r" (res) : "r" (0), "r" (1));
- printf("%-10s %d\n", "sets", res); if (1) { dd val = i2l(1); dd res = i2l(0x12345678);
-asm("cmpl %2, %1\ncmovsl %k3, %k0\n" : "=r" (res) : "r" (0), "r" (1), "m" (val), "0" (res));
- printf("%-10s R=%08lx\n", "cmovsl", res);
-asm("cmpl %2, %1\ncmovsw %w3, %w0\n" : "=r" (res) : "r" (0), "r" (1), "r" (1), "0" (res));
- printf("%-10s R=%08lx\n", "cmovsw", res); } };
-    { int res;
-asm("movl $1, %0\n" "cmpl %2, %1\njs 1f\nmovl $0, %0\n" "1:\n" : "=r" (res) : "r" (0), "r" (-1));
- printf("%-10s %d\n", "js", res);
-asm("movl $0, %0\n" "cmpl %2, %1\nsets %b0\n" : "=r" (res) : "r" (0), "r" (-1));
- printf("%-10s %d\n", "sets", res); if (1) { dd val = i2l(1); dd res = i2l(0x12345678);
-asm("cmpl %2, %1\ncmovsl %k3, %k0\n" : "=r" (res) : "r" (0), "r" (-1), "m" (val), "0" (res));
- printf("%-10s R=%08lx\n", "cmovsl", res);
-asm("cmpl %2, %1\ncmovsw %w3, %w0\n" : "=r" (res) : "r" (0), "r" (-1), "r" (1), "0" (res));
- printf("%-10s R=%08lx\n", "cmovsw", res); } };
-    { int res;
-asm("movl $1, %0\n" "cmpl %2, %1\njs 1f\nmovl $0, %0\n" "1:\n" : "=r" (res) : "r" (0), "r" (0));
- printf("%-10s %d\n", "js", res);
-asm("movl $0, %0\n" "cmpl %2, %1\nsets %b0\n" : "=r" (res) : "r" (0), "r" (0));
- printf("%-10s %d\n", "sets", res); if (1) { dd val = i2l(1); dd res = i2l(0x12345678);
-asm("cmpl %2, %1\ncmovsl %k3, %k0\n" : "=r" (res) : "r" (0), "r" (0), "m" (val), "0" (res));
- printf("%-10s R=%08lx\n", "cmovsl", res);
-asm("cmpl %2, %1\ncmovsw %w3, %w0\n" : "=r" (res) : "r" (0), "r" (0), "r" (1), "0" (res));
- printf("%-10s R=%08lx\n", "cmovsw", res); } };
+    TEST_JCC(S, 0, 1);
+    TEST_JCC(S, 0, -1);
+    TEST_JCC(S, 0, 0);
 
-    { int res;
-asm("movl $1, %0\n" "cmpl %2, %1\njns 1f\nmovl $0, %0\n" "1:\n" : "=r" (res) : "r" (0), "r" (1));
- printf("%-10s %d\n", "jns", res);
-asm("movl $0, %0\n" "cmpl %2, %1\nsetns %b0\n" : "=r" (res) : "r" (0), "r" (1));
- printf("%-10s %d\n", "setns", res); if (1) { dd val = i2l(1); dd res = i2l(0x12345678);
-asm("cmpl %2, %1\ncmovnsl %k3, %k0\n" : "=r" (res) : "r" (0), "r" (1), "m" (val), "0" (res));
- printf("%-10s R=%08lx\n", "cmovnsl", res);
-asm("cmpl %2, %1\ncmovnsw %w3, %w0\n" : "=r" (res) : "r" (0), "r" (1), "r" (1), "0" (res));
- printf("%-10s R=%08lx\n", "cmovnsw", res); } };
-    { int res;
-asm("movl $1, %0\n" "cmpl %2, %1\njns 1f\nmovl $0, %0\n" "1:\n" : "=r" (res) : "r" (0), "r" (-1));
- printf("%-10s %d\n", "jns", res);
-asm("movl $0, %0\n" "cmpl %2, %1\nsetns %b0\n" : "=r" (res) : "r" (0), "r" (-1));
- printf("%-10s %d\n", "setns", res); if (1) { dd val = i2l(1); dd res = i2l(0x12345678);
-asm("cmpl %2, %1\ncmovnsl %k3, %k0\n" : "=r" (res) : "r" (0), "r" (-1), "m" (val), "0" (res));
- printf("%-10s R=%08lx\n", "cmovnsl", res);
-asm("cmpl %2, %1\ncmovnsw %w3, %w0\n" : "=r" (res) : "r" (0), "r" (-1), "r" (1), "0" (res));
- printf("%-10s R=%08lx\n", "cmovnsw", res); } };
-    { int res;
-asm("movl $1, %0\n" "cmpl %2, %1\njns 1f\nmovl $0, %0\n" "1:\n" : "=r" (res) : "r" (0), "r" (0));
- printf("%-10s %d\n", "jns", res);
-asm("movl $0, %0\n" "cmpl %2, %1\nsetns %b0\n" : "=r" (res) : "r" (0), "r" (0));
- printf("%-10s %d\n", "setns", res); if (1) { dd val = i2l(1); dd res = i2l(0x12345678);
-asm("cmpl %2, %1\ncmovnsl %k3, %k0\n" : "=r" (res) : "r" (0), "r" (0), "m" (val), "0" (res));
- printf("%-10s R=%08lx\n", "cmovnsl", res);
-asm("cmpl %2, %1\ncmovnsw %w3, %w0\n" : "=r" (res) : "r" (0), "r" (0), "r" (1), "0" (res));
- printf("%-10s R=%08lx\n", "cmovnsw", res); } };
+    TEST_JCC(NS, 0, 1);
+    TEST_JCC(NS, 0, -1);
+    TEST_JCC(NS, 0, 0);
 }
 
 void test_loop(void)

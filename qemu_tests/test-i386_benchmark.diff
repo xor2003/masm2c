@@ -159,7 +159,22 @@
  shrdl      A=82345679 B=813f3421 C=0000001e R=04fcd086 CCIN=0000 CC=0000
  shrdw      A=82345679 B=813f3421 C=0000001e R=823459e4 CCIN=0000 CC=0001
  shrdl      A=82345679 B=813f3421 C=0000001f R=027e6843 CCIN=0000 CC=0000
-@@ -4488,8 +4488,8 @@
+@@ -4162,14 +4162,6 @@
+ seta       1
+ ja         0
+ seta       0
+-jp         1
+-setp       1
+-jp         0
+-setp       0
+-jnp        0
+-setnp      0
+-jnp        1
+-setnp      1
+ jo         0
+ seto       0
+ jo         1
+@@ -4404,8 +4396,8 @@
  repnz cmpsw ESI=000007fe EDI=0000080e EAX=12345678 ECX=00000010 EFL=0040
  repnz cmpsl ESI=000007fc EDI=0000080c EAX=12345678 ECX=00000010 EFL=0040
  xlat: EAX=12345688
@@ -170,7 +185,7 @@
  lea 0x4000 = 00004000
  lea (%%eax) = 00000001
  lea (%%ebx) = 00000002
-@@ -4550,5 +4550,5 @@
+@@ -4466,5 +4458,5 @@
  cbw        A=8234a6f8 R=8234fff8
  cwde       A=8234a6f8 R=ffffa6f8
  cwd        A=8234a6f8 R=8234a6f8:8345ffff
