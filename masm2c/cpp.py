@@ -532,8 +532,9 @@ class Cpp(object):
             return self.__context.typetosize(value)
 
         issqexpr = Token.find_tokens(expr, SQEXPR)
-        if issqexpr:
-            expr = Token.remove_tokens(expr, ['register', 'INTEGER', SQEXPR])
+        segover = Token.find_tokens(expr, 'segoverride')
+        if issqexpr or segover:
+            expr = Token.remove_tokens(expr, ['segmentregister', 'register', 'INTEGER', SQEXPR, 'segoverride'])
             return self.get_size(expr)
             # return 0
 
@@ -1226,8 +1227,9 @@ class Cpp(object):
 
     def _scas(self, src):
         size = self.get_size(src)
-        src = self.expand(src)
-        return "\tR(SCAS(%s,%d));\n" % (src, size)
+        s = self.expand(src)
+        srcr = Token.find_tokens(src, REGISTER)
+        return "\tR(SCAS(%s,%s,%d));\n" % (s, srcr[0], size)
 
     def __proc(self, name, def_skip=0):
         logging.info("     Generating proc %s" % name)
@@ -1714,8 +1716,9 @@ struct Memory{
 
     def _movs(self, dst, src):
         size = self.get_size(dst)
+        dstr, srcr = Token.find_tokens(dst, REGISTER), Token.find_tokens(src, REGISTER)
         a, b = self.parse2(dst, src)
-        return "MOVS(%s, %s, %d);\n" % (a, b, size)
+        return "MOVS(%s, %s, %s, %s, %d);\n" % (a, b, dstr[0], srcr[0], size)
 
     def _repe(self):
         #return "\tREPE\n"
@@ -1729,8 +1732,9 @@ struct Memory{
 
     def _lods(self, src):
         size = self.get_size(src)
-        src = self.expand(src)
-        return "\tR(LODS(%s,%d));\n" % (src, size)
+        s = self.expand(src)
+        srcr = Token.find_tokens(src, REGISTER)
+        return "\tR(LODS(%s,%s,%d));\n" % (s, srcr[0], size)
 
     def _leave(self):
         return "\tR(MOV(esp, ebp));\nR(POP(ebp));\n"

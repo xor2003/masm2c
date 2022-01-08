@@ -3394,13 +3394,13 @@ extrn gameconfig:GAMEINFO
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code(u'nop')), '')
 
     def test_instr_10940(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('lods	[byte ptr fs:si]')), u'\tR(LODS(*(raddr(fs,si)),1));\n')
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('lods	[byte ptr fs:si]')), u'\tR(LODS(*(raddr(fs,si)),si,1));\n')
 
     def test_instr_10950(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('scas	[word ptr fs:si]')), u'\tR(SCAS(*(dw*)(raddr(fs,si)),2));\n')
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('scas	[word ptr fs:si]')), u'\tR(SCAS(*(dw*)(raddr(fs,si)),si,2));\n')
 
     def test_instr_10960(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('movs [dword ptr es:di], [dword ptr fs:si]')), u'MOVS(*(dd*)(raddr(es,di)), *(dd*)(raddr(fs,si)), 4);\n')
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('movs [dword ptr es:di], [dword ptr fs:si]')), u'MOVS(*(dd*)(raddr(es,di)), *(dd*)(raddr(fs,si)), di, si, 4);\n')
 
     def test_instr_10970(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code("mov al, 'Z' - 'A' +1")), u"\tR(MOV(al, 'Z'-'A'+1));\n")
@@ -3685,7 +3685,7 @@ extrn gameconfig:GAMEINFO
 
     def test_instr_11820(self):
         self.assertEqual(
-            self.proc.generate_c_cmd(self.cpp, self.parser.action_code(r'mov     ds:2, si')), u"\tR(MOV(*(raddr(ds,2)), si));\n")
+            self.proc.generate_c_cmd(self.cpp, self.parser.action_code(r'mov     ds:2, si')), u"\tR(MOV(*(dw*)(raddr(ds,2)), si));\n")
 
     def test_instr_11830(self):
         self.assertEqual(
@@ -3714,6 +3714,22 @@ extrn gameconfig:GAMEINFO
         self.assertEqual(
             self.proc.generate_c_cmd(self.cpp, self.parser.action_code(r'mov	eax, es:[g]')),
             u"\tR(MOV(eax, g));\n")
+
+    def test_instr_11880(self):
+        self.assertEqual(
+            self.proc.generate_c_cmd(self.cpp, self.parser.action_code(r'mov     eax, fs:8')),
+            u"\tR(MOV(eax, *(dd*)(raddr(fs,8))));\n")
+
+    def test_instr_11890(self):
+        self.assertEqual(
+            self.proc.generate_c_cmd(self.cpp, self.parser.action_code(r'mov     ax, fs:8')),
+            u"\tR(MOV(ax, *(dw*)(raddr(fs,8))));\n")
+
+    def test_instr_11890(self):
+        self.assertEqual(
+            self.proc.generate_c_cmd(self.cpp, self.parser.action_code(r'movs dword ptr es:[di], dword ptr fs:[si]')),
+            u"MOVS(*(dd*)(raddr(es,di)), *(dd*)(raddr(fs,si)), di, si, 4);\n")
+
 
 if __name__ == "__main__":
     unittest.main()

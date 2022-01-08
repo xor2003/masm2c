@@ -968,7 +968,7 @@ void MOV_(D* dest, const S& src)
 #define XCHG(dest,src) {dd averytemporary = (dd) dest; dest = src; src = averytemporary;}//std::swap(dest,src); TODO
 
 
-#define MOVS(dest,src,s)  {dest=src; dest+=(GET_DF()==0)?s:-s; src+=(GET_DF()==0)?s:-s; }
+#define MOVS(dest,src,destreg,srcreg,s)  {dest=src; destreg+=(GET_DF()==0)?s:-s; srcreg+=(GET_DF()==0)?s:-s; }
 //                        {memmove(dest,src,s); dest+=s; src+=s; } \
 
 

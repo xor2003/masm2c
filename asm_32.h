@@ -48,7 +48,7 @@ static inline db* raddr_(dw segment,dd offset) {return reinterpret_cast<db *>(of
 			CMP(eax, *(dd*)realAddress(edi,es)); edi+=(GET_DF()==0)?4:-4; \
 	}
 
- #define LODS(addr,s) {memcpy (((db *)&eax), &(addr), s);; esi+=(GET_DF()==0)?s:-s;} // TODO not always si!!!
+ #define LODS(addr,destreg,s) {memcpy (((db *)&eax), &(addr), s);; destreg+=(GET_DF()==0)?s:-s;}
  #define LODSS(a,b) {memcpy (((db *)&eax)+b, realAddress(esi,ds), a); esi+=(GET_DF()==0)?a:-a;}
 
  #ifdef MSB_FIRST

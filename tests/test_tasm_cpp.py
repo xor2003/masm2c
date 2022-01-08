@@ -3473,8 +3473,11 @@ class CppTest(unittest.TestCase):
     def test_cpp_31500(self):
         self.assertEqual(self.cpp.get_size(self.parser.test_size(u'teST2')), 0)
 
-    #def test_cpp_31510(self):
-        # self.assertEqual(self.cpp.get_size(self.parser.test_size(u'testOVerlap')),1)
+    def test_cpp_31500(self):
+        self.assertEqual(self.cpp.get_size(self.parser.test_size(u'teST2')), 0)
+
+    def test_cpp_31510(self):
+        self.assertEqual(self.cpp.get_size(self.parser.test_size(u'fs: 8')),0)
 
     #def test_cpp_31520(self):
         # self.assertEqual(self.cpp.get_size(self.parser.test_size(u'var1')),1)

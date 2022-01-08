@@ -50,7 +50,7 @@ static inline db* raddr_(dw segment,dw offset) {return (db *)&m + (segment<<4) +
 			CMP(eax, *(dd*)realAddress(di,es)); di+=(GET_DF()==0)?4:-4; \
 	}
 
- #define LODS(addr,s) {memcpy (((db *)&eax), &(addr), s);; si+=(GET_DF()==0)?s:-s;} // TODO not always si!!!
+ #define LODS(addr,destreg,s) {memcpy (((db *)&eax), &(addr), s);; destreg+=(GET_DF()==0)?s:-s;}
  #define LODSS(a,b) {memcpy (((db *)&eax)+b, realAddress(si,ds), a); si+=(GET_DF()==0)?a:-a;}
 
  #ifdef MSB_FIRST
