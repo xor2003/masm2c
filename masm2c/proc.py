@@ -189,7 +189,7 @@ class Proc(object):
                 visitor.prefix = ''
                 command = self.generate_c_cmd(visitor, stmt)
 
-                if command and stmt.real_offset and stmt.real_seg:
+                if command and stmt.real_offset and stmt.real_seg and self.is_flow_change_stmt(stmt):
                     visitor.body += f'cs={stmt.real_seg:#04x};eip={stmt.real_offset:#08x}; '
 
                 visitor.body += prefix + command
@@ -219,5 +219,16 @@ class Proc(object):
     def if_terminated_proc(self):
         '''Check if proc was terminated with jump or ret to know if execution flow contiues across function end'''
         if self.stmts:
-            return self.stmts[-1].cmd.startswith('jmp') or self.stmts[-1].cmd.startswith('ret') or self.stmts[-1].cmd == 'iret'
+            last_stmt = self.stmts[-1]
+            return self.is_flow_terminating_stmt(last_stmt)
         return True
+
+    def is_flow_terminating_stmt(self, last_stmt):
+        return last_stmt.cmd.startswith('jmp') or last_stmt.cmd.startswith('ret') or last_stmt.cmd == 'iret'
+
+    def is_return_point(self, stmt):
+        return stmt.cmd.startswith('call')
+
+    def is_flow_change_stmt(self, stmt):
+        return stmt.cmd.startswith('j') or stmt.cmd.startswith('int') or stmt.cmd == 'iret' \
+               or stmt.cmd.startswith('ret') or stmt.cmd.startswith('call')

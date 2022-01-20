@@ -1036,5 +1036,8 @@ class ParserDataTest(unittest.TestCase):
     def test_data_15950(self):
         self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line='db 0A0h,3 dup(0),88h,3 dup(0),82h')), ('{160,0,0,0,136,0,0,0,130}, // dummy0_0\n', 'db dummy0_0[9];\n', 9))
 
+    def test_data_15960(self):
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="var6 dd 9,8,7,1\ndw var6+4")), ('{9,8,7,1}, // var6\n', 'dd var6[4];\n', 16))
+
 if __name__ == "__main__":
     unittest.main()

@@ -58,6 +58,11 @@ def produce_jump_table(labels):
     result = """
     assert(0);
     __dispatch_call:
+#ifdef DOSBOX
+    if ((__disp >> 16) == 0xf000)
+	{cs=0xf000;eip=__disp&0xffff;m2c::fix_segs();return;}  // Jumping to BIOS
+    if ((__disp>>16) == 0) {__disp |= ((dd)cs) << 16;}
+#endif
     switch (__disp) {
 """
     offsets = []
@@ -275,20 +280,21 @@ class Cpp(object):
                     if name.startswith('dummy') and c == '0':
                         c = ''
                     else:
-                        if m.group(3):
+                        if m.group(3):  # if array
                             if c == '{}':
                                 c = ''
                             else:
                                 c = f'    {{{asgn}={c};MYCOPY({name})}}'
                         else:
-                            c = f'    {name}={c};'
+                            #c = f'    {name}={c};'
+                            c = f'    {{{asgn}={c};MYCOPY({name})}}'
 
-                    if c:
-                        real_seg, real_offset = j.getrealaddr()
-                        if real_seg:
+                    real_seg, real_offset = j.getrealaddr()
+                    if real_seg:
+                        if c:
                             c += f' // {real_seg:04x}:{real_offset:04x}'
                         c += "\n"
-                        # c += " // " + j.getlabel() + "\n"  # TODO can put original_label
+                    # c += " // " + j.getlabel() + "\n"  # TODO can put original_label
 
                     # char (& bb)[5] = group.bb;
                     # int& caa = group.aaa;
@@ -298,6 +304,10 @@ class Cpp(object):
                     # externs
                     e = re.sub(r'^([0-9A-Za-z_]+)\s+([0-9A-Za-z_\[\]]+)(\[\d+\]);', r'extern \g<1> (& \g<2>)\g<3>;', h)
                     e = re.sub(r'^([0-9A-Za-z_]+)\s+([0-9A-Za-z_\[\]]+);', r'extern \g<1>& \g<2>;', e)
+
+                    if real_seg:
+                        if c:
+                            h = h[:-1] + f' // {real_seg:04x}:{real_offset:04x}\n'
 
                     cdata_seg += c  # cpp source - assigning
                     rdata_seg += r  # reference in _data.cpp
@@ -1417,8 +1427,15 @@ class Cpp(object):
 #include <iterator>
 #ifdef DOSBOX
 #include <numeric>
- #define MYCOPY(x) {{int res = std::inner_product(std::begin(tmp999),std::end(tmp999),std::begin(x), 0, std::plus<int>(), std::not_equal_to<int>());\
-   if (res) {{printf("not equal "#x);void *p=memmem(((db*)&m2c::m)+0x1920,1024*1024,tmp999,sizeof(tmp999));if (p) {{printf(" m=%p addr=%p size=%d found at %x ",&m2c::m,(db*)p,sizeof(tmp999),((db*)p)-((db*)&m2c::m));}};}};}}
+/*
+ #define MYCOPY(x) {{m2c::set_type(x);int res = memcmp(&tmp999,&x,sizeof(tmp999)); if (res) {{printf("not equal "#x);\\
+void *p=memmem(((db*)&m2c::m)+0x1920,1024*1024,&tmp999,sizeof(tmp999));\\
+if (p) {{printf(" m=%p addr=%x size=%d found at %x \\n",&m2c::m,((db*)&x)-((db*)&m2c::m),sizeof(tmp999),((db*)p)-((db*)&m2c::m));}};}};}}
+*/
+
+ #define MYCOPY(x) {{m2c::set_type(x);memcpy(&x,&tmp999,sizeof(tmp999));\\
+   m2c::log_debug("Init %zx %zd\\n",((db*)&x)-((db*)&m2c::m)-0x1920,sizeof(tmp999));\\
+   memset(((db*)&m2c::types)+(((db*)&x)-((db*)&m2c::m)),0xff,sizeof(tmp999));}}
 
  namespace m2c {{
   void   Initializer()

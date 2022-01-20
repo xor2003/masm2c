@@ -726,5 +726,14 @@ main (int argc, char **argv)
       }
   }
 
+ printf ("1\n");
+eax=4; edx=0x640000;
+MUL1_4(edx);
+assert(eax==0x01900000);
+assert(edx==0x000000);
+ printf ("2\n");
+
+
+
   return 0;
 }

@@ -27,14 +27,6 @@ INTEGERCNST = 'INTEGER'
 STRINGCNST = 'STRING'
 
 
-def escape(s):
-    if isinstance(s, list):
-        return [escape(i) for i in s]
-    elif isinstance(s, Token):
-        return escape(s.value)
-    else:
-        return s.translate(s.maketrans({"\\": r"\\"})).replace("''", "'").replace('""', '"')
-
 
 def read_whole_file(file_name):
     logging.info("     Reading file %s..." % file_name)
@@ -230,31 +222,10 @@ def structinstdir(context, nodes, label, type, values):
         name = label.value.lower()
     else:
         name = ''
-    context.extra.add_structinstance(name, type.lower(), args)
+    context.extra.add_structinstance(name, type.lower(), args, raw=get_raw(context))
     return nodes
 
 
-def calculate_data_size_new(size, values):
-    if isinstance(values, list):
-        return sum(calculate_data_size_new(size, x) for x in values)
-    elif isinstance(values, Token):
-        if values.type == 'expr':
-            if isinstance(values.value, Token) and values.value.type == STRINGCNST:
-                return calculate_data_size_new(size, values.value)
-            else:
-                return size
-        elif values.type == STRINGCNST:
-            return Parser.calculate_STRING_size(values.value)
-        elif values.type == 'dupdir':
-            return Parser.parse_int(escape(values.value[0])) * calculate_data_size_new(size, values.value[1])
-        else:
-            return size
-    elif isinstance(values, str):
-        if values == '?':
-            return size
-        return len(values)
-    else:
-        raise NotImplementedError('Unknown Token: ' + str(values))
 
 
 def datadir(context, nodes, label, type, values):
@@ -592,6 +563,9 @@ class Parser:
         logging.info(f"     Pass number {self.pass_number}")
         Parser.c_dummy_label = counter
 
+        self.flow_terminated = True
+        self.need_label = True
+
         self.structures = OrderedDict()
         self.macro_names_stack = set()
         self.proc_list = []
@@ -838,7 +812,7 @@ class Parser:
             # check if dup
             elif v.type == 'dupdir':
                 # we should parse that
-                repeat = Parser.parse_int(escape(v.value[0]))
+                repeat = Parser.parse_int(self.escape(v.value[0]))
                 values = self.process_data_tokens(v.value[1], width)[2]
                 elements, reslist = self.action_dup(repeat, values)
 
@@ -930,6 +904,7 @@ class Parser:
             l = op.label(name, proc=self.proc.name, isproc=isproc, line_number=self.__offset_id, far=far, globl=globl)
             _, l.real_offset, l.real_seg = self.get_lst_offsets(raw)
 
+            self.need_label = False
             self.proc.add_label(name, l)
             self.set_offset(name,
                             ("&m." + name.lower() + " - &m." + self.__segment_name, self.proc, self.__offset_id))
@@ -1024,7 +999,7 @@ class Parser:
                 if line.strip():
                     #print(line)
                     m = re.match(
-                        r'^\s+(?P<start>[0-9A-F]{5})H [0-9A-F]{5}H [0-9A-F]{5}H (?P<segment>[_0-9A-Za-z]+)\s+[A-Z]+',
+                        r'^\s+(?P<start>[0-9A-F]{5,10})H [0-9A-F]{5,10}H [0-9A-F]{5,10}H (?P<segment>[_0-9A-Za-z]+)\s+[A-Z]+',
                         line)
                     segs[m.group('segment')] = f"{(int(m.group('start'), 16) // 16 + DOSBOX_START_SEG):04X}"
                     #print(segs)
@@ -1115,6 +1090,7 @@ class Parser:
             if i and i.lower() == 'far':
                 far = True
 
+        self.need_label = False
         if self.__separate_proc:
             offset, real_offset, real_seg = self.get_lst_offsets(raw)
             self.proc = Proc(name, far=far, line_number=line_number, offset=offset, real_offset=real_offset, real_seg=real_seg)
@@ -1258,6 +1234,39 @@ class Parser:
 
         return result
 
+    def escape(self, s):
+        if isinstance(s, list):
+            return [self.escape(i) for i in s]
+        elif isinstance(s, Token):
+            return self.escape(s.value)
+        else:
+            s = s.translate(s.maketrans({"\\": r"\\"}))
+            #if not self.itislst:
+            s = s.replace("''", "'").replace('""', '"')
+            return s
+
+    def calculate_data_size_new(self, size, values):
+        if isinstance(values, list):
+            return sum(self.calculate_data_size_new(size, x) for x in values)
+        elif isinstance(values, Token):
+            if values.type == 'expr':
+                if isinstance(values.value, Token) and values.value.type == STRINGCNST:
+                    return self.calculate_data_size_new(size, values.value)
+                else:
+                    return size
+            elif values.type == STRINGCNST:
+                return Parser.calculate_STRING_size(values.value)
+            elif values.type == 'dupdir':
+                return Parser.parse_int(self.escape(values.value[0])) * self.calculate_data_size_new(size, values.value[1])
+            else:
+                return size
+        elif isinstance(values, str):
+            if values == '?':
+                return size
+            return len(values)
+        else:
+            raise NotImplementedError('Unknown Token: ' + str(values))
+
     def datadir_action(self, label, type, args, raw='', line_number=0):
         if self.__cur_seg_offset & 0xff == 0:
             logging.info("     Current offset %04x" % self.__cur_seg_offset)
@@ -1265,13 +1274,16 @@ class Parser:
 
         label = self.mangle_label(label)
         binary_width = self.typetosize(type)
-        size = calculate_data_size_new(binary_width, args)
+        size = self.calculate_data_size_new(binary_width, args)
 
         offset = self.__cur_seg_offset
         if not isstruct:
+
             self.adjust_offset_to_real(raw, label)
 
             offset = self.__cur_seg_offset
+            if not self.flow_terminated:
+                logging.error(f"Flow wasn't terminated! line={line_number} offset={self.__cur_seg_offset}")
 
             logging.debug("args %s offset %d" % (str(args), offset))
 
@@ -1432,7 +1444,7 @@ class Parser:
             _, _, array = self.process_data_tokens(values, binary_width)
             return array
 
-    def add_structinstance(self, label, type, args):
+    def add_structinstance(self, label, type, args, raw=None):
         if not label:
             label = self.get_dummy_label()
         s = self.structures[type]
@@ -1456,6 +1468,7 @@ class Parser:
         if isstruct:
             self.current_struct.append(d)
         else:
+            self.adjust_offset_to_real(raw, label)
             if label:
                 self.set_global(label,
                                 op.var(number * s.getsize(), self.__cur_seg_offset, label, segment=self.__segment_name, \
@@ -1508,9 +1521,15 @@ class Parser:
         o.raw_line = raw
         o.line_number = line_number
         if self.current_macro == None:
-            self.proc.stmts.append(o)
-
             _, o.real_offset, o.real_seg = self.get_lst_offsets(raw)
+            if self.need_label and self.flow_terminated:
+                logging.error(f"Flow terminated and it was no label yet line={line_number} offset={self.__cur_seg_offset}")
+            if self.need_label and self.proc.stmts:
+                self.action_label(f'ret_{o.real_seg:x}_{o.real_offset:x}', raw=raw)
+            self.proc.stmts.append(o)
+            self.need_label = self.proc.is_return_point(o)
+            self.flow_terminated = self.proc.is_flow_terminating_stmt(o)
+            self.need_label |= self.flow_terminated
 
             self.collect_labels(self.proc.used_labels, o)
         else:
