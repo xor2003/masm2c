@@ -538,6 +538,7 @@ class Parser:
         '''
         Assembler parser
         '''
+        self.test_mode = False
         self.__globals = OrderedDict()
         self.__offsets = OrderedDict()
         self.pass_number = 0
@@ -732,9 +733,9 @@ class Parser:
             s += width
         return s
 
-    @staticmethod
-    def calculate_STRING_size(v):
-        v = v.replace("\'\'", "'").replace('\"\"', '"')
+    def calculate_STRING_size(self, v):
+        if not self.itislst:
+            v = v.replace("\'\'", "'").replace('\"\"', '"')
         return len(v) - 2
 
     def get_global_value(self, v):
@@ -801,7 +802,8 @@ class Parser:
                     elements = el
             elif v.type == 'STRING':
                 v = v.value
-                v = v.replace("\'\'", "'").replace('\"\"', '"')
+                if not self.itislst:
+                    v = v.replace("\'\'", "'").replace('\"\"', '"')
                 res = []
                 for i in range(1, len(v) - 1):
                     res.append(v[i])
@@ -1255,7 +1257,7 @@ class Parser:
                 else:
                     return size
             elif values.type == STRINGCNST:
-                return Parser.calculate_STRING_size(values.value)
+                return self.calculate_STRING_size(values.value)
             elif values.type == 'dupdir':
                 return Parser.parse_int(self.escape(values.value[0])) * self.calculate_data_size_new(size, values.value[1])
             else:
@@ -1523,9 +1525,15 @@ class Parser:
         if self.current_macro == None:
             _, o.real_offset, o.real_seg = self.get_lst_offsets(raw)
             if self.need_label and self.flow_terminated:
-                logging.error(f"Flow terminated and it was no label yet line={line_number} offset={self.__cur_seg_offset}")
-            if self.need_label and self.proc.stmts:
-                self.action_label(f'ret_{o.real_seg:x}_{o.real_offset:x}', raw=raw)
+                logging.error(f"Flow terminated and it was no label yet line={line_number}")
+                if o.real_seg:
+                    logging.error(f"{o.real_seg:x}:{o.real_offset:x}")
+            if self.need_label and self.proc.stmts and not self.test_mode:
+                if o.real_seg:
+                    label_name=f'ret_{o.real_seg:x}_{o.real_offset:x}'
+                else:
+                    label_name=self.get_dummy_label()
+                self.action_label(label_name, raw=raw)
             self.proc.stmts.append(o)
             self.need_label = self.proc.is_return_point(o)
             self.flow_terminated = self.proc.is_flow_terminating_stmt(o)

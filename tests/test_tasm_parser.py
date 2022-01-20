@@ -33,6 +33,7 @@ class ParserTest(unittest.TestCase):
         # Do the real setup
         unittest.TestCase.setUp(self)
         self.__class__.parser = Parser([])
+        self.__class__.parser.test_mode = True
         self.__class__.cpp = cpp.Cpp(self.__class__.parser)
         self.__class__.proc = Proc('mainproc')
         self.__class__.cpp.proc = self.__class__.proc
@@ -3725,7 +3726,7 @@ extrn gameconfig:GAMEINFO
             self.proc.generate_c_cmd(self.cpp, self.parser.action_code(r'mov     ax, fs:8')),
             u"\tR(MOV(ax, *(dw*)(raddr(fs,8))));\n")
 
-    def test_instr_11890(self):
+    def test_instr_11900(self):
         self.assertEqual(
             self.proc.generate_c_cmd(self.cpp, self.parser.action_code(r'movs dword ptr es:[di], dword ptr fs:[si]')),
             u"MOVS(*(dd*)(raddr(es,di)), *(dd*)(raddr(fs,si)), di, si, 4);\n")

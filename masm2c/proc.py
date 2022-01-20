@@ -213,6 +213,8 @@ class Proc(object):
                 logging.warning(f"Some attributes missing while setting comment for {stmt}")
 
     def generate_c_cmd(self, visitor, stmt):
+        if isinstance(visitor,list) or isinstance(stmt,list):
+            logging.error("abc")
         s = stmt.visit(visitor)
         return s
 
