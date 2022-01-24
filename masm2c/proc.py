@@ -19,7 +19,7 @@ class Proc(object):
     elements = 1  # how many
 
     def __init__(self, name: str, far: bool = False, line_number: int = 0, extern: bool = False, offset=0, real_offset=0,
-                 real_seg=0):
+                 real_seg=0, segment=''):
         '''
         Represent asm procedure
 
@@ -39,6 +39,7 @@ class Proc(object):
         self.extern = extern
         self.used_labels = set()
         self.group = None
+        self.segment = segment
 
         if offset:
             self.offset = offset

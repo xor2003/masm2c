@@ -547,7 +547,6 @@ class Parser:
         self.externals_vars = set()
         self.externals_procs = set()
         self.__files = set()
-        self.__separate_proc = True
         self.itislst = False
         self.args = args
 
@@ -987,7 +986,7 @@ class Parser:
 
     def read_segments_map(self, file_name):
         content = read_whole_file(re.sub(r'\.lst$', '.map', file_name, flags=re.I)).splitlines()
-        DOSBOX_START_SEG = 0x192
+        DOSBOX_START_SEG = int(self.args.startsegment, 0)
         strgenerator = (x for x in content)
         segs = OrderedDict()
         for line in strgenerator:
@@ -1071,7 +1070,7 @@ class Parser:
         self.align()
         self.__cur_seg_offset = 0
         if real_offset:
-            logging.warning(f"Segment {name} does not start at offset 0. Compiler compacted segments. It stating from: {real_offset}. Check mempry structure is properly generated")
+            logging.warning(f"Segment {name} does not start at offset 0. Compiler compacted segments. It stating from: {real_offset}. Check memory structure is properly generated")
             self.__cur_seg_offset = real_offset
 
         offset = self.__binary_data_size // 16
@@ -1093,14 +1092,16 @@ class Parser:
                 far = True
 
         self.need_label = False
-        if self.__separate_proc:
-            offset, real_offset, real_seg = self.get_lst_offsets(raw)
-            self.proc = Proc(name, far=far, line_number=line_number, offset=offset, real_offset=real_offset, real_seg=real_seg)
-            self.proc_list.append(name)
-            self.__proc_stack.append(self.proc)
-            self.set_global(name, self.proc)
-        else:
-            self.action_label(name, far=far, isproc=True)
+        #if self.__separate_proc:
+        offset, real_offset, real_seg = self.get_lst_offsets(raw)
+        self.proc = Proc(name, far=far, line_number=line_number, offset=offset,
+                         real_offset=real_offset, real_seg=real_seg,
+                         segment=self.__segment.name)
+        self.proc_list.append(name)
+        self.__proc_stack.append(self.proc)
+        self.set_global(name, self.proc)
+        #else:
+        #    self.action_label(name, far=far, isproc=True)
 
     def action_simplesegment(self, type, name):
         if name is None:
@@ -1490,25 +1491,25 @@ class Parser:
                                             elements=1, external=True, original_type=strtype))
             self.externals_vars.add(label)
         else:  # Proc
-            if self.__separate_proc:
-                self.externals_procs.add(label)
-                proc = Proc(label, extern=True)
-                logging.debug("procedure %s, extern" % label)
-                self.reset_global(label, proc)
-            else:
-                self.reset_global(label, op.label(label, proc=self.proc.name, isproc=True))
+            #if self.__separate_proc:
+            self.externals_procs.add(label)
+            proc = Proc(label, extern=True)
+            logging.debug("procedure %s, extern" % label)
+            self.reset_global(label, proc)
+            #else:
+            #    self.reset_global(label, op.label(label, proc=self.proc.name, isproc=True))
 
     def add_call_to_entrypoint(self):
-        if self.__separate_proc:
-            proc = self.get_global('mainproc')
-            o = proc.create_instruction_object('call', [self.entry_point])
-            o.raw_line = ''
-            o.line_number = 0
-            proc.stmts.append(o)
-            o = proc.create_instruction_object('ret')
-            o.raw_line = ''
-            o.line_number = 0
-            proc.stmts.append(o)
+        #if self.__separate_proc:
+        proc = self.get_global('mainproc')
+        o = proc.create_instruction_object('call', [self.entry_point])
+        o.raw_line = ''
+        o.line_number = 0
+        proc.stmts.append(o)
+        o = proc.create_instruction_object('ret')
+        o.raw_line = ''
+        o.line_number = 0
+        proc.stmts.append(o)
 
     def action_instruction(self, instruction, args, raw='', line_number=0):
         if instruction[0].lower() == 'j' and len(args) == 1 and isinstance(args[0], Token) and \

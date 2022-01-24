@@ -1483,8 +1483,11 @@ if (p) {{printf(" m=%p addr=%x size=%d found at %x \\n",&m2c::m,((db*)&x)-((db*)
                 proc_to_merge = set()
                 if not first_proc.if_terminated_proc():
                     '''If execution does not terminated in the procedure range when merge it with next proc'''
-                    proc_to_merge.add(self.__procs[index+1])
-                    logging.info(f"Need to merge {first_proc_name} with {self.__procs[index+1]}")
+                    if index + 1 < len(self.__procs):
+                        logging.info(f"Execution does not terminated need to merge {first_proc_name} with {self.__procs[index+1]}")
+                        proc_to_merge.add(self.__procs[index+1])
+                    else:
+                        logging.info(f"Execution does not terminated could not find proc after {first_proc_name}")
                 if missing:
                     proc_to_merge.add(first_proc_name)
                     for l in missing:
@@ -1495,6 +1498,13 @@ if (p) {{printf(" m=%p addr=%x size=%d found at %x \\n",&m2c::m,((db*)&x)-((db*)
                         elif isinstance(first_label, proc_module.Proc):
                             logging.debug(f" {l} is proc, will merge {first_label.name} proc")
                             proc_to_merge.add(first_label.name)
+
+                if self.__context.args.procperseg:
+                    for pname in self.__procs:
+                        if pname != first_proc_name:
+                            p_proc = self.__context.get_global(pname)
+                            if first_proc.segment == p_proc.segment:
+                                proc_to_merge.add(pname)
 
                 first_proc.to_group_with = proc_to_merge
                 logging.debug(f" will merge {proc_to_merge}")
@@ -1626,9 +1636,14 @@ if (p) {{printf(" m=%p addr=%x size=%d found at %x \\n",&m2c::m,((db*)&x)-((db*)
             hd = open(header, "wt")
 
         data_impl = f'''#include "_data.h"
+#include "_data.h"
+#include "_data.h"
 namespace m2c{{
 static struct Memory mm;
 struct Memory& m = mm;
+
+static struct Memory t;
+struct Memory& types = t;
 
 db(& stack)[STACK_SIZE]=m.stack;
 db(& heap)[HEAP_SIZE]=m.heap;

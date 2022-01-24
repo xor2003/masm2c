@@ -75,6 +75,23 @@ def parse_args(args):
         default=False,
         const=True,
     )
+    aparser.add_argument(
+        "-p",
+        "--procpersegment",
+        dest="procperseg",
+        help="Each code segment is merged to a single procedure",
+        action="store_const",
+        default=False,
+        const=True,
+    )
+    aparser.add_argument(
+        "-z",
+        "--startsegment",
+        dest="startsegment",
+        help="Each code segment is merged to a single procedure",
+        action="store",
+        default='0x192',
+    )
     return aparser.parse_args(args)
 
 
