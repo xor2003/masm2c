@@ -1046,5 +1046,9 @@ class ParserDataTest(unittest.TestCase):
         self.parser.itislst = True
         self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="aII db 8,'ê\"\"',8,'ê\"\"',0")), ('"\\x08\\x88\\"\\"\\x08\\x88\\"\\"", // aii\n', 'char aii[9];\n', 9))
 
+    def test_data_15990(self):
+        self.parser.itislst = True
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="aa db ',ªan:ª',0")), ('",\\xa6" "an:\\xa6", // aa\n', 'char aa[7];\n', 7))
+
 if __name__ == "__main__":
     unittest.main()

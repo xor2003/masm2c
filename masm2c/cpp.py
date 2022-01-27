@@ -1881,6 +1881,7 @@ struct Memory{
     def produce_c_data_zero_string(data: op.Data):
         label, data_ctype, _, r, elements, size = data.getdata()
         rc = '"' + ''.join([Cpp.convert_str(i) for i in r[:-1]]) + '"'
+        rc = re.sub(r'(\\x[0-9a-f][0-9a-f])([0-9a-f])', r'\g<1>" "\g<2>', rc)   # fix for stupid C hex escapes: \xaef
         rh = f'char {label}[{str(len(r))}]'
         return rc, rh
 
