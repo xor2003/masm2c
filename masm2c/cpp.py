@@ -77,6 +77,7 @@ def produce_jump_table(labels):
     result += "    };\n}\n"
     return result
 
+
 class SeparateProcStrategy:
 
     def forward_to_dispatcher(self, disp):
@@ -111,11 +112,10 @@ class SeparateProcStrategy:
     def function_end(self):
         return ' }\n'
 
-
     def write_declarations(self, procs, context):
         result = ""
         for p in sorted(procs):  # TODO only if used or public
-            if p == 'mainproc': # and not context.main_file:
+            if p == 'mainproc':  # and not context.main_file:
                 result += 'static '
             result += "void %s(m2c::_offsets, struct m2c::_STATE*);\n" % cpp_mangle_label(p)
 
@@ -262,6 +262,8 @@ class Cpp(object):
         rdata_seg = ""
         edata_seg = ""
         for i in segments.values():
+            rdata_seg += f"db& {i.name}=*((db*)&m2c::m+0x{i.offset:x});\n"
+            edata_seg += f"extern db& {i.name};\n"
             for j in i.getdata():
                 c, h, size = self.produce_c_data_single_(j)
 
@@ -286,7 +288,7 @@ class Cpp(object):
                             else:
                                 c = f'    {{{asgn}={c};MYCOPY({name})}}'
                         else:
-                            #c = f'    {name}={c};'
+                            # c = f'    {name}={c};'
                             c = f'    {{{asgn}={c};MYCOPY({name})}}'
 
                     real_seg, real_offset = j.getrealaddr()
@@ -299,7 +301,8 @@ class Cpp(object):
                     # char (& bb)[5] = group.bb;
                     # int& caa = group.aaa;
                     # references
-                    r = re.sub(r'^([0-9A-Za-z_]+)\s+([0-9A-Za-z_\[\]]+)(\[\d+\]);', r'\g<1> (& \g<2>)\g<3> = m2c::m.\g<2>;', h)
+                    r = re.sub(r'^([0-9A-Za-z_]+)\s+([0-9A-Za-z_\[\]]+)(\[\d+\]);',
+                               r'\g<1> (& \g<2>)\g<3> = m2c::m.\g<2>;', h)
                     r = re.sub(r'^([0-9A-Za-z_]+)\s+([0-9A-Za-z_\[\]]+);', r'\g<1>& \g<2> = m2c::m.\g<2>;', r)
                     # externs
                     e = re.sub(r'^([0-9A-Za-z_]+)\s+([0-9A-Za-z_\[\]]+)(\[\d+\]);', r'extern \g<1> (& \g<2>)\g<3>;', h)
@@ -907,21 +910,21 @@ class Cpp(object):
         name, far = self.jump_to_label(name)
         hasglobal = self.__context.has_global(name)
         if not hasglobal:
-        # jumps feat purpose:
-        # * in sub __dispatch_call - for address based jumps or grouped subs
-        # * direct jumps
+            # jumps feat purpose:
+            # * in sub __dispatch_call - for address based jumps or grouped subs
+            # * direct jumps
 
-        # how to handle jumps:
-        # subs - direct jump to internal sub (maybe merged) - directly
-        # labels - directly
-        # offset - internal sub __dispatch_call disp=cs + offset
-        #   register
-        #   exact value
-        # seg:offset - in sub __dispatch_call disp= seg:offset ?
-            #ret += f"__disp={dst};\n"
-            #dst = "__dispatch_call"
-            #if self.__context.has_global(name):
-            #name = 'm2c::k'+name
+            # how to handle jumps:
+            # subs - direct jump to internal sub (maybe merged) - directly
+            # labels - directly
+            # offset - internal sub __dispatch_call disp=cs + offset
+            #   register
+            #   exact value
+            # seg:offset - in sub __dispatch_call disp= seg:offset ?
+            # ret += f"__disp={dst};\n"
+            # dst = "__dispatch_call"
+            # if self.__context.has_global(name):
+            # name = 'm2c::k'+name
             addtobody, name = self.proc_strategy.forward_to_dispatcher(name)
             self.body += f'__disp={addtobody};\n'
             logging.debug(f'not sure if handle it properly {name} {addtobody}')
@@ -1042,7 +1045,6 @@ class Cpp(object):
                 disp = dst
                 dst = "__dispatch_call"
 
-
             # calls feat purpose:
         # * grouped sub wrapper, exact subs  - direct name for external references
         #   intern sub jump dispatcher - for grouped subs
@@ -1057,11 +1059,11 @@ class Cpp(object):
         #   register
         #   memory reference
         # seg:offset  - __dispatch_call disp= seg:offset
-            #elif isinstance(g, proc_module.Proc) or dst in self.__procs or dst in self.grouped:
-            #    self.body += f"__disp=0;\n"
+        # elif isinstance(g, proc_module.Proc) or dst in self.__procs or dst in self.grouped:
+        #    self.body += f"__disp=0;\n"
         else:
             disp, dst = self.proc_strategy.forward_to_dispatcher(dst)
-            #self.body += addtobody
+            # self.body += addtobody
 
         dst = self.proc_strategy.fix_call_label(dst)
         dst = cpp_mangle_label(dst)
@@ -1192,7 +1194,7 @@ class Cpp(object):
     '''
 
     def _rep(self):
-        #return "\tREP\n"
+        # return "\tREP\n"
         self.prefix = '\tREP '
         return ''
 
@@ -1427,15 +1429,8 @@ class Cpp(object):
 #include <iterator>
 #ifdef DOSBOX
 #include <numeric>
-/*
- #define MYCOPY(x) {{m2c::set_type(x);int res = memcmp(&tmp999,&x,sizeof(tmp999)); if (res) {{printf("not equal "#x);\\
-void *p=memmem(((db*)&m2c::m)+0x1920,1024*1024,&tmp999,sizeof(tmp999));\\
-if (p) {{printf(" m=%p addr=%x size=%d found at %x \\n",&m2c::m,((db*)&x)-((db*)&m2c::m),sizeof(tmp999),((db*)p)-((db*)&m2c::m));}};}};}}
-*/
 
- #define MYCOPY(x) {{m2c::set_type(x);memcpy(&x,&tmp999,sizeof(tmp999));\\
-   m2c::log_debug("Init %zx %zd\\n",((db*)&x)-((db*)&m2c::m)-0x1920,sizeof(tmp999));\\
-   memset(((db*)&m2c::types)+(((db*)&x)-((db*)&m2c::m)),0xff,sizeof(tmp999));}}
+ #define MYCOPY(x) {{m2c::set_type(x);m2c::mycopy((db*)&x,(db*)&tmp999,sizeof(tmp999),#x);}}
 
  namespace m2c {{
   void   Initializer()
@@ -1484,8 +1479,9 @@ if (p) {{printf(" m=%p addr=%x size=%d found at %x \\n",&m2c::m,((db*)&x)-((db*)
                 if not first_proc.if_terminated_proc():
                     '''If execution does not terminated in the procedure range when merge it with next proc'''
                     if index + 1 < len(self.__procs):
-                        logging.info(f"Execution does not terminated need to merge {first_proc_name} with {self.__procs[index+1]}")
-                        proc_to_merge.add(self.__procs[index+1])
+                        logging.info(
+                            f"Execution does not terminated need to merge {first_proc_name} with {self.__procs[index + 1]}")
+                        proc_to_merge.add(self.__procs[index + 1])
                     else:
                         logging.info(f"Execution does not terminated could not find proc after {first_proc_name}")
                 if missing:
@@ -1542,7 +1538,8 @@ if (p) {{printf(" m=%p addr=%x size=%d found at %x \\n",&m2c::m,((db*)&x)-((db*)
                 if self.__context.args.singleproc or first_proc.to_group_with:
                     logging.debug(f"Merging {first_proc_name}")
                     new_group_name = f'_group{groups_id}'
-                    first_label = op.label(first_proc_name, proc=new_group_name, isproc=False, line_number=first_proc.line_number, far=first_proc.far)
+                    first_label = op.label(first_proc_name, proc=new_group_name, isproc=False,
+                                           line_number=first_proc.line_number, far=first_proc.far)
                     first_label.real_offset, first_label.real_seg = first_proc.real_offset, first_proc.real_seg
 
                     first_label.used = True
@@ -1552,20 +1549,22 @@ if (p) {{printf(" m=%p addr=%x size=%d found at %x \\n",&m2c::m,((db*)&x)-((db*)
                     self.grouped.add(first_proc_name)
 
                     self.groups[first_proc_name] = new_group_name
-                    #self.grouped |= first_proc.group
+                    # self.grouped |= first_proc.group
                     for next_proc_name in self.__procs:
-                        if next_proc_name != first_proc_name and (self.__context.args.singleproc or next_proc_name in first_proc.to_group_with):  # Maintaining initial proc order
-                                next_proc = self.__context.get_global(next_proc_name)
-                                if isinstance(next_proc, proc_module.Proc):  # and first_proc.far == next_proc.far:
-                                    self.groups[next_proc_name] = new_group_name
-                                    next_label = op.label(next_proc_name, proc=first_proc_name, isproc=False, line_number=next_proc.line_number, far=next_proc.far)
-                                    next_label.real_offset, next_label.real_seg = next_proc.real_offset, next_proc.real_seg
-                                    next_label.used = True
-                                    first_proc.add_label(next_proc_name, next_label)
-                                    logging.debug(f"     with {next_proc_name}")
-                                    first_proc.merge_two_procs(new_group_name, next_proc)
-                                    self.__context.reset_global(next_proc_name, next_label)
-                                    self.grouped.add(next_proc_name)
+                        if next_proc_name != first_proc_name and (
+                                self.__context.args.singleproc or next_proc_name in first_proc.to_group_with):  # Maintaining initial proc order
+                            next_proc = self.__context.get_global(next_proc_name)
+                            if isinstance(next_proc, proc_module.Proc):  # and first_proc.far == next_proc.far:
+                                self.groups[next_proc_name] = new_group_name
+                                next_label = op.label(next_proc_name, proc=first_proc_name, isproc=False,
+                                                      line_number=next_proc.line_number, far=next_proc.far)
+                                next_label.real_offset, next_label.real_seg = next_proc.real_offset, next_proc.real_seg
+                                next_label.used = True
+                                first_proc.add_label(next_proc_name, next_label)
+                                logging.debug(f"     with {next_proc_name}")
+                                first_proc.merge_two_procs(new_group_name, next_proc)
+                                self.__context.reset_global(next_proc_name, next_label)
+                                self.grouped.add(next_proc_name)
                     groups += [new_group_name]
                     self.__context.set_global(new_group_name, first_proc)
                     groups_id += 1
@@ -1591,7 +1590,8 @@ if (p) {{printf(" m=%p addr=%x size=%d found at %x \\n",&m2c::m,((db*)&x)-((db*)
                 segments, structures = self.merge_segments(segments, structs, *jsonpickle.decode(infile.read()))
         return segments, structures
 
-    def merge_segments(self, allsegments: OrderedDict, allstructs: OrderedDict, newsegments: OrderedDict, newstructs: OrderedDict):
+    def merge_segments(self, allsegments: OrderedDict, allstructs: OrderedDict, newsegments: OrderedDict,
+                       newstructs: OrderedDict):
         if self.merge_data_segments:
             logging.info('Will merge public data segments')
         for k, v in newsegments.items():
@@ -1602,8 +1602,8 @@ if (p) {{printf(" m=%p addr=%x size=%d found at %x \\n",&m2c::m,((db*)&x)-((db*)
                     allsegments[segclass] = v
                 else:
                     data = v.getdata()
-                    allsegments[segclass].insert_label(data[0])
-                    for d in data[1:]:
+                    # allsegments[segclass].insert_label(data[0])
+                    for d in data:
                         allsegments[segclass].append(d)
             else:
                 if k in allsegments and (v.getsize() > 0 or allsegments[k].getsize() > 0):
@@ -1636,8 +1636,6 @@ if (p) {{printf(" m=%p addr=%x size=%d found at %x \\n",&m2c::m,((db*)&x)-((db*)
             hd = open(header, "wt")
 
         data_impl = f'''#include "_data.h"
-#include "_data.h"
-#include "_data.h"
 namespace m2c{{
 static struct Memory mm;
 struct Memory& m = mm;
@@ -1682,7 +1680,7 @@ static const dd kbegin = 0x1001;
 """
         i = 0x1001
         for k, v in list(self.__context.get_globals().items()):
-            #if isinstance(v, (op.label, proc_module.Proc)) and v.used:
+            # if isinstance(v, (op.label, proc_module.Proc)) and v.used:
             if isinstance(v, (op.label, proc_module.Proc)):
                 k = re.sub(r'[^A-Za-z0-9_]', '_', k).lower()
                 i += 1
@@ -1753,12 +1751,12 @@ struct Memory{
         return "MOVS(%s, %s, %s, %s, %d);\n" % (a, b, dstr[0], srcr[0], size)
 
     def _repe(self):
-        #return "\tREPE\n"
+        # return "\tREPE\n"
         self.prefix = '\tREPE '
         return ''
 
     def _repne(self):
-        #return "\tREPNE\n"
+        # return "\tREPNE\n"
         self.prefix = '\tREPNE '
         return ''
 
@@ -1965,7 +1963,8 @@ struct Memory{
                 if isinstance(v, op.var):
                     lst.write(f'{v.name} {v.offset}\n')
 
-            lst.write(jsonpickle.encode((self.__context.get_globals(), self.__context.segments, self.__context.structures)))
+            lst.write(
+                jsonpickle.encode((self.__context.get_globals(), self.__context.segments, self.__context.structures)))
 
     def produce_global_jump_table(self, globals, itislst):
         # Produce call table

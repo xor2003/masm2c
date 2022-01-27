@@ -399,7 +399,7 @@ class Segment(object):
         :param comment: Source of element
         '''
         self.name = name.lower()
-        # self.offset = offset
+        self.offset = offset
         self.original_name = name
         self.used = False
         self.__data = list()

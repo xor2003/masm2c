@@ -1077,9 +1077,11 @@ class Parser:
         logging.debug("segment %s %x" % (name, offset))
         binary_width = 0
 
+        if real_seg:
+            offset = real_seg * 0x10
         self.__segment = Segment(name, offset, options=options, segclass=segclass)
         self.segments[name] = self.__segment
-        self.__segment.append(op.Data(name, 'db', DataType.ARRAY, [], 0, 0, comment='segment start zero label'))
+        #self.__segment.append(op.Data(name, 'db', DataType.ARRAY, [], 0, 0, comment='segment start zero label'))
 
         self.set_global(name, op.var(binary_width, offset, name, issegment=True))
 
