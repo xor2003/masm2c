@@ -253,6 +253,7 @@ class Cpp(object):
         self.grouped = set()
         self.groups = OrderedDict()
 
+        self.before = ''
         self.prefix = ''
         self.merge_data_segments = merge_data_segments
 
@@ -1032,7 +1033,10 @@ class Cpp(object):
         logging.debug("cpp._call(%s)" % str(name))
         ret = ""
         # dst = self.expand(name, destination = False)
+        size = self.get_size(name)
         dst, far = self.jump_to_label(name)
+        if size == 4:
+            far = True
         disp = '0'
         hasglobal = self.__context.has_global(dst)
         if hasglobal:
@@ -1077,6 +1081,13 @@ class Cpp(object):
     @staticmethod
     def _ret():
         return "\tR(RETN);\n"
+
+    def _retf(self, src):
+        if src == []:
+            src = '0'
+        else:
+            src = self.expand(src)
+        return "\tR(RETF(%s));\n" % src
 
     def parse2(self, dst, src):
         dst_size, src_size = self.get_size(dst), self.get_size(src)

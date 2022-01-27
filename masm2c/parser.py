@@ -737,7 +737,7 @@ class Parser:
             v = v.replace("\'\'", "'").replace('\"\"', '"')
         return len(v) - 2
 
-    def get_global_value(self, v, size):
+    def get_global_value(self, v, size=2):
         logging.debug("get_global_value(%s)" % v)
         v = self.mangle_label(v)
         g = self.get_global(v)
@@ -838,7 +838,7 @@ class Parser:
                     # traceback.print_stack(file=sys.stdout)
                     # logging.debug "global/expr: ~%s~" %v
                     try:
-                        v = self.get_global_value(v)
+                        v = self.get_global_value(v, width)
                     except KeyError:
                         v = 0
                 reslist = [v]

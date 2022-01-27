@@ -1079,3 +1079,11 @@ class _assignment(baseop):
         # else:
         #    from masm2c.cpp import SkipCode
         #    raise SkipCode
+
+class _retf(baseop):
+    def __init__(self, args):
+        super().__init__()
+        self.args = args
+
+    def visit(self, visitor):
+        return visitor._retf(self.args)

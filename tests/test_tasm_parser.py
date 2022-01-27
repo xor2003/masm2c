@@ -3353,7 +3353,10 @@ extrn gameconfig:GAMEINFO
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code(u'iret')), '\tR(IRET);\n')
 
     def test_instr_10800(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code(u'retf')), '\tR(RETF);\n')
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code(u'retf')), '\tR(RETF(0));\n')
+
+    def test_instr_10805(self):
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code(u'retf 2')), '\tR(RETF(2));\n')
 
     def test_instr_10810(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('lds     bx, offset unk_40F064')), u'\tR(LDS(bx, offset(initcall,unk_40f064)));\n')
@@ -3527,7 +3530,7 @@ extrn gameconfig:GAMEINFO
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code(u'repne lodsb')), 'LODSB;\n')
 
     def test_instr_11370(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('call    dword ptr [ebx-4]')), '\tR(CALL(__dispatch_call,*(dd*)(raddr(ds,ebx-4))));\n')
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('call    dword ptr [ebx-4]')), '\tR(CALLF(__dispatch_call,*(dd*)(raddr(ds,ebx-4))));\n')
 
     def test_instr_11380(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('call    exec_adc')), u'\tR(CALL(exec_adc,0));\n')
