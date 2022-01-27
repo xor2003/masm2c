@@ -926,12 +926,12 @@ class Cpp(object):
             # if self.__context.has_global(name):
             # name = 'm2c::k'+name
             addtobody, name = self.proc_strategy.forward_to_dispatcher(name)
-            self.body += f'__disp={addtobody};\n'
+            self.before += f'__disp={addtobody};\n'
             logging.debug(f'not sure if handle it properly {name} {addtobody}')
         else:
             g = self.__context.get_global(name)
             if isinstance(g, op.var):
-                self.body += f'__disp={name};\n'
+                self.before += f'__disp={name};\n'
                 name = "__dispatch_call"
 
         return name, far

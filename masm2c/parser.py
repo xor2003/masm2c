@@ -737,7 +737,7 @@ class Parser:
             v = v.replace("\'\'", "'").replace('\"\"', '"')
         return len(v) - 2
 
-    def get_global_value(self, v):
+    def get_global_value(self, v, size):
         logging.debug("get_global_value(%s)" % v)
         v = self.mangle_label(v)
         g = self.get_global(v)
@@ -748,7 +748,12 @@ class Parser:
             if g.issegment:
                 v = "seg_offset(%s)" % g.name
             else:
-                v = "offset(%s,%s)" % (g.segment, g.name)
+                if size == 2:
+                    v = "offset(%s,%s)" % (g.segment, g.name)
+                elif size == 4:
+                    v = "far_offset(%s,%s)" % (g.segment, g.name)
+                else:
+                    logging.error(f'Some unknown data size {size} for {g.name}')
         elif isinstance(g, (op.label, proc.Proc)):
             v = "m2c::k%s" % (g.name.lower())
         else:
@@ -845,7 +850,7 @@ class Parser:
                     v = v.value
                     # width = 2  # TODO for 16 bit only
                     v = self.mangle_label(v)
-                    v = self.get_global_value(v)
+                    v = self.get_global_value(v, width)
                 except KeyError:
                     if self.pass_number != 1:
                         logging.error("unknown address %s" % v)

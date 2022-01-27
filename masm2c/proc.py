@@ -188,12 +188,13 @@ class Proc(object):
             try:
                 prefix = visitor.prefix
                 visitor.prefix = ''
+                visitor.before = ''
                 command = self.generate_c_cmd(visitor, stmt)
 
-                if command and stmt.real_offset and stmt.real_seg and self.is_flow_change_stmt(stmt):
+                if command and stmt.real_offset and stmt.real_seg and (self.is_flow_change_stmt(stmt) or 'cs' in command or 'cs' in visitor.before):
                     visitor.body += f'cs={stmt.real_seg:#04x};eip={stmt.real_offset:#08x}; '
 
-                visitor.body += prefix + command
+                visitor.body += visitor.before + prefix + command
             except InjectCode as ex:
                 logging.debug(f'Injecting code {ex.cmd} before {stmt}')
                 s = self.generate_c_cmd(visitor, ex.cmd)
@@ -214,8 +215,6 @@ class Proc(object):
                 logging.warning(f"Some attributes missing while setting comment for {stmt}")
 
     def generate_c_cmd(self, visitor, stmt):
-        if isinstance(visitor,list) or isinstance(stmt,list):
-            logging.error("abc")
         s = stmt.visit(visitor)
         return s
 
