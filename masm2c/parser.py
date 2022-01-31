@@ -1075,7 +1075,7 @@ class Parser:
         self.align()
         self.__cur_seg_offset = 0
         if real_offset:
-            logging.warning(f"Segment {name} does not start at offset 0. Compiler compacted segments. It stating from: {real_offset}. Check memory structure is properly generated")
+            #logging.warning(f"Segment {name} does not start at offset 0. Compiler compacted segments. It stating from: {real_offset}. Check memory structure is properly generated")
             self.__cur_seg_offset = real_offset
 
         offset = self.__binary_data_size // 16

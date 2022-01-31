@@ -998,7 +998,7 @@ class Cpp(object):
             hasglobal = True
             g = self.__context.get_global(name)
             if isinstance(g, proc_module.Proc):
-                return name, g.far
+                far = g.far
 
         # if name in self.proc.retlabels:
         #    return "return /* (%s) */" % name, far
@@ -1042,7 +1042,7 @@ class Cpp(object):
         if hasglobal:
             g = self.__context.get_global(dst)
             if isinstance(g, op.label) and not g.isproc and not dst in self.__procs and not dst in self.grouped:
-                far = g.far  # make far calls to far procs
+                #far = g.far  # make far calls to far procs
                 disp = f"m2c::k{dst}"
                 dst = g.proc
             elif isinstance(g, op.var):

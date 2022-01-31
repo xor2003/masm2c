@@ -3737,5 +3737,8 @@ extrn gameconfig:GAMEINFO
     def test_instr_12000(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('call  near ptr  test_bcd')), u'\tR(CALL(test_bcd,0));\n')
 
+    def test_instr_12010(self):
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('call    far ptr loc_40458F')), u'\tR(CALLF(mainproc,m2c::kloc_40458f));\n')
+
 if __name__ == "__main__":
     unittest.main()
