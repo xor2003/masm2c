@@ -191,7 +191,7 @@ class Proc(object):
                 visitor.before = ''
                 command = self.generate_c_cmd(visitor, stmt)
 
-                if command and stmt.real_offset and stmt.real_seg: # and (self.is_flow_change_stmt(stmt) or 'cs' in command or 'cs' in visitor.before):
+                if command and stmt.real_seg: # and (self.is_flow_change_stmt(stmt) or 'cs' in command or 'cs' in visitor.before):
                     visitor.body += f'cs={stmt.real_seg:#04x};eip={stmt.real_offset:#08x}; '
 
                 visitor.body += visitor.before + prefix + command
