@@ -88,9 +88,9 @@ def parse_args(args):
         "-z",
         "--startsegment",
         dest="startsegment",
-        help="Each code segment is merged to a single procedure",
+        help="Dosbox 0.74.3 (w/o debug) loads .exe from 0x1a2 para, .com from 0x192",
         action="store",
-        default='0x192',
+        default='0x1a2',
     )
     return aparser.parse_args(args)
 

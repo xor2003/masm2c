@@ -1055,5 +1055,9 @@ class ParserDataTest(unittest.TestCase):
         self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="var4 dw aa")), ('offset(default_seg,aa), // var4\n', 'dw var4;\n', 2))
         self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="var5 dd aa")), ('far_offset(default_seg,aa), // var5\n', 'dd var5;\n', 4))
 
+    #def test_data_16010(self):
+    #    self.parser.action_data(line='loc_11990:')
+    #    self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="var4 dw offset loc_11990+2-offset loc_11990")), ('m2c::kloc_11990+2-m2c::kloc_11990, // var4\n', 'dw var4;\n', 2))
+
 if __name__ == "__main__":
     unittest.main()

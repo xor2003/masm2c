@@ -1087,3 +1087,11 @@ class _retf(baseop):
 
     def visit(self, visitor):
         return visitor._retf(self.args)
+
+class _xlat(baseop):
+    def __init__(self, args):
+        super().__init__()
+        self.args = args
+
+    def visit(self, visitor):
+        return visitor._xlat(self.args)

@@ -949,6 +949,7 @@ template <class D, class S>
 void MOV_(D* dest, const S& src)
 { *dest = static_cast<D>(src); }
 
+#define LEAVE {MOV(esp, ebp));POP(ebp);}
 #define LFS(dest,src) {dest = src; fs= *(dw*)((db*)&(src) + sizeof(dest));}
 #define LES(dest,src) {dest = src; es = *(dw*)((db*)&(src) + sizeof(dest));}
 #define LGS(dest,src) {dest = src; gs = *(dw*)((db*)&(src) + sizeof(dest));}
@@ -1205,6 +1206,8 @@ bool is_little_endian();
 #define ORG(x) 
 #define XLATB XLAT
 #define LOCK // TODO check
+
+#define XLATP(x) {al = *(x + al);}
 
 /*
 #ifndef __BORLANDC__

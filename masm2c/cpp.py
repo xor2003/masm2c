@@ -253,8 +253,9 @@ class Cpp(object):
         self.grouped = set()
         self.groups = OrderedDict()
 
-        self.before = ''
+        self.dispatch = ''
         self.prefix = ''
+        self.label = ''
         self.merge_data_segments = merge_data_segments
 
     def produce_c_data(self, segments):
@@ -927,12 +928,12 @@ class Cpp(object):
             # if self.__context.has_global(name):
             # name = 'm2c::k'+name
             addtobody, name = self.proc_strategy.forward_to_dispatcher(name)
-            self.before += f'__disp={addtobody};\n'
+            self.dispatch += f'__disp={addtobody};\n'
             logging.debug(f'not sure if handle it properly {name} {addtobody}')
         else:
             g = self.__context.get_global(name)
             if isinstance(g, op.var):
-                self.before += f'__disp={name};\n'
+                self.dispatch += f'__disp={name};\n'
                 name = "__dispatch_call"
 
         return name, far
@@ -1017,10 +1018,10 @@ class Cpp(object):
 
     def _label(self, name, isproc):
         if isproc:
-            ret = self.proc_strategy.produce_proc_start(name)
+            self.label = self.proc_strategy.produce_proc_start(name)
         else:
-            ret = "%s:\n" % cpp_mangle_label(name)
-        return ret
+            self.label = "%s:\n" % cpp_mangle_label(name)
+        return ''
 
     def schedule(self, name):
         name = name.lower()
@@ -1032,7 +1033,6 @@ class Cpp(object):
     def _call(self, name):
         logging.debug("cpp._call(%s)" % str(name))
         ret = ""
-        # dst = self.expand(name, destination = False)
         size = self.get_size(name)
         dst, far = self.jump_to_label(name)
         if size == 4:
@@ -1073,21 +1073,28 @@ class Cpp(object):
         dst = cpp_mangle_label(dst)
 
         if far:
-            ret += f"\tR(CALLF({dst},{disp}));\n"
+            ret += f"CALLF({dst},{disp})"
         else:
-            ret += f"\tR(CALL({dst},{disp}));\n"
+            ret += f"CALL({dst},{disp})"
         return ret
 
     @staticmethod
     def _ret():
-        return "\tR(RETN);\n"
+        return "RETN"
 
     def _retf(self, src):
         if src == []:
-            src = '0'
+            self.a = '0'
         else:
-            src = self.expand(src)
-        return "\tR(RETF(%s));\n" % src
+            self.a = self.expand(src)
+        return "RETF(%s)" % self.a
+
+    def _xlat(self, src):
+        if src == []:
+            return "XLAT"
+        else:
+            self.a = self.expand(src)[2:-1]
+            return "XLATP(%s)" % self.a
 
     def parse2(self, dst, src):
         dst_size, src_size = self.get_size(dst), self.get_size(src)
@@ -1104,58 +1111,54 @@ class Cpp(object):
         return dst, src
 
     def _add(self, dst, src):
-        self.d, self.s = self.parse2(dst, src)
+        self.a, self.b = self.parse2(dst, src)
         # if self.d in ['sp', 'esp'] and check_int(self.s):
         #    self.__pushpop_count -= int(self.s)
-        return "\tR(ADD(%s, %s));\n" % (self.d, self.s)
+        return "ADD(%s, %s)" % (self.a, self.b)
 
     def _sub(self, dst, src):
-        self.d, self.s = self.parse2(dst, src)
+        self.a, self.b = self.parse2(dst, src)
         # if self.d in ['sp', 'esp'] and check_int(self.s):
         #    self.__pushpop_count += int(self.s)
-        return "\tR(SUB(%s, %s));\n" % (self.d, self.s)
+        return "SUB(%s, %s)" % (self.a, self.b)
 
     def _xor(self, dst, src):
-        self.d, self.s = self.parse2(dst, src)
-        return "\tR(XOR(%s, %s));\n" % (self.d, self.s)
+        self.a, self.b = self.parse2(dst, src)
+        return "XOR(%s, %s)" % (self.a, self.b)
 
     def _mul(self, src):
-        res = []
         size = 0
         for i in src:
             if size == 0:
                 size = self.get_size(i)
             else:
                 break
-        for i in src:
-            res.append(self.expand(i, size))
+        res = [self.expand(i, size) for i in src]
         if size == 0:
             size = self.__current_size
-        return "\tR(MUL%d_%d(%s));\n" % (len(src), size, ",".join(res))
+        return "MUL%d_%d(%s)" % (len(src), size, ",".join(res))
 
     def _imul(self, src):
-        res = []
         size = 0
         for i in src:
             if size == 0:
                 size = self.get_size(i)
             else:
                 break
-        for i in src:
-            res.append(self.expand(i, size))
+        res = [self.expand(i, size) for i in src]
         if size == 0:
             size = self.__current_size
-        return "\tR(IMUL%d_%d(%s));\n" % (len(src), size, ",".join(res))
+        return "IMUL%d_%d(%s)" % (len(src), size, ",".join(res))
 
     def _div(self, src):
         size = self.get_size(src)
-        src = self.expand(src)
-        return "\tR(DIV%d(%s));\n" % (size, src)
+        self.a = self.expand(src)
+        return "DIV%d(%s)" % (size, self.a)
 
     def _idiv(self, src):
         size = self.get_size(src)
-        src = self.expand(src)
-        return "\tR(IDIV%d(%s));\n" % (size, src)
+        self.a = self.expand(src)
+        return "IDIV%d(%s)" % (size, self.a)
 
     def _jz(self, label):
         result = self.isrelativejump(label)
@@ -1163,27 +1166,27 @@ class Cpp(object):
             return "\n"
         else:
             label, far = self.jump_post(label)  # TODO
-            return "\t\tR(JZ(%s));\n" % label
+            return "JZ(%s)" % label
 
     def _jnz(self, label):
         label, far = self.jump_post(label)
-        return "\t\tR(JNZ(%s));\n" % label
+        return "JNZ(%s)" % label
 
     def _jbe(self, label):
         label, far = self.jump_post(label)
-        return "\t\tR(JBE(%s));\n" % label
+        return "JBE(%s)" % label
 
     def _ja(self, label):
         label, far = self.jump_post(label)
-        return "\t\tR(JA(%s));\n" % label
+        return "JA(%s)" % label
 
     def _jc(self, label):
         label, far = self.jump_post(label)
-        return "\t\tR(JC(%s));\n" % label
+        return "JC(%s)" % label
 
     def _jnc(self, label):
         label, far = self.jump_post(label)
-        return "\t\tR(JNC(%s));\n" % label
+        return "JNC(%s)" % label
 
     '''
     def _push(self, regs):
@@ -1192,7 +1195,7 @@ class Cpp(object):
             if self.get_size(r):
                 self.__pushpop_count += 2
                 r = self.expand(r)
-                p += "\tR(PUSH(%s));\n" % (r)
+                p += "PUSH(%s)" % (r)
         return p
 
     def _pop(self, regs):
@@ -1200,7 +1203,7 @@ class Cpp(object):
         for r in regs:
             self.__pushpop_count -= 2
             r = self.expand(r)
-            p += "\tR(POP(%s));\n" % r
+            p += "POP(%s)" % r
         return p
     '''
 
@@ -1210,49 +1213,49 @@ class Cpp(object):
         return ''
 
     def _cmpsb(self):
-        return "CMPSB;\n"
+        return "CMPSB"
 
     def _lodsb(self):
-        return "LODSB;\n"
+        return "LODSB"
 
     def _lodsw(self):
-        return "LODSW;\n"
+        return "LODSW"
 
     def _lodsd(self):
-        return "LODSD;\n"
+        return "LODSD"
 
     def _stosb(self, n, clear_cx):
-        return "STOSB;\n"  # %("" if n == 1 else n, ", true" if clear_cx else "")
+        return "STOSB"  # %("" if n == 1 else n, ", true" if clear_cx else "")
 
     def _stosw(self, n, clear_cx):
-        return "STOSW;\n"  # %("" if n == 1 else n, ", true" if clear_cx else "")
+        return "STOSW"  # %("" if n == 1 else n, ", true" if clear_cx else "")
 
     def _stosd(self, n, clear_cx):
-        return "STOSD;\n"  # %("" if n == 1 else n, ", true" if clear_cx else "")
+        return "STOSD"  # %("" if n == 1 else n, ", true" if clear_cx else "")
 
     def _movsb(self, n, clear_cx):
-        return "MOVSB;\n"
+        return "MOVSB"
 
     def _movsw(self, n, clear_cx):
-        return "MOVSW;\n"
+        return "MOVSW"
 
     def _movsd(self, n, clear_cx):
-        return "MOVSD;\n"
+        return "MOVSD"
 
     def _scasb(self):
-        return "SCASB;\n"
+        return "SCASB"
 
     def _scasw(self):
-        return "SCASW;\n"
+        return "SCASW"
 
     def _scasd(self):
-        return "SCASD;\n"
+        return "SCASD"
 
     def _scas(self, src):
         size = self.get_size(src)
-        s = self.expand(src)
+        self.a = self.expand(src)
         srcr = Token.find_tokens(src, REGISTER)
-        return "\tR(SCAS(%s,%s,%d));\n" % (s, srcr[0], size)
+        return "SCAS(%s,%s,%d)" % (self.a, srcr[0], size)
 
     def __proc(self, name, def_skip=0):
         logging.info("     Generating proc %s" % name)
@@ -1751,15 +1754,17 @@ struct Memory{
 
     def _lea(self, dst, src):
         self.lea = True
-        r = "\tR(%s = %s);\n" % (self.expand(dst, destination=True, lea=True), self.expand(src, lea=True))
+        self.a = self.expand(dst, destination=True, lea=True)
+        self.b = self.expand(src, lea=True)
+        r = "%s = %s" % (self.a, self.b)
         self.lea = False
         return r
 
     def _movs(self, dst, src):
         size = self.get_size(dst)
         dstr, srcr = Token.find_tokens(dst, REGISTER), Token.find_tokens(src, REGISTER)
-        a, b = self.parse2(dst, src)
-        return "MOVS(%s, %s, %s, %s, %d);\n" % (a, b, dstr[0], srcr[0], size)
+        self.a, self.b = self.parse2(dst, src)
+        return "MOVS(%s, %s, %s, %s, %d" % (self.a, self.b, dstr[0], srcr[0], size)
 
     def _repe(self):
         # return "\tREPE\n"
@@ -1773,23 +1778,23 @@ struct Memory{
 
     def _lods(self, src):
         size = self.get_size(src)
-        s = self.expand(src)
+        self.a = self.expand(src)
         srcr = Token.find_tokens(src, REGISTER)
-        return "\tR(LODS(%s,%s,%d));\n" % (s, srcr[0], size)
+        return "LODS(%s,%s,%d)" % (self.a, srcr[0], size)
 
     def _leave(self):
-        return "\tR(MOV(esp, ebp));\nR(POP(ebp));\n"
+        return "LEAVE"  # MOV(esp, ebp) POP(ebp)
 
     def _int(self, dst):
-        dst = self.expand(dst)
-        return "\tR(_INT(%s));\n" % (dst)
+        self.a = self.expand(dst)
+        return "_INT(%s)" % self.a
 
     def _instruction0(self, cmd):
-        return "\tR(%s);\n" % (cmd.upper())
+        return "%s" % (cmd.upper())
 
     def _instruction1(self, cmd, dst):
-        dst = self.expand(dst)
-        return "\tR(%s(%s));\n" % (cmd.upper(), dst)
+        self.a = self.expand(dst)
+        return "%s(%s)" % (cmd.upper(), self.a)
 
     def _jump(self, cmd, label):
         result = self.isrelativejump(label)
@@ -1797,7 +1802,7 @@ struct Memory{
             return "\n"
         else:
             label, far = self.jump_post(label)  # TODO
-            return "\t\tR(%s(%s));\n" % (cmd.upper(), label)
+            return "%s(%s)" % (cmd.upper(), label)
 
     def isrelativejump(self, label):
         result = '$' in str(label)  # skip j* $+2
@@ -1805,12 +1810,12 @@ struct Memory{
 
     def _instruction2(self, cmd, dst, src):
         self.a, self.b = self.parse2(dst, src)
-        return "\tR(%s(%s, %s));\n" % (cmd.upper(), self.a, self.b)
+        return "%s(%s, %s)" % (cmd.upper(), self.a, self.b)
 
     def _instruction3(self, cmd, dst, src, c):
         self.a, self.b = self.parse2(dst, src)
         self.c = self.expand(c)
-        return "\tR(%s(%s, %s, %s));\n" % (cmd.upper(), self.a, self.b, self.c)
+        return "%s(%s, %s, %s)" % (cmd.upper(), self.a, self.b, self.c)
 
     def return_empty(self, _):
         return []
@@ -1832,10 +1837,12 @@ struct Memory{
         o.implemented = True
         self.__context.reset_global(dst, o)
 
-        return "#undef %s\n#define %s %s\n" % (dst, dst, self.expand(src))
+        self.label += "#undef %s\n#define %s %s\n" % (dst, dst, self.expand(src))
+        return ''
 
     def _equ(self, dst, src):
-        return "#define %s %s\n" % (dst, self.expand(src))
+        self.label += "#define %s %s\n" % (dst, self.expand(src))
+        return ''
 
     @staticmethod
     def produce_c_data_single(data):

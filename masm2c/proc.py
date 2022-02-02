@@ -10,7 +10,7 @@ from builtins import str
 from masm2c.Token import Token
 from masm2c import op
 
-#label_re = re.compile(r'^([\S@]+)::?(.*)$')  # speed
+# label_re = re.compile(r'^([\S@]+)::?(.*)$')  # speed
 PTRDIR = 'ptrdir'
 
 
@@ -18,7 +18,8 @@ class Proc(object):
     last_addr = 0xc000
     elements = 1  # how many
 
-    def __init__(self, name: str, far: bool = False, line_number: int = 0, extern: bool = False, offset=0, real_offset=0,
+    def __init__(self, name: str, far: bool = False, line_number: int = 0, extern: bool = False, offset=0,
+                 real_offset=0,
                  real_seg=0, segment=''):
         '''
         Represent asm procedure
@@ -181,38 +182,77 @@ class Proc(object):
             r.append(i.__str__())
         return "\n".join(r)
 
+    def enrich_command(self, stmt, full_command):
+        def expr_is_register(e):
+            return isinstance(e, Token) and isinstance(e.value, Token) and e.value.type in ['register',
+                                                                                            'segmentregister']
+
+        def cmd_wo_args(stmt):
+            return len(stmt.args) == 0
+
+        def cmd_impacting_only_registers(stmt):
+            return (cmd_wo_args(stmt) or \
+                stmt.cmd in ['cmp', 'test'] or \
+                (stmt.cmd != 'xchg' and len(stmt.args) >= 1 and expr_is_register(stmt.args[0]) or \
+                (stmt.cmd == 'xchg' and expr_is_register(stmt.args[0]) and expr_is_register(stmt.args[1])))) and \
+                not stmt.cmd.startswith('push') and not stmt.cmd.startswith('pop') and not stmt.cmd.startswith('stos') and \
+                not stmt.cmd.startswith('movs')
+
+        def expr_is_mov_ss(e):
+            return stmt.cmd in ['mov', 'pop'] and \
+                   isinstance(e, Token) and isinstance(e.value, Token) and e.value.type == 'segmentregister' and \
+                   e.value.type == 'ss'
+
+        if self.is_flow_change_stmt(stmt) or stmt.cmd in ['out', 'in'] or expr_is_mov_ss(stmt):
+            trace_mode = 'R'  # trace only. external impact or execution point change
+        elif cmd_impacting_only_registers(stmt):
+            trace_mode = 'T'  # compare execution with dosbox. registers only impact
+        else:
+            trace_mode = 'X'  # compare execution with dosbox. memory impact
+
+        result = "\t" + trace_mode + "(" + full_command + ");"
+        return result
+
     def visit(self, visitor, skip=0):
         for i in range(skip, len(self.stmts)):
             stmt = self.stmts[i]
             from masm2c.cpp import InjectCode, SkipCode
             try:
-                prefix = visitor.prefix
-                visitor.prefix = ''
-                visitor.before = ''
-                command = self.generate_c_cmd(visitor, stmt)
-
-                if command and stmt.real_seg: # and (self.is_flow_change_stmt(stmt) or 'cs' in command or 'cs' in visitor.before):
-                    visitor.body += f'cs={stmt.real_seg:#04x};eip={stmt.real_offset:#08x}; '
-
-                visitor.body += visitor.before + prefix + command
+                full_line = self.generate_full_cmd_line(visitor, stmt)
+                visitor.body += full_line
             except InjectCode as ex:
                 logging.debug(f'Injecting code {ex.cmd} before {stmt}')
-                s = self.generate_c_cmd(visitor, ex.cmd)
+                s = self.generate_full_cmd_line(visitor, ex.cmd)
                 visitor.body += s
-                s = self.generate_c_cmd(visitor, stmt)
+                s = self.generate_full_cmd_line(visitor, stmt)
                 visitor.body += s
             except SkipCode:
                 logging.debug(f'Skipping code {stmt}')
             except Exception as ex:
-                logging.error(f'Exception in {stmt.filename}:{stmt.line_number} {stmt.raw_line}\n {ex.args}')
+                logging.error(f'Exception {ex.args}')
+                logging.error(f' in {stmt.filename}:{stmt.line_number} {stmt.raw_line}')
                 raise
 
             try:  # trying to add command and comment
                 if stmt.raw_line or stmt.line_number != 0:
-                    visitor.body = visitor.body[:-1] + "\t// " + str(stmt.line_number) \
+                    visitor.body += "\t// " + str(stmt.line_number) \
                                    + " " + stmt.raw_line + "\n"
             except AttributeError:
                 logging.warning(f"Some attributes missing while setting comment for {stmt}")
+
+    def generate_full_cmd_line(self, visitor, stmt):
+        prefix = visitor.prefix
+        visitor.label = ''
+        visitor.dispatch = ''
+        visitor.prefix = ''
+        command = self.generate_c_cmd(visitor, stmt)
+        if command and stmt.real_seg:  # and (self.is_flow_change_stmt(stmt) or 'cs' in command or 'cs' in visitor.before):
+            visitor.body += f'cs={stmt.real_seg:#04x};eip={stmt.real_offset:#08x}; '
+        full_command = prefix + command
+        if full_command:
+            full_command = self.enrich_command(stmt, full_command)
+        full_line = visitor.label + visitor.dispatch + full_command
+        return full_line
 
     def generate_c_cmd(self, visitor, stmt):
         s = stmt.visit(visitor)
@@ -233,4 +273,4 @@ class Proc(object):
 
     def is_flow_change_stmt(self, stmt):
         return stmt.cmd.startswith('j') or stmt.cmd.startswith('int') or stmt.cmd == 'iret' \
-               or stmt.cmd.startswith('ret') or stmt.cmd.startswith('call')
+               or stmt.cmd.startswith('ret') or stmt.cmd.startswith('call') or stmt.cmd.startswith('loop')
