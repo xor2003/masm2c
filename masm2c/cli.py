@@ -147,7 +147,7 @@ def process(i, args):
     p.next_pass(counter)
     context = p.parse_file(name)
 
-    generator = Cpp(context, outfile=outname, skip_output=[], function_name_remapping={})
+    generator = Cpp(context, outfile=outname, skip_output=[])
     generator.generate('mainproc')  # start routine
     if args.list:
         generator.dump_globals()

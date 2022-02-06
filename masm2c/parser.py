@@ -56,7 +56,7 @@ def get_line_number(context):
 
 
 def get_raw(context):
-    return context.input_str[context.start_position: context.end_position]
+    return context.input_str[context.start_position: context.end_position].strip()
 
 def get_raw_line(context):
     line_eol_pos = context.input_str.find('\n', context.end_position)
@@ -569,6 +569,7 @@ class Parser:
         self.structures = OrderedDict()
         self.macro_names_stack = set()
         self.proc_list = []
+        self.proc = None
 
         # self.__label_to_skip = skip_binary_data
         self.__offset_id = 0x1111
@@ -577,12 +578,6 @@ class Parser:
         self.main_file = False
         self.__proc_stack = []
 
-        nname = "mainproc"
-        self.proc = Proc(nname)
-        self.proc_list.append(nname)
-        self.__proc_stack.append(self.proc)
-        self.set_global(nname, self.proc)
-
         self.__binary_data_size = 0
         self.__cur_seg_offset = 0
         self.__c_dummy_jump_label = 0
@@ -590,6 +585,8 @@ class Parser:
         self.__segment_name = "default_seg"
         self.__segment = Segment(self.__segment_name, 0, comment="Artificial initial segment")
         self.segments[self.__segment_name] = self.__segment
+
+        self.proc = self.add_proc("mainproc", '', 0, False)
 
         self.used = False
 
@@ -1092,23 +1089,28 @@ class Parser:
 
     def action_proc(self, name, type, line_number=0, raw=''):
         logging.info("     Found proc %s" % name.value)
+        self.action_endp()
         name = self.mangle_label(name.value)
         far = False
         for i in type:
             if i and i.lower() == 'far':
                 far = True
 
+        self.proc = self.add_proc(name, raw, line_number, far)
+        #else:
+        #    self.action_label(name, far=far, isproc=True)
+
+    def add_proc(self, name, raw, line_number, far):
         self.need_label = False
-        #if self.__separate_proc:
+        # if self.__separate_proc:
         offset, real_offset, real_seg = self.get_lst_offsets(raw)
-        self.proc = Proc(name, far=far, line_number=line_number, offset=offset,
+        proc = Proc(name, far=far, line_number=line_number, offset=offset,
                          real_offset=real_offset, real_seg=real_seg,
                          segment=self.__segment.name)
         self.proc_list.append(name)
-        self.__proc_stack.append(self.proc)
-        self.set_global(name, self.proc)
-        #else:
-        #    self.action_label(name, far=far, isproc=True)
+        self.set_global(name, proc)
+        self.__proc_stack.append(proc)
+        return proc
 
     def action_simplesegment(self, type, name):
         if name is None:
@@ -1144,7 +1146,10 @@ class Parser:
         self.parse_file(name)
 
     def action_endp(self):
-        self.__proc_stack.pop()
+        if self.proc:
+            if self.__proc_stack:
+                self.__proc_stack.pop()
+            self.proc = None
         ''' Support code outside procs
         if self.__proc_stack:
             self.proc = self.__proc_stack[-1]
@@ -1519,12 +1524,20 @@ class Parser:
         proc.stmts.append(o)
 
     def action_instruction(self, instruction, args, raw='', line_number=0):
-        if instruction[0].lower() == 'j' and len(args) == 1 and isinstance(args[0], Token) and \
+        if (instruction[0].lower() == 'j' or instruction[0].lower() == 'loop') and \
+                len(args) == 1 and isinstance(args[0], Token) and \
                 isinstance(args[0].value, Token) and args[0].value.type == 'LABEL':
             if args[0].value.value.lower() == '@f':
                 args[0].value.value = "dummylabel" + str(self.__c_dummy_jump_label + 1)
             elif args[0].value.value.lower() == '@b':
                 args[0].value.value = "dummylabel" + str(self.__c_dummy_jump_label)
+
+        if not self.proc:
+            name = f'{self.__segment.name}_proc'
+            if name in self.proc_list:
+                self.proc = self.get_global(name)
+            else:
+                self.proc = self.add_proc(name, raw, line_number, False)
 
         o = self.proc.create_instruction_object(instruction, args)
         o.filename = self.__current_file
@@ -1536,14 +1549,15 @@ class Parser:
                 logging.error(f"Flow terminated and it was no label yet line={line_number}")
                 if o.real_seg:
                     logging.error(f"{o.real_seg:x}:{o.real_offset:x}")
-            if self.need_label and self.proc.stmts and not self.test_mode:
+            if self.need_label and self.proc.stmts:
                 if o.real_seg:
                     label_name=f'ret_{o.real_seg:x}_{o.real_offset:x}'
                 else:
                     label_name=self.get_dummy_label()
                 self.action_label(label_name, raw=raw)
             self.proc.stmts.append(o)
-            self.need_label = self.proc.is_return_point(o)
+            if self.args.singleproc:
+                self.need_label |= self.proc.is_return_point(o)
             self.flow_terminated = self.proc.is_flow_terminating_stmt(o)
             self.need_label |= self.flow_terminated
 
@@ -1569,6 +1583,7 @@ class Parser:
             self.set_global(name, self.current_struct)
             self.current_struct = None
         else:
+            self.action_endp()
             self.action_endseg()
 
     def action_end(self, label):

@@ -97,10 +97,12 @@ class SeparateProcStrategy:
     X86_REGREF
     __disp = _i;
 """ % cpp_mangle_label(name)
+
         if entry_point != '':
             header += """
     if (__disp == kbegin) goto %s;
 """ % entry_point
+
         header += """
     if (__disp == 0) goto _begin;
     else goto __dispatch_call;
@@ -209,7 +211,7 @@ def cpp_mangle_label(name):
 class Cpp(object):
     ''' Visitor for all operations to produce C++ code '''
 
-    def __init__(self, context, outfile="", skip_output=None, function_name_remapping=None,
+    def __init__(self, context, outfile="", skip_output=None,
                  proc_strategy=SeparateProcStrategy(), merge_data_segments=True):
         # proc_strategy = SingleProcStrategy()):
         '''
@@ -217,7 +219,6 @@ class Cpp(object):
         :param context: pointer to Parser data
         :param outfile: Output filename
         :param skip_output: List of functions to skip at output
-        :param function_name_remapping: Dict for how to rename functions
         :param proc_strategy: Strategy to Single/Separate functions
         '''
 
@@ -235,8 +236,7 @@ class Cpp(object):
         self.__proc_done = []
         self.__failed = []
         self.__skip_output = skip_output
-        self.__function_name_remapping = function_name_remapping
-        self.__translated = []
+        #self.__translated = []
         self.__proc_addr = []
         self.__used_data_offsets = set()
         self.__methods = []
@@ -1278,18 +1278,14 @@ class Cpp(object):
             self.__proc_addr.append((name, self.proc.offset))
             self.body = ""
 
-            if name in self.__function_name_remapping:
-                self.body += "int %s() {\ngoto %s;\n" % (
-                    self.__function_name_remapping[name], self.__context.entry_point)
-            else:
-                entry_point = ''
-                try:
-                    g = self.__context.get_global(self.__context.entry_point)
-                except:
-                    g = None
-                if g and isinstance(g, op.label) and g.proc == self.proc:
-                    entry_point = self.__context.entry_point
-                self.body += self.proc_strategy.function_header(name, entry_point)
+            entry_point = ''
+            try:
+                g = self.__context.get_global(self.__context.entry_point)
+            except:
+                g = None
+            if g and isinstance(g, op.label) and g.proc == self.proc:
+                entry_point = self.__context.entry_point
+            self.body += self.proc_strategy.function_header(name, entry_point)
 
             # logging.info(name)
             # self.proc.optimize()
@@ -1305,14 +1301,14 @@ class Cpp(object):
 
             self.body += produce_jump_table(self.proc.provided_labels)
 
-            if name not in self.__skip_output:
-                self.__translated.append(self.body)
-
+            #if name not in self.__skip_output:
+            #    self.__translated.append(self.body)
+            segment = self.proc.segment
             self.proc = None
 
             if self.__pushpop_count != 0:
                 logging.warning("push/pop balance = %d non zero at the exit of proc" % self.__pushpop_count)
-            return True
+            return self.body, segment
         except (CrossJump, op.Unsupported) as e:
             logging.error("%s: ERROR: %s" % (name, e))
             self.__failed.append(name)
@@ -1326,6 +1322,7 @@ class Cpp(object):
 
         cpp_assign, _, _, cpp_extern = self.produce_c_data(self.__context.segments)
 
+        translated = []
         if sys.version_info >= (3, 0):
             cppd = open(fname, "wt", encoding=self.__codeset)
             hd = open(header, "wt", encoding=self.__codeset)
@@ -1338,8 +1335,6 @@ class Cpp(object):
 /* 
  *
  */
-#include <algorithm>
-#include <iterator>
 """
 
         hid = "__M2C_%s_STUBS_H__" % self.__namespace.upper().replace('-', '_')
@@ -1353,7 +1348,6 @@ class Cpp(object):
 
         cppd.write(f"""{banner}
 #include \"{header}\"
-#include <curses.h>
 
 """)
 
@@ -1399,19 +1393,44 @@ class Cpp(object):
             self.body += f"""
  void {p}(m2c::_offsets, struct m2c::_STATE* _state){{{self.groups[p]}(m2c::k{p}, _state);}}
 """
-        self.__translated.append(self.body)
+        translated.append(self.body)
+        cppd.write("\n")
+        cppd.write("\n".join(translated))
+        cppd.write("\n")
 
+        last_segment = None
+        cpp_segm = None
         for name in self.__procs:
-            self.__proc(name)
+            proc_text, segment = self.__proc(name)
+            if self.__context.itislst and segment != last_segment:
+                last_segment = segment
+                if cpp_segm:
+                    cpp_segm.close()
+                fsname = f"{self.__namespace.lower()}_{segment}.cpp"
+                logging.info(f' *** Generating output file in C++ {fsname}')
+                if sys.version_info >= (3, 0):
+                    cpp_segm = open(fsname, "wt", encoding=self.__codeset)
+                else:
+                    cpp_segm = open(fsname, "wt")
+
+                cpp_segm.write(f'''{banner}
+                #include "{header}"
+
+                ''')
+            if cpp_segm:
+                cpp_segm.write(f"{proc_text}\n")
+            else:
+                cppd.write(f"{proc_text}\n")
+
+            #self.__translated.append(proc_text)
             self.__proc_done.append(name)
             self.__methods.append(name)
+
+        if cpp_segm:
+            cpp_segm.close()
         # self.write_stubs("_stubs.cpp", self.__failed)
         self.__methods += self.__failed
         done, failed = len(self.__proc_done), len(self.__failed)
-
-        cppd.write("\n")
-        cppd.write("\n".join(self.__translated))
-        cppd.write("\n")
 
         logging.info(
             "%d ok, %d failed of %d, %3g%% translated" % (done, failed, done + failed, 100.0 * done / (done + failed)))
@@ -1478,12 +1497,7 @@ class Cpp(object):
             for index, first_proc_name in enumerate(self.__procs):
                 first_proc = self.__context.get_global(first_proc_name)
 
-                labels = set()  # leave only real labels
-                for label_name in first_proc.used_labels:
-                    first_label = self.__context.get_global(label_name)
-                    if isinstance(first_label, (op.label, proc_module.Proc)):
-                        labels.add(label_name)
-                first_proc.used_labels = labels
+                first_proc.used_labels = self.leave_only_procs_and_labels(first_proc.used_labels)
                 logging.debug(f"Proc {first_proc_name} used labels {first_proc.used_labels}")
                 logging.debug(f"                   provided labels {first_proc.provided_labels}")
 
@@ -1498,16 +1512,11 @@ class Cpp(object):
                         proc_to_merge.add(self.__procs[index + 1])
                     else:
                         logging.info(f"Execution does not terminated could not find proc after {first_proc_name}")
+
                 if missing:
                     proc_to_merge.add(first_proc_name)
                     for l in missing:
-                        first_label = self.__context.get_global(l)
-                        if isinstance(first_label, op.label):
-                            logging.debug(f" {l} is label, will merge {first_label.proc} proc")
-                            proc_to_merge.add(first_label.proc)  # if label then merge proc implementing it
-                        elif isinstance(first_label, proc_module.Proc):
-                            logging.debug(f" {l} is proc, will merge {first_label.name} proc")
-                            proc_to_merge.add(first_label.name)
+                        proc_to_merge.add(self.get_related_proc(l))  # if label then merge proc implementing it
 
                 if self.__context.args.procperseg:
                     for pname in self.__procs:
@@ -1538,12 +1547,13 @@ class Cpp(object):
                                 first_proc.to_group_with = next_proc.to_group_with
                                 changed = True
                     logging.debug(f"  will group with {first_proc.to_group_with}")
+
             for first_proc_name in self.__procs:
-                first_proc = self.__context.get_global(first_proc_name)
-                if first_proc.to_group_with:
-                    logging.info(f"     ~{first_proc_name}")
-                    for p_name in first_proc.to_group_with:
-                        logging.info(f"       {p_name}")
+                logging.debug(f"Proc {first_proc_name}")
+                self.leave_only_same_seg_procs_to_merge(first_proc_name)
+
+            self.print_how_procs_merged()
+
         groups = []
         groups_id = 1
         for first_proc_name in self.__procs:
@@ -1564,9 +1574,11 @@ class Cpp(object):
 
                     self.groups[first_proc_name] = new_group_name
                     # self.grouped |= first_proc.group
-                    for next_proc_name in self.__procs:
-                        if next_proc_name != first_proc_name and (
-                                self.__context.args.singleproc or next_proc_name in first_proc.to_group_with):  # Maintaining initial proc order
+                    proc_to_group = self.__procs if self.__context.args.singleproc else first_proc.to_group_with
+                    proc_to_group = self.get_lineordered_proclist(proc_to_group)
+
+                    for next_proc_name in proc_to_group:
+                        if next_proc_name != first_proc_name and next_proc_name not in self.grouped:
                             next_proc = self.__context.get_global(next_proc_name)
                             if isinstance(next_proc, proc_module.Proc):  # and first_proc.far == next_proc.far:
                                 self.groups[next_proc_name] = new_group_name
@@ -1584,6 +1596,48 @@ class Cpp(object):
                     groups_id += 1
         self.__procs = [x for x in self.__procs if x not in self.grouped]
         self.__procs += groups
+        self.__procs = self.get_lineordered_proclist(self.__procs)
+
+    def get_lineordered_proclist(self, proc_list):
+        line_to_proc = dict([(self.__context.get_global(first_proc_name).line_number, first_proc_name) for first_proc_name in
+                        proc_list])
+        return [line_to_proc[line_number] for line_number in sorted(line_to_proc.keys())]
+
+    def leave_only_same_seg_procs_to_merge(self, first_proc_name):
+        first_proc = self.__context.get_global(first_proc_name)
+        only_current_segment_procs = set()
+        for next_proc_name in first_proc.to_group_with:
+            if first_proc_name != next_proc_name:
+                next_proc = self.__context.get_global(next_proc_name)
+                if first_proc.segment == next_proc.segment:
+                    only_current_segment_procs.add(next_proc_name)
+        first_proc.to_group_with = only_current_segment_procs
+
+    def print_how_procs_merged(self):
+        for first_proc_name in self.__procs:
+            first_proc = self.__context.get_global(first_proc_name)
+            if first_proc.to_group_with:
+                logging.info(f"     ~{first_proc_name}")
+                for p_name in first_proc.to_group_with:
+                    logging.info(f"       {p_name}")
+
+    def get_related_proc(self, l):
+        first_label = self.__context.get_global(l)
+        if isinstance(first_label, op.label):
+            logging.debug(f" {l} is label, will merge {first_label.proc} proc")
+            related_proc = first_label.proc  # if label then merge proc implementing it
+        elif isinstance(first_label, proc_module.Proc):
+            logging.debug(f" {l} is proc, will merge {first_label.name} proc")
+            related_proc = first_label.name
+        return related_proc
+
+    def leave_only_procs_and_labels(self, all_labels):
+        labels = set()  # leave only real labels
+        for label_name in all_labels:
+            first_label = self.__context.get_global(label_name)
+            if isinstance(first_label, (op.label, proc_module.Proc)):
+                labels.add(label_name)
+        return labels
 
     def write_segment(self, segments, structs):
         jsonpickle.set_encoder_options('json', indent=2)
@@ -1899,7 +1953,7 @@ struct Memory{
     def produce_c_data_zero_string(data: op.Data):
         label, data_ctype, _, r, elements, size = data.getdata()
         rc = '"' + ''.join([Cpp.convert_str(i) for i in r[:-1]]) + '"'
-        rc = re.sub(r'(\\x[0-9a-f][0-9a-f])([0-9a-f])', r'\g<1>" "\g<2>', rc)   # fix for stupid C hex escapes: \xaef
+        rc = re.sub(r'(\\x[0-9a-f][0-9a-f])([0-9a-fA-F])', r'\g<1>" "\g<2>', rc)   # fix for stupid C hex escapes: \xaef
         rh = f'char {label}[{str(len(r))}]'
         return rc, rh
 

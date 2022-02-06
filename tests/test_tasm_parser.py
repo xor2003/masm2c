@@ -133,6 +133,7 @@ game_opponentmaterial dd ?
 game_opponentcarid db 4 dup (?)
 GAMEINFO ends
 extrn gameconfig:GAMEINFO
+head db '^',10,10
 ''')
         self.__class__.parser.action_data(line='''
  VECTOR struc
@@ -3743,6 +3744,8 @@ extrn gameconfig:GAMEINFO
     def test_instr_12020(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code("xlat    byte ptr cs:[bx]")), u'XLATP(raddr(cs,bx))')
 
+    #def test_instr_12030(self):
+    #    self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code("cmp head, 'v'")), u"CMP(*(head), 'v')")
 
 if __name__ == "__main__":
     unittest.main()
