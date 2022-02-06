@@ -26,7 +26,7 @@ from masm2c.Macro import Macro
 INTEGERCNST = 'INTEGER'
 STRINGCNST = 'STRING'
 
-
+class MyDummyObj(object): pass
 
 def read_whole_file(file_name):
     logging.info("     Reading file %s..." % file_name)
@@ -548,6 +548,9 @@ class Parser:
         self.externals_procs = set()
         self.__files = set()
         self.itislst = False
+        if not args:
+            args = MyDummyObj()
+            args.singleproc = False
         self.args = args
 
         self.next_pass(Parser.c_dummy_label)
@@ -1146,7 +1149,7 @@ class Parser:
         self.parse_file(name)
 
     def action_endp(self):
-        if self.proc:
+        if self.proc and not self.test_mode:
             if self.__proc_stack:
                 self.__proc_stack.pop()
             self.proc = None
@@ -1168,6 +1171,8 @@ class Parser:
         self.push_if(cmd[1])
 
     def action_code(self, line):
+        self.test_mode = True
+        self.need_label = False
         try:
             result = self.parse_args_new_data_('''.model tiny
     default_seg segment
@@ -1183,6 +1188,7 @@ class Parser:
         return result
 
     def test_size(self, line):
+        self.test_mode = True
         try:
             result = self.parse_args_new_data_('''.model tiny
         default_seg segment
@@ -1198,6 +1204,7 @@ class Parser:
         return result
 
     def action_data(self, line):
+        self.test_mode = True
         try:
             result = self.parse_args_new_data_('''.model tiny
     default_seg segment
@@ -1213,6 +1220,7 @@ class Parser:
         return result
 
     def parse_arg(self, line):
+        self.test_mode = True
         try:
             result = self.parse_args_new_data_('''.model tiny
         default_seg segment
@@ -1404,8 +1412,8 @@ class Parser:
     def parse_args_new_data(self, text, file_name=None):
         logging.debug("parsing: [%s]" % text)
 
-        result = self.__lex.parser.parse(text, file_name=file_name, extra=self)  # context = self.__pgcontext)
-        # result = self.__lex.parser.call_actions(tree)
+        result = self.__lex.parser.parse(text, file_name=file_name, extra=self)
+
         logging.debug(str(result))
         return result
 
