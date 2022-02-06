@@ -424,6 +424,8 @@ class Segment(object):
     def getdata(self):
         return self.__data
 
+    def setdata(self, data):
+        self.__data = data
 
 class DataType(Enum):
     ZERO_STRING = 1

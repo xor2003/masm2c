@@ -603,6 +603,8 @@ class Parser:
         self.__current_file = ''
         self.__current_file_hash = '0'
 
+        self.data_merge_candidats = 0
+
     def visible(self):
         for i in self.__stack:
             if not i or i == 0:
@@ -1068,6 +1070,7 @@ class Parser:
     def create_segment(self, name, options=None, segclass=None, raw=''):
         logging.info("     Found segment %s" % name)
         name = name.lower()
+        self.data_merge_candidats = 0
         self.__segment_name = name
         _, real_offset, real_seg = self.get_lst_offsets(raw)
         if real_seg:
@@ -1315,7 +1318,7 @@ class Parser:
 
         elements, is_string, array = self.process_data_tokens(args, binary_width)
         data_internal_type = self.identify_data_internal_type(array, elements, is_string)
-        if data_internal_type == DataType.ARRAY and not any(array):  # all zeros
+        if data_internal_type == DataType.ARRAY and not any(array) and not isstruct:  # all zeros
             array = [0]
 
         logging.debug("~size %d elements %d" % (binary_width, elements))
@@ -1324,7 +1327,9 @@ class Parser:
                                           segment=self.__segment_name, elements=elements, original_type=type,
                                           filename=self.__current_file, raw=raw, line_number=line_number))
 
+        dummy_label = False
         if len(label) == 0:
+            dummy_label = True
             label = self.get_dummy_label()
 
         if isstruct:
@@ -1341,6 +1346,8 @@ class Parser:
         else:
             _, data.real_offset, data.real_seg = self.get_lst_offsets(raw)
             self.__segment.append(data)
+            if dummy_label and data_internal_type == DataType.NUMBER and binary_width == 1:
+                self.merge_data_bytes()
 
         # c, h, size = cpp.Cpp.produce_c_data(data) # TO REMOVE
         # self.c_data += c
@@ -1348,6 +1355,18 @@ class Parser:
 
         # logging.debug("~~        self.assertEqual(parser_instance.parse_data_line_whole(line='"+str(line)+"'),"+str(("".join(c), "".join(h), offset2 - offset))+")")
         return data  # c, h, size
+
+    def merge_data_bytes(self):
+        self.data_merge_candidats += 1
+        size = 32
+        if self.data_merge_candidats == size:
+            array = [x.array[0] for x in self.__segment.getdata()[-size:]]
+            self.__segment.getdata()[-size].array = array
+            self.__segment.getdata()[-size].elements = size
+            self.__segment.getdata()[-size].data_internal_type = DataType.ARRAY
+            self.__segment.getdata()[-size].size = size
+            self.__segment.setdata(self.__segment.getdata()[:-(size-1)])
+            self.data_merge_candidats = 0
 
     def adjust_offset_to_real(self, raw, label):
         absolute_offset, real_offset, _ = self.get_lst_offsets(raw)
