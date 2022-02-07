@@ -440,7 +440,7 @@ class Data(baseop):
     #             'filename', 'line', 'line_number']
 
     def __init__(self, label, type, data_internal_type: DataType, array, elements, size, filename='', raw_line='',
-                 line_number=0, comment='', align=False):
+                 line_number=0, comment='', align=False, offset=0):
         '''
         One element of data
 
@@ -454,6 +454,7 @@ class Data(baseop):
         :param raw_line: Raw input string
         :param line_number: Source linenumber
         :param comment: Source of element
+        :param offset: offset from begging of the memory inside Memory structure
         '''
         super().__init__()
         self.label = label
@@ -469,6 +470,7 @@ class Data(baseop):
         self.align = align
         # self.comment = comment
         self.real_seg, self.real_offset = None, None
+        self.offset = offset
 
     def isobject(self):
         return self.data_internal_type == DataType.OBJECT
@@ -712,21 +714,28 @@ class _pop(baseop):
 
 
 class _ret(baseop):
-    def __init__(self, arg):
+    def __init__(self, args):
         super().__init__()
-        pass
+        self.args = args
 
     def visit(self, visitor):
-        return visitor._ret()
-
+        return visitor._ret(self.args)
 
 class _retn(baseop):
-    def __init__(self, arg):
+    def __init__(self, args):
         super().__init__()
-        pass
+        self.args = args
 
     def visit(self, visitor):
-        return visitor._ret()
+        return visitor._ret(self.args)
+
+class _retf(baseop):
+    def __init__(self, args):
+        super().__init__()
+        self.args = args
+
+    def visit(self, visitor):
+        return visitor._retf(self.args)
 
 
 class _lodsb(baseop):
@@ -1081,14 +1090,6 @@ class _assignment(baseop):
         # else:
         #    from masm2c.cpp import SkipCode
         #    raise SkipCode
-
-class _retf(baseop):
-    def __init__(self, args):
-        super().__init__()
-        self.args = args
-
-    def visit(self, visitor):
-        return visitor._retf(self.args)
 
 class _xlat(baseop):
     def __init__(self, args):

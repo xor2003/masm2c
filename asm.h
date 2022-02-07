@@ -1062,22 +1062,22 @@ int8_t asm2C_IN(int16_t data);
 
 #if DEBUG
 
- #define RET {m2c::log_debug("before ret %x\n",stackPointer); m2c::MWORDSIZE averytemporary9=0; POP(averytemporary9); if (averytemporary9!='xy') {m2c::log_error("Emulated stack corruption detected %x.\n",averytemporary9);exit(1);} \
-	m2c::log_debug("after ret %x\n",stackPointer); \
+ #define RETN(i) {m2c::log_debug("before ret %x\n",stackPointer); m2c::MWORDSIZE averytemporary9=0; POP(averytemporary9); if (averytemporary9!='xy') {m2c::log_error("Emulated stack corruption detected %x.\n",averytemporary9);exit(1);} \
+	esp+=i;m2c::log_debug("after ret %x\n",stackPointer); \
 	if (_state) {--_state->_indent;_state->_str=m2c::log_spaces(_state->_indent);}return;}
 
- #define RETF {m2c::log_debug("before retf %x\n",stackPointer); m2c::MWORDSIZE averytemporary9=0; POP(averytemporary9); if (averytemporary9!='xy') {m2c::log_error("Emulated stack corruption detected %x.\n",averytemporary9);exit(1);} \
+ #define RETF(i) {m2c::log_debug("before retf %x\n",stackPointer); m2c::MWORDSIZE averytemporary9=0; POP(averytemporary9); if (averytemporary9!='xy') {m2c::log_error("Emulated stack corruption detected %x.\n",averytemporary9);exit(1);} \
 	dw averytemporary11;POP(averytemporary11); \
-	m2c::log_debug("after retf %x\n",stackPointer); \
+	esp+=i;m2c::log_debug("after retf %x\n",stackPointer); \
 	if (_state) {--_state->_indent;_state->_str=m2c::log_spaces(_state->_indent);}return;}
 #else
 
- #define RET {m2c::MWORDSIZE averytemporary11=0; POP(averytemporary11);  \
-	return;}
+ #define RETN(i) {m2c::MWORDSIZE averytemporary11=0; POP(averytemporary11);  \
+	esp+=i;return;}
 
- #define RETF {m2c::MWORDSIZE averytemporary11=0; POP(averytemporary11); \
+ #define RETF(i) {m2c::MWORDSIZE averytemporary11=0; POP(averytemporary11); \
 	dw averytemporary2;POP(averytemporary2); \
-	return;}
+	esp+=i;return;}
 #endif
 
 /*
@@ -1119,8 +1119,8 @@ static void CALL_(m2cf* label, struct _STATE* _state, _offsets _i=0) {
 
 //#endif // end separate procs
 
-#define RETN RET
-#define IRET RETF
+#define RET RETN(0)
+#define IRET RETF(0)
 //#define RETF {dw averytemporary=0; POP(averytemporary); RET;}
 #define BSWAP(op1)														\
 	op1 = (op1>>24)|((op1>>8)&0xFF00)|((op1<<8)&0xFF0000)|((op1<<24)&0xFF000000);

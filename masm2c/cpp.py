@@ -117,7 +117,7 @@ class SeparateProcStrategy:
     def write_declarations(self, procs, context):
         result = ""
         for p in sorted(procs):  # TODO only if used or public
-            if p == 'mainproc':  # and not context.main_file:
+            if p == 'mainproc' and not context.itislst:  # and not context.main_file:
                 result += 'static '
             result += "void %s(m2c::_offsets, struct m2c::_STATE*);\n" % cpp_mangle_label(p)
 
@@ -1078,9 +1078,12 @@ class Cpp(object):
             ret += f"CALL({dst},{disp})"
         return ret
 
-    @staticmethod
-    def _ret():
-        return "RETN"
+    def _ret(self, src):
+        if src == []:
+            self.a = '0'
+        else:
+            self.a = self.expand(src)
+        return "RETN(%s)" % self.a
 
     def _retf(self, src):
         if src == []:

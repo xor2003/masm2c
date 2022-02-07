@@ -199,9 +199,9 @@ class Proc(object):
                 not stmt.cmd.startswith('movs')
 
         def expr_is_mov_ss(e):
-            return stmt.cmd in ['mov', 'pop'] and \
-                   isinstance(e, Token) and isinstance(e.value, Token) and e.value.type == 'segmentregister' and \
-                   e.value.type == 'ss'
+            return e.cmd == 'mov' and \
+                   isinstance(e.args[0], Token) and isinstance(e.args[0].value, Token) and e.args[0].value.type == 'segmentregister' and \
+                   e.args[0].value.value == 'ss'
 
         if self.is_flow_change_stmt(stmt) or stmt.cmd in ['out', 'in'] or expr_is_mov_ss(stmt):
             trace_mode = 'R'  # trace only. external impact or execution point change

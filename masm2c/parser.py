@@ -308,7 +308,8 @@ def assdir(context, nodes, name, value):
 
 def labeldef(context, nodes, name, colon):
     logging.debug("labeldef " + str(nodes) + " ~~")
-    return context.extra.action_label(name.value, isproc=False, raw=get_raw_line(context), globl=(colon=='::'))
+    return context.extra.action_label(name.value, isproc=False, raw=get_raw_line(context), line_number=get_line_number(context),
+                                      globl=(colon=='::'))
 
 
 def instrprefix(context, nodes):
@@ -891,7 +892,7 @@ class Parser:
                 res.append(value)
         return n * len(values), res
 
-    def action_label(self, name, far=False, isproc=False, raw='', globl=True):
+    def action_label(self, name, far=False, isproc=False, raw='', globl=True, line_number=0):
         logging.debug("label name: %s" % name)
         if name == '@@':
             name = self.get_dummy_jumplabel()
@@ -900,26 +901,30 @@ class Parser:
         #self.proc.provided_labels.add(name)
 
         logging.debug("offset %s -> %s" % (name, "&m." + name.lower() + " - &m." + self.__segment_name))
-        '''
-        if self.proc is None:
-                nname = "mainproc"
-                self.proc = proc(nname)
-                #logging.debug "procedure %s, #%d" %(name, len(self.proc_list))
-                self.proc_list.append(nname)
-                self.set_global(nname, self.proc)
-        '''
-        if self.proc:
-            l = op.label(name, proc=self.proc.name, isproc=isproc, line_number=self.__offset_id, far=far, globl=globl)
-            _, l.real_offset, l.real_seg = self.get_lst_offsets(raw)
 
+        self.need_label = False
+        self.make_sure_proc_exists(line_number, raw)
+
+        #if self.proc:
+        l = op.label(name, proc=self.proc.name, isproc=isproc, line_number=self.__offset_id, far=far, globl=globl)
+        _, l.real_offset, l.real_seg = self.get_lst_offsets(raw)
+
+        self.proc.add_label(name, l)
+        self.set_offset(name,
+                        ("&m." + name.lower() + " - &m." + self.__segment_name, self.proc, self.__offset_id))
+        self.set_global(name, l)
+        self.__offset_id += 1
+        #else:
+        #    logging.error("!!! Label %s is outside the procedure" % name)
+
+    def make_sure_proc_exists(self, line_number, raw):
+        if not self.proc:
             self.need_label = False
-            self.proc.add_label(name, l)
-            self.set_offset(name,
-                            ("&m." + name.lower() + " - &m." + self.__segment_name, self.proc, self.__offset_id))
-            self.set_global(name, l)
-            self.__offset_id += 1
-        else:
-            logging.error("!!! Label %s is outside the procedure" % name)
+            pname = f'{self.__segment.name}_proc'
+            if pname in self.proc_list:
+                self.proc = self.get_global(pname)
+            else:
+                self.proc = self.add_proc(pname, raw, line_number, False)
 
     def align(self, align_bound=0x10):
         num = (align_bound - (self.__binary_data_size & (align_bound - 1))) if (
@@ -931,21 +936,26 @@ class Parser:
             return
         if num:
             label = self.get_dummy_label()
+            offset = self.__binary_data_size
             self.__binary_data_size += num
+            self.data_merge_candidats = 0
 
             self.__segment.append(
-                op.Data(label, 'db', DataType.ARRAY, [0], num, num, comment='for alignment', align=True))
+                op.Data(label, 'db', DataType.ARRAY, [0], num, num, comment='for alignment', align=True, offset=offset))
 
     def move_offset(self, pointer, raw):
         if pointer > self.__binary_data_size:
+            self.data_merge_candidats = 0
             label = self.get_dummy_label()
 
             num = pointer - self.__binary_data_size
+            offset = self.__binary_data_size
             self.__binary_data_size += num
 
             self.__segment.append(
-                op.Data(label, 'db', DataType.ARRAY, [0], num, num, comment='move_offset', align=True))
+                op.Data(label, 'db', DataType.ARRAY, [0], num, num, comment='move_offset', align=True, offset=offset))
         elif pointer < self.__binary_data_size and not self.itislst:
+            self.data_merge_candidats = 0
             logging.warning(f'Maybe wrong offset current:{self.__binary_data_size:x} should be:{pointer:x} ~{raw}~')
 
     def get_dummy_label(self):
@@ -1094,7 +1104,7 @@ class Parser:
         self.set_global(name, op.var(binary_width, offset, name, issegment=True))
 
     def action_proc(self, name, type, line_number=0, raw=''):
-        logging.info("     Found proc %s" % name.value)
+        logging.info("      Found proc %s" % name.value)
         self.action_endp()
         name = self.mangle_label(name.value)
         far = False
@@ -1295,7 +1305,7 @@ class Parser:
 
     def datadir_action(self, label, type, args, raw='', line_number=0):
         if self.__cur_seg_offset & 0xff == 0:
-            logging.info("     Current offset %04x" % self.__cur_seg_offset)
+            logging.info("      Current offset %04x" % self.__cur_seg_offset)
         isstruct = len(self.struct_names_stack) != 0
 
         label = self.mangle_label(label)
@@ -1340,7 +1350,7 @@ class Parser:
             data_type = 'usual data'
         data = op.Data(label, type, data_internal_type, array, elements, size, filename=self.__current_file,
                        raw_line=raw,
-                       line_number=line_number, comment=data_type)
+                       line_number=line_number, comment=data_type, offset=offset)
         if isstruct:
             self.current_struct.append(data)
         else:
@@ -1348,6 +1358,8 @@ class Parser:
             self.__segment.append(data)
             if dummy_label and data_internal_type == DataType.NUMBER and binary_width == 1:
                 self.merge_data_bytes()
+            else:
+                self.data_merge_candidats = 0
 
         # c, h, size = cpp.Cpp.produce_c_data(data) # TO REMOVE
         # self.c_data += c
@@ -1360,13 +1372,21 @@ class Parser:
         self.data_merge_candidats += 1
         size = 32
         if self.data_merge_candidats == size:
-            array = [x.array[0] for x in self.__segment.getdata()[-size:]]
-            self.__segment.getdata()[-size].array = array
-            self.__segment.getdata()[-size].elements = size
-            self.__segment.getdata()[-size].data_internal_type = DataType.ARRAY
-            self.__segment.getdata()[-size].size = size
-            self.__segment.setdata(self.__segment.getdata()[:-(size-1)])
-            self.data_merge_candidats = 0
+            if self.__segment.getdata()[-size].offset + size - 1 != self.__segment.getdata()[-1].offset:
+                logging.debug(f'Cannot merge {self.__segment.getdata()[-size].label} - {self.__segment.getdata()[-1].label}')
+                self.data_merge_candidats = 0
+            else:
+                logging.debug(f'Merging data at {self.__segment.getdata()[-size].label} - {self.__segment.getdata()[-1].label}')
+                array = [x.array[0] for x in self.__segment.getdata()[-size:]]
+                if not any(array):  # all zeros
+                    array = [0]
+
+                self.__segment.getdata()[-size].array = array
+                self.__segment.getdata()[-size].elements = size
+                self.__segment.getdata()[-size].data_internal_type = DataType.ARRAY
+                self.__segment.getdata()[-size].size = size
+                self.__segment.setdata(self.__segment.getdata()[:-(size-1)])
+                self.data_merge_candidats = 0
 
     def adjust_offset_to_real(self, raw, label):
         absolute_offset, real_offset, _ = self.get_lst_offsets(raw)
@@ -1375,6 +1395,8 @@ class Parser:
             if self.__cur_seg_offset > real_offset:
                 if not self.itislst:
                     logging.warning(f'Current offset does not equal to required for {label}')
+            if self.__cur_seg_offset != real_offset:
+                self.data_merge_candidats = 0
             self.__cur_seg_offset = real_offset
 
     def get_lst_offsets(self, raw):
@@ -1486,9 +1508,15 @@ class Parser:
             _, _, array = self.process_data_tokens(values, binary_width)
             return array
 
-    def add_structinstance(self, label, type, args, raw=None):
+    def add_structinstance(self, label, type, args, raw=''):
+
         if not label:
             label = self.get_dummy_label()
+
+        self.data_merge_candidats = 0
+        self.adjust_offset_to_real(raw, label)
+        offset = self.__cur_seg_offset
+
         s = self.structures[type]
         number = 1
         if isinstance(args, list) and len(args) > 2 and isinstance(args[1], str) and args[1] == 'dup':
@@ -1497,14 +1525,14 @@ class Parser:
             args = args[3]
         args = Token.remove_tokens(args, ['structinstance'])
 
-        d = op.Data(label, type, DataType.OBJECT, args, 1, s.getsize(), comment='struct instance')
+        d = op.Data(label, type, DataType.OBJECT, args, 1, s.getsize(), comment='struct instance', offset=offset)
         members = [deepcopy(i) for i in s.getdata().values()]
         d.setmembers(members)
         args = self.convert_members(d, args)
         d.setvalue(args)
 
         if number > 1:
-            d = op.Data(label, type, DataType.ARRAY, number * [d], number, number * s.getsize(), comment='object array')
+            d = op.Data(label, type, DataType.ARRAY, number * [d], number, number * s.getsize(), comment='object array', offset=offset)
 
         isstruct = len(self.struct_names_stack) != 0
         if isstruct:
@@ -1559,12 +1587,7 @@ class Parser:
             elif args[0].value.value.lower() == '@b':
                 args[0].value.value = "dummylabel" + str(self.__c_dummy_jump_label)
 
-        if not self.proc:
-            name = f'{self.__segment.name}_proc'
-            if name in self.proc_list:
-                self.proc = self.get_global(name)
-            else:
-                self.proc = self.add_proc(name, raw, line_number, False)
+        self.make_sure_proc_exists(line_number, raw)
 
         o = self.proc.create_instruction_object(instruction, args)
         o.filename = self.__current_file
