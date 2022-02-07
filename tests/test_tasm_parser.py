@@ -3101,11 +3101,8 @@ head db '^',10,10
     def test_instr_9780(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('rcr     edx, cl')), u'RCR(edx, cl)')
 
-    def test_instr_9790(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('ret')), 'RETN')
-
     def test_instr_9800(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('ret\n')), 'RETN')
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('ret')), 'RETN(0)')
 
     def test_instr_9810(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('rol     dl, cl')), u'ROL(dl, cl)')
