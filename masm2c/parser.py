@@ -541,7 +541,7 @@ class Parser:
         '''
         self.test_mode = False
         self.__globals = OrderedDict()
-        self.__offsets = OrderedDict()
+        #self.__offsets = OrderedDict()
         self.pass_number = 0
         self.__lex = ParglareParser()
         self.segments = OrderedDict()
@@ -665,6 +665,7 @@ class Parser:
         name = name.lower()
         return name in self.__globals
 
+    '''
     def set_offset(self, name, value):
         if len(name) == 0:
             raise NameError("empty name is not allowed")
@@ -679,6 +680,7 @@ class Parser:
     def replace_dollar_w_segoffst(self, v):
         logging.debug("$ = %d" % self.__cur_seg_offset)
         return v.replace('$', str(self.__cur_seg_offset))
+    '''
 
     @staticmethod
     def parse_int(v):
@@ -898,9 +900,7 @@ class Parser:
             name = self.get_dummy_jumplabel()
         name = self.mangle_label(name)
 
-        #self.proc.provided_labels.add(name)
-
-        logging.debug("offset %s -> %s" % (name, "&m." + name.lower() + " - &m." + self.__segment_name))
+        #logging.debug("offset %s -> %s" % (name, "&m." + name.lower() + " - &m." + self.__segment_name))
 
         self.need_label = False
         self.make_sure_proc_exists(line_number, raw)
@@ -910,8 +910,8 @@ class Parser:
         _, l.real_offset, l.real_seg = self.get_lst_offsets(raw)
 
         self.proc.add_label(name, l)
-        self.set_offset(name,
-                        ("&m." + name.lower() + " - &m." + self.__segment_name, self.proc, self.__offset_id))
+        #self.set_offset(name,
+        #                ("&m." + name.lower() + " - &m." + self.__segment_name, self.proc, self.__offset_id))
         self.set_global(name, l)
         self.__offset_id += 1
         #else:

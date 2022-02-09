@@ -85,10 +85,19 @@ def parse_args(args):
         const=True,
     )
     aparser.add_argument(
+        "-t",
+        "--twopass",
+        dest="twopass",
+        help="Do second parsing pass",
+        action="store_const",
+        default=False,
+        const=True,
+    )
+    aparser.add_argument(
         "-z",
         "--startsegment",
         dest="startsegment",
-        help="Dosbox 0.74.3 (w/o debug) loads .exe from 0x1a2 para, .com from 0x192",
+        help="Dosbox 0.74.3 loads .exe from 0x1a2 para (w/o debugger), 0x1ed (with debugger), .com from 0x192 (w/o debugger)",
         action="store",
         default='0x1a2',
     )
@@ -143,8 +152,10 @@ def process(i, args):
     p = Parser(args)
 
     counter = Parser.c_dummy_label
-    p.parse_file(name)
-    p.next_pass(counter)
+
+    if args.twopass:
+        p.parse_file(name)
+        p.next_pass(counter)
     context = p.parse_file(name)
 
     generator = Cpp(context, outfile=outname, skip_output=[])

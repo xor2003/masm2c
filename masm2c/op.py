@@ -897,7 +897,7 @@ class label(baseop):
         self.original_name = name
         self.line_number = line_number
         self.far = far
-        self.proc:str = proc
+        #self.proc:str = proc
         self.isproc = isproc
         self.used = False
         self.globl = globl

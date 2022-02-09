@@ -73,7 +73,7 @@ def produce_jump_table(labels):
     for name, label in offsets:
         logging.debug(f'{name}, {label}')
         result += "        case m2c::k%s: \tgoto %s;\n" % (name, cpp_mangle_label(label))
-    result += "        default: m2c::log_error(\"Jump to nowhere to 0x%x. See line %d\\n\", __disp, __LINE__);m2c::stackDump(_state); abort();\n"
+    result += "        default: m2c::log_error(\"Don't know how to jump to 0x%x. See \" __FILE__ \" line %d\\n\", __disp, _source);m2c::stackDump(_state); abort();\n"
     result += "    };\n}\n"
     return result
 
@@ -257,6 +257,7 @@ class Cpp(object):
         self.prefix = ''
         self.label = ''
         self.merge_data_segments = merge_data_segments
+        self.label_to_proc = dict()
 
     def produce_c_data(self, segments):
         cdata_seg = ""
@@ -294,8 +295,8 @@ class Cpp(object):
                             c = f'    {{{asgn}={c};MYCOPY({name})}}'
 
                     real_seg, real_offset = j.getrealaddr()
-                    if real_seg:
-                        if c:
+                    if c:
+                        if real_seg:
                             c += f' // {real_seg:04x}:{real_offset:04x}'
                         c += "\n"
                     # c += " // " + j.getlabel() + "\n"  # TODO can put original_label
@@ -1044,7 +1045,7 @@ class Cpp(object):
             if isinstance(g, op.label) and not g.isproc and not dst in self.__procs and not dst in self.grouped:
                 #far = g.far  # make far calls to far procs
                 disp = f"m2c::k{dst}"
-                dst = g.proc
+                dst = self.label_to_proc[g.name]
             elif isinstance(g, op.var):
                 disp = dst
                 dst = "__dispatch_call"
@@ -1286,7 +1287,7 @@ class Cpp(object):
                 g = self.__context.get_global(self.__context.entry_point)
             except:
                 g = None
-            if g and isinstance(g, op.label) and g.proc == self.proc:
+            if g and isinstance(g, op.label) and self.label_to_proc[g.name] == self.proc:
                 entry_point = self.__context.entry_point
             self.body += self.proc_strategy.function_header(name, entry_point)
 
@@ -1301,8 +1302,9 @@ class Cpp(object):
                 if isinstance(v, op.label) and v.used and v.proc == self.proc:
                         labels[k] = v
             '''
+            labels = self.leave_unique_labels(self.proc.provided_labels)
 
-            self.body += produce_jump_table(self.proc.provided_labels)
+            self.body += produce_jump_table(labels)
 
             #if name not in self.__skip_output:
             #    self.__translated.append(self.body)
@@ -1317,6 +1319,17 @@ class Cpp(object):
             self.__failed.append(name)
         except:
             raise
+
+    def leave_unique_labels(self, labels):
+        uniq_labels = dict()
+        for index, label in enumerate(labels):
+            g = self.__context.get_global(label)
+            if g.real_seg:
+                uniq_labels[(g.real_seg << 16) + g.real_offset] = label
+            else:
+                uniq_labels[index] = label
+        labels = uniq_labels.values()
+        return labels
 
     def generate(self, start):
         fname = self.__namespace.lower() + ".cpp"
@@ -1354,11 +1367,13 @@ class Cpp(object):
 
 """)
 
+        self.merge_procs()
+
         if self.__context.main_file:
             g = self.__context.get_global(self.__context.entry_point)
             if isinstance(g, op.label):
                 cppd.write(f"""
-                 void {self.__context.entry_point}(m2c::_offsets, struct m2c::_STATE* _state){{{g.proc}(m2c::k{self.__context.entry_point}, _state);}}
+                 void {self.__context.entry_point}(m2c::_offsets, struct m2c::_STATE* _state){{{self.label_to_proc[g.name]}(m2c::k{self.__context.entry_point}, _state);}}
                 """)
             cppd.write(f"""namespace m2c{{ m2cf* _ENTRY_POINT_ = &{self.__context.entry_point};}}
 """)
@@ -1390,7 +1405,6 @@ class Cpp(object):
 '''
         # self.__proc_queue.append(start)
         # while len(self.__proc_queue):
-        self.merge_procs()
 
         for p in sorted(self.grouped):
             self.body += f"""
@@ -1496,6 +1510,8 @@ class Cpp(object):
 
         :return:
         '''
+        self.generate_label_to_proc_map()
+
         if not self.__context.args.singleproc:
             for index, first_proc_name in enumerate(self.__procs):
                 first_proc = self.__context.get_global(first_proc_name)
@@ -1592,6 +1608,8 @@ class Cpp(object):
                                 first_proc.add_label(next_proc_name, next_label)
                                 logging.debug(f"     with {next_proc_name}")
                                 first_proc.merge_two_procs(new_group_name, next_proc)
+                                for l in first_proc.provided_labels:
+                                    self.label_to_proc[l] = new_group_name
                                 self.__context.reset_global(next_proc_name, next_label)
                                 self.grouped.add(next_proc_name)
                     groups += [new_group_name]
@@ -1600,6 +1618,12 @@ class Cpp(object):
         self.__procs = [x for x in self.__procs if x not in self.grouped]
         self.__procs += groups
         self.__procs = self.get_lineordered_proclist(self.__procs)
+
+    def generate_label_to_proc_map(self):
+        for proc_name in self.__procs:
+            proc = self.__context.get_global(proc_name)
+            for label in proc.provided_labels:
+                self.label_to_proc[label] = proc_name
 
     def get_lineordered_proclist(self, proc_list):
         line_to_proc = dict([(self.__context.get_global(first_proc_name).line_number, first_proc_name) for first_proc_name in
@@ -1625,10 +1649,11 @@ class Cpp(object):
                     logging.info(f"       {p_name}")
 
     def get_related_proc(self, l):
+        logging.debug(f"get_related_proc {l}")
         first_label = self.__context.get_global(l)
         if isinstance(first_label, op.label):
-            logging.debug(f" {l} is label, will merge {first_label.proc} proc")
-            related_proc = first_label.proc  # if label then merge proc implementing it
+            logging.debug(f" {l} is label, will merge {self.label_to_proc[first_label]} proc")
+            related_proc = self.label_to_proc[first_label]  # if label then merge proc implementing it
         elif isinstance(first_label, proc_module.Proc):
             logging.debug(f" {l} is proc, will merge {first_label.name} proc")
             related_proc = first_label.name
@@ -2073,6 +2098,6 @@ struct Memory{
             if not name.startswith('_group'):  # TODO remove dirty hack. properly check for group
                 result += "        case m2c::k%s: \t%s(0, _state); break;\n" % (name, cpp_mangle_label(label))
 
-        result += "        default: m2c::log_error(\"Call to nowhere to 0x%x. See line %d\\n\", __disp, __LINE__);m2c::stackDump(_state); abort();\n"
+        result += "        default: m2c::log_error(\"Don't know how to call to 0x%x. See \" __FILE__ \" line %d\\n\", __disp, _source);m2c::stackDump(_state); abort();\n"
         result += "     };\n     return true;\n}\n"
         return result
