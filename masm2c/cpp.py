@@ -1486,7 +1486,7 @@ class Cpp(object):
  namespace m2c {{
   void   Initializer()
 #else
- #define MYCOPY(x) std::copy(std::begin(tmp999),std::end(tmp999),std::begin(x));
+ #define MYCOPY(x) memcpy(&x,&tmp999,sizeof(tmp999));
  namespace {{
   struct Initializer {{
    Initializer()
