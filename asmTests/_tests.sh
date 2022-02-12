@@ -33,6 +33,6 @@ if [ $res -ne 0 ];then
 fi
 done
 #cat _result.log
-
+! grep 'error:' _result.log
 echo "Total result: $result"
 exit $result
