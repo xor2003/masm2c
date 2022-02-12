@@ -67,25 +67,13 @@ class ParserTest(unittest.TestCase):
     def test_fix_dollar(self, mock_debug):
         mock_debug.return_value = None
         parser_instance = Parser([])
-        self.assertEqual(parser_instance.replace_dollar_w_segoffst(v='3'), '3')
-
-        self.assertEqual(parser_instance.replace_dollar_w_segoffst(v='1'), '1')
-
         self.assertEqual(parser_instance.replace_dollar_w_segoffst(v='-13'), '-13')
 
         self.assertEqual(parser_instance.replace_dollar_w_segoffst(v='13'), '13')
 
-        self.assertEqual(parser_instance.replace_dollar_w_segoffst(v='4'), '4')
-
         self.assertEqual(parser_instance.replace_dollar_w_segoffst(v='var1'), 'var1')
 
-        self.assertEqual(parser_instance.replace_dollar_w_segoffst(v='1'), '1')
-
-        self.assertEqual(parser_instance.replace_dollar_w_segoffst(v='2'), '2')
-
         self.assertEqual(parser_instance.replace_dollar_w_segoffst(v='(00+38*3)*320+1/2+33*(3-1)'), '(00+38*3)*320+1/2+33*(3-1)')
-
-        self.assertEqual(parser_instance.replace_dollar_w_segoffst(v='1500 ; 8*2*3 ;+1 +19*13*2*4'), '1500 ; 8*2*3 ;+1 +19*13*2*4')
 
     def test_parse_int(self):
         parser_instance = Parser([])

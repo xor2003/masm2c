@@ -551,7 +551,7 @@ class Parser:
         self.itislst = False
         if not args:
             args = MyDummyObj()
-            args.singleproc = False
+            args.mergeprocs = 'separate'
         self.args = args
 
         self.next_pass(Parser.c_dummy_label)
@@ -676,11 +676,10 @@ class Parser:
 
     def get_offset(self, name):
         return self.__offsets[name.lower()]
-
+    '''
     def replace_dollar_w_segoffst(self, v):
         logging.debug("$ = %d" % self.__cur_seg_offset)
         return v.replace('$', str(self.__cur_seg_offset))
-    '''
 
     @staticmethod
     def parse_int(v):

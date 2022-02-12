@@ -204,7 +204,7 @@ head db '^',10,10
         self.__class__.parser.action_label(far=True, name=u'test_bcd', isproc=True)
 
     def test_instr_09(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov    ax, offset     failure')), u'MOV(ax, (dw)m2c::kfailure)')
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov    ax, offset     failure')), u'MOV(ax, m2c::kfailure)')
 
     #def test_instr_10(self):
     #    self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('pop     small word ptr [esp]')), u'POP(*(dw*)(raddr(ss,esp)))')
@@ -3736,7 +3736,8 @@ head db '^',10,10
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('call  near ptr  test_bcd')), u'CALL(test_bcd,0)')
 
     def test_instr_12010(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('call    far ptr loc_40458F')), u'CALLF(mainproc,m2c::kloc_40458f)')
+        #self.parser.action_data(line='loc_40458f:')
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('call    far ptr test_bcd')), u'CALLF(test_bcd,0)')
 
     def test_instr_12020(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code("xlat    byte ptr cs:[bx]")), u'XLATP(raddr(cs,bx))')
