@@ -5,21 +5,21 @@
 
 #if defined(_PROTECTED_MODE)
 //  #define raddr(segment,offset) ((db *)&m2c::m+(db)(offset)+selectors[segment])
-static inline db* raddr_(dw segment,dw offset) {return ((db *)&m+(db)(offset)+selectors[segment]);}
+static inline db* raddr_(dw segment,dw offset) {return ((db *)&m+(dw)(offset)+selectors[segment]);}
 #else
  //#define raddr(segment,offset) (((db *)&m2c::m + ((segment)<<4) + (offset) ))
 static inline db* raddr_(dw segment,dw offset) {return (db *)&m + (segment<<4) + offset;}
 #endif
 
  #define offset(segment,name) ((db*)(&name)-(db*)(&segment))
-
+ #define far_offset(segment,name) (offset(segment,name)+(seg_offset(segment)<<16))
  #define MOVSS(a) {void * dest;void * src;src=realAddress(si,ds); dest=realAddress(di,es); \
 		memmove(dest,src,a); di+=(GET_DF()==0)?a:-a; si+=(GET_DF()==0)?a:-a; }
  #define STOS(a,b) {memcpy (realAddress(di,es), ((db *)&eax)+b, a); di+=(GET_DF()==0)?a:-a;}
 
  #define REP cx++;while (--cx != 0)
- #define REPE AFFECT_ZFifz(0);cx++;while (--cx != 0 && GET_ZF())
- #define REPNE AFFECT_ZFifz(1);cx++;while (--cx != 0 && !GET_ZF())
+ #define REPE if (cx) {AFFECT_ZFifz(0);};cx++;while (--cx != 0 && GET_ZF())
+ #define REPNE if (cx) {AFFECT_ZFifz(1);};cx++;while (--cx != 0 && !GET_ZF())
  #define XLAT {al = *m2c::raddr_(ds,bx+al);}
  #define CMPSB \
 	{  \
@@ -90,9 +90,9 @@ static inline db* raddr_(dw segment,dw offset) {return (db *)&m + (segment<<4) +
  #define INSB {db averytemporary3 = asm2C_IN(dx);*realAddress(di,es)=averytemporary3;di+=(GET_DF()==0)?1:-1;}
  #define INSW {dw averytemporary3 = asm2C_INW(dx);*realAddress(di,es)=averytemporary3;di+=(GET_DF()==0)?2:-2;}
 
-#define LOOP(label) DEC(cx); JNZ(label)
-#define LOOPE(label) --cx; if (cx!=0 && GET_ZF()) GOTOLABEL(label) //TODO
-#define LOOPNE(label) --cx; if (cx!=0 && !GET_ZF()) GOTOLABEL(label) //TODO
+#define LOOP(label) if (--cx) GOTOLABEL(label)
+#define LOOPE(label) if (--cx && GET_ZF()) GOTOLABEL(label)
+#define LOOPNE(label) if (--cx && !GET_ZF()) GOTOLABEL(label)
 
 
 #endif

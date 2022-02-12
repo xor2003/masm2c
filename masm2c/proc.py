@@ -183,7 +183,7 @@ class Proc(object):
             r.append(i.__str__())
         return "\n".join(r)
 
-    def enrich_command(self, stmt, full_command):
+    def enrich_command(self, stmt, full_command, itislst):
         def expr_is_register(e):
             return isinstance(e, Token) and isinstance(e.value, Token) and e.value.type in ['register',
                                                                                             'segmentregister']
@@ -204,7 +204,7 @@ class Proc(object):
                    isinstance(e.args[0], Token) and isinstance(e.args[0].value, Token) and e.args[0].value.type == 'segmentregister' and \
                    e.args[0].value.value == 'ss'
 
-        if self.is_flow_change_stmt(stmt) or stmt.cmd in ['out', 'in'] or expr_is_mov_ss(stmt):
+        if not itislst or self.is_flow_change_stmt(stmt) or stmt.cmd in ['out', 'in'] or expr_is_mov_ss(stmt):
             trace_mode = 'R'  # trace only. external impact or execution point change
         elif cmd_impacting_only_registers(stmt):
             trace_mode = 'T'  # compare execution with dosbox. registers only impact
@@ -251,7 +251,7 @@ class Proc(object):
             visitor.body += f'cs={stmt.real_seg:#04x};eip={stmt.real_offset:#08x}; '
         full_command = prefix + command
         if full_command:
-            full_command = self.enrich_command(stmt, full_command)
+            full_command = self.enrich_command(stmt, full_command, visitor._context.itislst)
         full_line = visitor.label + visitor.dispatch + full_command
         return full_line
 

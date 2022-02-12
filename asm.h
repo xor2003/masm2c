@@ -55,6 +55,7 @@
 #endif
 //#include <pthread.h>
 
+
 typedef uint8_t db;
 typedef uint16_t dw;
 typedef uint32_t dd;
@@ -293,7 +294,7 @@ inline db MSB(D a)  // get highest bit
 #define realAddress(offset, segment) m2c::raddr_(segment,offset)
 
 
-#define seg_offset(segment) ((offset(m2c::m,(segment)))>>4)
+#define seg_offset(segment) ((dw)((offset(m2c::m,(segment)))>>4))
 
 // DJGPP
 #define MASK_LINEAR(addr)     (((size_t)addr) & 0x000FFFFF)
@@ -304,10 +305,10 @@ inline db MSB(D a)  // get highest bit
 
 //pusha AX, CX, DX, BX, SP, BP, SI, DI
 //pushad EAX, ECX, EDX, EBX, ESP, EBP, ESI, EDI
-#define PUSHAD {PUSH(eax);PUSH(ecx);PUSH(edx);PUSH(ebx); PUSH(esp);PUSH(ebp);PUSH(esi);PUSH(edi);}
+#define PUSHAD {dw oldesp=esp;PUSH(eax);PUSH(ecx);PUSH(edx);PUSH(ebx); PUSH(oldesp);PUSH(ebp);PUSH(esi);PUSH(edi);}
 #define POPAD {POP(edi);POP(esi);POP(ebp); POP(ebx); POP(ebx);POP(edx);POP(ecx);POP(eax); }
 
-#define PUSHA {PUSH(ax);PUSH(cx);PUSH(dx);PUSH(bx); PUSH(sp);PUSH(bp);PUSH(si);PUSH(di);}
+#define PUSHA {dw oldsp=sp;PUSH(ax);PUSH(cx);PUSH(dx);PUSH(bx); PUSH(oldsp);PUSH(bp);PUSH(si);PUSH(di);}
 #define POPA {POP(di);POP(si);POP(bp); POP(bx); POP(bx);POP(dx);POP(cx);POP(ax); }
 
 /*
@@ -360,7 +361,7 @@ inline void CMP_(const D& dest, const S& src, m2c::eflags& m2cflags)
 {
  D result=dest-src; 
 		AFFECT_CF(result>dest); 
-            D highestbitset = (1<<( m2c::bitsizeof(dest)-1));
+       static const D highestbitset = (1<<( m2c::bitsizeof(dest)-1));
           AFFECT_OF(((dest ^ src) & (dest ^ result)) & highestbitset);
 		AFFECT_ZFifz(result); 
 		AFFECT_SF_(result,result); 
@@ -376,6 +377,7 @@ inline void OR_(D& dest, const S& src, m2c::eflags& m2cflags)
 		AFFECT_ZFifz(dest); 
 		AFFECT_SF_(dest,dest); 
 		AFFECT_CF(0);
+		AFFECT_OF(0);
  }
 
 #define XOR(a, b) m2c::XOR_(a, b, m2cflags)
@@ -387,6 +389,7 @@ inline void XOR_(D& dest, const S& src, m2c::eflags& m2cflags)
 		AFFECT_ZFifz(dest); 
 		AFFECT_SF_(dest,dest); 
 		AFFECT_CF(0);
+		AFFECT_OF(0);
  }
 
 #define AND(a, b) m2c::AND_(a, b, m2cflags)
@@ -398,6 +401,7 @@ inline void AND_(D& dest, const S& src, m2c::eflags& m2cflags)
 		AFFECT_ZFifz(dest); 
 		AFFECT_SF_(dest,dest); 
 		AFFECT_CF(0);
+		AFFECT_OF(0);
  }
 
 #define NEG(a) m2c::NEG_(a, m2cflags)
@@ -417,18 +421,21 @@ template <class D, class S>
 inline void TEST_(D& a, const S& b, m2c::eflags& m2cflags)
 {AFFECT_ZFifz((a)&(b));
 		AFFECT_CF(0);
-		AFFECT_SF_(a,(a)&(b));}
+		AFFECT_SF_(a,(a)&(b));
+		AFFECT_OF(0);
+}
 
 #define SHR(a, b) m2c::SHR_(a, b, m2cflags)
 template <class D, class S>
 inline void SHR_(D& a, const S& b, m2c::eflags& m2cflags)
 {
 	if (b) {AFFECT_CF((a>>(b-1))&1);
-		D highestbitset = (1<<( m2c::bitsizeof(a)-1));
-		AFFECT_OF(((b&0x1f)==1)?(a > highestbitset):false);
-		a=a>>b;
-		AFFECT_ZFifz(a);
-		AFFECT_SF_(a,a);
+		static const D highestbitset = (1<<( m2c::bitsizeof(a)-1));
+                D res=a>>b;
+		AFFECT_OF((b&0x1f)==1? a>highestbitset : false);
+		AFFECT_ZFifz(res);
+		AFFECT_SF_(res,res);
+                a = res;
 		}
 }
 
@@ -754,7 +761,7 @@ inline void ADD_(D& dest, const S& src, m2c::eflags& m2cflags)
 {
  D result=dest+(D)src; 
 		AFFECT_CF(result<dest); 
-            D highestbitset = (1<<( m2c::bitsizeof(dest)-1));
+       static const D highestbitset = (1<<( m2c::bitsizeof(dest)-1));
           AFFECT_OF(((dest ^ src ^ highestbitset ) & (result ^ src)) & highestbitset);
    dest = result;
 		AFFECT_ZFifz(dest); 
@@ -776,7 +783,7 @@ inline void SUB_(D& dest, const S& src, m2c::eflags& m2cflags)
 {
  dd result=(dest-src) & m2c::MASK[sizeof(dest)]; 
 		AFFECT_CF(result>dest); 
-            D highestbitset = (1<<( m2c::bitsizeof(dest)-1));
+       static const D highestbitset = (1<<( m2c::bitsizeof(dest)-1));
           AFFECT_OF(((dest ^ src) & (dest ^ result)) & highestbitset);
    dest = result;
 		AFFECT_ZFifz(dest); 
@@ -789,7 +796,7 @@ inline void ADC_(D& dest, const S& src, m2c::eflags& m2cflags)
 {
  dq result=(dq)dest+(dq)src+(dq)GET_CF(); 
 		AFFECT_CF((result)>m2c::MASK[sizeof(dest)]); 
-            D highestbitset = (1<<( m2c::bitsizeof(dest)-1));
+       static const D highestbitset = (1<<( m2c::bitsizeof(dest)-1));
           AFFECT_OF(((dest ^ src ^ highestbitset ) & (result ^ src)) & highestbitset);
    dest = result;
 		AFFECT_ZFifz(dest); 
@@ -803,7 +810,7 @@ inline void SBB_(D& dest, const S& src, m2c::eflags& m2cflags)
  bool oldCF = GET_CF();
  dq result=((dq)dest-(dq)src-(dq)GET_CF()) & m2c::MASK[sizeof(dest)]; 
 		AFFECT_CF(result>dest || (oldCF && (src==m2c::MASK[sizeof(dest)]) )); 
-            D highestbitset = (1<<( m2c::bitsizeof(dest)-1));
+       static const D highestbitset = (1<<( m2c::bitsizeof(dest)-1));
           AFFECT_OF(((dest ^ src) & (dest ^ result)) & highestbitset);
    dest = result;
 		AFFECT_ZFifz(dest); 
@@ -909,16 +916,16 @@ inline void DEC_(D& a, m2c::eflags& m2cflags)
 #define JNA(label) if (GET_CF() || GET_ZF()) GOTOLABEL(label)
 #define JBE(label) JNA(label)
 
-#define JGE(label) if (!GET_SF()) GOTOLABEL(label)
+#define JGE(label) if (GET_SF()==GET_OF()) GOTOLABEL(label)
 #define JNL(label) JGE(label)
 
 #define JG(label) if (!GET_ZF() && !GET_SF()) GOTOLABEL(label)
 #define JNLE(label) JG(label)
 
-#define JLE(label) if (GET_ZF() || GET_SF()) GOTOLABEL(label) // TODO
+#define JLE(label) if (GET_ZF() || GET_SF()!=GET_OF()) GOTOLABEL(label) // TODO
 #define JNG(label) JLE(label)
 
-#define JL(label) if (GET_SF()) GOTOLABEL(label) // TODO
+#define JL(label) if (GET_SF()!=GET_OF()) GOTOLABEL(label) // TODO
 #define JNGE(label) JL(label)
 
 #define JCXZ(label) if (cx == 0) GOTOLABEL(label) // TODO
@@ -955,7 +962,7 @@ void MOV_(D* dest, const S& src)
 #define LGS(dest,src) {dest = src; gs = *(dw*)((db*)&(src) + sizeof(dest));}
 #define LDS(dest,src) {dest = src; ds = *(dw*)((db*)&(src) + sizeof(dest));}
 
-#define MOVZX(dest,src) dest = src
+#define MOVZX(dest,src) {dest = src;}
 #define MOVSX(dest,src) {if (ISNEGATIVE(src,src)) { dest = ((-1 ^ (( 1 << (m2c::bitsizeof(src)) )-1)) | src ); } else { dest = src; }}
 
 #define BT(dest,src) {AFFECT_CF(dest & m2c::nthbitone(dest,src));} //TODO
@@ -964,7 +971,7 @@ void MOV_(D* dest, const S& src)
 #define BTR(dest,src) {AFFECT_CF(dest & m2c::nthbitone(dest,src)); dest &= ~(m2c::nthbitone(dest,src));}
 
 // LEA - Load Effective Address
-#define LEA(dest,src) dest = src
+#define LEA(dest,src) {dest = src;}
 
 #define XCHG(dest,src) {dd averytemporary = (dd) dest; dest = src; src = averytemporary;}//std::swap(dest,src); TODO
 
@@ -1143,6 +1150,8 @@ static void CALL_(m2cf* label, struct _STATE* _state, _offsets _i=0) {
 #else
     #define R(a) a
 #endif
+    #define T(a) R(a)
+    #define X(a) R(a)
 
 bool is_little_endian();
 
@@ -1207,8 +1216,6 @@ bool is_little_endian();
 #define XLATB XLAT
 #define LOCK // TODO check
 
-#define XLATP(x) {al = *(x + al);}
-
 /*
 #ifndef __BORLANDC__
 enum  _offsets : int;
@@ -1218,6 +1225,7 @@ enum  _offsets;
 */
 
 
+#define XLATP(x) {al = *(x + al);}
 /*
 #define X86_REGREF \
 dw __disp; \

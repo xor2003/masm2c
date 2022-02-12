@@ -73,7 +73,7 @@ def produce_jump_table(labels):
     for name, label in offsets:
         logging.debug(f'{name}, {label}')
         result += "        case m2c::k%s: \tgoto %s;\n" % (name, cpp_mangle_label(label))
-    result += "        default: m2c::log_error(\"Don't know how to jump to 0x%x. See \" __FILE__ \" line %d\\n\", __disp, _source);m2c::stackDump(_state); abort();\n"
+    result += "        default: m2c::log_error(\"Don't know how to jump to 0x%x. See \" __FILE__ \" line %d\\n\", __disp, __LINE__);m2c::stackDump(_state); abort();\n"
     result += "    };\n}\n"
     return result
 
@@ -227,7 +227,7 @@ class Cpp(object):
         self.__current_size = 0
         self.__work_segment = ""
         self.__codeset = 'cp437'
-        self.__context = context
+        self._context = context
 
         self.proc_strategy = proc_strategy
 
@@ -329,7 +329,7 @@ class Cpp(object):
 
         if self.__indirection == IndirectionType.OFFSET:
             try:
-                offset, _, _ = self.__context.get_offset(name)
+                offset, _, _ = self._context.get_offset(name)
             except Exception:
                 pass
             else:
@@ -339,7 +339,7 @@ class Cpp(object):
                 return Token('LABEL', "(dw)m2c::k" + name)
 
         try:
-            g = self.__context.get_global(name)
+            g = self._context.get_global(name)
         except Exception:
             # logging.warning("expand_cb() global '%s' is missing" % name)
             return token
@@ -441,7 +441,7 @@ class Cpp(object):
 
         if self.__indirection == IndirectionType.OFFSET:
             try:
-                g = self.__context.get_global(label[0])
+                g = self._context.get_global(label[0])
             except:
                 pass
             else:
@@ -456,7 +456,7 @@ class Cpp(object):
 
         size = self.get_size(token)
         try:
-            g = self.__context.get_global(label[0])
+            g = self._context.get_global(label[0])
         except:
             # logging.warning("expand_cb() global '%s' is missing" % name)
             return token
@@ -545,7 +545,7 @@ class Cpp(object):
         if ptrdir:
             value = ptrdir[0]
             # logging.debug('get_size res 1')
-            return self.__context.typetosize(value)
+            return self._context.typetosize(value)
 
         issqexpr = Token.find_tokens(expr, SQEXPR)
         segover = Token.find_tokens(expr, 'segoverride')
@@ -566,10 +566,10 @@ class Cpp(object):
 
         if isinstance(expr, Token):
             if expr.type in ('register', 'segmentregister'):
-                return self.__context.is_register(expr.value)
+                return self._context.is_register(expr.value)
             elif expr.type == 'INTEGER':
                 try:
-                    # v = self.__context.parse_int(expr.value)
+                    # v = self._context.parse_int(expr.value)
                     v = eval(re.sub(r'^0+(?=\d)', '', expr.value))
                     size = guess_int_size(v)
                     return size
@@ -583,7 +583,7 @@ class Cpp(object):
                 name = expr.value
                 logging.debug('name = %s' % name)
                 try:
-                    g = self.__context.get_global(name)
+                    g = self._context.get_global(name)
                     if isinstance(g, (op._equ, op._assignment)):
                         if g.value != origexpr:  # prevent loop
                             return self.get_size(g.value)
@@ -595,7 +595,7 @@ class Cpp(object):
                     pass
             elif expr.type == MEMBERDIR:
                 label = Token.find_tokens(expr.value, LABEL)
-                g = self.__context.get_global(label[0])
+                g = self._context.get_global(label[0])
                 if isinstance(g, op.Struct):
                     type = label[0]
                 else:
@@ -603,7 +603,7 @@ class Cpp(object):
 
                 try:
                     for member in label[1:]:
-                        g = self.__context.get_global(type)
+                        g = self._context.get_global(type)
                         if isinstance(g, op.Struct):
                             g = g.getitem(member)
                             type = g.type
@@ -612,7 +612,7 @@ class Cpp(object):
                 except KeyError as ex:
                     logging.debug(f"Didn't found for {label} {ex.args} will try workaround")
                     # if members are global as with M510 or tasm try to find last member size
-                    g = self.__context.get_global(label[-1])
+                    g = self._context.get_global(label[-1])
 
                 return self.get_size(g)
 
@@ -647,7 +647,7 @@ class Cpp(object):
         if isinstance(expr, Token):
             if expr.type == MEMBERDIR:
                 label = Token.find_tokens(expr.value, LABEL)
-                g = self.__context.get_global(label[0])
+                g = self._context.get_global(label[0])
                 if isinstance(g, op.Struct):
                     type = label[0]
                 else:
@@ -655,7 +655,7 @@ class Cpp(object):
 
                 try:
                     for member in label[1:]:
-                        g = self.__context.get_global(type)
+                        g = self._context.get_global(type)
                         if isinstance(g, op.Struct):
                             g = g.getitem(member)
                             type = g.gettype()
@@ -664,9 +664,9 @@ class Cpp(object):
                 except KeyError as ex:
                     logging.debug(f"Didn't found for {label} {ex.args} will try workaround")
                     # if members are global as with M510 or tasm try to find last member size
-                    g = self.__context.get_global(label[-1])
+                    g = self._context.get_global(label[-1])
 
-                return self.__context.typetosize(Token(LABEL, g.gettype()))
+                return self._context.typetosize(Token(LABEL, g.gettype()))
         return 0
 
     def convert_sqbr_reference(self, expr, destination, size, islabel, lea=False):
@@ -842,7 +842,7 @@ class Cpp(object):
         if ptrdir:  # byte/word/struct ptr. get override type size
             value = ptrdir[0]
             # logging.debug('get_size res 1')
-            size_ovrr_by_ptr = self.__context.typetosize(value)  # size overriden by ptr
+            size_ovrr_by_ptr = self._context.typetosize(value)  # size overriden by ptr
             if size_ovrr_by_ptr != size:
                 self.size_changed = True
             else:
@@ -911,7 +911,7 @@ class Cpp(object):
 
     def jump_post(self, name):
         name, far = self.jump_to_label(name)
-        hasglobal = self.__context.has_global(name)
+        hasglobal = self._context.has_global(name)
         if not hasglobal:
             # jumps feat purpose:
             # * in sub __dispatch_call - for address based jumps or grouped subs
@@ -926,13 +926,13 @@ class Cpp(object):
             # seg:offset - in sub __dispatch_call disp= seg:offset ?
             # ret += f"__disp={dst};\n"
             # dst = "__dispatch_call"
-            # if self.__context.has_global(name):
+            # if self._context.has_global(name):
             # name = 'm2c::k'+name
             addtobody, name = self.proc_strategy.forward_to_dispatcher(name)
             self.dispatch += f'__disp={addtobody};\n'
             logging.debug(f'not sure if handle it properly {name} {addtobody}')
         else:
-            g = self.__context.get_global(name)
+            g = self._context.get_global(name)
             if isinstance(g, op.var):
                 self.dispatch += f'__disp={name};\n'
                 name = "__dispatch_call"
@@ -966,8 +966,8 @@ class Cpp(object):
         if labeldir:
             from masm2c.parser import Parser
             labeldir[0] = Parser.mangle_label(cpp_mangle_label(labeldir[0]))
-            if self.__context.has_global(labeldir[0]):
-                g = self.__context.get_global(labeldir[0])
+            if self._context.has_global(labeldir[0]):
+                g = self._context.get_global(labeldir[0])
                 if isinstance(g, op.var):
                     indirection = IndirectionType.POINTER  # []
                 elif isinstance(g, (op.label, proc_module.Proc)):
@@ -996,9 +996,9 @@ class Cpp(object):
 
         hasglobal = False
         far = False
-        if self.__context.has_global(name):
+        if self._context.has_global(name):
             hasglobal = True
-            g = self.__context.get_global(name)
+            g = self._context.get_global(name)
             if isinstance(g, proc_module.Proc):
                 far = g.far
 
@@ -1039,9 +1039,9 @@ class Cpp(object):
         if size == 4:
             far = True
         disp = '0'
-        hasglobal = self.__context.has_global(dst)
+        hasglobal = self._context.has_global(dst)
         if hasglobal:
-            g = self.__context.get_global(dst)
+            g = self._context.get_global(dst)
             if isinstance(g, op.label) and not g.isproc and not dst in self.__procs and not dst in self.grouped:
                 #far = g.far  # make far calls to far procs
                 disp = f"m2c::k{dst}"
@@ -1268,11 +1268,11 @@ class Cpp(object):
             skip = def_skip
             self.__pushpop_count = 0
             self.temps_max = 0
-            if self.__context.has_global(name):
-                self.proc = self.__context.get_global(name)
+            if self._context.has_global(name):
+                self.proc = self._context.get_global(name)
             else:
                 logging.debug("No procedure named %s, trying label" % name)
-                off, src_proc, skip = self.__context.get_offset(name)
+                off, src_proc, skip = self._context.get_offset(name)
 
                 self.proc = proc_module.Proc(name)
                 self.proc.stmts = copy(src_proc.stmts)
@@ -1284,11 +1284,11 @@ class Cpp(object):
 
             entry_point = ''
             try:
-                g = self.__context.get_global(self.__context.entry_point)
+                g = self._context.get_global(self._context.entry_point)
             except:
                 g = None
             if g and isinstance(g, op.label) and self.label_to_proc[g.name] == self.proc:
-                entry_point = self.__context.entry_point
+                entry_point = self._context.entry_point
             self.body += self.proc_strategy.function_header(name, entry_point)
 
             # logging.info(name)
@@ -1298,7 +1298,7 @@ class Cpp(object):
 
             '''
             labels = OrderedDict()
-            for k, v in self.__context.get_globals().items():
+            for k, v in self._context.get_globals().items():
                 if isinstance(v, op.label) and v.used and v.proc == self.proc:
                         labels[k] = v
             '''
@@ -1323,7 +1323,7 @@ class Cpp(object):
     def leave_unique_labels(self, labels):
         uniq_labels = dict()
         for index, label in enumerate(labels):
-            g = self.__context.get_global(label)
+            g = self._context.get_global(label)
             if g.real_seg:
                 uniq_labels[f'{g.real_seg}_{g.real_offset}'] = label
             else:
@@ -1336,7 +1336,7 @@ class Cpp(object):
         header = self.__namespace.lower() + ".h"
         logging.info(f' *** Generating output files in C++ {fname} {header}')
 
-        cpp_assign, _, _, cpp_extern = self.produce_c_data(self.__context.segments)
+        cpp_assign, _, _, cpp_extern = self.produce_c_data(self._context.segments)
 
         translated = []
         if sys.version_info >= (3, 0):
@@ -1371,7 +1371,7 @@ class Cpp(object):
 
 
         '''
-        if self.__context.main_file:
+        if self._context.main_file:
 #            cppd.write("""
  int init(struct _STATE* _state)
  {
@@ -1407,22 +1407,20 @@ class Cpp(object):
         cppd.write("\n".join(translated))
         cppd.write("\n")
 
-        if self.__context.main_file:
-            '''
-            g = self.__context.get_global(self.__context.entry_point)
-            if isinstance(g, op.label):
+        if self._context.main_file:
+            g = self._context.get_global(self._context.entry_point)
+            if isinstance(g, op.label) and self._context.entry_point not in self.grouped:
                 cppd.write(f"""
-                 void {self.__context.entry_point}(m2c::_offsets, struct m2c::_STATE* _state){{{self.label_to_proc[g.name]}(m2c::k{self.__context.entry_point}, _state);}}
+                 void {self._context.entry_point}(m2c::_offsets, struct m2c::_STATE* _state){{{self.label_to_proc[g.name]}(m2c::k{self._context.entry_point}, _state);}}
                 """)
-            '''
-            cppd.write(f"""namespace m2c{{ m2cf* _ENTRY_POINT_ = &{self.__context.entry_point};}}
+            cppd.write(f"""namespace m2c{{ m2cf* _ENTRY_POINT_ = &{self._context.entry_point};}}
         """)
 
         last_segment = None
         cpp_segm = None
         for name in self.__procs:
             proc_text, segment = self.__proc(name)
-            if self.__context.itislst and segment != last_segment:
+            if self._context.itislst and segment != last_segment:
                 last_segment = segment
                 if cpp_segm:
                     cpp_segm.close()
@@ -1456,12 +1454,12 @@ class Cpp(object):
             "%d ok, %d failed of %d, %3g%% translated" % (done, failed, done + failed, 100.0 * done / (done + failed)))
         logging.info("\n".join(self.__failed))
 
-        cppd.write(self.produce_global_jump_table(list(self.__context.get_globals().items()), self.__context.itislst))
+        cppd.write(self.produce_global_jump_table(list(self._context.get_globals().items()), self._context.itislst))
 
         hd.write(f"""
 #include "asm.h"
 
-{self.produce_structures(self.__context.structures)}
+{self.produce_structures(self._context.structures)}
 """)
 
         hd.write(cpp_extern)
@@ -1469,9 +1467,9 @@ class Cpp(object):
         labeloffsets = self.produce_label_offsets()
         hd.write(labeloffsets)
 
-        hd.write(self.proc_strategy.write_declarations(self.__procs + list(self.grouped), self.__context))
+        hd.write(self.proc_strategy.write_declarations(self.__procs + list(self.grouped), self._context))
 
-        data = self.produce_externals(self.__context)
+        data = self.produce_externals(self._context)
         hd.write(data)
 
         hd.write("\n#endif\n")
@@ -1505,7 +1503,7 @@ class Cpp(object):
 
         cppd.close()
 
-        self.write_segment(self.__context.segments, self.__context.structures)
+        self.write_segment(self._context.segments, self._context.structures)
 
     def merge_procs(self):
         '''
@@ -1515,9 +1513,9 @@ class Cpp(object):
         '''
         self.generate_label_to_proc_map()
 
-        if not self.__context.args.mergeprocs == 'single':
+        if not self._context.args.mergeprocs == 'single':
             for index, first_proc_name in enumerate(self.__procs):
-                first_proc = self.__context.get_global(first_proc_name)
+                first_proc = self._context.get_global(first_proc_name)
 
                 first_proc.used_labels = self.leave_only_procs_and_labels(first_proc.used_labels)
                 logging.debug(f"Proc {first_proc_name} used labels {first_proc.used_labels}")
@@ -1540,10 +1538,10 @@ class Cpp(object):
                     for l in missing:
                         proc_to_merge.add(self.get_related_proc(l))  # if label then merge proc implementing it
 
-                if self.__context.args.mergeprocs == 'persegment':
+                if self._context.args.mergeprocs == 'persegment':
                     for pname in self.__procs:
                         if pname != first_proc_name:
-                            p_proc = self.__context.get_global(pname)
+                            p_proc = self._context.get_global(pname)
                             if first_proc.segment == p_proc.segment:
                                 proc_to_merge.add(pname)
 
@@ -1557,11 +1555,11 @@ class Cpp(object):
                 changed = False
                 for first_proc_name in self.__procs:
                     logging.debug(f"Proc {first_proc_name}")
-                    first_proc = self.__context.get_global(first_proc_name)
+                    first_proc = self._context.get_global(first_proc_name)
                     for next_proc_name in first_proc.to_group_with:
                         if first_proc_name != next_proc_name:
                             logging.debug(f"  will group with {next_proc_name}")
-                            next_proc = self.__context.get_global(next_proc_name)
+                            next_proc = self._context.get_global(next_proc_name)
                             if not next_proc.to_group_with:
                                 next_proc.to_group_with = set()
                             if first_proc.to_group_with != next_proc.to_group_with:
@@ -1580,8 +1578,8 @@ class Cpp(object):
         groups_id = 1
         for first_proc_name in self.__procs:
             if first_proc_name not in self.grouped:
-                first_proc = self.__context.get_global(first_proc_name)
-                if self.__context.args.mergeprocs == 'single' or first_proc.to_group_with:
+                first_proc = self._context.get_global(first_proc_name)
+                if self._context.args.mergeprocs == 'single' or first_proc.to_group_with:
                     logging.debug(f"Merging {first_proc_name}")
                     new_group_name = f'_group{groups_id}'
                     first_label = op.label(first_proc_name, proc=new_group_name, isproc=False,
@@ -1591,17 +1589,17 @@ class Cpp(object):
                     first_label.used = True
                     first_proc.stmts.insert(0, first_label)
                     first_proc.provided_labels.add(first_proc_name)
-                    self.__context.reset_global(first_proc_name, first_label)
+                    self._context.reset_global(first_proc_name, first_label)
                     self.grouped.add(first_proc_name)
 
                     self.groups[first_proc_name] = new_group_name
                     # self.grouped |= first_proc.group
-                    proc_to_group = self.__procs if self.__context.args.mergeprocs == 'single' else first_proc.to_group_with
+                    proc_to_group = self.__procs if self._context.args.mergeprocs == 'single' else first_proc.to_group_with
                     proc_to_group = self.get_lineordered_proclist(proc_to_group)
 
                     for next_proc_name in proc_to_group:
                         if next_proc_name != first_proc_name and next_proc_name not in self.grouped:
-                            next_proc = self.__context.get_global(next_proc_name)
+                            next_proc = self._context.get_global(next_proc_name)
                             if isinstance(next_proc, proc_module.Proc):  # and first_proc.far == next_proc.far:
                                 self.groups[next_proc_name] = new_group_name
                                 next_label = op.label(next_proc_name, proc=first_proc_name, isproc=False,
@@ -1613,10 +1611,10 @@ class Cpp(object):
                                 first_proc.merge_two_procs(new_group_name, next_proc)
                                 for l in first_proc.provided_labels:
                                     self.label_to_proc[l] = new_group_name
-                                self.__context.reset_global(next_proc_name, next_label)
+                                self._context.reset_global(next_proc_name, next_label)
                                 self.grouped.add(next_proc_name)
                     groups += [new_group_name]
-                    self.__context.set_global(new_group_name, first_proc)
+                    self._context.set_global(new_group_name, first_proc)
                     groups_id += 1
         self.__procs = [x for x in self.__procs if x not in self.grouped]
         self.__procs += groups
@@ -1624,29 +1622,29 @@ class Cpp(object):
 
     def generate_label_to_proc_map(self):
         for proc_name in self.__procs:
-            proc = self.__context.get_global(proc_name)
+            proc = self._context.get_global(proc_name)
             logging.debug(f"Proc {proc_name} provides: {proc.provided_labels}")
             for label in proc.provided_labels:
                 self.label_to_proc[label] = proc_name
 
     def get_lineordered_proclist(self, proc_list):
-        line_to_proc = dict([(self.__context.get_global(first_proc_name).line_number, first_proc_name) for first_proc_name in
+        line_to_proc = dict([(self._context.get_global(first_proc_name).line_number, first_proc_name) for first_proc_name in
                         proc_list])
         return [line_to_proc[line_number] for line_number in sorted(line_to_proc.keys())]
 
     def leave_only_same_seg_procs_to_merge(self, first_proc_name):
-        first_proc = self.__context.get_global(first_proc_name)
+        first_proc = self._context.get_global(first_proc_name)
         only_current_segment_procs = set()
         for next_proc_name in first_proc.to_group_with:
             if first_proc_name != next_proc_name:
-                next_proc = self.__context.get_global(next_proc_name)
+                next_proc = self._context.get_global(next_proc_name)
                 if first_proc.segment == next_proc.segment:
                     only_current_segment_procs.add(next_proc_name)
         first_proc.to_group_with = only_current_segment_procs
 
     def print_how_procs_merged(self):
         for first_proc_name in self.__procs:
-            first_proc = self.__context.get_global(first_proc_name)
+            first_proc = self._context.get_global(first_proc_name)
             if first_proc.to_group_with:
                 logging.info(f"     ~{first_proc_name}")
                 for p_name in first_proc.to_group_with:
@@ -1654,7 +1652,7 @@ class Cpp(object):
 
     def get_related_proc(self, l):
         logging.debug(f"get_related_proc {l}")
-        first_label = self.__context.get_global(l)
+        first_label = self._context.get_global(l)
         if isinstance(first_label, op.label):
             logging.debug(f" {l} is label, will merge {self.label_to_proc[l]} proc")
             related_proc = self.label_to_proc[l]  # if label then merge proc implementing it
@@ -1666,7 +1664,7 @@ class Cpp(object):
     def leave_only_procs_and_labels(self, all_labels):
         labels = set()  # leave only real labels
         for label_name in all_labels:
-            first_label = self.__context.get_global(label_name)
+            first_label = self._context.get_global(label_name)
             if isinstance(first_label, (op.label, proc_module.Proc)):
                 labels.add(label_name)
         return labels
@@ -1768,7 +1766,7 @@ db(& heap)[HEAP_SIZE]=m.heap;
         # hd.write("\nenum _offsets MYINT_ENUM {\n")
         offsets = []
         '''        
-        for k, v in list(self.__context.get_globals().items()):
+        for k, v in list(self._context.get_globals().items()):
             k = re.sub(r'[^A-Za-z0-9_]', '_', k)
             if isinstance(v, (op.label, proc_module.Proc)):
                 offsets.append((k.lower(), hex(v.line_number)))
@@ -1779,7 +1777,7 @@ void   Initializer();
 static const dd kbegin = 0x1001;
 """
         i = 0x1001
-        for k, v in list(self.__context.get_globals().items()):
+        for k, v in list(self._context.get_globals().items()):
             # if isinstance(v, (op.label, proc_module.Proc)) and v.used:
             if isinstance(v, (op.label, proc_module.Proc)):
                 k = re.sub(r'[^A-Za-z0-9_]', '_', k).lower()
@@ -1916,12 +1914,12 @@ struct Memory{
                 type = type.value
             type = type.lower()
             src = Token.find_and_replace_tokens(src, 'ptrdir', self.return_empty)
-        o = stmt  # self.__context.get_global(dst)
+        o = stmt  # self._context.get_global(dst)
         o.size = size
         if ptrdir:
             o.original_type = type
         o.implemented = True
-        self.__context.reset_global(dst, o)
+        self._context.reset_global(dst, o)
 
         self.label += "#undef %s\n#define %s %s\n" % (dst, dst, self.expand(src))
         return ''
@@ -2050,26 +2048,26 @@ struct Memory{
         jsonpickle.set_encoder_options('json', indent=2)
         with open(name, 'w') as lst:
             lst.write(f'Segment:\n')
-            for v in self.__context.segments:
+            for v in self._context.segments:
                 lst.write(f'{v}\n')
 
             lst.write(f'\nLabels:\n')
-            for k, v in self.__context.get_globals().items():
+            for k, v in self._context.get_globals().items():
                 if isinstance(v, op.label):
                     lst.write(f'{v.name}\n')
 
             lst.write(f'\nProcs:\n')
-            for k, v in self.__context.get_globals().items():
+            for k, v in self._context.get_globals().items():
                 if isinstance(v, proc_module.Proc):
                     lst.write(f'{v.name} {v.offset}\n')
 
             lst.write(f'\nVars:\n')
-            for k, v in self.__context.get_globals().items():
+            for k, v in self._context.get_globals().items():
                 if isinstance(v, op.var):
                     lst.write(f'{v.name} {v.offset}\n')
 
             lst.write(
-                jsonpickle.encode((self.__context.get_globals(), self.__context.segments, self.__context.structures)))
+                jsonpickle.encode((self._context.get_globals(), self._context.segments, self._context.structures)))
 
     def produce_global_jump_table(self, globals, itislst):
         # Produce call table
@@ -2104,6 +2102,6 @@ struct Memory{
             if not name.startswith('_group'):  # TODO remove dirty hack. properly check for group
                 result += "        case m2c::k%s: \t%s(0, _state); break;\n" % (name, cpp_mangle_label(label))
 
-        result += "        default: m2c::log_error(\"Don't know how to call to 0x%x. See \" __FILE__ \" line %d\\n\", __disp, _source);m2c::stackDump(_state); abort();\n"
+        result += "        default: m2c::log_error(\"Don't know how to call to 0x%x. See \" __FILE__ \" line %d\\n\", __disp, __LINE__);m2c::stackDump(_state); abort();\n"
         result += "     };\n     return true;\n}\n"
         return result

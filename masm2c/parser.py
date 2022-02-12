@@ -315,10 +315,6 @@ def labeldef(context, nodes, name, colon):
 def instrprefix(context, nodes):
     logging.debug("instrprefix " + str(nodes) + " ~~")
     instruction = nodes[0]
-    # o = context.extra.proc.create_instruction_object(instruction)
-    # o.line = get_raw(context)
-    # o.line_number = get_line_number(context)
-    # context.extra.proc.stmts.append(o)
     context.extra.action_instruction(instruction, [], raw=get_raw_line(context), line_number=get_line_number(context))
     return []
 
@@ -1569,10 +1565,12 @@ class Parser:
         #if self.__separate_proc:
         proc = self.get_global('mainproc')
         o = proc.create_instruction_object('call', [self.entry_point])
+        o.filename = self.__current_file
         o.raw_line = ''
         o.line_number = 0
         proc.stmts.append(o)
         o = proc.create_instruction_object('ret')
+        o.filename = self.__current_file
         o.raw_line = ''
         o.line_number = 0
         proc.stmts.append(o)
