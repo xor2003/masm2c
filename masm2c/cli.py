@@ -11,7 +11,7 @@ import argparse
 import logging
 import sys
 
-# from import __version__
+#from masm2c.__init__ import __version__
 __version__ = '0.9.5'
 
 __author__ = "x0r"
@@ -40,14 +40,14 @@ def parse_args(args):
     Returns:
       :obj:`argparse.Namespace`: command line parameters namespace
     """
-    aparser = argparse.ArgumentParser(description="Masm source to C source translator")
+    aparser = argparse.ArgumentParser(description=f"Masm source to C++ translator V{__version__} {__license__}", prefix_chars='-/')
     aparser.add_argument(
         "-v",
         "--version",
         action="version",
         version="{ver}".format(ver=__version__),
     )
-    aparser.add_argument('filenames', nargs='+', help='Assembler source .asm or .seg Segment dump to merge')
+    aparser.add_argument('filenames', nargs='+', help='Assembler source .asm Masm 6 or .lst from IDA Pro or .seg Segment dump to merge')
     aparser.add_argument(
         "-d",
         "--debug",
@@ -58,14 +58,16 @@ def parse_args(args):
         const=logging.DEBUG,
     )
     aparser.add_argument(
-        "-l",
+        "/Fl",
         "--list",
         dest="list",
+        #nargs="?",
         help="Generate all globals to .list file",
         action="store_const",
-        default=False,
         const=True,
+        default=False,
     )
+    '''
     aparser.add_argument(
         "-s",
         "--singleproc",
@@ -84,23 +86,34 @@ def parse_args(args):
         default=False,
         const=True,
     )
+    '''
     aparser.add_argument(
-        "-t",
-        "--twopass",
-        dest="twopass",
-        help="Do second parsing pass",
-        action="store_const",
-        default=False,
-        const=True,
+        "-p",
+        "--passes",
+        dest="passes",
+        help="How many parsing passes (default: 2)",
+        nargs=1,
+        choices=[1, 2],
+        default=2,
     )
     aparser.add_argument(
-        "-z",
-        "--startsegment",
-        dest="startsegment",
+        "-lo",
+        "--loadsegment",
+        dest="loadsegment",
         help="Dosbox 0.74.3 loads .exe from 0x1a2 para (w/o debugger), 0x1ed (with debugger), .com from 0x192 (w/o debugger)",
         action="store",
         default='0x1a2',
     )
+    aparser.add_argument(
+        "/AT",
+        dest="loadsegment",
+        help="Dosbox 0.74.3 loads .com from 0x192 (w/o debugger)",
+        action="store_const",
+        const='0x192',
+    )
+    aparser.add_argument(
+        '-m', '--mergeprocs', type=str, default='persegment', choices=["separate", "persegment", "single"],
+        help='How to merge procs (default: persegment)', )
     return aparser.parse_args(args)
 
 
@@ -153,7 +166,7 @@ def process(i, args):
 
     counter = Parser.c_dummy_label
 
-    if args.twopass:
+    if args.passes >= 2:
         p.parse_file(name)
         p.next_pass(counter)
     context = p.parse_file(name)
@@ -177,7 +190,7 @@ def main(args):
         sys.stderr.reconfigure(encoding='utf-8')
 
     args = parse_args(args)
-    logging.info(f"Masm source to C source translator V{__version__} {__license__}")
+    logging.info(f"Masm source to C++ translator V{__version__} {__license__}")
     # Process .asm
     merge_data_segments = True
     for i in args.filenames:

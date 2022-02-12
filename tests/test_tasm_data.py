@@ -1020,9 +1020,6 @@ class ParserDataTest(unittest.TestCase):
     def test_data_15890(self):
         self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="var4 db 131")), ('131, // var4\n', 'db var4;\n', 1))
 
-    def test_data_15910(self):
-        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="var6 dd 9,8,7,1")), ('{9,8,7,1}, // var6\n', 'dd var6[4];\n', 16))
-
     def test_data_15920(self):
         self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="db 000,009,000,000,009,021,000,009,042,000,009,063,009,009,000,009")), ('{0,9,0,0,9,21,0,9,42,0,9,63,9,9,0,9}, // dummy0_0\n', 'db dummy0_0[16];\n', 16))
 
@@ -1055,9 +1052,12 @@ class ParserDataTest(unittest.TestCase):
         self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="var4 dw aa")), ('offset(default_seg,aa), // var4\n', 'dw var4;\n', 2))
         self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="var5 dd aa")), ('far_offset(default_seg,aa), // var5\n', 'dd var5;\n', 4))
 
-    #def test_data_16010(self):
-    #    self.parser.action_data(line='loc_11990:')
-    #    self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="var4 dw offset loc_11990+2-offset loc_11990")), ('m2c::kloc_11990+2-m2c::kloc_11990, // var4\n', 'dw var4;\n', 2))
+    def test_data_15910(self):
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="var6 dd 9,8,7,1")), ('{9,8,7,1}, // var6\n', 'dd var6[4];\n', 16))
+
+    def test_data_16010(self):
+        self.parser.action_data(line='loc_11990:')
+        self.assertEqual(self.cpp.produce_c_data_single(self.parser.action_data(line="var4 dw offset loc_11990+2-offset loc_11990")), ('m2c::kloc_11990+2-m2c::kloc_11990, // var4\n', 'dw var4;\n', 2))
 
 if __name__ == "__main__":
     unittest.main()

@@ -60,6 +60,7 @@ class Proc(object):
         del other
 
     def add_label(self, name, label):
+        logging.debug(f"Label {name} is provided by {self.name} proc")
         self.stmts.append(label)
         self.provided_labels.add(name)
 

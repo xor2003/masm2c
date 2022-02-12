@@ -1003,7 +1003,7 @@ class Parser:
 
     def read_segments_map(self, file_name):
         content = read_whole_file(re.sub(r'\.lst$', '.map', file_name, flags=re.I)).splitlines()
-        DOSBOX_START_SEG = int(self.args.startsegment, 0)
+        DOSBOX_START_SEG = int(self.args.loadsegment, 0)
         strgenerator = (x for x in content)
         segs = OrderedDict()
         for line in strgenerator:
@@ -1606,7 +1606,7 @@ class Parser:
                     label_name=self.get_dummy_label()
                 self.action_label(label_name, raw=raw)
             self.proc.stmts.append(o)
-            if self.args.singleproc:
+            if self.args.mergeprocs == 'single':
                 self.need_label |= self.proc.is_return_point(o)
             self.flow_terminated = self.proc.is_flow_terminating_stmt(o)
             self.need_label |= self.flow_terminated

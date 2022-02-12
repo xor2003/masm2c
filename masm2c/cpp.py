@@ -1325,7 +1325,7 @@ class Cpp(object):
         for index, label in enumerate(labels):
             g = self.__context.get_global(label)
             if g.real_seg:
-                uniq_labels[(g.real_seg << 16) + g.real_offset] = label
+                uniq_labels[f'{g.real_seg}_{g.real_offset}'] = label
             else:
                 uniq_labels[index] = label
         labels = uniq_labels.values()
@@ -1512,7 +1512,7 @@ class Cpp(object):
         '''
         self.generate_label_to_proc_map()
 
-        if not self.__context.args.singleproc:
+        if not self.__context.args.mergeprocs == 'single':
             for index, first_proc_name in enumerate(self.__procs):
                 first_proc = self.__context.get_global(first_proc_name)
 
@@ -1537,7 +1537,7 @@ class Cpp(object):
                     for l in missing:
                         proc_to_merge.add(self.get_related_proc(l))  # if label then merge proc implementing it
 
-                if self.__context.args.procperseg:
+                if self.__context.args.mergeprocs == 'persegment':
                     for pname in self.__procs:
                         if pname != first_proc_name:
                             p_proc = self.__context.get_global(pname)
@@ -1578,7 +1578,7 @@ class Cpp(object):
         for first_proc_name in self.__procs:
             if first_proc_name not in self.grouped:
                 first_proc = self.__context.get_global(first_proc_name)
-                if self.__context.args.singleproc or first_proc.to_group_with:
+                if self.__context.args.mergeprocs == 'single' or first_proc.to_group_with:
                     logging.debug(f"Merging {first_proc_name}")
                     new_group_name = f'_group{groups_id}'
                     first_label = op.label(first_proc_name, proc=new_group_name, isproc=False,
@@ -1593,7 +1593,7 @@ class Cpp(object):
 
                     self.groups[first_proc_name] = new_group_name
                     # self.grouped |= first_proc.group
-                    proc_to_group = self.__procs if self.__context.args.singleproc else first_proc.to_group_with
+                    proc_to_group = self.__procs if self.__context.args.mergeprocs == 'single' else first_proc.to_group_with
                     proc_to_group = self.get_lineordered_proclist(proc_to_group)
 
                     for next_proc_name in proc_to_group:
@@ -1622,6 +1622,7 @@ class Cpp(object):
     def generate_label_to_proc_map(self):
         for proc_name in self.__procs:
             proc = self.__context.get_global(proc_name)
+            logging.debug(f"Proc {proc_name} provides: {proc.provided_labels}")
             for label in proc.provided_labels:
                 self.label_to_proc[label] = proc_name
 
@@ -1652,8 +1653,8 @@ class Cpp(object):
         logging.debug(f"get_related_proc {l}")
         first_label = self.__context.get_global(l)
         if isinstance(first_label, op.label):
-            logging.debug(f" {l} is label, will merge {self.label_to_proc[first_label]} proc")
-            related_proc = self.label_to_proc[first_label]  # if label then merge proc implementing it
+            logging.debug(f" {l} is label, will merge {self.label_to_proc[l]} proc")
+            related_proc = self.label_to_proc[l]  # if label then merge proc implementing it
         elif isinstance(first_label, proc_module.Proc):
             logging.debug(f" {l} is proc, will merge {first_label.name} proc")
             related_proc = first_label.name
@@ -2040,11 +2041,11 @@ struct Memory{
         return vvv
 
     def dump_globals(self):
-        fname = self.__namespace.lower() + ".list"
-        logging.info(f' *** Generating globals listing {fname}')
+        name = self.__namespace.lower() + ".list"
+        logging.info(f' *** Generating globals listing {name}')
 
         jsonpickle.set_encoder_options('json', indent=2)
-        with open(fname, 'w') as lst:
+        with open(name, 'w') as lst:
             lst.write(f'Segment:\n')
             for v in self.__context.segments:
                 lst.write(f'{v}\n')
@@ -2082,18 +2083,20 @@ struct Memory{
  bool __dispatch_call(m2c::_offsets __disp, struct m2c::_STATE* _state){
     switch (__disp) {
 """
-        offsets = []
+        procs = []
         for k, v in globals:
             k = re.sub(r'[^A-Za-z0-9_]', '_', k)
             if isinstance(v, proc_module.Proc) and v.used:
-                offsets.append((k.lower(), k))
-
-                for label in sorted(v.provided_labels):
+                procs.append(k) #(k.lower(), k))
+                labels = self.leave_unique_labels(v.provided_labels)
+                for label in sorted(labels):
                     if label != v.name:
                         result += f"        case m2c::k{label}: \t{v.name}(__disp, _state); break;\n"
 
-        offsets = sorted(offsets, key=lambda t: t[1])
-        for name, label in offsets:
+        #procs = sorted(procs, key=lambda t: t[1])
+        procs = self.leave_unique_labels(procs)
+        for name in procs:
+            label = name
             logging.debug(f'{name}, {label}')
             if not name.startswith('_group'):  # TODO remove dirty hack. properly check for group
                 result += "        case m2c::k%s: \t%s(0, _state); break;\n" % (name, cpp_mangle_label(label))
