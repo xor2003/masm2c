@@ -20,3 +20,4 @@ jsonpickle
 pytest
 coverage
 pip
+mock
