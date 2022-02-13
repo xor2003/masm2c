@@ -1098,12 +1098,12 @@ class Parser:
             if real_offset:
                 self.__cur_seg_offset = real_offset
 
-            offset = self.__binary_data_size // 16
-            logging.debug("segment %s %x" % (name, offset))
-            binary_width = 0
-
             if real_seg:
                 offset = real_seg * 0x10
+            else:
+                offset = self.__binary_data_size
+            logging.debug("segment %s %x" % (name, offset))
+            binary_width = 0
 
             self.__segment = Segment(name, offset, options=options, segclass=segclass)
             self.segments[name] = self.__segment
