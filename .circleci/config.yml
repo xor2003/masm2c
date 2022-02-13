@@ -46,6 +46,8 @@ jobs:
     # See: https://circleci.com/docs/2.0/configuration-reference/#steps
     steps:
       - checkout
+      - run: sudo apt install gcc-multilib g++-multilib libncurses5-dev:i386 libncurses5:i386 python
+
       - run:
           name: "Binary tests"
           command: ./_binarytests.sh
