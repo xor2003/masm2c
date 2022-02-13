@@ -26,7 +26,9 @@ from masm2c.Macro import Macro
 INTEGERCNST = 'INTEGER'
 STRINGCNST = 'STRING'
 
+
 class MyDummyObj(object): pass
+
 
 def read_whole_file(file_name):
     logging.info("     Reading file %s..." % file_name)
@@ -57,6 +59,7 @@ def get_line_number(context):
 
 def get_raw(context):
     return context.input_str[context.start_position: context.end_position].strip()
+
 
 def get_raw_line(context):
     line_eol_pos = context.input_str.find('\n', context.end_position)
@@ -121,7 +124,7 @@ def integertok(context, nodes):
 
 def commentkw(head, s, pos):
     # multiline comment
-    if s[pos:pos+7] == 'COMMENT':
+    if s[pos:pos + 7] == 'COMMENT':
         mtch = commentid.match(s[pos:])
         if mtch:
             return mtch.group(0)
@@ -226,8 +229,6 @@ def structinstdir(context, nodes, label, type, values):
     return nodes
 
 
-
-
 def datadir(context, nodes, label, type, values):
     logging.debug("datadir " + str(nodes) + " ~~")
 
@@ -308,8 +309,9 @@ def assdir(context, nodes, name, value):
 
 def labeldef(context, nodes, name, colon):
     logging.debug("labeldef " + str(nodes) + " ~~")
-    return context.extra.action_label(name.value, isproc=False, raw=get_raw_line(context), line_number=get_line_number(context),
-                                      globl=(colon=='::'))
+    return context.extra.action_label(name.value, isproc=False, raw=get_raw_line(context),
+                                      line_number=get_line_number(context),
+                                      globl=(colon == '::'))
 
 
 def instrprefix(context, nodes):
@@ -537,10 +539,10 @@ class Parser:
         '''
         self.test_mode = False
         self.__globals = OrderedDict()
-        #self.__offsets = OrderedDict()
+        # self.__offsets = OrderedDict()
         self.pass_number = 0
         self.__lex = ParglareParser()
-        self.segments = OrderedDict()
+        #self.segments = OrderedDict()
         self.externals_vars = set()
         self.externals_procs = set()
         self.__files = set()
@@ -563,6 +565,7 @@ class Parser:
         logging.info(f"     Pass number {self.pass_number}")
         Parser.c_dummy_label = counter
 
+        self.segments = OrderedDict()
         self.flow_terminated = True
         self.need_label = True
 
@@ -581,6 +584,7 @@ class Parser:
         self.__binary_data_size = 0
         self.__cur_seg_offset = 0
         self.__c_dummy_jump_label = 0
+        self.__c_extra_dummy_jump_label = 0
 
         self.__segment_name = "default_seg"
         self.__segment = Segment(self.__segment_name, 0, comment="Artificial initial segment")
@@ -673,6 +677,7 @@ class Parser:
     def get_offset(self, name):
         return self.__offsets[name.lower()]
     '''
+
     def replace_dollar_w_segoffst(self, v):
         logging.debug("$ = %d" % self.__cur_seg_offset)
         return v.replace('$', str(self.__cur_seg_offset))
@@ -895,21 +900,21 @@ class Parser:
             name = self.get_dummy_jumplabel()
         name = self.mangle_label(name)
 
-        #logging.debug("offset %s -> %s" % (name, "&m." + name.lower() + " - &m." + self.__segment_name))
+        # logging.debug("offset %s -> %s" % (name, "&m." + name.lower() + " - &m." + self.__segment_name))
 
         self.need_label = False
         self.make_sure_proc_exists(line_number, raw)
 
-        #if self.proc:
+        # if self.proc:
         l = op.label(name, proc=self.proc.name, isproc=isproc, line_number=self.__offset_id, far=far, globl=globl)
         _, l.real_offset, l.real_seg = self.get_lst_offsets(raw)
 
         self.proc.add_label(name, l)
-        #self.set_offset(name,
+        # self.set_offset(name,
         #                ("&m." + name.lower() + " - &m." + self.__segment_name, self.proc, self.__offset_id))
         self.set_global(name, l)
         self.__offset_id += 1
-        #else:
+        # else:
         #    logging.error("!!! Label %s is outside the procedure" % name)
 
     def make_sure_proc_exists(self, line_number, raw):
@@ -954,13 +959,18 @@ class Parser:
             logging.warning(f'Maybe wrong offset current:{self.__binary_data_size:x} should be:{pointer:x} ~{raw}~')
 
     def get_dummy_label(self):
-        #Parser.c_dummy_label += 1
-        label = "dummy" + self.__current_file_hash[0]+'_'+str(hex(self.__binary_data_size))[2:]
+        # Parser.c_dummy_label += 1
+        label = "dummy" + self.__current_file_hash[0] + '_' + str(hex(self.__binary_data_size))[2:]
         return label
 
     def get_dummy_jumplabel(self):
         self.__c_dummy_jump_label += 1
         label = "dummylabel" + str(self.__c_dummy_jump_label)
+        return label
+
+    def get_extra_dummy_jumplabel(self):
+        self.__c_extra_dummy_jump_label += 1
+        label = "edummylabel" + str(self.__c_extra_dummy_jump_label)
         return label
 
     def parse_file(self, fname):
@@ -1010,12 +1020,12 @@ class Parser:
                 break
             else:
                 if line.strip():
-                    #print(line)
+                    # print(line)
                     m = re.match(
                         r'^\s+(?P<start>[0-9A-F]{5,10})H [0-9A-F]{5,10}H [0-9A-F]{5,10}H (?P<segment>[_0-9A-Za-z]+)\s+[A-Z]+',
                         line)
                     segs[m.group('segment')] = f"{(int(m.group('start'), 16) // 16 + DOSBOX_START_SEG):04X}"
-                    #print(segs)
+                    # print(segs)
         logging.debug(f'Results of loading .map file: {segs}')
         return segs
 
@@ -1077,26 +1087,29 @@ class Parser:
         name = name.lower()
         self.data_merge_candidats = 0
         self.__segment_name = name
-        _, real_offset, real_seg = self.get_lst_offsets(raw)
-        if real_seg:
-            self.move_offset(real_seg * 0x10, raw)
-        self.align()
-        self.__cur_seg_offset = 0
-        if real_offset:
-            #logging.warning(f"Segment {name} does not start at offset 0. Compiler compacted segments. It stating from: {real_offset}. Check memory structure is properly generated")
-            self.__cur_seg_offset = real_offset
+        if name in self.segments:
+            self.__segment = self.segments[name]
+        else:
+            _, real_offset, real_seg = self.get_lst_offsets(raw)
+            if real_seg:
+                self.move_offset(real_seg * 0x10, raw)
+            self.align()
+            self.__cur_seg_offset = 0
+            if real_offset:
+                self.__cur_seg_offset = real_offset
 
-        offset = self.__binary_data_size // 16
-        logging.debug("segment %s %x" % (name, offset))
-        binary_width = 0
+            offset = self.__binary_data_size // 16
+            logging.debug("segment %s %x" % (name, offset))
+            binary_width = 0
 
-        if real_seg:
-            offset = real_seg * 0x10
-        self.__segment = Segment(name, offset, options=options, segclass=segclass)
-        self.segments[name] = self.__segment
-        #self.__segment.append(op.Data(name, 'db', DataType.ARRAY, [], 0, 0, comment='segment start zero label'))
+            if real_seg:
+                offset = real_seg * 0x10
 
-        self.set_global(name, op.var(binary_width, offset, name, issegment=True))
+            self.__segment = Segment(name, offset, options=options, segclass=segclass)
+            self.segments[name] = self.__segment
+            # self.__segment.append(op.Data(name, 'db', DataType.ARRAY, [], 0, 0, comment='segment start zero label'))
+
+            self.set_global(name, op.var(binary_width, offset, name, issegment=True))
 
     def action_proc(self, name, type, line_number=0, raw=''):
         logging.info("      Found proc %s" % name.value)
@@ -1108,7 +1121,7 @@ class Parser:
                 far = True
 
         self.proc = self.add_proc(name, raw, line_number, far)
-        #else:
+        # else:
         #    self.action_label(name, far=far, isproc=True)
 
     def add_proc(self, name, raw, line_number, far):
@@ -1116,8 +1129,8 @@ class Parser:
         # if self.__separate_proc:
         offset, real_offset, real_seg = self.get_lst_offsets(raw)
         proc = Proc(name, far=far, line_number=line_number, offset=offset,
-                         real_offset=real_offset, real_seg=real_seg,
-                         segment=self.__segment.name)
+                    real_offset=real_offset, real_seg=real_seg,
+                    segment=self.__segment.name)
         self.proc_list.append(name)
         self.set_global(name, proc)
         self.__proc_stack.append(proc)
@@ -1255,13 +1268,13 @@ class Parser:
             end
             ''', file_name=file_name, extra=self)  # context = self.__pgcontext)
         except parglare.exceptions.ParseError:
-            result = parser.parse('''.model tiny
-            some_seg segment
-            ''' + line + '''
-            some_seg ends
+            result = parser.parse(f'''.model tiny
+            {self.__segment.name} segment
+            {line}
+            {self.__segment.name} ends
             end
             ''', file_name=file_name, extra=self)  # context = self.__pgcontext)
-            del self.__globals['some_seg']
+            # del self.__globals['some_seg']
 
         return result
 
@@ -1272,7 +1285,7 @@ class Parser:
             return self.escape(s.value)
         else:
             s = s.translate(s.maketrans({"\\": r"\\"}))
-            #if not self.itislst:
+            # if not self.itislst:
             s = s.replace("''", "'").replace('""', '"')
             return s
 
@@ -1288,7 +1301,8 @@ class Parser:
             elif values.type == STRINGCNST:
                 return self.calculate_STRING_size(values.value)
             elif values.type == 'dupdir':
-                return Parser.parse_int(self.escape(values.value[0])) * self.calculate_data_size_new(size, values.value[1])
+                return Parser.parse_int(self.escape(values.value[0])) * self.calculate_data_size_new(size,
+                                                                                                     values.value[1])
             else:
                 return size
         elif isinstance(values, str):
@@ -1368,10 +1382,12 @@ class Parser:
         size = 32
         if self.data_merge_candidats == size:
             if self.__segment.getdata()[-size].offset + size - 1 != self.__segment.getdata()[-1].offset:
-                logging.debug(f'Cannot merge {self.__segment.getdata()[-size].label} - {self.__segment.getdata()[-1].label}')
+                logging.debug(
+                    f'Cannot merge {self.__segment.getdata()[-size].label} - {self.__segment.getdata()[-1].label}')
                 self.data_merge_candidats = 0
             else:
-                logging.debug(f'Merging data at {self.__segment.getdata()[-size].label} - {self.__segment.getdata()[-1].label}')
+                logging.debug(
+                    f'Merging data at {self.__segment.getdata()[-size].label} - {self.__segment.getdata()[-1].label}')
                 array = [x.array[0] for x in self.__segment.getdata()[-size:]]
                 if not any(array):  # all zeros
                     array = [0]
@@ -1380,7 +1396,7 @@ class Parser:
                 self.__segment.getdata()[-size].elements = size
                 self.__segment.getdata()[-size].data_internal_type = DataType.ARRAY
                 self.__segment.getdata()[-size].size = size
-                self.__segment.setdata(self.__segment.getdata()[:-(size-1)])
+                self.__segment.setdata(self.__segment.getdata()[:-(size - 1)])
                 self.data_merge_candidats = 0
 
     def adjust_offset_to_real(self, raw, label):
@@ -1437,6 +1453,7 @@ class Parser:
         self.__binary_data_size = 0
         # TODO check if required self.__c_dummy_label = 0  # one dummy number is used for "default_seg" creation
         self.__c_dummy_jump_label = 0
+        self.__c_extra_dummy_jump_label = 0
         return self.parse_file_insideseg(text)
 
     def parse_file_insideseg(self, text):
@@ -1455,7 +1472,7 @@ class Parser:
 
     @staticmethod
     def mangle_label(name):
-        name = name.lower()  #([A-Za-z@_\$\?][A-Za-z0-9@_\$\?]*)
+        name = name.lower()  # ([A-Za-z@_\$\?][A-Za-z0-9@_\$\?]*)
         return name.replace('@', "arb").replace('?', "que").replace('$', "dol")
 
     @staticmethod
@@ -1527,7 +1544,8 @@ class Parser:
         d.setvalue(args)
 
         if number > 1:
-            d = op.Data(label, type, DataType.ARRAY, number * [d], number, number * s.getsize(), comment='object array', offset=offset)
+            d = op.Data(label, type, DataType.ARRAY, number * [d], number, number * s.getsize(), comment='object array',
+                        offset=offset)
 
         isstruct = len(self.struct_names_stack) != 0
         if isstruct:
@@ -1553,16 +1571,16 @@ class Parser:
                                             elements=1, external=True, original_type=strtype))
             self.externals_vars.add(label)
         else:  # Proc
-            #if self.__separate_proc:
+            # if self.__separate_proc:
             self.externals_procs.add(label)
             proc = Proc(label, extern=True)
             logging.debug("procedure %s, extern" % label)
             self.reset_global(label, proc)
-            #else:
+            # else:
             #    self.reset_global(label, op.label(label, proc=self.proc.name, isproc=True))
 
     def add_call_to_entrypoint(self):
-        #if self.__separate_proc:
+        # if self.__separate_proc:
         proc = self.get_global('mainproc')
         o = proc.create_instruction_object('call', [self.entry_point])
         o.filename = self.__current_file
@@ -1598,9 +1616,9 @@ class Parser:
                     logging.error(f"{o.real_seg:x}:{o.real_offset:x}")
             if self.need_label and self.proc.stmts:
                 if o.real_seg:
-                    label_name=f'ret_{o.real_seg:x}_{o.real_offset:x}'
+                    label_name = f'ret_{o.real_seg:x}_{o.real_offset:x}'
                 else:
-                    label_name=self.get_dummy_label()
+                    label_name = self.get_extra_dummy_jumplabel()
                 self.action_label(label_name, raw=raw)
             self.proc.stmts.append(o)
             if self.args.mergeprocs == 'single':

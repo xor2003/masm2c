@@ -93,7 +93,7 @@ class SeparateProcStrategy:
     def function_header(self, name, entry_point=''):
         header = """
 
- void %s(m2c::_offsets _i, struct m2c::_STATE* _state){
+ bool %s(m2c::_offsets _i, struct m2c::_STATE* _state){
     X86_REGREF
     __disp = _i;
 """ % cpp_mangle_label(name)
@@ -119,12 +119,12 @@ class SeparateProcStrategy:
         for p in sorted(procs):  # TODO only if used or public
             if p == 'mainproc' and not context.itislst:  # and not context.main_file:
                 result += 'static '
-            result += "void %s(m2c::_offsets, struct m2c::_STATE*);\n" % cpp_mangle_label(p)
+            result += "bool %s(m2c::_offsets, struct m2c::_STATE*);\n" % cpp_mangle_label(p)
 
         for i in sorted(context.externals_procs):
             v = context.get_globals()[i]
             if v.used:
-                result += f"extern void {v.name}(m2c::_offsets, struct m2c::_STATE*);\n"
+                result += f"extern bool {v.name}(m2c::_offsets, struct m2c::_STATE*);\n"
 
         result += """
 #ifndef DOSBOX
@@ -1400,7 +1400,7 @@ class Cpp(object):
 
         for p in sorted(self.grouped):
             self.body += f"""
- void {p}(m2c::_offsets, struct m2c::_STATE* _state){{{self.groups[p]}(m2c::k{p}, _state);}}
+ bool {p}(m2c::_offsets, struct m2c::_STATE* _state){{{self.groups[p]}(m2c::k{p}, _state);}}
 """
         translated.append(self.body)
         cppd.write("\n")
@@ -1411,7 +1411,7 @@ class Cpp(object):
             g = self._context.get_global(self._context.entry_point)
             if isinstance(g, op.label) and self._context.entry_point not in self.grouped:
                 cppd.write(f"""
-                 void {self._context.entry_point}(m2c::_offsets, struct m2c::_STATE* _state){{{self.label_to_proc[g.name]}(m2c::k{self._context.entry_point}, _state);}}
+                 bool {self._context.entry_point}(m2c::_offsets, struct m2c::_STATE* _state){{{self.label_to_proc[g.name]}(m2c::k{self._context.entry_point}, _state);}}
                 """)
             cppd.write(f"""namespace m2c{{ m2cf* _ENTRY_POINT_ = &{self._context.entry_point};}}
         """)

@@ -121,7 +121,7 @@ xor cx,cx
 jnz failure
 
 mov bp,13
-lea si,b
+lea si,BBB
 mov al,byte ptr [si]
 cmp byte ptr [si],1
 jb failure
@@ -241,7 +241,7 @@ _TEXT   ends ;IGNORE
 
 _DATA   segment use16 public 'DATA' ;IGNORE
 a db 0ffh,0dfh,0h
-b db 2
+BBB db 2
 _DATA   ends ;IGNORE
 
 stackseg   segment para stack 'STACK' ;IGNORE

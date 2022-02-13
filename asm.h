@@ -184,7 +184,7 @@ dd& stackPointer = _state->esp;\
 m2c::_offsets __disp; \
 dw _source;
 
-typedef void m2cf(_offsets, struct _STATE*); // common masm2c function
+typedef bool m2cf(_offsets, struct _STATE*); // common masm2c function
 
 template<class S>
 S getdata(const S& s);
@@ -1071,20 +1071,20 @@ int8_t asm2C_IN(int16_t data);
 
  #define RETN(i) {m2c::log_debug("before ret %x\n",stackPointer); m2c::MWORDSIZE averytemporary9=0; POP(averytemporary9); if (averytemporary9!='xy') {m2c::log_error("Emulated stack corruption detected %x.\n",averytemporary9);exit(1);} \
 	esp+=i;m2c::log_debug("after ret %x\n",stackPointer); \
-	if (_state) {--_state->_indent;_state->_str=m2c::log_spaces(_state->_indent);}return;}
+	if (_state) {--_state->_indent;_state->_str=m2c::log_spaces(_state->_indent);}return true;}
 
  #define RETF(i) {m2c::log_debug("before retf %x\n",stackPointer); m2c::MWORDSIZE averytemporary9=0; POP(averytemporary9); if (averytemporary9!='xy') {m2c::log_error("Emulated stack corruption detected %x.\n",averytemporary9);exit(1);} \
 	dw averytemporary11;POP(averytemporary11); \
 	esp+=i;m2c::log_debug("after retf %x\n",stackPointer); \
-	if (_state) {--_state->_indent;_state->_str=m2c::log_spaces(_state->_indent);}return;}
+	if (_state) {--_state->_indent;_state->_str=m2c::log_spaces(_state->_indent);}return true;}
 #else
 
  #define RETN(i) {m2c::MWORDSIZE averytemporary11=0; POP(averytemporary11);  \
-	esp+=i;return;}
+	esp+=i;return true;}
 
  #define RETF(i) {m2c::MWORDSIZE averytemporary11=0; POP(averytemporary11); \
 	dw averytemporary2;POP(averytemporary2); \
-	esp+=i;return;}
+	esp+=i;return true;}
 #endif
 
 /*
