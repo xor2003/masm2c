@@ -23,8 +23,8 @@ H equ word ptr -3
 ;I = word -5
 J equ word -5
 
-B = 2
-mov eax, B
+BBB = 2
+mov eax, BBB
 cmp eax,2
 mov al,2
 jne failure
@@ -33,7 +33,7 @@ mov eax, CC
 cmp eax,4
 mov al,3
 jne failure
-B = 1
+BBB = 1
 
 call incebx
 jne failure
@@ -55,8 +55,8 @@ start endp
 
 incebx proc near
 
-B = 3
-mov eax, B
+BBB = 3
+mov eax, BBB
 cmp eax,3
 mov al,5
 
