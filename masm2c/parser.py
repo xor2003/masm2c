@@ -1194,6 +1194,7 @@ class Parser:
     def action_code(self, line):
         self.test_mode = True
         self.need_label = False
+        self.segments = OrderedDict()
         try:
             result = self.parse_args_new_data_('''.model tiny
     default_seg segment
@@ -1205,11 +1206,13 @@ class Parser:
             print(e)
             logging.error("Error1")
             result = [str(e)]
+            raise
         del self.__globals['default_seg']
         return result
 
     def test_size(self, line):
         self.test_mode = True
+        self.segments = OrderedDict()
         try:
             result = self.parse_args_new_data_('''.model tiny
         default_seg segment
@@ -1221,11 +1224,13 @@ class Parser:
             print(e)
             logging.error("Error2")
             result = [str(e)]
+            raise
         del self.__globals['default_seg']
         return result
 
     def action_data(self, line):
         self.test_mode = True
+        self.segments = OrderedDict()
         try:
             result = self.parse_args_new_data_('''.model tiny
     default_seg segment
@@ -1237,11 +1242,13 @@ class Parser:
             print(str(e))
             logging.error("Error3")
             result = [str(e)]
+            raise
         del self.__globals['default_seg']
         return result
 
     def parse_arg(self, line):
         self.test_mode = True
+        self.segments = OrderedDict()
         try:
             result = self.parse_args_new_data_('''.model tiny
         default_seg segment
@@ -1250,9 +1257,12 @@ class Parser:
         end start
         ''').asminstruction.args[1]
         except Exception as e:
-            print(e)
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+            print(e,exc_type, fname, exc_tb.tb_lineno)
             logging.error("Error4")
-            result = [str(e)]
+            #result = [f'{e} {exc_type} {fname} {exc_tb.tb_lineno}']
+            raise
         del self.__globals['default_seg']
         return result
 
@@ -1614,11 +1624,12 @@ class Parser:
                 logging.error(f"Flow terminated and it was no label yet line={line_number}")
                 if o.real_seg:
                     logging.error(f"{o.real_seg:x}:{o.real_offset:x}")
-            if self.need_label and self.proc.stmts:
+            if self.need_label and self.proc.stmts:  # skip first instrucion
                 if o.real_seg:
                     label_name = f'ret_{o.real_seg:x}_{o.real_offset:x}'
                 else:
                     label_name = self.get_extra_dummy_jumplabel()
+                logging.warning(f"Adding helping label {label_name}")
                 self.action_label(label_name, raw=raw)
             self.proc.stmts.append(o)
             if self.args.mergeprocs == 'single':

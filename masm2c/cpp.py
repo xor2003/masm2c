@@ -911,7 +911,7 @@ class Cpp(object):
 
     def jump_post(self, name):
         name, far = self.jump_to_label(name)
-        hasglobal = self._context.has_global(name)
+        hasglobal = self._context.has_global(name) if isinstance(name, str) else False
         if not hasglobal:
             # jumps feat purpose:
             # * in sub __dispatch_call - for address based jumps or grouped subs
@@ -996,7 +996,7 @@ class Cpp(object):
 
         hasglobal = False
         far = False
-        if self._context.has_global(name):
+        if isinstance(name, str) and self._context.has_global(name):
             hasglobal = True
             g = self._context.get_global(name)
             if isinstance(g, proc_module.Proc):
