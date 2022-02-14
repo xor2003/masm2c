@@ -1321,15 +1321,14 @@ class Cpp(object):
             raise
 
     def leave_unique_labels(self, labels):
+        if not self._context.itislst:
+            return labels
         uniq_labels = dict()
-        for index, label in enumerate(labels):
+        for label in labels:
             g = self._context.get_global(label)
-            if g.real_seg:
-                uniq_labels[f'{g.real_seg}_{g.real_offset}'] = label
-            else:
-                uniq_labels[index] = label
-        labels = uniq_labels.values()
-        return labels
+            uniq_labels[f'{g.real_seg}_{g.real_offset}'] = label
+        return uniq_labels.values()
+
 
     def generate(self, start):
         fname = self.__namespace.lower() + ".cpp"
@@ -2084,23 +2083,29 @@ struct Memory{
  bool __dispatch_call(m2c::_offsets __disp, struct m2c::_STATE* _state){
     switch (__disp) {
 """
-        procs = []
+        entries = dict()
+        #procs = []
         for k, v in globals:
-            k = re.sub(r'[^A-Za-z0-9_]', '_', k)
             if isinstance(v, proc_module.Proc) and v.used:
-                procs.append(k) #(k.lower(), k))
-                labels = self.leave_unique_labels(v.provided_labels)
-                for label in sorted(labels):
+                k = re.sub(r'[^A-Za-z0-9_]', '_', k)  # need to do it during mangling
+                #procs.append(k)
+                entries[k] = (cpp_mangle_label(k), '0')
+                #labels = self.leave_unique_labels(v.provided_labels)
+                labels = v.provided_labels
+                for label in labels:
                     if label != v.name:
-                        result += f"        case m2c::k{label}: \t{v.name}(__disp, _state); break;\n"
+                        #result += f"        case m2c::k{label}: \t{v.name}(__disp, _state); break;\n"
+                        entries[label] = (v.name, '__disp')
 
-        #procs = sorted(procs, key=lambda t: t[1])
-        procs = self.leave_unique_labels(procs)
-        for name in procs:
-            label = name
-            logging.debug(f'{name}, {label}')
-            if not name.startswith('_group'):  # TODO remove dirty hack. properly check for group
-                result += "        case m2c::k%s: \t%s(0, _state); break;\n" % (name, cpp_mangle_label(label))
+        #procs = self.leave_unique_labels(procs)
+        #for name in procs:
+        #    if not name.startswith('_group'):  # TODO remove dirty hack. properly check for group
+        #    result += "        case m2c::k%s: \t%s(0, _state); break;\n" % (name, cpp_mangle_label(name))
+        #    entries[name] = (cpp_mangle_label(name), '0')
+
+        names = self.leave_unique_labels(entries.keys())
+        for name in names:
+            result += "        case m2c::k%s: \t%s(%s, _state); break;\n" % (name, *entries[name])
 
         result += "        default: m2c::log_error(\"Don't know how to call to 0x%x. See \" __FILE__ \" line %d\\n\", __disp, __LINE__);m2c::stackDump(_state); abort();\n"
         result += "     };\n     return true;\n}\n"

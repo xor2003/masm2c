@@ -266,8 +266,8 @@ class Proc(object):
             return self.is_flow_terminating_stmt(last_stmt)
         return True
 
-    def is_flow_terminating_stmt(self, last_stmt):
-        return last_stmt.cmd.startswith('jmp') or last_stmt.cmd.startswith('ret') or last_stmt.cmd == 'iret'
+    def is_flow_terminating_stmt(self, stmt):
+        return stmt.cmd.startswith('jmp') or stmt.cmd.startswith('ret') or stmt.cmd == 'iret'
 
     def is_return_point(self, stmt):
         return stmt.cmd.startswith('call')

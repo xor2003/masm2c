@@ -11,7 +11,7 @@ if [ -r "$1.asm" ];then
 elif [ -r "$1.lst" ];then
   name=$1.lst
 fi
-python ../masm2c.py $name 2>&1 | tee $1.txt
+python ../masm2c.py -m separate $name 2>&1 | tee $1.txt
 echo "Converting result $?"
 ./build.sh $1 2>&1
 rm asm.log || true

@@ -919,8 +919,8 @@ class Parser:
 
     def make_sure_proc_exists(self, line_number, raw):
         if not self.proc:
-            self.need_label = False
-            pname = f'{self.__segment.name}_proc'
+            #self.need_label = False
+            pname = f'{self.__segment.name}_{self.__cur_seg_offset}_proc'
             if pname in self.proc_list:
                 self.proc = self.get_global(pname)
             else:
@@ -1125,7 +1125,7 @@ class Parser:
         #    self.action_label(name, far=far, isproc=True)
 
     def add_proc(self, name, raw, line_number, far):
-        self.need_label = False
+        #self.need_label = False
         # if self.__separate_proc:
         offset, real_offset, real_seg = self.get_lst_offsets(raw)
         proc = Proc(name, far=far, line_number=line_number, offset=offset,
@@ -1621,9 +1621,9 @@ class Parser:
         if self.current_macro == None:
             _, o.real_offset, o.real_seg = self.get_lst_offsets(raw)
             if self.need_label and self.flow_terminated:
-                logging.error(f"Flow terminated and it was no label yet line={line_number}")
+                logging.warning(f"Flow terminated and it was no label yet line={line_number}")
                 if o.real_seg:
-                    logging.error(f"{o.real_seg:x}:{o.real_offset:x}")
+                    logging.warning(f"at {o.real_seg:x}:{o.real_offset:x}")
             if self.need_label and self.proc.stmts:  # skip first instrucion
                 if o.real_seg:
                     label_name = f'ret_{o.real_seg:x}_{o.real_offset:x}'
