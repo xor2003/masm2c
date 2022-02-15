@@ -580,14 +580,6 @@ class _add(baseop):
         return visitor._add(*self.args)
 
 
-class _sub(baseop):
-    def __init__(self, args):
-        super().__init__()
-        self.args = args
-
-    def visit(self, visitor):
-        return visitor._sub(*self.args)
-
 
 class _mul(baseop):
     def __init__(self, args):
@@ -606,14 +598,6 @@ class _div(baseop):
     def visit(self, visitor):
         return visitor._div(*self.args)
 
-
-class _xor(baseop):
-    def __init__(self, args):
-        super().__init__()
-        self.args = args
-
-    def visit(self, visitor):
-        return visitor._xor(*self.args)
 
 
 class _jne(basejmp):

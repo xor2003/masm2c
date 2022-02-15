@@ -650,7 +650,7 @@ class Parser:
         logging.debug("get_global(%s)" % name)
         try:
             g = self.__globals[name]
-            logging.debug(g)
+            logging.debug(type(g))
         except KeyError:
             logging.debug("get_global KeyError %s" % name)
             raise
@@ -919,8 +919,13 @@ class Parser:
 
     def make_sure_proc_exists(self, line_number, raw):
         if not self.proc:
-            #self.need_label = False
-            pname = f'{self.__segment.name}_{self.__cur_seg_offset}_proc'
+            _, real_offset, real_seg = self.get_lst_offsets(raw)
+            if real_seg:
+                offset = real_offset
+            else:
+                offset = self.__cur_seg_offset
+            pname = f'{self.__segment.name}_{offset:x}_proc'  # automatically generated proc name
+            #pname = f'{self.__segment.name}_proc'
             if pname in self.proc_list:
                 self.proc = self.get_global(pname)
             else:

@@ -1120,16 +1120,6 @@ class Cpp(object):
         #    self.__pushpop_count -= int(self.s)
         return "ADD(%s, %s)" % (self.a, self.b)
 
-    def _sub(self, dst, src):
-        self.a, self.b = self.parse2(dst, src)
-        # if self.d in ['sp', 'esp'] and check_int(self.s):
-        #    self.__pushpop_count += int(self.s)
-        return "SUB(%s, %s)" % (self.a, self.b)
-
-    def _xor(self, dst, src):
-        self.a, self.b = self.parse2(dst, src)
-        return "XOR(%s, %s)" % (self.a, self.b)
-
     def _mul(self, src):
         size = 0
         for i in src:
