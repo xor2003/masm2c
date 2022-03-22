@@ -3742,6 +3742,15 @@ head db '^',10,10
     def test_instr_12020(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code("xlat    byte ptr cs:[bx]")), u'XLATP(raddr(cs,bx))')
 
+
+    def test_instr_12040(self):
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('movs byte ptr es:[di], byte ptr cs:[si]')),
+                     u'MOVS(*(raddr(es,di)), *(raddr(cs,si)), di, si, 1)')
+
+    def test_instr_12050(self):
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov     ds:_byte_2D196_in_transition?, al')),
+                     u'MOV(_byte_2d196_in_transitionque, al)')
+
     #def test_instr_12030(self):
     #    self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code("cmp head, 'v'")), u"CMP(*(head), 'v')")
 

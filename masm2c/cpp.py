@@ -58,9 +58,9 @@ def produce_jump_table(labels):
     result = """
     assert(0);
     __dispatch_call:
-#ifdef DOSBOX
+#ifdef DOSBOX_CUSTOM
     if ((__disp >> 16) == 0xf000)
-	{cs=0xf000;eip=__disp&0xffff;m2c::fix_segs();return;}  // Jumping to BIOS
+	{cs=0xf000;eip=__disp&0xffff;m2c::fix_segs();return false;}  // Jumping to BIOS
     if ((__disp>>16) == 0) {__disp |= ((dd)cs) << 16;}
 #endif
     switch (__disp) {
@@ -73,7 +73,7 @@ def produce_jump_table(labels):
     for name, label in offsets:
         logging.debug(f'{name}, {label}')
         result += "        case m2c::k%s: \tgoto %s;\n" % (name, cpp_mangle_label(label))
-    result += "        default: m2c::log_error(\"Don't know how to jump to 0x%x. See \" __FILE__ \" line %d\\n\", __disp, __LINE__);m2c::stackDump(_state); abort();\n"
+    result += "        default: m2c::log_error(\"Don't know how to jump to 0x%x. See \" __FILE__ \" line %d\\n\", __disp, __LINE__);m2c::stackDump(); abort();\n"
     result += "    };\n}\n"
     return result
 
@@ -127,7 +127,7 @@ class SeparateProcStrategy:
                 result += f"extern bool {v.name}(m2c::_offsets, struct m2c::_STATE*);\n"
 
         result += """
-#ifndef DOSBOX
+#ifndef DOSBOX_CUSTOM
 static
 #endif
 bool __dispatch_call(m2c::_offsets __disp, struct m2c::_STATE* _state);
@@ -1467,7 +1467,7 @@ class Cpp(object):
         cppd.write(f"""
 #include <algorithm>
 #include <iterator>
-#ifdef DOSBOX
+#ifdef DOSBOX_CUSTOM
 #include <numeric>
 
  #define MYCOPY(x) {{m2c::set_type(x);m2c::mycopy((db*)&x,(db*)&tmp999,sizeof(tmp999),#x);}}
@@ -1483,7 +1483,7 @@ class Cpp(object):
 {{
 {cpp_assign}
 }}
-#ifndef DOSBOX
+#ifndef DOSBOX_CUSTOM
   }};
  static const Initializer i;
 #endif
@@ -1724,11 +1724,10 @@ class Cpp(object):
 
         data_impl = f'''#include "_data.h"
 namespace m2c{{
-static struct Memory mm;
-struct Memory& m = mm;
 
-static struct Memory t;
-struct Memory& types = t;
+struct Memory m;
+
+struct Memory types;
 
 db(& stack)[STACK_SIZE]=m.stack;
 db(& heap)[HEAP_SIZE]=m.heap;
@@ -1805,7 +1804,7 @@ struct Memory{
 """
         data_head += "".join(hdata_bin)
         data_head += '''
-#ifdef DOSBOX
+#ifdef DOSBOX_CUSTOM
     db filll[1024*1024*16];
 #endif
                         db stack[STACK_SIZE];
@@ -2097,6 +2096,6 @@ struct Memory{
         for name in names:
             result += "        case m2c::k%s: \t%s(%s, _state); break;\n" % (name, *entries[name])
 
-        result += "        default: m2c::log_error(\"Don't know how to call to 0x%x. See \" __FILE__ \" line %d\\n\", __disp, __LINE__);m2c::stackDump(_state); abort();\n"
+        result += "        default: m2c::log_error(\"Don't know how to call to 0x%x. See \" __FILE__ \" line %d\\n\", __disp, __LINE__);m2c::stackDump(); abort();\n"
         result += "     };\n     return true;\n}\n"
         return result

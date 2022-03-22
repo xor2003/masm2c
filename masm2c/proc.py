@@ -204,7 +204,9 @@ class Proc(object):
                    isinstance(e.args[0], Token) and isinstance(e.args[0].value, Token) and e.args[0].value.type == 'segmentregister' and \
                    e.args[0].value.value == 'ss'
 
-        if not itislst or self.is_flow_change_stmt(stmt) or stmt.cmd in ['out', 'in'] or expr_is_mov_ss(stmt):
+        if stmt.cmd.startswith('j') or stmt.cmd.startswith('call') or stmt.cmd.startswith('loop'):
+            trace_mode = 'J'
+        elif not itislst or self.is_flow_change_stmt(stmt) or stmt.cmd in ['out', 'in'] or expr_is_mov_ss(stmt):
             trace_mode = 'R'  # trace only. external impact or execution point change
         elif cmd_impacting_only_registers(stmt):
             trace_mode = 'T'  # compare execution with dosbox. registers only impact
