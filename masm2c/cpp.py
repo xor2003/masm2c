@@ -1389,7 +1389,7 @@ class Cpp(object):
 
         for p in sorted(self.grouped):
             self.body += f"""
- bool {p}(m2c::_offsets, struct m2c::_STATE* _state){{{self.groups[p]}(m2c::k{p}, _state);}}
+ bool {p}(m2c::_offsets, struct m2c::_STATE* _state){{return {self.groups[p]}(m2c::k{p}, _state);}}
 """
         translated.append(self.body)
         cppd.write("\n")
@@ -1400,7 +1400,7 @@ class Cpp(object):
             g = self._context.get_global(self._context.entry_point)
             if isinstance(g, op.label) and self._context.entry_point not in self.grouped:
                 cppd.write(f"""
-                 bool {self._context.entry_point}(m2c::_offsets, struct m2c::_STATE* _state){{{self.label_to_proc[g.name]}(m2c::k{self._context.entry_point}, _state);}}
+                 bool {self._context.entry_point}(m2c::_offsets, struct m2c::_STATE* _state){{return {self.label_to_proc[g.name]}(m2c::k{self._context.entry_point}, _state);}}
                 """)
             cppd.write(f"""namespace m2c{{ m2cf* _ENTRY_POINT_ = &{self._context.entry_point};}}
         """)
