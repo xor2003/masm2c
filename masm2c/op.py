@@ -853,7 +853,7 @@ class _int(baseop):
     def visit(self, visitor):
         return visitor._int(*self.args)
 
-
+'''
 class _nop(baseop):
     def __init__(self, arg):
         super().__init__()
@@ -861,7 +861,7 @@ class _nop(baseop):
 
     def visit(self, visitor):
         return ""
-
+'''
 
 class label(baseop):
 

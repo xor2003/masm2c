@@ -1157,7 +1157,7 @@ class Cpp(object):
     def _jz(self, label):
         result = self.isrelativejump(label)
         if result:
-            return "\n"
+            return "{;}"
         else:
             label, far = self.jump_post(label)  # TODO
             return "JZ(%s)" % label
@@ -1871,7 +1871,7 @@ struct Memory{
     def _jump(self, cmd, label):
         result = self.isrelativejump(label)
         if result:
-            return "\n"
+            return "{;}"
         else:
             label, far = self.jump_post(label)  # TODO
             return "%s(%s)" % (cmd.upper(), label)
