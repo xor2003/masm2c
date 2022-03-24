@@ -3390,10 +3390,10 @@ head db '^',10,10
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('enter 0,0')), u'ENTER(0, 0)')
 
     def test_instr_10920(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('jmp $+2')), u'\n')
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('jmp $+2')), u'{;}')
 
     def test_instr_10930(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code(u'nop')), '')
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code(u'nop')), 'NOP')
 
     def test_instr_10940(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('lods	[byte ptr fs:si]')), u'LODS(*(raddr(fs,si)),si,1)')
