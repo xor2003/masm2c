@@ -41,6 +41,7 @@ int 21h                       ; DOS INT 21h
 start endp
 
 _TEXT   ends
+end start
 ```
 
 Converts to a compilable and working C++ code:
