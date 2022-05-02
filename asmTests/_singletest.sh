@@ -10,6 +10,9 @@ if [ -r "$1.asm" ];then
   name=$1.asm
 elif [ -r "$1.lst" ];then
   name=$1.lst
+elif [ -z "$1" ];then
+  echo "No such file $1"
+  exit 2
 fi
 python ../masm2c.py -m separate $name 2>&1 | tee $1.txt
 echo "Converting result $?"

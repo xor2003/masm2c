@@ -77,7 +77,7 @@ typedef long double real10;
 namespace m2c {
 
 struct /*__attribute__((__packed__))*/ Memory;
-extern Memory& m;
+extern Memory m;
 
 class Bits{
 unsigned int _CF : 1,
@@ -1152,6 +1152,7 @@ static void CALL_(m2cf* label, struct _STATE* _state, _offsets _i=0) {
 #endif
     #define T(a) R(a)
     #define X(a) R(a)
+    #define J(a) R(a)
 
 bool is_little_endian();
 
@@ -1231,7 +1232,7 @@ enum  _offsets;
 dw __disp; \
 dw _source;
 */
-void stackDump(struct _STATE* state);
+void stackDump(struct _STATE* state=0);
 void hexDump (void *addr, int len);
 void asm2C_INT(struct _STATE* state, int a);
 void asm2C_init();
