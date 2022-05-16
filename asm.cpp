@@ -88,6 +88,15 @@ db vgaRamPaddingAfter[VGARAM_SIZE];
 
 namespace m2c {
 
+#ifdef M2CDEBUG
+  size_t debug = M2CDEBUG;
+#else
+  size_t debug = 0;
+#endif
+
+  size_t counter = 0;
+
+ShadowStack shadow_stack;
 
 //db vgaPalette[256*3];
 #include "vgapal.h"
@@ -123,7 +132,7 @@ void log_error(const char *fmt, ...) {
 #endif
 }
 void log_debug(const char *fmt, ...) {
-#ifdef DEBUG
+#ifdef M2CDEBUG
 	char formatted_string[MAX_FMT_SIZE];
 	va_list argptr;
 	va_start(argptr,fmt);
@@ -151,7 +160,7 @@ void log_info(const char *fmt, ...) {
 }
 
 void log_debug2(const char *fmt, ...) {
-#if DEBUG>=2
+#if M2CDEBUG>=2
 	char formatted_string[MAX_FMT_SIZE];
 	va_list argptr;
 	va_start(argptr,fmt);

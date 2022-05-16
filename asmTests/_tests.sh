@@ -14,6 +14,7 @@ filename="$1"
 cd ..
 $CXX $OPT asm.cpp -c
 $CXX $OPT memmgr.cpp -c
+$CXX $OPT shadowstack.cpp -c
 )
 
 result=0

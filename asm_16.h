@@ -87,6 +87,23 @@ static inline db* raddr_(dw segment,dw offset) {return (db *)&m + (segment<<4) +
  #endif
  #define STOSD STOS(4,0)
 
+
+#define LODSB {al = m2c::getdata(*(db*)m2c::raddr_(ds,si)); si+=(GET_DF()==0)?1:-1;}
+#define LODSW {ax = m2c::getdata(*(dw*)m2c::raddr_(ds,si)); si+=(GET_DF()==0)?2:-2;}
+#define LODSD {eax = m2c::getdata(*(dd*)m2c::raddr_(ds,si)); si+=(GET_DF()==0)?4:-4;}
+
+#define OUTSB {OUT(dx,(db)m2c::getdata(*(db*)m2c::raddr_(ds,si)); si+=(GET_DF()==0)?1:-1;}
+#define OUTSW {OUT(dx,(dw)m2c::getdata(*(dw*)m2c::raddr_(ds,si)); si+=(GET_DF()==0)?2:-2;}
+
+   #define MOVSB {m2c::setdata( (db*)m2c::raddr_(es,di), m2c::getdata(*(db*)m2c::raddr_(ds,si)) );si+=(GET_DF()==0)?1:-1;di+=(GET_DF()==0)?1:-1;} {if (m2c::repForMov) AFFECT_ZF(m2c::oldZF); m2c::repForMov=false;}
+   #define MOVSW {m2c::setdata( (dw*)m2c::raddr_(es,di), m2c::getdata(*(dw*)m2c::raddr_(ds,si)) );si+=(GET_DF()==0)?2:-2;di+=(GET_DF()==0)?2:-2;} {if (m2c::repForMov) AFFECT_ZF(m2c::oldZF); m2c::repForMov=false;}
+   #define MOVSD {m2c::setdata( (dd*)m2c::raddr_(es,di), m2c::getdata(*(dd*)m2c::raddr_(ds,si)) );si+=(GET_DF()==0)?4:-4;di+=(GET_DF()==0)?4:-4;} {if (m2c::repForMov) AFFECT_ZF(m2c::oldZF); m2c::repForMov=false;}
+
+   #define STOSB {m2c::setdata( (db*)m2c::raddr_(es,di), al);di+=(GET_DF()==0)?1:-1;} {m2c::repForMov=false;}
+   #define STOSW {m2c::setdata( (dw*)m2c::raddr_(es,di), ax);di+=(GET_DF()==0)?2:-2;} {m2c::repForMov=false;}
+   #define STOSD {m2c::setdata( (dd*)m2c::raddr_(es,di), eax);di+=(GET_DF()==0)?4:-4;} {m2c::repForMov=false;}
+
+
  #define INSB {db averytemporary3 = asm2C_IN(dx);*realAddress(di,es)=averytemporary3;di+=(GET_DF()==0)?1:-1;}
  #define INSW {dw averytemporary3 = asm2C_INW(dx);*realAddress(di,es)=averytemporary3;di+=(GET_DF()==0)?2:-2;}
 
