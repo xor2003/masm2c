@@ -50,6 +50,7 @@ static inline db* raddr_(dw segment,dw offset) {return (db *)&m + (segment<<4) +
 			CMP(eax, *(dd*)realAddress(di,es)); di+=(GET_DF()==0)?4:-4; \
 	}
 
+/*
  #define LODS(addr,destreg,s) {memcpy (((db *)&eax), &(addr), s);; destreg+=(GET_DF()==0)?s:-s;}
  #define LODSS(a,b) {memcpy (((db *)&eax)+b, realAddress(si,ds), a); si+=(GET_DF()==0)?a:-a;}
 
@@ -77,7 +78,7 @@ static inline db* raddr_(dw segment,dw offset) {return (db *)&m + (segment<<4) +
    #ifdef A_NORMAL
     #define STOSW { \
 	if (es==0xB800)  \
-		{dd averytemporary=(di>>1);attrset(COLOR_PAIR(ah)); mvaddch(averytemporary/80, averytemporary%80, al); /*attroff(COLOR_PAIR(ah))*/;di+=(GET_DF()==0)?2:-2;refresh();} \
+		{dd averytemporary=(di>>1);attrset(COLOR_PAIR(ah)); mvaddch(averytemporary/80, averytemporary%80, al); di+=(GET_DF()==0)?2:-2;refresh();} \
 	else \
 		{STOS(2,0);} \
 	}
@@ -86,7 +87,7 @@ static inline db* raddr_(dw segment,dw offset) {return (db *)&m + (segment<<4) +
    #endif
  #endif
  #define STOSD STOS(4,0)
-
+*/
 
 #define LODSB {al = m2c::getdata(*(db*)m2c::raddr_(ds,si)); si+=(GET_DF()==0)?1:-1;}
 #define LODSW {ax = m2c::getdata(*(dw*)m2c::raddr_(ds,si)); si+=(GET_DF()==0)?2:-2;}

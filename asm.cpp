@@ -86,6 +86,8 @@ db vgaRamPaddingAfter[VGARAM_SIZE];
  #endif
 #endif
 
+  bool from_callf=false;
+
 namespace m2c {
 
 #ifdef M2CDEBUG
@@ -95,6 +97,9 @@ namespace m2c {
 #endif
 
   size_t counter = 0;
+
+    db _indent=0;
+    const char *_str="";
 
 ShadowStack shadow_stack;
 
@@ -1543,8 +1548,6 @@ int main(int argc, char *argv[]) {
     struct m2c::_STATE *_state = &state;
     X86_REGREF
 
-    _state->_indent = 0;
-
     eax = ebx = ecx = edx = ebp = esi = edi = fs = gs = 0; // according to ms-dos 6.22 debuger
     AFFECT_DF(0);
     AFFECT_CF(0);
@@ -1558,7 +1561,7 @@ int main(int argc, char *argv[]) {
 
 
     try {
-        _state->_indent = 0;
+        m2c::_indent = 0;
         m2c::logDebug = fopen("asm.log", "w");
 
         initscr();

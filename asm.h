@@ -21,6 +21,8 @@
  #endif
 #endif
 
+extern bool from_callf;
+
 #ifdef DOSBOX_CUSTOM
 #include "json.hpp"
 #include <typeinfo>
@@ -37,7 +39,6 @@
 #include <vector>
 
 extern int ticksRemain;
-extern volatile bool from_callf;
 extern volatile bool from_interpreter;
 extern bool trace_instructions;
 extern bool collect_rt_info;
@@ -102,6 +103,9 @@ namespace m2c {
     extern size_t debug;
 
     extern size_t counter;
+
+    extern db _indent;
+    extern const char *_str;
 
     extern size_t inst_size(dw cs, dd eip);
 
@@ -175,8 +179,7 @@ dw ss;
         bool OF;
         bool IF;
         bool TF;
-db _indent; 
-const char *_str;
+int call_source;
 };
 
 #define REGDEF_hl(Z)   \
@@ -345,23 +348,20 @@ dw _source;
 
 class eflags
 {
- union flagsUnion{
-  flagBits bits;
-  dd value;
- }& _value;
+ dd& _value;
 
 public:
-eflags(uint32_t& flags): _value.value((flagsUnion&)flags)
+eflags(uint32_t& flags): _value((dd&)flags)
 {}
 
 dd getvalue() const noexcept
-{ return _value.value; }
+{ return _value; }
 void setvalue(dd v) noexcept
-{ _value.value=v; }
+{ _value=v; }
 #define REGDEF_flags(Z) \
-    inline bool set##Z##F(bool i) noexcept {return (_value.bits._##Z##F=i);} \
-    inline bool get##Z##F() const noexcept {return _value.bits._##Z##F;}
-    inline void reset(){_value.value=0;}
+    inline bool set##Z##F(bool i) noexcept {return (reinterpret_cast<flagsUnion*>(&_value)->bits._##Z##F=i);} \
+    inline bool get##Z##F() const noexcept {return reinterpret_cast<flagsUnion*>(&_value)->bits._##Z##F;}
+    inline void reset(){_value=0;}
  
  REGDEF_flags(C)
  REGDEF_flags(P)
@@ -423,8 +423,6 @@ dd& stackPointer = esp;\
 m2c::_offsets __disp; \
 dd _source;
 
-    extern db _indent;
-    extern const char *_str;
 
 #endif
 
@@ -592,7 +590,20 @@ inline long getdata(const long& s)
 { return s; }
 
     static inline void setdata(db *d, db s) {
-        *d = s;
+  #if SDL_MAJOR_VERSION == 2 && !defined(NOSDL)
+    #X86_REGREF
+	if (es==0xa000)
+		{ 
+	  SDL_SetRenderDrawColor(renderer, vgaPalette[3*s+2], vgaPalette[3*s+1], vgaPalette[3*s], 255); 
+          SDL_RenderDrawPoint(renderer, di%320, di/320); \
+  	  SDL_RenderPresent(renderer); 
+	  di+=(GET_DF()==0)?1:-1;
+                 } 
+	else 
+  #endif
+        {
+           *d = s;
+	}
     }
 
     static inline void setdata(char *d, db s) {
@@ -600,7 +611,20 @@ inline long getdata(const long& s)
     }
 
     static inline void setdata(dw *d, dw s) {
-        *d = s;
+  #if SDL_MAJOR_VERSION == 2 && !defined(NOSDL)
+    #X86_REGREF
+	if (es==0xa000)
+		{ 
+	  SDL_SetRenderDrawColor(renderer, vgaPalette[3*s+2], vgaPalette[3*s+1], vgaPalette[3*s], 255); 
+          SDL_RenderDrawPoint(renderer, di%320, di/320); \
+  	  SDL_RenderPresent(renderer); 
+	  di+=(GET_DF()==0)?1:-1;
+                 } 
+	else 
+  #endif
+        {
+           *d = s;
+	}
     }
 
     static inline void setdata(dd *d, dd s) {
@@ -1558,65 +1582,170 @@ template <class D, class S>
 #define RETF {db averytemporary7=0; POP(averytemporary7); if (averytemporary7!='x') {log_error("Stack corrupted.\n");exit(1);} \
  		POP(jmpbuffer); stackPointer-=2; longjmp(jmpbuffer, 0);}
 */
+#if SINGLEPROC
+#define RETN(i) {m2c::RETN_(i, _state); __disp=(cs<<16)+eip;goto __dispatch_call;}
+    static void RETN_(size_t i, struct _STATE *_state)
+    {
+        X86_REGREF
+       if (debug>2) log_debug("before ret %x\n",stackPointer);
+       m2c::MWORDSIZE averytemporary9=0; POP(averytemporary9);
+       eip=averytemporary9;
+       esp+=i;
+       if (debug>2) {log_debug("after ret %x\n",stackPointer);
+       m2c::_indent -= 1;
+       m2c::_str = m2c::log_spaces(m2c::_indent);
+          log_debug("return eip %x\n",eip);}
+    }
 
-#if M2CDEBUG
+#define RETF(i) {m2c::RETF_(i, _state); __disp=(cs<<16)+eip;goto __dispatch_call;}
+    static void RETF_(size_t i, struct _STATE *_state)
+    {
+        X86_REGREF
+            if (debug>2) log_debug("before retf %x\n",stackPointer);
+       m2c::MWORDSIZE averytemporary9=0; POP(averytemporary9);
+       eip=averytemporary9;
+        dw averytemporary11;POP(averytemporary11); cs=averytemporary11;
+       esp+=i;
+       if (debug>2) {log_debug("after retf %x\n",stackPointer);
+       m2c::_indent -= 1;
+       m2c::_str = m2c::log_spaces(m2c::_indent);
+          log_debug("return eip %x\n",eip);}
+    }
 
- #define RETN(i) {m2c::log_debug("before ret %x\n",stackPointer); m2c::MWORDSIZE averytemporary9=0; POP(averytemporary9); if (averytemporary9!='xy') {m2c::log_error("Emulated stack corruption detected %x.\n",averytemporary9);exit(1);} \
-	esp+=i;m2c::log_debug("after ret %x\n",stackPointer); \
-	if (_state) {--_state->_indent;_state->_str=m2c::log_spaces(_state->_indent);}return true;}
+#define CALL(label, disp) {m2c::CALL_(label, _state, disp);if (disp) {__disp=disp;} else {__disp=m2c::k##label;}goto __dispatch_call;}
+    static void CALL_(m2cf* label, struct _STATE* _state, _offsets _i=0) {
+     X86_REGREF
+    from_callf=true;
+          MWORDSIZE averytemporary8=eip+2; PUSH(averytemporary8);
 
- #define RETF(i) {m2c::log_debug("before retf %x\n",stackPointer); m2c::MWORDSIZE averytemporary9=0; POP(averytemporary9); if (averytemporary9!='xy') {m2c::log_error("Emulated stack corruption detected %x.\n",averytemporary9);exit(1);} \
-	dw averytemporary11;POP(averytemporary11); \
-	esp+=i;m2c::log_debug("after retf %x\n",stackPointer); \
-	if (_state) {--_state->_indent;_state->_str=m2c::log_spaces(_state->_indent);}return true;}
+          if (debug>2) {log_debug("after call %x\n",stackPointer);
+          if (_state) {++m2c::_indent;m2c::_str=m2c::log_spaces(_state->_indent);};}
+     }
 #else
 
- #define RETN(i) {m2c::MWORDSIZE averytemporary11=0; POP(averytemporary11);  \
-	esp+=i;return true;}
+// #define RETN(i) {m2c::MWORDSIZE averytemporary11=0; POP(averytemporary11);  \
+//	esp+=i;return true;}
 
- #define RETF(i) {m2c::MWORDSIZE averytemporary11=0; POP(averytemporary11); \
-	dw averytemporary2;POP(averytemporary2); \
-	esp+=i;return true;}
-#endif
+struct StackPop
+{
+   explicit StackPop(size_t deep=1)
+    :deep(deep)
+   {}
 
-/*
-#ifdef SINGLEPROCSTRATEGY
+   size_t deep;
+};
 
-#if M2CDEBUG
- #define CALL(label) \
-	{ MWORDSIZE averytemporary8='xy'; PUSH(averytemporary8); \
-	  log_debug("after call %x\n",stackPointer); \
-	  ++_state->_indent;_state->_str=log_spaces(_state->_indent);\
-	  mainproc(label, _state); \
+#define RETN(i) {if (m2c::RETN_(i, _state)) {m2c::shadow_stack.decreasedeep(); return true;} else  {__disp=(cs<<16)+eip;goto __dispatch_call;}}
+
+    static bool RETN_(size_t i, struct _STATE *_state) {
+        X86_REGREF
+        if (debug>2) log_debug("before ret %x\n", stackPointer);
+
+        shadow_stack.itisret();
+        POP(ip);
+        bool ret = shadow_stack.itwascall();
+        int skip = shadow_stack.getneedtoskipcallndclean();
+        if (!ret) {
+            log_error("Warning. Return address wasn't created by native CALL (found %x)\n", ip);
 	}
-#else
- #define CALL(label) \
-	{ MWORDSIZE averytemporary10='xy'; PUSH(averytemporary10); \
-	  mainproc(label, _state); \
+        esp += i;
+        if (debug>2) {
+            log_debug("after ret %x\n", stackPointer);
+            m2c::_indent -= 1;
+            m2c::_str = m2c::log_spaces(m2c::_indent);
 	}
-#endif
+        if (skip>0) 
+          {
+log_error("~~will throw exception skip call=%d\n",skip);
 
-#else // SINGLEPROCSTRATEGY end separate procs start
-*/
+throw StackPop(skip);
+}
+	return(ret);
+    }
+
+//#define RETF(i) {m2c::RETF_(i); if (ip=='xy') {m2c::shadow_stack.decreasedeep(); return true;} else  {return __dispatch_call((cs<<16)+eip,0);}}
+#define RETF(i) {m2c::RETF_(i, _state); m2c::shadow_stack.decreasedeep();return true;}
+
+    static bool RETF_(size_t i, struct _STATE *_state) {
+        X86_REGREF
+        if (debug>2) log_debug("before retf %x\n", stackPointer);
+
+//        m2c::MWORDSIZE averytemporary9 = 0;
+//        log_error("~~RETF before 1pop\n");
+        shadow_stack.itisret();
+        POP(ip);
+        bool ret = shadow_stack.itwascall();
+        if (!ret) {
+            log_error("Warning. Return address wasn't created by native CALL (found %x)\n", ip);
+//            m2c::stackDump();
+            exit(1);
+        }
+//        log_error("~~RETF after 1pop\n");
+//        bool need = shadow_stack.needtoskipcalls();
+        int skip = shadow_stack.getneedtoskipcallndclean();
+//        log_error("~~RETF before 2pop\n");
+        POP(cs);
+//        log_error("~~RETF after 2pop\n");
+        esp += i;
+log_debug("new %x:%x\n", cs,ip);
+        if (debug>2) {
+            log_debug("after retf %x\n", stackPointer);
+            m2c::_indent -= 1;
+            m2c::_str = m2c::log_spaces(m2c::_indent);
+        }
+        if (skip>0) 
+          {
+log_error("~~will throw exception skip call=%d\n",skip);
+//shadow_stack.print(0);
+throw StackPop(skip);
+          }
+
+        return ret;
+    }
 #define CALL(label, disp) {m2c::CALL_(label, _state, disp);}
-static void CALL_(m2cf* label, struct _STATE* _state, _offsets _i=0) {
+    static bool CALL_(m2cf *label, struct _STATE *_state, _offsets _i = 0) {
  X86_REGREF
-	  MWORDSIZE averytemporary8='xy'; PUSH(averytemporary8);
-#if M2CDEBUG
-	  m2c::log_debug("after call %x\n",stackPointer);
-	  if (_state) {++_state->_indent;_state->_str=m2c::log_spaces(_state->_indent);};
+        from_callf = true;
+        shadow_stack.itiscall();
+//        m2c::MWORDSIZE averytemporary8 = 'xy';
+        m2c::MWORDSIZE return_addr = ip;
+#if DOSBOX_CUSTOM
+        if (compare_instructions) ip+=inst_size(cs,eip);
 #endif
-	  label(_i, _state);
- }
-/*
- #define CALL(label) \
-	{ m2c::MWORDSIZE averytemporary8='xy'; PUSH(averytemporary8); \
-	  m2c::log_debug("after call %x\n",stackPointer); \
-	  if (_state) {++_state->_indent;_state->_str=m2c::log_spaces(_state->_indent);};\
-	  label(__disp, _state); \
-	}*/
+        PUSH(return_addr);
 
+        if (debug>2) {
+            log_debug("after call %x\n", stackPointer);
+// 	  if (_state) {++_state->_indent;_state->_str=m2c::log_spaces(_state->_indent);};
+            m2c::_indent += 1;
+            m2c::_str = m2c::log_spaces(m2c::_indent);
+        }
+        _state->call_source = 2;
+        try{
+	  label(_i, _state);
+ if(return_addr != ip&& ((dw)(ip - return_addr)) > 5 ) {
+  log_error("~~Return address not equal to call addr %x %x\n",return_addr,ip);
+return false;
+ }
+        }
+        catch(const StackPop& ex)
+        {
+shadow_stack.decreasedeep();
+             if (ex.deep > 0)
+             {  log_error("~~Rethrowing upper\n");
+		throw StackPop(ex.deep-1);
+             }
+             else
+             {  log_error("~~Finished with skipping calls\n");
+
+             }
 //#endif // end separate procs
+        }
+       return true;
+    }
+
+
+#endif
 
 #define RET RETN(0)
 /*
