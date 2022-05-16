@@ -100,6 +100,9 @@ namespace m2c {
 
     db _indent=0;
     const char *_str="";
+    bool fix_segs(){return true;}
+    void interpret_unknown_callf(dw cs, dd eip, db source){assert(0);}
+
 
 ShadowStack shadow_stack;
 
@@ -764,7 +767,7 @@ X86_REGREF
 			// bx: file handle to close
 			//TOFIX
 			log_debug2("Closing file. bx:%d\n",bx);
-			if (fclose(file))  {
+			if (!file || fclose(file))  {
 				AFFECT_CF(1);
 				perror("Error");
 				log_error("Error closing file ? bx:%d %p\n",bx,(void *) file);

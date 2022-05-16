@@ -94,6 +94,8 @@ typedef long double real10;
 
 #ifndef DOSBOX_CUSTOM
 #include "memmgr.h"
+static void CPU_Exception(int){assert(0);}
+typedef int Bits;
 #endif
 
 namespace m2c {
@@ -112,8 +114,9 @@ namespace m2c {
     struct _STATE;
     void stackDump(_STATE *_state=0);
 
-#if DOSBOX_CUSTOM
     bool fix_segs();
+
+#if DOSBOX_CUSTOM
 
     extern void log_regs_dbx(const char *file, int line, const char *instr, const CPU_Regs &r, const Segments &s);
 
@@ -1910,8 +1913,8 @@ extern  m2cf* _ENTRY_POINT_;
 
     extern void Xend(const char *file, int line, const char *instr);
 
-    extern void interpret_unknown_callf(dw cs, dd eip, db source=0);
 #endif
+    extern void interpret_unknown_callf(dw cs, dd eip, db source=0);
 
 //extern void log_regs(int line, const char * instr, struct _STATE* _state);
 
