@@ -149,8 +149,7 @@ union flagsUnion{
 // Regs
 struct _STATE{
         _STATE() {
-            _str = "";
-        _indent=0;
+            call_source=0;
        }
 
 dd eax;
@@ -591,13 +590,12 @@ inline long getdata(const long& s)
 
     static inline void setdata(db *d, db s) {
   #if SDL_MAJOR_VERSION == 2 && !defined(NOSDL)
-    #X86_REGREF
-	if (es==0xa000)
+	if (m2c::isaddrbelongtom(d) && d < (db*)&m + 0xc0000 && d >= (db*)&m + 0xa0000)
 		{ 
+          dw di = d - (db*)&m;
 	  SDL_SetRenderDrawColor(renderer, vgaPalette[3*s+2], vgaPalette[3*s+1], vgaPalette[3*s], 255); 
           SDL_RenderDrawPoint(renderer, di%320, di/320); \
   	  SDL_RenderPresent(renderer); 
-	  di+=(GET_DF()==0)?1:-1;
                  } 
 	else 
   #endif
@@ -611,20 +609,7 @@ inline long getdata(const long& s)
     }
 
     static inline void setdata(dw *d, dw s) {
-  #if SDL_MAJOR_VERSION == 2 && !defined(NOSDL)
-    #X86_REGREF
-	if (es==0xa000)
-		{ 
-	  SDL_SetRenderDrawColor(renderer, vgaPalette[3*s+2], vgaPalette[3*s+1], vgaPalette[3*s], 255); 
-          SDL_RenderDrawPoint(renderer, di%320, di/320); \
-  	  SDL_RenderPresent(renderer); 
-	  di+=(GET_DF()==0)?1:-1;
-                 } 
-	else 
-  #endif
-        {
            *d = s;
-	}
     }
 
     static inline void setdata(dd *d, dd s) {
