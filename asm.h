@@ -1797,7 +1797,7 @@ shadow_stack.decreasedeep();
     #define X(a) {m2c::log_regs_m2c(__FILE__,__LINE__,#a,_state);a;}
 
 #else
-    #define R(a) a
+    #define R(a) {a;}
     #define J(a) R(a)
     #define T(a) R(a)
     #define X(a) R(a)
