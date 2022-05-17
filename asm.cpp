@@ -1601,12 +1601,10 @@ int main(int argc, char *argv[]) {
     try {
         m2c::_indent = 0;
         m2c::logDebug = fopen("asm.log", "w");
-#if 0
+#ifndef NOCURSES
         initscr();
         resize_term(25, 80);
-        cbreak(); // put keys directly to program
         noecho(); // do not echo
-        keypad(stdscr, TRUE); // provide keypad buttons
 
         if (!has_colors()) {
             printw("Unable to use colors");
@@ -1618,6 +1616,8 @@ int main(int argc, char *argv[]) {
 
         refresh();
 #endif
+        cbreak(); // put keys directly to program
+        keypad(stdscr, TRUE); // provide keypad buttons
 
         m2c::init(_state);
 

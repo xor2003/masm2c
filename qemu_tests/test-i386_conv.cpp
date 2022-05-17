@@ -83,19 +83,36 @@
 //--------------------------------------------
 #define _BITS 32
 #define _PROTECTED_MODE 1
+#define log_error log_debug
 
 #include <asm.h>
+
+  bool from_callf=false;
+namespace m2c {
+#ifdef M2CDEBUG
+  size_t debug = M2CDEBUG;
+#else
+  size_t debug = 0;
+#endif
+
+    db _indent=0;
+    const char *_str="";
+   const char* log_spaces(int){return "";}
+}
+
+
+namespace m2c {
 
 struct Memory{
 db stack[STACK_SIZE];
 db heap[HEAP_SIZE];
 };
 
-static struct Memory mm;
-struct Memory& m = mm;
+struct Memory m;
+}
 
-db(& stack)[STACK_SIZE]=m.stack;
-db(& heap)[HEAP_SIZE]=m.heap;
+db(& stack)[STACK_SIZE]=m2c::m.stack;
+db(& heap)[HEAP_SIZE]=m2c::m.heap;
 
 
 m2c::_STATE sstate;
@@ -3698,7 +3715,7 @@ int main(int argc, char **argv)
     void (*func)(void);
 
   R(MOV(ss, seg_offset(stack)));
-  esp = ((dd)(db*)&m.stack[STACK_SIZE - 4]);
+  esp = ((dd)(db*)&m2c::m.stack[STACK_SIZE - 4]);
 
 /*
     ptr = &__start_initcall;
