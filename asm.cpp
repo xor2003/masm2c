@@ -896,11 +896,12 @@ X86_REGREF
 			//   ;Out: if successful:
 			//   ;    carry flag clear
 			//   ;    AX  =  address of allocated memory block
+/*
 			if (bx==0xffff)
 				{ AFFECT_CF(1);
 				  return;
 				}
-/*
+
 			int32_t nbBlocks=(bx<<4);
 			log_debug2("Function 0501h - Allocate Memory Block: %d para\n",bx);
 
@@ -927,6 +928,7 @@ X86_REGREF
         if (DosMemCheck() != SUCCESS)
            {log_error("MCB chain corrupted\n");exit(1);}
            AFFECT_CF(1);
+           return;
       }
 	AFFECT_CF(rc!=SUCCESS);
       ax++;   /* DosMemAlloc() returns seg of MCB rather than data */
@@ -1549,7 +1551,7 @@ std::this_thread::sleep_for(std::chrono::microseconds(1));
  {
     X86_REGREF
     
-    log_debug("~~~ heap_size=%%d heap_para=%%d heap_seg=%%s\n", HEAP_SIZE, (HEAP_SIZE >> 4), seg_offset(heap) );
+    log_debug("~~~ heap_size=%d heap_para=%x heap_seg=%x\n", HEAP_SIZE, (HEAP_SIZE >> 4), seg_offset(heap) );
     /* We expect ram_top as Kbytes, so convert to paragraphs */
     mcb_init(seg_offset(heap), (HEAP_SIZE >> 4) - seg_offset(heap) - 1, MCB_LAST);
     
@@ -1559,7 +1561,7 @@ std::this_thread::sleep_for(std::chrono::microseconds(1));
  #else
     esp = 0;
     sp = STACK_SIZE - 4;
-    es = 0;
+    ds = es = 0x192; // dosbox PSP
     *(dw*)(raddr(0, 0x408)) = 0x378; //LPT
  #endif
 
@@ -1569,6 +1571,14 @@ std::this_thread::sleep_for(std::chrono::microseconds(1));
     
     return(0);
  }
+
+ void log_regs_m2c(const char *file, int line, const char *instr, _STATE* _state)
+ {
+  X86_REGREF
+  log_debug("%05d %04X:%08X  %-54s EAX:%08X EBX:%08X ECX:%08X EDX:%08X ESI:%08X EDI:%08X EBP:%08X ESP:%08X DS:%04X ES:%04X FS:%04X GS:%04X SS:%04X CF:%d ZF:%d SF:%d OF:%d AF:%d PF:%d IF:%d\n", \
+                         line,cs,eip,instr,       eax,     ebx,     ecx,     edx,     esi,     edi,     ebp,     esp,     ds,     es,     fs,     gs,     ss,     GET_CF()   ,GET_ZF()   ,GET_SF()   ,GET_OF()   ,GET_AF()   ,GET_PF(),   GET_IF());
+ }
+
 }
 
 int main(int argc, char *argv[]) {

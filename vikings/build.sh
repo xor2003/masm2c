@@ -8,7 +8,7 @@ fi
 
 export SDL="$(pkg-config --cflags --libs sdl2)"
 export CURSES="$(pkg-config --cflags --libs ncurses)"
-export OPT="-Wno-narrowing -mno-ms-bitfields  -Wno-multichar $SDL $CURSES -D_GNU_SOURCE=1   -ggdb3 -O0 -I. -I.. -DDEBUG=3"
+export OPT="-Wno-narrowing -mno-ms-bitfields  -Wno-multichar $SDL $CURSES -D_GNU_SOURCE=1   -ggdb3 -O0 -I. -I.. -DM2CDEBUG=3"
 
 (
 cd ..

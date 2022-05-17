@@ -125,6 +125,8 @@ namespace m2c {
     void run_hw_interrupts();
 
     extern void single_step();
+#else
+    extern void log_regs_m2c(const char *file, int line, const char *instr, _STATE* _state);
 #endif
 
 struct flagBits{
@@ -181,6 +183,7 @@ dw ss;
         bool OF;
         bool IF;
         bool TF;
+dd other_flags;
 int call_source;
 };
 
@@ -262,6 +265,7 @@ public:
 
 dd getvalue() const noexcept
  { flagsUnion f;
+  f.value=_state->other_flags & ~0x8000; // 286+
   f.bits._CF=_state->CF;
   f.bits._PF=_state->PF;
   f.bits._AF=_state->AF;
@@ -277,6 +281,7 @@ void setvalue(dd v) noexcept
 {
  flagsUnion f;
  f.value = v;
+ _state->other_flags=v;
  _state->CF=f.bits._CF;
  _state->PF=f.bits._PF;
  _state->AF=f.bits._AF;
@@ -1529,7 +1534,7 @@ template <class D, class S>
 #define CMC {AFFECT_CF(GET_CF() ^ 1);}
 
 #define PUSHF {PUSH( (m2c::MWORDSIZE)m2cflags.getvalue() );}
-#define POPF {m2c::MWORDSIZE averytemporary; POP(averytemporary); m2cflags.setvalue(averytemporary);}
+#define POPF {m2c::MWORDSIZE averytemporary; POP(averytemporary); m2cflags.setvalue(averytemporary);} //286+
 
 // directjeu nosetjmp,2
 // directmenu
@@ -1538,8 +1543,8 @@ template <class D, class S>
 
 //#define LAHF {ah= ((CF?1:0)|2|(PF?4:0)|(AF?0x10:0)|(ZF?0x40:0)|(SF?0x80:0)) ;}
 //#define SAHF {CF=ah&1; PF=ah&4; AF=ah&0x10; ZF=ah&0x40; SF=ah&0x80;}
-#define LAHF {ah= m2cflags.value ;}
-#define SAHF {*(db*)&m2cflags.value = ah;}
+#define LAHF {ah = m2cflags.getvalue();}
+#define SAHF {m2cflags.setvalue(ah);}
 /*
 #define CALLF(label) {log_debug("before callf %d\n",stackPointer);PUSH(cs);CALL(label);}
 #define CALL(label) \
@@ -1761,17 +1766,18 @@ shadow_stack.decreasedeep();
 //	a 
 
 // dosbox logcpu format
-    #define R(a) {m2c::log_debug("%05d %04X:%08X  %-54s EAX:%08X EBX:%08X ECX:%08X EDX:%08X ESI:%08X EDI:%08X EBP:%08X ESP:%08X DS:%04X ES:%04X FS:%04X GS:%04X SS:%04X CF:%d ZF:%d SF:%d OF:%d AF:%d PF:%d IF:%d\n", \
-                         __LINE__,cs,eip,#a,       eax,     ebx,     ecx,     edx,     esi,     edi,     ebp,     esp,     ds,     es,     fs,     gs,     ss,     GET_CF()   ,GET_ZF()   ,GET_SF()   ,GET_OF()   ,GET_AF()   ,GET_PF(),   GET_IF());} \
-	a 
+    #define R(a) {m2c::log_regs_m2c(__FILE__,__LINE__,#a,_state);a;}
+    #define J(a) {m2c::log_regs_m2c(__FILE__,__LINE__,#a,_state);a;}
+    #define T(a) {m2c::log_regs_m2c(__FILE__,__LINE__,#a,_state);a;}
+    #define X(a) {m2c::log_regs_m2c(__FILE__,__LINE__,#a,_state);a;}
 
 #else
     #define R(a) a
+    #define J(a) R(a)
+    #define T(a) R(a)
+    #define X(a) R(a)
 #endif
 
-#define J(a) R(a)
-#define T(a) R(a)
-#define X(a) R(a)
 
 bool is_little_endian();
 

@@ -4863,7 +4863,7 @@ cs=0x1a2;eip=0x002950; 	T(ADD(bx, ax));	// 5549 add     bx, ax ;~ 01A2:2950
 cs=0x1a2;eip=0x002952; 	T(MOV(ax, es));	// 5550 mov     ax, es ;~ 01A2:2952
 cs=0x1a2;eip=0x002954; 	T(SUB(bx, ax));	// 5551 sub     bx, ax ;~ 01A2:2954
 cs=0x1a2;eip=0x002956; 	T(MOV(ah, 0x4A));	// 5552 mov     ah, 4Ah ;~ 01A2:2956
-cs=0x1a2;eip=0x002958; 	R(_INT(0x21));	// 5553 int     21h             ; DOS - 2+ - ADJUST MEMORY BLOCK SIZE (SETBLOCK) ;~ 01A2:2958
+//cs=0x1a2;eip=0x002958; 	R(_INT(0x21));	// 5553 int     21h             ; DOS - 2+ - ADJUST MEMORY BLOCK SIZE (SETBLOCK) ;~ 01A2:2958
 cs=0x1a2;eip=0x00295a; 	T(MOV(ax, seg_offset(seg004)));	// 5556 mov     ax, seg seg004 ;~ 01A2:295A
 cs=0x1a2;eip=0x00295d; 	T(MOV(ds, ax));	// 5557 mov     ds, ax ;~ 01A2:295D
 cs=0x1a2;eip=0x00295f; 	T(MOV(ax, 0x3524));	// 5559 mov     ax, 3524h ;~ 01A2:295F

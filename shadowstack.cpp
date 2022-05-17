@@ -37,7 +37,7 @@ namespace m2c{
       {
         X86_REGREF
 //       m_needtoskipcall=0;
-                  log_error ("m_needtoskipcall %d\n", m_needtoskipcall);
+                  log_debug ("m_needtoskipcall %d\n", m_needtoskipcall);
 //    m2c::log_info("ssize=%d\n",m_ss.size() );
           if (!m_ss.empty () && m_current)
           {
@@ -60,7 +60,7 @@ namespace m2c{
            if (m_itisret && m_ss[m_current].itwascall) --m_needtoskipcall;
 
       m_currentdeep = m_ss[m_current].call_deep;
-                  log_error ("m2c::counter %x m_deep %d collected m_currentdeep %d m_needtoskipcall %d\n", counter, m_deep, m_currentdeep,m_needtoskipcall);
+                  log_debug ("m2c::counter %x m_deep %d collected m_currentdeep %d m_needtoskipcall %d\n", counter, m_deep, m_currentdeep,m_needtoskipcall);
           }
       
       }
@@ -68,24 +68,24 @@ namespace m2c{
   }
 
         void ShadowStack::decreasedeep(){
-log_error("decreasedeep m_deep=%d ",m_deep);
+log_debug("decreasedeep m_deep=%d ",m_deep);
 //pop(0);
 //m_deep=m_currentdeep-1;
 --m_deep;
-log_error("m_deep=%d ",m_deep);
+log_debug("m_deep=%d ",m_deep);
 }
         bool ShadowStack::needtoskipcalls(){
 /*
-log_error("ret m_currentdeep=%d ",m_currentdeep);
+log_debug("ret m_currentdeep=%d ",m_currentdeep);
 m_needtoskipcall=m_currentdeep?m_deep-m_currentdeep:0; 
 if (m_needtoskipcall<0) {m_needtoskipcall=0;}
 //m_deep=m_currentdeep?m_currentdeep-1:m_deep; 
 --m_deep;
-log_error("m_deep=%d ",m_deep);
+log_debug("m_deep=%d ",m_deep);
 m_currentdeep=0;
-log_error("m_currentdeep=%d\n",m_currentdeep);
+log_debug("m_currentdeep=%d\n",m_currentdeep);
 */
-log_error("m_needtoskipcall=%d\n",m_needtoskipcall);
+log_debug("m_needtoskipcall=%d\n",m_needtoskipcall);
 return m_needtoskipcall;}
 
 
