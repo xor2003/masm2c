@@ -10,11 +10,11 @@ fi
 #./test-i386 > test-i386.txt
 
 rm test-i386_conv test-i386_conv.txt || true
-#$CXX -O0  -I.. test-i386_conv.cpp -E -fpermissive > test-i386_conv.e
+##$CXX -O0  -I.. test-i386_conv.cpp -E -fpermissive > test-i386_conv.e
 $CXX -O0 -w -fpermissive -m32 -lm -I.. test-i386_conv.cpp -o test-i386_conv 2>&1 | tee -a result.txt
+## -ggdb3 -Og -Wa,-adhlns="test-i386_conv.lst" -fdata-sections -ffunction-sections -static -ftime-report
 
-$CXX -O0 -ggdb3 -w -fpermissive -m32 -lm -I.. test-i386_brute.cpp -o  test-i386_brute
-# -ggdb3 -Og -Wa,-adhlns="test-i386_conv.lst" -fdata-sections -ffunction-sections -static -ftime-report
+#$CXX -O0 -ggdb3 -w -fpermissive -m32 -lm -I.. test-i386_brute.cpp -o  test-i386_brute
 
 ./test-i386_conv > test-i386_conv.txt
 diff -diu --label real test-i386.txt --label emulated test-i386_conv.txt > test-i386.diff || true 

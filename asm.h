@@ -1364,7 +1364,7 @@ template <class D>
 {                                                            \
     Bits val=(int32_t)(op1);                            \
     if (val==0) CPU_Exception(0);                                    \
-    int64_t num=(((Bit64u)edx)<<32)|eax;                \
+    int64_t num=(((uint64_t)edx)<<32)|eax;                \
     int64_t quo=num/val;                                        \
     int32_t rem=(int32_t)(num % val);                            \
     int32_t quo32s=(int32_t)(quo&0xffffffff);                    \
@@ -1541,8 +1541,6 @@ template <class D, class S>
 
 #define NOP {;}
 
-//#define LAHF {ah= ((CF?1:0)|2|(PF?4:0)|(AF?0x10:0)|(ZF?0x40:0)|(SF?0x80:0)) ;}
-//#define SAHF {CF=ah&1; PF=ah&4; AF=ah&0x10; ZF=ah&0x40; SF=ah&0x80;}
 #define LAHF {ah = m2cflags.getvalue();}
 #define SAHF {m2cflags.setvalue(ah);}
 /*

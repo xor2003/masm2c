@@ -48,7 +48,6 @@ static inline db* raddr_(dw segment,dd offset) {return reinterpret_cast<db *>(of
 			CMP(eax, *(dd*)realAddress(edi,es)); edi+=(GET_DF()==0)?4:-4; \
 	}
 
- #define LODS(addr,destreg,s) {memcpy (((db *)&eax), &(addr), s);; destreg+=(GET_DF()==0)?s:-s;}
  #define LODSS(a,b) {memcpy (((db *)&eax)+b, realAddress(esi,ds), a); esi+=(GET_DF()==0)?a:-a;}
 
  #ifdef MSB_FIRST
@@ -71,6 +70,19 @@ static inline db* raddr_(dw segment,dd offset) {return reinterpret_cast<db *>(of
  #define LOOPE(label) --ecx; if (ecx!=0 && GET_ZF()) GOTOLABEL(label) //TODO
  #define LOOPNE(label) --ecx; if (ecx!=0 && !GET_ZF()) GOTOLABEL(label) //TODO
 
+#define MOVSB MOVSS(1)
+#define MOVSW MOVSS(2)
+#define MOVSD MOVSS(4)
+
+#ifdef MSB_FIRST
+#define LODSB LODSS(1,3)
+#define LODSW LODSS(2,2)
+    #else
+    #define LODSB LODSS(1,0)
+    #define LODSW LODSS(2,0)
+#endif
+
+#define LODSD LODSS(4,0)
 
 
 #endif
