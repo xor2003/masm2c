@@ -1861,11 +1861,11 @@ enum  _offsets;
 
 #define _INT(a) {m2c::asm2C_INT(_state,a);}
 
-void asm2C_OUT(int16_t address, int data);
+void asm2C_OUT(int16_t address, int data,_STATE* _state);
 
-#define OUT(a,b) m2c::asm2C_OUT(a,b)
-int8_t asm2C_IN(int16_t data);
-#define IN(a,b) a = m2c::asm2C_IN(b);
+#define OUT(a,b) m2c::asm2C_OUT(a,b,_state)
+int8_t asm2C_IN(int16_t data,_STATE* _state);
+#define IN(a,b) a = m2c::asm2C_IN(b,_state);
 #endif
 
 #define XLATP(x) {al = *(x + al);}

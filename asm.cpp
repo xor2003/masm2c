@@ -282,10 +282,11 @@ void hexDump (void *addr, int len) {
 	log_debug ("  %s\n", buff);
 }
 
-void asm2C_OUT(int16_t address, int data) {
+void asm2C_OUT(int16_t address, int data,_STATE* _state) {
 #ifdef __DJGPP__
 	outportb(address, data);
 #else
+X86_REGREF
 	static int indexPalette = 0;
 	switch(address) {
 	case 0x3c8:
@@ -300,18 +301,23 @@ void asm2C_OUT(int16_t address, int data) {
 		}
 		break;
 	default:
-		log_debug("unknown OUT %x,%x\n",address, data);
+		log_debug("unknown OUT %x,%x at %x:%x\n",address, data,cs,eip);
 		break;
 	}
 #endif
 }
 
-int8_t asm2C_IN(int16_t address) {
+int8_t asm2C_IN(int16_t address,_STATE* _state) {
 #ifdef __DJGPP__
 	return inportb(address);
 #else
+X86_REGREF
 	static bool vblTick = 1;
 	switch(address) {
+	case 0x201:
+		{
+			return 0xff;  // no joystick
+		}
 	case 0x3DA:
 		if (vblTick) {
 			vblTick = 0;
@@ -323,21 +329,22 @@ int8_t asm2C_IN(int16_t address) {
 		}
 		//break;
 	default:
-		log_error("Unknown IN %x\n",address);
+		log_error("Unknown IN %x at %x:%x\n",address,cs,eip);
 		return 0;
 	}
 #endif
 }
 
-uint16_t asm2C_INW(uint16_t address) {
+uint16_t asm2C_INW(uint16_t address,_STATE* _state) {
 #ifdef __DJGPP__
 	return inportw(address);
 #else
+X86_REGREF
 	switch(address) {
 	case 0x3DA:
 		break;
 	default:
-		log_error("Unknown INW %x\n",address);
+		log_error("Unknown IN %x at %x:%x\n",address,cs,eip);
 		return 0;
 	}
 #endif
@@ -585,6 +592,17 @@ X86_REGREF
 			}
 			break;
 		}
+		case 0x1a: {        //vga
+			switch(al)
+			{
+			case 0: {
+				bx=8;  //vga
+				al=0x1a;
+				return;
+			}
+			}
+			break;
+		}
 		}
 		break;
 	}
@@ -702,6 +720,13 @@ X86_REGREF
 		{
 			*(dw *)realAddress(al*4,0)=dx;
 			*(dw *)realAddress(al*4+2,0)=ds;
+			return;
+		}
+		case 0x30: // ver
+		{
+			ax=5;
+                        bx=0xff00;
+                        cx=0;
 			return;
 		}
 		case 0x35: // Set disk transfer addr
@@ -1566,7 +1591,7 @@ int main(int argc, char *argv[]) {
     try {
         m2c::_indent = 0;
         m2c::logDebug = fopen("asm.log", "w");
-
+#if 0
         initscr();
         resize_term(25, 80);
         cbreak(); // put keys directly to program
@@ -1582,7 +1607,7 @@ int main(int argc, char *argv[]) {
         curs_set(0);
 
         refresh();
-
+#endif
 
         m2c::init(_state);
 
