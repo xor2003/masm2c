@@ -207,7 +207,7 @@ void test_add(void)
     exec_add(0x12348080, -2);
 }
 
-void *_test_add __attribute__ ((unused,__section__ ("initcall"))) = test_add;
+//void *_test_add __attribute__ ((unused,__section__ ("initcall"))) = test_add;
 
 
 
@@ -283,7 +283,7 @@ void test_sub(void)
     exec_sub(0x12348080, -2);
 }
 
-void *_test_sub __attribute__ ((unused,__section__ ("initcall"))) = test_sub;
+//void *_test_sub __attribute__ ((unused,__section__ ("initcall"))) = test_sub;
 
 
 
@@ -359,7 +359,7 @@ void test_xor(void)
     exec_xor(0x12348080, -2);
 }
 
-void *_test_xor __attribute__ ((unused,__section__ ("initcall"))) = test_xor;
+//void *_test_xor __attribute__ ((unused,__section__ ("initcall"))) = test_xor;
 
 
 
@@ -435,7 +435,7 @@ void test_and(void)
     exec_and(0x12348080, -2);
 }
 
-void *_test_and __attribute__ ((unused,__section__ ("initcall"))) = test_and;
+//void *_test_and __attribute__ ((unused,__section__ ("initcall"))) = test_and;
 
 
 
@@ -511,7 +511,7 @@ void test_or(void)
     exec_or(0x12348080, -2);
 }
 
-void *_test_or __attribute__ ((unused,__section__ ("initcall"))) = test_or;
+//void *_test_or __attribute__ ((unused,__section__ ("initcall"))) = test_or;
 
 
 
@@ -587,7 +587,7 @@ void test_cmp(void)
     exec_cmp(0x12348080, -2);
 }
 
-void *_test_cmp __attribute__ ((unused,__section__ ("initcall"))) = test_cmp;
+//void *_test_cmp __attribute__ ((unused,__section__ ("initcall"))) = test_cmp;
 
 
 
@@ -671,7 +671,7 @@ void test_adc(void)
     exec_adc(0x12348080, -2);
 }
 
-void *_test_adc __attribute__ ((unused,__section__ ("initcall"))) = test_adc;
+//void *_test_adc __attribute__ ((unused,__section__ ("initcall"))) = test_adc;
 
 
 
@@ -755,7 +755,7 @@ void test_sbb(void)
     exec_sbb(0x12348080, -2);
 }
 
-void *_test_sbb __attribute__ ((unused,__section__ ("initcall"))) = test_sbb;
+//void *_test_sbb __attribute__ ((unused,__section__ ("initcall"))) = test_sbb;
 
 
 
@@ -839,7 +839,7 @@ void test_inc(void)
     exec_inc(0x12348080, -2);
 }
 
-void *_test_inc __attribute__ ((unused,__section__ ("initcall"))) = test_inc;
+//void *_test_inc __attribute__ ((unused,__section__ ("initcall"))) = test_inc;
 
 
 
@@ -923,7 +923,7 @@ void test_dec(void)
     exec_dec(0x12348080, -2);
 }
 
-void *_test_dec __attribute__ ((unused,__section__ ("initcall"))) = test_dec;
+//void *_test_dec __attribute__ ((unused,__section__ ("initcall"))) = test_dec;
 
 
 
@@ -1007,7 +1007,7 @@ void test_neg(void)
     exec_neg(0x12348080, -2);
 }
 
-void *_test_neg __attribute__ ((unused,__section__ ("initcall"))) = test_neg;
+//void *_test_neg __attribute__ ((unused,__section__ ("initcall"))) = test_neg;
 
 
 
@@ -1091,7 +1091,7 @@ void test_not(void)
     exec_not(0x12348080, -2);
 }
 
-void *_test_not __attribute__ ((unused,__section__ ("initcall"))) = test_not;
+//void *_test_not __attribute__ ((unused,__section__ ("initcall"))) = test_not;
 
 
 
@@ -1172,7 +1172,7 @@ void test_shl(void)
         exec_shl(0x813f3421, 0x82345679, i);
 }
 
-void *_test_shl __attribute__ ((unused,__section__ ("initcall"))) = test_shl;
+//void *_test_shl __attribute__ ((unused,__section__ ("initcall"))) = test_shl;
 
 
 
@@ -1250,7 +1250,7 @@ void test_shr(void)
         exec_shr(0x813f3421, 0x82345679, i);
 }
 
-void *_test_shr __attribute__ ((unused,__section__ ("initcall"))) = test_shr;
+//void *_test_shr __attribute__ ((unused,__section__ ("initcall"))) = test_shr;
 
 
 void exec_sall(dd s2, dd s0, dd s1, dd iflags)
@@ -1325,7 +1325,7 @@ void test_sal(void)
         exec_sal(0x813f3421, 0x82345679, i);
 }
 
-void *_test_sal __attribute__ ((unused,__section__ ("initcall"))) = test_sal;
+//void *_test_sal __attribute__ ((unused,__section__ ("initcall"))) = test_sal;
 
 
 
@@ -1401,7 +1401,7 @@ void test_sar(void)
         exec_sar(0x813f3421, 0x82345679, i);
 }
 
-void *_test_sar __attribute__ ((unused,__section__ ("initcall"))) = test_sar;
+//void *_test_sar __attribute__ ((unused,__section__ ("initcall"))) = test_sar;
 
 
 
@@ -1479,7 +1479,7 @@ void test_rol(void)
         exec_rol(0x813f3421, 0x82345679, i);
 }
 
-void *_test_rol __attribute__ ((unused,__section__ ("initcall"))) = test_rol;
+//void *_test_rol __attribute__ ((unused,__section__ ("initcall"))) = test_rol;
 
 
 
@@ -1557,7 +1557,7 @@ void test_ror(void)
         exec_ror(0x813f3421, 0x82345679, i);
 }
 
-void *_test_ror __attribute__ ((unused,__section__ ("initcall"))) = test_ror;
+//void *_test_ror __attribute__ ((unused,__section__ ("initcall"))) = test_ror;
 
 
 
@@ -1644,7 +1644,7 @@ void test_rcr(void)
         exec_rcr(0x813f3421, 0x82345679, i);
 }
 
-void *_test_rcr __attribute__ ((unused,__section__ ("initcall"))) = test_rcr;
+//void *_test_rcr __attribute__ ((unused,__section__ ("initcall"))) = test_rcr;
 
 
 
@@ -1731,7 +1731,7 @@ void test_rcl(void)
         exec_rcl(0x813f3421, 0x82345679, i);
 }
 
-void *_test_rcl __attribute__ ((unused,__section__ ("initcall"))) = test_rcl;
+//void *_test_rcl __attribute__ ((unused,__section__ ("initcall"))) = test_rcl;
 
 
 
@@ -1792,7 +1792,7 @@ void test_shld(void)
         exec_shld(0x813f3421, 0x82345679, i);
 }
 
-void *_test_shld __attribute__ ((unused,__section__ ("initcall"))) = test_shld;
+//void *_test_shld __attribute__ ((unused,__section__ ("initcall"))) = test_shld;
 
 
 
@@ -1853,7 +1853,7 @@ void test_shrd(void)
         exec_shrd(0x813f3421, 0x82345679, i);
 }
 
-void *_test_shrd __attribute__ ((unused,__section__ ("initcall"))) = test_shrd;
+//void *_test_shrd __attribute__ ((unused,__section__ ("initcall"))) = test_shrd;
 
 
 
@@ -1919,7 +1919,7 @@ void test_bt(void)
         exec_bt(0x813f3421, 0x82345679, i);
 }
 
-void *_test_bt __attribute__ ((unused,__section__ ("initcall"))) = test_bt;
+//void *_test_bt __attribute__ ((unused,__section__ ("initcall"))) = test_bt;
 
 
 
@@ -1981,7 +1981,7 @@ void test_bts(void)
         exec_bts(0x813f3421, 0x82345679, i);
 }
 
-void *_test_bts __attribute__ ((unused,__section__ ("initcall"))) = test_bts;
+//void *_test_bts __attribute__ ((unused,__section__ ("initcall"))) = test_bts;
 
 
 
@@ -2043,7 +2043,7 @@ void test_btr(void)
         exec_btr(0x813f3421, 0x82345679, i);
 }
 
-void *_test_btr __attribute__ ((unused,__section__ ("initcall"))) = test_btr;
+//void *_test_btr __attribute__ ((unused,__section__ ("initcall"))) = test_btr;
 
 
 
@@ -2105,7 +2105,7 @@ void test_btc(void)
         exec_btc(0x813f3421, 0x82345679, i);
 }
 
-void *_test_btc __attribute__ ((unused,__section__ ("initcall"))) = test_btc;
+//void *_test_btc __attribute__ ((unused,__section__ ("initcall"))) = test_btc;
 
 
 void test_lea(void)
@@ -3366,7 +3366,7 @@ void test_misc(void)
 
     for(i=0;i<256;i++) table[i] = 256 - i;
     res = 0x12345678;
-    ds=0;ebx=&table;
+    ds=0;ebx=(dd)&table;
     eax=res; XLAT; res=eax;
     // asm ("xlat" : "=a" (res) : "b" (table), "0" (res));
     printf("xlat: EAX=%08lx\n", res);
