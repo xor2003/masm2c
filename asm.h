@@ -15,10 +15,10 @@
 #include <vector>
 
 #ifndef NOSDL
- #ifdef __LIBSDL2__
+// #ifdef __LIBSDL2__
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_mixer.h>
- #endif
+// #endif
 #endif
 
 extern bool from_callf;
@@ -98,7 +98,13 @@ static void CPU_Exception(int){assert(0);}
 typedef int Bits;
 #endif
 
+#ifndef NOSDL
+extern struct SDL_Renderer *renderer;
+#endif
+
 namespace m2c {
+
+extern db vgaPalette[256*3];
 
     extern struct Memory m;
 
@@ -598,9 +604,10 @@ inline long getdata(const long& s)
 
     static inline void setdata(db *d, db s) {
   #if SDL_MAJOR_VERSION == 2 && !defined(NOSDL)
-	if (m2c::isaddrbelongtom(d) && d < (db*)&m + 0xc0000 && d >= (db*)&m + 0xa0000)
+	if (m2c::isaddrbelongtom(d) && d < ((db*)&m) + 0xc0000 && d >= ((db*)&m) + 0xa0000)
 		{ 
-          dw di = d - (db*)&m;
+          dw di = d - ((db*)&m) - 0xa0000;
+//  printf("x=%d y=%d c=%d\n",di%320, di/320,s);
 	  SDL_SetRenderDrawColor(renderer, vgaPalette[3*s+2], vgaPalette[3*s+1], vgaPalette[3*s], 255); 
           SDL_RenderDrawPoint(renderer, di%320, di/320); \
   	  SDL_RenderPresent(renderer); 
@@ -613,7 +620,7 @@ inline long getdata(const long& s)
     }
 
     static inline void setdata(char *d, db s) {
-        *d = s;
+           *d = s;
     }
 
     static inline void setdata(dw *d, dw s) {
@@ -1917,7 +1924,6 @@ dw getscan();
 // SDL2 VGA
 //struct SDL_Renderer;
 
-extern db vgaPalette[256*3];
 
 //extern chtype vga_to_curses[256];
 
@@ -1964,7 +1970,6 @@ extern void print_instruction(Bit16u newcs, Bit32u newip);
 extern void print_instruction_direct(Bit16u newcs, Bit32u newip);
 #endif
 
-extern struct SDL_Renderer *renderer;
 
 #endif
 
