@@ -128,7 +128,7 @@ sub_10130:
 cs=0x1a2;eip=0x000130; 	T(CMP(word_3287c, 1));	// 155 cmp     word_3287C, 1 ;~ 01A2:0130
 ret_1a2_135:
 	// 4376 
-cs=0x1a2;eip=0x000135; 	J(JGE(sub_10130));	// 156 jge     short sub_10130 ;~ 01A2:0135
+//x0r cs=0x1a2;eip=0x000135; 	J(JGE(sub_10130));	// 156 jge     short sub_10130 ;~ 01A2:0135
 cs=0x1a2;eip=0x000137; 	J(RETN(0));	// 157 retn ;~ 01A2:0137
 sub_10138:
 	// 164 
@@ -14925,8 +14925,8 @@ cs=0x1a2;eip=0x007a5b; 	J(RETN(0));	// 17781 retn ;~ 01A2:7A5B
 #ifdef DOSBOX_CUSTOM
     if ((__disp >> 16) == 0xf000)
 	{cs=0xf000;eip=__disp&0xffff;m2c::fix_segs();return false;}  // Jumping to BIOS
-    if ((__disp>>16) == 0) {__disp |= ((dd)cs) << 16;}
 #endif
+    if ((__disp>>16) == 0) {__disp |= ((dd)cs) << 16;}
     switch (__disp) {
         case m2c::kloc_1001e: 	goto loc_1001e;
         case m2c::kloc_10048: 	goto loc_10048;

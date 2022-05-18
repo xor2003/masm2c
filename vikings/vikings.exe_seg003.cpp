@@ -20530,8 +20530,8 @@ cs=0xe25;eip=0x00bca0; __disp=bp;
 #ifdef DOSBOX_CUSTOM
     if ((__disp >> 16) == 0xf000)
 	{cs=0xf000;eip=__disp&0xffff;m2c::fix_segs();return false;}  // Jumping to BIOS
-    if ((__disp>>16) == 0) {__disp |= ((dd)cs) << 16;}
 #endif
+    if ((__disp>>16) == 0) {__disp |= ((dd)cs) << 16;}
     switch (__disp) {
         case m2c::kloc_1c912: 	goto loc_1c912;
         case m2c::kloc_1c92a: 	goto loc_1c92a;

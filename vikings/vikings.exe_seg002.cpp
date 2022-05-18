@@ -1618,8 +1618,8 @@ cs=0xd4f;eip=0x000d50; 	J(JMP(sub_1bec2));	// 33877 jmp     near ptr sub_1BEC2 ;
 #ifdef DOSBOX_CUSTOM
     if ((__disp >> 16) == 0xf000)
 	{cs=0xf000;eip=__disp&0xffff;m2c::fix_segs();return false;}  // Jumping to BIOS
-    if ((__disp>>16) == 0) {__disp |= ((dd)cs) << 16;}
 #endif
+    if ((__disp>>16) == 0) {__disp |= ((dd)cs) << 16;}
     switch (__disp) {
         case m2c::kloc_1be9e: 	goto loc_1be9e;
         case m2c::kloc_1beb4: 	goto loc_1beb4;
