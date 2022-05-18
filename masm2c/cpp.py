@@ -61,8 +61,8 @@ def produce_jump_table(labels):
 #ifdef DOSBOX_CUSTOM
     if ((__disp >> 16) == 0xf000)
 	{cs=0xf000;eip=__disp&0xffff;m2c::fix_segs();return false;}  // Jumping to BIOS
-    if ((__disp>>16) == 0) {__disp |= ((dd)cs) << 16;}
 #endif
+    if ((__disp>>16) == 0) {__disp |= ((dd)cs) << 16;}
     switch (__disp) {
 """
     offsets = []
