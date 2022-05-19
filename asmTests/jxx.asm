@@ -217,6 +217,14 @@ jcxz @df@@@@7
 jmp failure
 @df@@@@7:
 
+mov bp,35
+call test35  ; handle call call pop ret
+
+mov bp,36
+call test36
+
+mov bp,37
+call test37_lbl
 
 good:
 MOV al,0
@@ -236,6 +244,34 @@ jtable   dw 0
 
 
 start endp
+
+test35 proc  
+call test35_
+jmp failure
+ret
+test35 endp
+
+test35_ proc
+pop ax
+ret
+test35_ endp
+
+test36 proc
+jmp test36_lbl
+jmp failure
+test36 endp
+
+test36_ proc
+jmp failure
+test36_lbl::
+ret
+test36_ endp
+
+test37 proc
+jmp failure
+test37_lbl::
+ret
+test37 endp
 
 _TEXT   ends ;IGNORE
 
