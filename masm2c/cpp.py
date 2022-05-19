@@ -200,12 +200,14 @@ def guess_int_size(v):
     logging.debug('guess_int_size %d' % size)
     return size
 
+def cpp_mangle_label_special(name):
+    if name == 'main':
+        name = 'asmmain'
+    return name.replace('$', '_tmp').replace('?', 'que')
 
 def cpp_mangle_label(name):
     name = name.lower()
-    if name == 'main':
-        name = 'asmmain'
-    return name.replace('$', '_tmp')
+    return cpp_mangle_label_special(name)
 
 
 class Cpp(object):
@@ -323,7 +325,8 @@ class Cpp(object):
         return cdata_seg, hdata_seg, rdata_seg, edata_seg
 
     def convert_label(self, token):
-        name_original = token.value
+        name_original = cpp_mangle_label_special(token.value)
+        token.value = name_original
         name = name_original.lower()
         logging.debug("convert_label name = %s indirection = %s" % (name, str(self.__indirection)))
 
@@ -1836,7 +1839,7 @@ struct Memory{
         size = self.get_size(dst)
         dstr, srcr = Token.find_tokens(dst, REGISTER), Token.find_tokens(src, REGISTER)
         self.a, self.b = self.parse2(dst, src)
-        return "MOVS(%s, %s, %s, %s, %d" % (self.a, self.b, dstr[0], srcr[0], size)
+        return "MOVS(%s, %s, %s, %s, %d)" % (self.a, self.b, dstr[0], srcr[0], size)
 
     def _repe(self):
         # return "\tREPE\n"

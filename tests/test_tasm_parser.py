@@ -3402,7 +3402,7 @@ head db '^',10,10
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('scas	[word ptr fs:si]')), u'SCAS(*(dw*)(raddr(fs,si)),si,2)')
 
     def test_instr_10960(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('movs [dword ptr es:di], [dword ptr fs:si]')), u'MOVS(*(dd*)(raddr(es,di)), *(dd*)(raddr(fs,si)), di, si, 4')
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('movs [dword ptr es:di], [dword ptr fs:si]')), u'MOVS(*(dd*)(raddr(es,di)), *(dd*)(raddr(fs,si)), di, si, 4)')
 
     def test_instr_10970(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code("mov al, 'Z' - 'A' +1")), u"MOV(al, 'Z'-'A'+1)")
@@ -3730,7 +3730,7 @@ head db '^',10,10
     def test_instr_11900(self):
         self.assertEqual(
             self.proc.generate_c_cmd(self.cpp, self.parser.action_code(r'movs dword ptr es:[di], dword ptr fs:[si]')),
-            u"MOVS(*(dd*)(raddr(es,di)), *(dd*)(raddr(fs,si)), di, si, 4")
+            u"MOVS(*(dd*)(raddr(es,di)), *(dd*)(raddr(fs,si)), di, si, 4)")
 
     def test_instr_12000(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('call  near ptr  test_bcd')), u'CALL(test_bcd,0)')
@@ -3749,7 +3749,7 @@ head db '^',10,10
 
     def test_instr_12050(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov     ds:_byte_2D196_in_transition?, al')),
-                     u'MOV(_byte_2d196_in_transitionque, al)')
+                     u'MOV(_byte_2D196_in_transitionque, al)')
 
     #def test_instr_12030(self):
     #    self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code("cmp head, 'v'")), u"CMP(*(head), 'v')")

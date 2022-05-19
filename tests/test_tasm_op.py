@@ -377,7 +377,7 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(proc_instance.generate_full_cmd_line(cpp_instance, parser_instance.action_data(u'col equ 40')), '#define col 40\n')
         self.assertEqual(proc_instance.generate_full_cmd_line(cpp_instance, parser_instance.action_data(u'right equ left+col')), '#define right left+col\n')
         self.assertEqual(proc_instance.generate_full_cmd_line(cpp_instance, parser_instance.action_data(u'scale_mod equ -19*32*4; ')), '#define scale_mod -19*32*4\n')
-        self.assertEqual(proc_instance.generate_full_cmd_line(cpp_instance, parser_instance.action_data(u'tempo equ 1193182/256/targetFPS')), '#define tempo 1193182/256/targetFPS\n')
+        self.assertEqual(proc_instance.generate_full_cmd_line(cpp_instance, parser_instance.action_data(u'tempo equ 1193182/256/targetfps')), '#define tempo 1193182/256/targetfps\n')
         self.assertEqual(proc_instance.generate_full_cmd_line(cpp_instance, parser_instance.action_data(u'sierp_color equ 2Ah')), '#define sierp_color 0x2A\n')
         self.assertEqual(proc_instance.generate_full_cmd_line(cpp_instance, parser_instance.action_data(u'tilt_plate_pattern equ 4+8+16')), '#define tilt_plate_pattern 4+8+16\n')
 
