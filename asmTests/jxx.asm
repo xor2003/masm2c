@@ -228,7 +228,7 @@ call test36
 cmp si, sp
 jne failure
 
-mov bp,37 ; jump to the middle of the proc
+mov bp,37 ; call to the middle of the proc
 call test37_lbl
 cmp si, sp
 jne failure
@@ -240,6 +240,16 @@ jne failure
 call test38_
 cmp ax,3
 jne failure
+cmp si, sp
+jne failure
+
+mov bp,39 ; jump to the middle of the proc
+call test39
+cmp si, sp
+jne failure
+
+mov bp,40 ; jump to the middle of the proc
+call test40
 cmp si, sp
 jne failure
 
@@ -298,6 +308,32 @@ test38_ proc
 inc ax
 ret
 test38_ endp
+
+test39 proc
+mov bx,offset test39_lbl
+jmp bx
+jmp failure
+test39 endp
+
+test39_ proc
+jmp failure
+test39_lbl::
+ret
+test39_ endp
+
+mytarget40 dw 0
+           dw offset test40_lbl
+test40 proc
+mov bx,offset mytarget40
+jmp word ptr [bx+2]
+jmp failure
+test40 endp
+
+test40_ proc
+jmp failure
+test40_lbl::
+ret
+test40_ endp
 
 _TEXT   ends ;IGNORE
 
