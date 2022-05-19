@@ -217,14 +217,31 @@ jcxz @df@@@@7
 jmp failure
 @df@@@@7:
 
+mov si, sp
 mov bp,35
 call test35  ; handle call call pop ret
+cmp si, sp
+jne failure
 
-mov bp,36
+mov bp,36 ; jump from one proc to another
 call test36
+cmp si, sp
+jne failure
 
-mov bp,37
+mov bp,37 ; jump to the middle of the proc
 call test37_lbl
+cmp si, sp
+jne failure
+
+mov bp,38 ; bypassing to second proc
+call test38
+cmp ax,2
+jne failure
+call test38_
+cmp ax,3
+jne failure
+cmp si, sp
+jne failure
 
 good:
 MOV al,0
@@ -272,6 +289,15 @@ jmp failure
 test37_lbl::
 ret
 test37 endp
+
+test38 proc
+mov ax,1
+test38 endp
+
+test38_ proc
+inc ax
+ret
+test38_ endp
 
 _TEXT   ends ;IGNORE
 
