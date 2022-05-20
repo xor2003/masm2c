@@ -1130,7 +1130,8 @@ class Parser:
         #    self.action_label(name, far=far, isproc=True)
 
     def add_proc(self, name, raw, line_number, far):
-        #self.need_label = False
+        if self.args.mergeprocs == 'separate':
+            self.need_label = False
         # if self.__separate_proc:
         offset, real_offset, real_seg = self.get_lst_offsets(raw)
         proc = Proc(name, far=far, line_number=line_number, offset=offset,

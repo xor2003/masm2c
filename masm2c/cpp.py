@@ -1508,7 +1508,7 @@ class Cpp(object):
         if self._context.args.mergeprocs == 'separate':
             for index, first_proc_name in enumerate(self.__procs):
                 first_proc = self._context.get_global(first_proc_name)
-                if not first_proc.if_terminated_proc() and index < len(self.__procs):
+                if not first_proc.if_terminated_proc() and index < len(self.__procs) - 1:
                     o = first_proc.create_instruction_object('jmp', [Token(LABEL, self.__procs[index + 1])])
                     o.filename = ''
                     o.line_number = 0
