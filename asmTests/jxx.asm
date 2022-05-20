@@ -325,7 +325,7 @@ mytarget40 dw 0
            dw offset test40_lbl
 test40 proc
 mov bx,offset mytarget40
-jmp word ptr [bx+2]
+jmp word ptr [cs:bx+2]
 jmp failure
 test40 endp
 
