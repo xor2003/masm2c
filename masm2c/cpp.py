@@ -200,10 +200,12 @@ def guess_int_size(v):
     logging.debug('guess_int_size %d' % size)
     return size
 
+
 def cpp_mangle_label_special(name):
     if name == 'main':
         name = 'asmmain'
     return name.replace('$', '_tmp').replace('?', 'que')
+
 
 def cpp_mangle_label(name):
     name = name.lower()
@@ -238,7 +240,7 @@ class Cpp(object):
         self.__proc_done = []
         self.__failed = []
         self.__skip_output = skip_output
-        #self.__translated = []
+        # self.__translated = []
         self.__proc_addr = []
         self.__used_data_offsets = set()
         self.__methods = []
@@ -1046,7 +1048,7 @@ class Cpp(object):
         if hasglobal:
             g = self._context.get_global(dst)
             if isinstance(g, op.label) and not g.isproc and not dst in self.__procs and not dst in self.grouped:
-                #far = g.far  # make far calls to far procs
+                # far = g.far  # make far calls to far procs
                 disp = f"m2c::k{dst}"
                 dst = self.label_to_proc[g.name]
             elif isinstance(g, op.var):
@@ -1299,7 +1301,7 @@ class Cpp(object):
 
             self.body += produce_jump_table(labels)
 
-            #if name not in self.__skip_output:
+            # if name not in self.__skip_output:
             #    self.__translated.append(self.body)
             segment = self.proc.segment
             self.proc = None
@@ -1310,7 +1312,9 @@ class Cpp(object):
         except (CrossJump, op.Unsupported) as e:
             logging.error("%s: ERROR: %s" % (name, e))
             self.__failed.append(name)
-        except:
+        except Exception as ex:
+            logging.error(f'Exception {ex.args}')
+            logging.error(f' for {name}')
             raise
 
     def leave_unique_labels(self, labels):
@@ -1321,7 +1325,6 @@ class Cpp(object):
             g = self._context.get_global(label)
             uniq_labels[f'{g.real_seg}_{g.real_offset}'] = label
         return uniq_labels.values()
-
 
     def generate(self, start):
         fname = self.__namespace.lower() + ".cpp"
@@ -1358,9 +1361,7 @@ class Cpp(object):
 #include \"{header}\"
 
 """)
-
         self.merge_procs()
-
 
         '''
         if self._context.main_file:
@@ -1432,7 +1433,7 @@ class Cpp(object):
             else:
                 cppd.write(f"{proc_text}\n")
 
-            #self.__translated.append(proc_text)
+            # self.__translated.append(proc_text)
             self.__proc_done.append(name)
             self.__methods.append(name)
 
@@ -1503,7 +1504,21 @@ class Cpp(object):
 
         :return:
         '''
+
+        if self._context.args.mergeprocs == 'separate':
+            for index, first_proc_name in enumerate(self.__procs):
+                first_proc = self._context.get_global(first_proc_name)
+                if not first_proc.if_terminated_proc() and index < len(self.__procs):
+                    o = first_proc.create_instruction_object('jmp', [Token(LABEL, self.__procs[index + 1])])
+                    o.filename = ''
+                    o.line_number = 0
+                    o.raw_line = ''
+                    first_proc.stmts.append(o)
+
         self.generate_label_to_proc_map()
+
+        if self._context.args.mergeprocs == 'separate':
+            return
 
         if not self._context.args.mergeprocs == 'single':
             for index, first_proc_name in enumerate(self.__procs):
@@ -1620,8 +1635,9 @@ class Cpp(object):
                 self.label_to_proc[label] = proc_name
 
     def get_lineordered_proclist(self, proc_list):
-        line_to_proc = dict([(self._context.get_global(first_proc_name).line_number, first_proc_name) for first_proc_name in
-                        proc_list])
+        line_to_proc = dict(
+            [(self._context.get_global(first_proc_name).line_number, first_proc_name) for first_proc_name in
+             proc_list])
         return [line_to_proc[line_number] for line_number in sorted(line_to_proc.keys())]
 
     def leave_only_same_seg_procs_to_merge(self, first_proc_name):
@@ -1877,6 +1893,20 @@ struct Memory{
             return "{;}"
         else:
             label, far = self.jump_post(label)  # TODO
+            if self._context.has_global(label):
+                g = self._context.get_global(label)
+                proc_name = None
+                if isinstance(g, op.label):
+                    proc_name = self.label_to_proc[g.name]
+                elif isinstance(g, proc_module.Proc):
+                    proc_name = g.name
+                if proc_name and self.proc.name != proc_name:
+                        if g.name == proc_name:
+                            return f"return {g.name}(0, _state);"
+                        return f"return {proc_name}(m2c::k{label}, _state);"
+            if label == '__dispatch_call':
+                return "return __dispatch_call(__disp, _state);"
+
             return "%s(%s)" % (cmd.upper(), label)
 
     def isrelativejump(self, label):
@@ -1974,7 +2004,7 @@ struct Memory{
     def produce_c_data_zero_string(data: op.Data):
         label, data_ctype, _, r, elements, size = data.getdata()
         rc = '"' + ''.join([Cpp.convert_str(i) for i in r[:-1]]) + '"'
-        rc = re.sub(r'(\\x[0-9a-f][0-9a-f])([0-9a-fA-F])', r'\g<1>" "\g<2>', rc)   # fix for stupid C hex escapes: \xaef
+        rc = re.sub(r'(\\x[0-9a-f][0-9a-f])([0-9a-fA-F])', r'\g<1>" "\g<2>', rc)  # fix for stupid C hex escapes: \xaef
         rh = f'char {label}[{str(len(r))}]'
         return rc, rh
 
@@ -2076,21 +2106,21 @@ struct Memory{
     switch (__disp) {
 """
         entries = dict()
-        #procs = []
+        # procs = []
         for k, v in globals:
             if isinstance(v, proc_module.Proc) and v.used:
                 k = re.sub(r'[^A-Za-z0-9_]', '_', k)  # need to do it during mangling
-                #procs.append(k)
+                # procs.append(k)
                 entries[k] = (cpp_mangle_label(k), '0')
-                #labels = self.leave_unique_labels(v.provided_labels)
+                # labels = self.leave_unique_labels(v.provided_labels)
                 labels = v.provided_labels
                 for label in labels:
                     if label != v.name:
-                        #result += f"        case m2c::k{label}: \t{v.name}(__disp, _state); break;\n"
+                        # result += f"        case m2c::k{label}: \t{v.name}(__disp, _state); break;\n"
                         entries[label] = (v.name, '__disp')
 
-        #procs = self.leave_unique_labels(procs)
-        #for name in procs:
+        # procs = self.leave_unique_labels(procs)
+        # for name in procs:
         #    if not name.startswith('_group'):  # TODO remove dirty hack. properly check for group
         #    result += "        case m2c::k%s: \t%s(0, _state); break;\n" % (name, cpp_mangle_label(name))
         #    entries[name] = (cpp_mangle_label(name), '0')

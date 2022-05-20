@@ -112,7 +112,7 @@ def parse_args(args):
         const='0x192',
     )
     aparser.add_argument(
-        '-m', '--mergeprocs', type=str, default='persegment', choices=["separate", "persegment", "single"],
+        '-m', '--mergeprocs', type=str, default='separate', choices=["separate", "persegment", "single"],
         help='How to merge procs (default: persegment)', )
     return aparser.parse_args(args)
 

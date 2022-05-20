@@ -1629,7 +1629,7 @@ class Parser:
                 logging.warning(f"Flow terminated and it was no label yet line={line_number}")
                 if o.real_seg:
                     logging.warning(f"at {o.real_seg:x}:{o.real_offset:x}")
-            if self.need_label and self.proc.stmts:  # skip first instrucion
+            if self.need_label and self.proc.stmts:  # skip first instruction
                 if o.real_seg:
                     label_name = f'ret_{o.real_seg:x}_{o.real_offset:x}'
                 else:
