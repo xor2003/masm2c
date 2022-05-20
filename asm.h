@@ -15,10 +15,8 @@
 #include <vector>
 
 #ifndef NOSDL
-// #ifdef __LIBSDL2__
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_mixer.h>
-// #endif
 #endif
 
 extern bool from_callf;
