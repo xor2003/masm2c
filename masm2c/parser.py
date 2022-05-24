@@ -11,6 +11,7 @@ from builtins import str
 from collections import OrderedDict
 from copy import copy, deepcopy
 
+import jsonpickle
 import parglare
 from parglare import Grammar, Parser as PGParser
 
@@ -547,6 +548,9 @@ class Parser:
         self.externals_procs = set()
         self.__files = set()
         self.itislst = False
+        self.initial_procs_start = set()
+        self.procs_start = set()
+
         if not args:
             args = MyDummyObj()
             args.mergeprocs = 'separate'
@@ -565,6 +569,7 @@ class Parser:
         logging.info(f"     Pass number {self.pass_number}")
         Parser.c_dummy_label = counter
 
+        self.procs_start = self.initial_procs_start
         self.segments = OrderedDict()
         self.flow_terminated = True
         self.need_label = True
@@ -909,6 +914,8 @@ class Parser:
         l = op.label(name, proc=self.proc.name, isproc=isproc, line_number=self.__offset_id, far=far, globl=globl)
         _, l.real_offset, l.real_seg = self.get_lst_offsets(raw)
 
+        if l.real_seg:
+            self.procs_start.discard(l.real_seg*0x10 + l.real_offset)
         self.proc.add_label(name, l)
         # self.set_offset(name,
         #                ("&m." + name.lower() + " - &m." + self.__segment_name, self.proc, self.__offset_id))
@@ -1134,6 +1141,8 @@ class Parser:
             self.need_label = False
         # if self.__separate_proc:
         offset, real_offset, real_seg = self.get_lst_offsets(raw)
+        if real_seg:
+            self.procs_start.discard(real_seg*0x10 + real_offset)
         proc = Proc(name, far=far, line_number=line_number, offset=offset,
                     real_offset=real_offset, real_seg=real_seg,
                     segment=self.__segment.name)
@@ -1329,8 +1338,10 @@ class Parser:
             raise NotImplementedError('Unknown Token: ' + str(values))
 
     def datadir_action(self, label, type, args, raw='', line_number=0):
+        if self.__cur_seg_offset > 0xffff:
+            return
         if self.__cur_seg_offset & 0xff == 0:
-            logging.info("      Current offset %04x" % self.__cur_seg_offset)
+            logging.info(f"      Current offset {self.__cur_seg_offset:x} line={line_number}")
         isstruct = len(self.struct_names_stack) != 0
 
         label = self.mangle_label(label)
@@ -1391,6 +1402,7 @@ class Parser:
         # self.h_data += h
 
         # logging.debug("~~        self.assertEqual(parser_instance.parse_data_line_whole(line='"+str(line)+"'),"+str(("".join(c), "".join(h), offset2 - offset))+")")
+        self.flow_terminated = True
         return data  # c, h, size
 
     def merge_data_bytes(self):
@@ -1417,6 +1429,8 @@ class Parser:
 
     def adjust_offset_to_real(self, raw, label):
         absolute_offset, real_offset, _ = self.get_lst_offsets(raw)
+        if self.itislst and real_offset > 0xffff:  # IDA issue
+            return
         if absolute_offset:
             self.move_offset(absolute_offset, raw)
             if self.__cur_seg_offset > real_offset:
@@ -1626,6 +1640,10 @@ class Parser:
         o.line_number = line_number
         if self.current_macro == None:
             _, o.real_offset, o.real_seg = self.get_lst_offsets(raw)
+            if not self.need_label and o.real_seg and len(self.procs_start) \
+                    and (o.real_seg*0x10+o.real_offset) in self.procs_start:
+                logging.warning(f"Add a label since run-time info contain flow enter at this address {o.real_seg:x}:{o.real_offset:x} line={line_number}")
+                self.need_label = True
             if self.need_label and self.flow_terminated:
                 logging.warning(f"Flow terminated and it was no label yet line={line_number}")
                 if o.real_seg:
@@ -1650,11 +1668,11 @@ class Parser:
 
     def collect_labels(self, target, operation):
         for arg in operation.args:
-            s = Token.find_tokens(arg, 'LABEL')
+            labels = Token.find_tokens(arg, 'LABEL')
             #  If it is call to a proc then does not take it into account
             #  TODO: check for calls into middle of proc
-            if s and not operation.cmd.startswith('call'):
-                label = s[0]
+            if labels and not operation.cmd.startswith('call') and not (self.args.mergeprocs == 'separate' and operation.cmd == 'jmp'):
+                label = labels[0]
                 target.add(self.mangle_label(label))
 
     def action_ends(self):
@@ -1676,3 +1694,15 @@ class Parser:
 
     def get_segments(self):
         return self.segments
+
+    def parse_rt_info(self, name):
+        #dbx_img_offset = int(self.args.loadsegment, 0)  # para
+        #ida_load = 0x1000
+
+        try:
+            with open(name+".json") as infile:
+                logging.info(f' *** Loading {name}.json')
+                j = jsonpickle.decode(infile.read())
+                self.initial_procs_start = self.procs_start = set(j['Jumps'])
+        except FileNotFoundError:
+            pass

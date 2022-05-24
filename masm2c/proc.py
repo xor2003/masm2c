@@ -11,6 +11,7 @@ from masm2c.Token import Token
 from masm2c import op
 
 # label_re = re.compile(r'^([\S@]+)::?(.*)$')  # speed
+
 PTRDIR = 'ptrdir'
 
 
@@ -114,6 +115,7 @@ class Proc(object):
         o = cl(args)
         # o.comments = comments
         o.cmd = instruction.lower()
+        o.syntetic = False
         # logging.info("~1~2~ " + o.command + " ~ " + o.cmd)
         return o
 
@@ -183,7 +185,7 @@ class Proc(object):
             r.append(i.__str__())
         return "\n".join(r)
 
-    def enrich_command(self, stmt, full_command, itislst):
+    def set_instruction_compare_subclass(self, stmt, full_command, itislst):
         def expr_is_register(e):
             return isinstance(e, Token) and isinstance(e.value, Token) and e.value.type in ['register',
                                                                                             'segmentregister']
@@ -204,9 +206,9 @@ class Proc(object):
                    isinstance(e.args[0], Token) and isinstance(e.args[0].value, Token) and e.args[0].value.type == 'segmentregister' and \
                    e.args[0].value.value == 'ss'
 
-        if self.is_flow_change_stmt(stmt):
+        if self.is_flow_change_stmt(stmt) and not stmt.syntetic:
             trace_mode = 'J'
-        elif not itislst or stmt.cmd.startswith('int') or stmt.cmd in ['out', 'in'] or expr_is_mov_ss(stmt):
+        elif not itislst or stmt.cmd.startswith('int') or stmt.cmd in ['out', 'in'] or expr_is_mov_ss(stmt) or stmt.syntetic:
             trace_mode = 'R'  # trace only. external impact or execution point change
         elif cmd_impacting_only_registers(stmt):
             trace_mode = 'T'  # compare execution with dosbox. registers only impact
@@ -253,7 +255,7 @@ class Proc(object):
             visitor.body += f'cs={stmt.real_seg:#04x};eip={stmt.real_offset:#08x}; '
         full_command = prefix + command
         if full_command:
-            full_command = self.enrich_command(stmt, full_command, visitor._context.itislst)
+            full_command = self.set_instruction_compare_subclass(stmt, full_command, visitor._context.itislst)
         full_line = visitor.label + visitor.dispatch + full_command
         return full_line
 
@@ -262,14 +264,16 @@ class Proc(object):
         return s
 
     def if_terminated_proc(self):
-        '''Check if proc was terminated with jump or ret to know if execution flow contiues across function end'''
+        '''Check if proc was terminated with jump or ret to know if execution flow continues across function end'''
         if self.stmts:
             last_stmt = self.stmts[-1]
             return self.is_flow_terminating_stmt(last_stmt)
         return True
 
     def is_flow_terminating_stmt(self, stmt):
-        return stmt.cmd.startswith('jmp') or stmt.cmd.startswith('ret') or stmt.cmd == 'iret'
+        from masm2c.cpp import Cpp
+        return (stmt.cmd.startswith('jmp') and not Cpp.isrelativejump(stmt.raw_line)) \
+               or stmt.cmd.startswith('ret') or stmt.cmd == 'iret'
 
     def is_return_point(self, stmt):
         return stmt.cmd.startswith('call')

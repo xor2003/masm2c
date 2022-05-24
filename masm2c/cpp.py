@@ -127,9 +127,6 @@ class SeparateProcStrategy:
                 result += f"extern bool {v.name}(m2c::_offsets, struct m2c::_STATE*);\n"
 
         result += """
-#ifndef DOSBOX_CUSTOM
-static
-#endif
 bool __dispatch_call(m2c::_offsets __disp, struct m2c::_STATE* _state);
 """
         return result
@@ -1513,12 +1510,13 @@ class Cpp(object):
                     o.filename = ''
                     o.line_number = 0
                     o.raw_line = ''
+                    o.syntetic = True
                     first_proc.stmts.append(o)
 
         self.generate_label_to_proc_map()
 
-        if self._context.args.mergeprocs == 'separate':
-            return
+        #if self._context.args.mergeprocs == 'separate':
+        #    return
 
         if not self._context.args.mergeprocs == 'single':
             for index, first_proc_name in enumerate(self.__procs):
@@ -1892,24 +1890,27 @@ struct Memory{
         if result:
             return "{;}"
         else:
-            label, far = self.jump_post(label)  # TODO
-            if self._context.has_global(label):
-                g = self._context.get_global(label)
-                proc_name = None
-                if isinstance(g, op.label):
-                    proc_name = self.label_to_proc[g.name]
-                elif isinstance(g, proc_module.Proc):
-                    proc_name = g.name
-                if proc_name and self.proc.name != proc_name:
-                        if g.name == proc_name:
+            label, _ = self.jump_post(label)
+            if self._context.args.mergeprocs == 'separate' and cmd.upper() == 'JMP':
+                if label == '__dispatch_call':
+                    return "return __dispatch_call(__disp, _state);"
+                if self._context.has_global(label):
+                    g = self._context.get_global(label)
+                    target_proc_name = None
+                    if isinstance(g, op.label):
+                        target_proc_name = self.label_to_proc[g.name]
+                    elif isinstance(g, proc_module.Proc):
+                        target_proc_name = g.name
+                    if target_proc_name and self.proc.name != target_proc_name:
+                        if g.name == target_proc_name:
                             return f"return {g.name}(0, _state);"
-                        return f"return {proc_name}(m2c::k{label}, _state);"
-            if label == '__dispatch_call':
-                return "return __dispatch_call(__disp, _state);"
+                        else:
+                            return f"return {target_proc_name}(m2c::k{label}, _state);"
 
             return "%s(%s)" % (cmd.upper(), label)
 
-    def isrelativejump(self, label):
+    @staticmethod
+    def isrelativejump(label):
         result = '$' in str(label)  # skip j* $+2
         return result
 

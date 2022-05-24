@@ -93,6 +93,7 @@ def parse_args(args):
         dest="passes",
         help="How many parsing passes (default: 2)",
         nargs=1,
+        type=int,
         choices=[1, 2],
         default=2,
     )
@@ -166,9 +167,11 @@ def process(i, args):
 
     counter = Parser.c_dummy_label
 
+    p.parse_rt_info(outname)
     if args.passes >= 2:
         p.parse_file(name)
         p.next_pass(counter)
+
     context = p.parse_file(name)
 
     generator = Cpp(context, outfile=outname, skip_output=[])
