@@ -72,7 +72,7 @@ log_debug("decreasedeep m_deep=%d ",m_deep);
 //pop(0);
 //m_deep=m_currentdeep-1;
 --m_deep;
-log_debug("m_deep=%d ",m_deep);
+log_debug("m_deep=%d \n",m_deep);
 }
         bool ShadowStack::needtoskipcalls(){
 /*

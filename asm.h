@@ -728,8 +728,30 @@ inline db MSB(D a)  // get highest bit
 
     extern class ShadowStack shadow_stack;
 
+#define GET_DF() m2cflags.getDF()
+#define GET_CF() m2cflags.getCF()
+#define GET_AF() m2cflags.getAF()
+#define GET_OF() m2cflags.getOF()
+#define GET_SF() m2cflags.getSF()
+#define GET_ZF() m2cflags.getZF()
+#define GET_PF() m2cflags.getPF()
+#define GET_IF() m2cflags.getIF()
+#define AFFECT_DF(a) m2cflags.setDF(a)
+#define AFFECT_CF(a) m2cflags.setCF(a)
+#define AFFECT_AF(a) m2cflags.setAF(a)
+#define AFFECT_OF(a) m2cflags.setOF(a)
+#define AFFECT_IF(a) m2cflags.setIF(a)
+#define ISNEGATIVE(f, a) ( (a) & (1 << (m2c::bitsizeof(f)-1)) )
+#define AFFECT_SF(a) m2cflags.setSF(a)
+#define AFFECT_SF_(f, a) {AFFECT_SF(ISNEGATIVE(f,a));}
+#define AFFECT_ZF(a) m2cflags.setZF(a)
+#define AFFECT_ZFifz(a) m2cflags.setZF((a)==0)
+#define AFFECT_PF(a) m2cflags.setPF(a)
+
 #ifdef DOSBOX_CUSTOM
+
 #define PUSH(a) {m2c::PUSH_(a);}
+#define POP(a) {m2c::POP_(a);}
 
     template<typename S>
     void PUSH_(S a);
@@ -746,7 +768,6 @@ inline db MSB(D a)  // get highest bit
     template<>
     inline void PUSH_<int>(int a) { fix_segs();CPU_Push32(a); }
 
- #define POP(a) {m2c::POP_(a);}
 
     inline void POP_(dw &a) { fix_segs();a = CPU_Pop16(); }
 
@@ -754,34 +775,38 @@ inline db MSB(D a)  // get highest bit
 
 #else
 
+#define PUSH(a) {m2c::PUSH_(a, _state);}
+#define POP(a) {m2c::POP_(a, _state);}
+
+    template<typename S>
+    inline void PUSH_(S a, _STATE *_state)
+{
+  X86_REGREF
+  dd averytemporary=a;stackPointer-=sizeof(a); 
+		memcpy (m2c::raddr_(ss,stackPointer), &averytemporary, sizeof (a)); 
+ #ifdef M2CDEBUG
+ 		m2c::log_debug("after push %x\n",stackPointer); 
+ #endif
 #ifndef NO_SHADOW_STACK
- #define SHADOW_PUSH(a) m2c::shadow_stack.push(_state,(dd)(a))
- #define SHADOW_POP() m2c::shadow_stack.pop(_state)
-#else
- #define SHADOW_PUSH(a)
- #define SHADOW_POP()
+  m2c::shadow_stack.push(_state,(dd)(a));
 #endif
 
- #ifdef M2CDEBUG
-  #define PUSH(a) {dd averytemporary=a;stackPointer-=sizeof(a); \
-		memcpy (m2c::raddr_(ss,stackPointer), &averytemporary, sizeof (a)); \
-		m2c::log_debug("after push %x\n",stackPointer); \
-               SHADOW_PUSH(a); \
                }
 //		assert((m2c::raddr_(ss,stackPointer) - ((db*)&stack))>8);
 
-  #define POP(a) {SHADOW_POP();\
-                  m2c::log_debug("before pop %x\n",stackPointer);memcpy (&a, m2c::raddr_(ss,stackPointer), sizeof (a));stackPointer+=sizeof(a);}
- #else
-   #define PUSH(a) {dd averytemporary=a;stackPointer-=sizeof(a); \
-		memcpy (m2c::raddr_(ss,stackPointer), &averytemporary, sizeof (a));\
-               SHADOW_PUSH(a); \
-               }
-
-   #define POP(a) {SHADOW_POP();\
-                   memcpy (&a, m2c::raddr_(ss,stackPointer), sizeof (a));stackPointer+=sizeof(a);}
+    template<typename S>
+    inline void POP_(S& a, _STATE *_state)
+{
+  X86_REGREF
+ #ifndef NO_SHADOW_STACK
+  m2c::shadow_stack.pop(_state);
  #endif
 
+ #ifdef M2CDEBUG
+     m2c::log_debug("before pop %x\n",stackPointer);
+ #endif
+  memcpy (&a, m2c::raddr_(ss,stackPointer), sizeof (a));stackPointer+=sizeof(a);
+}
 #endif
 
 #define PUSHAD m2c::PUSHAD_(_state)
@@ -813,28 +838,34 @@ inline db MSB(D a)  // get highest bit
         POP(eax);
     }
 
-#define PUSHA {dw oldsp=sp;PUSH(ax);PUSH(cx);PUSH(dx);PUSH(bx); PUSH(oldsp);PUSH(bp);PUSH(si);PUSH(di);}
-#define POPA {POP(di);POP(si);POP(bp); POP(bx); POP(bx);POP(dx);POP(cx);POP(ax); }
+#define PUSHA m2c::PUSHA_(_state)
 
-#define GET_DF() m2cflags.getDF()
-#define GET_CF() m2cflags.getCF()
-#define GET_AF() m2cflags.getAF()
-#define GET_OF() m2cflags.getOF()
-#define GET_SF() m2cflags.getSF()
-#define GET_ZF() m2cflags.getZF()
-#define GET_PF() m2cflags.getPF()
-#define GET_IF() m2cflags.getIF()
-#define AFFECT_DF(a) m2cflags.setDF(a)
-#define AFFECT_CF(a) m2cflags.setCF(a)
-#define AFFECT_AF(a) m2cflags.setAF(a)
-#define AFFECT_OF(a) m2cflags.setOF(a)
-#define AFFECT_IF(a) m2cflags.setIF(a)
-#define ISNEGATIVE(f,a) ( (a) & (1 << (m2c::bitsizeof(f)-1)) )
-#define AFFECT_SF(a) m2cflags.setSF(a)
-#define AFFECT_SF_(f, a) {AFFECT_SF(ISNEGATIVE(f,a));}
-#define AFFECT_ZF(a) m2cflags.setZF(a)
-#define AFFECT_ZFifz(a) m2cflags.setZF((a)==0)
-#define AFFECT_PF(a) m2cflags.setPF(a)
+    static void PUSHA_(_STATE* _state) {
+        X86_REGREF
+        dd oldsp = sp;
+        PUSH(ax);
+        PUSH(cx);
+        PUSH(dx);
+        PUSH(bx);
+        PUSH(oldsp);
+        PUSH(bp);
+        PUSH(si);
+        PUSH(di);
+    }
+
+#define POPA m2c::POPA_(_state)
+
+    static void POPA_(_STATE* _state) {
+        X86_REGREF
+        POP(di);
+        POP(si);
+        POP(bp);
+        POP(bx);
+        POP(bx);
+        POP(dx);
+        POP(cx);
+        POP(ax);
+    }
 
 #if DOSBOX_CUSTOM
 #define STI {CPU_STI();}

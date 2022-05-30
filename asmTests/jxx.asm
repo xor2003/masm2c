@@ -253,6 +253,13 @@ call test40
 cmp si, sp
 jne failure
 
+mov bp,41 ; push ret
+call test41
+cmp si, sp
+jne failure
+cmp bp, 44
+jne failure
+
 good:
 MOV al,0
 JMP exitLabel
@@ -335,11 +342,29 @@ test40_lbl::
 ret
 test40_ endp
 
+test41 proc
+call test41_lbl2
+inc bp
+ret
+jmp failure
+
+test41_lbl2::
+push test41ofs
+inc bp
+ret
+jmp failure
+
+test41_lbl::
+inc bp
+ret
+test41 endp
+
 _TEXT   ends ;IGNORE
 
 _DATA   segment use16 public 'DATA' ;IGNORE
 a db 0ffh,0dfh,0h
 BBB db 2
+test41ofs dw offset test41_lbl
 _DATA   ends ;IGNORE
 
 stackseg   segment para stack 'STACK' ;IGNORE
