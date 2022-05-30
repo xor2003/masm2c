@@ -466,7 +466,7 @@ template<class S>
 */
     }
 
-#if DOSBOX_CUSTOM
+#if DOSBOX_CUSTOM && M2CDEBUG != -1 
     static inline db getdata(const db &s) {
         if (m2c::isaddrbelongtom(&s)) {
             check_type(s);
@@ -601,7 +601,7 @@ inline long getdata(const long& s)
 { return s; }
 
     static inline void setdata(db *d, db s) {
-  #if SDL_MAJOR_VERSION == 2 && !defined(NOSDL)
+  #if SDL_MAJOR_VERSION == 2 && !defined(NOSDL) && M2CDEBUG != -1
 	if (m2c::isaddrbelongtom(d) && d < ((db*)&m) + 0xc0000 && d >= ((db*)&m) + 0xa0000)
 		{ 
           dw di = d - ((db*)&m) - 0xa0000;
@@ -868,7 +868,7 @@ inline db MSB(D a)  // get highest bit
     }
 
 #if DOSBOX_CUSTOM
-#define STI {CPU_STI();}
+#define STI {CPU_STI();m2c::execute_irqs();}
 #define CLI {CPU_CLI();}
 #else
 #define STI UNIMPLEMENTED
@@ -1477,7 +1477,7 @@ template <class D>
 #define JGE(label) if (GET_SF()==GET_OF()) GOTOLABEL(label)
 #define JNL(label) JGE(label)
 
-#define JG(label) if (!GET_ZF() && !GET_SF()) GOTOLABEL(label)
+#define JG(label) if (!GET_ZF() && GET_SF()==GET_OF()) GOTOLABEL(label)
 #define JNLE(label) JG(label)
 
 #define JLE(label) if (GET_ZF() || GET_SF()!=GET_OF()) GOTOLABEL(label) // TODO
@@ -1578,7 +1578,7 @@ template <class D, class S>
 #define CMC {AFFECT_CF(GET_CF() ^ 1);}
 
 #define PUSHF {PUSH( (m2c::MWORDSIZE)m2cflags.getvalue() );}
-#define POPF {m2c::MWORDSIZE averytemporary; POP(averytemporary); m2cflags.setvalue(averytemporary);} //286+
+#define POPF {m2c::MWORDSIZE averytemporary; POP(averytemporary); m2cflags.setvalue(averytemporary);m2c::execute_irqs();}
 
 // directjeu nosetjmp,2
 // directmenu
@@ -1676,19 +1676,16 @@ struct StackPop
         X86_REGREF
         if (debug>2) log_debug("before ret %x\n", stackPointer);
 
-#ifndef NO_SHADOW_STACK
         shadow_stack.itisret();
-#endif
         POP(ip);
         bool ret(true);
-#ifndef NO_SHADOW_STACK
         ret = shadow_stack.itwascall();
         int skip = shadow_stack.getneedtoskipcallndclean();
         if (!ret) {
             log_error("Warning. Return address wasn't created by native CALL (found %x)\n", ip);
 	}
-#endif
         esp += i;
+log_debug("retn target %x:%x\n", cs,ip);
         if (debug>2) {
             log_debug("after ret %x\n", stackPointer);
             m2c::_indent -= 1;
@@ -1701,8 +1698,8 @@ log_debug("~~will throw exception skip call=%d\n",skip);
 
 throw StackPop(skip);
 }
-        if (ret) {m2c::shadow_stack.decreasedeep();}
 #endif
+        if (ret) {m2c::shadow_stack.decreasedeep();}
 	return(ret);
     }
 
@@ -1725,7 +1722,6 @@ throw StackPop(skip);
         if (!ret) {
             log_error("Warning. Return address wasn't created by native CALL (found %x)\n", ip);
 //            m2c::stackDump();
-            exit(1);
         }
 //        log_error("~~RETF after 1pop\n");
 //        bool need = shadow_stack.needtoskipcalls();
@@ -1735,7 +1731,7 @@ throw StackPop(skip);
         POP(cs);
 //        log_error("~~RETF after 2pop\n");
         esp += i;
-log_debug("new %x:%x\n", cs,ip);
+log_debug("retf target %x:%x\n", cs,ip);
         if (debug>2) {
             log_debug("after retf %x\n", stackPointer);
             m2c::_indent -= 1;
@@ -1749,21 +1745,19 @@ log_debug("~~will throw exception skip call=%d\n",skip);
 throw StackPop(skip);
           }
 
-        m2c::shadow_stack.decreasedeep();
 #endif
+        m2c::shadow_stack.decreasedeep();
         return ret;
     }
 #define CALL(label, disp) {m2c::CALL_(label, _state, disp);}
     static bool CALL_(m2cf *label, struct _STATE *_state, _offsets _i = 0) {
  X86_REGREF
         from_callf = true;
-#ifndef NO_SHADOW_STACK
         shadow_stack.itiscall();
-#endif
 //        m2c::MWORDSIZE averytemporary8 = 'xy';
         m2c::MWORDSIZE return_addr = ip;
 #if DOSBOX_CUSTOM
-        if (compare_instructions) ip+=inst_size(cs,eip);
+        if (compare_instructions) eip+=inst_size(cs,eip);
 #endif
         PUSH(return_addr);
 
@@ -1777,7 +1771,7 @@ throw StackPop(skip);
         try{
 	  label(_i, _state);
  if(return_addr != ip&& ((dw)(ip - return_addr)) > 5 ) {
-  log_error("~~Return address not equal to call addr %x %x\n",return_addr,ip);
+  log_error("~~Return address not equal to call addr: call from=%x poped ip=%x\n",return_addr,ip);
 return false;
  }
         }
@@ -1971,6 +1965,7 @@ extern  m2cf* _ENTRY_POINT_;
 
     extern void Jend();
 
+    extern bool Sstart(const char *file, int line, const char *instr);
     extern bool Tstart(const char *file, int line, const char *instr);
 
     extern void Tend(const char *file, int line, const char *instr);
