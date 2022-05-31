@@ -208,8 +208,10 @@ class Proc(object):
 
         if self.is_flow_change_stmt(stmt) and not stmt.syntetic:
             trace_mode = 'J'
-        elif not itislst or stmt.cmd.startswith('int') or stmt.cmd in ['out', 'in'] or expr_is_mov_ss(stmt) or stmt.syntetic:
-            trace_mode = 'R'  # trace only. external impact or execution point change
+        elif not itislst or stmt.syntetic:
+            trace_mode = 'R'  # trace only
+        elif stmt.cmd.startswith('int') or stmt.cmd in ['out', 'in'] or expr_is_mov_ss(stmt):
+            trace_mode = 'S'  # check for self-modification external impact or execution point change
         elif cmd_impacting_only_registers(stmt):
             trace_mode = 'T'  # compare execution with dosbox. registers only impact
         else:

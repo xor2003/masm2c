@@ -451,6 +451,8 @@ class Cpp(object):
                     value = f'offset({g.segment},{".".join(label)})'
                 elif isinstance(g, op.Struct):
                     value = f'offsetof({label[0]},{".".join(label[1:])})'
+                elif isinstance(g, (op._equ, op._assignment)):
+                    value = f'({label[0]})+offsetof({g.original_type},{".".join(label[1:])})'
                 else:
                     raise Exception('Not handled type ' + str(type(g)))
                 self.__indirection = IndirectionType.VALUE

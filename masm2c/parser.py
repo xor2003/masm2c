@@ -638,7 +638,7 @@ class Parser:
 
         logging.debug("set_global(name='%s',value=%s)" % (name, dump_object(value)))
         if name in self.__globals and self.pass_number == 1:
-            raise LookupError("global %s was already defined", name)
+            raise LookupError("global %s was already defined" % name)
         value.used = False
         self.__globals[name] = value
 
