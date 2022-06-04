@@ -11,7 +11,7 @@ fi
 
 rm test-i386_conv test-i386_conv.txt || true
 ##$CXX -O0  -I.. test-i386_conv.cpp -E -fpermissive > test-i386_conv.e
-$CXX -O0 -w -fpermissive -m32 -lm -I.. -DNO_SHADOW_STACK test-i386_conv.cpp -o test-i386_conv 2>&1 | tee -a result.txt
+$CXX -O0 -w -fpermissive -m32 -lm -I.. -DNOSDL -DNO_SHADOW_STACK -DM2CDEBUG=-1 test-i386_conv.cpp -o test-i386_conv 2>&1 | tee -a result.txt
 ## -ggdb3 -Og -Wa,-adhlns="test-i386_conv.lst" -fdata-sections -ffunction-sections -static -ftime-report
 
 #$CXX -O0 -ggdb3 -w -fpermissive -m32 -lm -I.. test-i386_brute.cpp -o  test-i386_brute

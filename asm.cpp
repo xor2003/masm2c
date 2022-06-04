@@ -95,7 +95,7 @@ namespace m2c {
 #else
   size_t debug = 0;
 #endif
-
+bool defered_irqs=false;
   size_t counter = 0;
 
     db _indent=0;

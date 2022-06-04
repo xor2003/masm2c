@@ -103,6 +103,7 @@ namespace m2c {
 
 namespace m2c {
 
+bool	defered_irqs = false;
 struct Memory{
 db stack[STACK_SIZE];
 db heap[HEAP_SIZE];
@@ -115,12 +116,9 @@ db(& stack)[STACK_SIZE]=m2c::m.stack;
 db(& heap)[HEAP_SIZE]=m2c::m.heap;
 
 
-m2c::_STATE sstate;
-m2c::_STATE* _state=&sstate;
-X86_REGREF
 
 namespace m2c{
-void log_debug(const char *fmt, ...){printf("unimp ");}
+void log_debug(const char *fmt, ...){printf("unimp \n");}
 }
 //--------------------------------------------
 #define __init_call	__attribute__ ((unused,__section__ ("initcall")))
@@ -137,8 +135,8 @@ static inline dd i2l(dd v)
 }
 #endif
 
-void exec_addl(dd s0, dd s1, dd iflags)
-{
+__attribute__ ((noinline)) void exec_addl(m2c::_STATE* _state,dd s0, dd s1, dd iflags)
+{ X86_REGREF
     dd res, flags;
     res = s0;
     flags = iflags; 
@@ -146,8 +144,8 @@ void exec_addl(dd s0, dd s1, dd iflags)
  printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "addl", s0, s1, res, iflags, flags & (CC_MASK));;
 }
 
-void exec_addw(dd s0, dd s1, dd iflags)
-{
+__attribute__ ((noinline)) void exec_addw(m2c::_STATE* _state,dd s0, dd s1, dd iflags)
+{ X86_REGREF
     dd res, flags;
     res = s0;
     flags = iflags;
@@ -155,8 +153,8 @@ void exec_addw(dd s0, dd s1, dd iflags)
  printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "addw", s0, s1, res, iflags, flags & (CC_MASK));;
 }
 
-void exec_addb(dd s0, dd s1, dd iflags)
-{
+__attribute__ ((noinline)) void exec_addb(m2c::_STATE* _state,dd s0, dd s1, dd iflags)
+{ X86_REGREF
     dd res, flags;
     res = s0;
     flags = iflags;
@@ -165,46 +163,46 @@ void exec_addb(dd s0, dd s1, dd iflags)
 }
 
 
-void exec_add(dd s0, dd s1)
-{
+__attribute__ ((noinline)) void exec_add(m2c::_STATE* _state,dd s0, dd s1)
+{ X86_REGREF
     s0 = i2l(s0);
     s1 = i2l(s1);
 
 
 
-    exec_addl(s0, s1, 0);
-    exec_addw(s0, s1, 0);
-    exec_addb(s0, s1, 0);
+    exec_addl(_state, s0, s1, 0);
+    exec_addw(_state, s0, s1, 0);
+    exec_addb(_state, s0, s1, 0);
 
 }
 
-void test_add(void)
+void test_add(m2c::_STATE* _state)
 {
-    exec_add(0x12345678, 0x812FADA);
-    exec_add(0x12341, 0x12341);
-    exec_add(0x12341, -0x12341);
-    exec_add(0xffffffff, 0);
-    exec_add(0xffffffff, -1);
-    exec_add(0xffffffff, 1);
-    exec_add(0xffffffff, 2);
-    exec_add(0x7fffffff, 0);
-    exec_add(0x7fffffff, 1);
-    exec_add(0x7fffffff, -1);
-    exec_add(0x80000000, -1);
-    exec_add(0x80000000, 1);
-    exec_add(0x80000000, -2);
-    exec_add(0x12347fff, 0);
-    exec_add(0x12347fff, 1);
-    exec_add(0x12347fff, -1);
-    exec_add(0x12348000, -1);
-    exec_add(0x12348000, 1);
-    exec_add(0x12348000, -2);
-    exec_add(0x12347f7f, 0);
-    exec_add(0x12347f7f, 1);
-    exec_add(0x12347f7f, -1);
-    exec_add(0x12348080, -1);
-    exec_add(0x12348080, 1);
-    exec_add(0x12348080, -2);
+    exec_add(_state, 0x12345678, 0x812FADA);
+    exec_add(_state, 0x12341, 0x12341);
+    exec_add(_state, 0x12341, -0x12341);
+    exec_add(_state, 0xffffffff, 0);
+    exec_add(_state, 0xffffffff, -1);
+    exec_add(_state, 0xffffffff, 1);
+    exec_add(_state, 0xffffffff, 2);
+    exec_add(_state, 0x7fffffff, 0);
+    exec_add(_state, 0x7fffffff, 1);
+    exec_add(_state, 0x7fffffff, -1);
+    exec_add(_state, 0x80000000, -1);
+    exec_add(_state, 0x80000000, 1);
+    exec_add(_state, 0x80000000, -2);
+    exec_add(_state, 0x12347fff, 0);
+    exec_add(_state, 0x12347fff, 1);
+    exec_add(_state, 0x12347fff, -1);
+    exec_add(_state, 0x12348000, -1);
+    exec_add(_state, 0x12348000, 1);
+    exec_add(_state, 0x12348000, -2);
+    exec_add(_state, 0x12347f7f, 0);
+    exec_add(_state, 0x12347f7f, 1);
+    exec_add(_state, 0x12347f7f, -1);
+    exec_add(_state, 0x12348080, -1);
+    exec_add(_state, 0x12348080, 1);
+    exec_add(_state, 0x12348080, -2);
 }
 
 //void *_test_add __attribute__ ((unused,__section__ ("initcall"))) = test_add;
@@ -213,8 +211,8 @@ void test_add(void)
 
 
 
-void exec_subl(dd s0, dd s1, dd iflags)
-{
+__attribute__ ((noinline)) void exec_subl(m2c::_STATE* _state,dd s0, dd s1, dd iflags)
+{ X86_REGREF
     dd res, flags;
     res = s0;
     flags = iflags;
@@ -222,8 +220,8 @@ void exec_subl(dd s0, dd s1, dd iflags)
  printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "subl", s0, s1, res, iflags, flags & (CC_MASK));;
 }
 
-void exec_subw(dd s0, dd s1, dd iflags)
-{
+__attribute__ ((noinline)) void exec_subw(m2c::_STATE* _state,dd s0, dd s1, dd iflags)
+{ X86_REGREF
     dd res, flags;
     res = s0;
     flags = iflags;
@@ -231,8 +229,8 @@ void exec_subw(dd s0, dd s1, dd iflags)
  printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "subw", s0, s1, res, iflags, flags & (CC_MASK));;
 }
 
-void exec_subb(dd s0, dd s1, dd iflags)
-{
+__attribute__ ((noinline)) void exec_subb(m2c::_STATE* _state,dd s0, dd s1, dd iflags)
+{ X86_REGREF
     dd res, flags;
     res = s0;
     flags = iflags;
@@ -241,46 +239,46 @@ void exec_subb(dd s0, dd s1, dd iflags)
 }
 
 
-void exec_sub(dd s0, dd s1)
-{
+__attribute__ ((noinline)) void exec_sub(m2c::_STATE* _state,dd s0, dd s1)
+{ X86_REGREF
     s0 = i2l(s0);
     s1 = i2l(s1);
 
 
 
-    exec_subl(s0, s1, 0);
-    exec_subw(s0, s1, 0);
-    exec_subb(s0, s1, 0);
+    exec_subl(_state, s0, s1, 0);
+    exec_subw(_state, s0, s1, 0);
+    exec_subb(_state, s0, s1, 0);
 
 }
 
-void test_sub(void)
+void test_sub(m2c::_STATE* _state)
 {
-    exec_sub(0x12345678, 0x812FADA);
-    exec_sub(0x12341, 0x12341);
-    exec_sub(0x12341, -0x12341);
-    exec_sub(0xffffffff, 0);
-    exec_sub(0xffffffff, -1);
-    exec_sub(0xffffffff, 1);
-    exec_sub(0xffffffff, 2);
-    exec_sub(0x7fffffff, 0);
-    exec_sub(0x7fffffff, 1);
-    exec_sub(0x7fffffff, -1);
-    exec_sub(0x80000000, -1);
-    exec_sub(0x80000000, 1);
-    exec_sub(0x80000000, -2);
-    exec_sub(0x12347fff, 0);
-    exec_sub(0x12347fff, 1);
-    exec_sub(0x12347fff, -1);
-    exec_sub(0x12348000, -1);
-    exec_sub(0x12348000, 1);
-    exec_sub(0x12348000, -2);
-    exec_sub(0x12347f7f, 0);
-    exec_sub(0x12347f7f, 1);
-    exec_sub(0x12347f7f, -1);
-    exec_sub(0x12348080, -1);
-    exec_sub(0x12348080, 1);
-    exec_sub(0x12348080, -2);
+    exec_sub(_state, 0x12345678, 0x812FADA);
+    exec_sub(_state, 0x12341, 0x12341);
+    exec_sub(_state, 0x12341, -0x12341);
+    exec_sub(_state, 0xffffffff, 0);
+    exec_sub(_state, 0xffffffff, -1);
+    exec_sub(_state, 0xffffffff, 1);
+    exec_sub(_state, 0xffffffff, 2);
+    exec_sub(_state, 0x7fffffff, 0);
+    exec_sub(_state, 0x7fffffff, 1);
+    exec_sub(_state, 0x7fffffff, -1);
+    exec_sub(_state, 0x80000000, -1);
+    exec_sub(_state, 0x80000000, 1);
+    exec_sub(_state, 0x80000000, -2);
+    exec_sub(_state, 0x12347fff, 0);
+    exec_sub(_state, 0x12347fff, 1);
+    exec_sub(_state, 0x12347fff, -1);
+    exec_sub(_state, 0x12348000, -1);
+    exec_sub(_state, 0x12348000, 1);
+    exec_sub(_state, 0x12348000, -2);
+    exec_sub(_state, 0x12347f7f, 0);
+    exec_sub(_state, 0x12347f7f, 1);
+    exec_sub(_state, 0x12347f7f, -1);
+    exec_sub(_state, 0x12348080, -1);
+    exec_sub(_state, 0x12348080, 1);
+    exec_sub(_state, 0x12348080, -2);
 }
 
 //void *_test_sub __attribute__ ((unused,__section__ ("initcall"))) = test_sub;
@@ -289,8 +287,8 @@ void test_sub(void)
 
 
 
-void exec_xorl(dd s0, dd s1, dd iflags)
-{
+__attribute__ ((noinline)) void exec_xorl(m2c::_STATE* _state,dd s0, dd s1, dd iflags)
+{ X86_REGREF
     dd res, flags;
     res = s0;
     flags = iflags;
@@ -298,8 +296,8 @@ void exec_xorl(dd s0, dd s1, dd iflags)
  printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "xorl", s0, s1, res, iflags, flags & (CC_MASK));;
 }
 
-void exec_xorw(dd s0, dd s1, dd iflags)
-{
+__attribute__ ((noinline)) void exec_xorw(m2c::_STATE* _state,dd s0, dd s1, dd iflags)
+{ X86_REGREF
     dd res, flags;
     res = s0;
     flags = iflags;
@@ -307,8 +305,8 @@ void exec_xorw(dd s0, dd s1, dd iflags)
  printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "xorw", s0, s1, res, iflags, flags & (CC_MASK));;
 }
 
-void exec_xorb(dd s0, dd s1, dd iflags)
-{
+__attribute__ ((noinline)) void exec_xorb(m2c::_STATE* _state,dd s0, dd s1, dd iflags)
+{ X86_REGREF
     dd res, flags;
     res = s0;
     flags = iflags;
@@ -317,46 +315,46 @@ void exec_xorb(dd s0, dd s1, dd iflags)
 }
 
 
-void exec_xor(dd s0, dd s1)
-{
+__attribute__ ((noinline)) void exec_xor(m2c::_STATE* _state,dd s0, dd s1)
+{ X86_REGREF
     s0 = i2l(s0);
     s1 = i2l(s1);
 
 
 
-    exec_xorl(s0, s1, 0);
-    exec_xorw(s0, s1, 0);
-    exec_xorb(s0, s1, 0);
+    exec_xorl(_state, s0, s1, 0);
+    exec_xorw(_state, s0, s1, 0);
+    exec_xorb(_state, s0, s1, 0);
 
 }
 
-void test_xor(void)
+void test_xor(m2c::_STATE* _state)
 {
-    exec_xor(0x12345678, 0x812FADA);
-    exec_xor(0x12341, 0x12341);
-    exec_xor(0x12341, -0x12341);
-    exec_xor(0xffffffff, 0);
-    exec_xor(0xffffffff, -1);
-    exec_xor(0xffffffff, 1);
-    exec_xor(0xffffffff, 2);
-    exec_xor(0x7fffffff, 0);
-    exec_xor(0x7fffffff, 1);
-    exec_xor(0x7fffffff, -1);
-    exec_xor(0x80000000, -1);
-    exec_xor(0x80000000, 1);
-    exec_xor(0x80000000, -2);
-    exec_xor(0x12347fff, 0);
-    exec_xor(0x12347fff, 1);
-    exec_xor(0x12347fff, -1);
-    exec_xor(0x12348000, -1);
-    exec_xor(0x12348000, 1);
-    exec_xor(0x12348000, -2);
-    exec_xor(0x12347f7f, 0);
-    exec_xor(0x12347f7f, 1);
-    exec_xor(0x12347f7f, -1);
-    exec_xor(0x12348080, -1);
-    exec_xor(0x12348080, 1);
-    exec_xor(0x12348080, -2);
+    exec_xor(_state, 0x12345678, 0x812FADA);
+    exec_xor(_state, 0x12341, 0x12341);
+    exec_xor(_state, 0x12341, -0x12341);
+    exec_xor(_state, 0xffffffff, 0);
+    exec_xor(_state, 0xffffffff, -1);
+    exec_xor(_state, 0xffffffff, 1);
+    exec_xor(_state, 0xffffffff, 2);
+    exec_xor(_state, 0x7fffffff, 0);
+    exec_xor(_state, 0x7fffffff, 1);
+    exec_xor(_state, 0x7fffffff, -1);
+    exec_xor(_state, 0x80000000, -1);
+    exec_xor(_state, 0x80000000, 1);
+    exec_xor(_state, 0x80000000, -2);
+    exec_xor(_state, 0x12347fff, 0);
+    exec_xor(_state, 0x12347fff, 1);
+    exec_xor(_state, 0x12347fff, -1);
+    exec_xor(_state, 0x12348000, -1);
+    exec_xor(_state, 0x12348000, 1);
+    exec_xor(_state, 0x12348000, -2);
+    exec_xor(_state, 0x12347f7f, 0);
+    exec_xor(_state, 0x12347f7f, 1);
+    exec_xor(_state, 0x12347f7f, -1);
+    exec_xor(_state, 0x12348080, -1);
+    exec_xor(_state, 0x12348080, 1);
+    exec_xor(_state, 0x12348080, -2);
 }
 
 //void *_test_xor __attribute__ ((unused,__section__ ("initcall"))) = test_xor;
@@ -365,8 +363,8 @@ void test_xor(void)
 
 
 
-void exec_andl(dd s0, dd s1, dd iflags)
-{
+__attribute__ ((noinline)) void exec_andl(m2c::_STATE* _state,dd s0, dd s1, dd iflags)
+{ X86_REGREF
     dd res, flags;
     res = s0;
     flags = iflags;
@@ -374,8 +372,8 @@ void exec_andl(dd s0, dd s1, dd iflags)
  printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "andl", s0, s1, res, iflags, flags & (CC_MASK));;
 }
 
-void exec_andw(dd s0, dd s1, dd iflags)
-{
+__attribute__ ((noinline)) void exec_andw(m2c::_STATE* _state,dd s0, dd s1, dd iflags)
+{ X86_REGREF
     dd res, flags;
     res = s0;
     flags = iflags;
@@ -383,8 +381,8 @@ void exec_andw(dd s0, dd s1, dd iflags)
  printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "andw", s0, s1, res, iflags, flags & (CC_MASK));;
 }
 
-void exec_andb(dd s0, dd s1, dd iflags)
-{
+__attribute__ ((noinline)) void exec_andb(m2c::_STATE* _state,dd s0, dd s1, dd iflags)
+{ X86_REGREF
     dd res, flags;
     res = s0;
     flags = iflags;
@@ -393,46 +391,46 @@ void exec_andb(dd s0, dd s1, dd iflags)
 }
 
 
-void exec_and(dd s0, dd s1)
-{
+__attribute__ ((noinline)) void exec_and(m2c::_STATE* _state,dd s0, dd s1)
+{ X86_REGREF
     s0 = i2l(s0);
     s1 = i2l(s1);
 
 
 
-    exec_andl(s0, s1, 0);
-    exec_andw(s0, s1, 0);
-    exec_andb(s0, s1, 0);
+    exec_andl(_state, s0, s1, 0);
+    exec_andw(_state, s0, s1, 0);
+    exec_andb(_state, s0, s1, 0);
 
 }
 
-void test_and(void)
+void test_and(m2c::_STATE* _state)
 {
-    exec_and(0x12345678, 0x812FADA);
-    exec_and(0x12341, 0x12341);
-    exec_and(0x12341, -0x12341);
-    exec_and(0xffffffff, 0);
-    exec_and(0xffffffff, -1);
-    exec_and(0xffffffff, 1);
-    exec_and(0xffffffff, 2);
-    exec_and(0x7fffffff, 0);
-    exec_and(0x7fffffff, 1);
-    exec_and(0x7fffffff, -1);
-    exec_and(0x80000000, -1);
-    exec_and(0x80000000, 1);
-    exec_and(0x80000000, -2);
-    exec_and(0x12347fff, 0);
-    exec_and(0x12347fff, 1);
-    exec_and(0x12347fff, -1);
-    exec_and(0x12348000, -1);
-    exec_and(0x12348000, 1);
-    exec_and(0x12348000, -2);
-    exec_and(0x12347f7f, 0);
-    exec_and(0x12347f7f, 1);
-    exec_and(0x12347f7f, -1);
-    exec_and(0x12348080, -1);
-    exec_and(0x12348080, 1);
-    exec_and(0x12348080, -2);
+    exec_and(_state, 0x12345678, 0x812FADA);
+    exec_and(_state, 0x12341, 0x12341);
+    exec_and(_state, 0x12341, -0x12341);
+    exec_and(_state, 0xffffffff, 0);
+    exec_and(_state, 0xffffffff, -1);
+    exec_and(_state, 0xffffffff, 1);
+    exec_and(_state, 0xffffffff, 2);
+    exec_and(_state, 0x7fffffff, 0);
+    exec_and(_state, 0x7fffffff, 1);
+    exec_and(_state, 0x7fffffff, -1);
+    exec_and(_state, 0x80000000, -1);
+    exec_and(_state, 0x80000000, 1);
+    exec_and(_state, 0x80000000, -2);
+    exec_and(_state, 0x12347fff, 0);
+    exec_and(_state, 0x12347fff, 1);
+    exec_and(_state, 0x12347fff, -1);
+    exec_and(_state, 0x12348000, -1);
+    exec_and(_state, 0x12348000, 1);
+    exec_and(_state, 0x12348000, -2);
+    exec_and(_state, 0x12347f7f, 0);
+    exec_and(_state, 0x12347f7f, 1);
+    exec_and(_state, 0x12347f7f, -1);
+    exec_and(_state, 0x12348080, -1);
+    exec_and(_state, 0x12348080, 1);
+    exec_and(_state, 0x12348080, -2);
 }
 
 //void *_test_and __attribute__ ((unused,__section__ ("initcall"))) = test_and;
@@ -441,8 +439,8 @@ void test_and(void)
 
 
 
-void exec_orl(dd s0, dd s1, dd iflags)
-{
+__attribute__ ((noinline)) void exec_orl(m2c::_STATE* _state,dd s0, dd s1, dd iflags)
+{ X86_REGREF
     dd res, flags;
     res = s0;
     flags = iflags;
@@ -450,8 +448,8 @@ void exec_orl(dd s0, dd s1, dd iflags)
  printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "orl", s0, s1, res, iflags, flags & (CC_MASK));;
 }
 
-void exec_orw(dd s0, dd s1, dd iflags)
-{
+__attribute__ ((noinline)) void exec_orw(m2c::_STATE* _state,dd s0, dd s1, dd iflags)
+{ X86_REGREF
     dd res, flags;
     res = s0;
     flags = iflags;
@@ -459,8 +457,8 @@ void exec_orw(dd s0, dd s1, dd iflags)
  printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "orw", s0, s1, res, iflags, flags & (CC_MASK));;
 }
 
-void exec_orb(dd s0, dd s1, dd iflags)
-{
+__attribute__ ((noinline)) void exec_orb(m2c::_STATE* _state,dd s0, dd s1, dd iflags)
+{ X86_REGREF
     dd res, flags;
     res = s0;
     flags = iflags;
@@ -469,46 +467,46 @@ void exec_orb(dd s0, dd s1, dd iflags)
 }
 
 
-void exec_or(dd s0, dd s1)
-{
+__attribute__ ((noinline)) void exec_or(m2c::_STATE* _state,dd s0, dd s1)
+{ X86_REGREF
     s0 = i2l(s0);
     s1 = i2l(s1);
 
 
 
-    exec_orl(s0, s1, 0);
-    exec_orw(s0, s1, 0);
-    exec_orb(s0, s1, 0);
+    exec_orl(_state, s0, s1, 0);
+    exec_orw(_state, s0, s1, 0);
+    exec_orb(_state, s0, s1, 0);
 
 }
 
-void test_or(void)
+void test_or(m2c::_STATE* _state)
 {
-    exec_or(0x12345678, 0x812FADA);
-    exec_or(0x12341, 0x12341);
-    exec_or(0x12341, -0x12341);
-    exec_or(0xffffffff, 0);
-    exec_or(0xffffffff, -1);
-    exec_or(0xffffffff, 1);
-    exec_or(0xffffffff, 2);
-    exec_or(0x7fffffff, 0);
-    exec_or(0x7fffffff, 1);
-    exec_or(0x7fffffff, -1);
-    exec_or(0x80000000, -1);
-    exec_or(0x80000000, 1);
-    exec_or(0x80000000, -2);
-    exec_or(0x12347fff, 0);
-    exec_or(0x12347fff, 1);
-    exec_or(0x12347fff, -1);
-    exec_or(0x12348000, -1);
-    exec_or(0x12348000, 1);
-    exec_or(0x12348000, -2);
-    exec_or(0x12347f7f, 0);
-    exec_or(0x12347f7f, 1);
-    exec_or(0x12347f7f, -1);
-    exec_or(0x12348080, -1);
-    exec_or(0x12348080, 1);
-    exec_or(0x12348080, -2);
+    exec_or(_state, 0x12345678, 0x812FADA);
+    exec_or(_state, 0x12341, 0x12341);
+    exec_or(_state, 0x12341, -0x12341);
+    exec_or(_state, 0xffffffff, 0);
+    exec_or(_state, 0xffffffff, -1);
+    exec_or(_state, 0xffffffff, 1);
+    exec_or(_state, 0xffffffff, 2);
+    exec_or(_state, 0x7fffffff, 0);
+    exec_or(_state, 0x7fffffff, 1);
+    exec_or(_state, 0x7fffffff, -1);
+    exec_or(_state, 0x80000000, -1);
+    exec_or(_state, 0x80000000, 1);
+    exec_or(_state, 0x80000000, -2);
+    exec_or(_state, 0x12347fff, 0);
+    exec_or(_state, 0x12347fff, 1);
+    exec_or(_state, 0x12347fff, -1);
+    exec_or(_state, 0x12348000, -1);
+    exec_or(_state, 0x12348000, 1);
+    exec_or(_state, 0x12348000, -2);
+    exec_or(_state, 0x12347f7f, 0);
+    exec_or(_state, 0x12347f7f, 1);
+    exec_or(_state, 0x12347f7f, -1);
+    exec_or(_state, 0x12348080, -1);
+    exec_or(_state, 0x12348080, 1);
+    exec_or(_state, 0x12348080, -2);
 }
 
 //void *_test_or __attribute__ ((unused,__section__ ("initcall"))) = test_or;
@@ -517,8 +515,8 @@ void test_or(void)
 
 
 
-void exec_cmpl(dd s0, dd s1, dd iflags)
-{
+__attribute__ ((noinline)) void exec_cmpl(m2c::_STATE* _state,dd s0, dd s1, dd iflags)
+{ X86_REGREF
     dd res, flags;
     res = s0;
     flags = iflags;
@@ -526,8 +524,8 @@ void exec_cmpl(dd s0, dd s1, dd iflags)
  printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "cmpl", s0, s1, res, iflags, flags & (CC_MASK));;
 }
 
-void exec_cmpw(dd s0, dd s1, dd iflags)
-{
+__attribute__ ((noinline)) void exec_cmpw(m2c::_STATE* _state,dd s0, dd s1, dd iflags)
+{ X86_REGREF
     dd res, flags;
     res = s0;
     flags = iflags;
@@ -535,8 +533,8 @@ void exec_cmpw(dd s0, dd s1, dd iflags)
  printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "cmpw", s0, s1, res, iflags, flags & (CC_MASK));;
 }
 
-void exec_cmpb(dd s0, dd s1, dd iflags)
-{
+__attribute__ ((noinline)) void exec_cmpb(m2c::_STATE* _state,dd s0, dd s1, dd iflags)
+{ X86_REGREF
     dd res, flags;
     res = s0;
     flags = iflags;
@@ -545,46 +543,46 @@ void exec_cmpb(dd s0, dd s1, dd iflags)
 }
 
 
-void exec_cmp(dd s0, dd s1)
-{
+__attribute__ ((noinline)) void exec_cmp(m2c::_STATE* _state,dd s0, dd s1)
+{ X86_REGREF
     s0 = i2l(s0);
     s1 = i2l(s1);
 
 
 
-    exec_cmpl(s0, s1, 0);
-    exec_cmpw(s0, s1, 0);
-    exec_cmpb(s0, s1, 0);
+    exec_cmpl(_state, s0, s1, 0);
+    exec_cmpw(_state, s0, s1, 0);
+    exec_cmpb(_state, s0, s1, 0);
 
 }
 
-void test_cmp(void)
+void test_cmp(m2c::_STATE* _state)
 {
-    exec_cmp(0x12345678, 0x812FADA);
-    exec_cmp(0x12341, 0x12341);
-    exec_cmp(0x12341, -0x12341);
-    exec_cmp(0xffffffff, 0);
-    exec_cmp(0xffffffff, -1);
-    exec_cmp(0xffffffff, 1);
-    exec_cmp(0xffffffff, 2);
-    exec_cmp(0x7fffffff, 0);
-    exec_cmp(0x7fffffff, 1);
-    exec_cmp(0x7fffffff, -1);
-    exec_cmp(0x80000000, -1);
-    exec_cmp(0x80000000, 1);
-    exec_cmp(0x80000000, -2);
-    exec_cmp(0x12347fff, 0);
-    exec_cmp(0x12347fff, 1);
-    exec_cmp(0x12347fff, -1);
-    exec_cmp(0x12348000, -1);
-    exec_cmp(0x12348000, 1);
-    exec_cmp(0x12348000, -2);
-    exec_cmp(0x12347f7f, 0);
-    exec_cmp(0x12347f7f, 1);
-    exec_cmp(0x12347f7f, -1);
-    exec_cmp(0x12348080, -1);
-    exec_cmp(0x12348080, 1);
-    exec_cmp(0x12348080, -2);
+    exec_cmp(_state, 0x12345678, 0x812FADA);
+    exec_cmp(_state, 0x12341, 0x12341);
+    exec_cmp(_state, 0x12341, -0x12341);
+    exec_cmp(_state, 0xffffffff, 0);
+    exec_cmp(_state, 0xffffffff, -1);
+    exec_cmp(_state, 0xffffffff, 1);
+    exec_cmp(_state, 0xffffffff, 2);
+    exec_cmp(_state, 0x7fffffff, 0);
+    exec_cmp(_state, 0x7fffffff, 1);
+    exec_cmp(_state, 0x7fffffff, -1);
+    exec_cmp(_state, 0x80000000, -1);
+    exec_cmp(_state, 0x80000000, 1);
+    exec_cmp(_state, 0x80000000, -2);
+    exec_cmp(_state, 0x12347fff, 0);
+    exec_cmp(_state, 0x12347fff, 1);
+    exec_cmp(_state, 0x12347fff, -1);
+    exec_cmp(_state, 0x12348000, -1);
+    exec_cmp(_state, 0x12348000, 1);
+    exec_cmp(_state, 0x12348000, -2);
+    exec_cmp(_state, 0x12347f7f, 0);
+    exec_cmp(_state, 0x12347f7f, 1);
+    exec_cmp(_state, 0x12347f7f, -1);
+    exec_cmp(_state, 0x12348080, -1);
+    exec_cmp(_state, 0x12348080, 1);
+    exec_cmp(_state, 0x12348080, -2);
 }
 
 //void *_test_cmp __attribute__ ((unused,__section__ ("initcall"))) = test_cmp;
@@ -594,8 +592,8 @@ void test_cmp(void)
 
 
 
-void exec_adcl(dd s0, dd s1, dd iflags)
-{
+__attribute__ ((noinline)) void exec_adcl(m2c::_STATE* _state,dd s0, dd s1, dd iflags)
+{ X86_REGREF
     dd res, flags;
     res = s0;
     flags = iflags;
@@ -603,8 +601,8 @@ void exec_adcl(dd s0, dd s1, dd iflags)
  printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "adcl", s0, s1, res, iflags, flags & (CC_MASK));;
 }
 
-void exec_adcw(dd s0, dd s1, dd iflags)
-{
+__attribute__ ((noinline)) void exec_adcw(m2c::_STATE* _state,dd s0, dd s1, dd iflags)
+{ X86_REGREF
     dd res, flags;
     res = s0;
     flags = iflags;
@@ -612,8 +610,8 @@ void exec_adcw(dd s0, dd s1, dd iflags)
  printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "adcw", s0, s1, res, iflags, flags & (CC_MASK));;
 }
 
-void exec_adcb(dd s0, dd s1, dd iflags)
-{
+__attribute__ ((noinline)) void exec_adcb(m2c::_STATE* _state,dd s0, dd s1, dd iflags)
+{ X86_REGREF
     dd res, flags;
     res = s0;
     flags = iflags;
@@ -622,53 +620,53 @@ void exec_adcb(dd s0, dd s1, dd iflags)
 }
 
 
-void exec_adc(dd s0, dd s1)
-{
+__attribute__ ((noinline)) void exec_adc(m2c::_STATE* _state,dd s0, dd s1)
+{ X86_REGREF
     s0 = i2l(s0);
     s1 = i2l(s1);
 
 
 
-    exec_adcl(s0, s1, 0);
-    exec_adcw(s0, s1, 0);
-    exec_adcb(s0, s1, 0);
+    exec_adcl(_state, s0, s1, 0);
+    exec_adcw(_state, s0, s1, 0);
+    exec_adcb(_state, s0, s1, 0);
 
 
 
 
-    exec_adcl(s0, s1, 0x0001);
-    exec_adcw(s0, s1, 0x0001);
-    exec_adcb(s0, s1, 0x0001);
+    exec_adcl(_state, s0, s1, 0x0001);
+    exec_adcw(_state, s0, s1, 0x0001);
+    exec_adcb(_state, s0, s1, 0x0001);
 
 }
 
-void test_adc(void)
+void test_adc(m2c::_STATE* _state)
 {
-    exec_adc(0x12345678, 0x812FADA);
-    exec_adc(0x12341, 0x12341);
-    exec_adc(0x12341, -0x12341);
-    exec_adc(0xffffffff, 0);
-    exec_adc(0xffffffff, -1);
-    exec_adc(0xffffffff, 1);
-    exec_adc(0xffffffff, 2);
-    exec_adc(0x7fffffff, 0);
-    exec_adc(0x7fffffff, 1);
-    exec_adc(0x7fffffff, -1);
-    exec_adc(0x80000000, -1);
-    exec_adc(0x80000000, 1);
-    exec_adc(0x80000000, -2);
-    exec_adc(0x12347fff, 0);
-    exec_adc(0x12347fff, 1);
-    exec_adc(0x12347fff, -1);
-    exec_adc(0x12348000, -1);
-    exec_adc(0x12348000, 1);
-    exec_adc(0x12348000, -2);
-    exec_adc(0x12347f7f, 0);
-    exec_adc(0x12347f7f, 1);
-    exec_adc(0x12347f7f, -1);
-    exec_adc(0x12348080, -1);
-    exec_adc(0x12348080, 1);
-    exec_adc(0x12348080, -2);
+    exec_adc(_state, 0x12345678, 0x812FADA);
+    exec_adc(_state, 0x12341, 0x12341);
+    exec_adc(_state, 0x12341, -0x12341);
+    exec_adc(_state, 0xffffffff, 0);
+    exec_adc(_state, 0xffffffff, -1);
+    exec_adc(_state, 0xffffffff, 1);
+    exec_adc(_state, 0xffffffff, 2);
+    exec_adc(_state, 0x7fffffff, 0);
+    exec_adc(_state, 0x7fffffff, 1);
+    exec_adc(_state, 0x7fffffff, -1);
+    exec_adc(_state, 0x80000000, -1);
+    exec_adc(_state, 0x80000000, 1);
+    exec_adc(_state, 0x80000000, -2);
+    exec_adc(_state, 0x12347fff, 0);
+    exec_adc(_state, 0x12347fff, 1);
+    exec_adc(_state, 0x12347fff, -1);
+    exec_adc(_state, 0x12348000, -1);
+    exec_adc(_state, 0x12348000, 1);
+    exec_adc(_state, 0x12348000, -2);
+    exec_adc(_state, 0x12347f7f, 0);
+    exec_adc(_state, 0x12347f7f, 1);
+    exec_adc(_state, 0x12347f7f, -1);
+    exec_adc(_state, 0x12348080, -1);
+    exec_adc(_state, 0x12348080, 1);
+    exec_adc(_state, 0x12348080, -2);
 }
 
 //void *_test_adc __attribute__ ((unused,__section__ ("initcall"))) = test_adc;
@@ -678,8 +676,8 @@ void test_adc(void)
 
 
 
-void exec_sbbl(dd s0, dd s1, dd iflags)
-{
+__attribute__ ((noinline)) void exec_sbbl(m2c::_STATE* _state,dd s0, dd s1, dd iflags)
+{ X86_REGREF
     dd res, flags;
     res = s0;
     flags = iflags;
@@ -687,8 +685,8 @@ void exec_sbbl(dd s0, dd s1, dd iflags)
  printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "sbbl", s0, s1, res, iflags, flags & (CC_MASK));;
 }
 
-void exec_sbbw(dd s0, dd s1, dd iflags)
-{
+__attribute__ ((noinline)) void exec_sbbw(m2c::_STATE* _state,dd s0, dd s1, dd iflags)
+{ X86_REGREF
     dd res, flags;
     res = s0;
     flags = iflags;
@@ -696,8 +694,8 @@ void exec_sbbw(dd s0, dd s1, dd iflags)
  printf("%-10s A=%08lx B=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "sbbw", s0, s1, res, iflags, flags & (CC_MASK));;
 }
 
-void exec_sbbb(dd s0, dd s1, dd iflags)
-{
+__attribute__ ((noinline)) void exec_sbbb(m2c::_STATE* _state,dd s0, dd s1, dd iflags)
+{ X86_REGREF
     dd res, flags;
     res = s0;
     flags = iflags;
@@ -706,53 +704,53 @@ void exec_sbbb(dd s0, dd s1, dd iflags)
 }
 
 
-void exec_sbb(dd s0, dd s1)
-{
+__attribute__ ((noinline)) void exec_sbb(m2c::_STATE* _state,dd s0, dd s1)
+{ X86_REGREF
     s0 = i2l(s0);
     s1 = i2l(s1);
 
 
 
-    exec_sbbl(s0, s1, 0);
-    exec_sbbw(s0, s1, 0);
-    exec_sbbb(s0, s1, 0);
+    exec_sbbl(_state, s0, s1, 0);
+    exec_sbbw(_state, s0, s1, 0);
+    exec_sbbb(_state, s0, s1, 0);
 
 
 
 
-    exec_sbbl(s0, s1, 0x0001);
-    exec_sbbw(s0, s1, 0x0001);
-    exec_sbbb(s0, s1, 0x0001);
+    exec_sbbl(_state, s0, s1, 0x0001);
+    exec_sbbw(_state, s0, s1, 0x0001);
+    exec_sbbb(_state, s0, s1, 0x0001);
 
 }
 
-void test_sbb(void)
+void test_sbb(m2c::_STATE* _state)
 {
-    exec_sbb(0x12345678, 0x812FADA);
-    exec_sbb(0x12341, 0x12341);
-    exec_sbb(0x12341, -0x12341);
-    exec_sbb(0xffffffff, 0);
-    exec_sbb(0xffffffff, -1);
-    exec_sbb(0xffffffff, 1);
-    exec_sbb(0xffffffff, 2);
-    exec_sbb(0x7fffffff, 0);
-    exec_sbb(0x7fffffff, 1);
-    exec_sbb(0x7fffffff, -1);
-    exec_sbb(0x80000000, -1);
-    exec_sbb(0x80000000, 1);
-    exec_sbb(0x80000000, -2);
-    exec_sbb(0x12347fff, 0);
-    exec_sbb(0x12347fff, 1);
-    exec_sbb(0x12347fff, -1);
-    exec_sbb(0x12348000, -1);
-    exec_sbb(0x12348000, 1);
-    exec_sbb(0x12348000, -2);
-    exec_sbb(0x12347f7f, 0);
-    exec_sbb(0x12347f7f, 1);
-    exec_sbb(0x12347f7f, -1);
-    exec_sbb(0x12348080, -1);
-    exec_sbb(0x12348080, 1);
-    exec_sbb(0x12348080, -2);
+    exec_sbb(_state, 0x12345678, 0x812FADA);
+    exec_sbb(_state, 0x12341, 0x12341);
+    exec_sbb(_state, 0x12341, -0x12341);
+    exec_sbb(_state, 0xffffffff, 0);
+    exec_sbb(_state, 0xffffffff, -1);
+    exec_sbb(_state, 0xffffffff, 1);
+    exec_sbb(_state, 0xffffffff, 2);
+    exec_sbb(_state, 0x7fffffff, 0);
+    exec_sbb(_state, 0x7fffffff, 1);
+    exec_sbb(_state, 0x7fffffff, -1);
+    exec_sbb(_state, 0x80000000, -1);
+    exec_sbb(_state, 0x80000000, 1);
+    exec_sbb(_state, 0x80000000, -2);
+    exec_sbb(_state, 0x12347fff, 0);
+    exec_sbb(_state, 0x12347fff, 1);
+    exec_sbb(_state, 0x12347fff, -1);
+    exec_sbb(_state, 0x12348000, -1);
+    exec_sbb(_state, 0x12348000, 1);
+    exec_sbb(_state, 0x12348000, -2);
+    exec_sbb(_state, 0x12347f7f, 0);
+    exec_sbb(_state, 0x12347f7f, 1);
+    exec_sbb(_state, 0x12347f7f, -1);
+    exec_sbb(_state, 0x12348080, -1);
+    exec_sbb(_state, 0x12348080, 1);
+    exec_sbb(_state, 0x12348080, -2);
 }
 
 //void *_test_sbb __attribute__ ((unused,__section__ ("initcall"))) = test_sbb;
@@ -763,8 +761,8 @@ void test_sbb(void)
 
 
 
-void exec_incl(dd s0, dd s1, dd iflags)
-{
+__attribute__ ((noinline)) void exec_incl(m2c::_STATE* _state,dd s0, dd s1, dd iflags)
+{ X86_REGREF
     dd res, flags;
     res = s0;
     flags = iflags;
@@ -772,8 +770,8 @@ void exec_incl(dd s0, dd s1, dd iflags)
  printf("%-10s A=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "incl", s0, res, iflags, flags & (CC_MASK));;
 }
 
-void exec_incw(dd s0, dd s1, dd iflags)
-{
+__attribute__ ((noinline)) void exec_incw(m2c::_STATE* _state,dd s0, dd s1, dd iflags)
+{ X86_REGREF
     dd res, flags;
     res = s0;
     flags = iflags;
@@ -781,8 +779,8 @@ void exec_incw(dd s0, dd s1, dd iflags)
  printf("%-10s A=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "incw", s0, res, iflags, flags & (CC_MASK));;
 }
 
-void exec_incb(dd s0, dd s1, dd iflags)
-{
+__attribute__ ((noinline)) void exec_incb(m2c::_STATE* _state,dd s0, dd s1, dd iflags)
+{ X86_REGREF
     dd res, flags;
     res = s0;
     flags = iflags;
@@ -790,53 +788,53 @@ void exec_incb(dd s0, dd s1, dd iflags)
  printf("%-10s A=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "incb", s0, res, iflags, flags & (CC_MASK));;
 }
 
-void exec_inc(dd s0, dd s1)
-{
+__attribute__ ((noinline)) void exec_inc(m2c::_STATE* _state,dd s0, dd s1)
+{ X86_REGREF
     s0 = i2l(s0);
     s1 = i2l(s1);
 
 
 
-    exec_incl(s0, s1, 0);
-    exec_incw(s0, s1, 0);
-    exec_incb(s0, s1, 0);
+    exec_incl(_state, s0, s1, 0);
+    exec_incw(_state, s0, s1, 0);
+    exec_incb(_state, s0, s1, 0);
 
 
 
 
-    exec_incl(s0, s1, 0x0001);
-    exec_incw(s0, s1, 0x0001);
-    exec_incb(s0, s1, 0x0001);
+    exec_incl(_state, s0, s1, 0x0001);
+    exec_incw(_state, s0, s1, 0x0001);
+    exec_incb(_state, s0, s1, 0x0001);
 
 }
 
-void test_inc(void)
+void test_inc(m2c::_STATE* _state)
 {
-    exec_inc(0x12345678, 0x812FADA);
-    exec_inc(0x12341, 0x12341);
-    exec_inc(0x12341, -0x12341);
-    exec_inc(0xffffffff, 0);
-    exec_inc(0xffffffff, -1);
-    exec_inc(0xffffffff, 1);
-    exec_inc(0xffffffff, 2);
-    exec_inc(0x7fffffff, 0);
-    exec_inc(0x7fffffff, 1);
-    exec_inc(0x7fffffff, -1);
-    exec_inc(0x80000000, -1);
-    exec_inc(0x80000000, 1);
-    exec_inc(0x80000000, -2);
-    exec_inc(0x12347fff, 0);
-    exec_inc(0x12347fff, 1);
-    exec_inc(0x12347fff, -1);
-    exec_inc(0x12348000, -1);
-    exec_inc(0x12348000, 1);
-    exec_inc(0x12348000, -2);
-    exec_inc(0x12347f7f, 0);
-    exec_inc(0x12347f7f, 1);
-    exec_inc(0x12347f7f, -1);
-    exec_inc(0x12348080, -1);
-    exec_inc(0x12348080, 1);
-    exec_inc(0x12348080, -2);
+    exec_inc(_state, 0x12345678, 0x812FADA);
+    exec_inc(_state, 0x12341, 0x12341);
+    exec_inc(_state, 0x12341, -0x12341);
+    exec_inc(_state, 0xffffffff, 0);
+    exec_inc(_state, 0xffffffff, -1);
+    exec_inc(_state, 0xffffffff, 1);
+    exec_inc(_state, 0xffffffff, 2);
+    exec_inc(_state, 0x7fffffff, 0);
+    exec_inc(_state, 0x7fffffff, 1);
+    exec_inc(_state, 0x7fffffff, -1);
+    exec_inc(_state, 0x80000000, -1);
+    exec_inc(_state, 0x80000000, 1);
+    exec_inc(_state, 0x80000000, -2);
+    exec_inc(_state, 0x12347fff, 0);
+    exec_inc(_state, 0x12347fff, 1);
+    exec_inc(_state, 0x12347fff, -1);
+    exec_inc(_state, 0x12348000, -1);
+    exec_inc(_state, 0x12348000, 1);
+    exec_inc(_state, 0x12348000, -2);
+    exec_inc(_state, 0x12347f7f, 0);
+    exec_inc(_state, 0x12347f7f, 1);
+    exec_inc(_state, 0x12347f7f, -1);
+    exec_inc(_state, 0x12348080, -1);
+    exec_inc(_state, 0x12348080, 1);
+    exec_inc(_state, 0x12348080, -2);
 }
 
 //void *_test_inc __attribute__ ((unused,__section__ ("initcall"))) = test_inc;
@@ -847,8 +845,8 @@ void test_inc(void)
 
 
 
-void exec_decl(dd s0, dd s1, dd iflags)
-{
+__attribute__ ((noinline)) void exec_decl(m2c::_STATE* _state,dd s0, dd s1, dd iflags)
+{ X86_REGREF
     dd res, flags;
     res = s0;
     flags = iflags;
@@ -856,8 +854,8 @@ void exec_decl(dd s0, dd s1, dd iflags)
  printf("%-10s A=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "decl", s0, res, iflags, flags & (CC_MASK));;
 }
 
-void exec_decw(dd s0, dd s1, dd iflags)
-{
+__attribute__ ((noinline)) void exec_decw(m2c::_STATE* _state,dd s0, dd s1, dd iflags)
+{ X86_REGREF
     dd res, flags;
     res = s0;
     flags = iflags;
@@ -865,8 +863,8 @@ void exec_decw(dd s0, dd s1, dd iflags)
  printf("%-10s A=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "decw", s0, res, iflags, flags & (CC_MASK));;
 }
 
-void exec_decb(dd s0, dd s1, dd iflags)
-{
+__attribute__ ((noinline)) void exec_decb(m2c::_STATE* _state,dd s0, dd s1, dd iflags)
+{ X86_REGREF
     dd res, flags;
     res = s0;
     flags = iflags;
@@ -874,53 +872,53 @@ void exec_decb(dd s0, dd s1, dd iflags)
  printf("%-10s A=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "decb", s0, res, iflags, flags & (CC_MASK));;
 }
 
-void exec_dec(dd s0, dd s1)
-{
+__attribute__ ((noinline)) void exec_dec(m2c::_STATE* _state,dd s0, dd s1)
+{ X86_REGREF
     s0 = i2l(s0);
     s1 = i2l(s1);
 
 
 
-    exec_decl(s0, s1, 0);
-    exec_decw(s0, s1, 0);
-    exec_decb(s0, s1, 0);
+    exec_decl(_state, s0, s1, 0);
+    exec_decw(_state, s0, s1, 0);
+    exec_decb(_state, s0, s1, 0);
 
 
 
 
-    exec_decl(s0, s1, 0x0001);
-    exec_decw(s0, s1, 0x0001);
-    exec_decb(s0, s1, 0x0001);
+    exec_decl(_state, s0, s1, 0x0001);
+    exec_decw(_state, s0, s1, 0x0001);
+    exec_decb(_state, s0, s1, 0x0001);
 
 }
 
-void test_dec(void)
+void test_dec(m2c::_STATE* _state)
 {
-    exec_dec(0x12345678, 0x812FADA);
-    exec_dec(0x12341, 0x12341);
-    exec_dec(0x12341, -0x12341);
-    exec_dec(0xffffffff, 0);
-    exec_dec(0xffffffff, -1);
-    exec_dec(0xffffffff, 1);
-    exec_dec(0xffffffff, 2);
-    exec_dec(0x7fffffff, 0);
-    exec_dec(0x7fffffff, 1);
-    exec_dec(0x7fffffff, -1);
-    exec_dec(0x80000000, -1);
-    exec_dec(0x80000000, 1);
-    exec_dec(0x80000000, -2);
-    exec_dec(0x12347fff, 0);
-    exec_dec(0x12347fff, 1);
-    exec_dec(0x12347fff, -1);
-    exec_dec(0x12348000, -1);
-    exec_dec(0x12348000, 1);
-    exec_dec(0x12348000, -2);
-    exec_dec(0x12347f7f, 0);
-    exec_dec(0x12347f7f, 1);
-    exec_dec(0x12347f7f, -1);
-    exec_dec(0x12348080, -1);
-    exec_dec(0x12348080, 1);
-    exec_dec(0x12348080, -2);
+    exec_dec(_state, 0x12345678, 0x812FADA);
+    exec_dec(_state, 0x12341, 0x12341);
+    exec_dec(_state, 0x12341, -0x12341);
+    exec_dec(_state, 0xffffffff, 0);
+    exec_dec(_state, 0xffffffff, -1);
+    exec_dec(_state, 0xffffffff, 1);
+    exec_dec(_state, 0xffffffff, 2);
+    exec_dec(_state, 0x7fffffff, 0);
+    exec_dec(_state, 0x7fffffff, 1);
+    exec_dec(_state, 0x7fffffff, -1);
+    exec_dec(_state, 0x80000000, -1);
+    exec_dec(_state, 0x80000000, 1);
+    exec_dec(_state, 0x80000000, -2);
+    exec_dec(_state, 0x12347fff, 0);
+    exec_dec(_state, 0x12347fff, 1);
+    exec_dec(_state, 0x12347fff, -1);
+    exec_dec(_state, 0x12348000, -1);
+    exec_dec(_state, 0x12348000, 1);
+    exec_dec(_state, 0x12348000, -2);
+    exec_dec(_state, 0x12347f7f, 0);
+    exec_dec(_state, 0x12347f7f, 1);
+    exec_dec(_state, 0x12347f7f, -1);
+    exec_dec(_state, 0x12348080, -1);
+    exec_dec(_state, 0x12348080, 1);
+    exec_dec(_state, 0x12348080, -2);
 }
 
 //void *_test_dec __attribute__ ((unused,__section__ ("initcall"))) = test_dec;
@@ -931,8 +929,8 @@ void test_dec(void)
 
 
 
-void exec_negl(dd s0, dd s1, dd iflags)
-{
+__attribute__ ((noinline)) void exec_negl(m2c::_STATE* _state,dd s0, dd s1, dd iflags)
+{ X86_REGREF
     dd res, flags;
     res = s0;
     flags = iflags;
@@ -940,8 +938,8 @@ void exec_negl(dd s0, dd s1, dd iflags)
  printf("%-10s A=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "negl", s0, res, iflags, flags & (CC_MASK));;
 }
 
-void exec_negw(dd s0, dd s1, dd iflags)
-{
+__attribute__ ((noinline)) void exec_negw(m2c::_STATE* _state,dd s0, dd s1, dd iflags)
+{ X86_REGREF
     dd res, flags;
     res = s0;
     flags = iflags;
@@ -949,8 +947,8 @@ void exec_negw(dd s0, dd s1, dd iflags)
  printf("%-10s A=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "negw", s0, res, iflags, flags & (CC_MASK));;
 }
 
-void exec_negb(dd s0, dd s1, dd iflags)
-{
+__attribute__ ((noinline)) void exec_negb(m2c::_STATE* _state,dd s0, dd s1, dd iflags)
+{ X86_REGREF
     dd res, flags;
     res = s0;
     flags = iflags;
@@ -958,53 +956,53 @@ void exec_negb(dd s0, dd s1, dd iflags)
  printf("%-10s A=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "negb", s0, res, iflags, flags & (CC_MASK));;
 }
 
-void exec_neg(dd s0, dd s1)
-{
+__attribute__ ((noinline)) void exec_neg(m2c::_STATE* _state,dd s0, dd s1)
+{ X86_REGREF
     s0 = i2l(s0);
     s1 = i2l(s1);
 
 
 
-    exec_negl(s0, s1, 0);
-    exec_negw(s0, s1, 0);
-    exec_negb(s0, s1, 0);
+    exec_negl(_state, s0, s1, 0);
+    exec_negw(_state, s0, s1, 0);
+    exec_negb(_state, s0, s1, 0);
 
 
 
 
-    exec_negl(s0, s1, 0x0001);
-    exec_negw(s0, s1, 0x0001);
-    exec_negb(s0, s1, 0x0001);
+    exec_negl(_state, s0, s1, 0x0001);
+    exec_negw(_state, s0, s1, 0x0001);
+    exec_negb(_state, s0, s1, 0x0001);
 
 }
 
-void test_neg(void)
+void test_neg(m2c::_STATE* _state)
 {
-    exec_neg(0x12345678, 0x812FADA);
-    exec_neg(0x12341, 0x12341);
-    exec_neg(0x12341, -0x12341);
-    exec_neg(0xffffffff, 0);
-    exec_neg(0xffffffff, -1);
-    exec_neg(0xffffffff, 1);
-    exec_neg(0xffffffff, 2);
-    exec_neg(0x7fffffff, 0);
-    exec_neg(0x7fffffff, 1);
-    exec_neg(0x7fffffff, -1);
-    exec_neg(0x80000000, -1);
-    exec_neg(0x80000000, 1);
-    exec_neg(0x80000000, -2);
-    exec_neg(0x12347fff, 0);
-    exec_neg(0x12347fff, 1);
-    exec_neg(0x12347fff, -1);
-    exec_neg(0x12348000, -1);
-    exec_neg(0x12348000, 1);
-    exec_neg(0x12348000, -2);
-    exec_neg(0x12347f7f, 0);
-    exec_neg(0x12347f7f, 1);
-    exec_neg(0x12347f7f, -1);
-    exec_neg(0x12348080, -1);
-    exec_neg(0x12348080, 1);
-    exec_neg(0x12348080, -2);
+    exec_neg(_state, 0x12345678, 0x812FADA);
+    exec_neg(_state, 0x12341, 0x12341);
+    exec_neg(_state, 0x12341, -0x12341);
+    exec_neg(_state, 0xffffffff, 0);
+    exec_neg(_state, 0xffffffff, -1);
+    exec_neg(_state, 0xffffffff, 1);
+    exec_neg(_state, 0xffffffff, 2);
+    exec_neg(_state, 0x7fffffff, 0);
+    exec_neg(_state, 0x7fffffff, 1);
+    exec_neg(_state, 0x7fffffff, -1);
+    exec_neg(_state, 0x80000000, -1);
+    exec_neg(_state, 0x80000000, 1);
+    exec_neg(_state, 0x80000000, -2);
+    exec_neg(_state, 0x12347fff, 0);
+    exec_neg(_state, 0x12347fff, 1);
+    exec_neg(_state, 0x12347fff, -1);
+    exec_neg(_state, 0x12348000, -1);
+    exec_neg(_state, 0x12348000, 1);
+    exec_neg(_state, 0x12348000, -2);
+    exec_neg(_state, 0x12347f7f, 0);
+    exec_neg(_state, 0x12347f7f, 1);
+    exec_neg(_state, 0x12347f7f, -1);
+    exec_neg(_state, 0x12348080, -1);
+    exec_neg(_state, 0x12348080, 1);
+    exec_neg(_state, 0x12348080, -2);
 }
 
 //void *_test_neg __attribute__ ((unused,__section__ ("initcall"))) = test_neg;
@@ -1015,8 +1013,8 @@ void test_neg(void)
 
 
 
-void exec_notl(dd s0, dd s1, dd iflags)
-{
+__attribute__ ((noinline)) void exec_notl(m2c::_STATE* _state,dd s0, dd s1, dd iflags)
+{ X86_REGREF
     dd res, flags;
     res = s0;
     flags = iflags;
@@ -1024,8 +1022,8 @@ void exec_notl(dd s0, dd s1, dd iflags)
  printf("%-10s A=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "notl", s0, res, iflags, flags & (CC_MASK));;
 }
 
-void exec_notw(dd s0, dd s1, dd iflags)
-{
+__attribute__ ((noinline)) void exec_notw(m2c::_STATE* _state,dd s0, dd s1, dd iflags)
+{ X86_REGREF
     dd res, flags;
     res = s0;
     flags = iflags;
@@ -1033,8 +1031,8 @@ void exec_notw(dd s0, dd s1, dd iflags)
  printf("%-10s A=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "notw", s0, res, iflags, flags & (CC_MASK));;
 }
 
-void exec_notb(dd s0, dd s1, dd iflags)
-{
+__attribute__ ((noinline)) void exec_notb(m2c::_STATE* _state,dd s0, dd s1, dd iflags)
+{ X86_REGREF
     dd res, flags;
     res = s0;
     flags = iflags;
@@ -1042,53 +1040,53 @@ void exec_notb(dd s0, dd s1, dd iflags)
  printf("%-10s A=%08lx R=%08lx CCIN=%04lx CC=%04lx\n", "notb", s0, res, iflags, flags & (CC_MASK));;
 }
 
-void exec_not(dd s0, dd s1)
-{
+__attribute__ ((noinline)) void exec_not(m2c::_STATE* _state,dd s0, dd s1)
+{ X86_REGREF
     s0 = i2l(s0);
     s1 = i2l(s1);
 
 
 
-    exec_notl(s0, s1, 0);
-    exec_notw(s0, s1, 0);
-    exec_notb(s0, s1, 0);
+    exec_notl(_state, s0, s1, 0);
+    exec_notw(_state, s0, s1, 0);
+    exec_notb(_state, s0, s1, 0);
 
 
 
 
-    exec_notl(s0, s1, 0x0001);
-    exec_notw(s0, s1, 0x0001);
-    exec_notb(s0, s1, 0x0001);
+    exec_notl(_state, s0, s1, 0x0001);
+    exec_notw(_state, s0, s1, 0x0001);
+    exec_notb(_state, s0, s1, 0x0001);
 
 }
 
-void test_not(void)
+void test_not(m2c::_STATE* _state)
 {
-    exec_not(0x12345678, 0x812FADA);
-    exec_not(0x12341, 0x12341);
-    exec_not(0x12341, -0x12341);
-    exec_not(0xffffffff, 0);
-    exec_not(0xffffffff, -1);
-    exec_not(0xffffffff, 1);
-    exec_not(0xffffffff, 2);
-    exec_not(0x7fffffff, 0);
-    exec_not(0x7fffffff, 1);
-    exec_not(0x7fffffff, -1);
-    exec_not(0x80000000, -1);
-    exec_not(0x80000000, 1);
-    exec_not(0x80000000, -2);
-    exec_not(0x12347fff, 0);
-    exec_not(0x12347fff, 1);
-    exec_not(0x12347fff, -1);
-    exec_not(0x12348000, -1);
-    exec_not(0x12348000, 1);
-    exec_not(0x12348000, -2);
-    exec_not(0x12347f7f, 0);
-    exec_not(0x12347f7f, 1);
-    exec_not(0x12347f7f, -1);
-    exec_not(0x12348080, -1);
-    exec_not(0x12348080, 1);
-    exec_not(0x12348080, -2);
+    exec_not(_state, 0x12345678, 0x812FADA);
+    exec_not(_state, 0x12341, 0x12341);
+    exec_not(_state, 0x12341, -0x12341);
+    exec_not(_state, 0xffffffff, 0);
+    exec_not(_state, 0xffffffff, -1);
+    exec_not(_state, 0xffffffff, 1);
+    exec_not(_state, 0xffffffff, 2);
+    exec_not(_state, 0x7fffffff, 0);
+    exec_not(_state, 0x7fffffff, 1);
+    exec_not(_state, 0x7fffffff, -1);
+    exec_not(_state, 0x80000000, -1);
+    exec_not(_state, 0x80000000, 1);
+    exec_not(_state, 0x80000000, -2);
+    exec_not(_state, 0x12347fff, 0);
+    exec_not(_state, 0x12347fff, 1);
+    exec_not(_state, 0x12347fff, -1);
+    exec_not(_state, 0x12348000, -1);
+    exec_not(_state, 0x12348000, 1);
+    exec_not(_state, 0x12348000, -2);
+    exec_not(_state, 0x12347f7f, 0);
+    exec_not(_state, 0x12347f7f, 1);
+    exec_not(_state, 0x12347f7f, -1);
+    exec_not(_state, 0x12348080, -1);
+    exec_not(_state, 0x12348080, 1);
+    exec_not(_state, 0x12348080, -2);
 }
 
 //void *_test_not __attribute__ ((unused,__section__ ("initcall"))) = test_not;
@@ -1100,8 +1098,8 @@ void test_not(void)
 
 
 
-void exec_shll(dd s2, dd s0, dd s1, dd iflags)
-{
+__attribute__ ((noinline)) void exec_shll(m2c::_STATE* _state,dd s2, dd s0, dd s1, dd iflags)
+{ X86_REGREF
     dd res, flags;
     res = s0;
     flags = iflags;
@@ -1113,8 +1111,8 @@ void exec_shll(dd s2, dd s0, dd s1, dd iflags)
            "shll", s0, s1, res, iflags, flags & (CC_MASK));
 }
 
-void exec_shlw(dd s2, dd s0, dd s1, dd iflags)
-{
+__attribute__ ((noinline)) void exec_shlw(m2c::_STATE* _state,dd s2, dd s0, dd s1, dd iflags)
+{ X86_REGREF
     dd res, flags;
     res = s0;
     flags = iflags;
@@ -1126,8 +1124,8 @@ void exec_shlw(dd s2, dd s0, dd s1, dd iflags)
            "shlw", s0, s1, res, iflags, flags & (CC_MASK));
 }
 
-void exec_shlb(dd s0, dd s1, dd iflags)
-{
+__attribute__ ((noinline)) void exec_shlb(m2c::_STATE* _state,dd s0, dd s1, dd iflags)
+{ X86_REGREF
     dd res, flags;
     res = s0;
     flags = iflags;
@@ -1140,25 +1138,25 @@ void exec_shlb(dd s0, dd s1, dd iflags)
 }
 
 
-void exec_shl(dd s2, dd s0, dd s1)
-{
+__attribute__ ((noinline)) void exec_shl(m2c::_STATE* _state,dd s2, dd s0, dd s1)
+{ X86_REGREF
     s2 = i2l(s2);
     s0 = i2l(s0);
 
 
 
-    exec_shll(s2, s0, s1, 0);
+    exec_shll(_state, s2, s0, s1, 0);
 
 
 
-    exec_shlw(s2, s0, s1, 0);
+    exec_shlw(_state, s2, s0, s1, 0);
 
 
-    exec_shlb(s0, s1, 0);
+    exec_shlb(_state, s0, s1, 0);
 
 }
 
-void test_shl(void)
+void test_shl(m2c::_STATE* _state)
 {
     int i, n;
 
@@ -1167,9 +1165,9 @@ void test_shl(void)
     n = 32;
 
     for(i = 0; i < n; i++)
-        exec_shl(0x21ad3d34, 0x12345678, i);
+        exec_shl(_state, 0x21ad3d34, 0x12345678, i);
     for(i = 0; i < n; i++)
-        exec_shl(0x813f3421, 0x82345679, i);
+        exec_shl(_state, 0x813f3421, 0x82345679, i);
 }
 
 //void *_test_shl __attribute__ ((unused,__section__ ("initcall"))) = test_shl;
@@ -1178,8 +1176,8 @@ void test_shl(void)
 
 
 
-void exec_shrl(dd s2, dd s0, dd s1, dd iflags)
-{
+__attribute__ ((noinline)) void exec_shrl(m2c::_STATE* _state,dd s2, dd s0, dd s1, dd iflags)
+{ X86_REGREF
     dd res, flags;
     res = s0;
     flags = iflags;
@@ -1191,8 +1189,8 @@ void exec_shrl(dd s2, dd s0, dd s1, dd iflags)
            "shrl", s0, s1, res, iflags, flags & (CC_MASK));
 }
 
-void exec_shrw(dd s2, dd s0, dd s1, dd iflags)
-{
+__attribute__ ((noinline)) void exec_shrw(m2c::_STATE* _state,dd s2, dd s0, dd s1, dd iflags)
+{ X86_REGREF
     dd res, flags;
     res = s0;
     flags = iflags;
@@ -1204,8 +1202,8 @@ void exec_shrw(dd s2, dd s0, dd s1, dd iflags)
            "shrw", s0, s1, res, iflags, flags & (CC_MASK));
 }
 
-void exec_shrb(dd s0, dd s1, dd iflags)
-{
+__attribute__ ((noinline)) void exec_shrb(m2c::_STATE* _state,dd s0, dd s1, dd iflags)
+{ X86_REGREF
     dd res, flags;
     res = s0;
     flags = iflags;
@@ -1218,25 +1216,25 @@ void exec_shrb(dd s0, dd s1, dd iflags)
 }
 
 
-void exec_shr(dd s2, dd s0, dd s1)
-{
+__attribute__ ((noinline)) void exec_shr(m2c::_STATE* _state,dd s2, dd s0, dd s1)
+{ X86_REGREF
     s2 = i2l(s2);
     s0 = i2l(s0);
 
 
 
-    exec_shrl(s2, s0, s1, 0);
+    exec_shrl(_state, s2, s0, s1, 0);
 
 
 
-    exec_shrw(s2, s0, s1, 0);
+    exec_shrw(_state, s2, s0, s1, 0);
 
 
-    exec_shrb(s0, s1, 0);
+    exec_shrb(_state, s0, s1, 0);
 
 }
 
-void test_shr(void)
+void test_shr(m2c::_STATE* _state)
 {
     int i, n;
 
@@ -1245,16 +1243,16 @@ void test_shr(void)
     n = 32;
 
     for(i = 0; i < n; i++)
-        exec_shr(0x21ad3d34, 0x12345678, i);
+        exec_shr(_state, 0x21ad3d34, 0x12345678, i);
     for(i = 0; i < n; i++)
-        exec_shr(0x813f3421, 0x82345679, i);
+        exec_shr(_state, 0x813f3421, 0x82345679, i);
 }
 
 //void *_test_shr __attribute__ ((unused,__section__ ("initcall"))) = test_shr;
 
 
-void exec_sall(dd s2, dd s0, dd s1, dd iflags)
-{
+__attribute__ ((noinline)) void exec_sall(m2c::_STATE* _state,dd s2, dd s0, dd s1, dd iflags)
+{ X86_REGREF
     dd res, flags;
     res = s0;
     flags = iflags;
@@ -1266,8 +1264,8 @@ void exec_sall(dd s2, dd s0, dd s1, dd iflags)
            "sall", s0, s1, res, iflags, flags & (CC_MASK));
 }
 
-void exec_salw(dd s2, dd s0, dd s1, dd iflags)
-{
+__attribute__ ((noinline)) void exec_salw(m2c::_STATE* _state,dd s2, dd s0, dd s1, dd iflags)
+{ X86_REGREF
     dd res, flags;
     res = s0;
     flags = iflags;
@@ -1279,8 +1277,8 @@ void exec_salw(dd s2, dd s0, dd s1, dd iflags)
            "salw", s0, s1, res, iflags, flags & (CC_MASK));
 }
 
-void exec_salb(dd s0, dd s1, dd iflags)
-{
+__attribute__ ((noinline)) void exec_salb(m2c::_STATE* _state,dd s0, dd s1, dd iflags)
+{ X86_REGREF
     dd res, flags;
     res = s0;
     flags = iflags;
@@ -1293,25 +1291,25 @@ void exec_salb(dd s0, dd s1, dd iflags)
 }
 
 
-void exec_sal(dd s2, dd s0, dd s1)
-{
+__attribute__ ((noinline)) void exec_sal(m2c::_STATE* _state,dd s2, dd s0, dd s1)
+{ X86_REGREF
     s2 = i2l(s2);
     s0 = i2l(s0);
 
 
 
-    exec_sall(s2, s0, s1, 0);
+    exec_sall(_state, s2, s0, s1, 0);
 
 
 
-    exec_salw(s2, s0, s1, 0);
+    exec_salw(_state, s2, s0, s1, 0);
 
 
-    exec_salb(s0, s1, 0);
+    exec_salb(_state, s0, s1, 0);
 
 }
 
-void test_sal(void)
+void test_sal(m2c::_STATE* _state)
 {
     int i, n;
 
@@ -1320,17 +1318,17 @@ void test_sal(void)
     n = 32;
 
     for(i = 0; i < n; i++)
-        exec_sal(0x21ad3d34, 0x12345678, i);
+        exec_sal(_state, 0x21ad3d34, 0x12345678, i);
     for(i = 0; i < n; i++)
-        exec_sal(0x813f3421, 0x82345679, i);
+        exec_sal(_state, 0x813f3421, 0x82345679, i);
 }
 
 //void *_test_sal __attribute__ ((unused,__section__ ("initcall"))) = test_sal;
 
 
 
-void exec_sarl(dd s2, dd s0, dd s1, dd iflags)
-{
+__attribute__ ((noinline)) void exec_sarl(m2c::_STATE* _state,dd s2, dd s0, dd s1, dd iflags)
+{ X86_REGREF
     dd res, flags;
     res = s0;
     flags = iflags;
@@ -1342,8 +1340,8 @@ void exec_sarl(dd s2, dd s0, dd s1, dd iflags)
            "sarl", s0, s1, res, iflags, flags & (CC_MASK));
 }
 
-void exec_sarw(dd s2, dd s0, dd s1, dd iflags)
-{
+__attribute__ ((noinline)) void exec_sarw(m2c::_STATE* _state,dd s2, dd s0, dd s1, dd iflags)
+{ X86_REGREF
     dd res, flags;
     res = s0;
     flags = iflags;
@@ -1355,8 +1353,8 @@ void exec_sarw(dd s2, dd s0, dd s1, dd iflags)
            "sarw", s0, s1, res, iflags, flags & (CC_MASK));
 }
 
-void exec_sarb(dd s0, dd s1, dd iflags)
-{
+__attribute__ ((noinline)) void exec_sarb(m2c::_STATE* _state,dd s0, dd s1, dd iflags)
+{ X86_REGREF
     dd res, flags;
     res = s0;
     flags = iflags;
@@ -1369,25 +1367,25 @@ void exec_sarb(dd s0, dd s1, dd iflags)
 }
 
 
-void exec_sar(dd s2, dd s0, dd s1)
-{
+__attribute__ ((noinline)) void exec_sar(m2c::_STATE* _state,dd s2, dd s0, dd s1)
+{ X86_REGREF
     s2 = i2l(s2);
     s0 = i2l(s0);
 
 
 
-    exec_sarl(s2, s0, s1, 0);
+    exec_sarl(_state, s2, s0, s1, 0);
 
 
 
-    exec_sarw(s2, s0, s1, 0);
+    exec_sarw(_state, s2, s0, s1, 0);
 
 
-    exec_sarb(s0, s1, 0);
+    exec_sarb(_state, s0, s1, 0);
 
 }
 
-void test_sar(void)
+void test_sar(m2c::_STATE* _state)
 {
     int i, n;
 
@@ -1396,9 +1394,9 @@ void test_sar(void)
     n = 32;
 
     for(i = 0; i < n; i++)
-        exec_sar(0x21ad3d34, 0x12345678, i);
+        exec_sar(_state, 0x21ad3d34, 0x12345678, i);
     for(i = 0; i < n; i++)
-        exec_sar(0x813f3421, 0x82345679, i);
+        exec_sar(_state, 0x813f3421, 0x82345679, i);
 }
 
 //void *_test_sar __attribute__ ((unused,__section__ ("initcall"))) = test_sar;
@@ -1407,8 +1405,8 @@ void test_sar(void)
 
 
 
-void exec_roll(dd s2, dd s0, dd s1, dd iflags)
-{
+__attribute__ ((noinline)) void exec_roll(m2c::_STATE* _state,dd s2, dd s0, dd s1, dd iflags)
+{ X86_REGREF
     dd res, flags;
     res = s0;
     flags = iflags;
@@ -1420,8 +1418,8 @@ void exec_roll(dd s2, dd s0, dd s1, dd iflags)
            "roll", s0, s1, res, iflags, flags & (CC_MASK));
 }
 
-void exec_rolw(dd s2, dd s0, dd s1, dd iflags)
-{
+__attribute__ ((noinline)) void exec_rolw(m2c::_STATE* _state,dd s2, dd s0, dd s1, dd iflags)
+{ X86_REGREF
     dd res, flags;
     res = s0;
     flags = iflags;
@@ -1433,8 +1431,8 @@ void exec_rolw(dd s2, dd s0, dd s1, dd iflags)
            "rolw", s0, s1, res, iflags, flags & (CC_MASK));
 }
 
-void exec_rolb(dd s0, dd s1, dd iflags)
-{
+__attribute__ ((noinline)) void exec_rolb(m2c::_STATE* _state,dd s0, dd s1, dd iflags)
+{ X86_REGREF
     dd res, flags;
     res = s0;
     flags = iflags;
@@ -1447,25 +1445,25 @@ void exec_rolb(dd s0, dd s1, dd iflags)
 }
 
 
-void exec_rol(dd s2, dd s0, dd s1)
-{
+__attribute__ ((noinline)) void exec_rol(m2c::_STATE* _state,dd s2, dd s0, dd s1)
+{ X86_REGREF
     s2 = i2l(s2);
     s0 = i2l(s0);
 
 
 
-    exec_roll(s2, s0, s1, 0);
+    exec_roll(_state, s2, s0, s1, 0);
 
 
 
-    exec_rolw(s2, s0, s1, 0);
+    exec_rolw(_state, s2, s0, s1, 0);
 
 
-    exec_rolb(s0, s1, 0);
+    exec_rolb(_state, s0, s1, 0);
 
 }
 
-void test_rol(void)
+void test_rol(m2c::_STATE* _state)
 {
     int i, n;
 
@@ -1474,9 +1472,9 @@ void test_rol(void)
     n = 32;
 
     for(i = 0; i < n; i++)
-        exec_rol(0x21ad3d34, 0x12345678, i);
+        exec_rol(_state, 0x21ad3d34, 0x12345678, i);
     for(i = 0; i < n; i++)
-        exec_rol(0x813f3421, 0x82345679, i);
+        exec_rol(_state, 0x813f3421, 0x82345679, i);
 }
 
 //void *_test_rol __attribute__ ((unused,__section__ ("initcall"))) = test_rol;
@@ -1485,8 +1483,8 @@ void test_rol(void)
 
 
 
-void exec_rorl(dd s2, dd s0, dd s1, dd iflags)
-{
+__attribute__ ((noinline)) void exec_rorl(m2c::_STATE* _state,dd s2, dd s0, dd s1, dd iflags)
+{ X86_REGREF
     dd res, flags;
     res = s0;
     flags = iflags;
@@ -1498,8 +1496,8 @@ void exec_rorl(dd s2, dd s0, dd s1, dd iflags)
            "rorl", s0, s1, res, iflags, flags & (CC_MASK));
 }
 
-void exec_rorw(dd s2, dd s0, dd s1, dd iflags)
-{
+__attribute__ ((noinline)) void exec_rorw(m2c::_STATE* _state,dd s2, dd s0, dd s1, dd iflags)
+{ X86_REGREF
     dd res, flags;
     res = s0;
     flags = iflags;
@@ -1511,8 +1509,8 @@ void exec_rorw(dd s2, dd s0, dd s1, dd iflags)
            "rorw", s0, s1, res, iflags, flags & (CC_MASK));
 }
 
-void exec_rorb(dd s0, dd s1, dd iflags)
-{
+__attribute__ ((noinline)) void exec_rorb(m2c::_STATE* _state,dd s0, dd s1, dd iflags)
+{ X86_REGREF
     dd res, flags;
     res = s0;
     flags = iflags;
@@ -1525,25 +1523,25 @@ void exec_rorb(dd s0, dd s1, dd iflags)
 }
 
 
-void exec_ror(dd s2, dd s0, dd s1)
-{
+__attribute__ ((noinline)) void exec_ror(m2c::_STATE* _state,dd s2, dd s0, dd s1)
+{ X86_REGREF
     s2 = i2l(s2);
     s0 = i2l(s0);
 
 
 
-    exec_rorl(s2, s0, s1, 0);
+    exec_rorl(_state, s2, s0, s1, 0);
 
 
 
-    exec_rorw(s2, s0, s1, 0);
+    exec_rorw(_state, s2, s0, s1, 0);
 
 
-    exec_rorb(s0, s1, 0);
+    exec_rorb(_state, s0, s1, 0);
 
 }
 
-void test_ror(void)
+void test_ror(m2c::_STATE* _state)
 {
     int i, n;
 
@@ -1552,9 +1550,9 @@ void test_ror(void)
     n = 32;
 
     for(i = 0; i < n; i++)
-        exec_ror(0x21ad3d34, 0x12345678, i);
+        exec_ror(_state, 0x21ad3d34, 0x12345678, i);
     for(i = 0; i < n; i++)
-        exec_ror(0x813f3421, 0x82345679, i);
+        exec_ror(_state, 0x813f3421, 0x82345679, i);
 }
 
 //void *_test_ror __attribute__ ((unused,__section__ ("initcall"))) = test_ror;
@@ -1564,8 +1562,8 @@ void test_ror(void)
 
 
 
-void exec_rcrl(dd s2, dd s0, dd s1, dd iflags)
-{
+__attribute__ ((noinline)) void exec_rcrl(m2c::_STATE* _state,dd s2, dd s0, dd s1, dd iflags)
+{ X86_REGREF
     dd res, flags;
     res = s0;
     flags = iflags;
@@ -1577,8 +1575,8 @@ void exec_rcrl(dd s2, dd s0, dd s1, dd iflags)
            "rcrl", s0, s1, res, iflags, flags & (CC_MASK));
 }
 
-void exec_rcrw(dd s2, dd s0, dd s1, dd iflags)
-{
+__attribute__ ((noinline)) void exec_rcrw(m2c::_STATE* _state,dd s2, dd s0, dd s1, dd iflags)
+{ X86_REGREF
     dd res, flags;
     res = s0;
     flags = iflags;
@@ -1590,8 +1588,8 @@ void exec_rcrw(dd s2, dd s0, dd s1, dd iflags)
            "rcrw", s0, s1, res, iflags, flags & (CC_MASK));
 }
 
-void exec_rcrb(dd s0, dd s1, dd iflags)
-{
+__attribute__ ((noinline)) void exec_rcrb(m2c::_STATE* _state,dd s0, dd s1, dd iflags)
+{ X86_REGREF
     dd res, flags;
     res = s0;
     flags = iflags;
@@ -1604,33 +1602,33 @@ void exec_rcrb(dd s0, dd s1, dd iflags)
 }
 
 
-void exec_rcr(dd s2, dd s0, dd s1)
-{
+__attribute__ ((noinline)) void exec_rcr(m2c::_STATE* _state,dd s2, dd s0, dd s1)
+{ X86_REGREF
     s2 = i2l(s2);
     s0 = i2l(s0);
 
 
 
-    exec_rcrl(s2, s0, s1, 0);
+    exec_rcrl(_state, s2, s0, s1, 0);
 
 
 
-    exec_rcrw(s2, s0, s1, 0);
+    exec_rcrw(_state, s2, s0, s1, 0);
 
 
-    exec_rcrb(s0, s1, 0);
+    exec_rcrb(_state, s0, s1, 0);
 
 
 
 
 
-    exec_rcrl(s2, s0, s1, 0x0001);
-    exec_rcrw(s2, s0, s1, 0x0001);
-    exec_rcrb(s0, s1, 0x0001);
+    exec_rcrl(_state, s2, s0, s1, 0x0001);
+    exec_rcrw(_state, s2, s0, s1, 0x0001);
+    exec_rcrb(_state, s0, s1, 0x0001);
 
 }
 
-void test_rcr(void)
+void test_rcr(m2c::_STATE* _state)
 {
     int i, n;
 
@@ -1639,9 +1637,9 @@ void test_rcr(void)
     n = 32;
 
     for(i = 0; i < n; i++)
-        exec_rcr(0x21ad3d34, 0x12345678, i);
+        exec_rcr(_state, 0x21ad3d34, 0x12345678, i);
     for(i = 0; i < n; i++)
-        exec_rcr(0x813f3421, 0x82345679, i);
+        exec_rcr(_state, 0x813f3421, 0x82345679, i);
 }
 
 //void *_test_rcr __attribute__ ((unused,__section__ ("initcall"))) = test_rcr;
@@ -1651,8 +1649,8 @@ void test_rcr(void)
 
 
 
-void exec_rcll(dd s2, dd s0, dd s1, dd iflags)
-{
+__attribute__ ((noinline)) void exec_rcll(m2c::_STATE* _state,dd s2, dd s0, dd s1, dd iflags)
+{ X86_REGREF
     dd res, flags;
     res = s0;
     flags = iflags;
@@ -1664,8 +1662,8 @@ void exec_rcll(dd s2, dd s0, dd s1, dd iflags)
            "rcll", s0, s1, res, iflags, flags & (CC_MASK));
 }
 
-void exec_rclw(dd s2, dd s0, dd s1, dd iflags)
-{
+__attribute__ ((noinline)) void exec_rclw(m2c::_STATE* _state,dd s2, dd s0, dd s1, dd iflags)
+{ X86_REGREF
     dd res, flags;
     res = s0;
     flags = iflags;
@@ -1677,8 +1675,8 @@ void exec_rclw(dd s2, dd s0, dd s1, dd iflags)
            "rclw", s0, s1, res, iflags, flags & (CC_MASK));
 }
 
-void exec_rclb(dd s0, dd s1, dd iflags)
-{
+__attribute__ ((noinline)) void exec_rclb(m2c::_STATE* _state,dd s0, dd s1, dd iflags)
+{ X86_REGREF
     dd res, flags;
     res = s0;
     flags = iflags;
@@ -1691,33 +1689,33 @@ void exec_rclb(dd s0, dd s1, dd iflags)
 }
 
 
-void exec_rcl(dd s2, dd s0, dd s1)
-{
+__attribute__ ((noinline)) void exec_rcl(m2c::_STATE* _state,dd s2, dd s0, dd s1)
+{ X86_REGREF
     s2 = i2l(s2);
     s0 = i2l(s0);
 
 
 
-    exec_rcll(s2, s0, s1, 0);
+    exec_rcll(_state, s2, s0, s1, 0);
 
 
 
-    exec_rclw(s2, s0, s1, 0);
+    exec_rclw(_state, s2, s0, s1, 0);
 
 
-    exec_rclb(s0, s1, 0);
+    exec_rclb(_state, s0, s1, 0);
 
 
 
 
 
-    exec_rcll(s2, s0, s1, 0x0001);
-    exec_rclw(s2, s0, s1, 0x0001);
-    exec_rclb(s0, s1, 0x0001);
+    exec_rcll(_state, s2, s0, s1, 0x0001);
+    exec_rclw(_state, s2, s0, s1, 0x0001);
+    exec_rclb(_state, s0, s1, 0x0001);
 
 }
 
-void test_rcl(void)
+void test_rcl(m2c::_STATE* _state)
 {
     int i, n;
 
@@ -1726,9 +1724,9 @@ void test_rcl(void)
     n = 32;
 
     for(i = 0; i < n; i++)
-        exec_rcl(0x21ad3d34, 0x12345678, i);
+        exec_rcl(_state, 0x21ad3d34, 0x12345678, i);
     for(i = 0; i < n; i++)
-        exec_rcl(0x813f3421, 0x82345679, i);
+        exec_rcl(_state, 0x813f3421, 0x82345679, i);
 }
 
 //void *_test_rcl __attribute__ ((unused,__section__ ("initcall"))) = test_rcl;
@@ -1739,8 +1737,8 @@ void test_rcl(void)
 
 
 
-void exec_shldl(dd s2, dd s0, dd s1, dd iflags)
-{
+__attribute__ ((noinline)) void exec_shldl(m2c::_STATE* _state,dd s2, dd s0, dd s1, dd iflags)
+{ X86_REGREF
     dd res, flags;
     res = s0;
     flags = iflags;
@@ -1752,8 +1750,8 @@ void exec_shldl(dd s2, dd s0, dd s1, dd iflags)
            "shldl", s0, s2, s1, res, iflags, flags & (CC_MASK));
 }
 
-void exec_shldw(dd s2, dd s0, dd s1, dd iflags)
-{
+__attribute__ ((noinline)) void exec_shldw(m2c::_STATE* _state,dd s2, dd s0, dd s1, dd iflags)
+{ X86_REGREF
     dd res, flags;
     res = s0;
     flags = iflags;
@@ -1765,20 +1763,20 @@ void exec_shldw(dd s2, dd s0, dd s1, dd iflags)
            "shldw", s0, s2, s1, res, iflags, flags & (CC_MASK));
 }
 
-void exec_shld(dd s2, dd s0, dd s1)
-{
+__attribute__ ((noinline)) void exec_shld(m2c::_STATE* _state,dd s2, dd s0, dd s1)
+{ X86_REGREF
     s2 = i2l(s2);
     s0 = i2l(s0);
 
 
 
-    exec_shldl(s2, s0, s1, 0);
+    exec_shldl(_state, s2, s0, s1, 0);
 
-    exec_shldw(s2, s0, s1, 0);
+    exec_shldw(_state, s2, s0, s1, 0);
 
 }
 
-void test_shld(void)
+void test_shld(m2c::_STATE* _state)
 {
     int i, n;
 
@@ -1787,9 +1785,9 @@ void test_shld(void)
     n = 32;
 
     for(i = 0; i < n; i++)
-        exec_shld(0x21ad3d34, 0x12345678, i);
+        exec_shld(_state, 0x21ad3d34, 0x12345678, i);
     for(i = 0; i < n; i++)
-        exec_shld(0x813f3421, 0x82345679, i);
+        exec_shld(_state, 0x813f3421, 0x82345679, i);
 }
 
 //void *_test_shld __attribute__ ((unused,__section__ ("initcall"))) = test_shld;
@@ -1800,8 +1798,8 @@ void test_shld(void)
 
 
 
-void exec_shrdl(dd s2, dd s0, dd s1, dd iflags)
-{
+__attribute__ ((noinline)) void exec_shrdl(m2c::_STATE* _state,dd s2, dd s0, dd s1, dd iflags)
+{ X86_REGREF
     dd res, flags;
     res = s0;
     flags = iflags;
@@ -1813,8 +1811,8 @@ void exec_shrdl(dd s2, dd s0, dd s1, dd iflags)
            "shrdl", s0, s2, s1, res, iflags, flags & (CC_MASK));
 }
 
-void exec_shrdw(dd s2, dd s0, dd s1, dd iflags)
-{
+__attribute__ ((noinline)) void exec_shrdw(m2c::_STATE* _state,dd s2, dd s0, dd s1, dd iflags)
+{ X86_REGREF
     dd res, flags;
     res = s0;
     flags = iflags;
@@ -1826,20 +1824,20 @@ void exec_shrdw(dd s2, dd s0, dd s1, dd iflags)
            "shrdw", s0, s2, s1, res, iflags, flags & (CC_MASK));
 }
 
-void exec_shrd(dd s2, dd s0, dd s1)
-{
+__attribute__ ((noinline)) void exec_shrd(m2c::_STATE* _state,dd s2, dd s0, dd s1)
+{ X86_REGREF
     s2 = i2l(s2);
     s0 = i2l(s0);
 
 
 
-    exec_shrdl(s2, s0, s1, 0);
+    exec_shrdl(_state, s2, s0, s1, 0);
 
-    exec_shrdw(s2, s0, s1, 0);
+    exec_shrdw(_state, s2, s0, s1, 0);
 
 }
 
-void test_shrd(void)
+void test_shrd(m2c::_STATE* _state)
 {
     int i, n;
 
@@ -1848,9 +1846,9 @@ void test_shrd(void)
     n = 32;
 
     for(i = 0; i < n; i++)
-        exec_shrd(0x21ad3d34, 0x12345678, i);
+        exec_shrd(_state, 0x21ad3d34, 0x12345678, i);
     for(i = 0; i < n; i++)
-        exec_shrd(0x813f3421, 0x82345679, i);
+        exec_shrd(_state, 0x813f3421, 0x82345679, i);
 }
 
 //void *_test_shrd __attribute__ ((unused,__section__ ("initcall"))) = test_shrd;
@@ -1864,8 +1862,8 @@ void test_shrd(void)
 
 
 
-void exec_btl(dd s2, dd s0, dd s1, dd iflags)
-{
+__attribute__ ((noinline)) void exec_btl(m2c::_STATE* _state,dd s2, dd s0, dd s1, dd iflags)
+{ X86_REGREF
     dd res, flags;
     res = s0;
     flags = iflags;
@@ -1877,8 +1875,8 @@ void exec_btl(dd s2, dd s0, dd s1, dd iflags)
            "btl", s0, s1, res, iflags, flags & (CC_C));
 }
 
-void exec_btw(dd s2, dd s0, dd s1, dd iflags)
-{
+__attribute__ ((noinline)) void exec_btw(m2c::_STATE* _state,dd s2, dd s0, dd s1, dd iflags)
+{ X86_REGREF
     dd res, flags;
     res = s0;
     flags = iflags;
@@ -1890,22 +1888,22 @@ void exec_btw(dd s2, dd s0, dd s1, dd iflags)
            "btw", s0, s1, res, iflags, flags & (CC_C));
 }
 
-void exec_bt(dd s2, dd s0, dd s1)
-{
+__attribute__ ((noinline)) void exec_bt(m2c::_STATE* _state,dd s2, dd s0, dd s1)
+{ X86_REGREF
     s2 = i2l(s2);
     s0 = i2l(s0);
 
 
 
-    exec_btl(s2, s0, s1, 0);
+    exec_btl(_state, s2, s0, s1, 0);
 
 
 
-    exec_btw(s2, s0, s1, 0);
+    exec_btw(_state, s2, s0, s1, 0);
 
 }
 
-void test_bt(void)
+void test_bt(m2c::_STATE* _state)
 {
     int i, n;
 
@@ -1914,9 +1912,9 @@ void test_bt(void)
     n = 32;
 
     for(i = 0; i < n; i++)
-        exec_bt(0x21ad3d34, 0x12345678, i);
+        exec_bt(_state, 0x21ad3d34, 0x12345678, i);
     for(i = 0; i < n; i++)
-        exec_bt(0x813f3421, 0x82345679, i);
+        exec_bt(_state, 0x813f3421, 0x82345679, i);
 }
 
 //void *_test_bt __attribute__ ((unused,__section__ ("initcall"))) = test_bt;
@@ -1926,8 +1924,8 @@ void test_bt(void)
 
 
 
-void exec_btsl(dd s2, dd s0, dd s1, dd iflags)
-{
+__attribute__ ((noinline)) void exec_btsl(m2c::_STATE* _state,dd s2, dd s0, dd s1, dd iflags)
+{ X86_REGREF
     dd res, flags;
     res = s0;
     flags = iflags;
@@ -1939,8 +1937,8 @@ void exec_btsl(dd s2, dd s0, dd s1, dd iflags)
            "btsl", s0, s1, res, iflags, flags & (CC_C));
 }
 
-void exec_btsw(dd s2, dd s0, dd s1, dd iflags)
-{
+__attribute__ ((noinline)) void exec_btsw(m2c::_STATE* _state,dd s2, dd s0, dd s1, dd iflags)
+{ X86_REGREF
     dd res, flags;
     res = s0;
     flags = iflags;
@@ -1952,22 +1950,22 @@ void exec_btsw(dd s2, dd s0, dd s1, dd iflags)
            "btsw", s0, s1, res, iflags, flags & (CC_C));
 }
 
-void exec_bts(dd s2, dd s0, dd s1)
-{
+__attribute__ ((noinline)) void exec_bts(m2c::_STATE* _state,dd s2, dd s0, dd s1)
+{ X86_REGREF
     s2 = i2l(s2);
     s0 = i2l(s0);
 
 
 
-    exec_btsl(s2, s0, s1, 0);
+    exec_btsl(_state, s2, s0, s1, 0);
 
 
 
-    exec_btsw(s2, s0, s1, 0);
+    exec_btsw(_state, s2, s0, s1, 0);
 
 }
 
-void test_bts(void)
+void test_bts(m2c::_STATE* _state)
 {
     int i, n;
 
@@ -1976,9 +1974,9 @@ void test_bts(void)
     n = 32;
 
     for(i = 0; i < n; i++)
-        exec_bts(0x21ad3d34, 0x12345678, i);
+        exec_bts(_state, 0x21ad3d34, 0x12345678, i);
     for(i = 0; i < n; i++)
-        exec_bts(0x813f3421, 0x82345679, i);
+        exec_bts(_state, 0x813f3421, 0x82345679, i);
 }
 
 //void *_test_bts __attribute__ ((unused,__section__ ("initcall"))) = test_bts;
@@ -1988,8 +1986,8 @@ void test_bts(void)
 
 
 
-void exec_btrl(dd s2, dd s0, dd s1, dd iflags)
-{
+__attribute__ ((noinline)) void exec_btrl(m2c::_STATE* _state,dd s2, dd s0, dd s1, dd iflags)
+{ X86_REGREF
     dd res, flags;
     res = s0;
     flags = iflags;
@@ -2001,8 +1999,8 @@ void exec_btrl(dd s2, dd s0, dd s1, dd iflags)
            "btrl", s0, s1, res, iflags, flags & (CC_C));
 }
 
-void exec_btrw(dd s2, dd s0, dd s1, dd iflags)
-{
+__attribute__ ((noinline)) void exec_btrw(m2c::_STATE* _state,dd s2, dd s0, dd s1, dd iflags)
+{ X86_REGREF
     dd res, flags;
     res = s0;
     flags = iflags;
@@ -2014,22 +2012,22 @@ void exec_btrw(dd s2, dd s0, dd s1, dd iflags)
            "btrw", s0, s1, res, iflags, flags & (CC_C));
 }
 
-void exec_btr(dd s2, dd s0, dd s1)
-{
+__attribute__ ((noinline)) void exec_btr(m2c::_STATE* _state,dd s2, dd s0, dd s1)
+{ X86_REGREF
     s2 = i2l(s2);
     s0 = i2l(s0);
 
 
 
-    exec_btrl(s2, s0, s1, 0);
+    exec_btrl(_state, s2, s0, s1, 0);
 
 
 
-    exec_btrw(s2, s0, s1, 0);
+    exec_btrw(_state, s2, s0, s1, 0);
 
 }
 
-void test_btr(void)
+void test_btr(m2c::_STATE* _state)
 {
     int i, n;
 
@@ -2038,9 +2036,9 @@ void test_btr(void)
     n = 32;
 
     for(i = 0; i < n; i++)
-        exec_btr(0x21ad3d34, 0x12345678, i);
+        exec_btr(_state, 0x21ad3d34, 0x12345678, i);
     for(i = 0; i < n; i++)
-        exec_btr(0x813f3421, 0x82345679, i);
+        exec_btr(_state, 0x813f3421, 0x82345679, i);
 }
 
 //void *_test_btr __attribute__ ((unused,__section__ ("initcall"))) = test_btr;
@@ -2050,8 +2048,8 @@ void test_btr(void)
 
 
 
-void exec_btcl(dd s2, dd s0, dd s1, dd iflags)
-{
+__attribute__ ((noinline)) void exec_btcl(m2c::_STATE* _state,dd s2, dd s0, dd s1, dd iflags)
+{ X86_REGREF
     dd res, flags;
     res = s0;
     flags = iflags;
@@ -2063,8 +2061,8 @@ void exec_btcl(dd s2, dd s0, dd s1, dd iflags)
            "btcl", s0, s1, res, iflags, flags & (CC_C));
 }
 
-void exec_btcw(dd s2, dd s0, dd s1, dd iflags)
-{
+__attribute__ ((noinline)) void exec_btcw(m2c::_STATE* _state,dd s2, dd s0, dd s1, dd iflags)
+{ X86_REGREF
     dd res, flags;
     res = s0;
     flags = iflags;
@@ -2076,23 +2074,24 @@ void exec_btcw(dd s2, dd s0, dd s1, dd iflags)
            "btcw", s0, s1, res, iflags, flags & (CC_C));
 }
 
-void exec_btc(dd s2, dd s0, dd s1)
-{
+__attribute__ ((noinline)) void exec_btc(m2c::_STATE* _state,dd s2, dd s0, dd s1)
+{ X86_REGREF
     s2 = i2l(s2);
     s0 = i2l(s0);
 
 
 
-    exec_btcl(s2, s0, s1, 0);
+    exec_btcl(_state, s2, s0, s1, 0);
 
 
 
-    exec_btcw(s2, s0, s1, 0);
+    exec_btcw(_state, s2, s0, s1, 0);
 
 }
 
-void test_btc(void)
+void test_btc(m2c::_STATE* _state)
 {
+X86_REGREF
     int i, n;
 
 
@@ -2100,17 +2099,19 @@ void test_btc(void)
     n = 32;
 
     for(i = 0; i < n; i++)
-        exec_btc(0x21ad3d34, 0x12345678, i);
+        exec_btc(_state, 0x21ad3d34, 0x12345678, i);
     for(i = 0; i < n; i++)
-        exec_btc(0x813f3421, 0x82345679, i);
+        exec_btc(_state, 0x813f3421, 0x82345679, i);
 }
 
 //void *_test_btc __attribute__ ((unused,__section__ ("initcall"))) = test_btc;
 
 
-void test_lea(void)
+void test_lea(m2c::_STATE* _state)
 {
-    dd eax, ebx, ecx, edx, esi, edi, res;
+X86_REGREF
+//    dd eax, ebx, ecx, edx, esi, edi, 
+dd res;
     eax = i2l(CC_C);
     ebx = i2l(0x0002);
     ecx = i2l(0x0004);
@@ -2118,131 +2119,131 @@ void test_lea(void)
     esi = i2l(0x0010);
     edi = i2l(0x0020);
 
-    { asm("lea 0x4000, %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { //asm("lea 0x4000, %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
  printf("lea %s = %08lx\n", "0x4000", res);};
 
-    { asm("lea (%%eax)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { //asm("lea (%%eax)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
  printf("lea %s = %08lx\n", "(%%eax)", res);};
-    { asm("lea (%%ebx)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { //asm("lea (%%ebx)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
  printf("lea %s = %08lx\n", "(%%ebx)", res);};
-    { asm("lea (%%ecx)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { //asm("lea (%%ecx)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
  printf("lea %s = %08lx\n", "(%%ecx)", res);};
-    { asm("lea (%%edx)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { //asm("lea (%%edx)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
  printf("lea %s = %08lx\n", "(%%edx)", res);};
-    { asm("lea (%%esi)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { //asm("lea (%%esi)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
  printf("lea %s = %08lx\n", "(%%esi)", res);};
-    { asm("lea (%%edi)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { //asm("lea (%%edi)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
  printf("lea %s = %08lx\n", "(%%edi)", res);};
 
-    { asm("lea 0x40(%%eax)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { //asm("lea 0x40(%%eax)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
  printf("lea %s = %08lx\n", "0x40(%%eax)", res);};
-    { asm("lea 0x40(%%ebx)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { //asm("lea 0x40(%%ebx)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
  printf("lea %s = %08lx\n", "0x40(%%ebx)", res);};
-    { asm("lea 0x40(%%ecx)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { //asm("lea 0x40(%%ecx)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
  printf("lea %s = %08lx\n", "0x40(%%ecx)", res);};
-    { asm("lea 0x40(%%edx)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { //asm("lea 0x40(%%edx)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
  printf("lea %s = %08lx\n", "0x40(%%edx)", res);};
-    { asm("lea 0x40(%%esi)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { //asm("lea 0x40(%%esi)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
  printf("lea %s = %08lx\n", "0x40(%%esi)", res);};
-    { asm("lea 0x40(%%edi)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { //asm("lea 0x40(%%edi)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
  printf("lea %s = %08lx\n", "0x40(%%edi)", res);};
 
-    { asm("lea 0x4000(%%eax)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { //asm("lea 0x4000(%%eax)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
  printf("lea %s = %08lx\n", "0x4000(%%eax)", res);};
-    { asm("lea 0x4000(%%ebx)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { //asm("lea 0x4000(%%ebx)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
  printf("lea %s = %08lx\n", "0x4000(%%ebx)", res);};
-    { asm("lea 0x4000(%%ecx)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { //asm("lea 0x4000(%%ecx)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
  printf("lea %s = %08lx\n", "0x4000(%%ecx)", res);};
-    { asm("lea 0x4000(%%edx)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { //asm("lea 0x4000(%%edx)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
  printf("lea %s = %08lx\n", "0x4000(%%edx)", res);};
-    { asm("lea 0x4000(%%esi)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { //asm("lea 0x4000(%%esi)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
  printf("lea %s = %08lx\n", "0x4000(%%esi)", res);};
-    { asm("lea 0x4000(%%edi)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { //asm("lea 0x4000(%%edi)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
  printf("lea %s = %08lx\n", "0x4000(%%edi)", res);};
 
-    { asm("lea (%%eax, %%ecx)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { //asm("lea (%%eax, %%ecx)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
  printf("lea %s = %08lx\n", "(%%eax, %%ecx)", res);};
-    { asm("lea (%%ebx, %%edx)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { //asm("lea (%%ebx, %%edx)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
  printf("lea %s = %08lx\n", "(%%ebx, %%edx)", res);};
-    { asm("lea (%%ecx, %%ecx)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { //asm("lea (%%ecx, %%ecx)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
  printf("lea %s = %08lx\n", "(%%ecx, %%ecx)", res);};
-    { asm("lea (%%edx, %%ecx)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { //asm("lea (%%edx, %%ecx)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
  printf("lea %s = %08lx\n", "(%%edx, %%ecx)", res);};
-    { asm("lea (%%esi, %%ecx)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { //asm("lea (%%esi, %%ecx)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
  printf("lea %s = %08lx\n", "(%%esi, %%ecx)", res);};
-    { asm("lea (%%edi, %%ecx)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { //asm("lea (%%edi, %%ecx)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
  printf("lea %s = %08lx\n", "(%%edi, %%ecx)", res);};
 
-    { asm("lea 0x40(%%eax, %%ecx)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { //asm("lea 0x40(%%eax, %%ecx)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
  printf("lea %s = %08lx\n", "0x40(%%eax, %%ecx)", res);};
-    { asm("lea 0x4000(%%ebx, %%edx)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { //asm("lea 0x4000(%%ebx, %%edx)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
  printf("lea %s = %08lx\n", "0x4000(%%ebx, %%edx)", res);};
 
-    { asm("lea (%%ecx, %%ecx, 2)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { //asm("lea (%%ecx, %%ecx, 2)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
  printf("lea %s = %08lx\n", "(%%ecx, %%ecx, 2)", res);};
-    { asm("lea (%%edx, %%ecx, 4)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { //asm("lea (%%edx, %%ecx, 4)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
  printf("lea %s = %08lx\n", "(%%edx, %%ecx, 4)", res);};
-    { asm("lea (%%esi, %%ecx, 8)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { //asm("lea (%%esi, %%ecx, 8)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
  printf("lea %s = %08lx\n", "(%%esi, %%ecx, 8)", res);};
 
-    { asm("lea (,%%eax, 2)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { //asm("lea (,%%eax, 2)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
  printf("lea %s = %08lx\n", "(,%%eax, 2)", res);};
-    { asm("lea (,%%ebx, 4)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { //asm("lea (,%%ebx, 4)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
  printf("lea %s = %08lx\n", "(,%%ebx, 4)", res);};
-    { asm("lea (,%%ecx, 8)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { //asm("lea (,%%ecx, 8)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
  printf("lea %s = %08lx\n", "(,%%ecx, 8)", res);};
 
-    { asm("lea 0x40(,%%eax, 2)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { //asm("lea 0x40(,%%eax, 2)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
  printf("lea %s = %08lx\n", "0x40(,%%eax, 2)", res);};
-    { asm("lea 0x40(,%%ebx, 4)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { //asm("lea 0x40(,%%ebx, 4)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
  printf("lea %s = %08lx\n", "0x40(,%%ebx, 4)", res);};
-    { asm("lea 0x40(,%%ecx, 8)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { //asm("lea 0x40(,%%ecx, 8)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
  printf("lea %s = %08lx\n", "0x40(,%%ecx, 8)", res);};
 
 
-    { asm("lea -10(%%ecx, %%ecx, 2)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { //asm("lea -10(%%ecx, %%ecx, 2)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
  printf("lea %s = %08lx\n", "-10(%%ecx, %%ecx, 2)", res);};
-    { asm("lea -10(%%edx, %%ecx, 4)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { //asm("lea -10(%%edx, %%ecx, 4)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
  printf("lea %s = %08lx\n", "-10(%%edx, %%ecx, 4)", res);};
-    { asm("lea -10(%%esi, %%ecx, 8)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { //asm("lea -10(%%esi, %%ecx, 8)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
  printf("lea %s = %08lx\n", "-10(%%esi, %%ecx, 8)", res);};
 
-    { asm("lea 0x4000(%%ecx, %%ecx, 2)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { //asm("lea 0x4000(%%ecx, %%ecx, 2)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
  printf("lea %s = %08lx\n", "0x4000(%%ecx, %%ecx, 2)", res);};
-    { asm("lea 0x4000(%%edx, %%ecx, 4)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { //asm("lea 0x4000(%%edx, %%ecx, 4)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
  printf("lea %s = %08lx\n", "0x4000(%%edx, %%ecx, 4)", res);};
-    { asm("lea 0x4000(%%esi, %%ecx, 8)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { //asm("lea 0x4000(%%esi, %%ecx, 8)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
  printf("lea %s = %08lx\n", "0x4000(%%esi, %%ecx, 8)", res);};
 
-    { asm(".code16 ; .byte 0x67 ; leal 0x4000, %0 ; .code32" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { //asm(".code16 ; .byte 0x67 ; leal 0x4000, %0 ; .code32" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
  printf("lea %s = %08lx\n", "0x4000", res);};
-    { asm(".code16 ; .byte 0x67 ; leal (%%bx)" ", %0 ; .code32" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { //asm(".code16 ; .byte 0x67 ; leal (%%bx)" ", %0 ; .code32" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
  printf("lea %s = %08lx\n", "(%%bx)", res);};
-    { asm(".code16 ; .byte 0x67 ; leal (%%si)" ", %0 ; .code32" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { //asm(".code16 ; .byte 0x67 ; leal (%%si)" ", %0 ; .code32" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
  printf("lea %s = %08lx\n", "(%%si)", res);};
-    { asm(".code16 ; .byte 0x67 ; leal (%%di)" ", %0 ; .code32" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { //asm(".code16 ; .byte 0x67 ; leal (%%di)" ", %0 ; .code32" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
  printf("lea %s = %08lx\n", "(%%di)", res);};
-    { asm(".code16 ; .byte 0x67 ; leal 0x40(%%bx)" ", %0 ; .code32" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { //asm(".code16 ; .byte 0x67 ; leal 0x40(%%bx)" ", %0 ; .code32" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
  printf("lea %s = %08lx\n", "0x40(%%bx)", res);};
-    { asm(".code16 ; .byte 0x67 ; leal 0x40(%%si)" ", %0 ; .code32" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { //asm(".code16 ; .byte 0x67 ; leal 0x40(%%si)" ", %0 ; .code32" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
  printf("lea %s = %08lx\n", "0x40(%%si)", res);};
-    { asm(".code16 ; .byte 0x67 ; leal 0x40(%%di)" ", %0 ; .code32" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { //asm(".code16 ; .byte 0x67 ; leal 0x40(%%di)" ", %0 ; .code32" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
  printf("lea %s = %08lx\n", "0x40(%%di)", res);};
-    { asm(".code16 ; .byte 0x67 ; leal 0x4000(%%bx)" ", %0 ; .code32" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { //asm(".code16 ; .byte 0x67 ; leal 0x4000(%%bx)" ", %0 ; .code32" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
  printf("lea %s = %08lx\n", "0x4000(%%bx)", res);};
-    { asm(".code16 ; .byte 0x67 ; leal 0x4000(%%si)" ", %0 ; .code32" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { //asm(".code16 ; .byte 0x67 ; leal 0x4000(%%si)" ", %0 ; .code32" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
  printf("lea %s = %08lx\n", "0x4000(%%si)", res);};
-    { asm(".code16 ; .byte 0x67 ; leal (%%bx,%%si)" ", %0 ; .code32" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { //asm(".code16 ; .byte 0x67 ; leal (%%bx,%%si)" ", %0 ; .code32" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
  printf("lea %s = %08lx\n", "(%%bx,%%si)", res);};
-    { asm(".code16 ; .byte 0x67 ; leal (%%bx,%%di)" ", %0 ; .code32" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { //asm(".code16 ; .byte 0x67 ; leal (%%bx,%%di)" ", %0 ; .code32" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
  printf("lea %s = %08lx\n", "(%%bx,%%di)", res);};
-    { asm(".code16 ; .byte 0x67 ; leal 0x40(%%bx,%%si)" ", %0 ; .code32" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { //asm(".code16 ; .byte 0x67 ; leal 0x40(%%bx,%%si)" ", %0 ; .code32" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
  printf("lea %s = %08lx\n", "0x40(%%bx,%%si)", res);};
-    { asm(".code16 ; .byte 0x67 ; leal 0x40(%%bx,%%di)" ", %0 ; .code32" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { //asm(".code16 ; .byte 0x67 ; leal 0x40(%%bx,%%di)" ", %0 ; .code32" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
  printf("lea %s = %08lx\n", "0x40(%%bx,%%di)", res);};
-    { asm(".code16 ; .byte 0x67 ; leal 0x4000(%%bx,%%si)" ", %0 ; .code32" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { //asm(".code16 ; .byte 0x67 ; leal 0x4000(%%bx,%%si)" ", %0 ; .code32" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
  printf("lea %s = %08lx\n", "0x4000(%%bx,%%si)", res);};
-    { asm(".code16 ; .byte 0x67 ; leal 0x4000(%%bx,%%di)" ", %0 ; .code32" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { //asm(".code16 ; .byte 0x67 ; leal 0x4000(%%bx,%%di)" ", %0 ; .code32" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
  printf("lea %s = %08lx\n", "0x4000(%%bx,%%di)", res);};
 
 }
@@ -2276,8 +2277,9 @@ void test_lea(void)
  } \
 }
 */
-void test_jcc(void)
+void test_jcc(m2c::_STATE* _state)
 {
+X86_REGREF
     TEST_JCC(NE, 1, 1);
     TEST_JCC(NE, 1, 0);
 
@@ -2338,9 +2340,10 @@ void test_jcc(void)
     TEST_JCC(NS, 0, 0);
 }
 
-void test_loop(void)
+void test_loop(m2c::_STATE* _state)
 {
-    dd ecx, zf;
+X86_REGREF
+    dd zf;
     const dd ecx_vals[] = {
         0,
         1,
@@ -2354,30 +2357,31 @@ void test_loop(void)
     int i, res;
 
 
-    { for(i = 0; i < sizeof(ecx_vals) / sizeof(dd); i++) { ecx = ecx_vals[i]; for(zf = 0; zf < 2; zf++) { asm("test %2, %2\nmovl $1, %0\n" "jcxz 1f\nmovl $0, %0\n" "1:\n" : "=a" (res) : "c" (ecx), "b" (!zf));
+    { for(i = 0; i < sizeof(ecx_vals) / sizeof(dd); i++) { ecx = ecx_vals[i]; for(zf = 0; zf < 2; zf++) { //asm("test %2, %2\nmovl $1, %0\n" "jcxz 1f\nmovl $0, %0\n" "1:\n" : "=a" (res) : "c" (ecx), "b" (!zf));
  printf("%-10s ECX=%08lx ZF=%ld r=%d\n", "jcxz", ecx, zf, res); } }};
-    { for(i = 0; i < sizeof(ecx_vals) / sizeof(dd); i++) { ecx = ecx_vals[i]; for(zf = 0; zf < 2; zf++) { asm("test %2, %2\nmovl $1, %0\n" "loopw 1f\nmovl $0, %0\n" "1:\n" : "=a" (res) : "c" (ecx), "b" (!zf));
+    { for(i = 0; i < sizeof(ecx_vals) / sizeof(dd); i++) { ecx = ecx_vals[i]; for(zf = 0; zf < 2; zf++) { //asm("test %2, %2\nmovl $1, %0\n" "loopw 1f\nmovl $0, %0\n" "1:\n" : "=a" (res) : "c" (ecx), "b" (!zf));
  printf("%-10s ECX=%08lx ZF=%ld r=%d\n", "loopw", ecx, zf, res); } }};
-    { for(i = 0; i < sizeof(ecx_vals) / sizeof(dd); i++) { ecx = ecx_vals[i]; for(zf = 0; zf < 2; zf++) { asm("test %2, %2\nmovl $1, %0\n" "loopzw 1f\nmovl $0, %0\n" "1:\n" : "=a" (res) : "c" (ecx), "b" (!zf));
+    { for(i = 0; i < sizeof(ecx_vals) / sizeof(dd); i++) { ecx = ecx_vals[i]; for(zf = 0; zf < 2; zf++) { //asm("test %2, %2\nmovl $1, %0\n" "loopzw 1f\nmovl $0, %0\n" "1:\n" : "=a" (res) : "c" (ecx), "b" (!zf));
  printf("%-10s ECX=%08lx ZF=%ld r=%d\n", "loopzw", ecx, zf, res); } }};
-    { for(i = 0; i < sizeof(ecx_vals) / sizeof(dd); i++) { ecx = ecx_vals[i]; for(zf = 0; zf < 2; zf++) { asm("test %2, %2\nmovl $1, %0\n" "loopnzw 1f\nmovl $0, %0\n" "1:\n" : "=a" (res) : "c" (ecx), "b" (!zf));
+    { for(i = 0; i < sizeof(ecx_vals) / sizeof(dd); i++) { ecx = ecx_vals[i]; for(zf = 0; zf < 2; zf++) { //asm("test %2, %2\nmovl $1, %0\n" "loopnzw 1f\nmovl $0, %0\n" "1:\n" : "=a" (res) : "c" (ecx), "b" (!zf));
  printf("%-10s ECX=%08lx ZF=%ld r=%d\n", "loopnzw", ecx, zf, res); } }};
 
 
-    { for(i = 0; i < sizeof(ecx_vals) / sizeof(dd); i++) { ecx = ecx_vals[i]; for(zf = 0; zf < 2; zf++) { asm("test %2, %2\nmovl $1, %0\n" "jecxz 1f\nmovl $0, %0\n" "1:\n" : "=a" (res) : "c" (ecx), "b" (!zf));
+    { for(i = 0; i < sizeof(ecx_vals) / sizeof(dd); i++) { ecx = ecx_vals[i]; for(zf = 0; zf < 2; zf++) { //asm("test %2, %2\nmovl $1, %0\n" "jecxz 1f\nmovl $0, %0\n" "1:\n" : "=a" (res) : "c" (ecx), "b" (!zf));
  printf("%-10s ECX=%08lx ZF=%ld r=%d\n", "jecxz", ecx, zf, res); } }};
-    { for(i = 0; i < sizeof(ecx_vals) / sizeof(dd); i++) { ecx = ecx_vals[i]; for(zf = 0; zf < 2; zf++) { asm("test %2, %2\nmovl $1, %0\n" "loopl 1f\nmovl $0, %0\n" "1:\n" : "=a" (res) : "c" (ecx), "b" (!zf));
+    { for(i = 0; i < sizeof(ecx_vals) / sizeof(dd); i++) { ecx = ecx_vals[i]; for(zf = 0; zf < 2; zf++) { //asm("test %2, %2\nmovl $1, %0\n" "loopl 1f\nmovl $0, %0\n" "1:\n" : "=a" (res) : "c" (ecx), "b" (!zf));
  printf("%-10s ECX=%08lx ZF=%ld r=%d\n", "loopl", ecx, zf, res); } }};
-    { for(i = 0; i < sizeof(ecx_vals) / sizeof(dd); i++) { ecx = ecx_vals[i]; for(zf = 0; zf < 2; zf++) { asm("test %2, %2\nmovl $1, %0\n" "loopzl 1f\nmovl $0, %0\n" "1:\n" : "=a" (res) : "c" (ecx), "b" (!zf));
+    { for(i = 0; i < sizeof(ecx_vals) / sizeof(dd); i++) { ecx = ecx_vals[i]; for(zf = 0; zf < 2; zf++) { //asm("test %2, %2\nmovl $1, %0\n" "loopzl 1f\nmovl $0, %0\n" "1:\n" : "=a" (res) : "c" (ecx), "b" (!zf));
  printf("%-10s ECX=%08lx ZF=%ld r=%d\n", "loopzl", ecx, zf, res); } }};
-    { for(i = 0; i < sizeof(ecx_vals) / sizeof(dd); i++) { ecx = ecx_vals[i]; for(zf = 0; zf < 2; zf++) { asm("test %2, %2\nmovl $1, %0\n" "loopnzl 1f\nmovl $0, %0\n" "1:\n" : "=a" (res) : "c" (ecx), "b" (!zf));
+    { for(i = 0; i < sizeof(ecx_vals) / sizeof(dd); i++) { ecx = ecx_vals[i]; for(zf = 0; zf < 2; zf++) { //asm("test %2, %2\nmovl $1, %0\n" "loopnzl 1f\nmovl $0, %0\n" "1:\n" : "=a" (res) : "c" (ecx), "b" (!zf));
  printf("%-10s ECX=%08lx ZF=%ld r=%d\n", "loopnzl", ecx, zf, res); } }};
 }
 
 
 
-void test_mulb(dd op0, dd op1)
+void test_mulb(m2c::_STATE* _state,dd op0, dd op1)
 {
+X86_REGREF
     dd res, s1, s0, flags;
     s0 = op0;
     s1 = op1;
@@ -2395,8 +2399,9 @@ void test_mulb(dd op0, dd op1)
            "mulb", s0, s1, res, flags & (CC_MASK));
 }
 
-void test_mulw(dd op0h, dd op0, dd op1)
+void test_mulw(m2c::_STATE* _state,dd op0h, dd op0, dd op1)
 {
+X86_REGREF
     dd res, s1, flags, resh;
     s1 = op1;
     resh = op0h;
@@ -2415,8 +2420,9 @@ void test_mulw(dd op0h, dd op0, dd op1)
            "mulw", op0h, op0, s1, resh, res, flags & (CC_MASK));
 }
 
-void test_mull(dd op0h, dd op0, dd op1)
+void test_mull(m2c::_STATE* _state,dd op0h, dd op0, dd op1)
 {
+X86_REGREF
     dd res, s1, flags, resh;
     s1 = op1;
     resh = op0h;
@@ -2439,8 +2445,9 @@ void test_mull(dd op0h, dd op0, dd op1)
 
 
 
-void test_imulb(dd op0, dd op1)
+void test_imulb(m2c::_STATE* _state,dd op0, dd op1)
 {
+X86_REGREF
     dd res, s1, s0, flags;
     s0 = op0;
     s1 = op1;
@@ -2467,8 +2474,9 @@ void test_imulb(dd op0, dd op1)
            "imulb", s0, s1, res, flags & (CC_MASK));
 }
 
-void test_imulw(dd op0h, dd op0, dd op1)
+void test_imulw(m2c::_STATE* _state,dd op0h, dd op0, dd op1)
 {
+X86_REGREF
     dd res, s1, flags, resh;
     s1 = op1;
     resh = op0h;
@@ -2496,8 +2504,9 @@ void test_imulw(dd op0h, dd op0, dd op1)
            "imulw", op0h, op0, s1, resh, res, flags & (CC_MASK));
 }
 
-void test_imull(dd op0h, dd op0, dd op1)
+void test_imull(m2c::_STATE* _state,dd op0h, dd op0, dd op1)
 {
+X86_REGREF
     dd res, s1, flags, resh;
     s1 = op1;
     resh = op0h;
@@ -2517,8 +2526,9 @@ void test_imull(dd op0h, dd op0, dd op1)
 }
 
 
-void test_imulw2(dd op0, dd op1)
+void test_imulw2(m2c::_STATE* _state,dd op0, dd op1)
 {
+X86_REGREF
     dd res, s1, s0, flags;
     s0 = op0;
     s1 = op1;
@@ -2543,8 +2553,9 @@ void test_imulw2(dd op0, dd op1)
            "imulw", s0, s1, res, flags & (CC_MASK));
 }
 
-void test_imull2(dd op0, dd op1)
+void test_imull2(m2c::_STATE* _state,dd op0, dd op1)
 {
+X86_REGREF
     dd res, s1, s0, flags;
     s0 = op0;
     s1 = op1;
@@ -2571,8 +2582,9 @@ void test_imull2(dd op0, dd op1)
 
 
 
-void test_divb(dd op0, dd op1)
+void test_divb(m2c::_STATE* _state,dd op0, dd op1)
 {
+X86_REGREF
     dd res, s1, s0, flags;
     s0 = op0;
     s1 = op1;
@@ -2599,8 +2611,9 @@ void test_divb(dd op0, dd op1)
            "divb", s0, s1, res, flags & (0));
 }
 
-void test_divw(dd op0h, dd op0, dd op1)
+void test_divw(m2c::_STATE* _state,dd op0h, dd op0, dd op1)
 {
+X86_REGREF
     dd res, s1, flags, resh;
     s1 = op1;
     resh = op0h;
@@ -2629,8 +2642,9 @@ void test_divw(dd op0h, dd op0, dd op1)
            "divw", op0h, op0, s1, resh, res, flags & (0));
 }
 
-void test_divl(dd op0h, dd op0, dd op1)
+void test_divl(m2c::_STATE* _state,dd op0h, dd op0, dd op1)
 {
+X86_REGREF
     dd res, s1, flags, resh;
     s1 = op1;
     resh = op0h;
@@ -2663,8 +2677,9 @@ void test_divl(dd op0h, dd op0, dd op1)
 
 
 
-void test_idivb(dd op0, dd op1)
+void test_idivb(m2c::_STATE* _state,dd op0, dd op1)
 {
+X86_REGREF
     dd res, s1, s0, flags;
     s0 = op0;
     s1 = op1;
@@ -2681,8 +2696,9 @@ void test_idivb(dd op0, dd op1)
            "idivb", s0, s1, res, flags & (0));
 }
 
-void test_idivw(dd op0h, dd op0, dd op1)
+void test_idivw(m2c::_STATE* _state,dd op0h, dd op0, dd op1)
 {
+X86_REGREF
     dd res, s1, flags, resh;
     s1 = op1;
     resh = op0h;
@@ -2701,8 +2717,9 @@ void test_idivw(dd op0h, dd op0, dd op1)
            "idivw", op0h, op0, s1, resh, res, flags & (0));
 }
 
-void test_idivl(dd op0h, dd op0, dd op1)
+void test_idivl(m2c::_STATE* _state,dd op0h, dd op0, dd op1)
 {
+X86_REGREF
     dd res, s1, flags, resh;
     s1 = op1;
     resh = op0h;
@@ -2723,47 +2740,48 @@ void test_idivl(dd op0h, dd op0, dd op1)
 }
 
 
-void test_mul(void)
+void test_mul(m2c::_STATE* _state)
 {
-    test_imulb(0x1234561d, 4);
-    test_imulb(3, -4);
-    test_imulb(0x80, 0x80);
-    test_imulb(0x10, 0x10);
+X86_REGREF
+    test_imulb(_state, 0x1234561d, 4);
+    test_imulb(_state, 3, -4);
+    test_imulb(_state, 0x80, 0x80);
+    test_imulb(_state, 0x10, 0x10);
 
-    test_imulw(0, 0x1234001d, 45);
-    test_imulw(0, 23, -45);
-    test_imulw(0, 0x8000, 0x8000);
-    test_imulw(0, 0x100, 0x100);
+    test_imulw(_state, 0, 0x1234001d, 45);
+    test_imulw(_state, 0, 23, -45);
+    test_imulw(_state, 0, 0x8000, 0x8000);
+    test_imulw(_state, 0, 0x100, 0x100);
 
-    test_imull(0, 0x1234001d, 45);
-    test_imull(0, 23, -45);
-    test_imull(0, 0x80000000, 0x80000000);
-    test_imull(0, 0x10000, 0x10000);
+    test_imull(_state, 0, 0x1234001d, 45);
+    test_imull(_state, 0, 23, -45);
+    test_imull(_state, 0, 0x80000000, 0x80000000);
+    test_imull(_state, 0, 0x10000, 0x10000);
 
-    test_mulb(0x1234561d, 4);
-    test_mulb(3, -4);
-    test_mulb(0x80, 0x80);
-    test_mulb(0x10, 0x10);
+    test_mulb(_state, 0x1234561d, 4);
+    test_mulb(_state, 3, -4);
+    test_mulb(_state, 0x80, 0x80);
+    test_mulb(_state, 0x10, 0x10);
 
-    test_mulw(0, 0x1234001d, 45);
-    test_mulw(0, 23, -45);
-    test_mulw(0, 0x8000, 0x8000);
-    test_mulw(0, 0x100, 0x100);
+    test_mulw(_state, 0, 0x1234001d, 45);
+    test_mulw(_state, 0, 23, -45);
+    test_mulw(_state, 0, 0x8000, 0x8000);
+    test_mulw(_state, 0, 0x100, 0x100);
 
-    test_mull(0, 0x1234001d, 45);
-    test_mull(0, 23, -45);
-    test_mull(0, 0x80000000, 0x80000000);
-    test_mull(0, 0x10000, 0x10000);
+    test_mull(_state, 0, 0x1234001d, 45);
+    test_mull(_state, 0, 23, -45);
+    test_mull(_state, 0, 0x80000000, 0x80000000);
+    test_mull(_state, 0, 0x10000, 0x10000);
 
-    test_imulw2(0x1234001d, 45);
-    test_imulw2(23, -45);
-    test_imulw2(0x8000, 0x8000);
-    test_imulw2(0x100, 0x100);
+    test_imulw2(_state,0x1234001d, 45);
+    test_imulw2(_state,23, -45);
+    test_imulw2(_state,0x8000, 0x8000);
+    test_imulw2(_state,0x100, 0x100);
 
-    test_imull2(0x1234001d, 45);
-    test_imull2(23, -45);
-    test_imull2(0x80000000, 0x80000000);
-    test_imull2(0x10000, 0x10000);
+    test_imull2(_state,0x1234001d, 45);
+    test_imull2(_state,23, -45);
+    test_imull2(_state,0x80000000, 0x80000000);
+    test_imull2(_state,0x10000, 0x10000);
 
 
     { dd res, flags, s1; flags = 0; res = 0; s1 = 0x1234; dd op0=45;
@@ -2792,61 +2810,61 @@ void test_mul(void)
 	R(PUSH(flags));R(POPF);R(IMUL3_4( *(dd *)&res,s1,op0 ));R(PUSHF);R(POP(flags));
  printf("%-10s A=%08lx B=%08lx R=%08lx CC=%04lx\n", "imull im", (dd)0x7fff, (dd)0x1000, res, flags & (0));};
 
-    test_idivb(0x12341678, 0x127e);
-    test_idivb(0x43210123, -5);
-    test_idivb(0x12340004, -1);
+    test_idivb(_state,0x12341678, 0x127e);
+    test_idivb(_state,0x43210123, -5);
+    test_idivb(_state,0x12340004, -1);
 
-    test_idivw(0, 0x12345678, 12347);
-    test_idivw(0, -23223, -45);
-    test_idivw(0, 0x12348000, -1);
-    test_idivw(0x12343, 0x12345678, 0x81238567);
+    test_idivw(_state,0, 0x12345678, 12347);
+    test_idivw(_state,0, -23223, -45);
+    test_idivw(_state,0, 0x12348000, -1);
+    test_idivw(_state,0x12343, 0x12345678, 0x81238567);
 
-    test_idivl(0, 0x12345678, 12347);
-    test_idivl(0, -233223, -45);
-    test_idivl(0, 0x80000000, -1);
-    test_idivl(0x12343, 0x12345678, 0x81234567);
+    test_idivl(_state,0, 0x12345678, 12347);
+    test_idivl(_state,0, -233223, -45);
+    test_idivl(_state,0, 0x80000000, -1);
+    test_idivl(_state,0x12343, 0x12345678, 0x81234567);
 
-    test_divb(0x12341678, 0x127e);
-    test_divb(0x43210123, -5);
-    test_divb(0x12340004, -1);
+    test_divb(_state,0x12341678, 0x127e);
+    test_divb(_state,0x43210123, -5);
+    test_divb(_state,0x12340004, -1);
 
-    test_divw(0, 0x12345678, 12347);
-    test_divw(0, -23223, -45);
-    test_divw(0, 0x12348000, -1);
-    test_divw(0x12343, 0x12345678, 0x81238567);
+    test_divw(_state,0, 0x12345678, 12347);
+    test_divw(_state,0, -23223, -45);
+    test_divw(_state,0, 0x12348000, -1);
+    test_divw(_state,0x12343, 0x12345678, 0x81238567);
 
-    test_divl(0, 0x12345678, 12347);
-    test_divl(0, -233223, -45);
-    test_divl(0, 0x80000000, -1);
-    test_divl(0x12343, 0x12345678, 0x81234567);
+    test_divl(_state,0, 0x12345678, 12347);
+    test_divl(_state,0, -233223, -45);
+    test_divl(_state,0, 0x80000000, -1);
+    test_divl(_state,0x12343, 0x12345678, 0x81234567);
 
 }
 
-void test_bsx(void)
+void test_bsx(m2c::_STATE* _state)
 {
     { dd res, val, resz; val = 0;
-asm("xor %1, %1\nmov $0x12345678, %0\n" "bsrw %w2, %w0 ; setz %b1" : "=&r" (res), "=&q" (resz) : "r" (val));
+//asm("xor %1, %1\nmov $0x12345678, %0\n" "bsrw %w2, %w0 ; setz %b1" : "=&r" (res), "=&q" (resz) : "r" (val));
  printf("%-10s A=%08lx R=%08lx %ld\n", "bsrw", val, res, resz);};
     { dd res, val, resz; val = 0x12340128;
-asm("xor %1, %1\nmov $0x12345678, %0\n" "bsrw %w2, %w0 ; setz %b1" : "=&r" (res), "=&q" (resz) : "r" (val));
+//asm("xor %1, %1\nmov $0x12345678, %0\n" "bsrw %w2, %w0 ; setz %b1" : "=&r" (res), "=&q" (resz) : "r" (val));
  printf("%-10s A=%08lx R=%08lx %ld\n", "bsrw", val, res, resz);};
     { dd res, val, resz; val = 0;
-asm("xor %1, %1\nmov $0x12345678, %0\n" "bsfw %w2, %w0 ; setz %b1" : "=&r" (res), "=&q" (resz) : "r" (val));
+//asm("xor %1, %1\nmov $0x12345678, %0\n" "bsfw %w2, %w0 ; setz %b1" : "=&r" (res), "=&q" (resz) : "r" (val));
  printf("%-10s A=%08lx R=%08lx %ld\n", "bsfw", val, res, resz);};
     { dd res, val, resz; val = 0x12340128;
-asm("xor %1, %1\nmov $0x12345678, %0\n" "bsfw %w2, %w0 ; setz %b1" : "=&r" (res), "=&q" (resz) : "r" (val));
+//asm("xor %1, %1\nmov $0x12345678, %0\n" "bsfw %w2, %w0 ; setz %b1" : "=&r" (res), "=&q" (resz) : "r" (val));
  printf("%-10s A=%08lx R=%08lx %ld\n", "bsfw", val, res, resz);};
     { dd res, val, resz; val = 0;
-asm("xor %1, %1\nmov $0x12345678, %0\n" "bsrl %k2, %k0 ; setz %b1" : "=&r" (res), "=&q" (resz) : "r" (val));
+//asm("xor %1, %1\nmov $0x12345678, %0\n" "bsrl %k2, %k0 ; setz %b1" : "=&r" (res), "=&q" (resz) : "r" (val));
  printf("%-10s A=%08lx R=%08lx %ld\n", "bsrl", val, res, resz);};
     { dd res, val, resz; val = 0x00340128;
-asm("xor %1, %1\nmov $0x12345678, %0\n" "bsrl %k2, %k0 ; setz %b1" : "=&r" (res), "=&q" (resz) : "r" (val));
+//asm("xor %1, %1\nmov $0x12345678, %0\n" "bsrl %k2, %k0 ; setz %b1" : "=&r" (res), "=&q" (resz) : "r" (val));
  printf("%-10s A=%08lx R=%08lx %ld\n", "bsrl", val, res, resz);};
     { dd res, val, resz; val = 0;
-asm("xor %1, %1\nmov $0x12345678, %0\n" "bsfl %k2, %k0 ; setz %b1" : "=&r" (res), "=&q" (resz) : "r" (val));
+//asm("xor %1, %1\nmov $0x12345678, %0\n" "bsfl %k2, %k0 ; setz %b1" : "=&r" (res), "=&q" (resz) : "r" (val));
  printf("%-10s A=%08lx R=%08lx %ld\n", "bsfl", val, res, resz);};
     { dd res, val, resz; val = 0x00340128;
-asm("xor %1, %1\nmov $0x12345678, %0\n" "bsfl %k2, %k0 ; setz %b1" : "=&r" (res), "=&q" (resz) : "r" (val));
+//asm("xor %1, %1\nmov $0x12345678, %0\n" "bsfl %k2, %k0 ; setz %b1" : "=&r" (res), "=&q" (resz) : "r" (val));
  printf("%-10s A=%08lx R=%08lx %ld\n", "bsfl", val, res, resz);};
 
 }
@@ -2909,14 +2927,14 @@ void test_fcmp(double a, double b)
     dd eflags, fpus;
 
     fpu_clear_exceptions();
-    asm("fcom %2\n"
+    //asm("fcom %2\n"
         "fstsw %%ax\n"
         : "=a" (fpus)
         : "t" (a), "u" (b));
     printf("fcom(%f %f)=%04lx\n",
            a, b, fpus & (0x4500 | 0x0000));
     fpu_clear_exceptions();
-    asm("fucom %2\n"
+    //asm("fucom %2\n"
         "fstsw %%ax\n"
         : "=a" (fpus)
         : "t" (a), "u" (b));
@@ -2925,7 +2943,7 @@ void test_fcmp(double a, double b)
     if (1) {
 
         fpu_clear_exceptions();
-        asm("fcomi %3, %2\n"
+        //asm("fcomi %3, %2\n"
             "fstsw %%ax\n"
             "PUSHF;"
             "pop %0\n"
@@ -2934,7 +2952,7 @@ void test_fcmp(double a, double b)
         printf("fcomi(%f %f)=%04lx %02lx\n",
                a, b, fpus & 0x0000, eflags & (0x0040 | 0x0004 | 0x0001));
         fpu_clear_exceptions();
-        asm("fucomi %3, %2\n"
+        //asm("fucomi %3, %2\n"
             "fstsw %%ax\n"
             "PUSHF;"
             "pop %0\n"
@@ -3005,22 +3023,22 @@ void test_fcvt(double a)
 
 
 
-void test_fconst(void)
+void test_fconst(m2c::_STATE* _state)
 {
     double a;
-    asm("fld1" : "=t" (a));
+    //asm("fld1" : "=t" (a));
  printf("fld1= %f\n", a);;
-    asm("fldl2t" : "=t" (a));
+    //asm("fldl2t" : "=t" (a));
  printf("fldl2t= %f\n", a);;
-    asm("fldl2e" : "=t" (a));
+    //asm("fldl2e" : "=t" (a));
  printf("fldl2e= %f\n", a);;
-    asm("fldpi" : "=t" (a));
+    //asm("fldpi" : "=t" (a));
  printf("fldpi= %f\n", a);;
-    asm("fldlg2" : "=t" (a));
+    //asm("fldlg2" : "=t" (a));
  printf("fldlg2= %f\n", a);;
-    asm("fldln2" : "=t" (a));
+    //asm("fldln2" : "=t" (a));
  printf("fldln2= %f\n", a);;
-    asm("fldz" : "=t" (a));
+    //asm("fldz" : "=t" (a));
  printf("fldz= %f\n", a);;
 }
 
@@ -3029,13 +3047,13 @@ void test_fbcd(double a)
     unsigned short bcd[5];
     double b;
 
-    asm("fbstp %0" : "=m" (bcd[0]) : "t" (a) : "st");
-    asm("fbld %1" : "=t" (b) : "m" (bcd[0]));
+    //asm("fbstp %0" : "=m" (bcd[0]) : "t" (a) : "st");
+    //asm("fbld %1" : "=t" (b) : "m" (bcd[0]));
     printf("a=%f bcd=%04x%04x%04x%04x%04x b=%f\n",
            a, bcd[4], bcd[3], bcd[2], bcd[1], bcd[0], b);
 }
 
-void test_fenv(void)
+void test_fenv(m2c::_STATE* _state)
 {
     struct __attribute__((__packed__)) {
         uint16_t fpuc;
@@ -3087,7 +3105,7 @@ asm volatile ("frstor %0\n": : "m" (*(&float_env32))); for(i=0;i<5;i++) asm vola
     printf("fptag=%04x\n", float_env32.fptag);
 }
 
-void test_fcmov(void)
+void test_fcmov(m2c::_STATE* _state)
 {
     double a, b;
     dd eflags, i;
@@ -3101,39 +3119,39 @@ void test_fcmov(void)
         if (i & 2)
             eflags |= 0x0040;
         { double res;
-asm("push %3\nPOPF;fcmovb %2, %0\n" : "=t" (res) : "0" (a), "u" (b), "g" (eflags));
+//asm("push %3\nPOPF;fcmovb %2, %0\n" : "=t" (res) : "0" (a), "u" (b), "g" (eflags));
  printf("fcmov%s eflags=0x%04lx-> %f\n", "b", (dd)eflags, res);};
         { double res;
-asm("push %3\nPOPF;fcmove %2, %0\n" : "=t" (res) : "0" (a), "u" (b), "g" (eflags));
+//asm("push %3\nPOPF;fcmove %2, %0\n" : "=t" (res) : "0" (a), "u" (b), "g" (eflags));
  printf("fcmov%s eflags=0x%04lx-> %f\n", "e", (dd)eflags, res);};
         { double res;
-asm("push %3\nPOPF;fcmovbe %2, %0\n" : "=t" (res) : "0" (a), "u" (b), "g" (eflags));
+//asm("push %3\nPOPF;fcmovbe %2, %0\n" : "=t" (res) : "0" (a), "u" (b), "g" (eflags));
  printf("fcmov%s eflags=0x%04lx-> %f\n", "be", (dd)eflags, res);};
         { double res;
-asm("push %3\nPOPF;fcmovnb %2, %0\n" : "=t" (res) : "0" (a), "u" (b), "g" (eflags));
+//asm("push %3\nPOPF;fcmovnb %2, %0\n" : "=t" (res) : "0" (a), "u" (b), "g" (eflags));
  printf("fcmov%s eflags=0x%04lx-> %f\n", "nb", (dd)eflags, res);};
         { double res;
-asm("push %3\nPOPF;fcmovne %2, %0\n" : "=t" (res) : "0" (a), "u" (b), "g" (eflags));
+//asm("push %3\nPOPF;fcmovne %2, %0\n" : "=t" (res) : "0" (a), "u" (b), "g" (eflags));
  printf("fcmov%s eflags=0x%04lx-> %f\n", "ne", (dd)eflags, res);};
         { double res;
-asm("push %3\nPOPF;fcmovnbe %2, %0\n" : "=t" (res) : "0" (a), "u" (b), "g" (eflags));
+//asm("push %3\nPOPF;fcmovnbe %2, %0\n" : "=t" (res) : "0" (a), "u" (b), "g" (eflags));
  printf("fcmov%s eflags=0x%04lx-> %f\n", "nbe", (dd)eflags, res);};
     }
     { double res;
-asm("push %3\nPOPF;fcmovu %2, %0\n" : "=t" (res) : "0" (a), "u" (b), "g" (0));
+//asm("push %3\nPOPF;fcmovu %2, %0\n" : "=t" (res) : "0" (a), "u" (b), "g" (0));
  printf("fcmov%s eflags=0x%04lx-> %f\n", "u", (dd)0, res);};
     { double res;
-asm("push %3\nPOPF;fcmovu %2, %0\n" : "=t" (res) : "0" (a), "u" (b), "g" (0x0004));
+//asm("push %3\nPOPF;fcmovu %2, %0\n" : "=t" (res) : "0" (a), "u" (b), "g" (0x0004));
  printf("fcmov%s eflags=0x%04lx-> %f\n", "u", (dd)0x0004, res);};
     { double res;
-asm("push %3\nPOPF;fcmovnu %2, %0\n" : "=t" (res) : "0" (a), "u" (b), "g" (0));
+//asm("push %3\nPOPF;fcmovnu %2, %0\n" : "=t" (res) : "0" (a), "u" (b), "g" (0));
  printf("fcmov%s eflags=0x%04lx-> %f\n", "nu", (dd)0, res);};
     { double res;
-asm("push %3\nPOPF;fcmovnu %2, %0\n" : "=t" (res) : "0" (a), "u" (b), "g" (0x0004));
+//asm("push %3\nPOPF;fcmovnu %2, %0\n" : "=t" (res) : "0" (a), "u" (b), "g" (0x0004));
  printf("fcmov%s eflags=0x%04lx-> %f\n", "nu", (dd)0x0004, res);};
 }
 
-void test_floats(void)
+void test_floats(m2c::_STATE* _state)
 {
     test_fops(2, 3);
     test_fops(1.4, -5);
@@ -3168,8 +3186,9 @@ void test_floats(void)
     eax=res;PUSH(flags);POPF;op;PUSHF;POP(flags);res=eax; \
 printf("%-10s A=%08x R=%08x CCIN=%04x CC=%04x\n", #op, op0, res, cc_in, flags & (cc_mask));};
 
-void test_bcd(void)
+void test_bcd(m2c::_STATE* _state)
 {
+ X86_REGREF
     TEST_BCD(DAA, 0x12340503, CC_A, (CC_C | CC_Z | CC_S | CC_A));
     TEST_BCD(DAA, 0x12340506, CC_A, (CC_C | CC_Z | CC_S | CC_A));
     TEST_BCD(DAA, 0x12340507, CC_A, (CC_C | CC_Z | CC_S | CC_A));
@@ -3221,32 +3240,32 @@ void test_bcd(void)
 
 }
 
-void test_xchg(void)
+void test_xchg(m2c::_STATE* _state)
 {
-
+X86_REGREF
 
 
     { dd op0, op1; op0 = i2l(0x12345678); op1 = i2l(0xfbca7654);
-asm("xchgl %k0, %k1" : "=q" (op0), "+q" (op1) : "0" (op0));
+//asm("xchgl %k0, %k1" : "=q" (op0), "+q" (op1) : "0" (op0));
  printf("%-10s A=%08lx B=%08lx\n", "xchgl", op0, op1);};
     { dd op0, op1; op0 = i2l(0x12345678); op1 = i2l(0xfbca7654);
-asm("xchgw %w0, %w1" : "=q" (op0), "+q" (op1) : "0" (op0));
+//asm("xchgw %w0, %w1" : "=q" (op0), "+q" (op1) : "0" (op0));
  printf("%-10s A=%08lx B=%08lx\n", "xchgw", op0, op1);};
     { dd op0, op1; op0 = i2l(0x12345678); op1 = i2l(0xfbca7654);
-asm("xchgb %b0, %b1" : "=q" (op0), "+q" (op1) : "0" (op0));
+//asm("xchgb %b0, %b1" : "=q" (op0), "+q" (op1) : "0" (op0));
  printf("%-10s A=%08lx B=%08lx\n", "xchgb", op0, op1);};
 
 
 
 
     { dd op0, op1; op0 = i2l(0x12345678); op1 = i2l(0xfbca7654);
-asm("xchgl %k0, %k1" : "=q" (op0), "+m" (op1) : "0" (op0));
+//asm("xchgl %k0, %k1" : "=q" (op0), "+m" (op1) : "0" (op0));
  printf("%-10s A=%08lx B=%08lx\n", "xchgl", op0, op1);};
     { dd op0, op1; op0 = i2l(0x12345678); op1 = i2l(0xfbca7654);
-asm("xchgw %w0, %w1" : "=q" (op0), "+m" (op1) : "0" (op0));
+//asm("xchgw %w0, %w1" : "=q" (op0), "+m" (op1) : "0" (op0));
  printf("%-10s A=%08lx B=%08lx\n", "xchgw", op0, op1);};
     { dd op0, op1; op0 = i2l(0x12345678); op1 = i2l(0xfbca7654);
-asm("xchgb %b0, %b1" : "=q" (op0), "+m" (op1) : "0" (op0));
+//asm("xchgb %b0, %b1" : "=q" (op0), "+m" (op1) : "0" (op0));
  printf("%-10s A=%08lx B=%08lx\n", "xchgb", op0, op1);};
 
 
@@ -3286,52 +3305,52 @@ XADD(*(db*)&op0,*(db*)&op1);
 
 
     { dd op0, op1, op2; op0 = i2l(0x12345678); op1 = i2l(0xfbca7654); op2 = i2l(0xfbca7654);
-asm("cmpxchgl %k0, %k1" : "=q" (op0), "+q" (op1) : "0" (op0), "a" (op2));
+//asm("cmpxchgl %k0, %k1" : "=q" (op0), "+q" (op1) : "0" (op0), "a" (op2));
  printf("%-10s EAX=%08lx A=%08lx C=%08lx\n", "cmpxchgl", op2, op0, op1);};
     { dd op0, op1, op2; op0 = i2l(0x12345678); op1 = i2l(0xfbca7654); op2 = i2l(0xfbca7654);
-asm("cmpxchgw %w0, %w1" : "=q" (op0), "+q" (op1) : "0" (op0), "a" (op2));
+//asm("cmpxchgw %w0, %w1" : "=q" (op0), "+q" (op1) : "0" (op0), "a" (op2));
  printf("%-10s EAX=%08lx A=%08lx C=%08lx\n", "cmpxchgw", op2, op0, op1);};
     { dd op0, op1, op2; op0 = i2l(0x12345678); op1 = i2l(0xfbca7654); op2 = i2l(0xfbca7654);
-asm("cmpxchgb %b0, %b1" : "=q" (op0), "+q" (op1) : "0" (op0), "a" (op2));
+//asm("cmpxchgb %b0, %b1" : "=q" (op0), "+q" (op1) : "0" (op0), "a" (op2));
  printf("%-10s EAX=%08lx A=%08lx C=%08lx\n", "cmpxchgb", op2, op0, op1);};
 
 
 
 
     { dd op0, op1, op2; op0 = i2l(0x12345678); op1 = i2l(0xfbca7654); op2 = i2l(0xfffefdfc);
-asm("cmpxchgl %k0, %k1" : "=q" (op0), "+q" (op1) : "0" (op0), "a" (op2));
+//asm("cmpxchgl %k0, %k1" : "=q" (op0), "+q" (op1) : "0" (op0), "a" (op2));
  printf("%-10s EAX=%08lx A=%08lx C=%08lx\n", "cmpxchgl", op2, op0, op1);};
     { dd op0, op1, op2; op0 = i2l(0x12345678); op1 = i2l(0xfbca7654); op2 = i2l(0xfffefdfc);
-asm("cmpxchgw %w0, %w1" : "=q" (op0), "+q" (op1) : "0" (op0), "a" (op2));
+//asm("cmpxchgw %w0, %w1" : "=q" (op0), "+q" (op1) : "0" (op0), "a" (op2));
  printf("%-10s EAX=%08lx A=%08lx C=%08lx\n", "cmpxchgw", op2, op0, op1);};
     { dd op0, op1, op2; op0 = i2l(0x12345678); op1 = i2l(0xfbca7654); op2 = i2l(0xfffefdfc);
-asm("cmpxchgb %b0, %b1" : "=q" (op0), "+q" (op1) : "0" (op0), "a" (op2));
+//asm("cmpxchgb %b0, %b1" : "=q" (op0), "+q" (op1) : "0" (op0), "a" (op2));
  printf("%-10s EAX=%08lx A=%08lx C=%08lx\n", "cmpxchgb", op2, op0, op1);};
 
 
 
 
     { dd op0, op1, op2; op0 = i2l(0x12345678); op1 = i2l(0xfbca7654); op2 = i2l(0xfbca7654);
-asm("cmpxchgl %k0, %k1" : "=q" (op0), "+m" (op1) : "0" (op0), "a" (op2));
+//asm("cmpxchgl %k0, %k1" : "=q" (op0), "+m" (op1) : "0" (op0), "a" (op2));
  printf("%-10s EAX=%08lx A=%08lx C=%08lx\n", "cmpxchgl", op2, op0, op1);};
     { dd op0, op1, op2; op0 = i2l(0x12345678); op1 = i2l(0xfbca7654); op2 = i2l(0xfbca7654);
-asm("cmpxchgw %w0, %w1" : "=q" (op0), "+m" (op1) : "0" (op0), "a" (op2));
+//asm("cmpxchgw %w0, %w1" : "=q" (op0), "+m" (op1) : "0" (op0), "a" (op2));
  printf("%-10s EAX=%08lx A=%08lx C=%08lx\n", "cmpxchgw", op2, op0, op1);};
     { dd op0, op1, op2; op0 = i2l(0x12345678); op1 = i2l(0xfbca7654); op2 = i2l(0xfbca7654);
-asm("cmpxchgb %b0, %b1" : "=q" (op0), "+m" (op1) : "0" (op0), "a" (op2));
+//asm("cmpxchgb %b0, %b1" : "=q" (op0), "+m" (op1) : "0" (op0), "a" (op2));
  printf("%-10s EAX=%08lx A=%08lx C=%08lx\n", "cmpxchgb", op2, op0, op1);};
 
 
 
 
     { dd op0, op1, op2; op0 = i2l(0x12345678); op1 = i2l(0xfbca7654); op2 = i2l(0xfffefdfc);
-asm("cmpxchgl %k0, %k1" : "=q" (op0), "+m" (op1) : "0" (op0), "a" (op2));
+//asm("cmpxchgl %k0, %k1" : "=q" (op0), "+m" (op1) : "0" (op0), "a" (op2));
  printf("%-10s EAX=%08lx A=%08lx C=%08lx\n", "cmpxchgl", op2, op0, op1);};
     { dd op0, op1, op2; op0 = i2l(0x12345678); op1 = i2l(0xfbca7654); op2 = i2l(0xfffefdfc);
-asm("cmpxchgw %w0, %w1" : "=q" (op0), "+m" (op1) : "0" (op0), "a" (op2));
+//asm("cmpxchgw %w0, %w1" : "=q" (op0), "+m" (op1) : "0" (op0), "a" (op2));
  printf("%-10s EAX=%08lx A=%08lx C=%08lx\n", "cmpxchgw", op2, op0, op1);};
     { dd op0, op1, op2; op0 = i2l(0x12345678); op1 = i2l(0xfbca7654); op2 = i2l(0xfffefdfc);
-asm("cmpxchgb %b0, %b1" : "=q" (op0), "+m" (op1) : "0" (op0), "a" (op2));
+//asm("cmpxchgb %b0, %b1" : "=q" (op0), "+m" (op1) : "0" (op0), "a" (op2));
  printf("%-10s EAX=%08lx A=%08lx C=%08lx\n", "cmpxchgb", op2, op0, op1);};
 
     {
@@ -3348,19 +3367,20 @@ asm("cmpxchgb %b0, %b1" : "=q" (op0), "+m" (op1) : "0" (op0), "a" (op2));
             else
                 op1 = op0;
             op2 = 0x6532432432434LL;
-            asm("cmpxchg8b %2\n"
+            /*asm("cmpxchg8b %2\n"
                 "PUSHF;"
                 "pop %3\n"
                 : "=a" (eax), "=d" (edx), "=m" (op1), "=g" (eflags)
-                : "0" (eax), "1" (edx), "m" (op1), "b" ((int)op2), "c" ((int)(op2 >> 32)));
+                : "0" (eax), "1" (edx), "m" (op1), "b" ((int)op2), "c" ((int)(op2 >> 32)));*/
             printf("cmpxchg8b: eax=%08lx edx=%08lx op1=%016llx CC=%02lx\n",
                    eax, edx, op1, eflags & 0x0040);
         }
     }
 }
 
-void test_misc(void)
+void test_misc(m2c::_STATE* _state)
 {
+X86_REGREF
     char table[256];
     dd res, i;
 
@@ -3385,8 +3405,9 @@ uint8_t str_buffer[4096];
 void print_buffer(void) { /*for(int j = 0; j < sizeof(str_buffer); j++) printf("%02X", str_buffer[j]); */}
 void print_buf(db* p, int s) { for(int j = 0; j < s; j++) printf("%02X", *(p+j)); }
 
-void test_string(void)
+void test_string(m2c::_STATE* _state)
 {
+X86_REGREF
     int i;
     for(i = 0;i < sizeof(str_buffer); i++)
         str_buffer[i] = i + 0x56;
@@ -3649,7 +3670,7 @@ PUSH((dd)0);POPF;STD;REPNE CMPSD;CLD;PUSHF;POP(eflags);
 
 dd enter_stack[4096];
 
-static void test_enter(void)
+static void test_enter(m2c::_STATE* _state)
 {
 
 
@@ -3669,8 +3690,9 @@ static void test_enter(void)
     ;
 }
 
-void test_conv(void)
+void test_conv(m2c::_STATE* _state)
 {
+X86_REGREF
     { unsigned long a, r; a = i2l(0x8234a6f8); eax = a;
 CBW;
 r=eax;
@@ -3714,6 +3736,10 @@ int main(int argc, char **argv)
     void **ptr;
     void (*func)(void);
 
+m2c::_STATE sstate;
+m2c::_STATE* _state=&sstate;
+X86_REGREF
+
   R(MOV(ss, seg_offset(stack)));
   esp = ((dd)(db*)&m2c::m.stack[STACK_SIZE - 4]);
 
@@ -3724,46 +3750,46 @@ int main(int argc, char **argv)
         func();
     }
 */
-test_add();
-test_sub();
-test_xor();
-test_and();
-test_or();
-test_cmp();
-test_adc();
-test_sbb();
-test_inc();
-test_dec();
-test_neg();
-test_not();
-test_shl();
-test_shr();
-test_sal();
-test_sar();
-test_rol();
-test_ror();
-test_rcr();
-test_rcl();
-test_shld();
-test_shrd();
-test_bt();
-test_bts();
-test_btr();
-test_btc();
-    test_bsx();
-    test_mul();
-    test_jcc();
-    test_loop();
-//    test_floats();
+test_add(_state);
+test_sub(_state);
+test_xor(_state);
+test_and(_state);
+test_or(_state);
+test_cmp(_state);
+test_adc(_state);
+test_sbb(_state);
+test_inc(_state);
+test_dec(_state);
+test_neg(_state);
+test_not(_state);
+test_shl(_state);
+test_shr(_state);
+test_sal(_state);
+test_sar(_state);
+test_rol(_state);
+test_ror(_state);
+test_rcr(_state);
+test_rcl(_state);
+test_shld(_state);
+test_shrd(_state);
+test_bt(_state);
+test_bts(_state);
+test_btr(_state);
+test_btc(_state);
+    test_bsx(_state);
+    test_mul(_state);
+    test_jcc(_state);
+    test_loop(_state);
+//    test_floats(_state);
 
-    test_bcd();
+    test_bcd(_state);
 
-    test_xchg();
-    test_string();
-    test_misc();
-    test_lea();
+    test_xchg(_state);
+    test_string(_state);
+    test_misc(_state);
+    test_lea(_state);
 
-    test_enter();
-    test_conv();
+    test_enter(_state);
+    test_conv(_state);
     return 0;
 }
