@@ -196,249 +196,18 @@ dd other_flags;
 int call_source;
 };
 
-#define REGDEF_hl(Z)   \
-uint32_t& e##Z##x = _state->e##Z##x; \
-uint16_t& Z##x = *(uint16_t *)& e##Z##x; \
-uint8_t& Z##l = *(uint8_t *)& e##Z##x; \
-uint8_t& Z##h = *(((uint8_t *)& e##Z##x)+1); 
 
-#define REGDEF_l(Z) \
-uint32_t& e##Z = _state->e##Z; \
-uint16_t& Z = *(uint16_t *)& e##Z ; \
-uint8_t&  Z##l = *(uint8_t *)& e##Z ;
+#if M2CDEBUG==-1 //decomp
 
-#define REGDEF_nol(Z) \
-uint32_t& e##Z = _state->e##Z; \
-uint16_t& Z = *(uint16_t *)& e##Z ;
+#include "asm_regs_decomp.h"
 
-#if DOSBOX_CUSTOM==0 || M2CDEBUG==-1 //masm2c or decomp
+#elif DOSBOX_CUSTOM==0 //masm2c
 
-    class ShadowStack {
-        struct Frame {
-            const char *file;
-            size_t line;
-            dd sp;
-            dw cs;
-            dd ip;
-            dd value;
-            dw *pointer_;
-            size_t addcounter;
-            size_t remcounter;
-            bool itwascall;
-            size_t call_deep;
-        };
-
-        std::vector<Frame> m_ss;
-        size_t m_current=0;
-        bool m_itiscall=false;
-        bool m_itisret=false;
-        size_t m_deep=1;
-    public:
-        int m_needtoskipcall=0;
-        bool m_active=true;
-        bool m_forceactive=false;
-
-        size_t m_currentdeep=0;
-
-        void enable() {m_active=true;}
-        void disable() {m_active=false;}
-        void forceenable() {m_forceactive=true;}
-        void forcedisable() {m_forceactive=false;}
-
-        void push(_STATE *_state, dd value);
-
-        void pop(_STATE *_state);
-
-        void print(_STATE *_state);
-        void print_frame(const Frame& f);
-
-        void itiscall() {m_itiscall=true;}
-        void itisret() {m_itisret=true;}
-        bool itwascall() {return m_ss[m_current].itwascall;}
-
-        void decreasedeep();
-        bool needtoskipcalls();
-        size_t getneedtoskipcallndclean(){int ret = m_needtoskipcall; m_needtoskipcall = 0; return ret;}
-        void noneedreturn(){--m_needtoskipcall;}
-    };
-
-    extern ShadowStack shadow_stack;
-
-class eflags
-{
-
- _STATE* _state;
-public:
- explicit eflags(_STATE* _state):_state(_state)
- {}
-
-dd getvalue() const noexcept
- { flagsUnion f;
-  f.value=_state->other_flags & ~0x8000; // 286+
-  f.bits._CF=_state->CF;
-  f.bits._PF=_state->PF;
-  f.bits._AF=_state->AF;
-  f.bits._ZF=_state->ZF;
-  f.bits._SF=_state->SF;
-  f.bits._TF=_state->TF;
-  f.bits._IF=_state->IF;
-  f.bits._DF=_state->DF;
-  f.bits._OF=_state->OF;
-  return f.value; 
- }
-void setvalue(dd v) noexcept
-{
- flagsUnion f;
- f.value = v;
- _state->other_flags=v;
- _state->CF=f.bits._CF;
- _state->PF=f.bits._PF;
- _state->AF=f.bits._AF;
- _state->ZF=f.bits._ZF;
- _state->SF=f.bits._SF;
- _state->TF=f.bits._TF;
- _state->IF=f.bits._IF;
- _state->DF=f.bits._DF;
- _state->OF=f.bits._OF;
- }
-#define REGDEF_flags(Z) \
-    inline bool set##Z##F(bool i) noexcept {return _state-> Z##F=i;} \
-    inline bool get##Z##F() const noexcept {return _state-> Z##F;}
-    inline void reset(){
- _state->CF=false;
- _state->PF=false;
- _state->AF=false;
- _state->ZF=false;
- _state->SF=false;
- _state->TF=false;
- _state->IF=false;
- _state->DF=false;
- _state->OF=false;
-}
- 
- REGDEF_flags(C)
- REGDEF_flags(P)
- REGDEF_flags(A)
- REGDEF_flags(Z)
- REGDEF_flags(S)
- REGDEF_flags(T)
- REGDEF_flags(I)
- REGDEF_flags(D)
- REGDEF_flags(O)
-};
-
-#define X86_REGREF \
-    REGDEF_hl(a);     \
-    REGDEF_hl(b);     \
-    REGDEF_hl(c);     \
-    REGDEF_hl(d);     \
-                      \
-    REGDEF_l(si);     \
-    REGDEF_l(di);     \
-    REGDEF_l(sp);     \
-    REGDEF_l(bp);     \
-                      \
-    REGDEF_nol(ip);   \
-                      \
-dw& cs = _state->cs;         \
-dw& ds = _state->ds;         \
-dw& es = _state->es;         \
-dw& fs = _state->fs;         \
-dw& gs = _state->gs;         \
-dw& ss = _state->ss;         \
-                      \
-bool& CF = _state->CF;       \
-bool& PF = _state->PF;       \
-bool& AF = _state->AF;       \
-bool& ZF = _state->ZF;       \
-bool& SF = _state->SF;       \
-bool& DF = _state->DF;       \
-bool& OF = _state->OF;       \
-bool& IF = _state->IF;       \
-m2c::eflags m2cflags(_state); \
-dd& stackPointer = _state->esp;\
-m2c::_offsets __disp; \
-dw _source;
+#include "asm_regs_m2c.h"
 
 #else // libdosbox
 
-class eflags
-{
- dd& _value;
-
-public:
-eflags(uint32_t& flags): _value((dd&)flags)
-{}
-
-dd getvalue() const noexcept
-{ return _value; }
-void setvalue(dd v) noexcept
-{ _value=v; }
-#define REGDEF_flags(Z) \
-    inline bool set##Z##F(bool i) noexcept {return (reinterpret_cast<flagsUnion*>(&_value)->bits._##Z##F=i);} \
-    inline bool get##Z##F() const noexcept {return reinterpret_cast<flagsUnion*>(&_value)->bits._##Z##F;}
-    inline void reset(){_value=0;}
- 
- REGDEF_flags(C)
- REGDEF_flags(P)
- REGDEF_flags(A)
- REGDEF_flags(Z)
- REGDEF_flags(S)
- REGDEF_flags(T)
- REGDEF_flags(I)
- REGDEF_flags(D)
- REGDEF_flags(O)
-};
-
-// #define m2cflags cpu_regs.flags
-
-#define X86_REGREF \
-db& al =  cpu_regs.regs[REGI_AX].byte[BL_INDEX]; \
-db& ah =  cpu_regs.regs[REGI_AX].byte[BH_INDEX]; \
-dw& ax =  cpu_regs.regs[REGI_AX].word[W_INDEX]; \
-dd& eax =  *(dd*)&cpu_regs.regs[REGI_AX].dword[DW_INDEX]; \
- \
-db& bl =  cpu_regs.regs[REGI_BX].byte[BL_INDEX]; \
-db& bh =  cpu_regs.regs[REGI_BX].byte[BH_INDEX]; \
-dw& bx =  cpu_regs.regs[REGI_BX].word[W_INDEX]; \
-dd& ebx =  *(dd*)&cpu_regs.regs[REGI_BX].dword[DW_INDEX]; \
- \
-db& cl =  cpu_regs.regs[REGI_CX].byte[BL_INDEX]; \
-db& ch =  cpu_regs.regs[REGI_CX].byte[BH_INDEX]; \
-dw& cx =  cpu_regs.regs[REGI_CX].word[W_INDEX]; \
-dd& ecx =  *(dd*)&cpu_regs.regs[REGI_CX].dword[DW_INDEX]; \
- \
-db& dl =  cpu_regs.regs[REGI_DX].byte[BL_INDEX]; \
-db& dh =  cpu_regs.regs[REGI_DX].byte[BH_INDEX]; \
-dw& dx =  cpu_regs.regs[REGI_DX].word[W_INDEX]; \
-dd& edx =  *(dd*)&cpu_regs.regs[REGI_DX].dword[DW_INDEX]; \
- \
-dw& si =  cpu_regs.regs[REGI_SI].word[W_INDEX]; \
-dd& esi =  *(dd*)&cpu_regs.regs[REGI_SI].dword[DW_INDEX]; \
- \
-dw& di =  cpu_regs.regs[REGI_DI].word[W_INDEX]; \
-dd& edi =  *(dd*)&cpu_regs.regs[REGI_DI].dword[DW_INDEX]; \
- \
-dw& sp =  cpu_regs.regs[REGI_SP].word[W_INDEX]; \
-dd& esp =  *(dd*)&cpu_regs.regs[REGI_SP].dword[DW_INDEX]; \
- \
-dw& bp =  cpu_regs.regs[REGI_BP].word[W_INDEX]; \
-dd& ebp =  *(dd*)&cpu_regs.regs[REGI_BP].dword[DW_INDEX]; \
- \
-dw& ip =  cpu_regs.ip.word[W_INDEX]; \
-dd& eip =  *(dd*)&cpu_regs.ip.dword[DW_INDEX]; \
-dw& cs = Segs.val[SegNames::cs]; \
-dw& ds = Segs.val[SegNames::ds]; \
-dw& es = Segs.val[SegNames::es]; \
-dw& fs = Segs.val[SegNames::fs]; \
-dw& gs = Segs.val[SegNames::gs]; \
-dw& ss = Segs.val[SegNames::ss]; \
-                      \
-m2c::eflags m2cflags(cpu_regs.flags); \
-dd& stackPointer = esp;\
-m2c::_offsets __disp; \
-dd _source;
-
+#include "asm_regs_dbx.h"
 
 #endif
 
@@ -762,21 +531,21 @@ inline db MSB(D a)  // get highest bit
     void PUSH_(S a);
 
     template<>
-    inline void PUSH_<dw>(dw a) { fix_segs();CPU_Push16(a); }
+    OPTINLINE void PUSH_<dw>(dw a) { fix_segs();CPU_Push16(a); }
 
     template<>
-    inline void PUSH_<dd>(dd a) { fix_segs();CPU_Push32(a); }
+    OPTINLINE void PUSH_<dd>(dd a) { fix_segs();CPU_Push32(a); }
 
     template<>
-    inline void PUSH_<short int>(short int a) { fix_segs();CPU_Push16(a); }
+    OPTINLINE void PUSH_<short int>(short int a) { fix_segs();CPU_Push16(a); }
 
     template<>
-    inline void PUSH_<int>(int a) { fix_segs();CPU_Push32(a); }
+    OPTINLINE void PUSH_<int>(int a) { fix_segs();CPU_Push32(a); }
 
 
-    inline void POP_(dw &a) { fix_segs();a = CPU_Pop16(); }
+    OPTINLINE void POP_(dw &a) { fix_segs();a = CPU_Pop16(); }
 
-    inline void POP_(dd &a) { fix_segs();a = CPU_Pop32(); }
+    OPTINLINE void POP_(dd &a) { fix_segs();a = CPU_Pop32(); }
 
 #else
 
@@ -784,7 +553,7 @@ inline db MSB(D a)  // get highest bit
 #define POP(a) {m2c::POP_(a, _state);}
 
     template<typename S>
-    inline void PUSH_(S a, _STATE *_state)
+    OPTINLINE void PUSH_(S a, _STATE *_state)
 {
   X86_REGREF
   dd averytemporary=a;stackPointer-=sizeof(a); 
@@ -800,7 +569,7 @@ inline db MSB(D a)  // get highest bit
 //		assert((m2c::raddr_(ss,stackPointer) - ((db*)&stack))>8);
 
     template<typename S>
-    inline void POP_(S& a, _STATE *_state)
+    OPTINLINE void POP_(S& a, _STATE *_state)
 {
   X86_REGREF
  #ifndef NO_SHADOW_STACK
@@ -872,8 +641,11 @@ inline db MSB(D a)  // get highest bit
         POP(ax);
     }
 
+extern bool defered_irqs;
+OPTINLINE static void defer_irqs()
+{defered_irqs=true;}
 #if DOSBOX_CUSTOM
-#define STI {CPU_STI();m2c::defered_irqs=true;}
+#define STI {CPU_STI();m2c::defer_irqs();}
 #define CLI {CPU_CLI();}
 #else
 #define STI UNIMPLEMENTED
@@ -1615,7 +1387,7 @@ template <class D, class S>
 #define CMC {AFFECT_CF(GET_CF() ^ 1);}
 
 #define PUSHF {PUSH( (m2c::MWORDSIZE)m2cflags.getvalue() );}
-#define POPF {m2c::MWORDSIZE averytemporary; POP(averytemporary); m2cflags.setvalue(averytemporary);m2c::defered_irqs=true;}
+#define POPF {m2c::MWORDSIZE averytemporary; POP(averytemporary); m2cflags.setvalue(averytemporary);m2c::defer_irqs();}
 
 // directjeu nosetjmp,2
 // directmenu
