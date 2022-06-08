@@ -1,3 +1,5 @@
+	    class _STATE;
+
     class ShadowStack {
         struct Frame {
             bool init=false;
@@ -43,7 +45,7 @@
 
         void itiscall() {m_itiscall=true;}
         void itisret() {m_itisret=true;}
-        bool itwascall();
+        bool itwascall(_STATE* _state);
 
         void decreasedeep();
         bool needtoskipcalls();

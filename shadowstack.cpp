@@ -32,7 +32,7 @@ namespace m2c{
 //     m2c::log_info("---ShadowStack::push\n");
   }
 
- bool ShadowStack::itwascall() {
+ bool ShadowStack::itwascall(_STATE* _state) {
    X86_REGREF
    return m_ss[esp].itwascall;
   }

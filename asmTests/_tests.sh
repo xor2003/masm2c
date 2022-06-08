@@ -32,6 +32,8 @@ if [ $res -ne 0 ];then
   result=$(( $result + 1 ))
   export result
 fi
+echo '-------------------------------------------------------------'
+echo
 done
 #cat _result.log
 ! grep 'error:' _result.log
