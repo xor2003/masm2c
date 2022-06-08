@@ -48,6 +48,7 @@ extern bool collect_rt_info;
 extern volatile bool compare_jump;
 
 extern bool compare_instructions;
+extern bool complex_self_modifications;
 
 void increaseticks();
 #include <callback.h>
@@ -653,11 +654,6 @@ OPTINLINE static void defer_irqs()
 #endif
 
 #define CMP(a, b) m2c::CMP_(a, b, m2cflags)
-    template<class D, class S>
-    MYINLINE bool CMP_OF(D dest, S src,D result) {
-        const D highestbitset = (1 << (m2c::bitsizeof(dest) - 1));
-return ((dest ^ src) & (dest ^ result)) & highestbitset;
-}
 template <class D, class S>
     MYINLINE void CMP_(const D &dest_, const S &src_, m2c::eflags &m2cflags) {
 //printf("\n\n%s %s ",typeid(D).name(),typeid(S).name());
@@ -665,7 +661,8 @@ template <class D, class S>
         auto src = m2c::getdata(src_);
         decltype(dest) result = dest - src;
 		AFFECT_CF(result>dest); 
-        AFFECT_OF(CMP_OF(dest,src,result));
+        const D highestbitset = (1 << (m2c::bitsizeof(dest) - 1));
+        AFFECT_OF(((dest ^ src) & (dest ^ result)) & highestbitset);
 		AFFECT_ZFifz(result); 
 		AFFECT_SF_(result,result); 
 }
@@ -725,21 +722,13 @@ template <class D, class S>
 }
 
 #define SHR(a, b) m2c::SHR_(a, b, m2cflags)
-    template<class D, class S>
-    MYINLINE bool SHR_CF(D a, S b) {
-	    return (a >> (b - 1)) & 1;
-    }
-    template<class D, class S>
-    MYINLINE bool SHR_OF(D a, S b) {
-	    const D highestbitset = (1 << (m2c::bitsizeof(a) - 1));
-	    return (b & 0x1f) == 1 ? (a & highestbitset) != 0 : false;
-    }
 template <class D, class S>
     MYINLINE void SHR_(D &a, const S &b, m2c::eflags &m2cflags) {
         if (b) {
-            AFFECT_CF(SHR_CF(a, b));
+            AFFECT_CF((a >> (b - 1)) & 1);
+            const D highestbitset = (1 << (m2c::bitsizeof(a) - 1));
                 D res=a>>b;
-            AFFECT_OF(SHR_OF(a, b));
+            AFFECT_OF((b & 0x1f) == 1 ? (a & highestbitset) != 0 : false);
 		AFFECT_ZFifz(res);
 		AFFECT_SF_(res,res);
                 a = res;
@@ -747,57 +736,37 @@ template <class D, class S>
 }
 
 #define SHL(a, b) m2c::SHL_(a, b, m2cflags)
-    template<class D, class S>
-    OPTINLINE bool SHL_CF(D a, S b) {
-	    return (a) & (1 << (m2c::bitsizeof(a) - (b)));
-    }
-    template<class D>
-    OPTINLINE bool SHL_OF(D a, D res) {
-	    const D highestbitset = (1 << (m2c::bitsizeof(a) - 1));
-	    return (res ^ a) & highestbitset;
-    }
 template <class D, class S>
     MYINLINE void SHL_(D &a, const S &b, m2c::eflags &m2cflags) {
         if (b) {
-            AFFECT_CF(SHL_CF(a,b));
-            D res = a << b;
-            AFFECT_ZFifz(res);
-            AFFECT_SF_(res, res);
-            AFFECT_OF(SHL_OF(a, res));
-	    a = res;
+            AFFECT_CF((a) & (1 << (m2c::bitsizeof(a) - (b))));
+            D olda = a;
+            a = a << b;
+            AFFECT_ZFifz(a);
+            AFFECT_SF_(a, a);
+            D highestbitset = (1 << (m2c::bitsizeof(a) - 1));
+            AFFECT_OF((a ^ olda) & highestbitset);
         }
 }
 
 #define ROR(a, b) m2c::ROR_(a, b, m2cflags)
-    template<class D, class S>
-    OPTINLINE bool ROR_CF(D a, S b) {
-	    return ((a) >> (m2c::shiftmodule(a, b) - 1)) & 1;
-    }
-    template<class D>
-    OPTINLINE bool ROR_OF(D a) {
-	    const D highestbitset = (1 << (m2c::bitsizeof(a) - 1));
-	    return (a ^ (a << 1)) & highestbitset;
-    }
 template <class D, class S>
     MYINLINE void ROR_(D &a, S b, m2c::eflags &m2cflags) {
         if (b) {
-            AFFECT_CF(ROR_CF(a,b));\
+            AFFECT_CF(((a) >> (m2c::shiftmodule(a, b) - 1)) & 1);\
 		a=((a)>>(m2c::shiftmodule(a,b)) | a<<(m2c::bitsizeof(a)-(m2c::shiftmodule(a,b))));
-            AFFECT_OF(ROR_OF(a));
+            D highestbitset = (1 << (m2c::bitsizeof(a) - 1));
+            AFFECT_OF((a ^ (a << 1)) & highestbitset);
 		}
 }
 
 #define ROL(a, b) m2c::ROL_(a, b, m2cflags)
-    template<class D>
-    OPTINLINE bool ROL_OF(D a) {
-	    return (a & 1) ^ (a >> (m2c::bitsizeof(a) - 1));
-    }
 template <class D, class S>
     MYINLINE void ROL_(D &a, S b, m2c::eflags &m2cflags) {
         if (b) {
             a = (((a) << (shiftmodule(a, b))) | (a) >> (bitsizeof(a) - (shiftmodule(a, b))));\
 		AFFECT_CF(LSB(a));
-            AFFECT_OF(ROL_OF(a));
+            AFFECT_OF((a & 1) ^ (a >> (m2c::bitsizeof(a) - 1)));
 		}
 }
 
@@ -1340,9 +1309,9 @@ template <class D, class S>
 
     template<class D>
     MYINLINE void XCHG_(D &dest, D &src) {
-        D t = dest;
-        dest = src;
-        src = t;
+        D t = m2c::getdata(dest);
+        m2c::setdata(&dest, m2c::getdata(src));
+        m2c::setdata(&src, t);
     }//std::swap(dest,src); TODO
 
 
@@ -1493,10 +1462,10 @@ struct StackPop
 #ifndef NO_SHADOW_STACK
         shadow_stack.itisret();
 #endif
-        POP(ip);
         bool ret(true);
 #ifndef NO_SHADOW_STACK
         ret = shadow_stack.itwascall();
+        POP(ip);
         int skip = shadow_stack.getneedtoskipcallndclean();
         if (!ret) {
             log_error("Warning. Return address wasn't created by native CALL (found %x)\n", ip);
@@ -1530,13 +1499,13 @@ throw StackPop(skip);
 
 //        m2c::MWORDSIZE averytemporary9 = 0;
 //        log_error("~~RETF before 1pop\n");
-#ifndef NO_SHADOW_STACK
-        shadow_stack.itisret();
-#endif
-        POP(ip);
         bool ret(true);
 #ifndef NO_SHADOW_STACK
+        shadow_stack.itisret();
         ret = shadow_stack.itwascall();
+#endif
+        POP(ip);
+#ifndef NO_SHADOW_STACK
         if (!ret) {
             log_error("Warning. Return address wasn't created by native CALL (found %x)\n", ip);
 //            m2c::stackDump();
@@ -1544,6 +1513,7 @@ throw StackPop(skip);
 //        log_error("~~RETF after 1pop\n");
 //        bool need = shadow_stack.needtoskipcalls();
         int skip = shadow_stack.getneedtoskipcallndclean();
+log_debug("skip %d\n", skip);
 #endif
 //        log_error("~~RETF before 2pop\n");
         POP(cs);
@@ -1630,7 +1600,7 @@ shadow_stack.decreasedeep();
 	return;}
 */
 #if DOSBOX_CUSTOM
-#define IRET {m2c::fix_segs();CPU_IRET(false,0);m2c::execute_irqs();return true;}
+#define IRET {m2c::fix_segs();CPU_IRET(false,0);m2c::defer_irqs();return true;}
 #else
 #define IRET RETF(0)
 #endif
