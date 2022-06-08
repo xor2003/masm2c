@@ -12,7 +12,7 @@ import logging
 import sys
 
 #from masm2c.__init__ import __version__
-__version__ = '0.9.5'
+__version__ = '0.9.6'
 
 __author__ = "x0r"
 __copyright__ = "x0r"
