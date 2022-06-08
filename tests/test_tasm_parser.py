@@ -3558,7 +3558,7 @@ head db '^',10,10
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('inc singlebyte')), u'INC(singlebyte)')
 
     def test_instr_11470(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('jmp [cs:table+ax]')), 'JMP(__dispatch_call)')
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('jmp [cs:table+ax]')), 'return __dispatch_call(__disp, _state);')
 
     def test_instr_11480(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov a,5')), u'MOV(*(a), 5)')
@@ -3590,7 +3590,7 @@ head db '^',10,10
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('jmp loc_406B3F')), u'JMP(loc_406b3f)')
 
     def test_instr_11600(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('jmp cs:[bx]')), u'JMP(__dispatch_call)')
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('jmp cs:[bx]')), u'return __dispatch_call(__disp, _state);')
 
     def test_instr_11610(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('call exec_adc')),u'CALL(exec_adc,0)')

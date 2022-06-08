@@ -1429,7 +1429,7 @@ class Parser:
 
     def adjust_offset_to_real(self, raw, label):
         absolute_offset, real_offset, _ = self.get_lst_offsets(raw)
-        if self.itislst and real_offset > 0xffff:  # IDA issue
+        if self.itislst and real_offset and real_offset > 0xffff:  # IDA issue
             return
         if absolute_offset:
             self.move_offset(absolute_offset, raw)

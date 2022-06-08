@@ -1899,7 +1899,7 @@ struct Memory{
                 if self._context.has_global(label):
                     g = self._context.get_global(label)
                     target_proc_name = None
-                    if isinstance(g, op.label):
+                    if isinstance(g, op.label) and g.name in self.label_to_proc:
                         target_proc_name = self.label_to_proc[g.name]
                     elif isinstance(g, proc_module.Proc):
                         target_proc_name = g.name
