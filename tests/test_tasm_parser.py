@@ -302,9 +302,6 @@ head db '^',10,10
     def test_instr_310(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code("cmp dword ptr buffer,'tseT'")), u'CMP(*(dd*)((buffer)), 0x74736554)')
 
-    def test_instr_320(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code("mov ah,9            ; DS:DX->'$'-terminated string")), u'MOV(ah, 9)')
-
     def test_instr_330(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code("mov dl,'c'")), u"MOV(dl, 'c')")
 
@@ -345,10 +342,7 @@ head db '^',10,10
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('JNZ  @@saaccvaaaax')), u'JNZ(arbarbsaaccvaaaax)')
 
     def test_instr_480(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('MOV DX,3DAh')), u'MOV(dx, 0x3DA)')
-
-    def test_instr_490(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('MOV al,0')), u'MOV(al, 0)')
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('MOV DX,3DAh')), u'dx = 0x3DA;')
 
     def test_instr_500(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('MOV ds, _data')), u'MOV(ds, seg_offset(_data))')
@@ -2225,21 +2219,6 @@ head db '^',10,10
     def test_instr_6860(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov     dword ptr [esp], offset a10sEax08lxA08l ; "%-10s EAX=%08lx A=%08lx C=%08lx CC=%02l"...')), u'MOV(*(dd*)(raddr(ss,esp)), offset(_rdata,a10seax08lxa08l))')
 
-    def test_instr_6870(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov     eax, 0')), u'MOV(eax, 0)')
-
-    def test_instr_6880(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov     eax, 0FFFF7FFFh')), u'MOV(eax, 0x0FFFF7FFF)')
-
-    def test_instr_6890(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov     eax, 1')), u'MOV(eax, 1)')
-
-    def test_instr_6900(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov     eax, 12340407h')), u'MOV(eax, 0x12340407)')
-
-    def test_instr_6910(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov     eax, 7FFFFFFFh')), u'MOV(eax, 0x7FFFFFFF)')
-
     def test_instr_6920(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov     eax, dword ptr [ebp+var_20]')), u'MOV(eax, *(dd*)(raddr(ss,ebp+var_20)))')
 
@@ -2270,23 +2249,8 @@ head db '^',10,10
     def test_instr_7010(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov     ebx, (offset str_buffer+800h)')), u'MOV(ebx, offset(_bss,str_buffer)+0x800)')
 
-    def test_instr_7020(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov     ebx, 1')), u'MOV(ebx, 1)')
-
-    def test_instr_7030(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov     ebx, 1234040Ah')), u'MOV(ebx, 0x1234040A)')
-
-    def test_instr_7040(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov     ebx, 12340506h')), u'MOV(ebx, 0x12340506)')
-
-    def test_instr_7050(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov     ebx, 12345678h')), u'MOV(ebx, 0x12345678)')
-
-    def test_instr_7060(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov     ebx, 2')), u'MOV(ebx, 2)')
-
     def test_instr_7070(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov     ebx, 8234A6F8h')), u'MOV(ebx, 0x8234A6F8)')
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov     ebx, 8234A6F8h')), u'ebx = 0x8234A6F8;')
 
     def test_instr_7080(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov     ebx, [ebp+iflags]')), u'MOV(ebx, *(dd*)(raddr(ss,ebp+iflags)))')
@@ -2311,24 +2275,6 @@ head db '^',10,10
 
     def test_instr_7150(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov     ebx, i')), u'MOV(ebx, i)')
-
-    def test_instr_7160(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov     ecx, 1')), u'MOV(ecx, 1)')
-
-    def test_instr_7170(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov     ecx, 10h')), u'MOV(ecx, 0x10)')
-
-    def test_instr_7180(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov     ecx, 11h')), u'MOV(ecx, 0x11)')
-
-    def test_instr_7190(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov     ecx, 1234h')), u'MOV(ecx, 0x1234)')
-
-    def test_instr_7200(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov     ecx, 4')), u'MOV(ecx, 4)')
-
-    def test_instr_7210(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov     ecx, 65324h')), u'MOV(ecx, 0x65324)')
 
     def test_instr_7220(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov     ecx, [ebp+ecx_0]')), u'MOV(ecx, *(dd*)(raddr(ss,ebp+ecx_0)))')
@@ -2363,33 +2309,6 @@ head db '^',10,10
     def test_instr_7320(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov     edi, (offset str_buffer+810h)')), u'MOV(edi, offset(_bss,str_buffer)+0x810)')
 
-    def test_instr_7330(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov     edi, 0FBCA7654h')), u'MOV(edi, 0x0FBCA7654)')
-
-    def test_instr_7340(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov     edi, 0FFFFFFF7h')), u'MOV(edi, 0x0FFFFFFF7)')
-
-    def test_instr_7350(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov     edi, 1')), u'MOV(edi, 1)')
-
-    def test_instr_7360(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov     edi, 12340128h')), u'MOV(edi, 0x12340128)')
-
-    def test_instr_7370(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov     edi, 12340205h')), u'MOV(edi, 0x12340205)')
-
-    def test_instr_7380(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov     edi, 123405A0h')), u'MOV(edi, 0x123405A0)')
-
-    def test_instr_7390(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov     edi, 12345h')), u'MOV(edi, 0x12345)')
-
-    def test_instr_7400(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov     edi, 20h')), u'MOV(edi, 0x20)')
-
-    def test_instr_7410(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov     edi, 80000000h')), u'MOV(edi, 0x80000000)')
-
     def test_instr_7420(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov     edi, [ebp+iflags]')), u'MOV(edi, *(dd*)(raddr(ss,ebp+iflags)))')
 
@@ -2404,30 +2323,6 @@ head db '^',10,10
 
     def test_instr_7460(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov     edi_0, (offset str_buffer+810h)')), u'MOV(edi_0, offset(_bss,str_buffer)+0x810)')
-
-    def test_instr_7470(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov     edx, 1')), u'MOV(edx, 1)')
-
-    def test_instr_7480(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov     edx, 10h')), u'MOV(edx, 0x10)')
-
-    def test_instr_7490(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov     edx, 11h')), u'MOV(edx, 0x11)')
-
-    def test_instr_7500(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov     edx, 12340507h')), u'MOV(edx, 0x12340507)')
-
-    def test_instr_7510(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov     edx, 12345678h')), u'MOV(edx, 0x12345678)')
-
-    def test_instr_7520(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov     edx, 17h')), u'MOV(edx, 0x17)')
-
-    def test_instr_7530(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov     edx, 340128h')), u'MOV(edx, 0x340128)')
-
-    def test_instr_7540(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov     edx, 8')), u'MOV(edx, 8)')
 
     def test_instr_7550(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov     edx, [ebp+s1]')), u'MOV(edx, *(dd*)(raddr(ss,ebp+s1)))')
@@ -2456,17 +2351,8 @@ head db '^',10,10
     def test_instr_7630(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov     edx, dword ptr [ebp+var_20]')), u'MOV(edx, *(dd*)(raddr(ss,ebp+var_20)))')
 
-    def test_instr_7640(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov     esi, 0FFFEFDFCh')), u'MOV(esi, 0x0FFFEFDFC)')
-
-    def test_instr_7650(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov     esi, 1000h')), u'MOV(esi, 0x1000)')
-
-    def test_instr_7660(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov     esi, 10h')), u'MOV(esi, 0x10)')
-
     def test_instr_7670(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov     esi, 12340306h')), u'MOV(esi, 0x12340306)')
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov     esi, 12340306h')), u'esi = 0x12340306;')
 
     def test_instr_7680(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov     esi, [ebp+iflags]')), u'MOV(esi, *(dd*)(raddr(ss,ebp+iflags)))')
@@ -2501,15 +2387,6 @@ head db '^',10,10
     def test_instr_7780(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov     op0, 32432434h')), u'MOV(op0, 0x32432434)')
 
-    def test_instr_7790(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov   al,0')), u'MOV(al, 0)')
-
-    def test_instr_7800(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov   dx,3c8h')), u'MOV(dx, 0x3c8)')
-
-    def test_instr_7810(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov   dx,3c9h')), u'MOV(dx, 0x3c9)')
-
     def test_instr_7820(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov   esi,offset pal_jeu')), u'MOV(esi, offset(_data,pal_jeu))')
 
@@ -2525,92 +2402,35 @@ head db '^',10,10
     def test_instr_7860(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov [load_handle],eax')), u'MOV(load_handle, eax)')
 
-    def test_instr_7870(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov ah,03dh')), u'MOV(ah, 0x03d)')
-
-    def test_instr_7880(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov ah,48h')), u'MOV(ah, 0x48)')
-
-    def test_instr_7890(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov ah,4Ah')), u'MOV(ah, 0x4A)')
-
-    def test_instr_7900(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov ah,4ch                    ; AH=4Ch - Exit To DOS')), u'MOV(ah, 0x4c)')
-
-    def test_instr_7910(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov ah,7')), u'MOV(ah, 7)')
-
-    def test_instr_7920(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov ah,9                        ; AH=09h - Print DOS Message')), u'MOV(ah, 9)')
-
     def test_instr_7930(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov al,-5')), u'MOV(al, -5)')
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov al,-5')), u'al = -5;')
 
     def test_instr_7940(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov al,00h  ;ouverture du fichier pour lecture.')), u'MOV(al, 0x00)')
-
-    def test_instr_7950(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov al,00h ;debut du fichier')), u'MOV(al, 0x00)')
-
-    def test_instr_7960(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov al,1')), u'MOV(al, 1)')
-
-    def test_instr_7970(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov al,7')), u'MOV(al, 7)')
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov al,00h')), u'al = 0x00;')
 
     def test_instr_7980(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov al,[a]')), u'MOV(al, *(a))')
 
     def test_instr_7990(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov ax,-1')), u'MOV(ax, -1)')
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov ax,-1')), u'ax = -1;')
 
     def test_instr_8000(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov ax,0002h')), u'MOV(ax, 0x0002)')
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov ax,0002h')), u'ax = 0x0002;')
 
     def test_instr_8010(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov ax,0007')), u'MOV(ax, 0007)')
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov ax,0007')), u'ax = 0007;')
 
     def test_instr_8020(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov ax,01010101010101010b')), u'MOV(ax, 0xaaaa)')
-
-    def test_instr_8030(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov ax,01111111111111111b')), u'MOV(ax, 0xffff)')
-
-    def test_instr_8040(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov ax,08h')), u'MOV(ax, 0x08)')
-
-    def test_instr_8050(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov ax,13h')), u'MOV(ax, 0x13)')
-
-    def test_instr_8060(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov ax,3h')), u'MOV(ax, 0x3)')
-
-    def test_instr_8070(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov ax,4')), u'MOV(ax, 4)')
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov ax,01010101010101010b')), u'ax = 0xaaaa;')
 
     def test_instr_8080(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov ax,501h')), u'MOV(ax, 0x501)')
-
-    def test_instr_8090(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov ax,6')), u'MOV(ax, 6)')
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov ax,501h')), u'ax = 0x501;')
 
     def test_instr_8100(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov ax,bp')), u'MOV(ax, bp)')
 
     def test_instr_8110(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov bl,-1')), u'MOV(bl, -1)')
-
-    def test_instr_8120(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov bl,0')), u'MOV(bl, 0)')
-
-    def test_instr_8130(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov bl,011111111B')), u'MOV(bl, 0xff)')
-
-    def test_instr_8140(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov bl,1')), u'MOV(bl, 1)')
-
-    def test_instr_8150(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov bl,192')), u'MOV(bl, 192)')
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov bl,-1')), u'bl = -1;')
 
     def test_instr_8160(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov bl,[a+1]')), u'MOV(bl, *((a)+1))')
@@ -2624,14 +2444,8 @@ head db '^',10,10
     def test_instr_8190(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov bx,(1024*10/16)-1')), u'MOV(bx, (1024*10/16)-1)')
 
-    def test_instr_8200(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov bx,10')), u'MOV(bx, 10)')
-
     def test_instr_8210(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov bx,1024*10/16')), u'MOV(bx, 1024*10/16)')
-
-    def test_instr_8220(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov bx,5')), u'MOV(bx, 5)')
 
     def test_instr_8230(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov bx,ax')), u'MOV(bx, ax)')
@@ -2666,27 +2480,6 @@ head db '^',10,10
     def test_instr_8330(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov byte ptr es:[0],56')), u'MOV(*(raddr(es,0)), 56)')
 
-    def test_instr_8340(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov ch,011111111B')), u'MOV(ch, 0xff)')
-
-    def test_instr_8350(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov cl,2')), u'MOV(cl, 2)')
-
-    def test_instr_8360(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov cl,8            ; number of ASCII')), u'MOV(cl, 8)')
-
-    def test_instr_8370(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov cx,-1')), u'MOV(cx, -1)')
-
-    def test_instr_8380(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov cx,-5')), u'MOV(cx, -5)')
-
-    def test_instr_8390(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov cx,0')), u'MOV(cx, 0)')
-
-    def test_instr_8400(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov cx,1')), u'MOV(cx, 1)')
-
     def test_instr_8410(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov cx,256*3')), u'MOV(cx, 256*3)')
 
@@ -2711,23 +2504,11 @@ head db '^',10,10
     def test_instr_8480(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov dword ptr es:[20*320+160],077aaFF00h')), u'MOV(*(dd*)(raddr(es,20*320+160)), 0x077aaFF00)')
 
-    def test_instr_8490(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov dx,-1')), u'MOV(dx, -1)')
-
-    def test_instr_8500(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov dx,0')), u'MOV(dx, 0)')
-
-    def test_instr_8510(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov dx,5')), u'MOV(dx, 5)')
-
     def test_instr_8520(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov dx,[edi+1]')), u'MOV(dx, *(dw*)(raddr(ds,edi+1)))')
 
     def test_instr_8530(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov dx,cx')), u'MOV(dx, cx)')
-
-    def test_instr_8540(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov eax, 0ffffffffh')), u'MOV(eax, 0x0ffffffff)')
 
     def test_instr_8550(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov eax, B')), u'MOV(eax, b)')
@@ -2735,68 +2516,23 @@ head db '^',10,10
     def test_instr_8560(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov eax, CC')), u'MOV(eax, cc)')
 
-    def test_instr_8570(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov eax,-1')), u'MOV(eax, -1)')
-
     def test_instr_8580(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov eax,-1-(-2+3)')), u'MOV(eax, -1-(-2+3))')
 
-    def test_instr_8590(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov eax,-4')), u'MOV(eax, -4)')
-
-    def test_instr_8600(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov eax,-5')), u'MOV(eax, -5)')
-
-    def test_instr_8610(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov eax,-8')), u'MOV(eax, -8)')
-
-    def test_instr_8620(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov eax,0')), u'MOV(eax, 0)')
-
     def test_instr_8630(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov eax,0100b')), u'MOV(eax, 0x4)')
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov eax,0100b')), u'eax = 0x4;')
 
     def test_instr_8640(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov eax,011111111111111111111111111111111b')), u'MOV(eax, 0xffffffff)')
-
-    def test_instr_8650(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov eax,012345678h')), u'MOV(eax, 0x012345678)')
-
-    def test_instr_8660(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov eax,077aaFF00h')), u'MOV(eax, 0x077aaFF00)')
-
-    def test_instr_8670(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov eax,0ffff00f3h')), u'MOV(eax, 0x0ffff00f3)')
-
-    def test_instr_8680(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov eax,0ffffff03h')), u'MOV(eax, 0x0ffffff03)')
-
-    def test_instr_8690(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov eax,1')), u'MOV(eax, 1)')
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov eax,011111111111111111111111111111111b')), u'eax = 0xffffffff;')
 
     def test_instr_8700(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov eax,1024*1024')), u'MOV(eax, 1024*1024)')
 
     def test_instr_8710(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov eax,10B')), u'MOV(eax, 0x2)')
-
-    def test_instr_8720(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov eax,2')), u'MOV(eax, 2)')
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov eax,10B')), u'eax = 0x2;')
 
     def test_instr_8730(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov eax,256+3+65536')), u'MOV(eax, 256+3+65536)')
-
-    def test_instr_8740(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov eax,3')), u'MOV(eax, 3)')
-
-    def test_instr_8750(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov eax,4')), u'MOV(eax, 4)')
-
-    def test_instr_8760(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov eax,5')), u'MOV(eax, 5)')
-
-    def test_instr_8770(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov eax,511')), u'MOV(eax, 511)')
 
     def test_instr_8780(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov eax,taille_moire  ;::!300000h-1 ;182400h-1 ;1582080 ;0300000h-1 ;2mega 182400h-1')), u'MOV(eax, taille_moire)')
@@ -2804,65 +2540,11 @@ head db '^',10,10
     def test_instr_8790(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov eax,teST2')), u'MOV(eax, test2)')
 
-    def test_instr_8800(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov ebp,10')), u'MOV(ebp, 10)')
-
-    def test_instr_8810(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov ebp,2')), u'MOV(ebp, 2)')
-
-    def test_instr_8820(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov ebp,20')), u'MOV(ebp, 20)')
-
-    def test_instr_8830(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov ebp,3')), u'MOV(ebp, 3)')
-
     def test_instr_8840(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov ebp,3*4')), u'MOV(ebp, 3*4)')
 
-    def test_instr_8850(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov ebp,30')), u'MOV(ebp, 30)')
-
-    def test_instr_8860(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov ebx,-1')), u'MOV(ebx, -1)')
-
-    def test_instr_8870(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov ebx,0')), u'MOV(ebx, 0)')
-
-    def test_instr_8880(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov ebx,00fffh')), u'MOV(ebx, 0x00fff)')
-
     def test_instr_8890(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov ebx,01B')), u'MOV(ebx, 0x1)')
-
-    def test_instr_8900(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov ebx,0FFFFFFFFh')), u'MOV(ebx, 0x0FFFFFFFF)')
-
-    def test_instr_8910(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov ebx,0a000h')), u'MOV(ebx, 0x0a000)')
-
-    def test_instr_8920(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov ebx,0aabbccddh')), u'MOV(ebx, 0x0aabbccdd)')
-
-    def test_instr_8930(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov ebx,0f222h')), u'MOV(ebx, 0x0f222)')
-
-    def test_instr_8940(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov ebx,0ffff01ffh')), u'MOV(ebx, 0x0ffff01ff)')
-
-    def test_instr_8950(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov ebx,0ffffffffh')), u'MOV(ebx, 0x0ffffffff)')
-
-    def test_instr_8960(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov ebx,2')), u'MOV(ebx, 2)')
-
-    def test_instr_8970(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov ebx,255')), u'MOV(ebx, 255)')
-
-    def test_instr_8980(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov ebx,3')), u'MOV(ebx, 3)')
-
-    def test_instr_8990(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov ebx,5')), u'MOV(ebx, 5)')
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov ebx,01B')), u'ebx = 0x1;')
 
     def test_instr_9000(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov ebx,[g]')), u'MOV(ebx, g)')
@@ -2873,50 +2555,11 @@ head db '^',10,10
     def test_instr_9020(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov ebx,eax')), u'MOV(ebx, eax)')
 
-    def test_instr_9030(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov ecx,-1')), u'MOV(ecx, -1)')
-
-    def test_instr_9040(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov ecx,000ff00ffh')), u'MOV(ecx, 0x000ff00ff)')
-
-    def test_instr_9050(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov ecx,0a0000h')), u'MOV(ecx, 0x0a0000)')
-
-    def test_instr_9060(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov ecx,0df01h')), u'MOV(ecx, 0x0df01)')
-
-    def test_instr_9070(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov ecx,0f0ffh')), u'MOV(ecx, 0x0f0ff)')
-
-    def test_instr_9080(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov ecx,0ffffffffh')), u'MOV(ecx, 0x0ffffffff)')
-
-    def test_instr_9090(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov ecx,10')), u'MOV(ecx, 10)')
-
-    def test_instr_9100(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov ecx,2')), u'MOV(ecx, 2)')
-
-    def test_instr_9110(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov ecx,3')), u'MOV(ecx, 3)')
-
     def test_instr_9120(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov ecx,320*200/4')), u'MOV(ecx, 320*200/4)')
 
-    def test_instr_9130(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov ecx,5')), u'MOV(ecx, 5)')
-
-    def test_instr_9140(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov ecx,60')), u'MOV(ecx, 60)')
-
     def test_instr_9150(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov ecx,t')), u'MOV(ecx, t)')
-
-    def test_instr_9160(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov edi,1')), u'MOV(edi, 1)')
-
-    def test_instr_9170(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov edi,8')), u'MOV(edi, 8)')
 
     def test_instr_9180(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov edi,OFFSET AsCii ; get the offset address')), u'MOV(edi, offset(_data,ascii))')
@@ -2939,18 +2582,6 @@ head db '^',10,10
     def test_instr_9240(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov edi,offset bytearray')), u'MOV(edi, offset(_data,bytearray))')
 
-    def test_instr_9250(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov edx,0')), u'MOV(edx, 0)')
-
-    def test_instr_9260(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov edx,0abcdef77h')), u'MOV(edx, 0x0abcdef77)')
-
-    def test_instr_9270(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov edx,2')), u'MOV(edx, 2)')
-
-    def test_instr_9280(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov edx,4')), u'MOV(edx, 4)')
-
     def test_instr_9290(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov edx,OFFSET ASCiI ; DOS 1+ WRITE STRING TO STANDARD OUTPUT')), u'MOV(edx, offset(_data,ascii))')
 
@@ -2962,12 +2593,6 @@ head db '^',10,10
 
     def test_instr_9320(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov es,ax')), u'MOV(es, ax)')
-
-    def test_instr_9330(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov esi,2')), u'MOV(esi, 2)')
-
-    def test_instr_9340(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov esi,6')), u'MOV(esi, 6)')
 
     def test_instr_9350(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov esi,offset str1')), u'MOV(esi, offset(_data,str1))')
@@ -3750,6 +3375,10 @@ head db '^',10,10
     def test_instr_12050(self):
         self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov     ds:_byte_2D196_in_transition?, al')),
                      u'MOV(_byte_2D196_in_transitionque, al)')
+
+    def test_instr_12060(self):
+        self.assertEqual(
+            self.proc.generate_c_cmd(self.cpp, self.parser.action_code(r"mov al, 4")), u"al = 4;")
 
     #def test_instr_12030(self):
     #    self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code("cmp head, 'v'")), u"CMP(*(head), 'v')")

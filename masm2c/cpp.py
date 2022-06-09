@@ -2135,3 +2135,17 @@ struct Memory{
         result += "        default: m2c::log_error(\"Don't know how to call to 0x%x. See \" __FILE__ \" line %d\\n\", __disp, __LINE__);m2c::stackDump(); abort();\n"
         result += "     };\n     return true;\n}\n"
         return result
+
+    def _mov(self, dst, src):
+        memory_access = True
+        if isinstance(dst.value, Token) and dst.value.type in ('register', 'segmentregister') \
+            and isinstance(src.value, Token) and src.value.type == 'INTEGER':
+            memory_access = False
+
+        self.a, self.b = self.parse2(dst, src)
+        # if self.d in ['sp', 'esp'] and check_int(self.s):
+        #    self.__pushpop_count -= int(self.s)
+        if memory_access:
+            return "MOV(%s, %s)" % (self.a, self.b)
+        else:
+            return "%s = %s;" % (self.a, self.b)

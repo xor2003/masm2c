@@ -1082,3 +1082,11 @@ class _xlat(baseop):
 
     def visit(self, visitor):
         return visitor._xlat(self.args)
+
+class _mov(baseop):
+    def __init__(self, args):
+        super().__init__()
+        self.args = args
+
+    def visit(self, visitor):
+        return visitor._mov(*self.args)
