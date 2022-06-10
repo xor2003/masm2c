@@ -19,7 +19,6 @@ jobs:
            
     - name: build
       run: |
-             ./echo 'getconf _NPROCESSORS_ONLN'
              ./lsb_release -c
              ./lsb_release -r
              ./_binarytests.sh
