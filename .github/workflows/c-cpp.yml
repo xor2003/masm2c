@@ -19,6 +19,4 @@ jobs:
            
     - name: build
       run: |
-             ./lsb_release -c
-             ./lsb_release -r
              ./_binarytests.sh
