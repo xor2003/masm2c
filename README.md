@@ -1,6 +1,6 @@
 
-[![(GitHub C++ pipeline status)](https://github.com/xor2003/masm2c/actions/workflows/c-cpp.yml/badge.svg?branch=xor2003%2Fmaster)](https://github.com/xor2003/masm2c/actions/workflows/c-cpp.yml)
-[![(GitHub Python pipeline status)](https://github.com/xor2003/masm2c/actions/workflows/python-app.yml/badge.svg?branch=xor2003%2Fmaster)](https://github.com/xor2003/masm2c/actions/workflows/python-app.yml)
+[![C/C++ CI](https://github.com/xor2003/masm2c/actions/workflows/c-cpp.yml/badge.svg)](https://github.com/xor2003/masm2c/actions/workflows/c-cpp.yml)
+[![Python application](https://github.com/xor2003/masm2c/actions/workflows/python-app.yml/badge.svg)](https://github.com/xor2003/masm2c/actions/workflows/python-app.yml)
 
 Masm2c - 16bit assembler to C++ translator
 ==============
