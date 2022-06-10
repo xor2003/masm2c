@@ -1,5 +1,5 @@
 
-[![Build Status](https://travis-ci.com/xor2003/masm2c.svg?branch=master)](https://travis-ci.com/xor2003/masm2c)
+[![(GitHub pipeline status)](https://github.com/xor2003/masm2c/actions/workflows/ci-build.yml/badge.svg?branch=xor2003%2Fmaster)](https://github.com/xor2003/masm2c/actions/workflows/ci-build.yml)
 
 Masm2c - 16bit assembler to C++ translator
 ==============
