@@ -1,3 +1,23 @@
+# Masm2c S2S translator (initially based on SCUMMVM tasmrecover)
+#
+# Masm2c is the legal property of its developers, whose names
+# are too numerous to list here. Please refer to the COPYRIGHT
+# file distributed with this source distribution.
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
 from __future__ import division
 from __future__ import division
 from __future__ import print_function
@@ -2137,15 +2157,15 @@ struct Memory{
         return result
 
     def _mov(self, dst, src):
-        memory_access = True
-        if isinstance(dst.value, Token) and dst.value.type in ('register', 'segmentregister') \
-            and isinstance(src.value, Token) and src.value.type == 'INTEGER':
-            memory_access = False
+        mapped_memory_access = False
 
         self.a, self.b = self.parse2(dst, src)
         # if self.d in ['sp', 'esp'] and check_int(self.s):
         #    self.__pushpop_count -= int(self.s)
-        if memory_access:
+        if 'raddr' in self.a or 'raddr' in self.b:
+            mapped_memory_access = True
+
+        if mapped_memory_access:
             return "MOV(%s, %s)" % (self.a, self.b)
         else:
             return "%s = %s;" % (self.a, self.b)

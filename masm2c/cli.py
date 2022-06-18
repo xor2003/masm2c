@@ -1,5 +1,25 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
+# Masm2c S2S translator (initially based on SCUMMVM tasmrecover)
+#
+# Masm2c is the legal property of its developers, whose names
+# are too numerous to list here. Please refer to the COPYRIGHT
+# file distributed with this source distribution.
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
 
 from __future__ import print_function
 from masm2c.parser import Parser
@@ -40,14 +60,13 @@ def parse_args(args):
     Returns:
       :obj:`argparse.Namespace`: command line parameters namespace
     """
-    aparser = argparse.ArgumentParser(description=f"Masm source to C++ translator V{__version__} {__license__}", prefix_chars='-/')
+    aparser = argparse.ArgumentParser(description=f"Masm source to C++ translator V{__version__} {__license__}", prefix_chars='-')
     aparser.add_argument(
         "-v",
         "--version",
         action="version",
         version="{ver}".format(ver=__version__),
     )
-    aparser.add_argument('filenames', nargs='+', help='Assembler source .asm Masm 6 or .lst from IDA Pro or .seg Segment dump to merge')
     aparser.add_argument(
         "-d",
         "--debug",
@@ -58,7 +77,7 @@ def parse_args(args):
         const=logging.DEBUG,
     )
     aparser.add_argument(
-        "/Fl",
+        "-FL",
         "--list",
         dest="list",
         #nargs="?",
@@ -67,26 +86,6 @@ def parse_args(args):
         const=True,
         default=False,
     )
-    '''
-    aparser.add_argument(
-        "-s",
-        "--singleproc",
-        dest="singleproc",
-        help="Merge all procs together",
-        action="store_const",
-        default=False,
-        const=True,
-    )
-    aparser.add_argument(
-        "-p",
-        "--procpersegment",
-        dest="procperseg",
-        help="Each code segment is merged to a single procedure",
-        action="store_const",
-        default=False,
-        const=True,
-    )
-    '''
     aparser.add_argument(
         "-p",
         "--passes",
@@ -106,7 +105,7 @@ def parse_args(args):
         default='0x1a2',
     )
     aparser.add_argument(
-        "/AT",
+        "-AT", 
         dest="loadsegment",
         help="Dosbox 0.74.3 loads .com from 0x192 (w/o debugger)",
         action="store_const",
@@ -115,6 +114,7 @@ def parse_args(args):
     aparser.add_argument(
         '-m', '--mergeprocs', type=str, default='separate', choices=["separate", "persegment", "single"],
         help='How to merge procs (default: persegment)', )
+    aparser.add_argument('filenames', nargs='+', help='Assembler source .asm Masm 6 or .lst from IDA Pro or .seg Segment dump to merge')
     return aparser.parse_args(args)
 
 
