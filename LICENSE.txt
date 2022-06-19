@@ -1,4 +1,6 @@
-Generated code is based on:
+You can assign any license to generated code
+
+Instructions emulation:
 MIT License
 
 Copyright (c) 2017 Franck GOTTHOLD, xor2003

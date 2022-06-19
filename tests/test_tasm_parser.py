@@ -204,7 +204,7 @@ head db '^',10,10
         self.__class__.parser.action_label(far=True, name=u'test_bcd', isproc=True)
 
     def test_instr_09(self):
-        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov    ax, offset     failure')), u'MOV(ax, m2c::kfailure)')
+        self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('mov    ax, offset     failure')), u'ax = m2c::kfailure;')
 
     #def test_instr_10(self):
     #    self.assertEqual(self.proc.generate_c_cmd(self.cpp, self.parser.action_code('pop     small word ptr [esp]')), u'POP(*(dw*)(raddr(ss,esp)))')
