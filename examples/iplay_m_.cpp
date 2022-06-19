@@ -7,7 +7,7 @@
 #ifndef __BORLANDC__
 //extern "C"
 //{
-#include "SDL/SDL.h"
+#include "SDL.h"
 //};
 #include <unistd.h>
 #endif

@@ -7,7 +7,7 @@
  *
  */
 
-#include "asm.h"
+#include "../asm.h"
 
 //struct Memory;
 extern struct Memory m;
