@@ -855,7 +855,7 @@ class Cpp:
 
         if indirection == IndirectionType.POINTER and not segoverride:
             regs = Token.find_tokens(expr, REGISTER)  # if it was registers used: bp, sp
-            if regs and any([i in ['bp', 'ebp', 'sp', 'esp'] for i in regs]):  # TODO doublecheck
+            if regs and any((i in ['bp', 'ebp', 'sp', 'esp'] for i in regs)):  # TODO doublecheck
                 self.__work_segment = "ss"  # and segment is not overriden means base is "ss:"
                 self.isvariable = False
         if segoverride:  # if it was segment override then use provided value
@@ -1183,15 +1183,15 @@ class Cpp:
         if result:
             return "{;}"
         else:
-            label, far = self.jump_post(label)  # TODO
+            label, _ = self.jump_post(label)  # TODO
             return "JZ(%s)" % label
 
     def _jnz(self, label):
-        label, far = self.jump_post(label)
+        label, _ = self.jump_post(label)
         return "JNZ(%s)" % label
 
     def _jbe(self, label):
-        label, far = self.jump_post(label)
+        label, _ = self.jump_post(label)
         return "JBE(%s)" % label
 
     def _ja(self, label):
@@ -1331,15 +1331,17 @@ class Cpp:
         except (CrossJump, op.Unsupported) as e:
             logging.error("%s: ERROR: %s" % (name, e))
             self.__failed.append(name)
+            raise
         except Exception as ex:
             logging.error(f'Exception {ex.args}')
             logging.error(f' for {name}')
             raise
+        return None, None
 
     def leave_unique_labels(self, labels):
         if not self._context.itislst:
             return labels
-        uniq_labels = dict()
+        uniq_labels = {}
         for label in labels:
             g = self._context.get_global(label)
             uniq_labels[f'{g.real_seg}_{g.real_offset}'] = label
@@ -1655,9 +1657,9 @@ class Cpp:
                 self.label_to_proc[label] = proc_name
 
     def get_lineordered_proclist(self, proc_list):
-        line_to_proc = dict(
-            [(self._context.get_global(first_proc_name).line_number, first_proc_name) for first_proc_name in
-             proc_list])
+        line_to_proc = {
+            self._context.get_global(first_proc_name).line_number: first_proc_name for first_proc_name in
+             proc_list}
         return [line_to_proc[line_number] for line_number in sorted(line_to_proc.keys())]
 
     def leave_only_same_seg_procs_to_merge(self, first_proc_name):
@@ -2042,7 +2044,7 @@ struct Memory{
     def produce_c_data_object(data: op.Data):
         label, data_ctype, _, r, elements, size = data.getdata()
         # rc = '{' + ",".join([str(i) for i in r]) + '}'
-        rc = list()
+        rc = []
         for i in data.getmembers():
             c, _, _ = Cpp.produce_c_data_single_(i)
             rc += [c]
@@ -2128,7 +2130,7 @@ struct Memory{
  bool __dispatch_call(m2c::_offsets __disp, struct m2c::_STATE* _state){
     switch (__disp) {
 """
-        entries = dict()
+        entries = {}
         # procs = []
         for k, v in globals:
             if isinstance(v, proc_module.Proc) and v.used:

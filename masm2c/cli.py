@@ -207,7 +207,7 @@ def main(args):
     generator = Cpp(Parser(args), merge_data_segments=merge_data_segments)
     generator.produce_data_cpp(args.filenames)
 
-    logging.info(f" *** Finished")
+    logging.info(" *** Finished")
 
 
 def run():

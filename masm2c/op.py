@@ -38,7 +38,7 @@ class Unsupported(Exception):
     pass
 
 
-class baseop(object):
+class baseop:
     # __slots__ = ["cmd", "line", "line_number", "elements", "args"]
 
     def __init__(self):
@@ -61,7 +61,7 @@ class baseop(object):
         return str(self.__class__)
 
 
-class var(object):
+class var:
 
     def __init__(self, size, offset, name="", segment="", issegment=False, elements=1,
                  external=False, original_type="", filename='', raw='', line_number=0):
@@ -103,7 +103,7 @@ class var(object):
         return self.original_type
 
 
-class Segment(object):
+class Segment:
     # __slots__ = ['name', 'offset', '__data', 'original_name', 'used']
     simple_segments = {
         "tiny": {
@@ -422,7 +422,7 @@ class Segment(object):
         self.offset = offset
         self.original_name = name
         self.used = False
-        self.__data = list()
+        self.__data = []
         self.options = options
         self.segclass = segclass
         # self.comment = comment
@@ -483,7 +483,7 @@ class Data(baseop):
         self.elements = elements
         self.size = size
         self.array = array
-        self.__members = list()
+        self.__members = []
         self.filename = filename
         self.raw_line = raw_line
         self.line_number = line_number

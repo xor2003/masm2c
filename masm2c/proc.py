@@ -35,7 +35,7 @@ from masm2c import op
 PTRDIR = 'ptrdir'
 
 
-class Proc(object):
+class Proc:
     last_addr = 0xc000
     elements = 1  # how many
 
