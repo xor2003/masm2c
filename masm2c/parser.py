@@ -838,13 +838,11 @@ class Parser:
                     elements = el
             elif v.type == 'STRING':
                 v = v.value
-                if not self.itislst:
-                    v = v.replace("\'\'", "'").replace('\"\"', '"')
-                res = []
-                for i in range(1, len(v) - 1):
-                    res.append(v[i])
-                reslist = res
-                elements = len(v) - 2
+                assert isinstance(v, str)
+                if not self.itislst:  # but not for IDA .lst
+                    v = v.replace("\'\'", "'").replace('\"\"', '"')  # masm behaviour
+                reslist = list(v[1:-1])
+                elements = len(reslist)
                 is_string = True
 
             # check if dup
