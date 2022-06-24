@@ -229,7 +229,7 @@ def cpp_mangle_label(name):
     return cpp_mangle_label_special(name)
 
 
-class Cpp(object):
+class Cpp:
     ''' Visitor for all operations to produce C++ code '''
 
     def __init__(self, context, outfile="", skip_output=None,
@@ -278,7 +278,7 @@ class Cpp(object):
         self.prefix = ''
         self.label = ''
         self.merge_data_segments = merge_data_segments
-        self.label_to_proc = dict()
+        self.label_to_proc = {}
 
     def produce_c_data(self, segments):
         cdata_seg = ""
@@ -643,7 +643,7 @@ class Cpp(object):
         if isinstance(expr, list):
             if len(expr) == 0:
                 return 0
-            return max([self.get_size(i) for i in expr])
+            return max((self.get_size(i) for i in expr))
 
         offsetdir = Token.find_tokens(expr, 'offsetdir')
         if offsetdir:

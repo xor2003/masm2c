@@ -14,7 +14,7 @@ elif [ -z "$1" ];then
   echo "No such file $1"
   exit 2
 fi
-python ../masm2c.py -m separate $name 2>&1 | tee $1.txt
+../masm2c.py -m separate $name 2>&1 | tee $1.txt
 echo "Converting result $?"
 ./build.sh $1 2>&1
 rm asm.log || true
