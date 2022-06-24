@@ -200,10 +200,7 @@ class Proc:
         return o
 
     def __str__(self):
-        r = []
-        for i in self.stmts:
-            r.append(i.__str__())
-        return "\n".join(r)
+        return "\n".join((i.__str__() for i in self.stmts))
 
     def set_instruction_compare_subclass(self, stmt, full_command, itislst):
         def expr_is_register(e):

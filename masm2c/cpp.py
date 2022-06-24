@@ -1792,15 +1792,6 @@ db(& heap)[HEAP_SIZE]=m.heap;
         fd.close()
 
     def produce_label_offsets(self):
-        # hd.write("\nenum _offsets MYINT_ENUM {\n")
-        offsets = []
-        '''        
-        for k, v in list(self._context.get_globals().items()):
-            k = re.sub(r'[^A-Za-z0-9_]', '_', k)
-            if isinstance(v, (op.label, proc_module.Proc)):
-                offsets.append((k.lower(), hex(v.line_number)))
-        offsets = sorted(offsets, key=lambda t: t[1])
-        '''
         labeloffsets = """namespace m2c{
 void   Initializer();
 static const dd kbegin = 0x1001;
