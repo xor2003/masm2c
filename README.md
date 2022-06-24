@@ -5,11 +5,11 @@
 Masm2c - 16bit assembler to C++ translator
 ==============
 
-Portable MASM or Source-to-source_compiler https://en.wikipedia.org/wiki/Source-to-source_compiler
-Translator may be used to port your DOS x86 (MASM) assembler code to C++ and SDL (Since there is no working decompiler for 16 bit DOS code yet.
+"Portable MASM" or [Source-to-source translator](https://en.wikipedia.org/wiki/Source-to-source_compiler)
+may be used to port your DOS x86 (MASM) assembler code to C++ and SDL (Since there is no working decompiler for 16 bit DOS code yet.
 Because of DOS segmentation model, etc)
 
-Translator generates pseudo assembler instructions which can be compiled with C++ compiler and executed.
+Translator generates fake-assembler instructions which can be compiled with C++ compiler and executed.
 
 [![Test drive 3](http://img.youtube.com/vi/MzK9RVgeWGM/0.jpg)](http://www.youtube.com/watch?v=MzK9RVgeWGM "Test drive 3")
 
@@ -53,10 +53,10 @@ start:
 	R(CLD);	// 13 cld
 	R(PUSH(seg_offset(_data)));	// 14 push _data
 	R(POP(ds));	// 15 pop ds
-	R(MOV(ah, 9));	// 16 mov ah,9
-	R(MOV(dx, offset(_data,_msg)));	// 17 mov dx,offset _msg
+	R(ah = 9;);	// 16 mov ah,9
+	R(dx = offset(_data,_msg););	// 17 mov dx,offset _msg
 	R(_INT(0x21));	// 18 int 21h
-	R(MOV(ax, 0x4c00));	// 20 mov ax,4c00h
+	R(ax = 0x4c00;);	// 20 mov ax,4c00h
 	R(_INT(0x21));	// 21 int 21h
 
 struct Memory m = {
