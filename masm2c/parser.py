@@ -48,11 +48,11 @@ INTEGERCNST = 'INTEGER'
 STRINGCNST = 'STRING'
 
 
-class MyDummyObj(object): pass
+class MyDummyObj: pass
 
 
 def read_whole_file(file_name):
-    logging.info("     Reading file %s..." % file_name)
+    logging.info("     Reading file %s...", file_name)
     if sys.version_info >= (3, 0):
         fd = open(file_name, 'rt', encoding="cp437")
     else:
@@ -172,7 +172,7 @@ def macrodirhead(context, nodes, name, parms):
         param_names = [i.lower() for i in Token.find_tokens(parms, 'LABEL')]
     context.extra.current_macro = Macro(name.value.lower(), param_names)
     context.extra.macro_names_stack.add(name.value.lower())
-    logging.debug("macroname added ~~" + name.value + "~~")
+    logging.debug("macroname added ~~%s~~", name.value)
     return nodes
 
 
@@ -187,7 +187,7 @@ def repeatbegin(context, nodes, value):
 def endm(context, nodes):
     # macro definition end
     name = context.extra.macro_names_stack.pop()
-    logging.debug("endm " + name)
+    logging.debug("endm %s", name)
     macroses[name] = context.extra.current_macro
     context.extra.current_macro = None
     return nodes
@@ -518,7 +518,7 @@ recognizers = {
 }
 
 
-class ParglareParser(object):
+class ParglareParser:
     def __new__(cls, *args, **kwargs):
         if not hasattr(cls, '_inst'):
             cls._inst = super(ParglareParser, cls).__new__(cls)
@@ -527,9 +527,9 @@ class ParglareParser(object):
             file_name = os.path.dirname(os.path.realpath(__file__)) + "/_masm61.pg"
             cls._inst.or_grammar = Grammar.from_file(file_name, ignore_case=True, recognizers=recognizers)
             ## cls._inst.parser = PGParser(grammar, debug=True, debug_trace=True, actions=action.all)
-            ## cls._inst.parser = PGParser(grammar, debug=True, actions=action.all)
-            cls._inst.or_parser = PGParser(cls._inst.or_grammar,
-                                           actions=actions)  # , build_tree = True, call_actions_during_tree_build = True)
+            debug = False
+            cls._inst.or_parser = PGParser(cls._inst.or_grammar, debug=debug, actions=actions)
+            # , build_tree = True, call_actions_during_tree_build = True)
 
             cls._inst.grammar = cls._inst.or_grammar
             cls._inst.parser = copy(cls._inst.or_parser)
@@ -540,11 +540,11 @@ class ParglareParser(object):
 
 def dump_object(value):
     stuff = str(value.__dict__)
-    replacements = [
+    replacements = (
         (r'\n', ' '),
         (r'[{}]', ''),
         (r"'([A-Za-z_0-9]+)'\s*:\s*", r'\g<1>=')
-    ]
+    )
     for old, new in replacements:
         stuff = re.sub(old, new, stuff)
     stuff = value.__class__.__name__ + "(" + stuff + ")"
@@ -631,6 +631,7 @@ class Parser:
 
         self.data_merge_candidats = 0
 
+    '''
     def visible(self):
         for i in self.__stack:
             if not i or i == 0:
@@ -649,6 +650,7 @@ class Parser:
     def pop_if(self):
         # logging.debug "endif"
         return self.__stack.pop()
+    '''
 
     def set_global(self, name, value):
         if len(name) == 0:
@@ -657,7 +659,7 @@ class Parser:
         name = name.lower()
 
         logging.debug("set_global(name='%s',value=%s)" % (name, dump_object(value)))
-        if name in self.__globals and self.pass_number == 1:
+        if name in self.__globals and self.pass_number == 1 and not self.test_mode:
             raise LookupError("global %s was already defined" % name)
         value.used = False
         self.__globals[name] = value
@@ -772,7 +774,7 @@ class Parser:
         v = self.mangle_label(v)
         g = self.get_global(v)
         logging.debug(g)
-        if isinstance(g, op._equ) or isinstance(g, op._assignment):
+        if isinstance(g, (op._equ, op._assignment)):
             v = g.original_name
         elif isinstance(g, op.var):
             if g.issegment:
@@ -1214,7 +1216,6 @@ class Parser:
             self.proc = self.__proc_stack[-1]
         else:
             self.proc = None
-        '''
 
     def action_endif(self):
         self.pop_if()
@@ -1225,6 +1226,7 @@ class Parser:
     def action_if(self, line):
         cmd = line.split()
         self.push_if(cmd[1])
+    '''
 
     def action_code(self, line):
         self.test_mode = True
@@ -1359,7 +1361,7 @@ class Parser:
 
     def datadir_action(self, label, type, args, raw='', line_number=0):
         if self.__cur_seg_offset > 0xffff:
-            return
+            return []
         if self.__cur_seg_offset & 0xff == 0:
             logging.info(f"      Current offset {self.__cur_seg_offset:x} line={line_number}")
         isstruct = len(self.struct_names_stack) != 0
@@ -1644,13 +1646,7 @@ class Parser:
         proc.stmts.append(o)
 
     def action_instruction(self, instruction, args, raw='', line_number=0):
-        if (instruction[0].lower() == 'j' or instruction[0].lower() == 'loop') and \
-                len(args) == 1 and isinstance(args[0], Token) and \
-                isinstance(args[0].value, Token) and args[0].value.type == 'LABEL':
-            if args[0].value.value.lower() == '@f':
-                args[0].value.value = "dummylabel" + str(self.__c_dummy_jump_label + 1)
-            elif args[0].value.value.lower() == '@b':
-                args[0].value.value = "dummylabel" + str(self.__c_dummy_jump_label)
+        self.handle_local_asm_jumps(instruction, args)
 
         self.make_sure_proc_exists(line_number, raw)
 
@@ -1685,6 +1681,15 @@ class Parser:
         else:
             self.current_macro.instructions.append(o)
         return o
+
+    def handle_local_asm_jumps(self, instruction, args):
+        if (instruction[0].lower() == 'j' or instruction[0].lower() == 'loop') and \
+                len(args) == 1 and isinstance(args[0], Token) and \
+                isinstance(args[0].value, Token) and args[0].value.type == 'LABEL':
+            if args[0].value.value.lower() == '@f':
+                args[0].value.value = "dummylabel" + str(self.__c_dummy_jump_label + 1)
+            elif args[0].value.value.lower() == '@b':
+                args[0].value.value = "dummylabel" + str(self.__c_dummy_jump_label)
 
     def collect_labels(self, target, operation):
         for arg in operation.args:
