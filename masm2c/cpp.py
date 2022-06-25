@@ -62,7 +62,7 @@ class InjectCode(Exception):
 
     def __init__(self, cmd):
         self.cmd = cmd
-        super().__init__()
+        #super().__init__()
 
 
 class SkipCode(Exception):
