@@ -1738,7 +1738,7 @@ class Cpp:
                     old = jsonpickle.encode(allsegments[k], unpicklable=False)
                     new = jsonpickle.encode(v, unpicklable=False)
                     if old != new:
-                        logging.error(f'Overwritting segment {k}')
+                        logging.error('Overwritting segment %s', k)
                 allsegments[k] = v
 
         if allstructs != newstructs and set(allstructs.keys()) & set(newstructs.keys()):
@@ -2122,7 +2122,6 @@ struct Memory{
     switch (__disp) {
 """
         entries = {}
-        # procs = []
         for k, v in globals:
             if isinstance(v, proc_module.Proc) and v.used:
                 k = re.sub(r'[^A-Za-z0-9_]', '_', k)  # need to do it during mangling
@@ -2130,10 +2129,8 @@ struct Memory{
                 entries[k] = (cpp_mangle_label(k), '0')
                 # labels = self.leave_unique_labels(v.provided_labels)
                 labels = v.provided_labels
-                for label in labels:
-                    if label != v.name:
-                        # result += f"        case m2c::k{label}: \t{v.name}(__disp, _state); break;\n"
-                        entries[label] = (v.name, '__disp')
+
+                entries.update({label: (v.name, '__disp') for label in set(labels) if label != v.name})
 
         # procs = self.leave_unique_labels(procs)
         # for name in procs:

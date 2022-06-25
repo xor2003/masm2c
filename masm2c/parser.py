@@ -554,7 +554,7 @@ def dump_object(value):
 class Parser:
     c_dummy_label = 0
 
-    def __init__(self, args=None, skip_binary_data=[]):
+    def __init__(self, args=None, skip_binary_data=None):
         '''
         Assembler parser
         '''
