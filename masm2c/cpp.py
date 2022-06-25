@@ -18,28 +18,23 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #
-from __future__ import division
-from __future__ import division
-from __future__ import print_function
+from __future__ import division, print_function
 
 import logging
+import os
 import re
-import sys, os
+import sys
+from builtins import hex, range, str
 from collections import OrderedDict
+from copy import copy
 from enum import Enum
 
 import jsonpickle
 
-from builtins import hex
-from builtins import object
-from builtins import range
-from builtins import str
-from copy import copy
-
 import masm2c.proc as proc_module
 from masm2c import op
-from masm2c.Token import Token
 from masm2c.op import DataType
+from masm2c.Token import Token
 
 OFFSETDIR = 'offsetdir'
 LABEL = 'LABEL'

@@ -18,17 +18,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #
-from __future__ import absolute_import
-from __future__ import print_function
+from __future__ import absolute_import, print_function
 
 import logging
 import re
-from builtins import object
-from builtins import range
-from builtins import str
+from builtins import range, str
 
-from masm2c.Token import Token
 from masm2c import op
+from masm2c.Token import Token
 
 # label_re = re.compile(r'^([\S@]+)::?(.*)$')  # speed
 

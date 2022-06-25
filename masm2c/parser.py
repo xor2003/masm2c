@@ -25,24 +25,21 @@ import logging
 import os
 import re
 import sys
-from builtins import object
-from builtins import range
-from builtins import str
+from builtins import range, str
 from collections import OrderedDict
 from copy import copy, deepcopy
 
 import jsonpickle
 import parglare
-from parglare import Grammar, Parser as PGParser
+from parglare import Grammar
+from parglare import Parser as PGParser
 
-from masm2c import cpp
+from masm2c import cpp, op, proc
 from masm2c.cpp import Cpp
-from masm2c.op import Segment, Struct, DataType
-from masm2c.proc import Proc
-from masm2c import proc
-from masm2c import op
-from masm2c.Token import Token
 from masm2c.Macro import Macro
+from masm2c.op import DataType, Segment, Struct
+from masm2c.proc import Proc
+from masm2c.Token import Token
 
 INTEGERCNST = 'INTEGER'
 STRINGCNST = 'STRING'

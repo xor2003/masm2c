@@ -22,14 +22,11 @@ from __future__ import absolute_import
 
 import logging
 from builtins import str
-from builtins import object
-
 # from masm2c import parser
 from collections import OrderedDict
-
-from masm2c.Token import Token
 from enum import Enum
 
+from masm2c.Token import Token
 
 # import traceback
 

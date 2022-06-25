@@ -22,17 +22,17 @@
 #
 
 from __future__ import print_function
-from masm2c.parser import Parser
-from masm2c.cpp import Cpp
-
-import re
 
 import argparse
 import logging
+import re
 import sys
 
+from masm2c.cpp import Cpp
+from masm2c.parser import Parser
+
 #from masm2c.__init__ import __version__
-__version__ = '0.9.6'
+__version__ = '0.9.7'
 
 __author__ = "x0r"
 __copyright__ = "x0r"
