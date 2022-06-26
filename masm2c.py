@@ -21,7 +21,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #
 
-from masm2c.cli import run
+from masm2c.cli import main
 
-run()
+main()
 

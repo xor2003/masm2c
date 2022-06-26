@@ -31,10 +31,9 @@ from enum import Enum
 
 import jsonpickle
 
-import masm2c.proc as proc_module
-from masm2c import op
-from masm2c.op import DataType
-from masm2c.Token import Token
+from . import proc as proc_module
+from . import op
+from .Token import Token
 
 OFFSETDIR = 'offsetdir'
 LABEL = 'LABEL'
@@ -1976,11 +1975,11 @@ struct Memory{
         internal_data_type = data.getinttype()
 
         logging.debug(f"current data type = {internal_data_type}")
-        rc, rh = {DataType.NUMBER: Cpp.produce_c_data_number,
-                  DataType.ARRAY: Cpp.produce_c_data_array,
-                  DataType.ZERO_STRING: Cpp.produce_c_data_zero_string,
-                  DataType.ARRAY_STRING: Cpp.produce_c_data_array_string,
-                  DataType.OBJECT: Cpp.produce_c_data_object
+        rc, rh = {op.DataType.NUMBER: Cpp.produce_c_data_number,
+                  op.DataType.ARRAY: Cpp.produce_c_data_array,
+                  op.DataType.ZERO_STRING: Cpp.produce_c_data_zero_string,
+                  op.DataType.ARRAY_STRING: Cpp.produce_c_data_array_string,
+                  op.DataType.OBJECT: Cpp.produce_c_data_object
                   }[internal_data_type](data)
 
         logging.debug(rc)

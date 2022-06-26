@@ -28,8 +28,8 @@ import logging
 import re
 import sys
 
-from masm2c.cpp import Cpp
-from masm2c.parser import Parser
+from .cpp import Cpp
+from .parser import Parser
 
 #from masm2c.__init__ import __version__
 __version__ = '0.9.7'
@@ -181,12 +181,13 @@ def process(i, args):
     return generator
 
 
-def main(args):
+def main():
     """Main entry point allowing external calls
 
     Args:
       args ([str]): command line parameter list
     """
+    args = sys.argv[1:]
     setup_logging('', logging.INFO)
     if sys.version_info[0] >= 3:
         sys.stdout.reconfigure(encoding='utf-8')
@@ -210,10 +211,6 @@ def main(args):
     logging.info(" *** Finished")
 
 
-def run():
-    """Entry point for console_scripts"""
-    main(sys.argv[1:])
-
 
 '''
 import auger
@@ -225,4 +222,4 @@ if __name__ == "__main__":
 '''
 
 if __name__ == "__main__":
-    run()
+    main()

@@ -34,10 +34,11 @@ import parglare
 from parglare import Grammar
 from parglare import Parser as PGParser
 
-from masm2c import cpp, op
-from masm2c.Macro import Macro
-from masm2c.proc import Proc
-from masm2c.Token import Token
+from . import cpp as cpp_module
+from . import op
+from .Macro import Macro
+from .proc import Proc
+from .Token import Token
 
 INTEGERCNST = 'INTEGER'
 STRINGCNST = 'STRING'
@@ -135,7 +136,7 @@ def ptrdir(context, nodes):
 
 
 def integertok(context, nodes):
-    return Token('INTEGER', cpp.convert_number_to_c(nodes, context.extra.radix))
+    return Token('INTEGER', cpp_module.convert_number_to_c(nodes, context.extra.radix))
 
 
 def commentkw(head, s, pos):
@@ -1090,7 +1091,7 @@ class Parser:
     def action_equ(self, label="", value="", raw='', line_number=0):
         label = self.mangle_label(label)
         value = Token.remove_tokens(value, ['expr'])
-        size = cpp.Cpp(self).get_size(value)
+        size = cpp_module.Cpp(self).get_size(value)
         ptrdir = Token.find_tokens(value, 'ptrdir')
         if ptrdir:
             type = ptrdir[0]
@@ -1577,8 +1578,8 @@ class Parser:
         s = self.structures[type]
         number = 1
         if isinstance(args, list) and len(args) > 2 and isinstance(args[1], str) and args[1] == 'dup':
-            cppo = cpp.Cpp(self)
-            number = eval(cppo.expand(Token.find_tokens(args[0], 'expr')))
+            cpp = cpp_module.Cpp(self)
+            number = eval(cpp.expand(Token.find_tokens(args[0], 'expr')))
             args = args[3]
         args = Token.remove_tokens(args, ['structinstance'])
 

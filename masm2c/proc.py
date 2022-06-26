@@ -24,8 +24,8 @@ import logging
 import re
 from builtins import range, str
 
-from masm2c import op
-from masm2c.Token import Token
+from . import op
+from .Token import Token
 
 # label_re = re.compile(r'^([\S@]+)::?(.*)$')  # speed
 
