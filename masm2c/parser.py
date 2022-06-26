@@ -34,10 +34,8 @@ import parglare
 from parglare import Grammar
 from parglare import Parser as PGParser
 
-from masm2c import cpp, op, proc
-from masm2c.cpp import Cpp
+from masm2c import cpp, op
 from masm2c.Macro import Macro
-from masm2c.op import DataType, Segment, Struct
 from masm2c.proc import Proc
 from masm2c.Token import Token
 
@@ -225,7 +223,7 @@ def structname(context, s, pos):
 
 def structdirhdr(context, nodes, name, type):
     # structure definition header
-    context.extra.current_struct = Struct(name.value.lower(), type)
+    context.extra.current_struct = op.Struct(name.value.lower(), type)
     context.extra.struct_names_stack.add(name.value.lower())
     logging.debug("structname added ~~" + name.value + "~~")
     return nodes
@@ -609,7 +607,7 @@ class Parser:
         self.__c_extra_dummy_jump_label = 0
 
         self.__segment_name = "default_seg"
-        self.__segment = Segment(self.__segment_name, 0, comment="Artificial initial segment")
+        self.__segment = op.Segment(self.__segment_name, 0, comment="Artificial initial segment")
         self.segments[self.__segment_name] = self.__segment
 
         self.proc = self.add_proc("mainproc", '', 0, False)
@@ -783,23 +781,23 @@ class Parser:
                     v = "far_offset(%s,%s)" % (g.segment, g.name)
                 else:
                     logging.error(f'Some unknown data size {size} for {g.name}')
-        elif isinstance(g, (op.label, proc.Proc)):
+        elif isinstance(g, (op.label, Proc)):
             v = "m2c::k%s" % (g.name.lower())
         else:
             v = g.offset
         logging.debug(v)
         return v
 
-    def identify_data_internal_type(self, r, elements, is_string) -> DataType:
+    def identify_data_internal_type(self, r, elements, is_string) -> op.DataType:
         if is_string:
             if len(r) >= 2 and r[-1] == 0:
-                cur_data_type = DataType.ZERO_STRING  # 0 terminated string
+                cur_data_type = op.DataType.ZERO_STRING  # 0 terminated string
             else:
-                cur_data_type = DataType.ARRAY_STRING  # array string
+                cur_data_type = op.DataType.ARRAY_STRING  # array string
         else:
-            cur_data_type = DataType.NUMBER  # number
+            cur_data_type = op.DataType.NUMBER  # number
             if elements > 1:
-                cur_data_type = DataType.ARRAY  # array
+                cur_data_type = op.DataType.ARRAY  # array
         return cur_data_type
 
     def process_data_tokens(self, v, width):
@@ -970,7 +968,7 @@ class Parser:
             self.data_merge_candidats = 0
 
             self.__segment.append(
-                op.Data(label, 'db', DataType.ARRAY, [0], num, num, comment='for alignment', align=True, offset=offset))
+                op.Data(label, 'db', op.DataType.ARRAY, [0], num, num, comment='for alignment', align=True, offset=offset))
 
     def move_offset(self, pointer, raw):
         if pointer > self.__binary_data_size:
@@ -982,7 +980,7 @@ class Parser:
             self.__binary_data_size += num
 
             self.__segment.append(
-                op.Data(label, 'db', DataType.ARRAY, [0], num, num, comment='move_offset', align=True, offset=offset))
+                op.Data(label, 'db', op.DataType.ARRAY, [0], num, num, comment='move_offset', align=True, offset=offset))
         elif pointer < self.__binary_data_size and not self.itislst:
             self.data_merge_candidats = 0
             logging.warning(f'Maybe wrong offset current:{self.__binary_data_size:x} should be:{pointer:x} ~{raw}~')
@@ -1092,7 +1090,7 @@ class Parser:
     def action_equ(self, label="", value="", raw='', line_number=0):
         label = self.mangle_label(label)
         value = Token.remove_tokens(value, ['expr'])
-        size = Cpp(self).get_size(value)
+        size = cpp.Cpp(self).get_size(value)
         ptrdir = Token.find_tokens(value, 'ptrdir')
         if ptrdir:
             type = ptrdir[0]
@@ -1134,7 +1132,7 @@ class Parser:
             logging.debug("segment %s %x" % (name, offset))
             binary_width = 0
 
-            self.__segment = Segment(name, offset, options=options, segclass=segclass)
+            self.__segment = op.Segment(name, offset, options=options, segclass=segclass)
             self.segments[name] = self.__segment
             # self.__segment.append(op.Data(name, 'db', DataType.ARRAY, [], 0, 0, comment='segment start zero label'))
 
@@ -1381,7 +1379,7 @@ class Parser:
 
         elements, is_string, array = self.process_data_tokens(args, binary_width)
         data_internal_type = self.identify_data_internal_type(array, elements, is_string)
-        if data_internal_type == DataType.ARRAY and not any(array) and not isstruct:  # all zeros
+        if data_internal_type == op.DataType.ARRAY and not any(array) and not isstruct:  # all zeros
             array = [0]
 
         logging.debug("~size %d elements %d" % (binary_width, elements))
@@ -1409,7 +1407,7 @@ class Parser:
         else:
             _, data.real_offset, data.real_seg = self.get_lst_offsets(raw)
             self.__segment.append(data)
-            if dummy_label and data_internal_type == DataType.NUMBER and binary_width == 1:
+            if dummy_label and data_internal_type == op.DataType.NUMBER and binary_width == 1:
                 self.merge_data_bytes()
             else:
                 self.data_merge_candidats = 0
@@ -1439,7 +1437,7 @@ class Parser:
 
                 self.__segment.getdata()[-size].array = array
                 self.__segment.getdata()[-size].elements = size
-                self.__segment.getdata()[-size].data_internal_type = DataType.ARRAY
+                self.__segment.getdata()[-size].data_internal_type = op.DataType.ARRAY
                 self.__segment.getdata()[-size].size = size
                 self.__segment.setdata(self.__segment.getdata()[:-(size - 1)])
                 self.data_merge_candidats = 0
@@ -1579,19 +1577,19 @@ class Parser:
         s = self.structures[type]
         number = 1
         if isinstance(args, list) and len(args) > 2 and isinstance(args[1], str) and args[1] == 'dup':
-            cpp = Cpp(self)
-            number = eval(cpp.expand(Token.find_tokens(args[0], 'expr')))
+            cppo = cpp.Cpp(self)
+            number = eval(cppo.expand(Token.find_tokens(args[0], 'expr')))
             args = args[3]
         args = Token.remove_tokens(args, ['structinstance'])
 
-        d = op.Data(label, type, DataType.OBJECT, args, 1, s.getsize(), comment='struct instance', offset=offset)
+        d = op.Data(label, type, op.DataType.OBJECT, args, 1, s.getsize(), comment='struct instance', offset=offset)
         members = [deepcopy(i) for i in s.getdata().values()]
         d.setmembers(members)
         args = self.convert_members(d, args)
         d.setvalue(args)
 
         if number > 1:
-            d = op.Data(label, type, DataType.ARRAY, number * [d], number, number * s.getsize(), comment='object array',
+            d = op.Data(label, type, op.DataType.ARRAY, number * [d], number, number * s.getsize(), comment='object array',
                         offset=offset)
 
         isstruct = len(self.struct_names_stack) != 0
