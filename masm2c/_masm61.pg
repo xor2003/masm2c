@@ -147,7 +147,8 @@ e11: '(' expr ')'
 | INTEGER
 | type
 | '$'
-| anyregister
+| segmentregister
+| register
 | ST
 | ST '(' expr ')';
 expr: U_TYPE e01
