@@ -261,7 +261,8 @@ def datadir(context, nodes, label, type, values):
 def includedir(context, nodes, name):
     # context.parser.input_str = context.input_str[:context.end_position] + '\n' + read_asm_file(name) \
     # + '\n' + context.input_str[context.end_position:]
-    result = context.extra.parse_include_file_lines(name)
+    fullpath = os.path.join(os.path.dirname(os.path.realpath(context.extra._current_file)), name)
+    result = context.extra.parse_include_file_lines(fullpath)
     return result
 
 
@@ -522,9 +523,10 @@ class ParglareParser:
 
             file_name = os.path.dirname(os.path.realpath(__file__)) + "/_masm61.pg"
             cls._inst.or_grammar = Grammar.from_file(file_name, ignore_case=True, recognizers=recognizers)
-            ## cls._inst.parser = PGParser(grammar, debug=True, debug_trace=True, actions=action.all)
             debug = False
-            cls._inst.or_parser = PGParser(cls._inst.or_grammar, debug=debug, actions=actions)
+            cls._inst.or_parser = PGParser(cls._inst.or_grammar, debug=debug, actions=actions, build_tree = False)
+            ##cls._inst.or_parser = GLRParser(cls._inst.or_grammar, debug=debug, actions=actions, prefer_shifts=True)
+
             # , build_tree = True, call_actions_during_tree_build = True)
 
             cls._inst.grammar = cls._inst.or_grammar
@@ -622,7 +624,7 @@ class Parser:
 
         self.struct_names_stack = set()
 
-        self.__current_file = ''
+        self._current_file = ''
         self.__current_file_hash = '0'
 
         self.data_merge_candidats = 0
@@ -1022,8 +1024,8 @@ class Parser:
         return self
 
     def parse_file_lines(self, file_name):
-        self.__current_file = file_name
-        self.__current_file_hash = hashlib.blake2s(self.__current_file.encode('utf8')).hexdigest()
+        self._current_file = file_name
+        self.__current_file_hash = hashlib.blake2s(self._current_file.encode('utf8')).hexdigest()
         content = read_whole_file(file_name)
         if file_name.lower().endswith('.lst'):  # for .lst provided by IDA move address to comments after ;~
             # we want exact placement so program could work
@@ -1058,11 +1060,11 @@ class Parser:
         return segs
 
     def parse_include_file_lines(self, file_name):
-        self.__files.add(self.__current_file)
-        self.__current_file = file_name
+        self.__files.add(self._current_file)
+        self._current_file = file_name
         content = read_whole_file(file_name)
         result = self.parse_file_inside(content, file_name=file_name)
-        self.__current_file = self.__files.pop()
+        self._current_file = self.__files.pop()
         return result
 
     def action_assign(self, label, value, raw='', line_number=0):
@@ -1071,7 +1073,7 @@ class Parser:
         # if self.has_global(label):
         #    label = self.get_global(label).original_name
         o = self.proc.create_assignment_op(label, value, line_number=line_number)
-        o.filename = self.__current_file
+        o.filename = self._current_file
         o.raw_line = raw.rstrip()
         self.reset_global(label, o)
         self.proc.stmts.append(o)
@@ -1100,7 +1102,7 @@ class Parser:
             type = type.lower()
             value = Token.find_and_replace_tokens(value, 'ptrdir', self.return_empty)
         o = Proc.create_equ_op(label, value, line_number=line_number)
-        o.filename = self.__current_file
+        o.filename = self._current_file
         o.raw_line = raw.rstrip()
         o.size = size
         if ptrdir:
@@ -1387,7 +1389,7 @@ class Parser:
         if label and not isstruct:
             self.set_global(label, op.var(binary_width, offset, name=label,
                                           segment=self.__segment_name, elements=elements, original_type=type,
-                                          filename=self.__current_file, raw=raw, line_number=line_number))
+                                          filename=self._current_file, raw=raw, line_number=line_number))
 
         dummy_label = False
         if len(label) == 0:
@@ -1400,7 +1402,7 @@ class Parser:
             self.__binary_data_size += size
             self.__cur_seg_offset += size
             data_type = 'usual data'
-        data = op.Data(label, type, data_internal_type, array, elements, size, filename=self.__current_file,
+        data = op.Data(label, type, data_internal_type, array, elements, size, filename=self._current_file,
                        raw_line=raw,
                        line_number=line_number, comment=data_type, offset=offset)
         if isstruct:
@@ -1512,6 +1514,8 @@ class Parser:
         logging.debug("parsing: [%s]" % text)
 
         result = self.__lex.parser.parse(text, file_name=file_name, extra=self)
+        #with open('forest.txt', 'w') as f:
+        #    f.write(result.to_str())
 
         logging.debug(str(result))
         return result
@@ -1629,12 +1633,12 @@ class Parser:
         # if self.__separate_proc:
         proc = self.get_global('mainproc')
         o = proc.create_instruction_object('call', [self.entry_point])
-        o.filename = self.__current_file
+        o.filename = self._current_file
         o.raw_line = ''
         o.line_number = 0
         proc.stmts.append(o)
         o = proc.create_instruction_object('ret')
-        o.filename = self.__current_file
+        o.filename = self._current_file
         o.raw_line = ''
         o.line_number = 0
         proc.stmts.append(o)
@@ -1645,7 +1649,7 @@ class Parser:
         self.make_sure_proc_exists(line_number, raw)
 
         o = self.proc.create_instruction_object(instruction, args)
-        o.filename = self.__current_file
+        o.filename = self._current_file
         o.raw_line = raw
         o.line_number = line_number
         if self.current_macro == None:
