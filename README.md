@@ -9,6 +9,8 @@ Masm2c - 16bit assembler to C++ translator
 may be used to port your DOS x86 (MASM) assembler code to C++ and SDL (Since there is no working decompiler for 16 bit DOS code yet.
 Because of DOS segmentation model, etc)
 
+Also It can make IDA Pro output assembler listing to be recompilable (and also portable) with help of instrumented emulator [libdosbox](https://github.com/xor2003/libdosbox).
+
 Translator generates fake-assembler instructions which can be compiled with C++ compiler and executed.
 
 [![Test drive 3](http://img.youtube.com/vi/MzK9RVgeWGM/0.jpg)](http://www.youtube.com/watch?v=MzK9RVgeWGM "Test drive 3")
