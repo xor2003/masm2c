@@ -86,59 +86,19 @@ class Proc:
         logging.info("optimizing...")
         # trivial simplifications
 
-    '''
-    def action_instruction(self, stmt):
-        # print stmt
-        # comment = stmt.find(';')
-        # comments = ""
-        # if comment >= 0:
-        #       comments = stmt[comment:]
-        stmt = stmt.strip()
-        #line = stmt
 
-        stmt = self.parse_extract_label(stmt)
-
-        if len(stmt) == 0:
-            return
-
-        o = self.split_create_instruction(stmt)
-        # o.line = line
-        # o.line_number = line_number
-        # self.stmts.append(o)
-        return o
-
-    def parse_extract_label(self, stmt):
-        r = label_re.search(stmt)
-        if r:
-            logging.info("add label %s" % r.group(1))
-            # label
-            self.add_label(r.group(1).lower(), self)
-            # print "remains: %s" %r.group(2)
-            stmt = r.group(2).strip()
-        return stmt
-    '''
-
-    def split_create_instruction(self, stmt):
-        # s = [stmt.replace("\x00", " ") for stmt in
-        #     re.sub('["\'].+?["\']', lambda m: m.group(0).replace(" ", "\x00"), stmt).split()]
-        s = stmt.split()
-        o = self.create_instruction_object(s[0], s[1:])
-        return o
-
-    def create_instruction_object(self, instruction, args=[]):
+    def create_instruction_object(self, instruction, args=None):
         """
         :param instruction: the instruction name
         :param args: a list of strings, each string is an argument to the instruction
         :return: An object of type cl, which is a subclass of Instruction.
         """
+        if args is None:
+            args = []
         cl = self.find_op_class(instruction, args)
-        # print "args %s" %s[1:]
-        # arg = " ".join(args) if len(args) > 0 else ""
         o = cl(args)
-        # o.comments = comments
         o.cmd = instruction.lower()
         o.syntetic = False
-        # logging.info("~1~2~ " + o.command + " ~ " + o.cmd)
         return o
 
     def find_op_class(self, cmd, args):
@@ -155,8 +115,8 @@ class Proc:
                 cl = getattr(op, '_jump')
             else:
                 cl = getattr(op, '_instruction' + str(len(args)))
-        except:
-            raise Exception("unknown command: " + cmd.lower())
+        except AttributeError:
+            raise Exception("Unknown instruction: " + cmd.lower())
         return cl
 
     def add_equ(self, label, value, line_number=0):  # only for tests. to remove
@@ -168,8 +128,7 @@ class Proc:
         logging.debug(label + " " + str(value))
         o = op._equ([label, value])
         # value = cpp.convert_number_to_c(value)
-        ptrdir = Token.find_tokens(value, PTRDIR)
-        if ptrdir:
+        if ptrdir := Token.find_tokens(value, PTRDIR):
             if isinstance(ptrdir[0], Token):
                 o.original_type = ptrdir[0].value.lower()
             elif isinstance(ptrdir[0], str):
@@ -186,8 +145,7 @@ class Proc:
         logging.debug(label + " " + str(value))
         # value = cpp.convert_number_to_c(value)
         o = op._assignment([label, value])
-        ptrdir = Token.find_tokens(value, PTRDIR)
-        if ptrdir:
+        if ptrdir := Token.find_tokens(value, PTRDIR):
             if isinstance(ptrdir[0], Token):
                 o.original_type = ptrdir[0].value.lower()
             elif isinstance(ptrdir[0], str):
@@ -281,8 +239,7 @@ class Proc:
         return full_line
 
     def generate_c_cmd(self, visitor, stmt):
-        s = stmt.visit(visitor)
-        return s
+        return stmt.visit(visitor)
 
     def if_terminated_proc(self):
         '''Check if proc was terminated with jump or ret to know if execution flow continues across function end'''

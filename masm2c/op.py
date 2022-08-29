@@ -420,7 +420,7 @@ class Segment:
         self.options = options
         self.segclass = segclass
         # self.comment = comment
-        self.seglabels = set([self.name])
+        self.seglabels = {self.name}
         self.size = 0  # Check if needed
 
     def getsize(self):
@@ -739,7 +739,6 @@ class _retf(baseop):
 class _lodsb(baseop):
     def __init__(self, arg):
         super().__init__()
-        pass
 
     def visit(self, visitor):
         return visitor._lodsb()
@@ -748,7 +747,6 @@ class _lodsb(baseop):
 class _scasb(baseop):
     def __init__(self, arg):
         super().__init__()
-        pass
 
     def visit(self, visitor):
         return visitor._scasb()
@@ -757,7 +755,6 @@ class _scasb(baseop):
 class _scasw(baseop):
     def __init__(self, arg):
         super().__init__()
-        pass
 
     def visit(self, visitor):
         return visitor._scasw()
@@ -766,7 +763,6 @@ class _scasw(baseop):
 class _scasd(baseop):
     def __init__(self, arg):
         super().__init__()
-        pass
 
     def visit(self, visitor):
         return visitor._scasd()
@@ -775,7 +771,6 @@ class _scasd(baseop):
 class _cmpsb(baseop):
     def __init__(self, arg):
         super().__init__()
-        pass
 
     def visit(self, visitor):
         return visitor._cmpsb()
@@ -784,7 +779,6 @@ class _cmpsb(baseop):
 class _lodsw(baseop):
     def __init__(self, arg):
         super().__init__()
-        pass
 
     def visit(self, visitor):
         return visitor._lodsw()
@@ -793,7 +787,6 @@ class _lodsw(baseop):
 class _lodsd(baseop):
     def __init__(self, arg):
         super().__init__()
-        pass
 
     def visit(self, visitor):
         return visitor._lodsd()
@@ -988,7 +981,6 @@ class _scas(baseop):
 class _leave(baseop):
     def __init__(self, arg):
         super().__init__()
-        pass
 
     def visit(self, visitor):
         return visitor._leave()
@@ -1006,7 +998,6 @@ class _idiv(baseop):
 class _instruction0(baseop):
     def __init__(self, arg):
         super().__init__()
-        pass
 
     def visit(self, visitor):
         return visitor._instruction0(self.cmd)

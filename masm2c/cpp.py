@@ -1385,10 +1385,9 @@ class Cpp:
 
     def generate(self, start):
         fname = f"{self.__namespace.lower()}.cpp"
-        header = self.__namespace.lower() + ".h"
+        header = f"{self.__namespace.lower()}.h"
         logging.info(f' *** Generating output files in C++ {fname} {header}')
         cpp_assign, _, _, cpp_extern = self.produce_c_data(self._context.segments)
-        translated = []
         if sys.version_info >= (3, 0):
             cppd = open(fname, "wt", encoding=self.__codeset)
             hd = open(header, "wt", encoding=self.__codeset)
@@ -1402,7 +1401,7 @@ class Cpp:
  */
 """
 
-        hid = "__M2C_%s_STUBS_H__" % self.__namespace.upper().replace('-', '_')
+        hid = f"__M2C_{self.__namespace.upper().replace('-', '_')}_STUBS_H__"
         hd.write(f"""#ifndef {hid}
 #define {hid}
 
@@ -1444,7 +1443,7 @@ class Cpp:
  bool {p}(m2c::_offsets, struct m2c::_STATE* _state){{return {self.groups[p]}(m2c::k{p}, _state);}}
 """
 
-        translated.append(self.body)
+        translated = [self.body]
         cppd.write("\n")
         cppd.write("\n".join(translated))
         cppd.write("\n")
