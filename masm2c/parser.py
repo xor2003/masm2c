@@ -48,6 +48,12 @@ class MyDummyObj: pass
 
 
 def read_whole_file(file_name):
+    """
+    It reads the whole file and returns it as a string
+
+    :param file_name: The name of the file to read
+    :return: The content of the file.
+    """
     logging.info("     Reading file %s...", file_name)
     if sys.version_info >= (3, 0):
         fd = open(file_name, 'rt', encoding="cp437")
@@ -64,6 +70,12 @@ commentid = re.compile(r'COMMENT\s+([^ ]).*?\1[^\r\n]*', flags=re.DOTALL)
 
 
 def get_line_number(context):
+    """
+    It returns the line number of the current position in the input string
+
+    :param context: the context object that is passed to the action function
+    :return: The line number of the current position in the input string.
+    """
     # old_line, old_col = parglare.pos_to_line_col(context.input_str, context.start_position)
     new_line = context.input_str[: context.start_position].count('\n') + 1
     # line_start_pos = context.input_str.rfind('\n', 0, context.start_position)
@@ -75,10 +87,23 @@ def get_line_number(context):
 
 
 def get_raw(context):
+    """
+    It returns the raw text that was provided to parser
+
+    :param context:
+    :return: The raw string from the input string.
+    """
     return context.input_str[context.start_position: context.end_position].strip()
 
 
 def get_raw_line(context):
+    """
+    It returns the raw line of text that the cursor is currently on
+
+    :param context: The context object that contains the current position in the input string, the start and end positions
+    of the current match, and the input string itself
+    :return: The line of text from the input string.
+    """
     line_eol_pos = context.input_str.find('\n', context.end_position)
     if line_eol_pos == -1:
         line_eol_pos = context.end_position
@@ -1037,6 +1062,12 @@ class Parser:
         self.parse_args_new_data(content, file_name=file_name)
 
     def read_segments_map(self, file_name):
+        """
+        It reads a .map file and returns a dictionary of segments
+
+        :param file_name: The name of the .map file
+        :return: A dictionary of segments and their values.
+        """
         content = read_whole_file(re.sub(r'\.lst$', '.map', file_name, flags=re.I)).splitlines()
         DOSBOX_START_SEG = int(self.args.loadsegment, 0)
         strgenerator = (x for x in content)
@@ -1068,6 +1099,16 @@ class Parser:
         return result
 
     def action_assign(self, label, value, raw='', line_number=0):
+        """
+        This function is called when the parser encounters an assignment statement
+        It creates an assignment operation, and then appends it to the list of statements
+
+        :param label: the name of the variable
+        :param value: The value to assign to the label
+        :param raw: the raw line of code
+        :param line_number: The line number of the assignment statement, defaults to 0 (optional)
+        :return: The assignment operation.
+        """
         label = self.mangle_label(label)
 
         # if self.has_global(label):
@@ -1630,6 +1671,9 @@ class Parser:
             #    self.reset_global(label, op.label(label, proc=self.proc.name, isproc=True))
 
     def add_call_to_entrypoint(self):
+        """
+        It adds a call to the entry point of the program to the service mainproc
+        """
         # if self.__separate_proc:
         proc = self.get_global('mainproc')
         o = proc.create_instruction_object('call', [self.entry_point])

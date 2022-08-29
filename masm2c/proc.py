@@ -51,7 +51,7 @@ class Proc:
         self.original_name = name
 
         self.stmts = []
-        self.provided_labels = set([name])
+        self.provided_labels = set(name)
         self.line_number = line_number
         self.far = far
         self.used = False
@@ -82,7 +82,7 @@ class Proc:
         self.stmts.append(label)
         self.provided_labels.add(name)
 
-    def optimize(self, keep_labels=[]):
+    def optimize(self, keep_labels=None):
         logging.info("optimizing...")
         # trivial simplifications
 
@@ -126,6 +126,11 @@ class Proc:
         return o
 
     def create_instruction_object(self, instruction, args=[]):
+        """
+        :param instruction: the instruction name
+        :param args: a list of strings, each string is an argument to the instruction
+        :return: An object of type cl, which is a subclass of Instruction.
+        """
         cl = self.find_op_class(instruction, args)
         # print "args %s" %s[1:]
         # arg = " ".join(args) if len(args) > 0 else ""
