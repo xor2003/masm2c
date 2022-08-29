@@ -101,8 +101,7 @@ class SeparateProcStrategy:
         return dst
 
     def produce_proc_start(self, name):
-        ret = " // Procedure %s() start\n%s()\n{\n" % (name, cpp_mangle_label(name))
-        return ret
+        return " // Procedure %s() start\n%s()\n{\n" % (name, cpp_mangle_label(name))
 
     def function_header(self, name, entry_point=''):
         header = """
@@ -146,19 +145,37 @@ bool __dispatch_call(m2c::_offsets __disp, struct m2c::_STATE* _state);
         return result
 
     def get_strategy(self):
+        """
+        The get_strategy function returns the strategy that is currently being used by the player.
+
+
+        :param self: Access the class attributes
+        :return: The string &quot;&quot;
+        :doc-author: Trelent
+        """
         return ""
 
 
 def check_int(s):
+    """
+    Check the string for a number except the leading sign
+
+    :param s: The string to check
+    :return: a boolean value.
+    """
     if s[0] in ('-', '+'):
         return s[1:].isdigit()
     return s.isdigit()
 
 
 def parse_bin(s):
+    """
+    :param s: The binary string that was matched by the regular expression
+    :return: The hexadecimal value of the binary number.
+    """
     sign = s.group(1)
-    b = s.group(2)
-    v = hex(int(b, 2))
+    binary = s.group(2)
+    v = hex(int(binary, 2))
     if sign:
         v = sign + v
     # logging.debug("BINARY: %s -> %s" %(b, v))
@@ -166,6 +183,13 @@ def parse_bin(s):
 
 
 def convert_number_to_c(expr, radix=10):
+    """
+    It tryes to convert assembler number in any base to a C number string with the same base
+
+    :param expr: The expression to convert
+    :param radix: The radix of the number, defaults to 10 (optional)
+    :return: The number in the specified radix.
+    """
     origexpr = expr
     if expr == '?':
         return '0'
@@ -196,6 +220,12 @@ def convert_number_to_c(expr, radix=10):
 
 
 def guess_int_size(v):
+    """
+    It returns the number of bytes needed to store the given integer
+
+    :param v: integer
+    :return: The size of the integer.
+    """
     size = 0
     if v < 0:
         v = -2 * v - 1
@@ -213,6 +243,12 @@ def guess_int_size(v):
 
 
 def cpp_mangle_label_special(name):
+    """
+    Modifies assembler functions to be acceptable for C
+
+    :param name: the name of assembler the function
+    :return: The name of the C function.
+    """
     if name == 'main':
         name = 'asmmain'
     return name.replace('$', '_tmp').replace('?', 'que')
@@ -1333,6 +1369,12 @@ class Cpp:
         return None, None
 
     def leave_unique_labels(self, labels):
+        """
+        For IDA .lst it takes a list of labels and returns a list of unique labels based on address
+
+        :param labels: a list of labels to be processed
+        :return: A list of labels.
+        """
         if not self._context.itislst:
             return labels
         uniq_labels = {}
@@ -1342,12 +1384,10 @@ class Cpp:
         return uniq_labels.values()
 
     def generate(self, start):
-        fname = self.__namespace.lower() + ".cpp"
+        fname = f"{self.__namespace.lower()}.cpp"
         header = self.__namespace.lower() + ".h"
         logging.info(f' *** Generating output files in C++ {fname} {header}')
-
         cpp_assign, _, _, cpp_extern = self.produce_c_data(self._context.segments)
-
         translated = []
         if sys.version_info >= (3, 0):
             cppd = open(fname, "wt", encoding=self.__codeset)
@@ -1355,7 +1395,6 @@ class Cpp:
         else:
             cppd = open(fname, "wt")
             hd = open(header, "wt")
-
         banner = """/* PLEASE DO NOT MODIFY THIS FILE. ALL CHANGES WILL BE LOST! LOOK FOR README FOR DETAILS */
 
 /* 
@@ -1364,20 +1403,16 @@ class Cpp:
 """
 
         hid = "__M2C_%s_STUBS_H__" % self.__namespace.upper().replace('-', '_')
-
         hd.write(f"""#ifndef {hid}
 #define {hid}
 
 {banner}""")
-
         hd.write(self.proc_strategy.get_strategy())
-
         cppd.write(f"""{banner}
 #include \"{header}\"
 
 """)
         self.merge_procs()
-
         '''
         if self._context.main_file:
 #            cppd.write("""
@@ -1403,24 +1438,23 @@ class Cpp:
  }
 #""")
 '''
-        # self.__proc_queue.append(start)
-        # while len(self.__proc_queue):
 
         for p in sorted(self.grouped):
             self.body += f"""
  bool {p}(m2c::_offsets, struct m2c::_STATE* _state){{return {self.groups[p]}(m2c::k{p}, _state);}}
 """
+
         translated.append(self.body)
         cppd.write("\n")
         cppd.write("\n".join(translated))
         cppd.write("\n")
-
         if self._context.main_file:
             g = self._context.get_global(self._context.entry_point)
             if isinstance(g, op.label) and self._context.entry_point not in self.grouped:
                 cppd.write(f"""
                  bool {self._context.entry_point}(m2c::_offsets, struct m2c::_STATE* _state){{return {self.label_to_proc[g.name]}(m2c::k{self._context.entry_point}, _state);}}
                 """)
+
             cppd.write(f"""namespace m2c{{ m2cf* _ENTRY_POINT_ = &{self._context.entry_point};}}
         """)
 
@@ -1438,30 +1472,24 @@ class Cpp:
                     cpp_segm = open(fsname, "wt", encoding=self.__codeset)
                 else:
                     cpp_segm = open(fsname, "wt")
-
                 cpp_segm.write(f'''{banner}
                 #include "{header}"
 
                 ''')
+
             if cpp_segm:
                 cpp_segm.write(f"{proc_text}\n")
             else:
                 cppd.write(f"{proc_text}\n")
-
-            # self.__translated.append(proc_text)
             self.__proc_done.append(name)
             self.__methods.append(name)
-
         if cpp_segm:
             cpp_segm.close()
-        # self.write_stubs("_stubs.cpp", self.__failed)
         self.__methods += self.__failed
         done, failed = len(self.__proc_done), len(self.__failed)
+        logging.info("%d ok, %d failed of %d, %3g%% translated" % (done, failed, done + failed, 100.0 * done / (done + failed)))
 
-        logging.info(
-            "%d ok, %d failed of %d, %3g%% translated" % (done, failed, done + failed, 100.0 * done / (done + failed)))
         logging.info("\n".join(self.__failed))
-
         cppd.write(self.produce_global_jump_table(list(self._context.get_globals().items()), self._context.itislst))
 
         hd.write(f"""
@@ -1471,18 +1499,14 @@ class Cpp:
 """)
 
         hd.write(cpp_extern)
-
         labeloffsets = self.produce_label_offsets()
         hd.write(labeloffsets)
-
         hd.write(self.proc_strategy.write_declarations(self.__procs + list(self.grouped), self._context))
 
         data = self.produce_externals(self._context)
         hd.write(data)
-
         hd.write("\n#endif\n")
         hd.close()
-
         cppd.write(f"""
 #include <algorithm>
 #include <iterator>
@@ -1510,7 +1534,6 @@ class Cpp:
 """)
 
         cppd.close()
-
         self.write_segment(self._context.segments, self._context.structures)
 
     def merge_procs(self):
