@@ -335,15 +335,14 @@ class Cpp:
 
                     if name.startswith('dummy') and c == '0':
                         c = ''
-                    else:
-                        if m.group(3):  # if array
-                            if c == '{}':
-                                c = ''
-                            else:
-                                c = f'    {{{asgn}={c};MYCOPY({name})}}'
+                    elif m.group(3):  # if array
+                        if c == '{}':
+                            c = ''
                         else:
-                            # c = f'    {name}={c};'
                             c = f'    {{{asgn}={c};MYCOPY({name})}}'
+                    else:
+                        # c = f'    {name}={c};'
+                        c = f'    {{{asgn}={c};MYCOPY({name})}}'
 
                     real_seg, real_offset = j.getrealaddr()
                     if c:
@@ -362,9 +361,8 @@ class Cpp:
                     e = re.sub(r'^([0-9A-Za-z_]+)\s+([0-9A-Za-z_\[\]]+)(\[\d+\]);', r'extern \g<1> (& \g<2>)\g<3>;', h)
                     e = re.sub(r'^([0-9A-Za-z_]+)\s+([0-9A-Za-z_\[\]]+);', r'extern \g<1>& \g<2>;', e)
 
-                    if real_seg:
-                        if c:
-                            h = h[:-1] + f' // {real_seg:04x}:{real_offset:04x}\n'
+                    if c and real_seg:
+                        h = h[:-1] + f' // {real_seg:04x}:{real_offset:04x}\n'
 
                     cdata_seg += c  # cpp source - assigning
                     rdata_seg += r  # reference in _data.cpp
@@ -475,15 +473,20 @@ class Cpp:
         return Token('LABEL', value)
 
     def remove_dots(self, tokens):
-        if isinstance(tokens, list):
-            l = []
-            for i in tokens:
-                i = self.remove_dots(i)
-                if i != '.':
-                    l += [i]
-            return l
-        else:
+        """
+        It takes a list of tokens, and if any of the tokens are a period, it removes them
+
+        :param tokens: a list of tokens
+        :return: A list of tokens with the dots removed.
+        """
+        if not isinstance(tokens, list):
             return tokens
+        l = []
+        for i in tokens:
+            i = self.remove_dots(i)
+            if i != '.':
+                l += [i]
+        return l
 
     def convert_member(self, token):
         logging.debug("name = %s indirection = %s" % (str(token), str(self.__indirection)))
@@ -595,8 +598,7 @@ class Cpp:
 
         expr = Token.remove_tokens(expr, ['expr'])
 
-        ptrdir = Token.find_tokens(expr, PTRDIR)
-        if ptrdir:
+        if ptrdir := Token.find_tokens(expr, PTRDIR):
             value = ptrdir[0]
             # logging.debug('get_size res 1')
             return self._context.typetosize(value)
@@ -1148,11 +1150,10 @@ class Cpp:
         return "RETF(%s)" % self.a
 
     def _xlat(self, src):
-        if src == []:
+        if not src:
             return "XLAT"
-        else:
-            self.a = self.expand(src)[2:-1]
-            return "XLATP(%s)" % self.a
+        self.a = self.expand(src)[2:-1]
+        return "XLATP(%s)" % self.a
 
     def parse2(self, dst, src):
         dst_size, src_size = self.get_size(dst), self.get_size(src)
@@ -1209,12 +1210,10 @@ class Cpp:
         return "IDIV%d(%s)" % (size, self.a)
 
     def _jz(self, label):
-        result = self.isrelativejump(label)
-        if result:
+        if self.isrelativejump(label):
             return "{;}"
-        else:
-            label, _ = self.jump_post(label)  # TODO
-            return "JZ(%s)" % label
+        label, _ = self.jump_post(label)  # TODO
+        return "JZ(%s)" % label
 
     def _jnz(self, label):
         label, _ = self.jump_post(label)
