@@ -311,65 +311,81 @@ class Cpp:
         self.label_to_proc = {}
 
     def produce_c_data(self, segments):
-        cdata_seg = ""
-        hdata_seg = ""
-        rdata_seg = ""
-        edata_seg = ""
-        for i in segments.values():
-            rdata_seg += f"db& {i.name}=*((db*)&m2c::m+0x{i.offset:x});\n"
-            edata_seg += f"extern db& {i.name};\n"
-            for j in i.getdata():
-                c, h, size = self.produce_c_data_single_(j)
+        """
+        It takes a list of DOS segments, and for each segment, it takes a list of data items, and for each data item, it
+        produces a C++ assignment statement, a C++ extern statement, and a C++ reference statement
 
-                h += ";\n"
+        :param segments: a dictionary of segments, where the key is the segment name and the value is the segment object
+        :return: cpp_file, data_hpp, data_cpp, hpp_file
+        """
+        cpp_file = ""
+        data_hpp = ""
+        data_cpp = ""
+        hpp_file = ""
+        for i in segments.values():
+            data_cpp += f"db& {i.name}=*((db*)&m2c::m+0x{i.offset:x});\n"
+            hpp_file += f"extern db& {i.name};\n"
+            for j in i.getdata():
+                _cpp, _hpp, size = self.produce_c_data_single_(j)
+
+                _hpp += ";\n"
 
                 if not j.getalign():  # if align do not assign it
                     #  mycopy(bb, {'1','2','3','4','5'});
                     #  caa=3;
-                    m = re.match(r'^([0-9A-Za-z_]+)\s+([0-9A-Za-z_]+)(\[\d+\])?;\n', h)
+                    m = re.match(r'^(\w+)\s+(\w+)(\[\d+\])?;\n', _hpp)
                     if not m:
-                        logging.error(f'Failed to parse {c} {h}')
+                        logging.error(f'Failed to parse {_cpp} {_hpp}')
                     name = m.group(2)
 
-                    asgn = re.sub(r'^([0-9A-Za-z_]+)\s+(?:[0-9A-Za-z_]+(\[\d+\])?);\n', r'\g<1> tmp999\g<2>', h)
+                    asgn = re.sub(r'^(\w+)\s+(?:\w+(\[\d+\])?);\n', r'\g<1> tmp999\g<2>', _hpp)
 
-                    if name.startswith('dummy') and c == '0':
-                        c = ''
+                    if name.startswith('dummy') and _cpp == '0':
+                        _cpp = ''
                     elif m.group(3):  # if array
-                        if c == '{}':
-                            c = ''
+                        if _cpp == '{}':
+                            _cpp = ''
                         else:
-                            c = f'    {{{asgn}={c};MYCOPY({name})}}'
+                            _cpp = f'    {{{asgn}={_cpp};MYCOPY({name})}}'
                     else:
-                        # c = f'    {name}={c};'
-                        c = f'    {{{asgn}={c};MYCOPY({name})}}'
+                        # _cpp = f'    {name}={_cpp};'
+                        _cpp = f'    {{{asgn}={_cpp};MYCOPY({name})}}'
 
-                    real_seg, real_offset = j.getrealaddr()
-                    if c:
-                        if real_seg:
-                            c += f' // {real_seg:04x}:{real_offset:04x}'
-                        c += "\n"
-                    # c += " // " + j.getlabel() + "\n"  # TODO can put original_label
 
                     # char (& bb)[5] = group.bb;
                     # int& caa = group.aaa;
                     # references
-                    r = re.sub(r'^([0-9A-Za-z_]+)\s+([0-9A-Za-z_\[\]]+)(\[\d+\]);',
-                               r'\g<1> (& \g<2>)\g<3> = m2c::m.\g<2>;', h)
-                    r = re.sub(r'^([0-9A-Za-z_]+)\s+([0-9A-Za-z_\[\]]+);', r'\g<1>& \g<2> = m2c::m.\g<2>;', r)
+                    _reference = self._generate_dataref_from_declaration(_hpp)
                     # externs
-                    e = re.sub(r'^([0-9A-Za-z_]+)\s+([0-9A-Za-z_\[\]]+)(\[\d+\]);', r'extern \g<1> (& \g<2>)\g<3>;', h)
-                    e = re.sub(r'^([0-9A-Za-z_]+)\s+([0-9A-Za-z_\[\]]+);', r'extern \g<1>& \g<2>;', e)
+                    _extern = self._generate_extern_from_declaration(_hpp)
 
-                    if c and real_seg:
-                        h = h[:-1] + f' // {real_seg:04x}:{real_offset:04x}\n'
+                    if _cpp:
+                        real_seg, real_offset = j.getrealaddr()
+                        if real_seg:
+                            _cpp += f' // {real_seg:04x}:{real_offset:04x}'
+                            _hpp = _hpp[:-1] + f' // {real_seg:04x}:{real_offset:04x}\n'
+                        _cpp += "\n"
+                    # c += " // " + j.getlabel() + "\n"  # TODO can put original_label
 
-                    cdata_seg += c  # cpp source - assigning
-                    rdata_seg += r  # reference in _data.cpp
-                    edata_seg += e  # extern for header
-                hdata_seg += h  # headers in _data.h
 
-        return cdata_seg, hdata_seg, rdata_seg, edata_seg
+                    cpp_file += _cpp  # cpp source - assigning
+                    hpp_file += _extern  # extern for header
+
+                    data_cpp += _reference  # reference in _data.cpp
+                data_hpp += _hpp  # headers in _data.h
+
+        return cpp_file, data_hpp, data_cpp, hpp_file
+
+    def _generate_extern_from_declaration(self, _hpp):
+        _extern = re.sub(r'^(\w+)\s+([0-9A-Za-z_\[\]]+)(\[\d+\]);', r'extern \g<1> (& \g<2>)\g<3>;', _hpp)
+        _extern = re.sub(r'^(\w+)\s+([0-9A-Za-z_\[\]]+);', r'extern \g<1>& \g<2>;', _extern)
+        return _extern
+
+    def _generate_dataref_from_declaration(self, _hpp):
+        _reference = re.sub(r'^(\w+)\s+([0-9A-Za-z_\[\]]+)(\[\d+\]);',
+                            r'\g<1> (& \g<2>)\g<3> = m2c::m.\g<2>;', _hpp)
+        _reference = re.sub(r'^(\w+)\s+([0-9A-Za-z_\[\]]+);', r'\g<1>& \g<2> = m2c::m.\g<2>;', _reference)
+        return _reference
 
     def convert_label(self, token):
         name_original = cpp_mangle_label_special(token.value)
@@ -587,7 +603,7 @@ class Cpp:
 
     def get_size(self, expr):
         '''
-        Get tokens memory size
+        Calculate inmemory size for token
         :param expr: Tokens
         :return: byte size
         '''
@@ -1992,6 +2008,12 @@ struct Memory{
 
     @staticmethod
     def produce_c_data_single_(data):
+        """
+        It takes an assembler data and returns a C++ object
+
+        :param data: The data to be converted
+        :return: data value, declaration, size
+        """
         # Real conversion
         internal_data_type = data.getinttype()
 
