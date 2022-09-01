@@ -1399,59 +1399,35 @@ class Cpp:
         return uniq_labels.values()
 
     def generate(self, start):
-        fname = f"{self.__namespace.lower()}.cpp"
-        header = f"{self.__namespace.lower()}.h"
-        logging.info(f' *** Generating output files in C++ {fname} {header}')
-        cpp_assign, _, _, cpp_extern = self.produce_c_data(self._context.segments)
-        if sys.version_info >= (3, 0):
-            cppd = open(fname, "wt", encoding=self.__codeset)
-            hd = open(header, "wt", encoding=self.__codeset)
-        else:
-            cppd = open(fname, "wt")
-            hd = open(header, "wt")
-        banner = """/* PLEASE DO NOT MODIFY THIS FILE. ALL CHANGES WILL BE LOST! LOOK FOR README FOR DETAILS */
+        cpp_fname = f"{self.__namespace.lower()}.cpp"
+        header_fname = f"{self.__namespace.lower()}.h"
 
-/* 
- *
- */
-"""
+        logging.info(f' *** Generating output files in C++ {cpp_fname} {header_fname}')
 
-        hid = f"__M2C_{self.__namespace.upper().replace('-', '_')}_STUBS_H__"
-        hd.write(f"""#ifndef {hid}
-#define {hid}
+        cpp_assigns, _, _, cpp_extern = self.produce_c_data(self._context.segments)
+        cpp_file = open(cpp_fname, "wt", encoding=self.__codeset)
+        hpp_file = open(header_fname, "wt", encoding=self.__codeset)
+
+        header_id = f"__M2C_{self.__namespace.upper().replace('-', '_')}_STUBS_H__"
+
+        banner = """/* THIS IS GENERATED FILE */
+
+        /* 
+         *
+         */
+        """
+
+        hpp_file.write(f"""#ifndef {header_id}
+#define {header_id}
 
 {banner}""")
-        hd.write(self.proc_strategy.get_strategy())
-        cppd.write(f"""{banner}
-#include \"{header}\"
+
+        hpp_file.write(self.proc_strategy.get_strategy())
+        cpp_file.write(f"""{banner}
+#include \"{header_fname}\"
 
 """)
         self.merge_procs()
-        '''
-        if self._context.main_file:
-#            cppd.write("""
- int init(struct _STATE* _state)
- {
-    X86_REGREF
-    
-    m2c::log_debug("~~~ heap_size=%%d heap_para=%%d heap_seg=%%s\\n", HEAP_SIZE, (HEAP_SIZE >> 4), seg_offset(heap) );
-    /* We expect ram_top as Kbytes, so convert to paragraphs */
-    mcb_init(seg_offset(heap), (HEAP_SIZE >> 4) - seg_offset(heap) - 1, MCB_LAST);
-    
-    R(MOV(ss, seg_offset(stack)));
- #if _BITS == 32
-    esp = ((dd)(db*)&stack[STACK_SIZE - 4]);
- #else
-    esp = 0;
-    sp = STACK_SIZE - 4;
-    es = 0;
-    *(dw*)(raddr(0, 0x408)) = 0x378; //LPT
- #endif
-    
-    return(0);
- }
-#""")
-'''
 
         for p in sorted(self.grouped):
             self.body += f"""
@@ -1459,69 +1435,68 @@ class Cpp:
 """
 
         translated = [self.body]
-        cppd.write("\n")
-        cppd.write("\n".join(translated))
-        cppd.write("\n")
+        cpp_file.write("\n")
+        cpp_file.write("\n".join(translated))
+        cpp_file.write("\n")
         if self._context.main_file:
             g = self._context.get_global(self._context.entry_point)
             if isinstance(g, op.label) and self._context.entry_point not in self.grouped:
-                cppd.write(f"""
+                cpp_file.write(f"""
                  bool {self._context.entry_point}(m2c::_offsets, struct m2c::_STATE* _state){{return {self.label_to_proc[g.name]}(m2c::k{self._context.entry_point}, _state);}}
                 """)
 
-            cppd.write(f"""namespace m2c{{ m2cf* _ENTRY_POINT_ = &{self._context.entry_point};}}
+            cpp_file.write(f"""namespace m2c{{ m2cf* _ENTRY_POINT_ = &{self._context.entry_point};}}
         """)
 
         last_segment = None
-        cpp_segm = None
+        cpp_segment_file = None
         for name in self.__procs:
             proc_text, segment = self.__proc(name)
             if self._context.itislst and segment != last_segment:
                 last_segment = segment
-                if cpp_segm:
-                    cpp_segm.close()
-                fsname = f"{self.__namespace.lower()}_{segment}.cpp"
-                logging.info(f' *** Generating output file in C++ {fsname}')
-                if sys.version_info >= (3, 0):
-                    cpp_segm = open(fsname, "wt", encoding=self.__codeset)
-                else:
-                    cpp_segm = open(fsname, "wt")
-                cpp_segm.write(f'''{banner}
-                #include "{header}"
+                if cpp_segment_file:
+                    cpp_segment_file.close()
+
+                cpp_segment_fname = f"{self.__namespace.lower()}_{segment}.cpp"
+                logging.info(f' *** Generating output file in C++ {cpp_segment_fname}')
+                cpp_segment_file = open(cpp_segment_fname, "wt", encoding=self.__codeset)
+                cpp_segment_file.write(f'''{banner}
+                #include "{header_fname}"
 
                 ''')
 
-            if cpp_segm:
-                cpp_segm.write(f"{proc_text}\n")
+            if cpp_segment_file:
+                cpp_segment_file.write(f"{proc_text}\n")
             else:
-                cppd.write(f"{proc_text}\n")
+                cpp_file.write(f"{proc_text}\n")
             self.__proc_done.append(name)
             self.__methods.append(name)
-        if cpp_segm:
-            cpp_segm.close()
+        if cpp_segment_file:
+            cpp_segment_file.close()
+
         self.__methods += self.__failed
         done, failed = len(self.__proc_done), len(self.__failed)
         logging.info("%d ok, %d failed of %d, %3g%% translated" % (done, failed, done + failed, 100.0 * done / (done + failed)))
 
         logging.info("\n".join(self.__failed))
-        cppd.write(self.produce_global_jump_table(list(self._context.get_globals().items()), self._context.itislst))
+        cpp_file.write(self.produce_global_jump_table(list(self._context.get_globals().items()), self._context.itislst))
 
-        hd.write(f"""
+        hpp_file.write(f"""
 #include "asm.h"
 
 {self.produce_structures(self._context.structures)}
 """)
 
-        hd.write(cpp_extern)
+        hpp_file.write(cpp_extern)
         labeloffsets = self.produce_label_offsets()
-        hd.write(labeloffsets)
-        hd.write(self.proc_strategy.write_declarations(self.__procs + list(self.grouped), self._context))
+        hpp_file.write(labeloffsets)
+        hpp_file.write(self.proc_strategy.write_declarations(self.__procs + list(self.grouped), self._context))
 
         data = self.produce_externals(self._context)
-        hd.write(data)
-        hd.write("\n#endif\n")
-        hd.close()
-        cppd.write(f"""
+        hpp_file.write(data)
+        hpp_file.write("\n#endif\n")
+        hpp_file.close()
+        cpp_file.write(f"""
 #include <algorithm>
 #include <iterator>
 #ifdef DOSBOX_CUSTOM
@@ -1538,7 +1513,7 @@ class Cpp:
    Initializer()
 #endif
 {{
-{cpp_assign}
+{cpp_assigns}
 }}
 #ifndef DOSBOX_CUSTOM
   }};
@@ -1547,7 +1522,7 @@ class Cpp:
 }}
 """)
 
-        cppd.close()
+        cpp_file.close()
         self.write_segment(self._context.segments, self._context.structures)
 
     def merge_procs(self):
