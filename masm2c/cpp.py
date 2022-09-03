@@ -301,70 +301,73 @@ class Cpp:
         self.label_to_proc = {}
 
     def produce_c_data(self, segments):
+        # sourcery skip: use-getitem-for-re-match-groups
         """
         It takes a list of DOS segments, and for each segment, it takes a list of data items, and for each data item, it
         produces a C++ assignment statement, a C++ extern statement, and a C++ reference statement
 
         :param segments: a dictionary of segments, where the key is the segment name and the value is the segment object
-        :return: cpp_file, data_hpp, data_cpp, hpp_file
+        :return: cpp_file, data_hpp_file, data_cpp_file, hpp_file
         """
         cpp_file = ""
-        data_hpp = ""
-        data_cpp = ""
+        data_hpp_file = ""
+        data_cpp_file = ""
         hpp_file = ""
         for i in segments.values():
-            data_cpp += f"db& {i.name}=*((db*)&m2c::m+0x{i.offset:x});\n"
+            #  Add segment address
+            data_cpp_file += f"db& {i.name}=*((db*)&m2c::m+0x{i.offset:x});\n"
             hpp_file += f"extern db& {i.name};\n"
-            for j in i.getdata():
-                _cpp, _hpp, size = self.produce_c_data_single_(j)
 
-                _hpp += ";\n"
+            for j in i.getdata():
+                value, type_and_name, _ = self.produce_c_data_single_(j)
+
+                type_and_name += ";\n"
 
                 if not j.getalign():  # if align do not assign it
                     #  mycopy(bb, {'1','2','3','4','5'});
                     #  caa=3;
-                    m = re.match(r'^(\w+)\s+(\w+)(\[\d+\])?;\n', _hpp)
+                    m = re.match(r'^(\w+)\s+(\w+)(\[\d+\])?;\n', type_and_name)
                     if not m:
-                        logging.error(f'Failed to parse {_cpp} {_hpp}')
+                        logging.error(f'Failed to parse {value} {type_and_name}')
                     name = m.group(2)
 
-                    asgn = re.sub(r'^(\w+)\s+(?:\w+(\[\d+\])?);\n', r'\g<1> tmp999\g<2>', _hpp)
+                    type_and_size = re.sub(r'^(?P<type>\w+)\s+\w+(\[\d+\])?;\n', r'\g<type> tmp999\g<2>', type_and_name)
 
-                    if name.startswith('dummy') and _cpp == '0':
-                        _cpp = ''
-                    elif m.group(3):  # if array
-                        if _cpp == '{}':
-                            _cpp = ''
+                    if name.startswith('dummy') and value == '0':
+                        value = ''
+                    elif m.group(2):  # if array
+                        if value == '{}':
+                            value = ''
                         else:
-                            _cpp = f'    {{{asgn}={_cpp};MYCOPY({name})}}'
+                            value = f'    {{{type_and_size}={value};MYCOPY({name})}}'
                     else:
-                        # _cpp = f'    {name}={_cpp};'
-                        _cpp = f'    {{{asgn}={_cpp};MYCOPY({name})}}'
+                        # value = f'    {name}={value};'
+                        value = f'    {{{type_and_size}={value};MYCOPY({name})}}'
 
 
                     # char (& bb)[5] = group.bb;
                     # int& caa = group.aaa;
                     # references
-                    _reference = self._generate_dataref_from_declaration(_hpp)
+                    _reference_in_data_cpp = self._generate_dataref_from_declaration(type_and_name)
                     # externs
-                    _extern = self._generate_extern_from_declaration(_hpp)
+                    _extern_in_hpp = self._generate_extern_from_declaration(type_and_name)
 
-                    if _cpp:
+                    if value:
                         real_seg, real_offset = j.getrealaddr()
                         if real_seg:
-                            _cpp += f' // {real_seg:04x}:{real_offset:04x}'
-                            _hpp = _hpp[:-1] + f' // {real_seg:04x}:{real_offset:04x}\n'
-                        _cpp += "\n"
+                            value += f' // {real_seg:04x}:{real_offset:04x}'
+                            type_and_name = type_and_name[:-1] + f' // {real_seg:04x}:{real_offset:04x}\n'
+                        value += "\n"
                     # c += " // " + j.getlabel() + "\n"  # TODO can put original_label
 
 
-                    cpp_file += _cpp  # cpp source - assigning
-                    hpp_file += _extern  # extern for header
+                    cpp_file += value  # cpp source - assigning
+                    hpp_file += _extern_in_hpp  # extern for header
 
-                    data_cpp += _reference  # reference in _data.cpp
-                data_hpp += _hpp  # headers in _data.h
+                    data_cpp_file += _reference_in_data_cpp  # reference in _data.cpp
+                data_hpp_file += type_and_name  # headers in _data.h
 
-        return cpp_file, data_hpp, data_cpp, hpp_file
+        return cpp_file, data_hpp_file, data_cpp_file, hpp_file
 
     def _generate_extern_from_declaration(self, _hpp):
         _extern = re.sub(r'^(\w+)\s+([0-9A-Za-z_\[\]]+)(\[\d+\]);', r'extern \g<1> (& \g<2>)\g<3>;', _hpp)

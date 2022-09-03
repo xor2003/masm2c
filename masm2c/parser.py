@@ -828,97 +828,97 @@ class Parser:
                 cur_data_type = op.DataType.ARRAY  # array
         return cur_data_type
 
-    def process_data_tokens(self, v, width):
+    def process_data_tokens(self, value, width):
         elements = 0
         reslist = []
         is_string = False
         base = 1 << (8 * width)
 
-        if isinstance(v, list):
-            for vv in v:
-                ele, is_string2, rr2 = self.process_data_tokens(vv, width)
+        if isinstance(value, list):
+            for subvalue in value:
+                ele, is_string2, rr2 = self.process_data_tokens(subvalue, width)
                 elements += ele
                 is_string |= is_string2
                 reslist += rr2
-        elif isinstance(v, Token):
-            if v.type in ['offsetdir', 'segmdir']:
-                if isinstance(v.value, list):  # hack when '+' is glued to integer
-                    v.value = Token.remove_tokens(v.value, ['expr'])
-                    lst = [v.value[0]]
-                    for val in v.value[1:]:
+        elif isinstance(value, Token):
+            if value.type in ['offsetdir', 'segmdir']:
+                if isinstance(value.value, list):  # hack when '+' is glued to integer
+                    value.value = Token.remove_tokens(value.value, ['expr'])
+                    lst = [value.value[0]]
+                    for val in value.value[1:]:
                         if isinstance(val, Token) and val.type == 'INTEGER':
                             lst += ['+']
                         lst += [val]
-                    v.value = lst
-                elements, is_string, reslist = self.process_data_tokens(v.value, width)
-            elif v.type == 'expr':
-                el, is_string, res = self.process_data_tokens(v.value, width)
+                    value.value = lst
+                elements, is_string, reslist = self.process_data_tokens(value.value, width)
+            elif value.type == 'expr':
+                el, is_string, res = self.process_data_tokens(value.value, width)
                 if not is_string and len(res) != 1:
                     reslist = ["".join(str(x) for x in res)]
                     elements = 1
                 else:
                     reslist = res
                     elements = el
-            elif v.type == 'STRING':
-                v = v.value
-                assert isinstance(v, str)
+            elif value.type == 'STRING':
+                value = value.value
+                assert isinstance(value, str)
                 if not self.itislst:  # but not for IDA .lst
-                    v = v.replace("\'\'", "'").replace('\"\"', '"')  # masm behaviour
-                reslist = list(v[1:-1])
+                    value = value.replace("\'\'", "'").replace('\"\"', '"')  # masm behaviour
+                reslist = list(value[1:-1])
                 elements = len(reslist)
                 is_string = True
 
             # check if dup
-            elif v.type == 'dupdir':
+            elif value.type == 'dupdir':
                 # we should parse that
-                repeat = Parser.parse_int(self.escape(v.value[0]))
-                values = self.process_data_tokens(v.value[1], width)[2]
+                repeat = Parser.parse_int(self.escape(value.value[0]))
+                values = self.process_data_tokens(value.value[1], width)[2]
                 elements, reslist = self.action_dup(repeat, values)
 
-            elif v.type == 'INTEGER':
+            elif value.type == 'INTEGER':
                 elements += 1
                 try:  # just number or many
-                    v = v.value
+                    value = value.value
                     # if v == '?':
                     #    v = '0'
-                    v = Parser.parse_int(v)
+                    value = Parser.parse_int(value)
 
-                    if v < 0:  # negative values
-                        v += base
+                    if value < 0:  # negative values
+                        value += base
 
                 except Exception:
                     # global name
                     # traceback.print_stack(file=sys.stdout)
                     # logging.debug "global/expr: ~%s~" %v
                     try:
-                        v = self.get_global_value(v, width)
+                        value = self.get_global_value(value, width)
                     except KeyError:
-                        v = 0
-                reslist = [v]
+                        value = 0
+                reslist = [value]
 
             # logging.debug("global/expr: ~%s~" % v)
-            elif v.type == 'LABEL':
+            elif value.type == 'LABEL':
                 elements = 1
                 try:
-                    v = v.value
+                    value = value.value
                     # width = 2  # TODO for 16 bit only
-                    v = self.mangle_label(v)
-                    v = self.get_global_value(v, width)
+                    value = self.mangle_label(value)
+                    value = self.get_global_value(value, width)
                 except KeyError:
                     if self.pass_number != 1:
-                        logging.error("unknown address %s" % v)
+                        logging.error("unknown address %s" % value)
                     # logging.warning(self.c_data)
                     # logging.warning(r)
                     # logging.warning(len(self.c_data) + len(r))
                     # self.__link_later.append((len(self.c_data) + len(r), v))
                     # v = 0
-                reslist = [v]
-        elif v == '?':
+                reslist = [value]
+        elif value == '?':
             elements = 1
             reslist = [0]
         else:
             elements = 1
-            reslist = [v]
+            reslist = [value]
         return elements, is_string, reslist
 
     def action_dup(self, n, values):
