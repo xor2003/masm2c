@@ -420,7 +420,7 @@ class Segment:
         self.options = options
         self.segclass = segclass
         # self.comment = comment
-        self.seglabels = {self.name}
+        self.seglabels = {self.name,}
         self.size = 0  # Check if needed
 
     def getsize(self):

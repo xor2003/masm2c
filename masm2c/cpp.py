@@ -144,16 +144,6 @@ bool __dispatch_call(m2c::_offsets __disp, struct m2c::_STATE* _state);
 """
         return result
 
-    def get_strategy(self):
-        """
-        The get_strategy function returns the strategy that is currently being used by the player.
-
-
-        :param self: Access the class attributes
-        :return: The string &quot;&quot;
-        :doc-author: Trelent
-        """
-        return ""
 
 
 def check_int(s):
@@ -1399,54 +1389,35 @@ class Cpp:
         return uniq_labels.values()
 
     def generate(self, start):
-        cpp_fname = f"{self.__namespace.lower()}.cpp"
-        header_fname = f"{self.__namespace.lower()}.h"
-
-        logging.info(f' *** Generating output files in C++ {cpp_fname} {header_fname}')
-
+        self.merge_procs()
         cpp_assigns, _, _, cpp_extern = self.produce_c_data(self._context.segments)
-        cpp_file = open(cpp_fname, "wt", encoding=self.__codeset)
-        hpp_file = open(header_fname, "wt", encoding=self.__codeset)
 
         header_id = f"__M2C_{self.__namespace.upper().replace('-', '_')}_STUBS_H__"
 
         banner = """/* THIS IS GENERATED FILE */
 
-        /* 
-         *
-         */
         """
 
-        hpp_file.write(f"""#ifndef {header_id}
+        cpp_fname = f"{self.__namespace.lower()}.cpp"
+        header_fname = f"{self.__namespace.lower()}.h"
+
+        logging.info(f' *** Generating output files in C++ {cpp_fname} {header_fname}')
+
+        cpp_file = open(cpp_fname, "wt", encoding=self.__codeset)
+        hpp_file = open(header_fname, "wt", encoding=self.__codeset)
+
+        cpp_file.write(f"""{banner}
+        #include \"{header_fname}\"
+
+{self.generate_function_wrappers()}
+{self.generate_entrypoint()}
+        """)
+
+        hpp_file.write(f"""{banner}
+#ifndef {header_id}
 #define {header_id}
 
-{banner}""")
-
-        hpp_file.write(self.proc_strategy.get_strategy())
-        cpp_file.write(f"""{banner}
-#include \"{header_fname}\"
-
 """)
-        self.merge_procs()
-
-        for p in sorted(self.grouped):
-            self.body += f"""
- bool {p}(m2c::_offsets, struct m2c::_STATE* _state){{return {self.groups[p]}(m2c::k{p}, _state);}}
-"""
-
-        translated = [self.body]
-        cpp_file.write("\n")
-        cpp_file.write("\n".join(translated))
-        cpp_file.write("\n")
-        if self._context.main_file:
-            g = self._context.get_global(self._context.entry_point)
-            if isinstance(g, op.label) and self._context.entry_point not in self.grouped:
-                cpp_file.write(f"""
-                 bool {self._context.entry_point}(m2c::_offsets, struct m2c::_STATE* _state){{return {self.label_to_proc[g.name]}(m2c::k{self._context.entry_point}, _state);}}
-                """)
-
-            cpp_file.write(f"""namespace m2c{{ m2cf* _ENTRY_POINT_ = &{self._context.entry_point};}}
-        """)
 
         last_segment = None
         cpp_segment_file = None
@@ -1461,7 +1432,7 @@ class Cpp:
                 logging.info(f' *** Generating output file in C++ {cpp_segment_fname}')
                 cpp_segment_file = open(cpp_segment_fname, "wt", encoding=self.__codeset)
                 cpp_segment_file.write(f'''{banner}
-                #include "{header_fname}"
+#include "{header_fname}"
 
                 ''')
 
@@ -1485,17 +1456,15 @@ class Cpp:
 #include "asm.h"
 
 {self.produce_structures(self._context.structures)}
+{cpp_extern}
+{self.produce_label_offsets()}
+{self.proc_strategy.write_declarations(self.__procs + list(self.grouped), self._context)}
+{self.produce_externals(self._context)}
+#endif
 """)
 
-        hpp_file.write(cpp_extern)
-        labeloffsets = self.produce_label_offsets()
-        hpp_file.write(labeloffsets)
-        hpp_file.write(self.proc_strategy.write_declarations(self.__procs + list(self.grouped), self._context))
-
-        data = self.produce_externals(self._context)
-        hpp_file.write(data)
-        hpp_file.write("\n#endif\n")
         hpp_file.close()
+
         cpp_file.write(f"""
 #include <algorithm>
 #include <iterator>
@@ -1521,9 +1490,30 @@ class Cpp:
 #endif
 }}
 """)
-
         cpp_file.close()
+
         self.write_segment(self._context.segments, self._context.structures)
+
+    def generate_entrypoint(self):
+        entry_point_text = ''
+        if self._context.main_file:
+            g = self._context.get_global(self._context.entry_point)
+            if isinstance(g, op.label) and self._context.entry_point not in self.grouped:
+                entry_point_text = f"""
+                 bool {self._context.entry_point}(m2c::_offsets, struct m2c::_STATE* _state){{return {self.label_to_proc[g.name]}(m2c::k{self._context.entry_point}, _state);}}
+                """
+
+            entry_point_text += f"""namespace m2c{{ m2cf* _ENTRY_POINT_ = &{self._context.entry_point};}}
+        """
+        return entry_point_text
+
+    def generate_function_wrappers(self):
+        wrappers = ""
+        for p in sorted(self.grouped):
+            wrappers += f"""
+ bool {p}(m2c::_offsets, struct m2c::_STATE* _state){{return {self.groups[p]}(m2c::k{p}, _state);}}
+"""
+        return wrappers
 
     def merge_procs(self):
         '''

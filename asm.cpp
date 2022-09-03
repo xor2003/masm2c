@@ -1611,6 +1611,8 @@ int main(int argc, char *argv[]) {
     X86_REGREF
 
     eax = ebx = ecx = edx = ebp = esi = edi = fs = gs = 0; // according to ms-dos 6.22 debuger
+    cs=eip=0;
+
     AFFECT_DF(0);
     AFFECT_CF(0);
     AFFECT_ZF(0);
