@@ -289,7 +289,7 @@ class Cpp:
         self.needs_dereference = False
         self.itispointer = False
 
-        self.body = ""
+        #self.body = ""
         self.struct_type = None
         self.grouped = set()
         self.groups = OrderedDict()
@@ -1388,7 +1388,7 @@ class Cpp:
             uniq_labels[f'{g.real_seg}_{g.real_offset}'] = label
         return uniq_labels.values()
 
-    def generate(self, start):
+    def generate_cpp_files(self, start):
         self.merge_procs()
         cpp_assigns, _, _, cpp_extern = self.produce_c_data(self._context.segments)
 
@@ -1411,19 +1411,66 @@ class Cpp:
 
 {self.generate_function_wrappers()}
 {self.generate_entrypoint()}
+{self.write_procedures(banner, header_fname)}
+{self.produce_global_jump_table(list(self._context.get_globals().items()), self._context.itislst)}
+
+        #include <algorithm>
+        #include <iterator>
+        #ifdef DOSBOX_CUSTOM
+        #include <numeric>
+
+         #define MYCOPY(x) {{m2c::set_type(x);m2c::mycopy((db*)&x,(db*)&tmp999,sizeof(tmp999),#x);}}
+
+         namespace m2c {{
+          void   Initializer()
+        #else
+         #define MYCOPY(x) memcpy(&x,&tmp999,sizeof(tmp999));
+         namespace {{
+          struct Initializer {{
+           Initializer()
+        #endif
+        {{
+        {cpp_assigns}
+        }}
+        #ifndef DOSBOX_CUSTOM
+          }};
+         static const Initializer i;
+        #endif
+        }}
         """)
+        cpp_file.close()
 
         hpp_file.write(f"""{banner}
 #ifndef {header_id}
 #define {header_id}
 
+#include "asm.h"
+
+{self.produce_structures(self._context.structures)}
+{cpp_extern}
+{self.produce_label_offsets()}
+{self.proc_strategy.write_declarations(self.__procs + list(self.grouped), self._context)}
+{self.produce_externals(self._context)}
+#endif
 """)
 
+        hpp_file.close()
+
+        self.__methods += self.__failed
+        done, failed = len(self.__proc_done), len(self.__failed)
+        logging.info("%d ok, %d failed of %d, %3g%% translated" % (done, failed, done + failed, 100.0 * done / (done + failed)))
+
+        logging.info("\n".join(self.__failed))
+
+        self.write_segment(self._context.segments, self._context.structures)
+
+    def write_procedures(self, banner, header_fname):
+        cpp_file_text = ''
         last_segment = None
         cpp_segment_file = None
         for name in self.__procs:
             proc_text, segment = self.__proc(name)
-            if self._context.itislst and segment != last_segment:
+            if self._context.itislst and segment != last_segment:  # If .lst write to separate segments. Open new if changed
                 last_segment = segment
                 if cpp_segment_file:
                     cpp_segment_file.close()
@@ -1439,60 +1486,13 @@ class Cpp:
             if cpp_segment_file:
                 cpp_segment_file.write(f"{proc_text}\n")
             else:
-                cpp_file.write(f"{proc_text}\n")
+                cpp_file_text += f"{proc_text}\n"
             self.__proc_done.append(name)
             self.__methods.append(name)
         if cpp_segment_file:
             cpp_segment_file.close()
 
-        self.__methods += self.__failed
-        done, failed = len(self.__proc_done), len(self.__failed)
-        logging.info("%d ok, %d failed of %d, %3g%% translated" % (done, failed, done + failed, 100.0 * done / (done + failed)))
-
-        logging.info("\n".join(self.__failed))
-        cpp_file.write(self.produce_global_jump_table(list(self._context.get_globals().items()), self._context.itislst))
-
-        hpp_file.write(f"""
-#include "asm.h"
-
-{self.produce_structures(self._context.structures)}
-{cpp_extern}
-{self.produce_label_offsets()}
-{self.proc_strategy.write_declarations(self.__procs + list(self.grouped), self._context)}
-{self.produce_externals(self._context)}
-#endif
-""")
-
-        hpp_file.close()
-
-        cpp_file.write(f"""
-#include <algorithm>
-#include <iterator>
-#ifdef DOSBOX_CUSTOM
-#include <numeric>
-
- #define MYCOPY(x) {{m2c::set_type(x);m2c::mycopy((db*)&x,(db*)&tmp999,sizeof(tmp999),#x);}}
-
- namespace m2c {{
-  void   Initializer()
-#else
- #define MYCOPY(x) memcpy(&x,&tmp999,sizeof(tmp999));
- namespace {{
-  struct Initializer {{
-   Initializer()
-#endif
-{{
-{cpp_assigns}
-}}
-#ifndef DOSBOX_CUSTOM
-  }};
- static const Initializer i;
-#endif
-}}
-""")
-        cpp_file.close()
-
-        self.write_segment(self._context.segments, self._context.structures)
+        return cpp_file_text
 
     def generate_entrypoint(self):
         entry_point_text = ''
