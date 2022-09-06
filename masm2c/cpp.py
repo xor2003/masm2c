@@ -277,6 +277,7 @@ class Cpp:
         self.proc_strategy = proc_strategy
 
         self.__procs = context.proc_list
+        #
         self.__proc_queue = []
         self.__proc_done = []
         self.__failed = []
@@ -374,7 +375,7 @@ class Cpp:
 
     def _generate_extern_from_declaration(self, _hpp):
         """
-        It takes a C++ declaration and returns a Python extern declaration
+        It takes a C++ declaration and returns a extern declaration to the same
 
         :param _hpp: The C++ header file
         :return: The extern declaration of the function or variable.
@@ -384,6 +385,12 @@ class Cpp:
         return _extern
 
     def _generate_dataref_from_declaration(self, _hpp):
+        """
+        It takes a C++ declaration and returns a reference to the same variable
+
+        :param _hpp: declaration string
+        :return: The reference to the same data
+        """
         _reference = re.sub(r'^(\w+)\s+([\w\[\]]+)(\[\d+\]);',
                             r'\g<1> (& \g<2>)\g<3> = m2c::m.\g<2>;', _hpp)
         _reference = re.sub(r'^(\w+)\s+([\w\[\]]+);', r'\g<1>& \g<2> = m2c::m.\g<2>;', _reference)
@@ -507,6 +514,12 @@ class Cpp:
         return l
 
     def convert_member(self, token):
+        """
+        It converts Token with access to assembler structure member and converts to similar in C++
+
+        :param token: The token to be converted
+        :return: The value of the member.
+        """
         logging.debug("name = %s indirection = %s" % (str(token), str(self.__indirection)))
         value = token
         label = [l.lower() for l in Token.find_tokens(token, LABEL)]
