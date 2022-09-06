@@ -1388,7 +1388,7 @@ class Cpp:
             uniq_labels[f'{g.real_seg}_{g.real_offset}'] = label
         return uniq_labels.values()
 
-    def generate_cpp_files(self, start):
+    def write_to_cpp_files(self, start):
         self.merge_procs()
         cpp_assigns, _, _, cpp_extern = self.produce_c_data(self._context.segments)
 
