@@ -18,8 +18,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #
-from __future__ import division, print_function
-
 import logging
 import os
 import re
@@ -289,7 +287,7 @@ class Cpp:
         self.needs_dereference = False
         self.itispointer = False
 
-        #self.body = ""
+        self.body = ""
         self.struct_type = None
         self.grouped = set()
         self.groups = OrderedDict()
