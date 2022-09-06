@@ -79,7 +79,7 @@ def produce_jump_table(labels):
 """
     offsets = []
     for k in labels:
-        k = re.sub(r'[^A-Za-z0-9_]', '_', k)
+        k = re.sub(r'\W', '_', k)
         offsets.append((k.lower(), k))
     offsets = sorted(offsets, key=lambda t: t[1])
     for name, label in offsets:
@@ -248,7 +248,7 @@ def cpp_mangle_label(name):
 
 
 class Cpp:
-    ''' Visitor for all operations to produce C++ code '''
+    ''' Visitor which can produce C++ equivalents for asm instructions '''
 
     def __init__(self, context, outfile="", skip_output=None,
                  proc_strategy=SeparateProcStrategy(), merge_data_segments=True):
@@ -368,14 +368,14 @@ class Cpp:
         return cpp_file, data_hpp_file, data_cpp_file, hpp_file
 
     def _generate_extern_from_declaration(self, _hpp):
-        _extern = re.sub(r'^(\w+)\s+([0-9A-Za-z_\[\]]+)(\[\d+\]);', r'extern \g<1> (& \g<2>)\g<3>;', _hpp)
-        _extern = re.sub(r'^(\w+)\s+([0-9A-Za-z_\[\]]+);', r'extern \g<1>& \g<2>;', _extern)
+        _extern = re.sub(r'^(\w+)\s+([\w\[\]]+)(\[\d+\]);', r'extern \g<1> (& \g<2>)\g<3>;', _hpp)
+        _extern = re.sub(r'^(\w+)\s+([\w\[\]]+);', r'extern \g<1>& \g<2>;', _extern)
         return _extern
 
     def _generate_dataref_from_declaration(self, _hpp):
-        _reference = re.sub(r'^(\w+)\s+([0-9A-Za-z_\[\]]+)(\[\d+\]);',
+        _reference = re.sub(r'^(\w+)\s+([\w\[\]]+)(\[\d+\]);',
                             r'\g<1> (& \g<2>)\g<3> = m2c::m.\g<2>;', _hpp)
-        _reference = re.sub(r'^(\w+)\s+([0-9A-Za-z_\[\]]+);', r'\g<1>& \g<2> = m2c::m.\g<2>;', _reference)
+        _reference = re.sub(r'^(\w+)\s+([\w\[\]]+);', r'\g<1>& \g<2> = m2c::m.\g<2>;', _reference)
         return _reference
 
     def convert_label(self, token):
@@ -707,8 +707,7 @@ class Cpp:
         '''
         logging.debug('get_size("%s")' % expr)
 
-        if isinstance(expr, Token):
-            if expr.type == MEMBERDIR:
+        if isinstance(expr, Token) and expr.type == MEMBERDIR:
                 label = Token.find_tokens(expr.value, LABEL)
                 g = self._context.get_global(label[0])
                 if isinstance(g, op.Struct):
@@ -1278,22 +1277,22 @@ class Cpp:
     def _lodsd(self):
         return "LODSD"
 
-    def _stosb(self, n, clear_cx):
-        return "STOSB"  # %("" if n == 1 else n, ", true" if clear_cx else "")
+    def _stosb(self):
+        return "STOSB"
 
-    def _stosw(self, n, clear_cx):
-        return "STOSW"  # %("" if n == 1 else n, ", true" if clear_cx else "")
+    def _stosw(self):
+        return "STOSW"
 
-    def _stosd(self, n, clear_cx):
-        return "STOSD"  # %("" if n == 1 else n, ", true" if clear_cx else "")
+    def _stosd(self):
+        return "STOSD"
 
-    def _movsb(self, n, clear_cx):
+    def _movsb(self):
         return "MOVSB"
 
-    def _movsw(self, n, clear_cx):
+    def _movsw(self):
         return "MOVSW"
 
-    def _movsd(self, n, clear_cx):
+    def _movsd(self):
         return "MOVSD"
 
     def _scasb(self):

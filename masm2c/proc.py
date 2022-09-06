@@ -161,6 +161,9 @@ class Proc:
         return "\n".join((i.__str__() for i in self.stmts))
 
     def set_instruction_compare_subclass(self, stmt, full_command, itislst):
+        """Sets libdosbox's emulator the instruction subclass
+        to perform comparison of instruction side effects at run-time with the emulated"""
+
         def expr_is_register(e):
             return isinstance(e, Token) and isinstance(e.value, Token) and e.value.type in ['register',
                                                                                             'segmentregister']
@@ -227,17 +230,20 @@ class Proc:
         visitor.label = ''
         visitor.dispatch = ''
         visitor.prefix = ''
-        command = self.generate_c_cmd(visitor, stmt)
+        command = stmt.accept(visitor)
         if command and stmt.real_seg:  # and (self.is_flow_change_stmt(stmt) or 'cs' in command or 'cs' in visitor.before):
             visitor.body += f'cs={stmt.real_seg:#04x};eip={stmt.real_offset:#08x}; '
+
         full_command = prefix + command
+
         if full_command:
             full_command = self.set_instruction_compare_subclass(stmt, full_command, visitor._context.itislst)
+
         full_line = visitor.label + visitor.dispatch + full_command
         return full_line
 
     def generate_c_cmd(self, visitor, stmt):
-        return stmt.visit(visitor)
+        return stmt.accept(visitor)
 
     def if_terminated_proc(self):
         '''Check if proc was terminated with jump or ret to know if execution flow continues across function end'''

@@ -31,10 +31,10 @@ class Token:
         self.value = value
 
     def __str__(self):
-        return "Token(%s, %s)" % (self.type, self.value)
+        return f"Token({self.type}, {self.value})"
 
     def __repr__(self):
-        return "Token('%s', '%s')" % (self.type, self.value)
+        return f"Token({self.type}, {self.value})"
 
     @staticmethod
     def find_tokens(expr, lookfor: str):
@@ -49,7 +49,7 @@ class Token:
             if result:
                 l = l + result
         elif isinstance(expr, list):
-            for i in range(0, len(expr)):
+            for i in range(len(expr)):
                 result = Token.find_tokens(expr[i], lookfor)
                 if result:
                     l = l + result
@@ -87,7 +87,7 @@ class Token:
                         expr = ['+', expr]
             return expr, index
         elif isinstance(expr, list):
-            for i in range(0, len(expr)):
+            for i in range(len(expr)):
                 expr[i], index = Token.remove_squere_bracets(expr[i], index)
         else:
             index = 0

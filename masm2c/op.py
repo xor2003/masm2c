@@ -570,7 +570,7 @@ class _call(baseop):
         super().__init__()
         self.args = args
 
-    def visit(self, visitor):
+    def accept(self, visitor):
         return visitor._call(*self.args)
 
 
@@ -579,7 +579,7 @@ class _rep(baseop):
         super().__init__()
         self.args = args
 
-    def visit(self, visitor):
+    def accept(self, visitor):
         return visitor._rep(*self.args)
 
 
@@ -588,7 +588,7 @@ class _add(baseop):
         super().__init__()
         self.args = args
 
-    def visit(self, visitor):
+    def accept(self, visitor):
         return visitor._add(*self.args)
 
 
@@ -598,7 +598,7 @@ class _mul(baseop):
         super().__init__()
         self.args = args
 
-    def visit(self, visitor):
+    def accept(self, visitor):
         return visitor._mul(self.args)  #
 
 
@@ -607,7 +607,7 @@ class _div(baseop):
         super().__init__()
         self.args = args
 
-    def visit(self, visitor):
+    def accept(self, visitor):
         return visitor._div(*self.args)
 
 
@@ -617,7 +617,7 @@ class _jne(basejmp):
         super().__init__()
         self.args = args
 
-    def visit(self, visitor):
+    def accept(self, visitor):
         return visitor._jnz(*self.args)
 
 
@@ -626,7 +626,7 @@ class _je(basejmp):
         super().__init__()
         self.args = args
 
-    def visit(self, visitor):
+    def accept(self, visitor):
         return visitor._jz(*self.args)
 
 
@@ -635,7 +635,7 @@ class _jb(basejmp):
         super().__init__()
         self.args = args
 
-    def visit(self, visitor):
+    def accept(self, visitor):
         return visitor._jc(*self.args)
 
 
@@ -644,7 +644,7 @@ class _jae(basejmp):
         super().__init__()
         self.args = args
 
-    def visit(self, visitor):
+    def accept(self, visitor):
         return visitor._jnc(*self.args)
 
 
@@ -653,7 +653,7 @@ class _jnb(basejmp):
         super().__init__()
         self.args = args
 
-    def visit(self, visitor):
+    def accept(self, visitor):
         return visitor._jnc(*self.args)
 
 
@@ -691,7 +691,7 @@ class _push(baseop):
         else:
             self.args = flattenpush(Token.remove_tokens(arg, 'expr'))
 
-    def visit(self, visitor):
+    def accept(self, visitor):
         return visitor._push(self.args)
 
 
@@ -704,7 +704,7 @@ class _pop(baseop):
         else:
             self.args = flattenpush(Token.remove_tokens(arg, 'expr'))
 
-    def visit(self, visitor):
+    def accept(self, visitor):
         return visitor._pop(self.args)
 '''
 
@@ -714,7 +714,7 @@ class _ret(baseop):
         super().__init__()
         self.args = args
 
-    def visit(self, visitor):
+    def accept(self, visitor):
         return visitor._ret(self.args)
 
 class _retn(baseop):
@@ -722,7 +722,7 @@ class _retn(baseop):
         super().__init__()
         self.args = args
 
-    def visit(self, visitor):
+    def accept(self, visitor):
         return visitor._ret(self.args)
 
 class _retf(baseop):
@@ -730,7 +730,7 @@ class _retf(baseop):
         super().__init__()
         self.args = args
 
-    def visit(self, visitor):
+    def accept(self, visitor):
         return visitor._retf(self.args)
 
 
@@ -738,7 +738,7 @@ class _lodsb(baseop):
     def __init__(self, arg):
         super().__init__()
 
-    def visit(self, visitor):
+    def accept(self, visitor):
         return visitor._lodsb()
 
 
@@ -746,7 +746,7 @@ class _scasb(baseop):
     def __init__(self, arg):
         super().__init__()
 
-    def visit(self, visitor):
+    def accept(self, visitor):
         return visitor._scasb()
 
 
@@ -754,7 +754,7 @@ class _scasw(baseop):
     def __init__(self, arg):
         super().__init__()
 
-    def visit(self, visitor):
+    def accept(self, visitor):
         return visitor._scasw()
 
 
@@ -762,7 +762,7 @@ class _scasd(baseop):
     def __init__(self, arg):
         super().__init__()
 
-    def visit(self, visitor):
+    def accept(self, visitor):
         return visitor._scasd()
 
 
@@ -770,7 +770,7 @@ class _cmpsb(baseop):
     def __init__(self, arg):
         super().__init__()
 
-    def visit(self, visitor):
+    def accept(self, visitor):
         return visitor._cmpsb()
 
 
@@ -778,7 +778,7 @@ class _lodsw(baseop):
     def __init__(self, arg):
         super().__init__()
 
-    def visit(self, visitor):
+    def accept(self, visitor):
         return visitor._lodsw()
 
 
@@ -786,7 +786,7 @@ class _lodsd(baseop):
     def __init__(self, arg):
         super().__init__()
 
-    def visit(self, visitor):
+    def accept(self, visitor):
         return visitor._lodsd()
 
 
@@ -796,8 +796,8 @@ class _stosd(baseop):
         self.repeat = 1
         self.clear_cx = False
 
-    def visit(self, visitor):
-        return visitor._stosd(self.repeat, self.clear_cx)
+    def accept(self, visitor):
+        return visitor._stosd()
 
 
 class _stosw(baseop):
@@ -806,8 +806,8 @@ class _stosw(baseop):
         self.repeat = 1
         self.clear_cx = False
 
-    def visit(self, visitor):
-        return visitor._stosw(self.repeat, self.clear_cx)
+    def accept(self, visitor):
+        return visitor._stosw()
 
 
 class _stosb(baseop):
@@ -816,8 +816,8 @@ class _stosb(baseop):
         self.repeat = 1
         self.clear_cx = False
 
-    def visit(self, visitor):
-        return visitor._stosb(self.repeat, self.clear_cx)
+    def accept(self, visitor):
+        return visitor._stosb()
 
 
 class _movsw(baseop):
@@ -826,8 +826,8 @@ class _movsw(baseop):
         self.repeat = 1
         self.clear_cx = False
 
-    def visit(self, visitor):
-        return visitor._movsw(self.repeat, self.clear_cx)
+    def accept(self, visitor):
+        return visitor._movsw()
 
 
 class _movsd(baseop):
@@ -836,8 +836,8 @@ class _movsd(baseop):
         self.repeat = 1
         self.clear_cx = False
 
-    def visit(self, visitor):
-        return visitor._movsd(self.repeat, self.clear_cx)
+    def accept(self, visitor):
+        return visitor._movsd()
 
 
 class _movsb(baseop):
@@ -846,8 +846,8 @@ class _movsb(baseop):
         self.repeat = 1
         self.clear_cx = False
 
-    def visit(self, visitor):
-        return visitor._movsb(self.repeat, self.clear_cx)
+    def accept(self, visitor):
+        return visitor._movsb()
 
 
 class _int(baseop):
@@ -855,7 +855,7 @@ class _int(baseop):
         super().__init__()
         self.args = args
 
-    def visit(self, visitor):
+    def accept(self, visitor):
         return visitor._int(*self.args)
 
 '''
@@ -864,7 +864,7 @@ class _nop(baseop):
         super().__init__()
         pass
 
-    def visit(self, visitor):
+    def accept(self, visitor):
         return ""
 '''
 
@@ -891,7 +891,7 @@ class label(baseop):
         self.used = False
         self.globl = globl
 
-    def visit(self, visitor):
+    def accept(self, visitor):
         return visitor._label(self.name, self.isproc)
 
 
@@ -900,7 +900,7 @@ class _lea(baseop):
         super().__init__()
         self.args = args
 
-    def visit(self, visitor):
+    def accept(self, visitor):
         return visitor._lea(*self.args)
 
 
@@ -909,7 +909,7 @@ class _repe(baseop):
         super().__init__()
         self.args = args
 
-    def visit(self, visitor):
+    def accept(self, visitor):
         return visitor._repe(*self.args)
 
 
@@ -918,7 +918,7 @@ class _repne(baseop):
         super().__init__()
         self.args = args
 
-    def visit(self, visitor):
+    def accept(self, visitor):
         return visitor._repne(*self.args)
 
 
@@ -927,7 +927,7 @@ class _jna(basejmp):
         super().__init__()
         self.args = args
 
-    def visit(self, visitor):
+    def accept(self, visitor):
         return visitor._jbe(*self.args)
 
 
@@ -936,7 +936,7 @@ class _jnbe(basejmp):
         super().__init__()
         self.args = args
 
-    def visit(self, visitor):
+    def accept(self, visitor):
         return visitor._ja(*self.args)
 
 
@@ -945,7 +945,7 @@ class _imul(baseop):
         super().__init__()
         self.args = args
 
-    def visit(self, visitor):
+    def accept(self, visitor):
         return visitor._imul(self.args)  #
 
 
@@ -954,7 +954,7 @@ class _movs(baseop):
         super().__init__()
         self.args = args
 
-    def visit(self, visitor):
+    def accept(self, visitor):
         return visitor._movs(*self.args)
 
 
@@ -963,7 +963,7 @@ class _lods(baseop):
         super().__init__()
         self.args = args
 
-    def visit(self, visitor):
+    def accept(self, visitor):
         return visitor._lods(*self.args)
 
 
@@ -972,7 +972,7 @@ class _scas(baseop):
         super().__init__()
         self.args = args
 
-    def visit(self, visitor):
+    def accept(self, visitor):
         return visitor._scas(*self.args)
 
 
@@ -980,7 +980,7 @@ class _leave(baseop):
     def __init__(self, arg):
         super().__init__()
 
-    def visit(self, visitor):
+    def accept(self, visitor):
         return visitor._leave()
 
 
@@ -989,7 +989,7 @@ class _idiv(baseop):
         super().__init__()
         self.args = args
 
-    def visit(self, visitor):
+    def accept(self, visitor):
         return visitor._idiv(*self.args)
 
 
@@ -997,7 +997,7 @@ class _instruction0(baseop):
     def __init__(self, arg):
         super().__init__()
 
-    def visit(self, visitor):
+    def accept(self, visitor):
         return visitor._instruction0(self.cmd)
 
 
@@ -1006,7 +1006,7 @@ class _instruction1(baseop):
         super().__init__()
         self.args = args
 
-    def visit(self, visitor):
+    def accept(self, visitor):
         return visitor._instruction1(self.cmd, *self.args)
 
 
@@ -1015,7 +1015,7 @@ class _jump(baseop):
         super().__init__()
         self.args = args
 
-    def visit(self, visitor):
+    def accept(self, visitor):
         return visitor._jump(self.cmd, *self.args)
 
 
@@ -1024,7 +1024,7 @@ class _instruction2(baseop):
         super().__init__()
         self.args = args
 
-    def visit(self, visitor):
+    def accept(self, visitor):
         return visitor._instruction2(self.cmd, *self.args)
 
 
@@ -1033,7 +1033,7 @@ class _instruction3(baseop):
         super().__init__()
         self.args = args
 
-    def visit(self, visitor):
+    def accept(self, visitor):
         return visitor._instruction3(self.cmd, *self.args)
 
 
@@ -1049,7 +1049,7 @@ class _equ(baseop):
     def gettype(self):
         return self.original_type
 
-    def visit(self, visitor):
+    def accept(self, visitor):
         if self.implemented == False:
             self.implemented = True
             return visitor._equ(*self.args)
@@ -1070,7 +1070,7 @@ class _assignment(baseop):
     def gettype(self):
         return self.original_type
 
-    def visit(self, visitor):
+    def accept(self, visitor):
         # if self.implemented == False:
         self.implemented = True
         return visitor._assignment(self, *self.args)
@@ -1083,7 +1083,7 @@ class _xlat(baseop):
         super().__init__()
         self.args = args
 
-    def visit(self, visitor):
+    def accept(self, visitor):
         return visitor._xlat(self.args)
 
 class _mov(baseop):
@@ -1091,5 +1091,5 @@ class _mov(baseop):
         super().__init__()
         self.args = args
 
-    def visit(self, visitor):
+    def accept(self, visitor):
         return visitor._mov(*self.args)
