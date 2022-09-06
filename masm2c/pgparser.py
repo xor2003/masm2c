@@ -14,7 +14,7 @@ from .Token import Token
 from . import cpp as cpp_module
 
 macroses = OrderedDict()
-macronamere = re.compile(r'([A-Za-z@_\$\?][A-Za-z0-9@_\$\?]*)')
+macronamere = re.compile(r'([A-Za-z_@$?][A-Za-z0-9_@$?]*)')
 commentid = re.compile(r'COMMENT\s+([^ ]).*?\1[^\r\n]*', flags=re.DOTALL)
 
 

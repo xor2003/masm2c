@@ -515,9 +515,6 @@ class Data(baseop):
     def getdata(self):
         return self.label, self.type, self.data_internal_type, self.array, self.elements, self.size
 
-    def getsize(self):
-        return self.size
-
     def getalign(self):
         return self.align
 
@@ -529,17 +526,17 @@ class Struct:
         STRUCT = 1
         UNION = 2
 
-    def __init__(self, name, type):
+    def __init__(self, name, dtype):
         '''
         Represent structure
 
         :param name: Name
-        :param type: Structure or Union?
+        :param dtype: Structure or Union?
         '''
         self.__name = name
         self.__fields = OrderedDict()
         self.__size = 0
-        self.__type = Struct.Type.UNION if type.lower() == 'union' else Struct.Type.STRUCT
+        self.__type = Struct.Type.UNION if dtype.lower() == 'union' else Struct.Type.STRUCT
 
     def append(self, data):
         self.__fields[data.label.lower()] = data

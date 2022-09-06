@@ -51,10 +51,10 @@ class IndirectionType(Enum):
 
 
 class InjectCode(Exception):
+    '''A way to inject additional instructions during processing of some instruction'''
 
     def __init__(self, cmd):
         self.cmd = cmd
-        #super().__init__()
 
 
 class SkipCode(Exception):
@@ -66,6 +66,12 @@ class CrossJump(Exception):
 
 
 def produce_jump_table(labels):
+    """
+    It takes a list of labels and produces a C++ switch statement that jumps to the corresponding label
+
+    :param labels: a list of labels that we want to jump to
+    :return: The result of the function.
+    """
     # Produce jump table
     result = """
     assert(0);
@@ -299,7 +305,6 @@ class Cpp:
         self.label_to_proc = {}
 
     def produce_c_data(self, segments):
-        # sourcery skip: use-getitem-for-re-match-groups
         """
         It takes a list of DOS segments, and for each segment, it takes a list of data items, and for each data item, it
         produces a C++ assignment statement, a C++ extern statement, and a C++ reference statement
@@ -368,6 +373,12 @@ class Cpp:
         return cpp_file, data_hpp_file, data_cpp_file, hpp_file
 
     def _generate_extern_from_declaration(self, _hpp):
+        """
+        It takes a C++ declaration and returns a Python extern declaration
+
+        :param _hpp: The C++ header file
+        :return: The extern declaration of the function or variable.
+        """
         _extern = re.sub(r'^(\w+)\s+([\w\[\]]+)(\[\d+\]);', r'extern \g<1> (& \g<2>)\g<3>;', _hpp)
         _extern = re.sub(r'^(\w+)\s+([\w\[\]]+);', r'extern \g<1>& \g<2>;', _extern)
         return _extern
@@ -1388,7 +1399,7 @@ class Cpp:
             uniq_labels[f'{g.real_seg}_{g.real_offset}'] = label
         return uniq_labels.values()
 
-    def write_to_cpp_files(self, start):
+    def save_cpp_files(self, start):
         self.merge_procs()
         cpp_assigns, _, _, cpp_extern = self.produce_c_data(self._context.segments)
 
