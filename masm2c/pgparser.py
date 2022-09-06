@@ -25,14 +25,7 @@ def get_line_number(context):
     :param context: the context object that is passed to the action function
     :return: The line number of the current position in the input string.
     """
-    # old_line, old_col = parglare.pos_to_line_col(context.input_str, context.start_position)
-    new_line = context.input_str[: context.start_position].count('\n') + 1
-    # line_start_pos = context.input_str.rfind('\n', 0, context.start_position)
-    # if line_start_pos == -1:
-    #    line_start_pos = 0
-    # new_col = context.start_position - line_start_pos - 1
-    # assert(old_line == new_line and old_col == new_col)
-    return new_line
+    return context.input_str[: context.start_position].count('\n') + 1
 
 
 def get_raw(context):
@@ -116,8 +109,7 @@ def integertok(context, nodes):
 def commentkw(head, s, pos):
     # multiline comment
     if s[pos:pos + 7] == 'COMMENT':
-        mtch = commentid.match(s[pos:])
-        if mtch:
+        if mtch := commentid.match(s[pos:]):
             return mtch.group(0)
     return None
 

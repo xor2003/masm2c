@@ -1198,7 +1198,7 @@ class Parser:
         o.filename = self._current_file
         o.raw_line = raw
         o.line_number = line_number
-        if self.current_macro == None:
+        if self.current_macro is None:
             _, o.real_offset, o.real_seg = self.get_lst_offsets(raw)
             if not self.need_label and o.real_seg and len(self.procs_start) \
                     and (o.real_seg*0x10+o.real_offset) in self.procs_start:

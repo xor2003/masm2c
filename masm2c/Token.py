@@ -42,17 +42,15 @@ class Token:
         if isinstance(expr, Token):
             if expr.type == lookfor:
                 l.append(expr.value)
-
             result = None
             if not isinstance(expr.value, str):
                 result = Token.find_tokens(expr.value, lookfor)
             if result:
-                l = l + result
+                l += result
         elif isinstance(expr, list):
             for i in range(len(expr)):
-                result = Token.find_tokens(expr[i], lookfor)
-                if result:
-                    l = l + result
+                if result := Token.find_tokens(expr[i], lookfor):
+                    l += result
         if not l:
             l = None
         return l
@@ -71,7 +69,7 @@ class Token:
 
     @staticmethod
     def remove_squere_bracets(expr, index=None):
-        if index == None:
+        if index is None:
             index = 0
         if isinstance(expr, Token):
             if expr.type == SQEXPR:
@@ -103,13 +101,12 @@ class Token:
                 else:
                     expr = expr.value
                     expr = Token.remove_tokens(expr, lookfor)
-                return expr
             else:
                 expr.value = Token.remove_tokens(expr.value, lookfor)
-                return expr
+            return expr
         elif isinstance(expr, list):
             l = []
-            for i in range(0, len(expr)):
+            for i in range(len(expr)):
                 result = Token.remove_tokens(expr[i], lookfor)
                 if result != None:
                     l.append(result)
