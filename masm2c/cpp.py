@@ -542,7 +542,7 @@ class Cpp:
                 self.__indirection = IndirectionType.VALUE
                 return Token('memberdir', value)
 
-        size = self.get_size(token)
+        size = self.calculate_size(token)
         try:
             g = self._context.get_global(label[0])
         except:
@@ -616,13 +616,13 @@ class Cpp:
             raise Exception("invalid var '%s' size %u" % (str(label), size))
         return value
 
-    def get_size(self, expr):
+    def calculate_size(self, expr):
         '''
         Calculate inmemory size for token
         :param expr: Tokens
         :return: byte size
         '''
-        logging.debug('get_size("%s")' % expr)
+        logging.debug('calculate_size("%s")' % expr)
         # if isinstance(expr, string):
         #    expr = expr.strip()
         origexpr = expr
@@ -638,7 +638,7 @@ class Cpp:
         segover = Token.find_tokens(expr, 'segoverride')
         if issqexpr or segover:
             expr = Token.remove_tokens(expr, ['segmentregister', 'register', 'INTEGER', SQEXPR, 'segoverride'])
-            return self.get_size(expr)
+            return self.calculate_size(expr)
             # return 0
 
         if isinstance(expr, list) and all(
@@ -673,7 +673,7 @@ class Cpp:
                     g = self._context.get_global(name)
                     if isinstance(g, (op._equ, op._assignment)):
                         if g.value != origexpr:  # prevent loop
-                            return self.get_size(g.value)
+                            return self.calculate_size(g.value)
                         else:
                             return 0
                     logging.debug('get_size res %d' % g.size)
@@ -695,18 +695,18 @@ class Cpp:
                             g = g.getitem(member)
                             type = g.type
                         else:
-                            return self.get_size(g)
+                            return self.calculate_size(g)
                 except KeyError as ex:
                     logging.debug(f"Didn't found for {label} {ex.args} will try workaround")
                     # if members are global as with M510 or tasm try to find last member size
                     g = self._context.get_global(label[-1])
 
-                return self.get_size(g)
+                return self.calculate_size(g)
 
         if isinstance(expr, list):
             if len(expr) == 0:
                 return 0
-            return max((self.get_size(i) for i in expr))
+            return max((self.calculate_size(i) for i in expr))
 
         offsetdir = Token.find_tokens(expr, 'offsetdir')
         if offsetdir:
@@ -723,13 +723,13 @@ class Cpp:
             logging.debug(f"Could not identify type for {expr} to get size")
         return 0
 
-    def get_member_size(self, expr):
+    def calculate_member_size(self, expr):
         '''
-        Get (structure/object).member primitive size (like db, dw, dd...)
+        Get (structure/object).member size in bytes
         :param expr: Tokens
         :return: size in bytes
         '''
-        logging.debug('get_size("%s")' % expr)
+        logging.debug(' calculate_member_size("%s")' % expr)
 
         if isinstance(expr, Token) and expr.type == MEMBERDIR:
                 label = Token.find_tokens(expr.value, LABEL)
@@ -746,7 +746,7 @@ class Cpp:
                             g = g.getitem(member)
                             type = g.gettype()
                         else:
-                            return self.get_size(g)
+                            return self.calculate_size(g)
                 except KeyError as ex:
                     logging.debug(f"Didn't found for {label} {ex.args} will try workaround")
                     # if members are global as with M510 or tasm try to find last member size
@@ -859,7 +859,7 @@ class Cpp:
         self.needs_dereference = False
         self.itispointer = False
         indirection: IndirectionType = IndirectionType.VALUE
-        size = self.get_size(expr) if def_size == 0 else def_size  # calculate size if it not provided
+        size = self.calculate_size(expr) if def_size == 0 else def_size  # calculate size if it not provided
 
         # calculate the segment register
         segoverride = Token.find_tokens(expr, SEGOVERRIDE)
@@ -899,14 +899,14 @@ class Cpp:
         self.isvariable = False  # only address or variable
         if (islabel or memberdir) and not offsetdir:
             if memberdir:
-                member_size = self.get_member_size(Token(MEMBERDIR, memberdir))
+                member_size = self.calculate_member_size(Token(MEMBERDIR, memberdir))
                 if member_size:
                     self.isvariable = True
                     size = member_size
                     indirection = IndirectionType.POINTER
             elif islabel:
                 for i in islabel:  # Strange !?
-                    label_size = self.get_size(Token(LABEL, i))
+                    label_size = self.calculate_size(Token(LABEL, i))
                     if label_size:
                         self.isvariable = True
                         size = label_size
@@ -1120,7 +1120,7 @@ class Cpp:
     def _call(self, name):
         logging.debug("cpp._call(%s)" % str(name))
         ret = ""
-        size = self.get_size(name)
+        size = self.calculate_size(name)
         dst, far = self.jump_to_label(name)
         if size == 4:
             far = True
@@ -1186,7 +1186,7 @@ class Cpp:
         return "XLATP(%s)" % self.a
 
     def parse2(self, dst, src):
-        dst_size, src_size = self.get_size(dst), self.get_size(src)
+        dst_size, src_size = self.calculate_size(dst), self.calculate_size(src)
         if dst_size == 0:
             if src_size == 0:
                 logging.debug("parse2: %s %s both sizes are 0" % (dst, src))
@@ -1209,7 +1209,7 @@ class Cpp:
         size = 0
         for i in src:
             if size == 0:
-                size = self.get_size(i)
+                size = self.calculate_size(i)
             else:
                 break
         res = [self.expand(i, size) for i in src]
@@ -1221,7 +1221,7 @@ class Cpp:
         size = 0
         for i in src:
             if size == 0:
-                size = self.get_size(i)
+                size = self.calculate_size(i)
             else:
                 break
         res = [self.expand(i, size) for i in src]
@@ -1230,12 +1230,12 @@ class Cpp:
         return "IMUL%d_%d(%s)" % (len(src), size, ",".join(res))
 
     def _div(self, src):
-        size = self.get_size(src)
+        size = self.calculate_size(src)
         self.a = self.expand(src)
         return "DIV%d(%s)" % (size, self.a)
 
     def _idiv(self, src):
-        size = self.get_size(src)
+        size = self.calculate_size(src)
         self.a = self.expand(src)
         return "IDIV%d(%s)" % (size, self.a)
 
@@ -1329,7 +1329,7 @@ class Cpp:
         return "SCASD"
 
     def _scas(self, src):
-        size = self.get_size(src)
+        size = self.calculate_size(src)
         self.a = self.expand(src)
         srcr = Token.find_tokens(src, REGISTER)
         return "SCAS(%s,%s,%d)" % (self.a, srcr[0], size)
@@ -1885,7 +1885,7 @@ struct Memory{
         return r
 
     def _movs(self, dst, src):
-        size = self.get_size(dst)
+        size = self.calculate_size(dst)
         dstr, srcr = Token.find_tokens(dst, REGISTER), Token.find_tokens(src, REGISTER)
         self.a, self.b = self.parse2(dst, src)
         return "MOVS(%s, %s, %s, %s, %d)" % (self.a, self.b, dstr[0], srcr[0], size)
@@ -1901,7 +1901,7 @@ struct Memory{
         return ''
 
     def _lods(self, src):
-        size = self.get_size(src)
+        size = self.calculate_size(src)
         self.a = self.expand(src)
         srcr = Token.find_tokens(src, REGISTER)
         return "LODS(%s,%s,%d)" % (self.a, srcr[0], size)
@@ -1963,7 +1963,7 @@ struct Memory{
 
     def _assignment(self, stmt, dst, src):
         src = Token.remove_tokens(src, ['expr'])
-        size = self.get_size(src)
+        size = self.calculate_size(src)
         ptrdir = Token.find_tokens(src, 'ptrdir')
         if ptrdir:
             type = ptrdir[0]

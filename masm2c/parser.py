@@ -636,7 +636,7 @@ class Parser:
     def action_equ(self, label="", value="", raw='', line_number=0):
         label = self.mangle_label(label)
         value = Token.remove_tokens(value, ['expr'])
-        size = cpp_module.Cpp(self).get_size(value)
+        size = cpp_module.Cpp(self).calculate_size(value)
         ptrdir = Token.find_tokens(value, 'ptrdir')
         if ptrdir:
             type = ptrdir[0]
