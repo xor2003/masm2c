@@ -1126,7 +1126,7 @@ class Parser:
         number = 1
         if isinstance(args, list) and len(args) > 2 and isinstance(args[1], str) and args[1] == 'dup':
             cpp = cpp_module.Cpp(self)
-            number = eval(cpp.expand(Token.find_tokens(args[0], 'expr')))
+            number = eval(cpp.render_instruction_argument(Token.find_tokens(args[0], 'expr')))
             args = args[3]
         args = Token.remove_tokens(args, ['structinstance'])
 

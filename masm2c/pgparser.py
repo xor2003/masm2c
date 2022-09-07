@@ -103,7 +103,7 @@ def ptrdir(context, nodes):
 
 
 def integertok(context, nodes):
-    return Token('INTEGER', cpp_module.convert_number_to_c(nodes, context.extra.radix))
+    return Token('INTEGER', cpp_module.convert_asm_number_into_c(nodes, context.extra.radix))
 
 
 def commentkw(head, s, pos):

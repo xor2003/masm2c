@@ -176,7 +176,7 @@ def parse_bin(s):
     return v
 
 
-def convert_number_to_c(expr, radix=10):
+def convert_asm_number_into_c(expr, radix=10):
     """
     It tryes to convert assembler number in any base to a C number string with the same base
 
@@ -236,7 +236,7 @@ def guess_int_size(v):
     return size
 
 
-def cpp_mangle_label_special(name):
+def mangle_asm_labels(name):
     """
     Modifies assembler functions to be acceptable for C
 
@@ -250,7 +250,7 @@ def cpp_mangle_label_special(name):
 
 def cpp_mangle_label(name):
     name = name.lower()
-    return cpp_mangle_label_special(name)
+    return mangle_asm_labels(name)
 
 
 class Cpp:
@@ -352,9 +352,9 @@ class Cpp:
                     # char (& bb)[5] = group.bb;
                     # int& caa = group.aaa;
                     # references
-                    _reference_in_data_cpp = self._generate_dataref_from_declaration(type_and_name)
+                    _reference_in_data_cpp = self.__generate_dataref_from_declaration(type_and_name)
                     # externs
-                    _extern_in_hpp = self._generate_extern_from_declaration(type_and_name)
+                    _extern_in_hpp = self.__generate_extern_from_declaration(type_and_name)
 
                     if value:
                         real_seg, real_offset = j.getrealaddr()
@@ -373,7 +373,7 @@ class Cpp:
 
         return cpp_file, data_hpp_file, data_cpp_file, hpp_file
 
-    def _generate_extern_from_declaration(self, _hpp):
+    def __generate_extern_from_declaration(self, _hpp):
         """
         It takes a C++ declaration and returns a extern declaration to the same
 
@@ -384,7 +384,7 @@ class Cpp:
         _extern = re.sub(r'^(\w+)\s+([\w\[\]]+);', r'extern \g<1>& \g<2>;', _extern)
         return _extern
 
-    def _generate_dataref_from_declaration(self, _hpp):
+    def __generate_dataref_from_declaration(self, _hpp):
         """
         It takes a C++ declaration and returns a reference to the same variable
 
@@ -397,7 +397,7 @@ class Cpp:
         return _reference
 
     def convert_label(self, token):
-        name_original = cpp_mangle_label_special(token.value)
+        name_original = mangle_asm_labels(token.value)
         token.value = name_original
         name = name_original.lower()
         logging.debug("convert_label name = %s indirection = %s" % (name, str(self.__indirection)))
@@ -604,7 +604,7 @@ class Cpp:
             else:
                 register = Token.remove_tokens(token, [MEMBERDIR, 'LABEL'])
                 register = self.remove_dots(register)
-                register = self.tokenstostring(register)
+                register = self.tokens_to_string(register)
                 register = register.replace('(+', '(')
 
                 self.struct_type = label[0]
@@ -623,15 +623,12 @@ class Cpp:
         :return: byte size
         '''
         logging.debug('calculate_size("%s")' % expr)
-        # if isinstance(expr, string):
-        #    expr = expr.strip()
         origexpr = expr
 
         expr = Token.remove_tokens(expr, ['expr'])
 
         if ptrdir := Token.find_tokens(expr, PTRDIR):
             value = ptrdir[0]
-            # logging.debug('get_size res 1')
             return self._context.typetosize(value)
 
         issqexpr = Token.find_tokens(expr, SQEXPR)
@@ -639,7 +636,6 @@ class Cpp:
         if issqexpr or segover:
             expr = Token.remove_tokens(expr, ['segmentregister', 'register', 'INTEGER', SQEXPR, 'segoverride'])
             return self.calculate_size(expr)
-            # return 0
 
         if isinstance(expr, list) and all(
                 isinstance(i, str) or (isinstance(i, Token) and i.type == 'INTEGER') for i in expr):
@@ -773,39 +769,44 @@ class Cpp:
                     expr = "raddr(%s,%s)" % (self.__work_segment, expr)
             else:
                 if self.size_changed:  # or not self.__isjustlabel:
-                    expr = self.point_new_size(expr, size)
+                    expr = self.render_new_pointer_size(expr, size)
 
             logging.debug("expr: %s" % expr)
         return expr
 
-    def point_new_size(self, expr, size):
+    def render_new_pointer_size(self, expr, size):
+        """
+        :param expr: the expression to be rendered
+        :param size: the new size of the pointer
+        :return: The expression with the new size.
+        """
         if self.itispointer:
             if size == 1:
-                expr = "(db*)(%s)" % expr
+                expr = f"(db*)({expr})"
             elif size == 2:
-                expr = "(dw*)(%s)" % expr
+                expr = f"(dw*)({expr})"
             elif size == 4:
-                expr = "(dd*)(%s)" % expr
+                expr = f"(dd*)({expr})"
             elif size == 8:
-                expr = "(dq*)(%s)" % expr
+                expr = f"(dq*)({expr})"
             else:
-                logging.error(f"~{expr}~ invalid size {size}")
+                logging.error(f"~{expr}~ unknown size {size}")
         else:
             if size == 1:
-                expr = "TODB(%s)" % expr
+                expr = f"TODB({expr})"
             elif size == 2:
-                expr = "TODW(%s)" % expr
+                expr = f"TODW({expr})"
             elif size == 4:
-                expr = "TODD(%s)" % expr
+                expr = f"TODD({expr})"
             elif size == 8:
-                expr = "TODQ(%s)" % expr
+                expr = f"TODQ({expr})"
             else:
-                logging.error(f"~{expr}~ invalid size {size}")
+                logging.error(f"~{expr}~ unknown size {size}")
 
         self.size_changed = False
         return expr
 
-    def tokenstostring(self, expr):
+    def tokens_to_string(self, expr):
         '''
         Convert remaining tokens to make it simple string
         :param expr: tokens
@@ -817,7 +818,7 @@ class Cpp:
                 # TODO hack to handle ')register'
                 if len(result) and result[-1] == ')' and isinstance(i, Token) and i.type == 'register':
                     result += '+'
-                res = self.tokenstostring(i)
+                res = self.tokens_to_string(i)
                 res = re.sub(r'([Ee])\+', r'\g<1> +',
                              res)  # prevent "error: unable to find numeric literal operator 'operator""+" 0x0E+vecl_1c0
                 res = res.replace('+)', ')')  # TODO hack
@@ -837,12 +838,12 @@ class Cpp:
                         expr.value += ss[2:]
                 expr.value = expr.value.replace('\\', '\\\\')  # escape c \ symbol
 
-            return self.tokenstostring(expr.value)
+            return self.tokens_to_string(expr.value)
         return expr
 
-    def expand(self, expr, def_size=0, destination=False, lea=False):
+    def render_instruction_argument(self, expr, def_size=0, destination=False, lea=False):
         '''
-        Convert argument Tokens into C
+        Convert instruction argument Tokens into C
         :param expr: argument Tokens
         :param def_size: Preliminary calculate size in bytes
         :param destination: if it is destination argument
@@ -955,7 +956,7 @@ class Cpp:
                 registers = Token.find_tokens(expr, 'register')
                 integers = Token.find_tokens(expr, 'INTEGER')
                 expr = Token.remove_tokens(expr, ['register', 'INTEGER'])
-                expr = self.tokenstostring(expr)
+                expr = self.tokens_to_string(expr)
                 while len(expr) and expr[0] == '+':
                     expr = expr[1:]
                 while len(expr) > 2 and expr[0] == '(' and expr[-1] == ')':
@@ -979,13 +980,13 @@ class Cpp:
         if self.size_changed:
             size = size_ovrr_by_ptr
 
-        expr = self.tokenstostring(expr)
+        expr = self.tokens_to_string(expr)
 
         if indirection == IndirectionType.POINTER and not memberdir and (not self.__isjustlabel or self.size_changed):
             expr = self.convert_sqbr_reference(expr, destination, size, islabel, lea=lea)
 
         if self.size_changed:  # or not self.__isjustlabel:
-            expr = self.point_new_size(expr, size)
+            expr = self.render_new_pointer_size(expr, size)
 
         if indirection == IndirectionType.POINTER and self.needs_dereference:
             if expr[0] == '(' and expr[-1] == ')':
@@ -996,7 +997,7 @@ class Cpp:
         return expr
 
     def jump_post(self, name):
-        name, far = self.jump_to_label(name)
+        name, far = self.convert_jump_label(name)
         hasglobal = self._context.has_global(name) if isinstance(name, str) else False
         if not hasglobal:
             # jumps feat purpose:
@@ -1025,7 +1026,7 @@ class Cpp:
 
         return name, far
 
-    def jump_to_label(self, name):
+    def convert_jump_label(self, name):
         '''
         Convert argument tokens which for jump operations into C string
         :param name: Tokens
@@ -1073,7 +1074,7 @@ class Cpp:
             indirection = IndirectionType.POINTER
 
         if indirection == IndirectionType.POINTER:
-            name = self.expand(name)
+            name = self.render_instruction_argument(name)
 
         if indirection == IndirectionType.OFFSET and labeldir:
             name = labeldir[0]
@@ -1110,18 +1111,11 @@ class Cpp:
             self.label = "%s:\n" % cpp_mangle_label(name)
         return ''
 
-    def schedule(self, name):
-        name = name.lower()
-        if name in self.__proc_queue or name in self.__proc_done or name in self.__failed:
-            return
-        logging.debug("+scheduling function %s..." % name)
-        self.__proc_queue.append(name)
-
     def _call(self, name):
         logging.debug("cpp._call(%s)" % str(name))
         ret = ""
         size = self.calculate_size(name)
-        dst, far = self.jump_to_label(name)
+        dst, far = self.convert_jump_label(name)
         if size == 4:
             far = True
         disp = '0'
@@ -1169,20 +1163,20 @@ class Cpp:
         if src == []:
             self.a = '0'
         else:
-            self.a = self.expand(src)
+            self.a = self.render_instruction_argument(src)
         return "RETN(%s)" % self.a
 
     def _retf(self, src):
         if src == []:
             self.a = '0'
         else:
-            self.a = self.expand(src)
+            self.a = self.render_instruction_argument(src)
         return "RETF(%s)" % self.a
 
     def _xlat(self, src):
         if not src:
             return "XLAT"
-        self.a = self.expand(src)[2:-1]
+        self.a = self.render_instruction_argument(src)[2:-1]
         return "XLATP(%s)" % self.a
 
     def parse2(self, dst, src):
@@ -1195,8 +1189,8 @@ class Cpp:
         if src_size == 0:
             src_size = dst_size
 
-        dst = self.expand(dst, dst_size, destination=True)
-        src = self.expand(src, src_size)
+        dst = self.render_instruction_argument(dst, dst_size, destination=True)
+        src = self.render_instruction_argument(src, src_size)
         return dst, src
 
     def _add(self, dst, src):
@@ -1212,7 +1206,7 @@ class Cpp:
                 size = self.calculate_size(i)
             else:
                 break
-        res = [self.expand(i, size) for i in src]
+        res = [self.render_instruction_argument(i, size) for i in src]
         if size == 0:
             size = self.__current_size
         return "MUL%d_%d(%s)" % (len(src), size, ",".join(res))
@@ -1224,19 +1218,19 @@ class Cpp:
                 size = self.calculate_size(i)
             else:
                 break
-        res = [self.expand(i, size) for i in src]
+        res = [self.render_instruction_argument(i, size) for i in src]
         if size == 0:
             size = self.__current_size
         return "IMUL%d_%d(%s)" % (len(src), size, ",".join(res))
 
     def _div(self, src):
         size = self.calculate_size(src)
-        self.a = self.expand(src)
+        self.a = self.render_instruction_argument(src)
         return "DIV%d(%s)" % (size, self.a)
 
     def _idiv(self, src):
         size = self.calculate_size(src)
-        self.a = self.expand(src)
+        self.a = self.render_instruction_argument(src)
         return "IDIV%d(%s)" % (size, self.a)
 
     def _jz(self, label):
@@ -1330,11 +1324,18 @@ class Cpp:
 
     def _scas(self, src):
         size = self.calculate_size(src)
-        self.a = self.expand(src)
+        self.a = self.render_instruction_argument(src)
         srcr = Token.find_tokens(src, REGISTER)
         return "SCAS(%s,%s,%d)" % (self.a, srcr[0], size)
 
-    def __proc(self, name, def_skip=0):
+    def _render_procedure(self, name, def_skip=0):
+        """
+        It takes a procedure name, and returns a C++ string containing for that procedure
+
+        :param name: The name of the procedure to be rendered
+        :param def_skip: defaults to 0 (optional)
+        :return: The body of the procedure and the segment it is in.
+        """
         logging.info("     Generating proc %s" % name)
         # traceback.print_stack(file=sys.stdout)
         try:
@@ -1364,23 +1365,12 @@ class Cpp:
                 entry_point = self._context.entry_point
             self.body += self.proc_strategy.function_header(name, entry_point)
 
-            # logging.info(name)
-            # self.proc.optimize()
-            # self.__unbounded = []
             self.proc.visit(self, skip)
 
-            '''
-            labels = OrderedDict()
-            for k, v in self._context.get_globals().items():
-                if isinstance(v, op.label) and v.used and v.proc == self.proc:
-                        labels[k] = v
-            '''
             labels = self.leave_unique_labels(self.proc.provided_labels)
 
             self.body += produce_jump_table(labels)
 
-            # if name not in self.__skip_output:
-            #    self.__translated.append(self.body)
             segment = self.proc.segment
             self.proc = None
 
@@ -1392,8 +1382,7 @@ class Cpp:
             self.__failed.append(name)
             raise
         except Exception as ex:
-            logging.error(f'Exception {ex.args}')
-            logging.error(f' for {name}')
+            logging.error(f'Exception {ex.args} for {name}')
             raise
         return None, None
 
@@ -1433,8 +1422,8 @@ class Cpp:
         cpp_file.write(f"""{banner}
         #include \"{header_fname}\"
 
-{self.generate_function_wrappers()}
-{self.generate_entrypoint()}
+{self.render_function_wrappers()}
+{self.render_entrypoint()}
 {self.write_procedures(banner, header_fname)}
 {self.produce_global_jump_table(list(self._context.get_globals().items()), self._context.itislst)}
 
@@ -1486,14 +1475,14 @@ class Cpp:
 
         logging.info("\n".join(self.__failed))
 
-        self.write_segment(self._context.segments, self._context.structures)
+        self.write_segment_file(self._context.segments, self._context.structures)
 
     def write_procedures(self, banner, header_fname):
         cpp_file_text = ''
         last_segment = None
         cpp_segment_file = None
         for name in self.__procs:
-            proc_text, segment = self.__proc(name)
+            proc_text, segment = self._render_procedure(name)
             if self._context.itislst and segment != last_segment:  # If .lst write to separate segments. Open new if changed
                 last_segment = segment
                 if cpp_segment_file:
@@ -1518,7 +1507,7 @@ class Cpp:
 
         return cpp_file_text
 
-    def generate_entrypoint(self):
+    def render_entrypoint(self):
         entry_point_text = ''
         if self._context.main_file:
             g = self._context.get_global(self._context.entry_point)
@@ -1531,7 +1520,7 @@ class Cpp:
         """
         return entry_point_text
 
-    def generate_function_wrappers(self):
+    def render_function_wrappers(self):
         wrappers = ""
         for p in sorted(self.grouped):
             wrappers += f"""
@@ -1585,7 +1574,7 @@ class Cpp:
                 if missing:
                     proc_to_merge.add(first_proc_name)
                     for l in missing:
-                        proc_to_merge.add(self.get_related_proc(l))  # if label then merge proc implementing it
+                        proc_to_merge.add(self.find_related_proc(l))  # if label then merge proc implementing it
 
                 if self._context.args.mergeprocs == 'persegment':
                     for pname in self.__procs:
@@ -1619,7 +1608,7 @@ class Cpp:
 
             for first_proc_name in self.__procs:
                 logging.debug(f"Proc {first_proc_name}")
-                self.leave_only_same_seg_procs_to_merge(first_proc_name)
+                self.leave_only_same_segment_procs(first_proc_name)
 
             self.print_how_procs_merged()
 
@@ -1644,7 +1633,7 @@ class Cpp:
                     self.groups[first_proc_name] = new_group_name
                     # self.grouped |= first_proc.group
                     proc_to_group = self.__procs if self._context.args.mergeprocs == 'single' else first_proc.to_group_with
-                    proc_to_group = self.get_lineordered_proclist(proc_to_group)
+                    proc_to_group = self.sort_procedure_list_in_linenumber_order(proc_to_group)
 
                     for next_proc_name in proc_to_group:
                         if next_proc_name != first_proc_name and next_proc_name not in self.grouped:
@@ -1667,7 +1656,7 @@ class Cpp:
                     groups_id += 1
         self.__procs = [x for x in self.__procs if x not in self.grouped]
         self.__procs += groups
-        self.__procs = self.get_lineordered_proclist(self.__procs)
+        self.__procs = self.sort_procedure_list_in_linenumber_order(self.__procs)
 
     def generate_label_to_proc_map(self):
         for proc_name in self.__procs:
@@ -1676,23 +1665,38 @@ class Cpp:
             for label in proc.provided_labels:
                 self.label_to_proc[label] = proc_name
 
-    def get_lineordered_proclist(self, proc_list):
+    def sort_procedure_list_in_linenumber_order(self, proc_list):
+        """
+        It takes a list of procedure names, and returns sorted in the order in which they appear in the program
+
+        :param proc_list: a list of procedure names
+        :return: A list of procedure names in line number order.
+        """
         line_to_proc = {
             self._context.get_global(first_proc_name).line_number: first_proc_name for first_proc_name in
              proc_list}
         return [line_to_proc[line_number] for line_number in sorted(line_to_proc.keys())]
 
-    def leave_only_same_seg_procs_to_merge(self, first_proc_name):
-        first_proc = self._context.get_global(first_proc_name)
+    def leave_only_same_segment_procs(self, proc_name):
+        """
+        It takes a procedure name and returns a set of procedure names that are in the same segment as the given
+        procedure
+
+        :param proc_name: The name of the procedure to leave only same segment procs for
+        """
+        proc = self._context.get_global(proc_name)
         only_current_segment_procs = set()
-        for next_proc_name in first_proc.to_group_with:
-            if first_proc_name != next_proc_name:
-                next_proc = self._context.get_global(next_proc_name)
-                if first_proc.segment == next_proc.segment:
-                    only_current_segment_procs.add(next_proc_name)
-        first_proc.to_group_with = only_current_segment_procs
+        for other_proc_name in proc.to_group_with:
+            if proc_name != other_proc_name:
+                other_proc = self._context.get_global(other_proc_name)
+                if proc.segment == other_proc.segment:
+                    only_current_segment_procs.add(other_proc_name)
+        proc.to_group_with = only_current_segment_procs
 
     def print_how_procs_merged(self):
+        """
+        It prints out the names of the procedures that were merged together
+        """
         for first_proc_name in self.__procs:
             first_proc = self._context.get_global(first_proc_name)
             if first_proc.to_group_with:
@@ -1700,18 +1704,28 @@ class Cpp:
                 for p_name in first_proc.to_group_with:
                     logging.info(f"       {p_name}")
 
-    def get_related_proc(self, l):
-        logging.debug(f"get_related_proc {l}")
-        first_label = self._context.get_global(l)
-        if isinstance(first_label, op.label):
-            logging.debug(f" {l} is label, will merge {self.label_to_proc[l]} proc")
-            related_proc = self.label_to_proc[l]  # if label then merge proc implementing it
-        elif isinstance(first_label, proc_module.Proc):
-            logging.debug(f" {l} is proc, will merge {first_label.name} proc")
-            related_proc = first_label.name
+    def find_related_proc(self, name):
+        """
+        :param name: the name of the global object
+        :return: The name of the related proc.
+        """
+        logging.debug(f"get_related_proc {name}")
+        global_object = self._context.get_global(name)
+        if isinstance(global_object, op.label):
+            related_proc = self.label_to_proc[name]
+            logging.debug(f" {name} is a label, related proc nameL {related_proc}")
+        elif isinstance(global_object, proc_module.Proc):
+            related_proc = global_object.name
+            logging.debug(f" {name} is a proc, related proc nameL {related_proc}")
         return related_proc
 
     def leave_only_procs_and_labels(self, all_labels):
+        """
+        It takes a list of labels and returns a list of labels that are actually labels or proc names
+
+        :param all_labels: a list of all labels in the program
+        :return: A set of labels.
+        """
         labels = set()  # leave only real labels
         for label_name in all_labels:
             first_label = self._context.get_global(label_name)
@@ -1719,15 +1733,20 @@ class Cpp:
                 labels.add(label_name)
         return labels
 
-    def write_segment(self, segments, structs):
+    def write_segment_file(self, segments, structs):
         jsonpickle.set_encoder_options('json', indent=2)
         with open(self.__namespace.lower() + '.seg', 'w') as outfile:
             outfile.write(jsonpickle.encode((segments, structs)))
 
-    def produce_data_cpp(self, asm_files):
-        self.generate_data(*self.read_segments(asm_files))
+    def convert_segment_files_into_datacpp(self, asm_files):
+        """
+        It reads .seg files, and writes the data segments to _data.cpp/h file
 
-    def read_segments(self, asm_files):
+        :param asm_files: A list of the assembly files
+        """
+        self.write_data_segments_cpp(*self.read_segment_files(asm_files))
+
+    def read_segment_files(self, asm_files):
         logging.info(" *** Merging .seg files")
         segments = OrderedDict()
         structs = OrderedDict()
@@ -1740,6 +1759,16 @@ class Cpp:
 
     def merge_segments(self, allsegments: OrderedDict, allstructs: OrderedDict, newsegments: OrderedDict,
                        newstructs: OrderedDict):
+        """
+        If the segment is public and the user wants to merge public segments, then merge the segment. Otherwise, if the
+        segment already exists, overwrite it
+
+        :param allsegments: OrderedDict
+        :param allstructs: OrderedDict
+        :param newsegments: OrderedDict
+        :param newstructs: OrderedDict
+        :return: Merged segments and merged structs
+        """
         if self.merge_data_segments:
             logging.info('Will merge public data segments')
         for k, v in newsegments.items():
@@ -1771,19 +1800,19 @@ class Cpp:
         allstructs.update(newstructs)
         return allsegments, allstructs
 
-    def generate_data(self, segments, structures):
+    def write_data_segments_cpp(self, segments, structures):
+        """
+        It writes the _data.cpp and _data.h files
+
+        :param segments: a list of segments, each segment is a list of data items
+        :param structures: a list of structures that are defined in the program
+        """
         logging.info(" *** Producing _data.cpp and _data.h files")
         _, data_h, data_cpp_reference, _ = self.produce_c_data(segments)
         fname = "_data.cpp"
         header = "_data.h"
-        if sys.version_info >= (3, 0):
-            fd = open(fname, "wt", encoding=self.__codeset)
-            hd = open(header, "wt", encoding=self.__codeset)
-        else:
-            fd = open(fname, "wt")
-            hd = open(header, "wt")
-
-        data_impl = f'''#include "_data.h"
+        with open(fname, "wt", encoding=self.__codeset) as fd:
+            fd.write(f'''#include "_data.h"
 namespace m2c{{
 
 struct Memory m;
@@ -1794,22 +1823,18 @@ db(& stack)[STACK_SIZE]=m.stack;
 db(& heap)[HEAP_SIZE]=m.heap;
 }}
 {data_cpp_reference}
-        '''
 
-        fd.write(data_impl)
+''')
 
-        # hdata_bin = self.__hdata_seg
-        data = '''
+        with open(header, "wt", encoding=self.__codeset) as hd:
+            hd.write('''
 #ifndef ___DATA_H__
 #define ___DATA_H__
 #include "asm.h"
 ''' + self.produce_structures(structures) + self.produce_data(data_h) + '''
 #endif
-'''
-        hd.write(data)
+''')
 
-        fd.write("\n")
-        fd.close()
 
     def produce_label_offsets(self):
         labeloffsets = """namespace m2c{
@@ -1878,8 +1903,8 @@ struct Memory{
 
     def _lea(self, dst, src):
         self.lea = True
-        self.a = self.expand(dst, destination=True, lea=True)
-        self.b = self.expand(src, lea=True)
+        self.a = self.render_instruction_argument(dst, destination=True, lea=True)
+        self.b = self.render_instruction_argument(src, lea=True)
         r = "%s = %s" % (self.a, self.b)
         self.lea = False
         return r
@@ -1902,7 +1927,7 @@ struct Memory{
 
     def _lods(self, src):
         size = self.calculate_size(src)
-        self.a = self.expand(src)
+        self.a = self.render_instruction_argument(src)
         srcr = Token.find_tokens(src, REGISTER)
         return "LODS(%s,%s,%d)" % (self.a, srcr[0], size)
 
@@ -1910,14 +1935,14 @@ struct Memory{
         return "LEAVE"  # MOV(esp, ebp) POP(ebp)
 
     def _int(self, dst):
-        self.a = self.expand(dst)
+        self.a = self.render_instruction_argument(dst)
         return "_INT(%s)" % self.a
 
     def _instruction0(self, cmd):
         return "%s" % (cmd.upper())
 
     def _instruction1(self, cmd, dst):
-        self.a = self.expand(dst)
+        self.a = self.render_instruction_argument(dst)
         return "%s(%s)" % (cmd.upper(), self.a)
 
     def _jump(self, cmd, label):
@@ -1955,7 +1980,7 @@ struct Memory{
 
     def _instruction3(self, cmd, dst, src, c):
         self.a, self.b = self.parse2(dst, src)
-        self.c = self.expand(c)
+        self.c = self.render_instruction_argument(c)
         return "%s(%s, %s, %s)" % (cmd.upper(), self.a, self.b, self.c)
 
     def return_empty(self, _):
@@ -1978,11 +2003,11 @@ struct Memory{
         o.implemented = True
         self._context.reset_global(dst, o)
 
-        self.label += "#undef %s\n#define %s %s\n" % (dst, dst, self.expand(src))
+        self.label += "#undef %s\n#define %s %s\n" % (dst, dst, self.render_instruction_argument(src))
         return ''
 
     def _equ(self, dst, src):
-        self.label += "#define %s %s\n" % (dst, self.expand(src))
+        self.label += "#define %s %s\n" % (dst, self.render_instruction_argument(src))
         return ''
 
     @staticmethod

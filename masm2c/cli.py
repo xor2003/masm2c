@@ -206,7 +206,7 @@ def main():
 
     # Process .seg files
     generator = Cpp(Parser(args), merge_data_segments=merge_data_segments)
-    generator.produce_data_cpp(args.filenames)
+    generator.convert_segment_files_into_datacpp(args.filenames)
 
     logging.info(" *** Finished")
 
