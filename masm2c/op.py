@@ -515,7 +515,7 @@ class Data(baseop):
     def getdata(self):
         return self.label, self.type, self.data_internal_type, self.array, self.elements, self.size
 
-    def getalign(self):
+    def is_align(self):
         return self.align
 
     def getrealaddr(self):

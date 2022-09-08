@@ -21,7 +21,6 @@
 import logging
 import os
 import re
-import sys
 from builtins import hex, range, str
 from collections import OrderedDict
 from copy import copy
@@ -97,9 +96,6 @@ def produce_jump_table(labels):
 
 
 class SeparateProcStrategy:
-
-    def forward_to_dispatcher(self, disp):
-        return disp, "__dispatch_call"
 
     def fix_call_label(self, dst):
         return dst
@@ -223,11 +219,11 @@ def guess_int_size(v):
     size = 0
     if v < 0:
         v = -2 * v - 1
-    if v < 256:
+    if v < 2**8:
         size = 1
-    elif v < 65536:
+    elif v < 2**16:
         size = 2
-    elif v < 4294967296:
+    elif v < 2**32:
         size = 4
     else:
         logging.error(f'too big number {v}')
@@ -305,7 +301,7 @@ class Cpp:
         self.merge_data_segments = merge_data_segments
         self.label_to_proc = {}
 
-    def produce_c_data(self, segments):
+    def render_data(self, segments):
         """
         It takes a list of DOS segments, and for each segment, it takes a list of data items, and for each data item, it
         produces a C++ assignment statement, a C++ extern statement, and a C++ reference statement
@@ -327,7 +323,7 @@ class Cpp:
 
                 type_and_name += ";\n"
 
-                if not j.getalign():  # if align do not assign it
+                if not j.is_align():  # if align do not assign it
                     #  mycopy(bb, {'1','2','3','4','5'});
                     #  caa=3;
                     m = re.match(r'^(\w+)\s+(\w+)(\[\d+\])?;\n', type_and_name)
@@ -560,9 +556,9 @@ class Cpp:
                 self.needs_dereference = True
                 self.itispointer = False
                 value = f"{label[0]}))->{'.'.join(label[1:])}"
-            logging.debug("equ: %s -> %s" % (label[0], value))
+            logging.debug(f"equ: {label[0]} -> {value}")
         elif isinstance(g, op.var):
-            logging.debug("it is var " + str(size))
+            logging.debug(f"it is var {size}")
 
             if self.__current_size == 0:  # TODO check
                 self.__current_size = size
@@ -757,21 +753,21 @@ class Cpp:
                 self.needs_dereference = True
                 self.itispointer = True
                 if size == 1:
-                    expr = "raddr(%s,%s)" % (self.__work_segment, expr)
+                    expr = f"raddr({self.__work_segment},{expr})"
                 elif size == 2:
-                    expr = "(dw*)(raddr(%s,%s))" % (self.__work_segment, expr)
+                    expr = f"(dw*)(raddr({self.__work_segment},{expr}))"
                 elif size == 4:
-                    expr = "(dd*)(raddr(%s,%s))" % (self.__work_segment, expr)
+                    expr = f"(dd*)(raddr({self.__work_segment},{expr}))"
                 elif size == 8:
-                    expr = "(dq*)(raddr(%s,%s))" % (self.__work_segment, expr)
+                    expr = f"(dq*)(raddr({self.__work_segment},{expr}))"
                 else:
                     logging.error(f"~{expr}~ invalid size {size}")
-                    expr = "raddr(%s,%s)" % (self.__work_segment, expr)
+                    expr = f"raddr({self.__work_segment},{expr})"
             else:
                 if self.size_changed:  # or not self.__isjustlabel:
                     expr = self.render_new_pointer_size(expr, size)
 
-            logging.debug("expr: %s" % expr)
+            logging.debug(f"expr: {expr}")
         return expr
 
     def render_new_pointer_size(self, expr, size):
@@ -999,7 +995,7 @@ class Cpp:
     def jump_post(self, name):
         name, far = self.convert_jump_label(name)
         hasglobal = self._context.has_global(name) if isinstance(name, str) else False
-        if not hasglobal:
+        if not hasglobal or isinstance(self._context.get_global(name), op.var):
             # jumps feat purpose:
             # * in sub __dispatch_call - for address based jumps or grouped subs
             # * direct jumps
@@ -1015,14 +1011,9 @@ class Cpp:
             # dst = "__dispatch_call"
             # if self._context.has_global(name):
             # name = 'm2c::k'+name
-            addtobody, name = self.proc_strategy.forward_to_dispatcher(name)
-            self.dispatch += f'__disp={addtobody};\n'
-            logging.debug(f'not sure if handle it properly {name} {addtobody}')
-        else:
-            g = self._context.get_global(name)
-            if isinstance(g, op.var):
-                self.dispatch += f'__disp={name};\n'
-                name = "__dispatch_call"
+            self.dispatch += f'__disp={name};\n'
+            name = "__dispatch_call"
+            #logging.debug(f'not sure if handle it properly {name}')
 
         return name, far
 
@@ -1147,7 +1138,8 @@ class Cpp:
         # elif isinstance(g, proc_module.Proc) or dst in self.__procs or dst in self.grouped:
         #    self.body += f"__disp=0;\n"
         else:
-            disp, dst = self.proc_strategy.forward_to_dispatcher(dst)
+            result = dst, "__dispatch_call"
+            disp, dst = result
             # self.body += addtobody
 
         dst = self.proc_strategy.fix_call_label(dst)
@@ -1403,7 +1395,7 @@ class Cpp:
 
     def save_cpp_files(self, start):
         self.merge_procs()
-        cpp_assigns, _, _, cpp_extern = self.produce_c_data(self._context.segments)
+        cpp_assigns, _, _, cpp_extern = self.render_data(self._context.segments)
 
         header_id = f"__M2C_{self.__namespace.upper().replace('-', '_')}_STUBS_H__"
 
@@ -1808,7 +1800,7 @@ class Cpp:
         :param structures: a list of structures that are defined in the program
         """
         logging.info(" *** Producing _data.cpp and _data.h files")
-        _, data_h, data_cpp_reference, _ = self.produce_c_data(segments)
+        _, data_h, data_cpp_reference, _ = self.render_data(segments)
         fname = "_data.cpp"
         header = "_data.h"
         with open(fname, "wt", encoding=self.__codeset) as fd:

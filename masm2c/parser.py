@@ -194,17 +194,17 @@ class Parser:
             raise NameError("empty name is not allowed")
         value.original_name = name
         name = name.lower()
-        logging.debug("reset global %s -> %s" % (name, value))
+        logging.debug(f"reset global {name} -> {value}")
         self.__globals[name] = value
 
     def get_global(self, name):
         name = name.lower()
-        logging.debug("get_global(%s)" % name)
+        logging.debug(f"get_global({name})")
         try:
             g = self.__globals[name]
             logging.debug(type(g))
         except KeyError:
-            logging.debug("get_global KeyError %s" % name)
+            logging.debug(f"get_global KeyError {name}")
             raise
         g.used = True
         # assert self.__globals[name].used
@@ -248,7 +248,11 @@ class Parser:
             v = vv
         v = v.strip()
         # logging.debug "~2~ %s" %v
-        if re.match(r'^[+-]?[0-9][0-9A-Fa-f]*[Hh]$', v):
+        if re.match(r'^[+-]?[0-8]+[OoQq]$', v):
+            v = int(v[:-1], 8)
+        #elif re.match(r'^[+-]?[0-9]+[Dd]?$', v):
+        #    v = int(v[:-1], 10)
+        elif re.match(r'^[+-]?[0-9][0-9A-Fa-f]*[Hh]$', v):
             v = int(v[:-1], 16)
         elif re.match(r'^[01]+[Bb]$', v):
             v = int(v[:-1], 2)
@@ -276,14 +280,6 @@ class Parser:
                 # logging.error(v)
                 # we should parse that
                 n = Parser.parse_int(v[0])
-                '''
-                value = m.group(2)
-                value = value.strip()
-                if value == '?':
-                    value = 0
-                else:
-                    value = Parser.parse_int(value)
-                '''
                 s += n * width
                 continue
             s += width
@@ -294,7 +290,7 @@ class Parser:
             v = v.replace("\'\'", "'").replace('\"\"', '"')
         return len(v) - 2
 
-    def get_global_value(self, v, size=2):
+    def get_global_value(self, v, size=2):  # TODO it is C++ specific
         logging.debug("get_global_value(%s)" % v)
         v = self.mangle_label(v)
         g = self.get_global(v)
@@ -303,16 +299,16 @@ class Parser:
             v = g.original_name
         elif isinstance(g, op.var):
             if g.issegment:
-                v = "seg_offset(%s)" % g.name
+                v = f"seg_offset({g.name})"
             else:
                 if size == 2:
-                    v = "offset(%s,%s)" % (g.segment, g.name)
+                    v = f"offset({g.segment},{g.name})"
                 elif size == 4:
-                    v = "far_offset(%s,%s)" % (g.segment, g.name)
+                    v = f"far_offset({g.segment},{g.name})"
                 else:
                     logging.error(f'Some unknown data size {size} for {g.name}')
         elif isinstance(g, (op.label, Proc)):
-            v = "m2c::k%s" % (g.name.lower())
+            v = f"m2c::k{g.name.lower()}"
         else:
             v = g.offset
         logging.debug(v)
