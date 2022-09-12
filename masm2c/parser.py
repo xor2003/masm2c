@@ -360,7 +360,7 @@ class Parser:
             elif value.type == 'STRING':
                 value = value.value
                 assert isinstance(value, str)
-                if not self.itislst:  # but not for IDA .lst
+                if not self.itislst:  # not for IDA .lst
                     value = value.replace("\'\'", "'").replace('\"\"', '"')  # masm behaviour
                 reslist = list(value[1:-1])
                 elements = len(reslist)
@@ -1068,7 +1068,7 @@ class Parser:
     def is_register(expr):
         expr = expr.lower()
         size = 0
-        if len(expr) == 2 and expr[0] in ['a', 'b', 'c', 'd'] and expr[1] in ['h', 'l']:
+        if expr in ['al', 'bl', 'cl', 'dl', 'ah', 'bh', 'ch', 'dh']:
             logging.debug('is reg res 1')
             size = 1
         elif expr in ['ax', 'bx', 'cx', 'dx', 'si', 'di', 'sp', 'bp', 'ds', 'cs', 'es', 'fs', 'gs', 'ss']:
@@ -1256,9 +1256,6 @@ class Parser:
             self.main_file = True
             self.entry_point = Token.find_tokens(label, 'LABEL')[0].lower()
             self.add_call_to_entrypoint()
-
-    def get_segments(self):
-        return self.segments
 
     def parse_rt_info(self, name):
         #dbx_img_offset = int(self.args.loadsegment, 0)  # para
