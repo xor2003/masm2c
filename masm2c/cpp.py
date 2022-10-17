@@ -228,7 +228,7 @@ def guess_int_size(v):
     else:
         logging.error(f'too big number {v}')
 
-    logging.debug('guess_int_size %d' % size)
+    logging.debug('guess_int_size %d', size)
     return size
 
 
@@ -396,7 +396,7 @@ class Cpp:
         name_original = mangle_asm_labels(token.value)
         token.value = name_original
         name = name_original.lower()
-        logging.debug("convert_label name = %s indirection = %s" % (name, str(self.__indirection)))
+        logging.debug("convert_label name = %s indirection = %s", name, self.__indirection)
 
         if self.__indirection == IndirectionType.OFFSET:
             try:
@@ -404,7 +404,7 @@ class Cpp:
             except Exception:
                 pass
             else:
-                logging.debug("OFFSET = %s" % offset)
+                logging.debug("OFFSET = %s", offset)
                 self.__indirection = IndirectionType.VALUE
                 self.__used_data_offsets.add((name, offset))
                 return Token('LABEL', "(dw)m2c::k" + name)
@@ -421,18 +421,18 @@ class Cpp:
                 raise InjectCode(g)
             value = g.original_name
             # value = self.expand_equ(g.value)
-            logging.debug("equ: %s -> %s" % (name, value))
+            logging.debug("equ: %s -> %s", name, value)
         elif isinstance(g, op._assignment):
             logging.debug("it is assignment")
             if not g.implemented:
                 raise InjectCode(g)
             value = g.original_name
             # value = self.expand_equ(g.value)
-            logging.debug("assignment %s = %s" % (name, value))
+            logging.debug("assignment %s = %s", name, value)
         elif isinstance(g, proc_module.Proc):
             logging.debug("it is proc")
             if self.__indirection != IndirectionType.OFFSET:
-                logging.error("Invalid proc label usage proc %s offset %s" % (g.name, str(g.offset)))
+                logging.error("Invalid proc label usage proc %s offset %s", g.name, g.offset)
                 value = "m2c::k" + g.name.lower()  # .capitalize()
             else:
                 value = str(g.offset)
@@ -516,7 +516,7 @@ class Cpp:
         :param token: The token to be converted
         :return: The value of the member.
         """
-        logging.debug("name = %s indirection = %s" % (str(token), str(self.__indirection)))
+        logging.debug("name = %s indirection = %s", token, self.__indirection)
         value = token
         label = [l.lower() for l in Token.find_tokens(token, LABEL)]
         self.struct_type = None
@@ -618,7 +618,7 @@ class Cpp:
         :param expr: Tokens
         :return: byte size
         '''
-        logging.debug('calculate_size("%s")' % expr)
+        logging.debug('calculate_size("%s")', expr)
         origexpr = expr
 
         expr = Token.remove_tokens(expr, ['expr'])
@@ -660,7 +660,7 @@ class Cpp:
                     return len(m.group(1))
             elif expr.type == 'LABEL':
                 name = expr.value
-                logging.debug('name = %s' % name)
+                logging.debug('name = %s', name)
                 try:
                     g = self._context.get_global(name)
                     if isinstance(g, (op._equ, op._assignment)):
@@ -668,7 +668,7 @@ class Cpp:
                             return self.calculate_size(g.value)
                         else:
                             return 0
-                    logging.debug('get_size res %d' % g.size)
+                    logging.debug('get_size res %d', g.size)
                     return g.size
                 except:
                     pass
@@ -721,7 +721,7 @@ class Cpp:
         :param expr: Tokens
         :return: size in bytes
         '''
-        logging.debug(' calculate_member_size("%s")' % expr)
+        logging.debug(' calculate_member_size("%s")', expr)
 
         if isinstance(expr, Token) and expr.type == MEMBERDIR:
                 label = Token.find_tokens(expr.value, LABEL)
@@ -1023,7 +1023,7 @@ class Cpp:
         :param name: Tokens
         :return: C string
         '''
-        logging.debug("jump_to_label(%s)" % name)
+        logging.debug("jump_to_label(%s)", name)
         # Token(expr, Token(LABEL, printf))
         #
         name = Token.remove_tokens(name, ['expr'])
@@ -1070,7 +1070,7 @@ class Cpp:
         if indirection == IndirectionType.OFFSET and labeldir:
             name = labeldir[0]
 
-        logging.debug("label %s" % name)
+        logging.debug("label %s", name)
 
         hasglobal = False
         far = False
@@ -1103,7 +1103,7 @@ class Cpp:
         return ''
 
     def _call(self, name):
-        logging.debug("cpp._call(%s)" % str(name))
+        logging.debug("cpp._call(%s)", name)
         ret = ""
         size = self.calculate_size(name)
         dst, far = self.convert_jump_label(name)
@@ -1175,7 +1175,7 @@ class Cpp:
         dst_size, src_size = self.calculate_size(dst), self.calculate_size(src)
         if dst_size == 0:
             if src_size == 0:
-                logging.debug("parse2: %s %s both sizes are 0" % (dst, src))
+                logging.debug("parse2: %s %s both sizes are 0", dst, src)
                 # raise Exception("both sizes are 0")
             dst_size = src_size
         if src_size == 0:
@@ -1328,7 +1328,7 @@ class Cpp:
         :param def_skip: defaults to 0 (optional)
         :return: The body of the procedure and the segment it is in.
         """
-        logging.info("     Generating proc %s" % name)
+        logging.info("     Generating proc %s", name)
         # traceback.print_stack(file=sys.stdout)
         try:
             skip = def_skip
@@ -1337,7 +1337,7 @@ class Cpp:
             if self._context.has_global(name):
                 self.proc = self._context.get_global(name)
             else:
-                logging.debug("No procedure named %s, trying label" % name)
+                logging.debug("No procedure named %s, trying label", name)
                 off, src_proc, skip = self._context.get_offset(name)
 
                 self.proc = proc_module.Proc(name)
@@ -1367,10 +1367,10 @@ class Cpp:
             self.proc = None
 
             if self.__pushpop_count != 0:
-                logging.warning("push/pop balance = %d non zero at the exit of proc" % self.__pushpop_count)
+                logging.warning("push/pop balance = %d non zero at the exit of proc", self.__pushpop_count)
             return self.body, segment
         except (CrossJump, op.Unsupported) as e:
-            logging.error("%s: ERROR: %s" % (name, e))
+            logging.error("%s: ERROR: %s", name, e)
             self.__failed.append(name)
             raise
         except Exception as ex:
@@ -1463,7 +1463,7 @@ class Cpp:
 
         self.__methods += self.__failed
         done, failed = len(self.__proc_done), len(self.__failed)
-        logging.info("%d ok, %d failed of %d, %3g%% translated" % (done, failed, done + failed, 100.0 * done / (done + failed)))
+        logging.info("%d ok, %d failed of %d, %3g%% translated", done, failed, done + failed, 100.0 * done / (done + failed))
 
         logging.info("\n".join(self.__failed))
 

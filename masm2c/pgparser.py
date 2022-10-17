@@ -392,7 +392,7 @@ def radixdir(context, nodes, value):
 
 
 def externdef(context, nodes, extrnname, type):
-    logging.debug('externdef %s' % str(nodes))
+    logging.debug('externdef %s', nodes)
     context.extra.add_extern(extrnname.value, type)
     return nodes
 

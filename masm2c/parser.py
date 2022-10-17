@@ -183,7 +183,7 @@ class Parser:
         value.original_name = name
         name = name.lower()
 
-        logging.debug("set_global(name='%s',value=%s)" % (name, dump_object(value)))
+        logging.debug("set_global(name='%s',value=%s)", name, dump_object(value))
         if name in self.__globals and self.pass_number == 1 and not self.test_mode:
             raise LookupError("global %s was already defined" % name)
         value.used = False
@@ -231,7 +231,7 @@ class Parser:
     '''
 
     def replace_dollar_w_segoffst(self, v):
-        logging.debug("$ = %d" % self.__cur_seg_offset)
+        logging.debug("$ = %d", self.__cur_seg_offset)
         return v.replace('$', str(self.__cur_seg_offset))
 
     @staticmethod
@@ -268,7 +268,7 @@ class Parser:
         return int(v)
 
     def calculate_data_binary_size(self, width, data):
-        logging.debug("calculate_data_binary_size %d %s" % (width, data))
+        logging.debug("calculate_data_binary_size %d %s", width, data)
         s = 0
         for v in data:
             # v = v.strip()
@@ -291,7 +291,7 @@ class Parser:
         return len(v) - 2
 
     def get_global_value(self, v, size=2):  # TODO it is C++ specific
-        logging.debug("get_global_value(%s)" % v)
+        logging.debug("get_global_value(%s)", v)
         v = self.mangle_label(v)
         g = self.get_global(v)
         logging.debug(g)
@@ -404,7 +404,7 @@ class Parser:
                     value = self.get_global_value(value, width)
                 except KeyError:
                     if self.pass_number != 1:
-                        logging.error("unknown address %s" % value)
+                        logging.error("unknown address %s", value)
                     # logging.warning(self.c_data)
                     # logging.warning(r)
                     # logging.warning(len(self.c_data) + len(r))
@@ -441,7 +441,7 @@ class Parser:
         return n * len(values), res
 
     def action_label(self, name, far=False, isproc=False, raw='', globl=True, line_number=0):
-        logging.debug("label name: %s" % name)
+        logging.debug("label name: %s", name)
         if name == '@@':
             name = self.get_dummy_jumplabel()
         name = self.mangle_label(name)
@@ -652,7 +652,7 @@ class Parser:
         return o
 
     def create_segment(self, name, options=None, segclass=None, raw=''):
-        logging.info("     Found segment %s" % name)
+        logging.info("     Found segment %s", name)
         name = name.lower()
         self.data_merge_candidats = 0
         self.__segment_name = name
@@ -671,7 +671,7 @@ class Parser:
                 offset = real_seg * 0x10
             else:
                 offset = self.__binary_data_size
-            logging.debug("segment %s %x" % (name, offset))
+            logging.debug("segment %s %x", name, offset)
             binary_width = 0
 
             self.__segment = op.Segment(name, offset, options=options, segclass=segclass)
@@ -681,7 +681,7 @@ class Parser:
             self.set_global(name, op.var(binary_width, offset, name, issegment=True))
 
     def action_proc(self, name, type, line_number=0, raw=''):
-        logging.info("      Found proc %s" % name.value)
+        logging.info("      Found proc %s", name.value)
         self.action_endp()
         name = self.mangle_label(name.value)
         far = False
@@ -734,11 +734,11 @@ class Parser:
     '''
 
     def action_endseg(self):
-        logging.debug("segment %s ends" % self.__segment_name)
+        logging.debug("segment %s ends", self.__segment_name)
         self.__segment_name = "default_seg"
 
     def action_include(self, name):
-        logging.info("including %s" % name)
+        logging.info("including %s", name)
         self.parse_file(name)
 
     def action_endp(self):
@@ -914,9 +914,9 @@ class Parser:
             if not self.flow_terminated:
                 logging.error(f"Flow wasn't terminated! line={line_number} offset={self.__cur_seg_offset}")
 
-            logging.debug("args %s offset %d" % (str(args), offset))
+            logging.debug("args %s offset %d", args, offset)
 
-        logging.debug("convert_data %s %d %s" % (label, binary_width, args))
+        logging.debug("convert_data %s %d %s", label, binary_width, args)
         # original_label = label
 
         elements, is_string, array = self.process_data_tokens(args, binary_width)
@@ -924,7 +924,7 @@ class Parser:
         if data_internal_type == op.DataType.ARRAY and not any(array) and not isstruct:  # all zeros
             array = [0]
 
-        logging.debug("~size %d elements %d" % (binary_width, elements))
+        logging.debug("~size %d elements %d", binary_width, elements)
         if label and not isstruct:
             self.set_global(label, op.var(binary_width, offset, name=label,
                                           segment=self.__segment_name, elements=elements, original_type=type,
@@ -1050,7 +1050,7 @@ class Parser:
         return self.parse_include(text, file_name)
 
     def parse_args_new_data(self, text, file_name=None):
-        logging.debug("parsing: [%s]" % text)
+        logging.debug("parsing: [%s]", text)
 
         result = self.__lex.parser.parse(text, file_name=file_name, extra=self)
         #with open('forest.txt', 'w') as f:
@@ -1096,7 +1096,7 @@ class Parser:
                     'dq': 8, 'qword': 8, 'real8': 8,
                     'dt': 10, 'tbyte': 10, 'real10': 10}[value]
         except KeyError:
-            logging.error("Cannot find size for %s" % value)
+            logging.error("Cannot find size for %s", value)
             size = 0
         return size
 
@@ -1163,7 +1163,7 @@ class Parser:
             # if self.__separate_proc:
             self.externals_procs.add(label)
             proc = Proc(label, extern=True)
-            logging.debug("procedure %s, extern" % label)
+            logging.debug("procedure %s, extern", label)
             self.reset_global(label, proc)
             # else:
             #    self.reset_global(label, op.label(label, proc=self.proc.name, isproc=True))
