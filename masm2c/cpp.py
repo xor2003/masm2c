@@ -88,7 +88,7 @@ def produce_jump_table(labels):
         offsets.append((k.lower(), k))
     offsets = sorted(offsets, key=lambda t: t[1])
     for name, label in offsets:
-        logging.debug(f'{name}, {label}')
+        logging.debug('%s, %s', name, label)
         result += "        case m2c::k%s: \tgoto %s;\n" % (name, cpp_mangle_label(label))
     result += "        default: m2c::log_error(\"Don't know how to jump to 0x%x. See \" __FILE__ \" line %d\\n\", __disp, __LINE__);m2c::stackDump(); abort();\n"
     result += "    };\n}\n"
@@ -204,7 +204,7 @@ def convert_asm_number_into_c(expr, radix=10):
         else:
             expr = str(int(expr, radix))
     except Exception:
-        logging.error(f"Failed to parse number {origexpr} radix {radix}")
+        logging.error("Failed to parse number %s radix %d", origexpr, radix)
 
     return expr
 
@@ -226,7 +226,7 @@ def guess_int_size(v):
     elif v < 2**32:
         size = 4
     else:
-        logging.error(f'too big number {v}')
+        logging.error('too big number %d', v)
 
     logging.debug('guess_int_size %d', size)
     return size
@@ -438,7 +438,7 @@ class Cpp:
                 value = str(g.offset)
                 self.__indirection = IndirectionType.VALUE
         elif isinstance(g, op.var):
-            logging.debug("it is var " + str(g.size))
+            logging.debug("it is var %s", g.size)
             size = g.size
             if self.__current_size == 0:  # TODO check
                 self.__current_size = size
