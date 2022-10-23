@@ -64,7 +64,7 @@ class CrossJump(Exception):
     pass
 
 
-def produce_jump_table(labels):
+def produce_jump_table_c(offsets):
     """
     It takes a list of labels and produces a C++ switch statement that jumps to the corresponding label
 
@@ -73,32 +73,33 @@ def produce_jump_table(labels):
     """
     # Produce jump table
     result = """
-    assert(0);
-    __dispatch_call:
-#ifdef DOSBOX_CUSTOM
-    if ((__disp >> 16) == 0xf000)
-	{cs=0xf000;eip=__disp&0xffff;m2c::fix_segs();return false;}  // Jumping to BIOS
-#endif
-    if ((__disp>>16) == 0) {__disp |= ((dd)cs) << 16;}
-    switch (__disp) {
-"""
-    offsets = []
-    for k in labels:
-        k = re.sub(r'\W', '_', k)
-        offsets.append((k.lower(), k))
-    offsets = sorted(offsets, key=lambda t: t[1])
+        assert(0);
+        __dispatch_call:
+    #ifdef DOSBOX_CUSTOM
+        if ((__disp >> 16) == 0xf000)
+    	{cs=0xf000;eip=__disp&0xffff;m2c::fix_segs();return false;}  // Jumping to BIOS
+    #endif
+        if ((__disp>>16) == 0) {__disp |= ((dd)cs) << 16;}
+        switch (__disp) {
+    """
     for name, label in offsets:
         logging.debug('%s, %s', name, label)
-        result += "        case m2c::k%s: \tgoto %s;\n" % (name, cpp_mangle_label(label))
+        result += "        case m2c::k%s: \tgoto %s;\n" % (name, label)
     result += "        default: m2c::log_error(\"Don't know how to jump to 0x%x. See \" __FILE__ \" line %d\\n\", __disp, __LINE__);m2c::stackDump(); abort();\n"
     result += "    };\n}\n"
     return result
 
 
-class SeparateProcStrategy:
+def make_enums_and_labels(labels):
+    offsets = []
+    for k in labels:
+        k = re.sub(r'\W', '_', k)
+        offsets.append((k.lower(), cpp_mangle_label(k)))
+    offsets = sorted(offsets, key=lambda t: t[1])
+    return offsets
 
-    def fix_call_label(self, dst):
-        return dst
+
+class SeparateProcStrategy:
 
     def produce_proc_start(self, name):
         return " // Procedure %s() start\n%s()\n{\n" % (name, cpp_mangle_label(name))
@@ -124,9 +125,6 @@ class SeparateProcStrategy:
 """ % cpp_mangle_label(name)
         return header
 
-    def function_end(self):
-        return ' }\n'
-
     def write_declarations(self, procs, context):
         result = ""
         for p in sorted(procs):  # TODO only if used or public
@@ -144,18 +142,6 @@ bool __dispatch_call(m2c::_offsets __disp, struct m2c::_STATE* _state);
 """
         return result
 
-
-
-def check_int(s):
-    """
-    Check the string for a number except the leading sign
-
-    :param s: The string to check
-    :return: a boolean value.
-    """
-    if s[0] in ('-', '+'):
-        return s[1:].isdigit()
-    return s.isdigit()
 
 
 def parse_bin(s):
@@ -1142,7 +1128,6 @@ class Cpp:
             disp, dst = result
             # self.body += addtobody
 
-        dst = self.proc_strategy.fix_call_label(dst)
         dst = cpp_mangle_label(dst)
 
         if far:
@@ -1361,7 +1346,8 @@ class Cpp:
 
             labels = self.leave_unique_labels(self.proc.provided_labels)
 
-            self.body += produce_jump_table(labels)
+            offsets = make_enums_and_labels(labels)
+            self.body += produce_jump_table_c(offsets)
 
             segment = self.proc.segment
             self.proc = None
