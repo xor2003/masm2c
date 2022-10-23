@@ -144,20 +144,6 @@ bool __dispatch_call(m2c::_offsets __disp, struct m2c::_STATE* _state);
 
 
 
-def parse_bin(s):
-    """
-    :param s: The binary string that was matched by the regular expression
-    :return: The hexadecimal value of the binary number.
-    """
-    sign = s.group(1)
-    binary = s.group(2)
-    v = hex(int(binary, 2))
-    if sign:
-        v = sign + v
-    # logging.debug("BINARY: %s -> %s" %(b, v))
-    return v
-
-
 def convert_asm_number_into_c(expr, radix=10):
     """
     It tryes to convert assembler number in any base to a C number string with the same base
@@ -167,30 +153,36 @@ def convert_asm_number_into_c(expr, radix=10):
     :return: The number in the specified radix.
     """
     origexpr = expr
-    if expr == '?':
-        return '0'
     try:
-        if re.match(r'^([+-]?)([0-8]+)[OoQq]$', expr):
+        if expr == '?':
+            return '0'
+        if m := re.match(r'^(?P<sign>[+-]?)(?P<value>[0-8]+)[OoQq]$', expr):
             radix = 8
-        elif re.match(r'^([+-]?)([0-9][0-9A-Fa-f]*)[Hh]$', expr):
+        elif m := re.match(r'^(?P<sign>[+-]?)(?P<value>[0-9][0-9A-Fa-f]*)[Hh]$', expr):
             radix = 16
-        elif re.match(r'^([+-]?)([0-9]+)[Dd]$', expr):
+        elif m := re.match(r'^(?P<sign>[+-]?)(?P<value>[0-9]+)[Dd]$', expr):
             radix = 10
-        elif re.match(r'^([+-]?)([0-1]+)[Bb]$', expr):
+        elif m := re.match(r'^(?P<sign>[+-]?)(?P<value>[0-1]+)[Bb]$', expr):
             radix = 2
+        elif m := re.match(r'^(?P<sign>[+-]?)(?P<value>[0-9][0-9A-Fa-f]*)$', expr):
+            pass
+        else:
+            raise ValueError(expr)
+        sign = m['sign'] if m['sign'] else ''
+        value = m['value']
 
         if radix == 8:
-            expr = re.sub(r'^([+-]?)([0-8]+)[OoQq]?$', r'\g<1>0\g<2>', expr)
+            expr = f'{sign}0{value}'
         elif radix == 16:
-            expr = re.sub(r'^([+-]?)([0-9][0-9A-Fa-f]*)[Hh]?$', r'\g<1>0x\g<2>', expr)
+            expr = f'{sign}0x{value}'
         elif radix == 10:
-            expr = re.sub(r'^([+-]?)([0-9]+)[Dd]?$', r'\g<1>\g<2>', expr)
+            expr = f'{sign}{value}'
         elif radix == 2:
-            expr = re.sub(r'^([+-]?)([0-1]+)[Bb]?$', parse_bin, expr)  # convert binary
+            expr = f'{sign}{hex(int(value, 2))}'  # convert binary
         else:
             expr = str(int(expr, radix))
-    except Exception:
-        logging.error("Failed to parse number %s radix %d", origexpr, radix)
+    except Exception as ex:
+        logging.error("Failed to parse number %s radix %d %s", origexpr, radix, ex)
 
     return expr
 
