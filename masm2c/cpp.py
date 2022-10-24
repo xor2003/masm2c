@@ -234,8 +234,8 @@ def mangle_asm_labels(name):
 
 
 def cpp_mangle_label(name):
-    name = name.lower()
-    return mangle_asm_labels(name)
+    name = mangle_asm_labels(name)
+    return name.lower()
 
 
 class Cpp:
@@ -290,7 +290,7 @@ class Cpp:
         self.merge_data_segments = merge_data_segments
         self.label_to_proc = {}
 
-    def render_data(self, segments):
+    def render_data_c(self, segments):
         """
         It takes a list of DOS segments, and for each segment, it takes a list of data items, and for each data item, it
         produces a C++ assignment statement, a C++ extern statement, and a C++ reference statement
@@ -337,9 +337,9 @@ class Cpp:
                     # char (& bb)[5] = group.bb;
                     # int& caa = group.aaa;
                     # references
-                    _reference_in_data_cpp = self.__generate_dataref_from_declaration(type_and_name)
+                    _reference_in_data_cpp = self._generate_dataref_from_declaration_c(type_and_name)
                     # externs
-                    _extern_in_hpp = self.__generate_extern_from_declaration(type_and_name)
+                    _extern_in_hpp = self._generate_extern_from_declaration_c(type_and_name)
 
                     if value:
                         real_seg, real_offset = j.getrealaddr()
@@ -358,7 +358,7 @@ class Cpp:
 
         return cpp_file, data_hpp_file, data_cpp_file, hpp_file
 
-    def __generate_extern_from_declaration(self, _hpp):
+    def _generate_extern_from_declaration_c(self, _hpp):
         """
         It takes a C++ declaration and returns a extern declaration to the same
 
@@ -369,7 +369,7 @@ class Cpp:
         _extern = re.sub(r'^(\w+)\s+([\w\[\]]+);', r'extern \g<1>& \g<2>;', _extern)
         return _extern
 
-    def __generate_dataref_from_declaration(self, _hpp):
+    def _generate_dataref_from_declaration_c(self, _hpp):
         """
         It takes a C++ declaration and returns a reference to the same variable
 
@@ -1384,7 +1384,7 @@ class Cpp:
 
     def save_cpp_files(self, start):
         self.merge_procs()
-        cpp_assigns, _, _, cpp_extern = self.render_data(self._context.segments)
+        cpp_assigns, _, _, cpp_extern = self.render_data_c(self._context.segments)
 
         header_id = f"__M2C_{self.__namespace.upper().replace('-', '_').replace('.', '_')}_STUBS_H__"
 
@@ -1403,8 +1403,8 @@ class Cpp:
         cpp_file.write(f"""{banner}
         #include \"{header_fname}\"
 
-{self.render_function_wrappers()}
-{self.render_entrypoint()}
+{self.render_function_wrappers_c()}
+{self.render_entrypoint_c()}
 {self.write_procedures(banner, header_fname)}
 {self.produce_global_jump_table(list(self._context.get_globals().items()), self._context.itislst)}
 
@@ -1488,7 +1488,7 @@ class Cpp:
 
         return cpp_file_text
 
-    def render_entrypoint(self):
+    def render_entrypoint_c(self):
         entry_point_text = ''
         if self._context.main_file:
             g = self._context.get_global(self._context.entry_point)
@@ -1501,7 +1501,7 @@ class Cpp:
         """
         return entry_point_text
 
-    def render_function_wrappers(self):
+    def render_function_wrappers_c(self):
         wrappers = ""
         for p in sorted(self.grouped):
             wrappers += f"""
@@ -1789,7 +1789,7 @@ class Cpp:
         :param structures: a list of structures that are defined in the program
         """
         logging.info(" *** Producing _data.cpp and _data.h files")
-        _, data_h, data_cpp_reference, _ = self.render_data(segments)
+        _, data_h, data_cpp_reference, _ = self.render_data_c(segments)
         fname = "_data.cpp"
         header = "_data.h"
         with open(fname, "wt", encoding=self.__codeset) as fd:
