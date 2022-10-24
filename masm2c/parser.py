@@ -1251,3 +1251,24 @@ class Parser:
                 self.initial_procs_start = self.procs_start = set(j['Jumps'])
         except FileNotFoundError:
             pass
+
+
+def parse_asm_number(expr, radix):
+    if expr == '?':
+        radix, sign, value = 10, '', '0'
+    else:
+        if m := re.match(r'^(?P<sign>[+-]?)(?P<value>[0-8]+)[OoQq]$', expr):
+            radix = 8
+        elif m := re.match(r'^(?P<sign>[+-]?)(?P<value>[0-9][0-9A-Fa-f]*)[Hh]$', expr):
+            radix = 16
+        elif m := re.match(r'^(?P<sign>[+-]?)(?P<value>[0-9]+)[Dd]$', expr):
+            radix = 10
+        elif m := re.match(r'^(?P<sign>[+-]?)(?P<value>[0-1]+)[Bb]$', expr):
+            radix = 2
+        elif m := re.match(r'^(?P<sign>[+-]?)(?P<value>[0-9][0-9A-Fa-f]*)$', expr):
+            pass
+        else:
+            raise ValueError(expr)
+        sign = m['sign'] if m['sign'] else ''
+        value = m['value']
+    return radix, sign, value
