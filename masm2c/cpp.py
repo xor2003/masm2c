@@ -148,14 +148,25 @@ def convert_asm_number_into_c(expr, radix=10):
     """
     It tryes to convert assembler number in any base to a C number string with the same base
 
-    :param expr: The expression to convert
+    :param result: The expression to convert
     :param radix: The radix of the number, defaults to 10 (optional)
     :return: The number in the specified radix.
     """
-    origexpr = expr
     try:
-        if expr == '?':
-            return '0'
+        radix, sign, value = parse_asm_number(expr, radix)
+
+        result = produce_number_c(expr, radix, sign, value)
+    except Exception as ex:
+        logging.error("Failed to parse number %s radix %d %s", expr, radix, ex)
+        result = expr
+
+    return result
+
+
+def parse_asm_number(expr, radix):
+    if expr == '?':
+        radix, sign, value = 10, '', '0'
+    else:
         if m := re.match(r'^(?P<sign>[+-]?)(?P<value>[0-8]+)[OoQq]$', expr):
             radix = 8
         elif m := re.match(r'^(?P<sign>[+-]?)(?P<value>[0-9][0-9A-Fa-f]*)[Hh]$', expr):
@@ -170,24 +181,24 @@ def convert_asm_number_into_c(expr, radix=10):
             raise ValueError(expr)
         sign = m['sign'] if m['sign'] else ''
         value = m['value']
-
-        if radix == 8:
-            expr = f'{sign}0{value}'
-        elif radix == 16:
-            expr = f'{sign}0x{value}'
-        elif radix == 10:
-            expr = f'{sign}{value}'
-        elif radix == 2:
-            expr = f'{sign}{hex(int(value, 2))}'  # convert binary
-        else:
-            expr = str(int(expr, radix))
-    except Exception as ex:
-        logging.error("Failed to parse number %s radix %d %s", origexpr, radix, ex)
-
-    return expr
+    return radix, sign, value
 
 
-def guess_int_size(v):
+def produce_number_c(expr, radix, sign, value):
+    if radix == 8:
+        result = f'{sign}0{value}'
+    elif radix == 16:
+        result = f'{sign}0x{value}'
+    elif radix == 10:
+        result = f'{sign}{value}'
+    elif radix == 2:
+        result = f'{sign}{hex(int(value, 2))}'  # convert binary
+    else:
+        result = str(int(expr, radix))
+    return result
+
+
+def guess_int_size(v: int):
     """
     It returns the number of bytes needed to store the given integer
 
@@ -212,7 +223,7 @@ def guess_int_size(v):
 
 def mangle_asm_labels(name):
     """
-    Modifies assembler functions to be acceptable for C
+    Modifies assembler functions to be acceptable for other languages
 
     :param name: the name of assembler the function
     :return: The name of the C function.
@@ -1375,7 +1386,7 @@ class Cpp:
         self.merge_procs()
         cpp_assigns, _, _, cpp_extern = self.render_data(self._context.segments)
 
-        header_id = f"__M2C_{self.__namespace.upper().replace('-', '_')}_STUBS_H__"
+        header_id = f"__M2C_{self.__namespace.upper().replace('-', '_').replace('.', '_')}_STUBS_H__"
 
         banner = """/* THIS IS GENERATED FILE */
 
