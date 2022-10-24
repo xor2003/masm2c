@@ -201,7 +201,8 @@ class Proc:
     def visit(self, visitor, skip=0):
         for i in range(skip, len(self.stmts)):
             stmt = self.stmts[i]
-            from masm2c.cpp import InjectCode, SkipCode
+            from .gen import InjectCode
+            from .gen import SkipCode
             try:
                 full_line = self.generate_full_cmd_line(visitor, stmt)
                 visitor.body += full_line

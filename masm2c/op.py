@@ -1051,7 +1051,7 @@ class _equ(baseop):
             self.implemented = True
             return visitor._equ(*self.args)
         else:
-            from masm2c.cpp import SkipCode
+            from masm2c.gen import SkipCode
             raise SkipCode
 
 

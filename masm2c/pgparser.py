@@ -7,6 +7,7 @@ from copy import deepcopy, copy
 from parglare import Grammar
 from parglare import Parser as PGParser
 
+import masm2c.gen
 from . import op
 from .Macro import Macro
 from .Token import Token
@@ -103,7 +104,8 @@ def ptrdir(context, nodes):
 
 
 def integertok(context, nodes):
-    return Token('INTEGER', cpp_module.convert_asm_number_into_c(nodes, context.extra.radix))
+    from masm2c.cpp import Cpp
+    return Token('INTEGER', Cpp(context.extra).convert_asm_number_into_c(nodes, context.extra.radix))  # TODO remove this
 
 
 def commentkw(head, s, pos):
@@ -501,3 +503,14 @@ class ParglareParser:
             cls._inst.parser.grammar = cls._inst.grammar
 
         return cls._inst
+
+
+OFFSETDIR = 'offsetdir'
+LABEL = 'LABEL'
+PTRDIR = 'ptrdir'
+REGISTER = 'register'
+SEGMENTREGISTER = 'segmentregister'
+SEGOVERRIDE = 'segoverride'
+SQEXPR = 'sqexpr'
+INTEGER = 'INTEGER'
+MEMBERDIR = 'memberdir'

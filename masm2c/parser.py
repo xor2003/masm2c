@@ -267,23 +267,6 @@ class Parser:
         # logging.debug "~4~ %s" %v
         return int(v)
 
-    def calculate_data_binary_size(self, width, data):
-        logging.debug("calculate_data_binary_size %d %s", width, data)
-        s = 0
-        for v in data:
-            # v = v.strip()
-            if isinstance(v, str) and width == 1 and len(v) >= 2 and (v[0] in ["'", '"']) and v[-1] == v[0]:
-                s += self.calculate_STRING_size(v)
-                continue
-
-            if isinstance(v, list) and len(v) == 5 and v[1].lower() == 'dup':
-                # logging.error(v)
-                # we should parse that
-                n = Parser.parse_int(v[0])
-                s += n * width
-                continue
-            s += width
-        return s
 
     def calculate_STRING_size(self, v):
         if not self.itislst:

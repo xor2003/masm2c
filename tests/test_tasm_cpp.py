@@ -4,7 +4,7 @@ from __future__ import print_function
 from masm2c import op
 from masm2c import cpp
 from mock import patch
-from masm2c.cpp import Cpp, cpp_mangle_label, convert_asm_number_into_c
+from masm2c.cpp import Cpp
 from masm2c.parser import Parser
 import logging
 import unittest
@@ -3582,919 +3582,919 @@ class CppTest(unittest.TestCase):
         self.assertEqual(self.parser.is_register(expr=u'eax'), 4)
 
     def test_cpp_31860(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u"'Z' - 'A' +1"), u"'Z' - 'A' +1")
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u"'Z' - 'A' +1"), u"'Z' - 'A' +1")
 
     def test_cpp_31870(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'((((2030080+64000*26)/4096)+1)*4096)-1'), u'((((2030080+64000*26)/4096)+1)*4096)-1')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'((((2030080+64000*26)/4096)+1)*4096)-1'), u'((((2030080+64000*26)/4096)+1)*4096)-1')
 
     def test_cpp_31880(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'(00+38*3)*320+1/2+33*(3-1)'), u'(00+38*3)*320+1/2+33*(3-1)')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'(00+38*3)*320+1/2+33*(3-1)'), u'(00+38*3)*320+1/2+33*(3-1)')
 
     def test_cpp_31890(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'(1024*10/16)+5'), u'(1024*10/16)+5')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'(1024*10/16)+5'), u'(1024*10/16)+5')
 
     def test_cpp_31900(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'(1024*10/16)-1'), u'(1024*10/16)-1')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'(1024*10/16)-1'), u'(1024*10/16)-1')
 
     def test_cpp_31910(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'+0x40'), u'+0x40')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'+0x40'), u'+0x40')
 
     def test_cpp_31920(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'+0x4000'), u'+0x4000')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'+0x4000'), u'+0x4000')
 
     def test_cpp_31930(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'+ecx'), u'+ecx')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'+ecx'), u'+ecx')
 
     def test_cpp_31940(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'+ecx*2'), u'+ecx*2')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'+ecx*2'), u'+ecx*2')
 
     def test_cpp_31950(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'+ecx*2+0x4000'), u'+ecx*2+0x4000')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'+ecx*2+0x4000'), u'+ecx*2+0x4000')
 
     def test_cpp_31960(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'+ecx*2-0x0A'), u'+ecx*2-0x0A')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'+ecx*2-0x0A'), u'+ecx*2-0x0A')
 
     def test_cpp_31970(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'+ecx*4'), u'+ecx*4')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'+ecx*4'), u'+ecx*4')
 
     def test_cpp_31980(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'+ecx*4+0x4000'), u'+ecx*4+0x4000')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'+ecx*4+0x4000'), u'+ecx*4+0x4000')
 
     def test_cpp_31990(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'+ecx*4-0x0A'), u'+ecx*4-0x0A')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'+ecx*4-0x0A'), u'+ecx*4-0x0A')
 
     def test_cpp_32000(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'+ecx+0x40'), u'+ecx+0x40')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'+ecx+0x40'), u'+ecx+0x40')
 
     def test_cpp_32010(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'+edx'), u'+edx')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'+edx'), u'+edx')
 
     def test_cpp_32020(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'+edx+0x4000'), u'+edx+0x4000')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'+edx+0x4000'), u'+edx+0x4000')
 
     def test_cpp_32030(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'-0x108'), u'-0x108')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'-0x108'), u'-0x108')
 
     def test_cpp_32040(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'-0x1C'), u'-0x1C')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'-0x1C'), u'-0x1C')
 
     def test_cpp_32050(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'-0x20'), u'-0x20')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'-0x20'), u'-0x20')
 
     def test_cpp_32060(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'-0x28'), u'-0x28')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'-0x28'), u'-0x28')
 
     def test_cpp_32070(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'-0x2C'), u'-0x2C')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'-0x2C'), u'-0x2C')
 
     def test_cpp_32080(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'-1'), u'-1')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'-1'), u'-1')
 
     def test_cpp_32090(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'-1-(-2+3)'), u'-1-(-2+3)')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'-1-(-2+3)'), u'-1-(-2+3)')
 
     def test_cpp_32100(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'-108h'), u'-0x108')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'-108h'), u'-0x108')
 
     def test_cpp_32110(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'-12'), u'-12')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'-12'), u'-12')
 
     def test_cpp_32130(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'-1Ch'), u'-0x1C')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'-1Ch'), u'-0x1C')
 
     def test_cpp_32140(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'-2'), u'-2')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'-2'), u'-2')
 
     def test_cpp_32170(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'-2Ch'), u'-0x2C')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'-2Ch'), u'-0x2C')
 
     def test_cpp_32180(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'-2Dh'), u'-0x2D')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'-2Dh'), u'-0x2D')
 
     def test_cpp_32190(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'-4'), u'-4')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'-4'), u'-4')
 
     def test_cpp_32220(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'0'), u'0')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'0'), u'0')
 
     def test_cpp_32230(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'0002h'), u'0x0002')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'0002h'), u'0x0002')
 
     def test_cpp_32240(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'0007'), u'0007')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'0007'), u'0007')
 
     def test_cpp_32250(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'000f3h'), u'0x000f3')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'000f3h'), u'0x000f3')
 
     def test_cpp_32260(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'000ff00ffh'), u'0x000ff00ff')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'000ff00ffh'), u'0x000ff00ff')
 
     def test_cpp_32270(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'001111111B'), u'0x7f')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'001111111B'), u'0x7f')
 
     def test_cpp_32280(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'00fffh'), u'0x00fff')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'00fffh'), u'0x00fff')
 
     def test_cpp_32290(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'00h'), u'0x00')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'00h'), u'0x00')
 
     def test_cpp_32300(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'0100b'), u'0x4')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'0100b'), u'0x4')
 
     def test_cpp_32310(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'01010101010101010b'), u'0xaaaa')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'01010101010101010b'), u'0xaaaa')
 
     def test_cpp_32320(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'0101010101010101b'), u'0x5555')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'0101010101010101b'), u'0x5555')
 
     def test_cpp_32330(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'0101b'), u'0x5')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'0101b'), u'0x5')
 
     def test_cpp_32340(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'010B'), u'0x2')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'010B'), u'0x2')
 
     def test_cpp_32350(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'011111100B'), u'0xfc')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'011111100B'), u'0xfc')
 
     def test_cpp_32360(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'011111111111111111111111111111111b'), u'0xffffffff')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'011111111111111111111111111111111b'), u'0xffffffff')
 
     def test_cpp_32370(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'01111111111111111b'), u'0xffff')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'01111111111111111b'), u'0xffff')
 
     def test_cpp_32380(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'011111111B'), u'0xff')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'011111111B'), u'0xff')
 
     def test_cpp_32390(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'012345678h'), u'0x012345678')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'012345678h'), u'0x012345678')
 
     def test_cpp_32400(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'01B'), u'0x1')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'01B'), u'0x1')
 
     def test_cpp_32410(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'01h'), u'0x01')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'01h'), u'0x01')
 
     def test_cpp_32420(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'02h'), u'0x02')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'02h'), u'0x02')
 
     def test_cpp_32430(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'03dh'), u'0x03d')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'03dh'), u'0x03d')
 
     def test_cpp_32440(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'03eh'), u'0x03e')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'03eh'), u'0x03e')
 
     def test_cpp_32450(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'03fh'), u'0x03f')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'03fh'), u'0x03f')
 
     def test_cpp_32470(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'077123456h'), u'0x077123456')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'077123456h'), u'0x077123456')
 
     def test_cpp_32480(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'077aaFF00h'), u'0x077aaFF00')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'077aaFF00h'), u'0x077aaFF00')
 
     def test_cpp_32490(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'08h'), u'0x08')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'08h'), u'0x08')
 
     def test_cpp_32500(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'0B'), u'0x0')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'0B'), u'0x0')
 
     def test_cpp_32510(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'0BC6058h'), u'0x0BC6058')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'0BC6058h'), u'0x0BC6058')
 
     def test_cpp_32520(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'0Ch'), u'0x0C')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'0Ch'), u'0x0C')
 
     def test_cpp_32530(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'0D5h'), u'0x0D5')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'0D5h'), u'0x0D5')
 
     def test_cpp_32540(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'0Eh'), u'0x0E')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'0Eh'), u'0x0E')
 
     def test_cpp_32550(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'0F7h'), u'0x0F7')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'0F7h'), u'0x0F7')
 
     def test_cpp_32560(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'0FBCA7654h'), u'0x0FBCA7654')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'0FBCA7654h'), u'0x0FBCA7654')
 
     def test_cpp_32570(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'0FBCA7h'), u'0x0FBCA7')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'0FBCA7h'), u'0x0FBCA7')
 
     def test_cpp_32580(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'0FEh'), u'0x0FE')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'0FEh'), u'0x0FE')
 
     def test_cpp_32590(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'0FFEh'), u'0x0FFE')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'0FFEh'), u'0x0FFE')
 
     def test_cpp_32600(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'0FFFC70F9h'), u'0x0FFFC70F9')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'0FFFC70F9h'), u'0x0FFFC70F9')
 
     def test_cpp_32610(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'0FFFE0080h'), u'0x0FFFE0080')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'0FFFE0080h'), u'0x0FFFE0080')
 
     def test_cpp_32620(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'0FFFEDCBFh'), u'0x0FFFEDCBF')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'0FFFEDCBFh'), u'0x0FFFEDCBF')
 
     def test_cpp_32630(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'0FFFEFDFCh'), u'0x0FFFEFDFC')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'0FFFEFDFCh'), u'0x0FFFEFDFC')
 
     def test_cpp_32640(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'0FFFEh'), u'0x0FFFE')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'0FFFEh'), u'0x0FFFE')
 
     def test_cpp_32650(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'0FFFF7FFFh'), u'0x0FFFF7FFF')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'0FFFF7FFFh'), u'0x0FFFF7FFF')
 
     def test_cpp_32660(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'0FFFFA549h'), u'0x0FFFFA549')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'0FFFFA549h'), u'0x0FFFFA549')
 
     def test_cpp_32670(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'0FFFFEh'), u'0x0FFFFE')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'0FFFFEh'), u'0x0FFFFE')
 
     def test_cpp_32680(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'0FFFFFED4h'), u'0x0FFFFFED4')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'0FFFFFED4h'), u'0x0FFFFFED4')
 
     def test_cpp_32690(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'0FFFFFEh'), u'0x0FFFFFE')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'0FFFFFEh'), u'0x0FFFFFE')
 
     def test_cpp_32700(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'0FFFFFFD3h'), u'0x0FFFFFFD3')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'0FFFFFFD3h'), u'0x0FFFFFFD3')
 
     def test_cpp_32710(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'0FFFFFFECh'), u'0x0FFFFFFEC')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'0FFFFFFECh'), u'0x0FFFFFFEC')
 
     def test_cpp_32720(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'0FFFFFFEh'), u'0x0FFFFFFE')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'0FFFFFFEh'), u'0x0FFFFFFE')
 
     def test_cpp_32730(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'0FFFFFFF0h'), u'0x0FFFFFFF0')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'0FFFFFFF0h'), u'0x0FFFFFFF0')
 
     def test_cpp_32740(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'0FFFFFFF7h'), u'0x0FFFFFFF7')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'0FFFFFFF7h'), u'0x0FFFFFFF7')
 
     def test_cpp_32750(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'0FFFFFFFAh'), u'0x0FFFFFFFA')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'0FFFFFFFAh'), u'0x0FFFFFFFA')
 
     def test_cpp_32760(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'0FFFFFFFh'), u'0x0FFFFFFF')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'0FFFFFFFh'), u'0x0FFFFFFF')
 
     def test_cpp_32770(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'0FFFFFFh'), u'0x0FFFFFF')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'0FFFFFFh'), u'0x0FFFFFF')
 
     def test_cpp_32780(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'0FFFFFh'), u'0x0FFFFF')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'0FFFFFh'), u'0x0FFFFF')
 
     def test_cpp_32790(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'0FFFFh'), u'0x0FFFF')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'0FFFFh'), u'0x0FFFF')
 
     def test_cpp_32800(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'0FFFh'), u'0x0FFF')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'0FFFh'), u'0x0FFF')
 
     def test_cpp_32810(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'0FFh'), u'0x0FF')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'0FFh'), u'0x0FF')
 
     def test_cpp_32820(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'0Fh'), u'0x0F')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'0Fh'), u'0x0F')
 
     def test_cpp_32830(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'0a0000h'), u'0x0a0000')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'0a0000h'), u'0x0a0000')
 
     def test_cpp_32840(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'0a000h'), u'0x0a000')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'0a000h'), u'0x0a000')
 
     def test_cpp_32850(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'0aabbccddh'), u'0x0aabbccdd')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'0aabbccddh'), u'0x0aabbccdd')
 
     def test_cpp_32860(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'0abcdef77h'), u'0x0abcdef77')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'0abcdef77h'), u'0x0abcdef77')
 
     def test_cpp_32870(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'0af222h'), u'0x0af222')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'0af222h'), u'0x0af222')
 
     def test_cpp_32880(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'0cch'), u'0x0cc')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'0cch'), u'0x0cc')
 
     def test_cpp_32890(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'0ddh'), u'0x0dd')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'0ddh'), u'0x0dd')
 
     def test_cpp_32900(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'0df01h'), u'0x0df01')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'0df01h'), u'0x0df01')
 
     def test_cpp_32910(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'0dff1h'), u'0x0dff1')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'0dff1h'), u'0x0dff1')
 
     def test_cpp_32920(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'0f0ffh'), u'0x0f0ff')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'0f0ffh'), u'0x0f0ff')
 
     def test_cpp_32930(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'0f0h'), u'0x0f0')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'0f0h'), u'0x0f0')
 
     def test_cpp_32940(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'0f222h'), u'0x0f222')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'0f222h'), u'0x0f222')
 
     def test_cpp_32950(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'0ffff0003h'), u'0x0ffff0003')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'0ffff0003h'), u'0x0ffff0003')
 
     def test_cpp_32960(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'0ffff00f3h'), u'0x0ffff00f3')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'0ffff00f3h'), u'0x0ffff00f3')
 
     def test_cpp_32970(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'0ffff01ffh'), u'0x0ffff01ff')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'0ffff01ffh'), u'0x0ffff01ff')
 
     def test_cpp_32980(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'0ffffff00h'), u'0x0ffffff00')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'0ffffff00h'), u'0x0ffffff00')
 
     def test_cpp_32990(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'0ffffff03h'), u'0x0ffffff03')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'0ffffff03h'), u'0x0ffffff03')
 
     def test_cpp_33000(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'0fffffff3h'), u'0x0fffffff3')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'0fffffff3h'), u'0x0fffffff3')
 
     def test_cpp_33010(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'0ffffffffh'), u'0x0ffffffff')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'0ffffffffh'), u'0x0ffffffff')
 
     def test_cpp_33020(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'0ffffh'), u'0x0ffff')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'0ffffh'), u'0x0ffff')
 
     def test_cpp_33030(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'0ffh'), u'0x0ff')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'0ffh'), u'0x0ff')
 
     def test_cpp_33040(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'0x0C'), u'0x0C')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'0x0C'), u'0x0C')
 
     def test_cpp_33050(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'0x10'), u'0x10')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'0x10'), u'0x10')
 
     def test_cpp_33060(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'0x14'), u'0x14')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'0x14'), u'0x14')
 
     def test_cpp_33070(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'1'), u'1')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'1'), u'1')
 
     def test_cpp_33080(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'10'), u'10')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'10'), u'10')
 
     def test_cpp_33090(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'10000h'), u'0x10000')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'10000h'), u'0x10000')
 
     def test_cpp_33100(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'1000h'), u'0x1000')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'1000h'), u'0x1000')
 
     def test_cpp_33110(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'100h'), u'0x100')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'100h'), u'0x100')
 
     def test_cpp_33120(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'1024*10/16'), u'1024*10/16')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'1024*10/16'), u'1024*10/16')
 
     def test_cpp_33130(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'1024*1024'), u'1024*1024')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'1024*1024'), u'1024*1024')
 
     def test_cpp_33140(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'10B'), u'0x2')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'10B'), u'0x2')
 
     def test_cpp_33150(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'10h'), u'0x10')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'10h'), u'0x10')
 
     def test_cpp_33160(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'11'), u'11')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'11'), u'11')
 
     def test_cpp_33170(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'111'), u'111')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'111'), u'111')
 
     def test_cpp_33180(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'114h'), u'0x114')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'114h'), u'0x114')
 
     def test_cpp_33190(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'11h'), u'0x11')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'11h'), u'0x11')
 
     def test_cpp_33200(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'12'), u'12')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'12'), u'12')
 
     def test_cpp_33210(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'12340004h'), u'0x12340004')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'12340004h'), u'0x12340004')
 
     def test_cpp_33220(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'1234001Dh'), u'0x1234001D')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'1234001Dh'), u'0x1234001D')
 
     def test_cpp_33230(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'12341h'), u'0x12341')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'12341h'), u'0x12341')
 
     def test_cpp_33240(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'12343h'), u'0x12343')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'12343h'), u'0x12343')
 
     def test_cpp_33250(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'12345'), u'12345')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'12345'), u'12345')
 
     def test_cpp_33260(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'1234561Dh'), u'0x1234561D')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'1234561Dh'), u'0x1234561D')
 
     def test_cpp_33270(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'12345678h'), u'0x12345678')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'12345678h'), u'0x12345678')
 
     def test_cpp_33280(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'12345h'), u'0x12345')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'12345h'), u'0x12345')
 
     def test_cpp_33290(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'12347F7Fh'), u'0x12347F7F')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'12347F7Fh'), u'0x12347F7F')
 
     def test_cpp_33300(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'12347FFFh'), u'0x12347FFF')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'12347FFFh'), u'0x12347FFF')
 
     def test_cpp_33310(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'12348000h'), u'0x12348000')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'12348000h'), u'0x12348000')
 
     def test_cpp_33320(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'12348080h'), u'0x12348080')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'12348080h'), u'0x12348080')
 
     def test_cpp_33330(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'1234h'), u'0x1234')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'1234h'), u'0x1234')
 
     def test_cpp_33340(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'127Eh'), u'0x127E')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'127Eh'), u'0x127E')
 
     def test_cpp_33350(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'12Ch'), u'0x12C')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'12Ch'), u'0x12C')
 
     def test_cpp_33360(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'13'), u'13')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'13'), u'13')
 
     def test_cpp_33370(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'132'), u'132')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'132'), u'132')
 
     def test_cpp_33380(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'133'), u'133')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'133'), u'133')
 
     def test_cpp_33390(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'13h'), u'0x13')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'13h'), u'0x13')
 
     def test_cpp_33400(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'14'), u'14')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'14'), u'14')
 
     def test_cpp_33410(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'14*320'), u'14*320')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'14*320'), u'14*320')
 
     def test_cpp_33420(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'14h'), u'0x14')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'14h'), u'0x14')
 
     def test_cpp_33430(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'15'), u'15')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'15'), u'15')
 
     def test_cpp_33440(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'1500'), u'1500')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'1500'), u'1500')
 
     def test_cpp_33450(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'16'), u'16')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'16'), u'16')
 
     def test_cpp_33460(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'17'), u'17')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'17'), u'17')
 
     def test_cpp_33470(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'17h'), u'0x17')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'17h'), u'0x17')
 
     def test_cpp_33480(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'18'), u'18')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'18'), u'18')
 
     def test_cpp_33490(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'18h'), u'0x18')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'18h'), u'0x18')
 
     def test_cpp_33500(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'19'), u'19')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'19'), u'19')
 
     def test_cpp_33510(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'192'), u'192')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'192'), u'192')
 
     def test_cpp_33520(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'193'), u'193')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'193'), u'193')
 
     def test_cpp_33530(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'1Ch'), u'0x1C')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'1Ch'), u'0x1C')
 
     def test_cpp_33540(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'1Eh'), u'0x1E')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'1Eh'), u'0x1E')
 
     def test_cpp_33550(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'1FEh'), u'0x1FE')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'1FEh'), u'0x1FE')
 
     def test_cpp_33560(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'1FF7Fh'), u'0x1FF7F')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'1FF7Fh'), u'0x1FF7F')
 
     def test_cpp_33570(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'1FF80h'), u'0x1FF80')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'1FF80h'), u'0x1FF80')
 
     def test_cpp_33580(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'1FF81h'), u'0x1FF81')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'1FF81h'), u'0x1FF81')
 
     def test_cpp_33590(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'1FFEh'), u'0x1FFE')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'1FFEh'), u'0x1FFE')
 
     def test_cpp_33600(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'1FFFEh'), u'0x1FFFE')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'1FFFEh'), u'0x1FFFE')
 
     def test_cpp_33610(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'1FFFFEh'), u'0x1FFFFE')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'1FFFFEh'), u'0x1FFFFE')
 
     def test_cpp_33620(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'1FFFFFEh'), u'0x1FFFFFE')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'1FFFFFEh'), u'0x1FFFFFE')
 
     def test_cpp_33630(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'1FFFFFFEh'), u'0x1FFFFFFE')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'1FFFFFFEh'), u'0x1FFFFFFE')
 
     def test_cpp_33640(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'1FFFFFFFh'), u'0x1FFFFFFF')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'1FFFFFFFh'), u'0x1FFFFFFF')
 
     def test_cpp_33650(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'1FFFFFFh'), u'0x1FFFFFF')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'1FFFFFFh'), u'0x1FFFFFF')
 
     def test_cpp_33660(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'1FFFFFh'), u'0x1FFFFF')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'1FFFFFh'), u'0x1FFFFF')
 
     def test_cpp_33670(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'1FFFFh'), u'0x1FFFF')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'1FFFFh'), u'0x1FFFF')
 
     def test_cpp_33680(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'1FFFh'), u'0x1FFF')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'1FFFh'), u'0x1FFF')
 
     def test_cpp_33690(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'1FFh'), u'0x1FF')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'1FFh'), u'0x1FF')
 
     def test_cpp_33700(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'1Fh'), u'0x1F')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'1Fh'), u'0x1F')
 
     def test_cpp_33710(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'2'), u'2')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'2'), u'2')
 
     def test_cpp_33720(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'20'), u'20')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'20'), u'20')
 
     def test_cpp_33730(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'20000h'), u'0x20000')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'20000h'), u'0x20000')
 
     def test_cpp_33740(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'20h'), u'0x20')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'20h'), u'0x20')
 
     def test_cpp_33750(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'21'), u'21')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'21'), u'21')
 
     def test_cpp_33760(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'21AD3D34h'), u'0x21AD3D34')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'21AD3D34h'), u'0x21AD3D34')
 
     def test_cpp_33770(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'21h'), u'0x21')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'21h'), u'0x21')
 
     def test_cpp_33780(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'22'), u'22')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'22'), u'22')
 
     def test_cpp_33790(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'23'), u'23')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'23'), u'23')
 
     def test_cpp_33800(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'24'), u'24')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'24'), u'24')
 
     def test_cpp_33810(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'24h'), u'0x24')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'24h'), u'0x24')
 
     def test_cpp_33820(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'25'), u'25')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'25'), u'25')
 
     def test_cpp_33830(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'255'), u'255')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'255'), u'255')
 
     def test_cpp_33840(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'256'), u'256')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'256'), u'256')
 
     def test_cpp_33850(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'256*3'), u'256*3')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'256*3'), u'256*3')
 
     def test_cpp_33860(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'256+3'), u'256+3')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'256+3'), u'256+3')
 
     def test_cpp_33870(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'256+3+65536'), u'256+3+65536')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'256+3+65536'), u'256+3+65536')
 
     def test_cpp_33880(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'26'), u'26')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'26'), u'26')
 
     def test_cpp_33890(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'27'), u'27')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'27'), u'27')
 
     def test_cpp_33900(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'28'), u'28')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'28'), u'28')
 
     def test_cpp_33910(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'29'), u'29')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'29'), u'29')
 
     def test_cpp_33920(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'2Ch'), u'0x2C')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'2Ch'), u'0x2C')
 
     def test_cpp_33930(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'2Dh'), u'0x2D')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'2Dh'), u'0x2D')
 
     def test_cpp_33940(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'3'), u'3')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'3'), u'3')
 
     def test_cpp_33950(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'3*4'), u'3*4')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'3*4'), u'3*4')
 
     def test_cpp_33960(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'30'), u'30')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'30'), u'30')
 
     def test_cpp_33970(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'303Bh'), u'0x303B')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'303Bh'), u'0x303B')
 
     def test_cpp_33980(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'30h'), u'0x30')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'30h'), u'0x30')
 
     def test_cpp_33990(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'31'), u'31')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'31'), u'31')
 
     def test_cpp_34000(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'31h'), u'0x31')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'31h'), u'0x31')
 
     def test_cpp_34010(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'32'), u'32')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'32'), u'32')
 
     def test_cpp_34020(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'320*200/4'), u'320*200/4')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'320*200/4'), u'320*200/4')
 
     def test_cpp_34030(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'32432434h'), u'0x32432434')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'32432434h'), u'0x32432434')
 
     def test_cpp_34040(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'340128h'), u'0x340128')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'340128h'), u'0x340128')
 
     def test_cpp_34050(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'35'), u'35')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'35'), u'35')
 
     def test_cpp_34060(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'37'), u'37')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'37'), u'37')
 
     def test_cpp_34070(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'39h'), u'0x39')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'39h'), u'0x39')
 
     def test_cpp_34080(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'3Ch'), u'0x3C')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'3Ch'), u'0x3C')
 
     def test_cpp_34090(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'3DAh'), u'0x3DA')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'3DAh'), u'0x3DA')
 
     def test_cpp_34100(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'3Eh'), u'0x3E')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'3Eh'), u'0x3E')
 
     def test_cpp_34110(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'3FEh'), u'0x3FE')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'3FEh'), u'0x3FE')
 
     def test_cpp_34120(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'3FFEh'), u'0x3FFE')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'3FFEh'), u'0x3FFE')
 
     def test_cpp_34130(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'3FFFEh'), u'0x3FFFE')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'3FFFEh'), u'0x3FFFE')
 
     def test_cpp_34140(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'3FFFFEh'), u'0x3FFFFE')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'3FFFFEh'), u'0x3FFFFE')
 
     def test_cpp_34150(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'3FFFFFEh'), u'0x3FFFFFE')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'3FFFFFEh'), u'0x3FFFFFE')
 
     def test_cpp_34160(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'3FFFFFFEh'), u'0x3FFFFFFE')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'3FFFFFFEh'), u'0x3FFFFFFE')
 
     def test_cpp_34170(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'3FFFFFFFh'), u'0x3FFFFFFF')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'3FFFFFFFh'), u'0x3FFFFFFF')
 
     def test_cpp_34180(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'3FFFFFFh'), u'0x3FFFFFF')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'3FFFFFFh'), u'0x3FFFFFF')
 
     def test_cpp_34190(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'3FFFFFh'), u'0x3FFFFF')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'3FFFFFh'), u'0x3FFFFF')
 
     def test_cpp_34200(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'3FFFFh'), u'0x3FFFF')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'3FFFFh'), u'0x3FFFF')
 
     def test_cpp_34210(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'3FFFh'), u'0x3FFF')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'3FFFh'), u'0x3FFF')
 
     def test_cpp_34220(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'3FFh'), u'0x3FF')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'3FFh'), u'0x3FF')
 
     def test_cpp_34230(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'3Fh'), u'0x3F')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'3Fh'), u'0x3F')
 
     def test_cpp_34240(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'3c8h'), u'0x3c8')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'3c8h'), u'0x3c8')
 
     def test_cpp_34250(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'3c9h'), u'0x3c9')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'3c9h'), u'0x3c9')
 
     def test_cpp_34260(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'3h'), u'0x3')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'3h'), u'0x3')
 
     def test_cpp_34270(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'4'), u'4')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'4'), u'4')
 
     def test_cpp_34280(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'4+5*256'), u'4+5*256')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'4+5*256'), u'4+5*256')
 
     def test_cpp_34290(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'4000000'), u'4000000')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'4000000'), u'4000000')
 
     def test_cpp_34300(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'40h'), u'0x40')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'40h'), u'0x40')
 
     def test_cpp_34310(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'43210123h'), u'0x43210123')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'43210123h'), u'0x43210123')
 
     def test_cpp_34320(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'48h'), u'0x48')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'48h'), u'0x48')
 
     def test_cpp_34330(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'49h'), u'0x49')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'49h'), u'0x49')
 
     def test_cpp_34340(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'4Ah'), u'0x4A')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'4Ah'), u'0x4A')
 
     def test_cpp_34350(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'4Ch'), u'0x4C')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'4Ch'), u'0x4C')
 
     def test_cpp_34360(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'4ch'), u'0x4c')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'4ch'), u'0x4c')
 
     def test_cpp_34370(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'5'), u'5')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'5'), u'5')
 
     def test_cpp_34380(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'50'), u'50')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'50'), u'50')
 
     def test_cpp_34390(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'501h'), u'0x501')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'501h'), u'0x501')
 
     def test_cpp_34400(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'511'), u'511')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'511'), u'511')
 
     def test_cpp_34410(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'55'), u'55')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'55'), u'55')
 
     def test_cpp_34420(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'56'), u'56')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'56'), u'56')
 
     def test_cpp_34430(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'57'), u'57')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'57'), u'57')
 
     def test_cpp_34440(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'6'), u'6')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'6'), u'6')
 
     def test_cpp_34450(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'6*256+5'), u'6*256+5')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'6*256+5'), u'6*256+5')
 
     def test_cpp_34460(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'60'), u'60')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'60'), u'60')
 
     def test_cpp_34470(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'65324h'), u'0x65324')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'65324h'), u'0x65324')
 
     def test_cpp_34480(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'65423456h'), u'0x65423456')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'65423456h'), u'0x65423456')
 
     def test_cpp_34490(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'6789ABCDh'), u'0x6789ABCD')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'6789ABCDh'), u'0x6789ABCD')
 
     def test_cpp_34500(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'7'), u'7')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'7'), u'7')
 
     def test_cpp_34510(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'7Eh'), u'0x7E')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'7Eh'), u'0x7E')
 
     def test_cpp_34520(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'7FEh'), u'0x7FE')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'7FEh'), u'0x7FE')
 
     def test_cpp_34530(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'7FFEh'), u'0x7FFE')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'7FFEh'), u'0x7FFE')
 
     def test_cpp_34540(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'7FFFEh'), u'0x7FFFE')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'7FFFEh'), u'0x7FFFE')
 
     def test_cpp_34550(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'7FFFFEh'), u'0x7FFFFE')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'7FFFFEh'), u'0x7FFFFE')
 
     def test_cpp_34560(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'7FFFFFEh'), u'0x7FFFFFE')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'7FFFFFEh'), u'0x7FFFFFE')
 
     def test_cpp_34570(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'7FFFFFFEh'), u'0x7FFFFFFE')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'7FFFFFFEh'), u'0x7FFFFFFE')
 
     def test_cpp_34580(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'7FFFFFFFh'), u'0x7FFFFFFF')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'7FFFFFFFh'), u'0x7FFFFFFF')
 
     def test_cpp_34590(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'7FFFFFFh'), u'0x7FFFFFF')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'7FFFFFFh'), u'0x7FFFFFF')
 
     def test_cpp_34600(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'7FFFFFh'), u'0x7FFFFF')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'7FFFFFh'), u'0x7FFFFF')
 
     def test_cpp_34610(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'7FFFFh'), u'0x7FFFF')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'7FFFFh'), u'0x7FFFF')
 
     def test_cpp_34620(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'7FFFh'), u'0x7FFF')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'7FFFh'), u'0x7FFF')
 
     def test_cpp_34630(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'7FFh'), u'0x7FF')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'7FFh'), u'0x7FF')
 
     def test_cpp_34640(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'7Fh'), u'0x7F')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'7Fh'), u'0x7F')
 
     def test_cpp_34650(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'8'), u'8')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'8'), u'8')
 
     def test_cpp_34660(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'80000000h'), u'0x80000000')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'80000000h'), u'0x80000000')
 
     def test_cpp_34670(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'80000001h'), u'0x80000001')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'80000001h'), u'0x80000001')
 
     def test_cpp_34680(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'80008481h'), u'0x80008481')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'80008481h'), u'0x80008481')
 
     def test_cpp_34690(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'80008688h'), u'0x80008688')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'80008688h'), u'0x80008688')
 
     def test_cpp_34700(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'8000h'), u'0x8000')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'8000h'), u'0x8000')
 
     def test_cpp_34710(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'801h'), u'0x801')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'801h'), u'0x801')
 
     def test_cpp_34720(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'80h'), u'0x80')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'80h'), u'0x80')
 
     def test_cpp_34730(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'81234567h'), u'0x81234567')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'81234567h'), u'0x81234567')
 
     def test_cpp_34740(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'81238567h'), u'0x81238567')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'81238567h'), u'0x81238567')
 
     def test_cpp_34750(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'812FADAh'), u'0x812FADA')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'812FADAh'), u'0x812FADA')
 
     def test_cpp_34760(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'813F3421h'), u'0x813F3421')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'813F3421h'), u'0x813F3421')
 
     def test_cpp_34770(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'81h'), u'0x81')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'81h'), u'0x81')
 
     def test_cpp_34780(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'82345679h'), u'0x82345679')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'82345679h'), u'0x82345679')
 
     def test_cpp_34790(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'8234A6F8h'), u'0x8234A6F8')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'8234A6F8h'), u'0x8234A6F8')
 
     def test_cpp_34800(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'8345A1F2h'), u'0x8345A1F2')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'8345A1F2h'), u'0x8345A1F2')
 
     def test_cpp_34810(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'8C5h'), u'0x8C5')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'8C5h'), u'0x8C5')
 
     def test_cpp_34820(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'8D5h'), u'0x8D5')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'8D5h'), u'0x8D5')
 
     def test_cpp_34830(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'9'), u'9')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'9'), u'9')
 
     def test_cpp_34840(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'9ABCDEFh'), u'0x9ABCDEF')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'9ABCDEFh'), u'0x9ABCDEF')
 
     def test_cpp_34850(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'AL'), u'AL')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'AL'), u'AL')
 
     def test_cpp_34860(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'B'), u'B')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'B'), u'B')
 
     def test_cpp_34870(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'CC'), u'CC')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'CC'), u'CC')
 
     def test_cpp_34880(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'DDD'), u'DDD')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'DDD'), u'DDD')
 
     def test_cpp_34890(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'DX'), u'DX')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'DX'), u'DX')
 
     def test_cpp_34900(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'OFFSET ASCiI'), u'OFFSET ASCiI')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'OFFSET ASCiI'), u'OFFSET ASCiI')
 
     def test_cpp_34910(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'OFFSET AsCii'), u'OFFSET AsCii')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'OFFSET AsCii'), u'OFFSET AsCii')
 
     def test_cpp_34920(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'TWO'), u'TWO')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'TWO'), u'TWO')
 
     def test_cpp_34930(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'[a+1]'), u'[a+1]')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'[a+1]'), u'[a+1]')
 
     def test_cpp_34940(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'[a]'), u'[a]')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'[a]'), u'[a]')
 
     def test_cpp_34950(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'[cs:table+ax]'), u'[cs:table+ax]')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'[cs:table+ax]'), u'[cs:table+ax]')
 
     def test_cpp_34960(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'[doublequote+4]'), u'[doublequote+4]')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'[doublequote+4]'), u'[doublequote+4]')
 
     '''
     def test_cpp_34970(self):
@@ -4508,55 +4508,55 @@ class CppTest(unittest.TestCase):
     '''
 
     def test_cpp_35000(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'[eax+ecx]'), u'[eax+ecx]')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'[eax+ecx]'), u'[eax+ecx]')
 
     def test_cpp_35010(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'[eax]'), u'[eax]')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'[eax]'), u'[eax]')
 
     def test_cpp_35020(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'[ebp+ecx_0]'), u'[ebp+ecx_0]')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'[ebp+ecx_0]'), u'[ebp+ecx_0]')
 
     def test_cpp_35030(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'[ebp+ecx_vals]'), u'[ebp+ecx_vals]')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'[ebp+ecx_vals]'), u'[ebp+ecx_vals]')
 
     def test_cpp_35040(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'[ebp+edx_0]'), u'[ebp+edx_0]')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'[ebp+edx_0]'), u'[ebp+edx_0]')
 
     def test_cpp_35050(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'[ebp+i*4+ecx_vals]'), u'[ebp+i*4+ecx_vals]')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'[ebp+i*4+ecx_vals]'), u'[ebp+i*4+ecx_vals]')
 
     def test_cpp_35060(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'[ebp+i+table]'), u'[ebp+i+table]')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'[ebp+i+table]'), u'[ebp+i+table]')
 
     def test_cpp_35070(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'[ebp+iflags]'), u'[ebp+iflags]')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'[ebp+iflags]'), u'[ebp+iflags]')
 
     def test_cpp_35080(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'[ebp+op0]'), u'[ebp+op0]')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'[ebp+op0]'), u'[ebp+op0]')
 
     def test_cpp_35090(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'[ebp+op0h]'), u'[ebp+op0h]')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'[ebp+op0h]'), u'[ebp+op0h]')
 
     def test_cpp_35100(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'[ebp+s0]'), u'[ebp+s0]')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'[ebp+s0]'), u'[ebp+s0]')
 
     def test_cpp_35110(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'[ebp+s1]'), u'[ebp+s1]')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'[ebp+s1]'), u'[ebp+s1]')
 
     def test_cpp_35120(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'[ebp+s2]'), u'[ebp+s2]')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'[ebp+s2]'), u'[ebp+s2]')
 
     def test_cpp_35130(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'[ebp+table]'), u'[ebp+table]')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'[ebp+table]'), u'[ebp+table]')
 
     def test_cpp_35140(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'[ebp+var_1C]'), u'[ebp+var_1C]')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'[ebp+var_1C]'), u'[ebp+var_1C]')
 
     def test_cpp_35150(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'[ebp+var_20]'), u'[ebp+var_20]')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'[ebp+var_20]'), u'[ebp+var_20]')
 
     def test_cpp_35160(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'[ebp+var_4]'), u'[ebp+var_4]')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'[ebp+var_4]'), u'[ebp+var_4]')
 
     '''
     def test_cpp_35170(self):
@@ -4570,10 +4570,10 @@ class CppTest(unittest.TestCase):
     '''
 
     def test_cpp_35200(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'[ebx+edx]'), u'[ebx+edx]')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'[ebx+edx]'), u'[ebx+edx]')
 
     def test_cpp_35210(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'[ebx]'), u'[ebx]')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'[ebx]'), u'[ebx]')
 
     '''
     def test_cpp_35220(self):
@@ -4755,100 +4755,100 @@ class CppTest(unittest.TestCase):
     '''
 
     def test_cpp_35810(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'ah'), u'ah')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'ah'), u'ah')
 
     def test_cpp_35820(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'al'), u'al')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'al'), u'al')
 
     def test_cpp_35830(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'ax'), u'ax')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'ax'), u'ax')
 
     def test_cpp_35840(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'b'), u'b')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'b'), u'b')
 
     def test_cpp_35850(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'beginningdata'), u'beginningdata')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'beginningdata'), u'beginningdata')
 
     def test_cpp_35860(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'bh'), u'bh')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'bh'), u'bh')
 
     def test_cpp_35870(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'bl'), u'bl')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'bl'), u'bl')
 
     def test_cpp_35880(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'bp'), u'bp')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'bp'), u'bp')
 
     def test_cpp_35890(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'buffer'), u'buffer')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'buffer'), u'buffer')
 
     def test_cpp_35900(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'bx'), u'bx')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'bx'), u'bx')
 
     def test_cpp_35910(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'byte ptr [a]'), u'byte ptr [a]')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'byte ptr [a]'), u'byte ptr [a]')
 
     def test_cpp_35920(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'byte ptr [ebp+var_20]'), u'byte ptr [ebp+var_20]')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'byte ptr [ebp+var_20]'), u'byte ptr [ebp+var_20]')
 
     def test_cpp_35930(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'byte ptr [edi+1]'), u'byte ptr [edi+1]')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'byte ptr [edi+1]'), u'byte ptr [edi+1]')
 
     def test_cpp_35940(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'byte ptr [edi+7]'), u'byte ptr [edi+7]')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'byte ptr [edi+7]'), u'byte ptr [edi+7]')
 
     def test_cpp_35950(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'byte ptr [esi]'), u'byte ptr [esi]')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'byte ptr [esi]'), u'byte ptr [esi]')
 
     def test_cpp_35960(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'byte ptr [h2]'), u'byte ptr [h2]')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'byte ptr [h2]'), u'byte ptr [h2]')
 
     def test_cpp_35970(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'byte ptr [h]'), u'byte ptr [h]')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'byte ptr [h]'), u'byte ptr [h]')
 
     def test_cpp_35980(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'byte ptr [testOVerlap+1]'), u'byte ptr [testOVerlap+1]')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'byte ptr [testOVerlap+1]'), u'byte ptr [testOVerlap+1]')
 
     def test_cpp_35990(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'byte ptr [var1+1]'), u'byte ptr [var1+1]')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'byte ptr [var1+1]'), u'byte ptr [var1+1]')
 
     def test_cpp_36000(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'byte ptr [var1+2]'), u'byte ptr [var1+2]')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'byte ptr [var1+2]'), u'byte ptr [var1+2]')
 
     def test_cpp_36010(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'byte ptr dl'), u'byte ptr dl')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'byte ptr dl'), u'byte ptr dl')
 
     def test_cpp_36020(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'byte ptr ds:[0]'), u'byte ptr ds:[0]')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'byte ptr ds:[0]'), u'byte ptr ds:[0]')
 
     def test_cpp_36030(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'byte ptr es:[0]'), u'byte ptr es:[0]')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'byte ptr es:[0]'), u'byte ptr es:[0]')
 
     def test_cpp_36040(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'ch'), u'ch')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'ch'), u'ch')
 
     def test_cpp_36050(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'cl'), u'cl')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'cl'), u'cl')
 
     def test_cpp_36060(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'cx'), u'cx')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'cx'), u'cx')
 
     def test_cpp_36070(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'di'), u'di')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'di'), u'di')
 
     def test_cpp_36080(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'dl'), u'dl')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'dl'), u'dl')
 
     def test_cpp_36090(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'ds'), u'ds')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'ds'), u'ds')
 
     def test_cpp_36100(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'ds:0[eax*2]'), u'ds:0[eax*2]')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'ds:0[eax*2]'), u'ds:0[eax*2]')
 
     def test_cpp_36110(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'ds:0[ebx*4]'), u'ds:0[ebx*4]')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'ds:0[ebx*4]'), u'ds:0[ebx*4]')
 
     def test_cpp_36120(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'ds:0[ecx*8]'), u'ds:0[ecx*8]')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'ds:0[ecx*8]'), u'ds:0[ecx*8]')
 
     #def test_cpp_36130(self):
     #    self.assertEqual(convert_number_to_c(expr=u'ds:40h[eax*2]'), u'ds:0x40[eax*2]')
@@ -4860,19 +4860,19 @@ class CppTest(unittest.TestCase):
     #    self.assertEqual(convert_number_to_c(expr=u'ds:40h[ecx*8]'), u'ds:0x40[ecx*8]')
 
     def test_cpp_36160(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'ds:[edi]'), u'ds:[edi]')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'ds:[edi]'), u'ds:[edi]')
 
     def test_cpp_36170(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'ds:byte_41411F[eax]'), u'ds:byte_41411F[eax]')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'ds:byte_41411F[eax]'), u'ds:byte_41411F[eax]')
 
     def test_cpp_36180(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'dword ptr [ebp+var_20+4]'), u'dword ptr [ebp+var_20+4]')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'dword ptr [ebp+var_20+4]'), u'dword ptr [ebp+var_20+4]')
 
     def test_cpp_36190(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'dword ptr [ebp+var_20]'), u'dword ptr [ebp+var_20]')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'dword ptr [ebp+var_20]'), u'dword ptr [ebp+var_20]')
 
     def test_cpp_36200(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'dword ptr [ebx-4]'), u'dword ptr [ebx-4]')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'dword ptr [ebx-4]'), u'dword ptr [ebx-4]')
 
     '''
     def test_cpp_36210(self):
@@ -4889,799 +4889,799 @@ class CppTest(unittest.TestCase):
     '''
 
     def test_cpp_36250(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'dword ptr [esp+4]'), u'dword ptr [esp+4]')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'dword ptr [esp+4]'), u'dword ptr [esp+4]')
 
     def test_cpp_36260(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'dword ptr [esp+8]'), u'dword ptr [esp+8]')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'dword ptr [esp+8]'), u'dword ptr [esp+8]')
 
     def test_cpp_36270(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'dword ptr [esp]'), u'dword ptr [esp]')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'dword ptr [esp]'), u'dword ptr [esp]')
 
     def test_cpp_36280(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'dword ptr buffer'), u'dword ptr buffer')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'dword ptr buffer'), u'dword ptr buffer')
 
     def test_cpp_36290(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'dword ptr es:[0]'), u'dword ptr es:[0]')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'dword ptr es:[0]'), u'dword ptr es:[0]')
 
     def test_cpp_36300(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'dword ptr es:[20*320+160]'), u'dword ptr es:[20*320+160]')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'dword ptr es:[20*320+160]'), u'dword ptr es:[20*320+160]')
 
     def test_cpp_36310(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'dword ptr var4'), u'dword ptr var4')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'dword ptr var4'), u'dword ptr var4')
 
     def test_cpp_36320(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'dword'), u'dword')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'dword'), u'dword')
 
     def test_cpp_36330(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'dx'), u'dx')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'dx'), u'dx')
 
     def test_cpp_36340(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'eax'), u'eax')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'eax'), u'eax')
 
     def test_cpp_36350(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'eax_0'), u'eax_0')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'eax_0'), u'eax_0')
 
     def test_cpp_36360(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'ebp'), u'ebp')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'ebp'), u'ebp')
 
     def test_cpp_36370(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'ebx'), u'ebx')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'ebx'), u'ebx')
 
     def test_cpp_36380(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'ecx'), u'ecx')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'ecx'), u'ecx')
 
     def test_cpp_36390(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'ecx_0'), u'ecx_0')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'ecx_0'), u'ecx_0')
 
     def test_cpp_36400(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'ecx_0_0'), u'ecx_0_0')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'ecx_0_0'), u'ecx_0_0')
 
     def test_cpp_36410(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'edi'), u'edi')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'edi'), u'edi')
 
     def test_cpp_36420(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'edi_0'), u'edi_0')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'edi_0'), u'edi_0')
 
     def test_cpp_36430(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'edx'), u'edx')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'edx'), u'edx')
 
     def test_cpp_36440(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'edx_0_0'), u'edx_0_0')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'edx_0_0'), u'edx_0_0')
 
     def test_cpp_36450(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'eflags'), u'eflags')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'eflags'), u'eflags')
 
     def test_cpp_36460(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'enddata'), u'enddata')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'enddata'), u'enddata')
 
     def test_cpp_36470(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'es'), u'es')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'es'), u'es')
 
     def test_cpp_36480(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'esi'), u'esi')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'esi'), u'esi')
 
     def test_cpp_36490(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'esi_0'), u'esi_0')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'esi_0'), u'esi_0')
 
     def test_cpp_36500(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'esp'), u'esp')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'esp'), u'esp')
 
     def test_cpp_36510(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'f'), u'f')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'f'), u'f')
 
     def test_cpp_36520(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'fileName'), u'fileName')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'fileName'), u'fileName')
 
     def test_cpp_36530(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'flags'), u'flags')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'flags'), u'flags')
 
     def test_cpp_36540(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'fs'), u'fs')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'fs'), u'fs')
 
     def test_cpp_36550(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'i'), u'i')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'i'), u'i')
 
     #def test_cpp_36560(self):
         # self.assertEqual(convert_number_to_c(expr=u'large ds:4000h'), u'large ds:0x4000')
 
     def test_cpp_36570(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset _msg'), u'offset _msg')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset _msg'), u'offset _msg')
 
     def test_cpp_36580(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset _test_btc'), u'offset _test_btc')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset _test_btc'), u'offset _test_btc')
 
     def test_cpp_36590(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset a0x4000'), u'offset a0x4000')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset a0x4000'), u'offset a0x4000')
 
     def test_cpp_36600(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset a0x4000Eax'), u'offset a0x4000Eax')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset a0x4000Eax'), u'offset a0x4000Eax')
 
     def test_cpp_36610(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset a0x4000Ebx'), u'offset a0x4000Ebx')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset a0x4000Ebx'), u'offset a0x4000Ebx')
 
     def test_cpp_36620(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset a0x4000EbxEdx'), u'offset a0x4000EbxEdx')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset a0x4000EbxEdx'), u'offset a0x4000EbxEdx')
 
     def test_cpp_36630(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset a0x4000Ecx'), u'offset a0x4000Ecx')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset a0x4000Ecx'), u'offset a0x4000Ecx')
 
     def test_cpp_36640(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset a0x4000EcxEcx2'), u'offset a0x4000EcxEcx2')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset a0x4000EcxEcx2'), u'offset a0x4000EcxEcx2')
 
     def test_cpp_36650(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset a0x4000Edi'), u'offset a0x4000Edi')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset a0x4000Edi'), u'offset a0x4000Edi')
 
     def test_cpp_36660(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset a0x4000Edx'), u'offset a0x4000Edx')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset a0x4000Edx'), u'offset a0x4000Edx')
 
     def test_cpp_36670(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset a0x4000EdxEcx4'), u'offset a0x4000EdxEcx4')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset a0x4000EdxEcx4'), u'offset a0x4000EdxEcx4')
 
     def test_cpp_36680(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset a0x4000Esi'), u'offset a0x4000Esi')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset a0x4000Esi'), u'offset a0x4000Esi')
 
     def test_cpp_36690(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset a0x4000EsiEcx8'), u'offset a0x4000EsiEcx8')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset a0x4000EsiEcx8'), u'offset a0x4000EsiEcx8')
 
     def test_cpp_36700(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset a0x40Eax'), u'offset a0x40Eax')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset a0x40Eax'), u'offset a0x40Eax')
 
     def test_cpp_36710(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset a0x40Eax2'), u'offset a0x40Eax2')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset a0x40Eax2'), u'offset a0x40Eax2')
 
     def test_cpp_36720(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset a0x40EaxEcx'), u'offset a0x40EaxEcx')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset a0x40EaxEcx'), u'offset a0x40EaxEcx')
 
     def test_cpp_36730(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset a0x40Ebx'), u'offset a0x40Ebx')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset a0x40Ebx'), u'offset a0x40Ebx')
 
     def test_cpp_36740(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset a0x40Ebx4'), u'offset a0x40Ebx4')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset a0x40Ebx4'), u'offset a0x40Ebx4')
 
     def test_cpp_36750(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset a0x40Ecx'), u'offset a0x40Ecx')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset a0x40Ecx'), u'offset a0x40Ecx')
 
     def test_cpp_36760(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset a0x40Ecx8'), u'offset a0x40Ecx8')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset a0x40Ecx8'), u'offset a0x40Ecx8')
 
     def test_cpp_36770(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset a0x40Edi'), u'offset a0x40Edi')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset a0x40Edi'), u'offset a0x40Edi')
 
     def test_cpp_36780(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset a0x40Edx'), u'offset a0x40Edx')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset a0x40Edx'), u'offset a0x40Edx')
 
     def test_cpp_36790(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset a0x40Esi'), u'offset a0x40Esi')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset a0x40Esi'), u'offset a0x40Esi')
 
     def test_cpp_36800(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset a10EcxEcx2'), u'offset a10EcxEcx2')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset a10EcxEcx2'), u'offset a10EcxEcx2')
 
     def test_cpp_36810(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset a10EdxEcx4'), u'offset a10EdxEcx4')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset a10EdxEcx4'), u'offset a10EdxEcx4')
 
     def test_cpp_36820(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset a10EsiEcx8'), u'offset a10EsiEcx8')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset a10EsiEcx8'), u'offset a10EsiEcx8')
 
     def test_cpp_36830(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset a10sA08lxB08lx'), u'offset a10sA08lxB08lx')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset a10sA08lxB08lx'), u'offset a10sA08lxB08lx')
 
     def test_cpp_36840(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset a10sA08lxB08lxC'), u'offset a10sA08lxB08lxC')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset a10sA08lxB08lxC'), u'offset a10sA08lxB08lxC')
 
     def test_cpp_36850(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset a10sA08lxB08lxR'), u'offset a10sA08lxB08lxR')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset a10sA08lxB08lxR'), u'offset a10sA08lxB08lxR')
 
     def test_cpp_36860(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset a10sA08lxB08lxR_0'), u'offset a10sA08lxB08lxR_0')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset a10sA08lxB08lxR_0'), u'offset a10sA08lxB08lxR_0')
 
     def test_cpp_36870(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset a10sA08lxR08lx'), u'offset a10sA08lxR08lx')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset a10sA08lxR08lx'), u'offset a10sA08lxR08lx')
 
     def test_cpp_36880(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset a10sA08lxR08lx0'), u'offset a10sA08lxR08lx0')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset a10sA08lxR08lx0'), u'offset a10sA08lxR08lx0')
 
     def test_cpp_36890(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset a10sA08lxR08lxC'), u'offset a10sA08lxR08lxC')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset a10sA08lxR08lxC'), u'offset a10sA08lxR08lxC')
 
     def test_cpp_36900(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset a10sA08lxR08lxL'), u'offset a10sA08lxR08lxL')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset a10sA08lxR08lxL'), u'offset a10sA08lxR08lxL')
 
     def test_cpp_36910(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset a10sA08lxR08lx_0'), u'offset a10sA08lxR08lx_0')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset a10sA08lxR08lx_0'), u'offset a10sA08lxR08lx_0')
 
     def test_cpp_36920(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset a10sA08xR08xCci'), u'offset a10sA08xR08xCci')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset a10sA08xR08xCci'), u'offset a10sA08xR08xCci')
 
     def test_cpp_36930(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset a10sAh08lxAl08l'), u'offset a10sAh08lxAl08l')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset a10sAh08lxAl08l'), u'offset a10sAh08lxAl08l')
 
     def test_cpp_36940(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset a10sD'), u'offset a10sD')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset a10sD'), u'offset a10sD')
 
     def test_cpp_36950(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset a10sEax08lxA08l'), u'offset a10sEax08lxA08l')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset a10sEax08lxA08l'), u'offset a10sEax08lxA08l')
 
     def test_cpp_36960(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset a10sEcx08lxZfLd'), u'offset a10sEcx08lxZfLd')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset a10sEcx08lxZfLd'), u'offset a10sEcx08lxZfLd')
 
     def test_cpp_36970(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset a10sEsi08lxEdi0'), u'offset a10sEsi08lxEdi0')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset a10sEsi08lxEdi0'), u'offset a10sEsi08lxEdi0')
 
     def test_cpp_36980(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aAaa'), u'offset aAaa')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aAaa'), u'offset aAaa')
 
     def test_cpp_36990(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aAad'), u'offset aAad')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aAad'), u'offset aAad')
 
     def test_cpp_37000(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aAam'), u'offset aAam')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aAam'), u'offset aAam')
 
     def test_cpp_37010(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aAas'), u'offset aAas')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aAas'), u'offset aAas')
 
     def test_cpp_37020(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aAdcb'), u'offset aAdcb')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aAdcb'), u'offset aAdcb')
 
     def test_cpp_37030(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aAdcl'), u'offset aAdcl')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aAdcl'), u'offset aAdcl')
 
     def test_cpp_37040(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aAdcw'), u'offset aAdcw')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aAdcw'), u'offset aAdcw')
 
     def test_cpp_37050(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aAddb'), u'offset aAddb')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aAddb'), u'offset aAddb')
 
     def test_cpp_37060(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aAddl'), u'offset aAddl')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aAddl'), u'offset aAddl')
 
     def test_cpp_37070(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aAddw'), u'offset aAddw')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aAddw'), u'offset aAddw')
 
     def test_cpp_37080(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aAndb'), u'offset aAndb')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aAndb'), u'offset aAndb')
 
     def test_cpp_37090(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aAndl'), u'offset aAndl')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aAndl'), u'offset aAndl')
 
     def test_cpp_37100(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aAndw'), u'offset aAndw')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aAndw'), u'offset aAndw')
 
     def test_cpp_37110(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aBsfl'), u'offset aBsfl')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aBsfl'), u'offset aBsfl')
 
     def test_cpp_37120(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aBsfw'), u'offset aBsfw')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aBsfw'), u'offset aBsfw')
 
     def test_cpp_37130(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aBsrl'), u'offset aBsrl')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aBsrl'), u'offset aBsrl')
 
     def test_cpp_37140(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aBsrw'), u'offset aBsrw')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aBsrw'), u'offset aBsrw')
 
     def test_cpp_37150(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aBswapl'), u'offset aBswapl')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aBswapl'), u'offset aBswapl')
 
     def test_cpp_37160(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aBtcl'), u'offset aBtcl')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aBtcl'), u'offset aBtcl')
 
     def test_cpp_37170(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aBtcw'), u'offset aBtcw')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aBtcw'), u'offset aBtcw')
 
     def test_cpp_37180(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aBtl'), u'offset aBtl')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aBtl'), u'offset aBtl')
 
     def test_cpp_37190(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aBtrl'), u'offset aBtrl')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aBtrl'), u'offset aBtrl')
 
     def test_cpp_37200(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aBtrw'), u'offset aBtrw')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aBtrw'), u'offset aBtrw')
 
     def test_cpp_37210(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aBtsl'), u'offset aBtsl')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aBtsl'), u'offset aBtsl')
 
     def test_cpp_37220(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aBtsw'), u'offset aBtsw')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aBtsw'), u'offset aBtsw')
 
     def test_cpp_37230(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aBtw'), u'offset aBtw')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aBtw'), u'offset aBtw')
 
     def test_cpp_37240(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aCbw'), u'offset aCbw')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aCbw'), u'offset aCbw')
 
     def test_cpp_37250(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aCdq'), u'offset aCdq')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aCdq'), u'offset aCdq')
 
     def test_cpp_37260(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aCmpb'), u'offset aCmpb')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aCmpb'), u'offset aCmpb')
 
     def test_cpp_37270(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aCmpl'), u'offset aCmpl')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aCmpl'), u'offset aCmpl')
 
     def test_cpp_37280(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aCmpsb'), u'offset aCmpsb')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aCmpsb'), u'offset aCmpsb')
 
     def test_cpp_37290(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aCmpsl'), u'offset aCmpsl')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aCmpsl'), u'offset aCmpsl')
 
     def test_cpp_37300(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aCmpsw'), u'offset aCmpsw')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aCmpsw'), u'offset aCmpsw')
 
     def test_cpp_37310(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aCmpw'), u'offset aCmpw')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aCmpw'), u'offset aCmpw')
 
     def test_cpp_37320(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aCmpxchg8bEax08'), u'offset aCmpxchg8bEax08')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aCmpxchg8bEax08'), u'offset aCmpxchg8bEax08')
 
     def test_cpp_37330(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aCmpxchgb'), u'offset aCmpxchgb')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aCmpxchgb'), u'offset aCmpxchgb')
 
     def test_cpp_37340(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aCmpxchgl'), u'offset aCmpxchgl')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aCmpxchgl'), u'offset aCmpxchgl')
 
     def test_cpp_37350(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aCmpxchgw'), u'offset aCmpxchgw')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aCmpxchgw'), u'offset aCmpxchgw')
 
     def test_cpp_37360(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aCwd'), u'offset aCwd')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aCwd'), u'offset aCwd')
 
     def test_cpp_37370(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aCwde'), u'offset aCwde')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aCwde'), u'offset aCwde')
 
     def test_cpp_37380(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aDaa'), u'offset aDaa')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aDaa'), u'offset aDaa')
 
     def test_cpp_37390(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aDas'), u'offset aDas')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aDas'), u'offset aDas')
 
     def test_cpp_37400(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aDecb'), u'offset aDecb')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aDecb'), u'offset aDecb')
 
     def test_cpp_37410(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aDecl'), u'offset aDecl')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aDecl'), u'offset aDecl')
 
     def test_cpp_37420(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aDecw'), u'offset aDecw')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aDecw'), u'offset aDecw')
 
     def test_cpp_37430(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aDivb'), u'offset aDivb')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aDivb'), u'offset aDivb')
 
     def test_cpp_37440(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aDivl'), u'offset aDivl')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aDivl'), u'offset aDivl')
 
     def test_cpp_37450(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aDivw'), u'offset aDivw')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aDivw'), u'offset aDivw')
 
     def test_cpp_37460(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aEax'), u'offset aEax')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aEax'), u'offset aEax')
 
     def test_cpp_37470(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aEax2'), u'offset aEax2')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aEax2'), u'offset aEax2')
 
     def test_cpp_37480(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aEaxEcx'), u'offset aEaxEcx')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aEaxEcx'), u'offset aEaxEcx')
 
     def test_cpp_37490(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aEbx'), u'offset aEbx')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aEbx'), u'offset aEbx')
 
     def test_cpp_37500(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aEbx4'), u'offset aEbx4')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aEbx4'), u'offset aEbx4')
 
     def test_cpp_37510(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aEbxEdx'), u'offset aEbxEdx')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aEbxEdx'), u'offset aEbxEdx')
 
     def test_cpp_37520(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aEcx'), u'offset aEcx')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aEcx'), u'offset aEcx')
 
     def test_cpp_37530(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aEcx8'), u'offset aEcx8')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aEcx8'), u'offset aEcx8')
 
     def test_cpp_37540(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aEcxEcx'), u'offset aEcxEcx')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aEcxEcx'), u'offset aEcxEcx')
 
     def test_cpp_37550(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aEcxEcx2'), u'offset aEcxEcx2')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aEcxEcx2'), u'offset aEcxEcx2')
 
     def test_cpp_37560(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aEdi'), u'offset aEdi')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aEdi'), u'offset aEdi')
 
     def test_cpp_37570(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aEdiEcx'), u'offset aEdiEcx')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aEdiEcx'), u'offset aEdiEcx')
 
     def test_cpp_37580(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aEdx'), u'offset aEdx')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aEdx'), u'offset aEdx')
 
     def test_cpp_37590(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aEdxEcx'), u'offset aEdxEcx')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aEdxEcx'), u'offset aEdxEcx')
 
     def test_cpp_37600(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aEdxEcx4'), u'offset aEdxEcx4')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aEdxEcx4'), u'offset aEdxEcx4')
 
     def test_cpp_37610(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aEsi'), u'offset aEsi')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aEsi'), u'offset aEsi')
 
     def test_cpp_37620(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aEsiEcx'), u'offset aEsiEcx')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aEsiEcx'), u'offset aEsiEcx')
 
     def test_cpp_37630(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aEsiEcx8'), u'offset aEsiEcx8')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aEsiEcx8'), u'offset aEsiEcx8')
 
     def test_cpp_37640(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aIdivb'), u'offset aIdivb')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aIdivb'), u'offset aIdivb')
 
     def test_cpp_37650(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aIdivl'), u'offset aIdivl')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aIdivl'), u'offset aIdivl')
 
     def test_cpp_37660(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aIdivw'), u'offset aIdivw')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aIdivw'), u'offset aIdivw')
 
     def test_cpp_37670(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aImulb'), u'offset aImulb')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aImulb'), u'offset aImulb')
 
     def test_cpp_37680(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aImull'), u'offset aImull')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aImull'), u'offset aImull')
 
     def test_cpp_37690(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aImullIm'), u'offset aImullIm')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aImullIm'), u'offset aImullIm')
 
     def test_cpp_37700(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aImulw'), u'offset aImulw')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aImulw'), u'offset aImulw')
 
     def test_cpp_37710(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aImulwIm'), u'offset aImulwIm')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aImulwIm'), u'offset aImulwIm')
 
     def test_cpp_37720(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aIncb'), u'offset aIncb')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aIncb'), u'offset aIncb')
 
     def test_cpp_37730(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aIncl'), u'offset aIncl')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aIncl'), u'offset aIncl')
 
     def test_cpp_37740(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aIncw'), u'offset aIncw')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aIncw'), u'offset aIncw')
 
     def test_cpp_37750(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aJa'), u'offset aJa')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aJa'), u'offset aJa')
 
     def test_cpp_37760(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aJae'), u'offset aJae')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aJae'), u'offset aJae')
 
     def test_cpp_37770(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aJb'), u'offset aJb')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aJb'), u'offset aJb')
 
     def test_cpp_37780(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aJbe'), u'offset aJbe')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aJbe'), u'offset aJbe')
 
     def test_cpp_37790(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aJcxz'), u'offset aJcxz')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aJcxz'), u'offset aJcxz')
 
     def test_cpp_37800(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aJe'), u'offset aJe')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aJe'), u'offset aJe')
 
     def test_cpp_37810(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aJecxz'), u'offset aJecxz')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aJecxz'), u'offset aJecxz')
 
     def test_cpp_37820(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aJg'), u'offset aJg')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aJg'), u'offset aJg')
 
     def test_cpp_37830(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aJge'), u'offset aJge')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aJge'), u'offset aJge')
 
     def test_cpp_37840(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aJl'), u'offset aJl')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aJl'), u'offset aJl')
 
     def test_cpp_37850(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aJle'), u'offset aJle')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aJle'), u'offset aJle')
 
     def test_cpp_37860(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aJne'), u'offset aJne')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aJne'), u'offset aJne')
 
     def test_cpp_37870(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aJns'), u'offset aJns')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aJns'), u'offset aJns')
 
     def test_cpp_37880(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aJs'), u'offset aJs')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aJs'), u'offset aJs')
 
     def test_cpp_37890(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aLeaS08lx'), u'offset aLeaS08lx')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aLeaS08lx'), u'offset aLeaS08lx')
 
     def test_cpp_37900(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aLodsb'), u'offset aLodsb')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aLodsb'), u'offset aLodsb')
 
     def test_cpp_37910(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aLodsl'), u'offset aLodsl')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aLodsl'), u'offset aLodsl')
 
     def test_cpp_37920(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aLodsw'), u'offset aLodsw')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aLodsw'), u'offset aLodsw')
 
     def test_cpp_37930(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aLoopl'), u'offset aLoopl')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aLoopl'), u'offset aLoopl')
 
     def test_cpp_37940(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aLoopnzl'), u'offset aLoopnzl')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aLoopnzl'), u'offset aLoopnzl')
 
     def test_cpp_37950(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aLoopzl'), u'offset aLoopzl')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aLoopzl'), u'offset aLoopzl')
 
     def test_cpp_37960(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aMovsb'), u'offset aMovsb')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aMovsb'), u'offset aMovsb')
 
     def test_cpp_37970(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aMovsl'), u'offset aMovsl')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aMovsl'), u'offset aMovsl')
 
     def test_cpp_37980(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aMovsw'), u'offset aMovsw')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aMovsw'), u'offset aMovsw')
 
     def test_cpp_37990(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aMulb'), u'offset aMulb')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aMulb'), u'offset aMulb')
 
     def test_cpp_38000(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aMull'), u'offset aMull')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aMull'), u'offset aMull')
 
     def test_cpp_38010(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aMulw'), u'offset aMulw')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aMulw'), u'offset aMulw')
 
     def test_cpp_38020(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aNegb'), u'offset aNegb')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aNegb'), u'offset aNegb')
 
     def test_cpp_38030(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aNegl'), u'offset aNegl')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aNegl'), u'offset aNegl')
 
     def test_cpp_38040(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aNegw'), u'offset aNegw')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aNegw'), u'offset aNegw')
 
     def test_cpp_38050(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aNotb'), u'offset aNotb')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aNotb'), u'offset aNotb')
 
     def test_cpp_38060(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aNotl'), u'offset aNotl')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aNotl'), u'offset aNotl')
 
     def test_cpp_38070(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aNotw'), u'offset aNotw')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aNotw'), u'offset aNotw')
 
     def test_cpp_38080(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aOrb'), u'offset aOrb')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aOrb'), u'offset aOrb')
 
     def test_cpp_38090(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aOrl'), u'offset aOrl')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aOrl'), u'offset aOrl')
 
     def test_cpp_38100(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aOrw'), u'offset aOrw')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aOrw'), u'offset aOrw')
 
     def test_cpp_38110(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aPopcntA08lxR08'), u'offset aPopcntA08lxR08')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aPopcntA08lxR08'), u'offset aPopcntA08lxR08')
 
     def test_cpp_38120(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aPoplEsp08lx'), u'offset aPoplEsp08lx')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aPoplEsp08lx'), u'offset aPoplEsp08lx')
 
     def test_cpp_38130(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aPopwEsp08lx'), u'offset aPopwEsp08lx')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aPopwEsp08lx'), u'offset aPopwEsp08lx')
 
     def test_cpp_38140(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aRclb'), u'offset aRclb')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aRclb'), u'offset aRclb')
 
     def test_cpp_38150(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aRcll'), u'offset aRcll')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aRcll'), u'offset aRcll')
 
     def test_cpp_38160(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aRclw'), u'offset aRclw')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aRclw'), u'offset aRclw')
 
     def test_cpp_38170(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aRcrb'), u'offset aRcrb')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aRcrb'), u'offset aRcrb')
 
     def test_cpp_38180(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aRcrl'), u'offset aRcrl')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aRcrl'), u'offset aRcrl')
 
     def test_cpp_38190(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aRcrw'), u'offset aRcrw')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aRcrw'), u'offset aRcrw')
 
     def test_cpp_38200(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aRepLodsb'), u'offset aRepLodsb')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aRepLodsb'), u'offset aRepLodsb')
 
     def test_cpp_38210(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aRepLodsl'), u'offset aRepLodsl')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aRepLodsl'), u'offset aRepLodsl')
 
     def test_cpp_38220(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aRepLodsw'), u'offset aRepLodsw')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aRepLodsw'), u'offset aRepLodsw')
 
     def test_cpp_38230(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aRepMovsb'), u'offset aRepMovsb')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aRepMovsb'), u'offset aRepMovsb')
 
     def test_cpp_38240(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aRepMovsl'), u'offset aRepMovsl')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aRepMovsl'), u'offset aRepMovsl')
 
     def test_cpp_38250(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aRepMovsw'), u'offset aRepMovsw')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aRepMovsw'), u'offset aRepMovsw')
 
     def test_cpp_38260(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aRepStosb'), u'offset aRepStosb')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aRepStosb'), u'offset aRepStosb')
 
     def test_cpp_38270(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aRepStosl'), u'offset aRepStosl')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aRepStosl'), u'offset aRepStosl')
 
     def test_cpp_38280(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aRepStosw'), u'offset aRepStosw')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aRepStosw'), u'offset aRepStosw')
 
     def test_cpp_38290(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aRepnzCmpsb'), u'offset aRepnzCmpsb')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aRepnzCmpsb'), u'offset aRepnzCmpsb')
 
     def test_cpp_38300(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aRepnzCmpsl'), u'offset aRepnzCmpsl')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aRepnzCmpsl'), u'offset aRepnzCmpsl')
 
     def test_cpp_38310(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aRepnzCmpsw'), u'offset aRepnzCmpsw')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aRepnzCmpsw'), u'offset aRepnzCmpsw')
 
     def test_cpp_38320(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aRepnzScasb'), u'offset aRepnzScasb')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aRepnzScasb'), u'offset aRepnzScasb')
 
     def test_cpp_38330(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aRepnzScasl'), u'offset aRepnzScasl')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aRepnzScasl'), u'offset aRepnzScasl')
 
     def test_cpp_38340(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aRepnzScasw'), u'offset aRepnzScasw')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aRepnzScasw'), u'offset aRepnzScasw')
 
     def test_cpp_38350(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aRepzCmpsb'), u'offset aRepzCmpsb')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aRepzCmpsb'), u'offset aRepzCmpsb')
 
     def test_cpp_38360(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aRepzCmpsl'), u'offset aRepzCmpsl')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aRepzCmpsl'), u'offset aRepzCmpsl')
 
     def test_cpp_38370(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aRepzCmpsw'), u'offset aRepzCmpsw')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aRepzCmpsw'), u'offset aRepzCmpsw')
 
     def test_cpp_38380(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aRepzScasb'), u'offset aRepzScasb')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aRepzScasb'), u'offset aRepzScasb')
 
     def test_cpp_38390(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aRepzScasl'), u'offset aRepzScasl')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aRepzScasl'), u'offset aRepzScasl')
 
     def test_cpp_38400(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aRepzScasw'), u'offset aRepzScasw')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aRepzScasw'), u'offset aRepzScasw')
 
     def test_cpp_38410(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aRolb'), u'offset aRolb')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aRolb'), u'offset aRolb')
 
     def test_cpp_38420(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aRoll'), u'offset aRoll')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aRoll'), u'offset aRoll')
 
     def test_cpp_38430(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aRolw'), u'offset aRolw')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aRolw'), u'offset aRolw')
 
     def test_cpp_38440(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aRorb'), u'offset aRorb')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aRorb'), u'offset aRorb')
 
     def test_cpp_38450(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aRorl'), u'offset aRorl')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aRorl'), u'offset aRorl')
 
     def test_cpp_38460(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aRorw'), u'offset aRorw')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aRorw'), u'offset aRorw')
 
     def test_cpp_38470(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aSarb'), u'offset aSarb')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aSarb'), u'offset aSarb')
 
     def test_cpp_38480(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aSarl'), u'offset aSarl')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aSarl'), u'offset aSarl')
 
     def test_cpp_38490(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aSarw'), u'offset aSarw')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aSarw'), u'offset aSarw')
 
     def test_cpp_38500(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aSbbb'), u'offset aSbbb')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aSbbb'), u'offset aSbbb')
 
     def test_cpp_38510(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aSbbl'), u'offset aSbbl')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aSbbl'), u'offset aSbbl')
 
     def test_cpp_38520(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aSbbw'), u'offset aSbbw')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aSbbw'), u'offset aSbbw')
 
     def test_cpp_38530(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aScasb'), u'offset aScasb')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aScasb'), u'offset aScasb')
 
     def test_cpp_38540(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aScasl'), u'offset aScasl')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aScasl'), u'offset aScasl')
 
     def test_cpp_38550(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aScasw'), u'offset aScasw')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aScasw'), u'offset aScasw')
 
     def test_cpp_38560(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aSetb'), u'offset aSetb')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aSetb'), u'offset aSetb')
 
     def test_cpp_38570(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aSete'), u'offset aSete')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aSete'), u'offset aSete')
 
     def test_cpp_38580(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aSetne'), u'offset aSetne')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aSetne'), u'offset aSetne')
 
     def test_cpp_38590(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aShlb'), u'offset aShlb')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aShlb'), u'offset aShlb')
 
     def test_cpp_38600(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aShldl'), u'offset aShldl')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aShldl'), u'offset aShldl')
 
     def test_cpp_38610(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aShldw'), u'offset aShldw')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aShldw'), u'offset aShldw')
 
     def test_cpp_38620(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aShll'), u'offset aShll')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aShll'), u'offset aShll')
 
     def test_cpp_38630(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aShlw'), u'offset aShlw')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aShlw'), u'offset aShlw')
 
     def test_cpp_38640(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aShrb'), u'offset aShrb')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aShrb'), u'offset aShrb')
 
     def test_cpp_38650(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aShrdl'), u'offset aShrdl')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aShrdl'), u'offset aShrdl')
 
     def test_cpp_38660(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aShrdw'), u'offset aShrdw')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aShrdw'), u'offset aShrdw')
 
     def test_cpp_38670(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aShrl'), u'offset aShrl')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aShrl'), u'offset aShrl')
 
     def test_cpp_38680(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aShrw'), u'offset aShrw')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aShrw'), u'offset aShrw')
 
     def test_cpp_38690(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aStosb'), u'offset aStosb')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aStosb'), u'offset aStosb')
 
     def test_cpp_38700(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aStosl'), u'offset aStosl')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aStosl'), u'offset aStosl')
 
     def test_cpp_38710(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aStosw'), u'offset aStosw')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aStosw'), u'offset aStosw')
 
     def test_cpp_38720(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aSubb'), u'offset aSubb')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aSubb'), u'offset aSubb')
 
     def test_cpp_38730(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aSubl'), u'offset aSubl')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aSubl'), u'offset aSubl')
 
     def test_cpp_38740(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aSubw'), u'offset aSubw')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aSubw'), u'offset aSubw')
 
     def test_cpp_38750(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aXaddb'), u'offset aXaddb')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aXaddb'), u'offset aXaddb')
 
     def test_cpp_38760(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aXaddl'), u'offset aXaddl')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aXaddl'), u'offset aXaddl')
 
     def test_cpp_38770(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aXaddlSameRes08'), u'offset aXaddlSameRes08')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aXaddlSameRes08'), u'offset aXaddlSameRes08')
 
     def test_cpp_38780(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aXaddw'), u'offset aXaddw')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aXaddw'), u'offset aXaddw')
 
     def test_cpp_38790(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aXchgb'), u'offset aXchgb')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aXchgb'), u'offset aXchgb')
 
     def test_cpp_38800(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aXchgl'), u'offset aXchgl')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aXchgl'), u'offset aXchgl')
 
     def test_cpp_38810(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aXchgw'), u'offset aXchgw')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aXchgw'), u'offset aXchgw')
 
     def test_cpp_38820(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aXlatEax08lx'), u'offset aXlatEax08lx')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aXlatEax08lx'), u'offset aXlatEax08lx')
 
     def test_cpp_38830(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aXorb'), u'offset aXorb')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aXorb'), u'offset aXorb')
 
     def test_cpp_38840(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aXorl'), u'offset aXorl')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aXorl'), u'offset aXorl')
 
     def test_cpp_38850(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset aXorw'), u'offset aXorw')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset aXorw'), u'offset aXorw')
 
     def test_cpp_38860(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset pal_jeu'), u'offset pal_jeu')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset pal_jeu'), u'offset pal_jeu')
 
     def test_cpp_38870(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset str1'), u'offset str1')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset str1'), u'offset str1')
 
     def test_cpp_38880(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset str2'), u'offset str2')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset str2'), u'offset str2')
 
     def test_cpp_38890(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset str3'), u'offset str3')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset str3'), u'offset str3')
 
     #def test_cpp_38900(self):
         # self.assertEqual(convert_number_to_c(expr=u'offset str_buffer+800h'), u'offset str_buffer+0x800')
@@ -5690,139 +5690,139 @@ class CppTest(unittest.TestCase):
         # self.assertEqual(convert_number_to_c(expr=u'offset str_buffer+810h'), u'offset str_buffer+0x810')
 
     def test_cpp_38920(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset testOVerlap'), u'offset testOVerlap')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset testOVerlap'), u'offset testOVerlap')
 
     def test_cpp_38930(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset unk_40E008'), u'offset unk_40E008')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset unk_40E008'), u'offset unk_40E008')
 
     def test_cpp_38940(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset unk_40F064'), u'offset unk_40F064')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset unk_40F064'), u'offset unk_40F064')
 
     def test_cpp_38950(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset var1'), u'offset var1')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset var1'), u'offset var1')
 
     def test_cpp_38960(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset var1+1'), u'offset var1+1')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset var1+1'), u'offset var1+1')
 
     def test_cpp_38970(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset var2'), u'offset var2')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset var2'), u'offset var2')
 
     def test_cpp_38980(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset var3'), u'offset var3')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset var3'), u'offset var3')
 
     def test_cpp_38990(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset var3+4'), u'offset var3+4')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset var3+4'), u'offset var3+4')
 
     def test_cpp_39000(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset var4'), u'offset var4')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset var4'), u'offset var4')
 
     def test_cpp_39010(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset var4+1'), u'offset var4+1')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset var4+1'), u'offset var4+1')
 
     def test_cpp_39020(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'offset var4+4'), u'offset var4+4')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'offset var4+4'), u'offset var4+4')
 
     def test_cpp_39030(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'op0'), u'op0')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'op0'), u'op0')
 
     def test_cpp_39040(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'op1'), u'op1')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'op1'), u'op1')
 
     def test_cpp_39050(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'printf'), u'printf')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'printf'), u'printf')
 
     def test_cpp_39060(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'ptr'), u'ptr')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'ptr'), u'ptr')
 
     def test_cpp_39070(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'r'), u'r')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'r'), u'r')
 
     def test_cpp_39080(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'res'), u'res')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'res'), u'res')
 
     def test_cpp_39090(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'resh'), u'resh')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'resh'), u'resh')
 
     def test_cpp_39100(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'resz'), u'resz')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'resz'), u'resz')
 
     def test_cpp_39110(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'rh'), u'rh')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'rh'), u'rh')
 
     def test_cpp_39120(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u's0_0'), u's0_0')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u's0_0'), u's0_0')
 
     def test_cpp_39130(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u's1_0'), u's1_0')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u's1_0'), u's1_0')
 
     def test_cpp_39140(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'si'), u'si')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'si'), u'si')
 
     def test_cpp_39150(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'small'), u'small')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'small'), u'small')
 
     def test_cpp_39160(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u't'), u't')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u't'), u't')
 
     def test_cpp_39170(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'taille_moire'), u'taille_moire')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'taille_moire'), u'taille_moire')
 
     def test_cpp_39180(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'teST2'), u'teST2')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'teST2'), u'teST2')
 
     def test_cpp_39190(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'testOVerlap'), u'testOVerlap')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'testOVerlap'), u'testOVerlap')
 
     def test_cpp_39200(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'var1'), u'var1')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'var1'), u'var1')
 
     def test_cpp_39210(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'var1[1]'), u'var1[1]')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'var1[1]'), u'var1[1]')
 
     def test_cpp_39220(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'var1[bx+si]'), u'var1[bx+si]')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'var1[bx+si]'), u'var1[bx+si]')
 
     def test_cpp_39230(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'var1[bx]'), u'var1[bx]')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'var1[bx]'), u'var1[bx]')
 
     def test_cpp_39240(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'var2'), u'var2')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'var2'), u'var2')
 
     def test_cpp_39250(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'var3+3*4'), u'var3+3*4')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'var3+3*4'), u'var3+3*4')
 
     def test_cpp_39260(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'var3+ebp'), u'var3+ebp')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'var3+ebp'), u'var3+ebp')
 
     def test_cpp_39270(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'var5'), u'var5')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'var5'), u'var5')
 
     def test_cpp_39280(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'word ptr [d]'), u'word ptr [d]')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'word ptr [d]'), u'word ptr [d]')
 
     def test_cpp_39290(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'word ptr [e]'), u'word ptr [e]')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'word ptr [e]'), u'word ptr [e]')
 
     def test_cpp_39300(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'word ptr [ebp+var_20]'), u'word ptr [ebp+var_20]')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'word ptr [ebp+var_20]'), u'word ptr [ebp+var_20]')
 
     def test_cpp_39310(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'word ptr [var5+2]'), u'word ptr [var5+2]')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'word ptr [var5+2]'), u'word ptr [var5+2]')
 
     def test_cpp_39320(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'word ptr var5'), u'word ptr var5')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'word ptr var5'), u'word ptr var5')
 
     def test_cpp_39330(self):
-        self.assertEqual(convert_asm_number_into_c(expr=u'word'), u'word')
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'word'), u'word')
 
     def test_cpp_39340(self):
-        self.assertEqual(cpp_mangle_label(name='loc_40458F'), 'loc_40458f')
+        self.assertEqual(self.cpp.cpp_mangle_label(name='loc_40458F'), 'loc_40458f')
 
     def test_cpp_39350(self):
-        self.assertEqual(cpp_mangle_label(name=u'_start'), u'_start')
+        self.assertEqual(self.cpp.cpp_mangle_label(name=u'_start'), u'_start')
 
     def test_cpp_39360(self):
-        self.assertEqual(cpp_mangle_label(name=u'_st$art$'), u'_st_tmpart_tmp')
+        self.assertEqual(self.cpp.cpp_mangle_label(name=u'_st$art$'), u'_st_tmpart_tmp')
 
 
 if __name__ == "__main__":
