@@ -114,6 +114,14 @@ void increaseticks();
  #define MYINT_ENUM : int
 #endif
 
+#ifdef __GNUC__
+#define PACK( __Declaration__ ) __Declaration__ __attribute__((__packed__))
+#endif
+
+#ifdef _MSC_VER
+#define PACK( __Declaration__ ) __pragma( pack(push, 1) ) __Declaration__ __pragma( pack(pop))
+#endif
+
 
 typedef uint8_t db;
 typedef uint16_t dw;
@@ -411,6 +419,12 @@ inline int getdata(const int& s)
 { return s; }
 inline long getdata(const long& s)
 { return s; }
+#ifdef _WIN32
+inline dd getdata(const __int64& s)
+{
+    return s;
+}
+#endif
 
     static inline void setdata(db *d, db s) {
   #if SDL_MAJOR_VERSION == 2 && !defined(NOSDL) && M2CDEBUG != -1
@@ -503,11 +517,11 @@ template <class D, class S>
 inline void bitset(D& dest, S src, size_t bit)  // set n-th bit to 1
 {dest=(bit>=0)?(( (dest) & (~nthbitone(dest,bit))) | ((src&1) << bit)):dest;}
 
-inline static db LSB(dd a) {return a&1;}  // get lower bit
+inline static bool LSB(dd a) {return (a&1) != 0;}  // get lower bit
 
 template <class D>
-inline db MSB(D a)  // get highest bit
-{return ( (a)>>( m2c::bitsizeof(a)-1) )&1;}
+inline bool MSB(D a)  // get highest bit
+{return (( (a)>>( m2c::bitsizeof(a)-1) )&1) != 0;}
 
 #if defined(_WIN32) || defined(__INTEL_COMPILER)
  #define INLINE __inline

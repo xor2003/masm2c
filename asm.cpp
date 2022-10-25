@@ -26,7 +26,9 @@ SOFTWARE.
 #include <exception>
 
 #ifndef __BORLANDC__
- #include <sys/time.h>
+ #ifndef _WIN32
+  #include <sys/time.h>
+ #endif
  #ifndef __DJGPP__
   #ifndef NOSDL
    #include <SDL2/SDL.h>
@@ -44,7 +46,7 @@ SOFTWARE.
 #endif
 
 #ifdef _WIN32
-#include <windows.h>
+//#include <windows.h>
 #endif
 
 //#include <assert.h>
@@ -52,9 +54,9 @@ SOFTWARE.
 #include <cassert>
 #include <ctime>
 
-
+#ifndef NOCURSES
 #include <curses.h>
-
+#endif
 
 /* https://commons.wikimedia.org/wiki/File:Table_of_x86_Registers_svg.svg */
 
@@ -408,12 +410,13 @@ bool is_little_endian()
 #ifndef __BORLANDC__ //TODO
 //#if !CYGWIN
 double realElapsedTime(void) {              // returns 0 first time called
-//    static struct timeval t0;
-    struct timeval tv;
+#ifndef _WIN32
+	struct timeval tv;
     gettimeofday(&tv, 0);
- //   if (!t0.tv_sec)                         // one time initialization
-   //     t0 = tv;
     return ((tv.tv_sec /*- t0.tv_sec*/ + (tv.tv_usec /* - t0.tv_usec*/)) / 1000000.) * 18.;
+#else
+	return 0;
+#endif
 }
 #endif
 /*
@@ -530,9 +533,11 @@ X86_REGREF
 			switch(al)
 			 {
 			case 0x03: {
+#ifndef NOCURSES
 				resize_term(25, 80);
 				clear();
 				refresh();
+#endif
 				log_debug2("Switch to text mode\n");
 				return;
 			}
@@ -558,8 +563,11 @@ X86_REGREF
 			}
 
 			case 0x83: {
+#ifndef NOCURSES
+
 				resize_term(25, 80);
 				refresh();
+#endif
 				log_debug2("Switch to text mode\n");
 				return;
 			}
@@ -586,7 +594,8 @@ X86_REGREF
 
 		}
 		case 0x02: { // set cursor
-				int y,x;
+#ifndef NOCURSES
+			    int y,x;
 				if (dh >= getmaxy(stdscr) || dl >= getmaxx(stdscr))
 				{
 					curs_set(0);
@@ -597,19 +606,24 @@ X86_REGREF
 					move(dh, dl);
 					refresh();
 				}
+#endif
 				return;
 		}
 		case 0x11: {        //set charset size
 			switch(al)
 			{
 			case 0x11: {
+#ifndef NOCURSES
 				resize_term(30, 80);
 				refresh();
+#endif
 				return;
 			}
 			case 0x12: {
+#ifndef NOCURSES
 				resize_term(50, 80);
 				refresh();
+#endif
 				return;
 			}
 			}
@@ -640,7 +654,8 @@ X86_REGREF
 
 
 #ifndef __BORLANDC__  //TODO
-        	    struct tm* loctime;
+#ifndef _WIN32
+				struct tm* loctime;
 		    struct timeval curtime;
 	            gettimeofday(&curtime, 0);
 
@@ -651,6 +666,7 @@ X86_REGREF
 	            cl = (loctime->tm_min);
 
 	            ch = (loctime->tm_hour);
+#endif
 		    dl = 0;
 #endif
 #endif
@@ -1254,9 +1270,10 @@ const char* log_spaces(int n)
 dw getscan()
 {
  dw o=0;
+#ifndef NOCURSES
  int chr = getch();
  o = chr;
-//if (ch==ERR) return(0);
+ //if (ch==ERR) return(0);
 
 //log_debug(">> %x\n",ch);
 
@@ -1420,31 +1437,29 @@ case ALT_TAB: {o=0xA5;break;}
 case ALT_PADENTER: {o=0xA6;break;}
 #endif
  }
+#endif
  return o;
 }
 
 void realtocurs()
 {
-
-//    if(can_change_color())
+#ifndef NOCURSES
     for(int colorNumber=0;colorNumber<16; colorNumber++)
 	{
 	short red   =  (510*((colorNumber & 4)>>2) + 255*((colorNumber & 8)>>3))/3;
 	short green =  (510*((colorNumber & 2)>>1)    + 255*((colorNumber & 8)>>3))/3;
 	short blue  =  (510*((colorNumber & 1)) + 255*((colorNumber & 8)>>3))/3;
 	if (colorNumber == 6) green >>= 1;
-//	init_color(colorNumber, red,green,blue);
-//	printw("color %d, r %x, g %x, b %x\n",colorNumber, red,green,blue);
 	}
-//getch();
 
     for( int b=0;b<16; b++)
 {
        for( int f=0;f<16; f++)
         {
-//           if(b !=0 && f !=0)
-	                init_pair((b<<4)+f, f, b);
+
+		   init_pair((b<<4)+f, f, b);
         }
+#endif
 }
 
 
@@ -1500,10 +1515,13 @@ int init(struct _STATE *state);
 
 void mainproc(_offsets _i, struct _STATE *state);
 
-
+#ifndef NOCURSES
 chtype vga_to_curses[256];
+#endif
 
 void prepare_cp437_to_curses() {
+#ifndef NOCURSES
+
     for (size_t i = 0; i < 256; i++) { vga_to_curses[i] = i; }
     vga_to_curses['\0'] = ' ';
     vga_to_curses[0x04] = ACS_DIAMOND;
@@ -1534,6 +1552,7 @@ void prepare_cp437_to_curses() {
     vga_to_curses[0xf3] = ACS_LEQUAL;
     vga_to_curses[0xf8] = ACS_DEGREE;
     vga_to_curses[0xfe] = ACS_BULLET;
+#endif
 }
 /*
 #include <thread>         // std::thread
@@ -1641,9 +1660,9 @@ int main(int argc, char *argv[]) {
         curs_set(0);
 
         refresh();
-#endif
         cbreak(); // put keys directly to program
         keypad(stdscr, TRUE); // provide keypad buttons
+#endif
 
         m2c::init(_state);
 
@@ -1666,6 +1685,7 @@ int main(int argc, char *argv[]) {
 }
 
 #ifdef _WIN32
+#include <wtypes.h>
 int  WinMain(
   HINSTANCE hInstance,
   HINSTANCE hPrevInstance,

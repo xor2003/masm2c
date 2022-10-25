@@ -138,7 +138,7 @@ return m_needtoskipcall;}
             if (!f.init) continue;
             if (i == m_current)
               printf ("  ");
-            printf ("%4d %8x %8x %04x:%04x sp=%4x %4x", f.call_deep, f.addcounter, f.remcounter, f.cs, f.ip, f.sp, (dw) f.value);
+            printf ("%4z %8zx %8zx %04zx:%04x sp=%4x %4x", f.call_deep, f.addcounter, f.remcounter, f.cs, f.ip, f.sp, (dw) f.value);
             if ((dw) *f.pointer_ != (dw) f.value)
               printf (" ^%4x^\n", (dw) *f.pointer_);
             else
