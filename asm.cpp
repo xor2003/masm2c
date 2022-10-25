@@ -1453,12 +1453,13 @@ void realtocurs()
 	}
 
     for( int b=0;b<16; b++)
-{
+    {
        for( int f=0;f<16; f++)
         {
 
 		   init_pair((b<<4)+f, f, b);
         }
+    }
 #endif
 }
 
@@ -1485,7 +1486,6 @@ static short realtocurs[16] =
 }
 */
 
-}
 
 /*
 "Programming for MS-DOS" (Ray Duncan)
