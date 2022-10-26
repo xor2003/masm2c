@@ -1684,14 +1684,3 @@ int main(int argc, char *argv[]) {
     return (0);
 }
 
-#ifdef _WIN32
-#include <wtypes.h>
-int  WinMain(
-  HINSTANCE hInstance,
-  HINSTANCE hPrevInstance,
-  LPSTR     lpCmdLine,
-  int       nShowCmd
-)
-{return main(0,0);
-}
-#endif
