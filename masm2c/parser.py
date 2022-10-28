@@ -29,14 +29,13 @@ from collections import OrderedDict
 from copy import copy, deepcopy
 
 import jsonpickle
-
 import parglare
-from .pgparser import ParglareParser
 
 from . import cpp as cpp_module
 from . import op
-from .proc import Proc
 from .Token import Token
+from .pgparser import ParglareParser
+from .proc import Proc
 
 INTEGERCNST = 'INTEGER'
 STRINGCNST = 'STRING'

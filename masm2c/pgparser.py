@@ -7,12 +7,9 @@ from copy import deepcopy, copy
 from parglare import Grammar
 from parglare import Parser as PGParser
 
-import masm2c.gen
 from . import op
 from .Macro import Macro
 from .Token import Token
-
-from . import cpp as cpp_module
 
 macroses = OrderedDict()
 macronamere = re.compile(r'([A-Za-z_@$?][A-Za-z0-9_@$?]*)')

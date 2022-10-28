@@ -23,8 +23,8 @@ import os
 import re
 from builtins import hex, range, str
 
-from . import proc as proc_module
 from . import op
+from . import proc as proc_module
 from .Token import Token
 from .gen import Gen, mangle_asm_labels, IndirectionType, InjectCode
 from .pgparser import OFFSETDIR, LABEL, PTRDIR, REGISTER, SEGMENTREGISTER, SEGOVERRIDE, SQEXPR, INTEGER, MEMBERDIR
