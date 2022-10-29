@@ -156,8 +156,7 @@ def setup_logging(name, loglevel):
         )
 
 
-def process(i, args):
-    name = i
+def process(name, args):
     m = re.match(r'(.+)\.(?:asm|lst)', name.lower())
     outname = ""
     if m:
@@ -175,7 +174,7 @@ def process(i, args):
     context = p.parse_file(name)
 
     generator = Cpp(context, outfile=outname, skip_output=[])
-    generator.save_cpp_files('mainproc')  # start routine
+    generator.save_cpp_files(name)  # start routine
     if args.list:
         generator.dump_globals()
     return generator

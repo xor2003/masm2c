@@ -1,4 +1,5 @@
 import logging
+import pickle
 import re
 from collections import OrderedDict
 from copy import copy
@@ -399,10 +400,11 @@ class Gen:
                 labels.add(label_name)
         return labels
 
-    def write_segment_file(self, segments, structs):
+    def write_segment_file(self, segments, structs, fname):
         jsonpickle.set_encoder_options('json', indent=2)
-        with open(self._namespace.lower() + '.seg', 'w') as outfile:
-            outfile.write(jsonpickle.encode((segments, structs)))
+        fname = fname.replace('.asm','.seg').replace('.lst','.seg')
+        with open(fname, 'wb') as f:
+            pickle.dump((segments, structs), f)
 
     def read_segment_files(self, asm_files):
         logging.info(" *** Merging .seg files")
@@ -411,8 +413,8 @@ class Gen:
         for file in asm_files:
             file = file.replace('.asm', '.seg').replace('.lst', '.seg')
             logging.info(f'     Merging data from {file}')
-            with open(file, 'rt') as infile:
-                segments, structures = self.merge_segments(segments, structs, *jsonpickle.decode(infile.read()))
+            with open(file, "rb") as f:
+                segments, structures = self.merge_segments(segments, structs, *pickle.load(f))
         return segments, structures
 
     def merge_segments(self, allsegments: OrderedDict, allstructs: OrderedDict, newsegments: OrderedDict,

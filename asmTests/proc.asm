@@ -31,7 +31,7 @@ cmp ebx,3
 jne failure
 
 mov al,4
-call aa
+call [aaofs]
 cmp ebx,4
 jne failure
 
@@ -80,6 +80,7 @@ mov ebx,4
 ret
 bb endp
 
+aaofs dw offset aa
 
 _TEXT   ends ;IGNORE
 

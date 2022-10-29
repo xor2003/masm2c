@@ -204,6 +204,7 @@ head db '^',10,10
         self.__class__.parser.action_label(far=False, name=u'exec_rclb', isproc=True)
         self.__class__.parser.action_label(far=False, name=u'printeax', isproc=True)
         self.__class__.parser.action_label(far=True, name=u'test_bcd', isproc=True)
+        self.__class__.parser.set_global('test_bcd_ofs', op.var(elements=1, name=u'test_bcd_ofs', offset=1, segment=u'_data', size=2))
         self.__class__.results = {}
 
     def doTest(self, input, second):
@@ -634,6 +635,9 @@ head db '^',10,10
 
     def test_instr_1370(self):
         self.assertEqual(*self.doTest('call    printf', 'CALL(__dispatch_call,printf)'))
+
+    def test_instr_1375(self):  # TODO is it right?
+        self.assertEqual(*self.doTest('call    [test_bcd_ofs]', 'CALL(__dispatch_call,test_bcd_ofs)'))
 
     def test_instr_1380(self):
         self.assertEqual(*self.doTest('btr eax,0', 'BTR(eax, 0)'))

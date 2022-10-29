@@ -46,7 +46,7 @@ cmp ebx,1
 JB failure
 JA failure
 
-mov eax,-1-(-2+3)
+mov eax,-1b-(-2h+3o)
 cmp eax,-2
 jne failure
 

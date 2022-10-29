@@ -768,6 +768,7 @@ class Cpp(Gen):
 
     def _label(self, name, isproc):
         if isproc:
+            raise RuntimeError('Should not happen anymore probably')
             self.label = self.proc_strategy.produce_proc_start(name)
         else:
             self.label = "%s:\n" % self.cpp_mangle_label(name)
@@ -990,7 +991,7 @@ class Cpp(Gen):
         srcr = Token.find_tokens(src, REGISTER)
         return "SCAS(%s,%s,%d)" % (self.a, srcr[0], size)
 
-    def save_cpp_files(self, start):
+    def save_cpp_files(self, fname):
         self.merge_procs()
         cpp_assigns, _, _, cpp_extern = self.render_data_c(self._context.segments)
 
@@ -1064,7 +1065,7 @@ class Cpp(Gen):
 
         logging.info("\n".join(self.__failed))
 
-        self.write_segment_file(self._context.segments, self._context.structures)
+        self.write_segment_file(self._context.segments, self._context.structures, fname)
 
     def write_procedures(self, banner, header_fname):
         cpp_file_text = ''

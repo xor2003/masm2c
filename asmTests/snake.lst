@@ -1,0 +1,632 @@
+DATA:0000
+DATA:0000                 .686p
+DATA:0000                 .mmx
+DATA:0000                 .model large
+DATA:0000
+DATA:0000 ; ===========================================================================
+DATA:0000
+DATA:0000 ; Segment type: Pure data
+DATA:0000 DATA            segment para stack 'DATA' use16
+DATA:0000                 assume cs:DATA
+DATA:0000 msg             db 'Welcome to the snake game!!',0
+DATA:0000                                         ; DATA XREF: main+F\u2193o
+DATA:0000                                         ; main+30\u2193o
+DATA:001C instructions    db 0Ah                  ; DATA XREF: main+19\u2193o
+DATA:001C                 db 0Dh,'Use a, s, d and w to control your snake',0Ah
+DATA:001C                 db 0Dh,'Use q anytime to quit',0Dh,0Ah
+DATA:001C                 db 'Press any key to continue$'
+DATA:0078 aThanksForPlayi db 'Thanks for playing! hope you enjoyed',0
+DATA:0078                                         ; DATA XREF: main+7C\u2193o
+DATA:009D gameovermsg     db 'OOPS!! your snake died! :P ',0
+DATA:009D                                         ; DATA XREF: main+63\u2193o
+DATA:00B9 scoremsg        db 'Score: ',0          ; DATA XREF: draw\u2193o
+DATA:00C1 head            db '^'                  ; DATA XREF: draw+1A\u2193o
+DATA:00C1                                         ; keyboardfunctions+D\u2193r ...
+DATA:00C2                 db 0Ah
+DATA:00C3                 db 0Ah
+DATA:00C4 body            db '*'                  ; DATA XREF: shiftsnake+80\u2193o
+DATA:00C5                 db  0Ah
+DATA:00C6                 db 0Bh
+DATA:00C7                 db    0
+DATA:00C8                 db    0
+DATA:00C9                 db    0
+DATA:00CA                 db    0
+DATA:00CB                 db    0
+DATA:00CC                 db    0
+DATA:00CD                 db    0
+DATA:00CE                 db    0
+DATA:00CF                 db    0
+DATA:00D0                 db    0
+DATA:00D1                 db    0
+DATA:00D2                 db    0
+DATA:00D3                 db    0
+DATA:00D4                 db    0
+DATA:00D5                 db    0
+DATA:00D6                 db    0
+DATA:00D7                 db    0
+DATA:00D8                 db    0
+DATA:00D9                 db    0
+DATA:00DA                 db    0
+DATA:00DB                 db    0
+DATA:00DC                 db    0
+DATA:00DD                 db    0
+DATA:00DE                 db    0
+DATA:00DF                 db    0
+DATA:00E0                 db    0
+DATA:00E1                 db    0
+DATA:00E2                 db    0
+DATA:00E3                 db    0
+DATA:00E4                 db    0
+DATA:00E5                 db    0
+DATA:00E6                 db    0
+DATA:00E7                 db    0
+DATA:00E8                 db    0
+DATA:00E9                 db    0
+DATA:00EA                 db    0
+DATA:00EB                 db    0
+DATA:00EC                 db    0
+DATA:00ED                 db    0
+DATA:00EE                 db    0
+DATA:00EF                 db    0
+DATA:00F0                 db    0
+DATA:00F1                 db    0
+DATA:00F2                 db    0
+DATA:00F3                 db    0
+DATA:00F4 segmentcount    db 1                    ; DATA XREF: draw+10\u2193r
+DATA:00F4                                         ; shiftsnake:loc_10371\u2193r ...
+DATA:00F5 fruitactive     db 1                    ; DATA XREF: fruitgeneration:loc_101AB\u2193r
+DATA:00F5                                         ; draw+3C\u2193w ...
+DATA:00F6 fruitx          db 8                    ; DATA XREF: fruitgeneration+4\u2193r
+DATA:00F6                                         ; fruitgeneration+33\u2193w ...
+DATA:00F7 fruity          db 8                    ; DATA XREF: fruitgeneration\u2193r
+DATA:00F7                                         ; fruitgeneration+20\u2193w ...
+DATA:00F8 gameover        db 0                    ; DATA XREF: main+3D\u2193r
+DATA:00F8                                         ; shiftsnake:loc_1036C\u2193w
+DATA:00F9 quit            db 0                    ; DATA XREF: main+47\u2193r
+DATA:00F9                                         ; keyboardfunctions:loc_102F1\u2193w
+DATA:00FA delaytime       db 5                    ; DATA XREF: main+5B\u2193w
+DATA:00FA                                         ; main+74\u2193w ...
+DATA:00FB                 db 0
+DATA:00FC                 db    0
+DATA:00FD                 db    0
+DATA:00FE                 db    0
+DATA:00FF                 db    0
+DATA:00FF DATA            ends
+DATA:00FF
+seg001:0000 ; ===========================================================================
+seg001:0000
+seg001:0000 ; Segment type: Pure code
+seg001:0000 seg001          segment byte public 'CODE' use16
+seg001:0000                 assume cs:seg001
+seg001:0000                 assume es:nothing, ss:DATA, ds:nothing, fs:nothing, gs:nothing
+seg001:0000
+seg001:0000 ; =============== S U B R O U T I N E =======================================
+seg001:0000
+seg001:0000 ; Attributes: noreturn
+seg001:0000
+seg001:0000 ; int __cdecl main(int argc, const char **argv, const char **envp)
+seg001:0000                 public main
+seg001:0000 main            proc near
+seg001:0000
+seg001:0000 argc            = dword ptr  2
+seg001:0000 argv            = dword ptr  6
+seg001:0000 envp            = dword ptr  0Ah
+seg001:0000
+seg001:0000                 mov     ax, seg DATA
+seg001:0003                 mov     ds, ax
+seg001:0005                 assume ds:DATA
+seg001:0005                 mov     ax, 0B800h
+seg001:0008                 mov     es, ax
+seg001:000A                 assume es:nothing
+seg001:000A                 mov     ax, 3
+seg001:000D                 int     10h             ; - VIDEO - SET VIDEO MODE
+seg001:000D                                         ; AL = mode
+seg001:0013                 mov     dx, 0
+seg001:001D                 mov     ah, 9
+seg001:001F                 int     21h             ; DOS - PRINT STRING
+seg001:001F                                         ; DS:DX -> string terminated by "$"
+seg001:0021                 mov     ah, 7
+seg001:0023                 int     21h             ; DOS - DIRECT STDIN INPUT, NO ECHO
+seg001:0025                 mov     ax, 3
+seg001:0028                 int     10h             ; - VIDEO - SET VIDEO MODE
+seg001:0028                                         ; AL = mode
+seg001:008D                 mov     ax, 4C00h
+seg001:0090                 int     21h             ; DOS - 2+ - QUIT WITH EXIT CODE (EXIT)
+seg001:0090 main            endp                    ; AL = exit code
+seg001:0090
+seg001:0092
+seg001:0092 delay           proc near               ; CODE XREF: main:loc_1012D\u2191p
+seg001:0092                                         ; main+6A\u2191p ...
+seg001:0092                 mov     ah, 0
+seg001:0094                 int     1Ah             ; CLOCK - GET TIME OF DAY
+seg001:0094                                         ; Return: CX:DX = clock count
+seg001:0094                                         ; AL = 00h if clock was read or written (via AH=0,1) since the previous
+seg001:0094                                         ; midnight
+seg001:0094                                         ; Otherwise, AL > 0
+seg001:0096                 mov     bx, dx
+seg001:0098
+seg001:0098 loc_10198:                              ; CODE XREF: delay+E\u2193j
+seg001:0098                 int     1Ah
+seg001:009A                 sub     dx, bx
+seg001:00A0                 jl      short loc_10198
+seg001:00A2                 retn
+seg001:00A2 delay           endp
+seg001:00A2
+seg001:00A3
+seg001:00A3 ; =============== S U B R O U T I N E =======================================
+seg001:00A3
+seg001:00A3
+seg001:00A3 fruitgeneration proc near               ; CODE XREF: main+4E\u2191p
+seg001:00A3                 mov     ch, fruity
+seg001:00A7                 mov     cl, fruitx
+seg001:00AB
+seg001:00AB loc_101AB:                              ; CODE XREF: fruitgeneration+47\u2193j
+seg001:00AB                                         ; fruitgeneration+4E\u2193j ...
+seg001:00AB                 cmp     fruitactive, 1
+seg001:00B0                 jz      short locret_10221
+seg001:00B2                 mov     ah, 0
+seg001:00B4                 int     1Ah             ; CLOCK - GET TIME OF DAY
+seg001:00B4                                         ; Return: CX:DX = clock count
+seg001:00B4                                         ; AL = 00h if clock was read or written (via AH=0,1) since the previous
+seg001:00B4                                         ; midnight
+seg001:00B4                                         ; Otherwise, AL > 0
+seg001:00B6                 push    dx
+seg001:00B7                 mov     ax, dx
+seg001:00B9                 xor     dx, dx
+seg001:00BB                 xor     bh, bh
+seg001:00BD                 mov     bl, 15
+seg001:00BF                 dec     bl
+seg001:00C1                 div     bx
+seg001:00C3                 mov     fruity, dl
+seg001:00C7                 inc     fruity
+seg001:00CB                 pop     ax
+seg001:00CC                 mov     bl, 40
+seg001:00CE                 dec     dl
+seg001:00D0                 xor     bh, bh
+seg001:00D2                 xor     dx, dx
+seg001:00D4                 div     bx
+seg001:00D6                 mov     fruitx, dl
+seg001:00DA                 inc     fruitx
+seg001:00DE                 cmp     fruitx, cl
+seg001:00E2                 jnz     short loc_101EC
+seg001:00E4                 cmp     fruity, ch
+seg001:00E8                 jnz     short loc_101EC
+seg001:00EA                 jmp     short loc_101AB
+seg001:00EC ; ---------------------------------------------------------------------------
+seg001:00EC
+seg001:00EC loc_101EC:                              ; CODE XREF: fruitgeneration+3F\u2191j
+seg001:00EC                                         ; fruitgeneration+45\u2191j
+seg001:00EC                 mov     al, fruitx
+seg001:00EF                 ror     al, 1
+seg001:00F1                 jb      short loc_101AB
+seg001:00F3                 add     fruity, 2
+seg001:00F8                 add     fruitx, 0
+seg001:00FD                 mov     dh, fruity
+seg001:0101                 mov     dl, fruitx
+seg001:0105                 call    readcharat
+seg001:0108                 cmp     bl, '*'
+seg001:010B                 jz      short loc_101AB
+seg001:010D                 cmp     bl, '^'
+seg001:0110                 jz      short loc_101AB
+seg001:0112                 cmp     bl, '<'
+seg001:0115                 jz      short loc_101AB
+seg001:0117                 cmp     bl, '>'
+seg001:011A                 jz      short loc_101AB
+seg001:011C                 cmp     bl, 'v'
+seg001:011F                 jz      short loc_101AB
+seg001:0121
+seg001:0121 locret_10221:                           ; CODE XREF: fruitgeneration+D\u2191j
+seg001:0121                 retn
+seg001:0121 fruitgeneration endp
+seg001:0121
+seg001:0122
+seg001:0122 ; =============== S U B R O U T I N E =======================================
+seg001:0122
+seg001:0122
+seg001:0122 dispdigit       proc near               ; CODE XREF: dispnum+10\u2193p
+seg001:0122                 add     dl, 30h ; '0'
+seg001:0125                 mov     ah, 2
+seg001:0127                 int     21h             ; DOS - DISPLAY OUTPUT
+seg001:0127                                         ; DL = character to send to standard output
+seg001:0129                 retn
+seg001:0129 dispdigit       endp
+seg001:0129
+seg001:012A
+seg001:012A ; =============== S U B R O U T I N E =======================================
+seg001:012A
+seg001:012A
+seg001:012A dispnum         proc near               ; CODE XREF: dispnum+C\u2193p
+seg001:012A                                         ; draw+17\u2193p
+seg001:012A                 test    ax, ax
+seg001:012C                 jz      short loc_1023E
+seg001:012E                 xor     dx, dx
+seg001:0130                 mov     bx, 10
+seg001:0133                 div     bx
+seg001:0135                 push    dx
+seg001:0136                 call    dispnum
+seg001:0139                 pop     dx
+seg001:013A                 call    dispdigit
+seg001:013D                 retn
+seg001:013E ; ---------------------------------------------------------------------------
+seg001:013E
+seg001:013E loc_1023E:                              ; CODE XREF: dispnum+2\u2191j
+seg001:013E                 mov     ah, 2
+seg001:0140                 retn
+seg001:0140 dispnum         endp
+seg001:0140
+seg001:0141
+seg001:0141 ; =============== S U B R O U T I N E =======================================
+seg001:0141
+seg001:0141
+seg001:0141 setcursorpos    proc near               ; CODE XREF: draw+D\u2193p
+seg001:0141                 mov     ah, 2
+seg001:0143                 push    bx
+seg001:0144                 mov     bh, 0
+seg001:0146                 int     10h             ; - VIDEO - SET CURSOR POSITION
+seg001:0146                                         ; DH,DL = row, column (0,0 = upper left)
+seg001:0146                                         ; BH = page number
+seg001:0148                 pop     bx
+seg001:0149                 retn
+seg001:0149 setcursorpos    endp
+seg001:0149
+seg001:014A
+seg001:014A ; =============== S U B R O U T I N E =======================================
+seg001:014A
+seg001:014A
+seg001:014A draw            proc near               ; CODE XREF: main+51\u2191p
+seg001:014A                 lea     bx, scoremsg    ; "Score: "
+seg001:014E                 mov     dx, 109h
+seg001:0151                 call    writestringat
+seg001:0154                 add     dx, 7
+seg001:0157                 call    setcursorpos
+seg001:015A                 mov     al, segmentcount
+seg001:015D                 dec     al
+seg001:015F                 xor     ah, ah
+seg001:0161                 call    dispnum
+seg001:0164                 lea     si, head
+seg001:0168
+seg001:0168 loc_10268:                              ; CODE XREF: draw+2D\u2193j
+seg001:0168                 mov     bl, [si]
+seg001:016A                 test    bl, bl
+seg001:016C                 jz      short loc_10279
+seg001:016E                 mov     dx, [si+1]
+seg001:0171                 call    writecharat
+seg001:0174                 add     si, 3
+seg001:0177                 jmp     short loc_10268
+seg001:0179 ; ---------------------------------------------------------------------------
+seg001:0179
+seg001:0179 loc_10279:                              ; CODE XREF: draw+22\u2191j
+seg001:0179                 mov     bl, 'F'
+seg001:017B                 mov     dh, fruity
+seg001:017F                 mov     dl, fruitx
+seg001:0183                 call    writecharat
+seg001:0186                 mov     fruitactive, 1
+seg001:018B                 retn
+seg001:018B draw            endp
+seg001:018B
+seg001:018C
+seg001:018C ; =============== S U B R O U T I N E =======================================
+seg001:018C
+seg001:018C
+seg001:018C readchar        proc near               ; CODE XREF: keyboardfunctions\u2193p
+seg001:018C                 mov     ah, 1
+seg001:018E                 int     16h             ; KEYBOARD - CHECK BUFFER, DO NOT CLEAR
+seg001:018E                                         ; Return: ZF clear if character in buffer
+seg001:018E                                         ; AH = scan code, AL = character
+seg001:018E                                         ; ZF set if no character in buffer
+seg001:0190                 jnz     short loc_10295
+seg001:0192                 xor     dl, dl
+seg001:0194                 retn
+seg001:0195 ; ---------------------------------------------------------------------------
+seg001:0195
+seg001:0195 loc_10295:                              ; CODE XREF: readchar+4\u2191j
+seg001:0195                 mov     ah, 0
+seg001:0197                 int     16h             ; KEYBOARD - READ CHAR FROM BUFFER, WAIT IF EMPTY
+seg001:0197                                         ; Return: AH = scan code, AL = character
+seg001:0199                 mov     dl, al
+seg001:019B                 retn
+seg001:019B readchar        endp
+seg001:019B
+seg001:019C
+seg001:019C ; =============== S U B R O U T I N E =======================================
+seg001:019C
+seg001:019C
+seg001:019C keyboardfunctions proc near             ; CODE XREF: main+44\u2191p
+seg001:019C                 call    readchar
+seg001:019F                 cmp     dl, 0
+seg001:01A2                 jz      short loc_102EB
+seg001:01A4                 cmp     dl, 'w'
+seg001:01A7                 jnz     short loc_102B6
+seg001:01A9                 cmp     head, 'v'
+seg001:01AE                 jz      short loc_102EB
+seg001:01B0                 mov     head, '^'
+seg001:01B5                 retn
+seg001:01B6 ; ---------------------------------------------------------------------------
+seg001:01B6
+seg001:01B6 loc_102B6:                              ; CODE XREF: keyboardfunctions+B\u2191j
+seg001:01B6                 cmp     dl, 's'
+seg001:01B9                 jnz     short loc_102C8
+seg001:01BB                 cmp     head, '^'
+seg001:01C0                 jz      short loc_102EB
+seg001:01C2                 mov     head, 'v'
+seg001:01C7                 retn
+seg001:01C8 ; ---------------------------------------------------------------------------
+seg001:01C8
+seg001:01C8 loc_102C8:                              ; CODE XREF: keyboardfunctions+1D\u2191j
+seg001:01C8                 cmp     dl, 'a'
+seg001:01CB                 jnz     short loc_102DA
+seg001:01CD                 cmp     head, '>'
+seg001:01D2                 jz      short loc_102EB
+seg001:01D4                 mov     head, '<'
+seg001:01D9                 retn
+seg001:01DA ; ---------------------------------------------------------------------------
+seg001:01DA
+seg001:01DA loc_102DA:                              ; CODE XREF: keyboardfunctions+2F\u2191j
+seg001:01DA                 cmp     dl, 'd'
+seg001:01DD                 jnz     short loc_102EB
+seg001:01DF                 cmp     head, '<'
+seg001:01E4                 jz      short loc_102EB
+seg001:01E6                 mov     head, '>'
+seg001:01EB
+seg001:01EB loc_102EB:                              ; CODE XREF: keyboardfunctions+6\u2191j
+seg001:01EB                                         ; keyboardfunctions+12\u2191j ...
+seg001:01EB                 cmp     dl, 'q'
+seg001:01EE                 jz      short loc_102F1
+seg001:01F0                 retn
+seg001:01F1 ; ---------------------------------------------------------------------------
+seg001:01F1
+seg001:01F1 loc_102F1:                              ; CODE XREF: keyboardfunctions+52\u2191j
+seg001:01F1                 inc     quit
+seg001:01F5                 retn
+seg001:01F5 keyboardfunctions endp
+seg001:01F5
+seg001:01F6
+seg001:01F6 ; =============== S U B R O U T I N E =======================================
+seg001:01F6
+seg001:01F6
+seg001:01F6 shiftsnake      proc near               ; CODE XREF: main+3A\u2191p
+seg001:01F6                 mov     bx, offset head
+seg001:01F9                 xor     ax, ax
+seg001:01FB                 mov     al, [bx]
+seg001:01FD                 push    ax
+seg001:01FE                 inc     bx
+seg001:01FF                 mov     ax, [bx]
+seg001:0201                 inc     bx
+seg001:0202                 inc     bx
+seg001:0203                 xor     cx, cx
+seg001:0205
+seg001:0205 loc_10305:                              ; CODE XREF: shiftsnake+1F\u2193j
+seg001:0205                 mov     si, [bx]
+seg001:0207                 test    [bx], si
+seg001:0209                 jz      short loc_10317
+seg001:020B                 inc     cx
+seg001:020C                 inc     bx
+seg001:020D                 mov     dx, [bx]
+seg001:020F                 mov     [bx], ax
+seg001:0211                 mov     ax, dx
+seg001:0213                 inc     bx
+seg001:0214                 inc     bx
+seg001:0215                 jmp     short loc_10305
+seg001:0217 ; ---------------------------------------------------------------------------
+seg001:0217
+seg001:0217 loc_10317:                              ; CODE XREF: shiftsnake+13\u2191j
+seg001:0217                 pop     ax
+seg001:0218                 push    dx
+seg001:0219                 lea     bx, head
+seg001:021D                 inc     bx
+seg001:021E                 mov     dx, [bx]
+seg001:0220                 cmp     al, '<'
+seg001:0222                 jnz     short loc_1032A
+seg001:0224                 dec     dl
+seg001:0226                 dec     dl
+seg001:0228                 jmp     short loc_1033E
+seg001:022A ; ---------------------------------------------------------------------------
+seg001:022A
+seg001:022A loc_1032A:                              ; CODE XREF: shiftsnake+2C\u2191j
+seg001:022A                 cmp     al, 3Eh ; '>'
+seg001:022C                 jnz     short loc_10334
+seg001:022E                 inc     dl
+seg001:0230                 inc     dl
+seg001:0232                 jmp     short loc_1033E
+seg001:0234 ; ---------------------------------------------------------------------------
+seg001:0234
+seg001:0234 loc_10334:                              ; CODE XREF: shiftsnake+36\u2191j
+seg001:0234                 cmp     al, '^'
+seg001:0236                 jnz     short loc_1033C
+seg001:0238                 dec     dh
+seg001:023A                 jmp     short loc_1033E
+seg001:023C ; ---------------------------------------------------------------------------
+seg001:023C
+seg001:023C loc_1033C:                              ; CODE XREF: shiftsnake+40\u2191j
+seg001:023C                 inc     dh
+seg001:023E
+seg001:023E loc_1033E:                              ; CODE XREF: shiftsnake+32\u2191j
+seg001:023E                                         ; shiftsnake+3C\u2191j ...
+seg001:023E                 mov     [bx], dx
+seg001:0240                 call    readcharat
+seg001:0243                 cmp     bl, 'F'
+seg001:0246                 jz      short loc_10371
+seg001:0248                 mov     cx, dx
+seg001:024A                 pop     dx
+seg001:024B                 cmp     bl, '*'
+seg001:024E                 jz      short loc_1036C
+seg001:0250                 mov     bl, 0
+seg001:0252                 call    writecharat
+seg001:0255                 mov     dx, cx
+seg001:0257                 cmp     dh, 2
+seg001:025A                 jz      short loc_1036C
+seg001:025C                 cmp     dh, 11h
+seg001:025F                 jz      short loc_1036C
+seg001:0261                 cmp     dl, 0
+seg001:0264                 jz      short loc_1036C
+seg001:0266                 cmp     dl, 28h ; '('
+seg001:0269                 jz      short loc_1036C
+seg001:026B                 retn
+seg001:026C ; ---------------------------------------------------------------------------
+seg001:026C
+seg001:026C loc_1036C:                              ; CODE XREF: shiftsnake+58\u2191j
+seg001:026C                                         ; shiftsnake+64\u2191j ...
+seg001:026C                 inc     gameover
+seg001:0270                 retn
+seg001:0271 ; ---------------------------------------------------------------------------
+seg001:0271
+seg001:0271 loc_10371:                              ; CODE XREF: shiftsnake+50\u2191j
+seg001:0271                 mov     al, segmentcount
+seg001:0274                 xor     ah, ah
+seg001:0276                 lea     bx, body
+seg001:027A                 mov     cx, 3
+seg001:027D                 mul     cx
+seg001:027F                 pop     dx
+seg001:0280                 add     bx, ax
+seg001:0282                 mov     byte ptr [bx], '*'
+seg001:0285                 mov     [bx+1], dx
+seg001:0288                 inc     segmentcount
+seg001:028C                 mov     dh, fruity
+seg001:0290                 mov     dl, fruitx
+seg001:0294                 mov     bl, 0
+seg001:0296                 call    writecharat
+seg001:0299                 mov     fruitactive, 0
+seg001:029E                 retn
+seg001:029E shiftsnake      endp
+seg001:029E
+seg001:029F
+seg001:029F ; =============== S U B R O U T I N E =======================================
+seg001:029F
+seg001:029F
+seg001:029F printbox        proc near               ; CODE XREF: main+2A\u2191p
+seg001:029F                 mov     dh, 2
+seg001:02A1                 mov     dl, 0
+seg001:02A3                 mov     cx, 28h ; '('
+seg001:02A6                 mov     bl, '*'
+seg001:02A8
+seg001:02A8 loc_103A8:                              ; CODE XREF: printbox+E\u2193j
+seg001:02A8                 call    writecharat
+seg001:02AB                 inc     dl
+seg001:02AD                 loop    loc_103A8
+seg001:02AF                 mov     cx, 0Fh
+seg001:02B2
+seg001:02B2 loc_103B2:                              ; CODE XREF: printbox+18\u2193j
+seg001:02B2                 call    writecharat
+seg001:02B5                 inc     dh
+seg001:02B7                 loop    loc_103B2
+seg001:02B9                 mov     cx, 28h ; '('
+seg001:02BC
+seg001:02BC loc_103BC:                              ; CODE XREF: printbox+22\u2193j
+seg001:02BC                 call    writecharat
+seg001:02BF                 dec     dl
+seg001:02C1                 loop    loc_103BC
+seg001:02C3                 mov     cx, 0Fh
+seg001:02C6
+seg001:02C6 loc_103C6:                              ; CODE XREF: printbox+2C\u2193j
+seg001:02C6                 call    writecharat
+seg001:02C9                 dec     dh
+seg001:02CB                 loop    loc_103C6
+seg001:02CD                 retn
+seg001:02CD printbox        endp
+seg001:02CD
+seg001:02CE
+seg001:02CE ; =============== S U B R O U T I N E =======================================
+seg001:02CE
+seg001:02CE
+seg001:02CE writecharat     proc near               ; CODE XREF: draw+27\u2191p
+seg001:02CE                                         ; draw+39\u2191p ...
+seg001:02CE                 push    dx
+seg001:02CF                 mov     ax, dx
+seg001:02D1                 and     ax, 0FF00h
+seg001:02D4                 shr     ax, 1
+seg001:02D6                 shr     ax, 1
+seg001:02D8                 shr     ax, 1
+seg001:02DA                 shr     ax, 1
+seg001:02DC                 shr     ax, 1
+seg001:02DE                 shr     ax, 1
+seg001:02E0                 shr     ax, 1
+seg001:02E2                 shr     ax, 1
+seg001:02E4                 push    bx
+seg001:02E5                 mov     bh, 0A0h ; ' '
+seg001:02E7                 mul     bh
+seg001:02E9                 pop     bx
+seg001:02EA                 and     dx, 0FFh
+seg001:02EE                 shl     dx, 1
+seg001:02F0                 add     ax, dx
+seg001:02F2                 mov     di, ax
+seg001:02F4                 mov     es:[di], bl
+seg001:02F7                 pop     dx
+seg001:02F8                 retn
+seg001:02F8 writecharat     endp
+seg001:02F8
+seg001:02F9
+seg001:02F9 ; =============== S U B R O U T I N E =======================================
+seg001:02F9
+seg001:02F9
+seg001:02F9 readcharat      proc near               ; CODE XREF: fruitgeneration+62\u2191p
+seg001:02F9                                         ; shiftsnake+4A\u2191p
+seg001:02F9                 push    dx
+seg001:02FA                 mov     ax, dx
+seg001:02FC                 and     ax, 0FF00h
+seg001:02FF                 shr     ax, 1
+seg001:0301                 shr     ax, 1
+seg001:0303                 shr     ax, 1
+seg001:0305                 shr     ax, 1
+seg001:0307                 shr     ax, 1
+seg001:0309                 shr     ax, 1
+seg001:030B                 shr     ax, 1
+seg001:030D                 shr     ax, 1
+seg001:030F                 push    bx
+seg001:0310                 mov     bh, 0A0h ; ' '
+seg001:0312                 mul     bh
+seg001:0314                 pop     bx
+seg001:0315                 and     dx, 0FFh
+seg001:0319                 shl     dx, 1
+seg001:031B                 add     ax, dx
+seg001:031D                 mov     di, ax
+seg001:031F                 mov     bl, es:[di]
+seg001:0322                 pop     dx
+seg001:0323                 retn
+seg001:0323 readcharat      endp
+seg001:0323
+seg001:0324
+seg001:0324 ; =============== S U B R O U T I N E =======================================
+seg001:0324
+seg001:0324
+seg001:0324 writestringat   proc near               ; CODE XREF: main+16\u2191p
+seg001:0324                                         ; main+37\u2191p ...
+seg001:0324                 push    dx
+seg001:0325                 mov     ax, dx
+seg001:0327                 and     ax, 0FF00h
+seg001:032A                 shr     ax, 1
+seg001:032C                 shr     ax, 1
+seg001:032E                 shr     ax, 1
+seg001:0330                 shr     ax, 1
+seg001:0332                 shr     ax, 1
+seg001:0334                 shr     ax, 1
+seg001:0336                 shr     ax, 1
+seg001:0338                 shr     ax, 1
+seg001:033A                 push    bx
+seg001:033B                 mov     bh, 0A0h ; ' '
+seg001:033D                 mul     bh
+seg001:033F                 pop     bx
+seg001:0340                 and     dx, 0FFh
+seg001:0344                 shl     dx, 1
+seg001:0346                 add     ax, dx
+seg001:0348                 mov     di, ax
+seg001:034A
+seg001:034A loc_1044A:                              ; CODE XREF: writestringat+32\u2193j
+seg001:034A                 mov     al, [bx]
+seg001:034C                 test    al, al
+seg001:034E                 jz      short loc_10458
+seg001:0350                 mov     es:[di], al
+seg001:0353                 inc     di
+seg001:0354                 inc     di
+seg001:0355                 inc     bx
+seg001:0356                 jmp     short loc_1044A
+seg001:0358 ; ---------------------------------------------------------------------------
+seg001:0358
+seg001:0358 loc_10458:                              ; CODE XREF: writestringat+2A\u2191j
+seg001:0358                 pop     dx
+seg001:0359                 retn
+seg001:0359 writestringat   endp
+seg001:0359
+seg001:0359 seg001          ends
+seg001:0359
+seg001:0359
+seg001:0359                 end main

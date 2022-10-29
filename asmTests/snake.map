@@ -1,0 +1,39 @@
+
+ Start  Stop   Length Name               Class
+
+ 00000H 000FFH 00100H DATA               DATA
+ 00100H 00459H 0035AH seg001             CODE
+
+
+  Address         Publics by Value
+
+ 0000:0000       msg
+ 0000:001C       instructions
+ 0000:0078       aThanksForPlayi
+ 0000:009D       gameovermsg
+ 0000:00B9       scoremsg
+ 0000:00C1       head
+ 0000:00C4       body
+ 0000:00F4       segmentcount
+ 0000:00F5       fruitactive
+ 0000:00F6       fruitx
+ 0000:00F7       fruity
+ 0000:00F8       gameover
+ 0000:00F9       quit
+ 0000:00FA       delaytime
+ 0010:0000       main
+ 0010:0092       delay
+ 0010:00A3       fruitgeneration
+ 0010:0122       dispdigit
+ 0010:012A       dispnum
+ 0010:0141       setcursorpos
+ 0010:014A       draw
+ 0010:018C       readchar
+ 0010:019C       keyboardfunctions
+ 0010:01F6       shiftsnake
+ 0010:029F       printbox
+ 0010:02CE       writecharat
+ 0010:02F9       readcharat
+ 0010:0324       writestringat
+
+Program entry point at 0010:0000
