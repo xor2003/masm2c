@@ -32,20 +32,20 @@ mnemonic: "AAA"i|"AAD"i|"AAM"i|"AAS"i|"ADC"i|"ADD"i|"AND"i|"CALL"i|"CBW"i|"CLC"i
 //
 //datadecl: /(?i)(DB) | (DW) | (DD) | (DF) | (DQ) | (DT) | (BYTE)|(SBYTE)|(WORD)|(SWORD)|(DWORD)|(SDWORD)|(FWORD)|(QWORD)|(TBYTE)|(REAL4)|(REAL8)|(REAL10)/
 !datadecl: "DB"i | "DW"i | "DD"i | "DF"i | "DQ"i | "DT"i | "BYTE"i | "SBYTE"i|"WORD"i|"SWORD"i|"DWORD"i|"SDWORD"i|"FWORD"i|"QWORD"i|"TBYTE"i|"REAL4"i|"REAL8"i|"REAL10"i
-datatype: "BYTE"i|"SBYTE"i|"WORD"i|"SWORD"i|"DWORD"i|"SDWORD"i|"FWORD"i|"QWORD"i|"TBYTE"i|"REAL4"i|"REAL8"i|"REAL10"i
-register: "AX"i|"EAX"i|"BX"i|"EBX"i|"CX"i|"ECX"i|"DX"i|"EDX"i|"BP"i|"EBP"i|"SP"i|"ESP"i|"DI"i|"EDI"i|"SI"i|"ESI"i|"AL"i|"AH"i|"BL"i|"BH"i|"CL"i|"CH"i|"DL"i|"DH"i
-segmentregister: "CS"i|"DS"i|"ES"i|"FS"i|"GS"i|"SS"i
-specialregister: "CR0"i|"CR2"i|"CR3"i|"DR0"i|"DR1"i|"DR2"i|"DR3"i|"DR6"i|"DR7"i|"TR3"i|"TR4"i|"TR5"i|"TR6"i|"TR7"i
-instrprefix: "REP"i|"REPE"i|"REPZ"i|"REPNE"i|"REPNZ"i|"LOCK"i
-langtype: "C"i|"PASCAL"i|"FORTRAN"i|"BASIC"i|"SYSCALL"i|"STDCALL"i
-relop: "EQ"i|"NE"i|"LT"i|"LE"i|"GT"i|"GE"i
-maptype: "ALL"i|"NONE"i|"NOTPUBLIC"i
-memoption: "TINY"i|"SMALL"i|"MEDIUM"i|"COMPACT"i|"LARGE"i|"HUGE"i|"FLAT"i
-listoption: ".LIST"i|".NOLIST"i|".XLIST"i|".LISTALL"i|".LISTIF"i|".LFCOND"i|".NOLISTIF"i|".SFCOND"i|".TFCOND"i|".LISTMACROALL"i|".LALL"i|".NOLISTMACRO"i|".SALL"i|".LISTMACRO"i|".XALL"i
+!datatype: "BYTE"i|"SBYTE"i|"WORD"i|"SWORD"i|"DWORD"i|"SDWORD"i|"FWORD"i|"QWORD"i|"TBYTE"i|"REAL4"i|"REAL8"i|"REAL10"i
+!register: "AX"i|"EAX"i|"BX"i|"EBX"i|"CX"i|"ECX"i|"DX"i|"EDX"i|"BP"i|"EBP"i|"SP"i|"ESP"i|"DI"i|"EDI"i|"SI"i|"ESI"i|"AL"i|"AH"i|"BL"i|"BH"i|"CL"i|"CH"i|"DL"i|"DH"i
+!segmentregister: "CS"i|"DS"i|"ES"i|"FS"i|"GS"i|"SS"i
+!specialregister: "CR0"i|"CR2"i|"CR3"i|"DR0"i|"DR1"i|"DR2"i|"DR3"i|"DR6"i|"DR7"i|"TR3"i|"TR4"i|"TR5"i|"TR6"i|"TR7"i
+!instrprefix: "REP"i|"REPE"i|"REPZ"i|"REPNE"i|"REPNZ"i|"LOCK"i
+!langtype: "C"i|"PASCAL"i|"FORTRAN"i|"BASIC"i|"SYSCALL"i|"STDCALL"i
+!relop: "EQ"i|"NE"i|"LT"i|"LE"i|"GT"i|"GE"i
+!maptype: "ALL"i|"NONE"i|"NOTPUBLIC"i
+!memoption: "TINY"i|"SMALL"i|"MEDIUM"i|"COMPACT"i|"LARGE"i|"HUGE"i|"FLAT"i
+!listoption: ".LIST"i|".NOLIST"i|".XLIST"i|".LISTALL"i|".LISTIF"i|".LFCOND"i|".NOLISTIF"i|".SFCOND"i|".TFCOND"i|".LISTMACROALL"i|".LALL"i|".NOLISTMACRO"i|".SALL"i|".LISTMACRO"i|".XALL"i
 PROCESSOR: ".8086"i|".186"i|".286"i|".286C"i|".286P"i|".386"i|".386C"i|".386P"i|".486"i|".486P"i|".586"i|".586P"i|".686"i|".686P"i|".K3D"i|".MMX"i|".XMM"i
-coprocessor: ".8087"i|".287"i|".387"i|".NO87"i
-segalign: "BYTE"i|"WORD"i|"DWORD"i|"PARA"i|"PAGE"i
-segorderdir: ".ALPHA"i|".SEQ"i|".DOSSEG"i|"DOSSEG"i
+!coprocessor: ".8087"i|".287"i|".387"i|".NO87"i
+!segalign: "BYTE"i|"WORD"i|"DWORD"i|"PARA"i|"PAGE"i
+!segorderdir: ".ALPHA"i|".SEQ"i|".DOSSEG"i|"DOSSEG"i
 ASSUMENOTHING: "ASSUME NOTHING"i
 
 aliasdir: "ALIAS"i
@@ -195,7 +195,7 @@ _e11: "(" expr ")"
 | INTEGER
 | type
 | "$"
-| anyregister
+| _anyregister
 | "ST"i
 | "ST"i "(" expr ")"
 expr: ".TYPE"i _e01
@@ -254,7 +254,7 @@ asminstruction: mnemonic  _exprlist?| instrprefix? mnemonic  _exprlist?
 
 instruction: asminstruction _linereminder
 
-invokearg: anyregister "::" register| "ADDR"i expr | expr
+invokearg: _anyregister "::" register| "ADDR"i expr | expr
 invokedir: "INVOKE"i expr commainvokelist? _linereminder
 invokelist: invokearg | invokearg commaoeol invokelist
 labeldef: LABEL ":" | LABEL "::"
@@ -331,9 +331,9 @@ recordfieldlist: scalarinstlist
 recordinstance_: "{"  _linereminder? recordfieldlist _linereminder?  "}"
 recordinstance: recordinstance_ | oldrecordinstance | expr "DUP"i "(" recordinstance ")"
 recordinstlist: recordinstance | recordinstance commaoeol recordinstlist
-anyregister: segmentregister | register | specialregister
+_anyregister: segmentregister | register | specialregister
 reglist: register+
-allreglist: anyregister+
+allreglist: _anyregister+
 
 repeatblock: ".REPEAT"i _linereminder blockstatements untildir
 repeatdir: "REPEAT"i | "REPT"i
