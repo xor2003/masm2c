@@ -5815,6 +5815,9 @@ class CppTest(unittest.TestCase):
     def test_cpp_39330(self):
         self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'word'), u'word')
 
+    def test_cpp_36335(self):
+        self.assertEqual(self.cpp.convert_asm_number_into_c(expr=u'7o'), u'07')
+
     def test_cpp_39340(self):
         self.assertEqual(self.cpp.cpp_mangle_label(name='loc_40458F'), 'loc_40458f')
 

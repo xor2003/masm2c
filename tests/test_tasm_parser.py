@@ -3306,6 +3306,9 @@ head db '^',10,10
         self.assertEqual(self.proc.generate_full_cmd_line(self.cpp, self.parser.action_data(
             'var_104_rc equ TRANSFORMEDSHAPE ptr -260')), u'#define var_104_rc -260\n')
 
+    def test_instr_10890(self):
+        self.assertEqual(*self.doTest('retn 6', 'RETN(6)'))
+
     #def test_instr_12030(self):
     #    print(*self.doTest("cmp head, 'v'",  u"CMP(*(head), 'v')"))
 if __name__ == "__main__":
