@@ -1,0 +1,1036 @@
+?start: _directivelist?  enddir
+%ignore " "
+
+AAA: "AAA"i
+AAD: "AAD"i
+AAM: "AAM"i
+AAS: "AAS"i
+ABS: "ABS"i
+ADC: "ADC"i
+ADD: "ADD"i
+ADDR: "ADDR"i
+AH: "AH"i
+AL: "AL"i
+ALIAS: "ALIAS"i
+ALIGN: "ALIGN"i
+ALL: "ALL"i
+AND: "AND"i
+ARPL: "ARPL"i
+ASSUMENOTHING: "ASSUME NOTHING"i
+ASSUME: "ASSUME"i
+ASSUMES: "ASSUMES"i
+AT: "AT"i
+AX: "AX"i
+BASIC: "BASIC"i
+BH: "BH"i
+BL: "BL"i
+BOUND: "BOUND"i
+BP: "BP"i
+BSF: "BSF"i
+BSR: "BSR"i
+BSWAP: "BSWAP"i
+BT: "BT"i
+BTC: "BTC"i
+BTR: "BTR"i
+BTS: "BTS"i
+BX: "BX"i
+BYTE: "BYTE"i
+CALL: "CALL"i
+CARRY_: "CARRY?"i
+CASEMAP: "CASEMAP"i
+CATSTR: "CATSTR"i
+CBW: "CBW"i
+CDQ: "CDQ"i
+CH: "CH"i
+CL: "CL"i
+CLC: "CLC"i
+CLD: "CLD"i
+CLI: "CLI"i
+CLTS: "CLTS"i
+CMC: "CMC"i
+CMP: "CMP"i
+CMPS: "CMPS"i
+CMPSB: "CMPSB"i
+CMPSD: "CMPSD"i
+CMPSW: "CMPSW"i
+CMPXCHG: "CMPXCHG"i
+CMPXCHG8B: "CMPXCHG8B"i
+COMM: "COMM"i
+COMMON: "COMMON"i
+COMPACT: "COMPACT"i
+CPU: "CPU"i
+CR0: "CR0"i
+CR2: "CR2"i
+CR3: "CR3"i
+CS: "CS"i
+CWD: "CWD"i
+CWDE: "CWDE"i
+CX: "CX"i
+DAA: "DAA"i
+DAS: "DAS"i
+DB: "DB"i
+DD: "DD"i
+DEC: "DEC"i
+DF: "DF"i
+DGROUP: "DGROUP"i
+DH: "DH"i
+DI: "DI"i
+DIV: "DIV"i
+DL: "DL"i
+DOSSEG: "DOSSEG"i
+DOTNAME: "DOTNAME"i
+DQ: "DQ"i
+DR0: "DR0"i
+DR1: "DR1"i
+DR2: "DR2"i
+DR3: "DR3"i
+DR6: "DR6"i
+DR7: "DR7"i
+DS: "DS"i
+DT: "DT"i
+DUP: "DUP"i
+DW: "DW"i
+DWORD: "DWORD"i
+DX: "DX"i
+EAX: "EAX"i
+EBP: "EBP"i
+EBX: "EBX"i
+ECHO: "ECHO"i
+ECX: "ECX"i
+EDI: "EDI"i
+EDX: "EDX"i
+ELSEIF1: "ELSEIF1"i
+ELSEIF2: "ELSEIF2"i
+ELSEIF: "ELSEIF"i
+ELSEIFB: "ELSEIFB"i
+ELSEIFDEF: "ELSEIFDEF"i
+ELSEIFDIF: "ELSEIFDIF"i
+ELSEIFDIFI: "ELSEIFDIFI"i
+ELSEIFE: "ELSEIFE"i
+ELSEIFIDN: "ELSEIFIDN"i
+ELSEIFIDNI: "ELSEIFIDNI"i
+ELSEIFNB: "ELSEIFNB"i
+ELSEIFNDEF: "ELSEIFNDEF"i
+EMULATOR: "EMULATOR"i
+END: "END"i
+ENDIF: "ENDIF"i
+ENDM: "ENDM"i
+ENDP: "ENDP"i
+ENDS: "ENDS"i
+ENTER: "ENTER"i
+EPILOGUE: "EPILOGUE"i
+EQ: "EQ"i
+EQU: "EQU"i
+ERROR: "ERROR"i
+ES: "ES"i
+ESC: "ESC"i
+ESI: "ESI"i
+ESP: "ESP"i
+EVEN: "EVEN"i
+EXITM: "EXITM"i
+EXPORT: "EXPORT"i
+EXPR16: "EXPR16"i
+EXPR32: "EXPR32"i
+EXTERN: "EXTERN"i
+EXTERNDEF: "EXTERNDEF"i
+EXTRN: "EXTRN"i
+F2XM1: "F2XM1"i
+FABS: "FABS"i
+FADD: "FADD"i
+FADDP: "FADDP"i
+FALSE: "FALSE"i
+FAR16: "FAR16"i
+FAR32: "FAR32"i
+FAR: "FAR"i
+FARSTACK: "FARSTACK"i
+FBLD: "FBLD"i
+FBSTP: "FBSTP"i
+FCHS: "FCHS"i
+FCLEX: "FCLEX"i
+FCOM: "FCOM"i
+FCOMP: "FCOMP"i
+FCOMPP: "FCOMPP"i
+FCOS: "FCOS"i
+FDECSTP: "FDECSTP"i
+FDISI: "FDISI"i
+FDIV: "FDIV"i
+FDIVP: "FDIVP"i
+FDIVR: "FDIVR"i
+FDIVRP: "FDIVRP"i
+FENI: "FENI"i
+FFREE: "FFREE"i
+FIADD: "FIADD"i
+FICOM: "FICOM"i
+FICOMP: "FICOMP"i
+FIDIV: "FIDIV"i
+FIDIVR: "FIDIVR"i
+FILD: "FILD"i
+FIMUL: "FIMUL"i
+FINCSTP: "FINCSTP"i
+FINIT: "FINIT"i
+FIST: "FIST"i
+FISTP: "FISTP"i
+FISUB: "FISUB"i
+FISUBR: "FISUBR"i
+FLAT: "FLAT"i
+FLD1: "FLD1"i
+FLD: "FLD"i
+FLDCW: "FLDCW"i
+FLDENV: "FLDENV"i
+FLDENVD: "FLDENVD"i
+FLDENVW: "FLDENVW"i
+FLDL2E: "FLDL2E"i
+FLDL2T: "FLDL2T"i
+FLDLG2: "FLDLG2"i
+FLDLN2: "FLDLN2"i
+FLDPI: "FLDPI"i
+FLDZ: "FLDZ"i
+FMUL: "FMUL"i
+FMULP: "FMULP"i
+FNCLEX: "FNCLEX"i
+FNDISI: "FNDISI"i
+FNENI: "FNENI"i
+FNINIT: "FNINIT"i
+FNOP: "FNOP"i
+FNSAVE: "FNSAVE"i
+FNSAVED: "FNSAVED"i
+FNSAVEW: "FNSAVEW"i
+FNSTCW: "FNSTCW"i
+FNSTENV: "FNSTENV"i
+FNSTENVD: "FNSTENVD"i
+FNSTENVW: "FNSTENVW"i
+FNSTSW: "FNSTSW"i
+FOR: "FOR"i
+FORC: "FORC"i
+FORTRAN: "FORTRAN"i
+FPATAN: "FPATAN"i
+FPREM1: "FPREM1"i
+FPREM: "FPREM"i
+FPTAN: "FPTAN"i
+FRNDINT: "FRNDINT"i
+FRSTOR: "FRSTOR"i
+FRSTORD: "FRSTORD"i
+FRSTORW: "FRSTORW"i
+FS: "FS"i
+FSAVE: "FSAVE"i
+FSAVED: "FSAVED"i
+FSAVEW: "FSAVEW"i
+FSCALE: "FSCALE"i
+FSETPM: "FSETPM"i
+FSIN: "FSIN"i
+FSINCOS: "FSINCOS"i
+FSQRT: "FSQRT"i
+FST: "FST"i
+FSTCW: "FSTCW"i
+FSTENV: "FSTENV"i
+FSTENVD: "FSTENVD"i
+FSTENVW: "FSTENVW"i
+FSTP: "FSTP"i
+FSTSW: "FSTSW"i
+FSUB: "FSUB"i
+FSUBP: "FSUBP"i
+FSUBR: "FSUBR"i
+FSUBRP: "FSUBRP"i
+FTST: "FTST"i
+FUCOM: "FUCOM"i
+FUCOMP: "FUCOMP"i
+FUCOMPP: "FUCOMPP"i
+FWAIT: "FWAIT"i
+FWORD: "FWORD"i
+FXAM: "FXAM"i
+FXCH: "FXCH"i
+FXTRACT: "FXTRACT"i
+FYL2X: "FYL2X"i
+FYL2XP1: "FYL2XP1"i
+GE: "GE"i
+GOTO: "GOTO"i
+GROUP: "GROUP"i
+GS: "GS"i
+GT: "GT"i
+HIGH: "HIGH"i
+HIGHWORD: "HIGHWORD"i
+HLT: "HLT"i
+HUGE: "HUGE"i
+IDIV: "IDIV"i
+IF1: "IF1"i
+IF2: "IF2"i
+IF: "IF"i
+IFB: "IFB"i
+IFDEF: "IFDEF"i
+IFDIF: "IFDIF"i
+IFDIFI: "IFDIFI"i
+IFE: "IFE"i
+IFIDN: "IFIDN"i
+IFIDNI: "IFIDNI"i
+IFNB: "IFNB"i
+IFNDEF: "IFNDEF"i
+IMUL: "IMUL"i
+IN: "IN"i
+INC: "INC"i
+INCLUDE: "INCLUDE"i
+INCLUDELIB: "INCLUDELIB"i
+INS: "INS"i
+INSB: "INSB"i
+INSD: "INSD"i
+INSTR: "INSTR"i
+INSW: "INSW"i
+INT: "INT"i
+INTO: "INTO"i
+INVD: "INVD"i
+INVLPG: "INVLPG"i
+INVOKE: "INVOKE"i
+IRET: "IRET"i
+IRETD: "IRETD"i
+IRETDF: "IRETDF"i
+IRETF: "IRETF"i
+IRP: "IRP"i
+IRPC: "IRPC"i
+JA: "JA"i
+JAE: "JAE"i
+JB: "JB"i
+JBE: "JBE"i
+JC: "JC"i
+JCXZ: "JCXZ"i
+JE: "JE"i
+JECXZ: "JECXZ"i
+JG: "JG"i
+JGE: "JGE"i
+JL: "JL"i
+JLE: "JLE"i
+JMP: "JMP"i
+JNA: "JNA"i
+JNAE: "JNAE"i
+JNB: "JNB"i
+JNBE: "JNBE"i
+JNC: "JNC"i
+JNE: "JNE"i
+JNG: "JNG"i
+JNGE: "JNGE"i
+JNL: "JNL"i
+JNLE: "JNLE"i
+JNO: "JNO"i
+JNP: "JNP"i
+JNS: "JNS"i
+JNZ: "JNZ"i
+JO: "JO"i
+JP: "JP"i
+JPE: "JPE"i
+JPO: "JPO"i
+JS: "JS"i
+JZ: "JZ"i
+LABELKW: "LABEL"i
+LAHF: "LAHF"i
+LANGUAGE: "LANGUAGE"i
+LAR: "LAR"i
+LARGE: "LARGE"i
+LDS: "LDS"i
+LE: "LE"i
+LEA: "LEA"i
+LEAVE: "LEAVE"i
+LENGTH: "LENGTH"i
+LENGTHOF: "LENGTHOF"i
+LES: "LES"i
+LFS: "LFS"i
+LGDT: "LGDT"i
+LGS: "LGS"i
+LIDT: "LIDT"i
+LISTING: "LISTING"i
+LJMP: "LJMP"i
+LLDT: "LLDT"i
+LMSW: "LMSW"i
+LOCAL: "LOCAL"i
+LOCK: "LOCK"i
+LODS: "LODS"i
+LODSB: "LODSB"i
+LODSD: "LODSD"i
+LODSW: "LODSW"i
+LOOP: "LOOP"i
+LOOPD: "LOOPD"i
+LOOPE: "LOOPE"i
+LOOPED: "LOOPED"i
+LOOPEW: "LOOPEW"i
+LOOPNE: "LOOPNE"i
+LOOPNED: "LOOPNED"i
+LOOPNEW: "LOOPNEW"i
+LOOPNZ: "LOOPNZ"i
+LOOPNZD: "LOOPNZD"i
+LOOPNZW: "LOOPNZW"i
+LOOPW: "LOOPW"i
+LOOPZ: "LOOPZ"i
+LOOPZD: "LOOPZD"i
+LOOPZW: "LOOPZW"i
+LOW: "LOW"i
+LOWWORD: "LOWWORD"i
+LROFFSET: "LROFFSET"i
+LSL: "LSL"i
+LSS: "LSS"i
+LT: "LT"i
+LTR: "LTR"i
+M510: "M510"i
+MACRO: "MACRO"i
+MASK: "MASK"i
+MEDIUM: "MEDIUM"i
+MEMORY: "MEMORY"i
+MOD: "MOD"i
+MOV: "MOV"i
+MOVS: "MOVS"i
+MOVSB: "MOVSB"i
+MOVSD: "MOVSD"i
+MOVSW: "MOVSW"i
+MOVSX: "MOVSX"i
+MOVZX: "MOVZX"i
+MUL: "MUL"i
+NAME: "NAME"i
+NE: "NE"i
+NEAR16: "NEAR16"i
+NEAR32: "NEAR32"i
+NEAR: "NEAR"i
+NEARSTACK: "NEARSTACK"i
+NEG: "NEG"i
+NODOTNAME: "NODOTNAME"i
+NOEMULATOR: "NOEMULATOR"i
+NOLJMP: "NOLJMP"i
+NOM510: "NOM510"i
+NONE: "NONE"i
+NONUNIQUE: "NONUNIQUE"i
+NOOLDMACROS: "NOOLDMACROS"i
+NOOLDSTRUCTS: "NOOLDSTRUCTS"i
+NOP: "NOP"i
+NOREADONLY: "NOREADONLY"i
+NOSCOPED: "NOSCOPED"i
+NOSIGNEXTEND: "NOSIGNEXTEND"i
+NOT: "NOT"i
+NOTHING: "NOTHING"i
+NOTPUBLIC: "NOTPUBLIC"i
+OFFSET: "OFFSET"i
+OLDMACROS: "OLDMACROS"i
+OLDSTRUCTS: "OLDSTRUCTS"i
+OPATTR: "OPATTR"i
+OPTION: "OPTION"i
+OR: "OR"i
+ORG: "ORG"i
+OS_DOS: "OS_DOS"i
+OUT: "OUT"i
+OUTS: "OUTS"i
+OUTSB: "OUTSB"i
+OUTSD: "OUTSD"i
+OUTSW: "OUTSW"i
+OVERFLOW_: "OVERFLOW?"i
+PAGE: "PAGE"i
+PARA: "PARA"i
+PARITY_: "PARITY?"i
+PASCAL: "PASCAL"i
+POP: "POP"i
+POPA: "POPA"i
+POPAD: "POPAD"i
+POPCONTEXT: "POPCONTEXT"i
+POPF: "POPF"i
+POPFD: "POPFD"i
+PRIVATE: "PRIVATE"i
+PROC: "PROC"i
+PROLOGUE: "PROLOGUE"i
+PROTO: "PROTO"i
+PTR: "PTR"i
+PUBLIC: "PUBLIC"i
+PURGE: "PURGE"i
+PUSH: "PUSH"i
+PUSHA: "PUSHA"i
+PUSHAD: "PUSHAD"i
+PUSHCONTEXT: "PUSHCONTEXT"i
+PUSHD: "PUSHD"i
+PUSHF: "PUSHF"i
+PUSHFD: "PUSHFD"i
+PUSHW: "PUSHW"i
+QWORD: "QWORD"i
+RADIX: "RADIX"i
+RCL: "RCL"i
+RCR: "RCR"i
+READONLY: "READONLY"i
+REAL10: "REAL10"i
+REAL4: "REAL4"i
+REAL8: "REAL8"i
+RECORD: "RECORD"i
+REP: "REP"i
+REPE: "REPE"i
+REPEAT: "REPEAT"i
+REPNE: "REPNE"i
+REPNZ: "REPNZ"i
+REPT: "REPT"i
+REPZ: "REPZ"i
+REQ: "REQ"i
+RET: "RET"i
+RETF: "RETF"i
+RETN: "RETN"i
+ROL: "ROL"i
+ROR: "ROR"i
+SAHF: "SAHF"i
+SAL: "SAL"i
+SAR: "SAR"i
+SBB: "SBB"i
+SBYTE: "SBYTE"i
+SCAS: "SCAS"i
+SCASB: "SCASB"i
+SCASD: "SCASD"i
+SCASW: "SCASW"i
+SCOPED: "SCOPED"i
+SDWORD: "SDWORD"i
+SEG: "SEG"i
+SEGMENT: "SEGMENT"i
+SETA: "SETA"i
+SETAE: "SETAE"i
+SETB: "SETB"i
+SETBE: "SETBE"i
+SETC: "SETC"i
+SETE: "SETE"i
+SETG: "SETG"i
+SETGE: "SETGE"i
+SETIF2: "SETIF2"i
+SETL: "SETL"i
+SETLE: "SETLE"i
+SETNA: "SETNA"i
+SETNAE: "SETNAE"i
+SETNB: "SETNB"i
+SETNBE: "SETNBE"i
+SETNC: "SETNC"i
+SETNE: "SETNE"i
+SETNG: "SETNG"i
+SETNGE: "SETNGE"i
+SETNL: "SETNL"i
+SETNLE: "SETNLE"i
+SETNO: "SETNO"i
+SETNP: "SETNP"i
+SETNS: "SETNS"i
+SETNZ: "SETNZ"i
+SETO: "SETO"i
+SETP: "SETP"i
+SETPE: "SETPE"i
+SETPO: "SETPO"i
+SETS: "SETS"i
+SETZ: "SETZ"i
+SGDT: "SGDT"i
+SHL: "SHL"i
+SHLD: "SHLD"i
+SHORT: "SHORT"i
+SHR: "SHR"i
+SHRD: "SHRD"i
+SI: "SI"i
+SIDT: "SIDT"i
+SIGN_: "SIGN?"i
+SIZE: "SIZE"i
+SIZEOF: "SIZEOF"i
+SIZESTR: "SIZESTR"i
+SLDT: "SLDT"i
+SMALL: "SMALL"i
+SMART: "SMART"i
+NOSMART: "NOSMART"i
+SMSW: "SMSW"i
+SP: "SP"i
+SS: "SS"i
+ST: "ST"i
+STACK: "STACK"i
+STC: "STC"i
+STD: "STD"i
+STDCALL: "STDCALL"i
+STI: "STI"i
+STOS: "STOS"i
+STOSB: "STOSB"i
+STOSD: "STOSD"i
+STOSW: "STOSW"i
+STR: "STR"i
+STRUC: "STRUC"i
+STRUCT: "STRUCT"i
+SUB: "SUB"i
+SUBSTR: "SUBSTR"i
+SUBTITLE: "SUBTITLE"i
+SUBTTL: "SUBTTL"i
+SWORD: "SWORD"i
+SYSCALL: "SYSCALL"i
+TBYTE: "TBYTE"i
+TEST: "TEST"i
+TEXTEQU: "TEXTEQU"i
+THIS: "THIS"i
+TINY: "TINY"i
+TITLE: "TITLE"i
+TR3: "TR3"i
+TR4: "TR4"i
+TR5: "TR5"i
+TR6: "TR6"i
+TR7: "TR7"i
+TRUE: "TRUE"i
+TYPE: "TYPE"i
+TYPEDEF: "TYPEDEF"i
+UNION: "UNION"i
+USE16: "USE16"i
+USE32: "USE32"i
+USES: "USES"i
+VARARG: "VARARG"i
+VERR: "VERR"i
+VERW: "VERW"i
+WAIT: "WAIT"i
+WBINVD: "WBINVD"i
+WHILE: "WHILE"i
+WIDTH: "WIDTH"i
+WORD: "WORD"i
+XADD: "XADD"i
+XCHG: "XCHG"i
+XLAT: "XLAT"i
+XLATB: "XLATB"i
+XOR: "XOR"i
+ZERO_: "ZERO?"i
+U_186: ".186"i
+U_286: ".286"i
+U_286C: ".286C"i
+U_286P: ".286P"i
+U_287: ".287"i
+U_386: ".386"i
+U_386C: ".386C"i
+U_386P: ".386P"i
+U_387: ".387"i
+U_486: ".486"i
+U_486P: ".486P"i
+U_586: ".586"i
+U_586P: ".586P"i
+U_686: ".686"i
+U_686P: ".686P"i
+U_8086: ".8086"i
+U_8087: ".8087"i
+U_ALPHA: ".ALPHA"i
+U_BREAK: ".BREAK"i
+U_CODE: ".CODE"i
+U_CONST: ".CONST"i
+U_CONTINUE: ".CONTINUE"i
+U_CREF: ".CREF"i
+U_DATA: ".DATA"i
+U_DATA_: ".DATA?"i
+U_DOSSEG: ".DOSSEG"i
+U_ELSE: ".ELSE"i
+U_ELSEIF: ".ELSEIF"i
+U_ENDIF: ".ENDIF"i
+U_ENDW: ".ENDW"i
+U_ERR1: ".ERR1"i
+U_ERR2: ".ERR2"i
+U_ERR: ".ERR"i
+U_ERRB: ".ERRB"i
+U_ERRDEF: ".ERRDEF"i
+U_ERRDIF: ".ERRDIF"i
+U_ERRDIFI: ".ERRDIFI"i
+U_ERRE: ".ERRE"i
+U_ERRIDN: ".ERRIDN"i
+U_ERRIDNI: ".ERRIDNI"i
+U_ERRNB: ".ERRNB"i
+U_ERRNDEF: ".ERRNDEF"i
+U_ERRNZ: ".ERRNZ"i
+U_EXIT: ".EXIT"i
+U_FARDATA: ".FARDATA"i
+U_FARDATA_: ".FARDATA?"i
+U_IF: ".IF"i
+U_K3D: ".K3D"i
+U_LALL: ".LALL"i
+U_LFCOND: ".LFCOND"i
+U_LIST: ".LIST"i
+U_LISTALL: ".LISTALL"i
+U_LISTIF: ".LISTIF"i
+U_LISTMACRO: ".LISTMACRO"i
+U_LISTMACROALL: ".LISTMACROALL"i
+U_MMX: ".MMX"i
+U_MODEL: ".MODEL"i
+U_NO87: ".NO87"i
+U_NOCREF: ".NOCREF"i
+U_NOLIST: ".NOLIST"i
+U_NOLISTIF: ".NOLISTIF"i
+U_NOLISTMACRO: ".NOLISTMACRO"i
+U_OUT: "%OUT"i
+U_RADIX: ".RADIX"i
+U_REPEAT: ".REPEAT"i
+U_SALL: ".SALL"i
+U_SEQ: ".SEQ"i
+U_SFCOND: ".SFCOND"i
+U_STACK: ".STACK"i
+U_STARTUP: ".STARTUP"i
+U_TFCOND: ".TFCOND"i
+U_TYPE: ".TYPE"i
+U_UNTIL: ".UNTIL"i
+U_UNTILCXZ: ".UNTILCXZ"i
+U_WHILE: ".WHILE"i
+U_XALL: ".XALL"i
+U_XCREF: ".XCREF"i
+U_XLIST: ".XLIST"i
+U_XMM: ".XMM"i
+C: "C"i
+U_DOT: "."
+COMMA: ","
+charlist: /[^\r\n\t ]+/x
+text: /[^\r\n]+/x
+STRING: /((?<!')'(?!').+?(?<!')'(?!'))|((?<!")"(?!").+?(?<!")"(?!"))/
+macroname: "macroname"
+structname: "structname"
+LABEL: /[A-Za-z@_$?][A-Za-z@_$?0-9]*/
+//MONKEY: /@@|@B|@F/
+addop: /[+-]/
+
+COMMENTKW: /COMMENT\s+(\S)/ //[.\r\n]*?\1[^\r\n]*/x
+ENDOFLINE: /[\r\n]+[\t \r\n]*/x
+FLOAT: /[+-]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?/
+INTEGER: /[+-]?[0-9][0-9A-Fa-f]*[HOQTYhoqty]?/
+WS: /([\t \b\v\f\x1a]+)|(\\;?[^\r\n]*[\r\n\t \b\v\f\x1a]+)/x
+SPACE: /[\t ]+/
+COMMENT: /;[^\r\n]*/x
+KEYWORD: /\w+/
+arbitrarytext: /[^\r\n]+/x
+mnemonic: /(?i)(AAA)|(AAD)|(AAM)|(AAS)|(ADC)|(ADD)|(AND)|(CALL)|(CBW)|(CLC)|(CLD)|(CLI)|(CMC)|(CMP)|(CMPS)|(CMPSB)|(CMPSW)|(CMPXCHG8B)|(CWD)|(DAA)|(DAS)|(DEC)|(DIV)|(ESC)|(HLT)|(IDIV)|(IMUL)|(IN)|(INC)|(INT)|(INTO)|(IRET)|(JA)|(JAE)|(JB)|(JBE)|(JC)|(JCXZ)|(JE)|(JG)|(JGE)|(JL)|(JLE)|(JMP)|(JNA)|(JNAE)|(JNB)|(JNBE)|(JNC)|(JNE)|(JNG)|(JNGE)|(JNL)|(JNLE)|(JNO)|(JNP)|(JNS)|(JNZ)|(JO)|(JP)|(JPE)|(JPO)|(JS)|(JZ)|(LAHF)|(LDS)|(LEA)|(LES)|(LODS)|(LODSB)|(LODSW)|(LOOP)|(LOOPE)|(LOOPEW)|(LOOPNE)|(LOOPNEW)|(LOOPNZ)|(LOOPNZW)|(LOOPW)|(LOOPZ)|(LOOPZW)|(MOV)|(MOVS)|(MOVSB)|(MOVSW)|(MUL)|(NEG)|(NOP)|(NOT)|(OR)|(OUT)|(POP)|(POPF)|(PUSH)|(PUSHF)|(RCL)|(RCR)|(RET)|(RETF)|(RETN)|(ROL)|(ROR)|(SAHF)|(SAL)|(SAR)|(SBB)|(SCAS)|(SCASB)|(SCASW)|(SHL)|(SHR)|(STC)|(STD)|(STI)|(STOS)|(STOSB)|(STOSW)|(SUB)|(TEST)|(WAIT)|(XCHG)|(XLAT)|(XLATB)|(XOR)|(BOUND)|(ENTER)|(INS)|(INSB)|(INSW)|(LEAVE)|(OUTS)|(OUTSB)|(OUTSW)|(POPA)|(PUSHA)|(PUSHW)|(BSF)|(BSR)|(BT)|(BTC)|(BTR)|(BTS)|(CDQ)|(CMPSD)|(CWDE)|(INSD)|(IRETD)|(IRETDF)|(IRETF)|(JECXZ)|(LFS)|(LGS)|(LODSD)|(LOOPD)|(LOOPED)|(LOOPNED)|(LOOPNZD)|(LOOPZD)|(LSS)|(MOVSD)|(MOVSX)|(MOVZX)|(OUTSD)|(POPAD)|(POPFD)|(PUSHAD)|(PUSHD)|(PUSHFD)|(SCASD)|(SETA)|(SETAE)|(SETB)|(SETBE)|(SETC)|(SETE)|(SETG)|(SETGE)|(SETL)|(SETLE)|(SETNA)|(SETNAE)|(SETNB)|(SETNBE)|(SETNC)|(SETNE)|(SETNG)|(SETNGE)|(SETNL)|(SETNLE)|(SETNO)|(SETNP)|(SETNS)|(SETNZ)|(SETO)|(SETP)|(SETPE)|(SETPO)|(SETS)|(SETZ)|(SHLD)|(SHRD)|(STOSD)|(BSWAP)|(CMPXCHG)|(XADD)/
+//| F2XM1| FABS| FADD| FADDP| FBLD| FBSTP| FCHS| FCLEX| FCOM| FCOMP| FCOMPP| FDECSTP| FDISI| FDIV| FDIVP| FDIVR| FDIVRP
+//| FENI| FFREE| FIADD| FICOM| FICOMP| FIDIV| FIDIVR| FILD| FIMUL| FINCSTP| FINIT| FIST| FISTP| FISUB| FISUBR| FLD| FLD1
+//| FLDCW| FLDENV| FLDENVW| FLDL2E| FLDL2T| FLDLG2| FLDLN2| FLDPI| FLDZ| FMUL| FMULP| FNCLEX| FNDISI| FNENI| FNINIT
+//| FNOP| FNSAVE| FNSAVEW| FNSTCW| FNSTENV| FNSTENVW| FNSTSW| FPATAN| FPREM| FPTAN| FRNDINT| FRSTOR| FRSTORW| FSAVE
+//| FSAVEW| FSCALE| FSQRT| FST| FSTCW| FSTENV| FSTENVW| FSTP| FSTSW| FSUB| FSUBP| FSUBR| FSUBRP| FTST| FWAIT| FXAM| FXCH
+//| FXTRACT| FYL2X| FYL2XP1| FSETPM| FCOS| FLDENVD| FNSAVED| FNSTENVD| FPREM1| FRSTORD| FSAVED| FSIN| FSINCOS| FSTENVD| FUCOM
+//| FUCOMP| FUCOMPP
+//
+//datadecl: /(?i)(DB) | (DW) | (DD) | (DF) | (DQ) | (DT) | (BYTE)|(SBYTE)|(WORD)|(SWORD)|(DWORD)|(SDWORD)|(FWORD)|(QWORD)|(TBYTE)|(REAL4)|(REAL8)|(REAL10)/
+datadecl: DB | DW | DD | DF | DQ | DT | BYTE| SBYTE|WORD|SWORD|DWORD|SDWORD|FWORD|QWORD|TBYTE|REAL4|REAL8|REAL10
+datatype: /(?i)(BYTE)|(SBYTE)|(WORD)|(SWORD)|(DWORD)|(SDWORD)|(FWORD)|(QWORD)|(TBYTE)|(REAL4)|(REAL8)|(REAL10)/
+register: /(?i)(AX)|(EAX)|(BX)|(EBX)|(CX)|(ECX)|(DX)|(EDX)|(BP)|(EBP)|(SP)|(ESP)|(DI)|(EDI)|(SI)|(ESI)|(AL)|(AH)|(BL)|(BH)|(CL)|(CH)|(DL)|(DH)/
+segmentregister: /(?i)(CS)|(DS)|(ES)|(FS)|(GS)|(SS)/
+specialregister: /(?i)(CR0)|(CR2)|(CR3)|(DR0)|(DR1)|(DR2)|(DR3)|(DR6)|(DR7)|(TR3)|(TR4)|(TR5)|(TR6)|(TR7)/
+instrprefix: /(?i)(REP)|(REPE)|(REPZ)|(REPNE)|(REPNZ)|(LOCK)/
+langtype: /(?i)(C)|(PASCAL)|(FORTRAN)|(BASIC)|(SYSCALL)|(STDCALL)/
+relop: /(?i)(EQ)|(NE)|(LT)|(LE)|(GT)|(GE)/
+maptype: /(?i)(ALL)|(NONE)|(NOTPUBLIC)/
+memoption: /(?i)(TINY)|(SMALL)|(MEDIUM)|(COMPACT)|(LARGE)|(HUGE)|(FLAT)/
+listoption: /(?i)(\.LIST)|(\.NOLIST)|(\.XLIST)|(\.LISTALL)|(\.LISTIF)|(\.LFCOND)|(\.NOLISTIF)|(\.SFCOND)|(\.TFCOND)|(\.LISTMACROALL)|(\.LALL)|(\.NOLISTMACRO)|(\.SALL)|(\.LISTMACRO)|(\.XALL)/
+processor: /(?i)(\.8086)|(\.186)|(\.286)|(\.286C)|(\.286P)|(\.386[CP]?)|(\.486)|(\.486P)|(\.586)|(\.586P)|(\.686)|(\.686P)|(\.K3D)|(\.MMX)|(\.XMM)/
+coprocessor: /(?i)(\.8087) | (\.287) | (\.387) | (\.NO87)/
+segalign: /(?i)(BYTE) | (WORD) | (DWORD) | (PARA) | (PAGE)/
+segorderdir: /(?i)(\.ALPHA) | (\.SEQ) | (\.DOSSEG) | (DOSSEG)/
+
+
+aliasdir: ALIAS
+altidq: "(" LABEL ")"
+assdir: LABEL "=" expr _linereminder
+assumedir: ASSUME assumelist _linereminder| ASSUMENOTHING _linereminder
+assumelist : assumeregister| assumeregister COMMA assumelist
+assumereg: register ":" assumeval
+assumeregister: assumesegreg| assumereg
+assumesegreg: segmentregister ":" assumesegval
+assumesegval: NOTHING | ERROR | frameexpr
+assumeval: NOTHING | ERROR | qualifiedtype
+//bcdconst: sign?  decnumber
+binaryop: "=="| "!="| ">="| "<="| ">"| "<"| "&"
+//bitdef: bitfieldid ":" expr eqconstexpr?
+bitdef: bitfieldid ":" expr
+bitdeflist: bitdef | bitdef commaoeol bitdeflist
+bitfieldid : LABEL
+blockstatements: U_CONTINUE ifcexpr? _linereminder | U_BREAK ifcexpr? _linereminder| insegdir+
+bool: TRUE | FALSE
+brmacroarglist: "<" macroarglist ">"
+classname: STRING
+commaidvararg: commaoeol   LABEL? VARARG
+commainvokelist: commaoeol invokelist
+commamodeloptlist: COMMA modeloptlist
+commanonuniq: COMMA NONUNIQUE
+commapagewidth: COMMA expr
+commaparmidvararg: commaoeol  LABEL VARARG
+commaparmlist: commaoeol? parmlist
+commaprotolist: commaoeol  protolist
+commatextlen: COMMA expr
+commdecl: nearfar?   langtype?  LABEL ":" commtype eqconstexpr?
+commdir: COMM commlist _linereminder
+//commentdir: COMMENTKW DELIMITER text text DELIMITER text _linereminder; TODO
+commentdir: COMMENTKW _linereminder
+commlist: commdecl | commdecl COMMA commlist
+commtype: expr
+//constant: digits  radixoverride?
+contextdir: PUSHCONTEXT contextitemlist _linereminder| POPCONTEXT contextitemlist _linereminder
+contextitem: ASSUMES | RADIX | LISTING | CPU | ALL
+contextitemlist: contextitem | contextitem COMMA contextitemlist
+controlblock: whileblock| repeatblock
+controldir: controlif| controlblock
+controlelseif: U_ELSEIF cexpr _linereminder insegdir+ controlelseif?
+controlif: U_IF cexpr _linereminder insegdir+ controlelseif? elsedirectivelist? U_ENDIF _linereminder
+crefdir: crefoption _linereminder
+crefoption: U_CREF | U_XCREF idlist? | U_NOCREF idlist?
+//datadecl: DB | DW | DD | DF | DQ | DT | datatype
+//datadir: LABEL? dataitem _linereminder
+datadir: LABEL? datadecl scalarinstlist _linereminder | structinstdir | recordinstdir
+//datadir: LABEL? datadecl scalarinstlist _linereminder | LABEL? LABEL structinstlist _linereminder
+//datadir: LABEL? datadecl scalarinstlist _linereminder
+structinstdir: LABEL? structname structinstlist _linereminder
+recordinstdir: LABEL? LABEL recordinstlist _linereminder
+//dataitem: datadecl scalarinstlist| LABEL structinstlist| LABEL recordinstlist
+decnumber: INTEGER
+digits: decnumber
+directive: generaldir| segmentdef | _linereminder
+_directivelist: directive+
+distance: nearfar| NEAR16 | NEAR32 | FAR16 | FAR32
+dotdotforparmtype: ":" forparmtype
+dotdotparmtype: ":" parmtype
+dotdotqualifiedtype: ":" qualifiedtype
+
+// Precedence Operators
+// 1 ( ), [ ]
+// 2 LENGTH , SIZE , WIDTH , MASK, LENGTHOF, SIZEOF
+// 3 . (structure-field-name operator)
+// 4 : (segment-override operator), PTR
+// 5 LROFFSET , OFFSET , SEG , THIS , TYPE
+// 6 HIGH , HIGHWORD , LOW , LOWWORD
+// 7 +, - (unary)
+// 8 *, /, MOD , SHL , SHR
+// 9 +, - (binary)
+// 10 EQ , NE , LT , LE , GT , GE
+// 11 NOT
+// 12 AND
+// 13 OR , XOR
+// 14 OPATTR , SHORT , .TYPE
+cexpr: aexpr "||" cexpr | aexpr
+aexpr: term "&&" aexpr | term
+term: "!" simpleexpr | simpleexpr
+simpleexpr: "(" cexpr ")"| primary
+primary: expr binaryop expr| flagname| expr
+cxzexpr: "!" expr| expr  "==" expr| expr  "!=" expr | expr
+
+sqexpr: "[" expr "]"
+//sqexprlist: LABEL? sqexpr sqexpr?
+offsetdirmy: OFFSET _e10
+segmdir: SEG _e10
+segoverride: _e09 ":" _e10
+ptrdir: _e09 PTR _e10
+| LARGE _e10
+| SMALL _e10
+| SHORT _e10
+ordir: _e01 OR _e02
+xordir: _e01 XOR _e02
+anddir: _e02 AND _e03
+notdir: NOT _e04
+
+field: U_DOT _e11
+fieldlist: field+
+memberdir: _e10 fieldlist
+
+_e01: ordir | xordir
+| _e02
+_e02: anddir
+| _e03
+_e03: notdir
+| _e04
+_e04: _e04 relop _e05
+| _e05
+_e05: _e05 addop _e06
+| _e06
+_e06: _e06 mulop _e07
+| _e06 shiftop _e07
+| _e07
+_e07: addop _e08
+| _e08
+_e08: HIGH _e09
+| LOW _e09
+| HIGHWORD _e09
+| LOWWORD _e09
+| _e09
+_e09: offsetdirmy
+| segmdir
+| LROFFSET _e10
+| TYPE _e10
+| THIS _e10
+| ptrdir
+| segoverride //| _e09 ":" _e10
+| _e10
+_e10: memberdir
+| _e10 expr
+| _e11
+dir3: WIDTH LABEL
+| MASK LABEL
+| SIZE sizearg
+| SIZEOF sizearg
+| LENGTH LABEL
+| LENGTHOF LABEL
+_e11: "(" expr ")"
+| sqexpr
+| dir3
+| recordconst
+| STRING
+| INTEGER
+| type
+| "$"
+| anyregister
+| ST
+| ST "(" expr ")"
+expr: U_TYPE _e01
+| OPATTR _e01
+| _e01
+sizearg: _e10
+
+echodir: ECHO arbitrarytext _linereminder | U_OUT arbitrarytext _linereminder
+elsedirectivelist: U_ELSE _linereminder insegdir+
+elseifblock: elseifstatement _linereminder insegdir+ elseifblock?
+elseifstatement: ELSEIF expr| ELSEIFE expr| ELSEIFB textitem| ELSEIFNB textitem | ELSEIFDEF LABEL| ELSEIFNDEF LABEL| ELSEIFDIF textitem COMMA textitem| ELSEIFDIFI textitem COMMA textitem| ELSEIFIDN textitem COMMA textitem| ELSEIFIDNI textitem COMMA textitem| ELSEIF1 | ELSEIF2
+enddir: END expr?  _linereminder?
+endpdir: LABEL ENDP _linereminder
+endsdir: LABEL ENDS _linereminder
+eqconstexpr: "=" expr
+equdir: LABEL EQU equtype _linereminder
+equtype: expr| textliteral
+errordir: erroropt _linereminder
+erroropt: U_ERR textitem? | U_ERRE expr opttext? | U_ERRNZ expr opttext? | U_ERRB textitem opttext? | U_ERRNB textitem opttext? | U_ERRDEF LABEL  opttext? | U_ERRNDEF LABEL opttext? | U_ERRDIF textitem COMMA textitem  opttext? | U_ERRDIFI textitem COMMA textitem  opttext? | U_ERRIDN textitem COMMA textitem  opttext? | U_ERRIDNI textitem COMMA textitem  opttext? | U_ERR1 textitem? | U_ERR2 textitem?
+exitdir: U_EXIT expr?  _linereminder
+exitmdir: EXITM textitem? _linereminder
+exprlist: expr COMMA exprlist | expr
+exprspacelist: expr+
+externdef: langtype?  LABEL altidq? ":" externtype
+externdir: externkey externlist _linereminder
+externkey: EXTRN | EXTERN | EXTERNDEF
+externlist: externdef | externdef commaoeol externlist
+externtype: ABS | qualifiedtype
+fieldinit: initvalue| structinstance | expr
+fieldinitlist: fieldinit | fieldinit commaoeol fieldinitlist
+filespec: charlist| textliteral
+flagname: ZERO_ | CARRY_ | OVERFLOW_ | SIGN_ | PARITY_
+floatnumber : FLOAT | digits "R"| digits "r"
+forcdir: FORC | IRPC
+fordir: FOR | IRP
+forparm: LABEL dotdotforparmtype?
+forparmtype: REQ | "=" textliteral
+frameexpr: SEG LABEL | DGROUP ":" LABEL| segmentregister ":" LABEL| LABEL
+generaldir: modeldir | segorderdir | namedir| includelibdir | commentdir| groupdir | assumedir| structdir | typedefdir| externdir | publicdir | commdir | prototypedir| equdir | assdir | textdir| contextdir | optiondir | processordir| radixdir | titledir | pagedir | listdir | crefdir | echodir| ifdir | errordir | includedir | macrodir | macrocall | macrorepeat | purgedir| macrowhile | macrofor | macroforc| aliasdir | recorddir | smartdir
+groupdir : LABEL GROUP segidlist
+idlist: LABEL | LABEL COMMA idlist
+ifcexpr: U_IF cexpr
+ifdir: ifstatement _linereminder insegdir+ elseifblock? elsedirectivelist? ENDIF _linereminder
+ifstatement: IF expr| IFE expr| IFB textitem| IFNB textitem| IFDEF LABEL| IFNDEF LABEL| IFDIF textitem COMMA textitem| IFDIFI textitem COMMA textitem| IFIDN textitem COMMA textitem| IFIDNI textitem COMMA textitem| IF1 | IF2
+includedir: INCLUDE filespec _linereminder
+includelibdir: INCLUDELIB filespec _linereminder
+dupdir: expr DUP "(" scalarinstlist ")"
+initvalue: "?"| dupdir | floatnumber
+insegdir: labeldef insegmentdir | insegmentdir
+//insegdirlist: insegdir+
+insegmentdir: instruction| datadir| controldir| startupdir| exitdir| offsetdir| labeldir| procdir  localdirlist? endpdir| procdir  localdirlist? insegdir+ endpdir| invokedir| generaldir | _linereminder
+
+asminstruction: mnemonic  exprlist?| instrprefix? mnemonic  exprlist?
+//| PUSH allreglist
+//| POP allreglist
+
+instruction: asminstruction _linereminder
+
+invokearg: anyregister "::" register| ADDR expr | expr
+invokedir: INVOKE expr commainvokelist? _linereminder
+invokelist: invokearg | invokearg commaoeol invokelist
+labeldef: LABEL ":" | LABEL "::"
+labeldir: LABEL LABELKW qualifiedtype _linereminder
+_linereminder: ENDOFLINE | COMMENT ENDOFLINE
+listdir: listoption _linereminder
+localdef: LOCAL idlist _linereminder
+localdir: LOCAL parmlist _linereminder
+localdirlist: localdir+
+locallist: localdef+
+macroarg: "%" expr| "%" LABEL "(" macroarglist ")" | "<" arbitrarytext ">" | arbitrarytext | STRING
+macroarglist: macroarg | macroarg COMMA macroarglist
+macrobody: locallist? macrostmtlist
+macrocall: macroname  "(" macroarglist ")" | macroname macroarglist? _linereminder
+macrodirhead: LABEL MACRO macroparmlist?
+macrodir: macrodirhead _linereminder macrobody ENDM _linereminder
+macrofor: fordir forparm  COMMA "<" macroarglist ">" _linereminder macrobody ENDM _linereminder
+macroforc: forcdir LABEL  COMMA textliteral _linereminder macrobody ENDM _linereminder
+macronamelist: LABEL | LABEL COMMA macronamelist
+macroparm: LABEL dotdotparmtype?
+macroparmlist: macroparm | macroparm commaoeol macroparmlist
+macrorepeat: repeatbegin _linereminder macrobody ENDM _linereminder
+repeatbegin: repeatdir expr
+macrostmt: instruction | labeldef | directive| exitmdir| ":" LABEL _linereminder| GOTO LABEL _linereminder
+macrostmtlist: macrostmt+
+macrowhile: WHILE expr _linereminder macrobody ENDM _linereminder
+
+modeldir: U_MODEL memoption commamodeloptlist? _linereminder
+modelopt: langtype| stackoption | OS_DOS
+modeloptlist: modelopt | modelopt COMMA modeloptlist
+mulop: "*"| "/" | MOD
+namedir: NAME LABEL _linereminder
+nearfar: NEAR | FAR
+nestedstruct: structkw  LABEL?  _linereminder ENDS _linereminder | structkw  LABEL?  _linereminder structitem+ ENDS _linereminder
+offsetdir: offsetdirtype _linereminder
+offsetdirtype: EVEN | ORG expr| ALIGN expr?
+offsettype: GROUP | SEGMENT | FLAT
+optiondir: OPTION optionlist _linereminder
+optionitem: CASEMAP ":" maptype| DOTNAME | NODOTNAME | EMULATOR | NOEMULATOR | EPILOGUE ":" LABEL| EXPR16 | EXPR32 | LANGUAGE ":" langtype| LJMP | NOLJMP | M510 | NOM510 | NOSIGNEXTEND | OFFSET ":" offsettype| OLDMACROS | NOOLDMACROS | OLDSTRUCTS | NOOLDSTRUCTS | PROC ":" ovisibility| PROLOGUE ":" LABEL| readonly | NOREADONLY | SCOPED | NOSCOPED | SEGMENT ":" segsize| SETIF2 ":" bool
+optionlist: optionitem | optionitem commaoeol optionlist
+opttext: COMMA textitem
+orop: OR | XOR
+ovisibility: PUBLIC | PRIVATE | EXPORT
+pagedir: PAGE pageexpr? _linereminder
+pageexpr: "+"|  expr commapagewidth? | commapagewidth
+parm: LABEL  expr? dotdotqualifiedtype?
+parmlist: parm | parm commaoeol parmlist
+parmtype: REQ | "=" textliteral| VARARG
+poptions: distance?  langtype?  ovisibility?
+procdir: LABEL PROC poptions  brmacroarglist?  usesregs? procparmlist? commaparmidvararg? _linereminder
+processordir: processor _linereminder | coprocessor _linereminder
+procparmlist: commaparmlist
+protoarg : LABEL? ":" qualifiedtype
+protoarglist: commaprotolist
+protolist: protoarg | protoarg commaoeol protolist
+protospec: LABEL | distance?   langtype? protoarglist? commaidvararg?
+prototypedir: LABEL PROTO protospec
+pubdef: langtype?  LABEL
+publicdir: PUBLIC publist _linereminder
+publist: pubdef | pubdef commaoeol publist
+purgedir: PURGE macronamelist
+qualifiedtype: distance? PTR qualifiedtype? | type
+qualifier: PROTO protospec | qualifiedtype
+//QUOTE: "'"" | "\""
+radixdir: U_RADIX expr _linereminder
+readonly: READONLY
+//oldrecordfieldlist: exprlist
+recordconst_: "{" exprlist "}"| oldrecordinstance
+oldrecordinstance: "<" exprlist ">"
+recordconst: LABEL recordconst_
+recorddir: LABEL RECORD bitdeflist _linereminder
+//recordfieldlist: expr | expr commaoeol recordfieldlist
+recordfieldlist: scalarinstlist
+recordinstance_: "{"  _linereminder? recordfieldlist _linereminder?  "}"
+recordinstance: recordinstance_ | oldrecordinstance | expr DUP "(" recordinstance ")"
+recordinstlist: recordinstance | recordinstance commaoeol recordinstlist
+anyregister: segmentregister | register | specialregister
+reglist: register+
+allreglist: anyregister+
+
+repeatblock: U_REPEAT _linereminder blockstatements untildir
+repeatdir: REPEAT | REPT
+scalarinstlist: initvalue | exprlist
+commaoeol: COMMA  _linereminder?
+segattrib: PUBLIC | STACK | COMMON | MEMORY | AT expr| PRIVATE
+segdir: U_CODE LABEL? | U_DATA | U_DATA_| U_CONST | U_FARDATA LABEL? | U_FARDATA_ LABEL? | U_STACK expr?
+segidlist : LABEL  COMMA segidlist | LABEL
+segmentdef: segmentdir  endsdir|segmentdir  insegdir+  endsdir| simplesegdir | simplesegdir  endsdir | simplesegdir  insegdir+   endsdir?
+segmentdir: LABEL SEGMENT segoptionlist?  _linereminder
+segoption: segalign| segro| segattrib| segsize| classname
+segoptionlist: segoption+
+segro: readonly
+segsize : USE16 | USE32 | FLAT
+shiftop: SHR | SHL
+// sign: "-" | "+"
+simplesegdir: segdir _linereminder
+stackoption: NEARSTACK | FARSTACK
+startupdir: U_STARTUP _linereminder
+structbody: structitem+
+structdirhdr: LABEL structkw  expr?  commanonuniq?
+structdir: structdirhdr _linereminder endsdir | structdirhdr _linereminder structitem+ endsdir
+structkw: STRUC | STRUCT | UNION
+structdup: expr DUP "(" structinstlist ")"
+structinstance: "<"  fieldinitlist?  ">"| "{" _linereminder?   fieldinitlist?   _linereminder?  "}"| structdup
+structinstlist: structinstance | structinstance commaoeol structinstlist
+structitem: datadir| generaldir| offsetdir| nestedstruct| _linereminder
+textdir: LABEL textmacrodir _linereminder
+textitem: textliteral| "%" expr //| LABEL
+textlist: textitem | textitem commaoeol textlist
+textliteral: "<" text ">" _linereminder
+textmacrodir: CATSTR textlist? | TEXTEQU textlist? | SIZESTR textitem| SUBSTR textitem  COMMA expr commatextlen| INSTR textstartcomma? textitem  COMMA textitem
+textstartcomma: expr  COMMA
+titledir: titletype arbitrarytext _linereminder
+titletype: TITLE | SUBTITLE | SUBTTL
+type: LABEL| distance| datatype
+typedefdir: LABEL TYPEDEF qualifier
+untildir: U_UNTIL cexpr _linereminder | U_UNTILCXZ cxzexpr?  _linereminder
+usesregs: USES allreglist
+whileblock: U_WHILE cexpr _linereminder blockstatements U_ENDW
+WHITESPACECHARACTER: WS
+smartdir: SMART | NOSMART
+layout: layoutitem | layout layoutitem
+layoutitem: WS?
