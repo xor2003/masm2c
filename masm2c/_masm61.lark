@@ -11,17 +11,17 @@ structname: "structname"
 LABEL: /[A-Za-z@_$?][A-Za-z@_$?0-9]*/
 //MONKEY: /@@|@B|@F/
 addop: /[+-]/
-
-COMMENTKW: /COMMENT\s+(\S)/ //[.\r\n]*?\1[^\r\n]*/x
-ENDOFLINE: /[\r\n]+[\t \r\n]*/x
-FLOAT: /[+-]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?/
+ 
+COMMENTKW: /comment\s+(\S)/ //[.\r\n]*?\1[^\r\n]*/x
+_ENDOFLINE: /[\r\n]+[\t \r\n]*/x
+FLOAT: /-?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?/
 INTEGER: /-?[0-9][0-9A-Fa-f]*[HOQTYhoqty]?/
 WS: /([\t \b\v\f\x1a]+)|(\\;?[^\r\n]*[\r\n\t \b\v\f\x1a]+)/x
 SPACE: /[\t ]+/
-COMMENT: /;[^\r\n]*/x
+!comment: /;[^\r\n]*/x
 KEYWORD: /\w+/
 arbitrarytext: /[^\r\n]+/x
-mnemonic: /(?i)(AAA)|(AAD)|(AAM)|(AAS)|(ADC)|(ADD)|(AND)|(CALL)|(CBW)|(CLC)|(CLD)|(CLI)|(CMC)|(CMP)|(CMPS)|(CMPSB)|(CMPSW)|(CMPXCHG8B)|(CWD)|(DAA)|(DAS)|(DEC)|(DIV)|(ESC)|(HLT)|(IDIV)|(IMUL)|(IN)|(INC)|(INT)|(INTO)|(IRET)|(JA)|(JAE)|(JB)|(JBE)|(JC)|(JCXZ)|(JE)|(JG)|(JGE)|(JL)|(JLE)|(JMP)|(JNA)|(JNAE)|(JNB)|(JNBE)|(JNC)|(JNE)|(JNG)|(JNGE)|(JNL)|(JNLE)|(JNO)|(JNP)|(JNS)|(JNZ)|(JO)|(JP)|(JPE)|(JPO)|(JS)|(JZ)|(LAHF)|(LDS)|(LEA)|(LES)|(LODS)|(LODSB)|(LODSW)|(LOOP)|(LOOPE)|(LOOPEW)|(LOOPNE)|(LOOPNEW)|(LOOPNZ)|(LOOPNZW)|(LOOPW)|(LOOPZ)|(LOOPZW)|(MOV)|(MOVS)|(MOVSB)|(MOVSW)|(MUL)|(NEG)|(NOP)|(NOT)|(OR)|(OUT)|(POP)|(POPF)|(PUSH)|(PUSHF)|(RCL)|(RCR)|(RET)|(RETF)|(RETN)|(ROL)|(ROR)|(SAHF)|(SAL)|(SAR)|(SBB)|(SCAS)|(SCASB)|(SCASW)|(SHL)|(SHR)|(STC)|(STD)|(STI)|(STOS)|(STOSB)|(STOSW)|(SUB)|(TEST)|(WAIT)|(XCHG)|(XLAT)|(XLATB)|(XOR)|(BOUND)|(ENTER)|(INS)|(INSB)|(INSW)|(LEAVE)|(OUTS)|(OUTSB)|(OUTSW)|(POPA)|(PUSHA)|(PUSHW)|(BSF)|(BSR)|(BT)|(BTC)|(BTR)|(BTS)|(CDQ)|(CMPSD)|(CWDE)|(INSD)|(IRETD)|(IRETDF)|(IRETF)|(JECXZ)|(LFS)|(LGS)|(LODSD)|(LOOPD)|(LOOPED)|(LOOPNED)|(LOOPNZD)|(LOOPZD)|(LSS)|(MOVSD)|(MOVSX)|(MOVZX)|(OUTSD)|(POPAD)|(POPFD)|(PUSHAD)|(PUSHD)|(PUSHFD)|(SCASD)|(SETA)|(SETAE)|(SETB)|(SETBE)|(SETC)|(SETE)|(SETG)|(SETGE)|(SETL)|(SETLE)|(SETNA)|(SETNAE)|(SETNB)|(SETNBE)|(SETNC)|(SETNE)|(SETNG)|(SETNGE)|(SETNL)|(SETNLE)|(SETNO)|(SETNP)|(SETNS)|(SETNZ)|(SETO)|(SETP)|(SETPE)|(SETPO)|(SETS)|(SETZ)|(SHLD)|(SHRD)|(STOSD)|(BSWAP)|(CMPXCHG)|(XADD)/
+mnemonic: "AAA"i|"AAD"i|"AAM"i|"AAS"i|"ADC"i|"ADD"i|"AND"i|"CALL"i|"CBW"i|"CLC"i|"CLD"i|"CLI"i|"CMC"i|"CMP"i|"CMPS"i|"CMPSB"i|"CMPSW"i|"CMPXCHG8B"i|"CWD"i|"DAA"i|"DAS"i|"DEC"i|"DIV"i|"ESC"i|"HLT"i|"IDIV"i|"IMUL"i|"IN"i|"INC"i|"INT"i|"INTO"i|"IRET"i|"JA"i|"JAE"i|"JB"i|"JBE"i|"JC"i|"JCXZ"i|"JE"i|"JG"i|"JGE"i|"JL"i|"JLE"i|"JMP"i|"JNA"i|"JNAE"i|"JNB"i|"JNBE"i|"JNC"i|"JNE"i|"JNG"i|"JNGE"i|"JNL"i|"JNLE"i|"JNO"i|"JNP"i|"JNS"i|"JNZ"i|"JO"i|"JP"i|"JPE"i|"JPO"i|"JS"i|"JZ"i|"LAHF"i|"LDS"i|"LEA"i|"LES"i|"LODS"i|"LODSB"i|"LODSW"i|"LOOP"i|"LOOPE"i|"LOOPEW"i|"LOOPNE"i|"LOOPNEW"i|"LOOPNZ"i|"LOOPNZW"i|"LOOPW"i|"LOOPZ"i|"LOOPZW"i|"MOV"i|"MOVS"i|"MOVSB"i|"MOVSW"i|"MUL"i|"NEG"i|"NOP"i|"NOT"i|"OR"i|"OUT"i|"POP"i|"POPF"i|"PUSH"i|"PUSHF"i|"RCL"i|"RCR"i|"RET"i|"RETF"i|"RETN"i|"ROL"i|"ROR"i|"SAHF"i|"SAL"i|"SAR"i|"SBB"i|"SCAS"i|"SCASB"i|"SCASW"i|"SHL"i|"SHR"i|"STC"i|"STD"i|"STI"i|"STOS"i|"STOSB"i|"STOSW"i|"SUB"i|"TEST"i|"WAIT"i|"XCHG"i|"XLAT"i|"XLATB"i|"XOR"i|"BOUND"i|"ENTER"i|"INS"i|"INSB"i|"INSW"i|"LEAVE"i|"OUTS"i|"OUTSB"i|"OUTSW"i|"POPA"i|"PUSHA"i|"PUSHW"i|"BSF"i|"BSR"i|"BT"i|"BTC"i|"BTR"i|"BTS"i|"CDQ"i|"CMPSD"i|"CWDE"i|"INSD"i|"IRETD"i|"IRETDF"i|"IRETF"i|"JECXZ"i|"LFS"i|"LGS"i|"LODSD"i|"LOOPD"i|"LOOPED"i|"LOOPNED"i|"LOOPNZD"i|"LOOPZD"i|"LSS"i|"MOVSD"i|"MOVSX"i|"MOVZX"i|"OUTSD"i|"POPAD"i|"POPFD"i|"PUSHAD"i|"PUSHD"i|"PUSHFD"i|"SCASD"i|"SETA"i|"SETAE"i|"SETB"i|"SETBE"i|"SETC"i|"SETE"i|"SETG"i|"SETGE"i|"SETL"i|"SETLE"i|"SETNA"i|"SETNAE"i|"SETNB"i|"SETNBE"i|"SETNC"i|"SETNE"i|"SETNG"i|"SETNGE"i|"SETNL"i|"SETNLE"i|"SETNO"i|"SETNP"i|"SETNS"i|"SETNZ"i|"SETO"i|"SETP"i|"SETPE"i|"SETPO"i|"SETS"i|"SETZ"i|"SHLD"i|"SHRD"i|"STOSD"i|"BSWAP"i|"CMPXCHG"i|"XADD"i
 //| F2XM1| FABS| FADD| FADDP| FBLD| FBSTP| FCHS| FCLEX| FCOM| FCOMP| FCOMPP| FDECSTP| FDISI| FDIV| FDIVP| FDIVR| FDIVRP
 //| FENI| FFREE| FIADD| FICOM| FICOMP| FIDIV| FIDIVR| FILD| FIMUL| FINCSTP| FINIT| FIST| FISTP| FISUB| FISUBR| FLD| FLD1
 //| FLDCW| FLDENV| FLDENVW| FLDL2E| FLDL2T| FLDLG2| FLDLN2| FLDPI| FLDZ| FMUL| FMULP| FNCLEX| FNDISI| FNENI| FNINIT
@@ -31,21 +31,21 @@ mnemonic: /(?i)(AAA)|(AAD)|(AAM)|(AAS)|(ADC)|(ADD)|(AND)|(CALL)|(CBW)|(CLC)|(CLD
 //| FUCOMP| FUCOMPP
 //
 //datadecl: /(?i)(DB) | (DW) | (DD) | (DF) | (DQ) | (DT) | (BYTE)|(SBYTE)|(WORD)|(SWORD)|(DWORD)|(SDWORD)|(FWORD)|(QWORD)|(TBYTE)|(REAL4)|(REAL8)|(REAL10)/
-datadecl: "DB"i | "DW"i | "DD"i | "DF"i | "DQ"i | "DT"i | "BYTE"i | "SBYTE"i|"WORD"i|"SWORD"i|"DWORD"i|"SDWORD"i|"FWORD"i|"QWORD"i|"TBYTE"i|"REAL4"i|"REAL8"i|"REAL10"i
-datatype: /(?i)(BYTE)|(SBYTE)|(WORD)|(SWORD)|(DWORD)|(SDWORD)|(FWORD)|(QWORD)|(TBYTE)|(REAL4)|(REAL8)|(REAL10)/
-register: /(?i)(AX)|(EAX)|(BX)|(EBX)|(CX)|(ECX)|(DX)|(EDX)|(BP)|(EBP)|(SP)|(ESP)|(DI)|(EDI)|(SI)|(ESI)|(AL)|(AH)|(BL)|(BH)|(CL)|(CH)|(DL)|(DH)/
-segmentregister: /(?i)(CS)|(DS)|(ES)|(FS)|(GS)|(SS)/
-specialregister: /(?i)(CR0)|(CR2)|(CR3)|(DR0)|(DR1)|(DR2)|(DR3)|(DR6)|(DR7)|(TR3)|(TR4)|(TR5)|(TR6)|(TR7)/
-instrprefix: /(?i)(REP)|(REPE)|(REPZ)|(REPNE)|(REPNZ)|(LOCK)/
-langtype: /(?i)(C)|(PASCAL)|(FORTRAN)|(BASIC)|(SYSCALL)|(STDCALL)/
-relop: /(?i)(EQ)|(NE)|(LT)|(LE)|(GT)|(GE)/
-maptype: /(?i)(ALL)|(NONE)|(NOTPUBLIC)/
-memoption: /(?i)(TINY)|(SMALL)|(MEDIUM)|(COMPACT)|(LARGE)|(HUGE)|(FLAT)/
-listoption: /(?i)(\.LIST)|(\.NOLIST)|(\.XLIST)|(\.LISTALL)|(\.LISTIF)|(\.LFCOND)|(\.NOLISTIF)|(\.SFCOND)|(\.TFCOND)|(\.LISTMACROALL)|(\.LALL)|(\.NOLISTMACRO)|(\.SALL)|(\.LISTMACRO)|(\.XALL)/
-processor: /(?i)(\.8086)|(\.186)|(\.286)|(\.286C)|(\.286P)|(\.386[CP]?)|(\.486)|(\.486P)|(\.586)|(\.586P)|(\.686)|(\.686P)|(\.K3D)|(\.MMX)|(\.XMM)/
-coprocessor: /(?i)(\.8087) | (\.287) | (\.387) | (\.NO87)/
-segalign: /(?i)(BYTE) | (WORD) | (DWORD) | (PARA) | (PAGE)/
-segorderdir: /(?i)(\.ALPHA) | (\.SEQ) | (\.DOSSEG) | (DOSSEG)/
+!datadecl: "DB"i | "DW"i | "DD"i | "DF"i | "DQ"i | "DT"i | "BYTE"i | "SBYTE"i|"WORD"i|"SWORD"i|"DWORD"i|"SDWORD"i|"FWORD"i|"QWORD"i|"TBYTE"i|"REAL4"i|"REAL8"i|"REAL10"i
+datatype: "BYTE"i|"SBYTE"i|"WORD"i|"SWORD"i|"DWORD"i|"SDWORD"i|"FWORD"i|"QWORD"i|"TBYTE"i|"REAL4"i|"REAL8"i|"REAL10"i
+register: "AX"i|"EAX"i|"BX"i|"EBX"i|"CX"i|"ECX"i|"DX"i|"EDX"i|"BP"i|"EBP"i|"SP"i|"ESP"i|"DI"i|"EDI"i|"SI"i|"ESI"i|"AL"i|"AH"i|"BL"i|"BH"i|"CL"i|"CH"i|"DL"i|"DH"i
+segmentregister: "CS"i|"DS"i|"ES"i|"FS"i|"GS"i|"SS"i
+specialregister: "CR0"i|"CR2"i|"CR3"i|"DR0"i|"DR1"i|"DR2"i|"DR3"i|"DR6"i|"DR7"i|"TR3"i|"TR4"i|"TR5"i|"TR6"i|"TR7"i
+instrprefix: "REP"i|"REPE"i|"REPZ"i|"REPNE"i|"REPNZ"i|"LOCK"i
+langtype: "C"i|"PASCAL"i|"FORTRAN"i|"BASIC"i|"SYSCALL"i|"STDCALL"i
+relop: "EQ"i|"NE"i|"LT"i|"LE"i|"GT"i|"GE"i
+maptype: "ALL"i|"NONE"i|"NOTPUBLIC"i
+memoption: "TINY"i|"SMALL"i|"MEDIUM"i|"COMPACT"i|"LARGE"i|"HUGE"i|"FLAT"i
+listoption: ".LIST"i|".NOLIST"i|".XLIST"i|".LISTALL"i|".LISTIF"i|".LFCOND"i|".NOLISTIF"i|".SFCOND"i|".TFCOND"i|".LISTMACROALL"i|".LALL"i|".NOLISTMACRO"i|".SALL"i|".LISTMACRO"i|".XALL"i
+PROCESSOR: ".8086"i|".186"i|".286"i|".286C"i|".286P"i|".386"i|".386C"i|".386P"i|".486"i|".486P"i|".586"i|".586P"i|".686"i|".686P"i|".K3D"i|".MMX"i|".XMM"i
+coprocessor: ".8087"i|".287"i|".387"i|".NO87"i
+segalign: "BYTE"i|"WORD"i|"DWORD"i|"PARA"i|"PAGE"i
+segorderdir: ".ALPHA"i|".SEQ"i|".DOSSEG"i|"DOSSEG"i
 ASSUMENOTHING: "ASSUME NOTHING"i
 
 aliasdir: "ALIAS"i
@@ -103,7 +103,7 @@ recordinstdir: LABEL? LABEL recordinstlist _linereminder
 //dataitem: datadecl scalarinstlist| LABEL structinstlist| LABEL recordinstlist
 decnumber: INTEGER
 digits: decnumber
-_directive: _generaldir| segmentdef | _linereminder
+_directive: _generaldir| _segmentdef | _linereminder
 _directivelist: _directive+
 distance: nearfar| "NEAR16"i | "NEAR32"i | "FAR16"i | "FAR32"i
 dotdotforparmtype: ":" forparmtype
@@ -217,7 +217,7 @@ errordir: erroropt _linereminder
 erroropt: ".ERR"i textitem? | ".ERRE"i expr opttext? | ".ERRNZ"i expr opttext? | ".ERRB"i textitem opttext? | ".ERRNB"i textitem opttext? | ".ERRDEF"i LABEL  opttext? | ".ERRNDEF"i LABEL opttext? | ".ERRDIF"i textitem COMMA textitem  opttext? | ".ERRDIFI"i textitem COMMA textitem  opttext? | ".ERRIDN"i textitem COMMA textitem  opttext? | ".ERRIDNI"i textitem COMMA textitem  opttext? | ".ERR1"i textitem? | ".ERR2"i textitem?
 exitdir: ".EXIT"i expr?  _linereminder
 exitmdir: "EXITM"i textitem? _linereminder
-exprlist: expr COMMA exprlist | expr
+_exprlist: expr COMMA _exprlist | expr
 exprspacelist: expr+
 externdef: langtype?  LABEL altidq? ":" externtype
 externdir: externkey externlist _linereminder
@@ -233,7 +233,7 @@ forcdir: "FORC"i | "IRPC"i
 fordir: "FOR"i | "IRP"i
 forparm: LABEL dotdotforparmtype?
 forparmtype: "REQ"i | "=" textliteral
-frameexpr: "SEG"i LABEL | "DGROUP"i ":" LABEL| segmentregister ":" LABEL| LABEL
+?frameexpr: "SEG"i LABEL | "DGROUP"i ":" LABEL| segmentregister ":" LABEL| LABEL
 _generaldir: modeldir | segorderdir | namedir| includelibdir | commentdir| groupdir | assumedir| structdir | typedefdir| externdir | publicdir | commdir | prototypedir| equdir | assdir | textdir| contextdir | optiondir | processordir| radixdir | titledir | pagedir | listdir | crefdir | echodir| ifdir | errordir | includedir | macrodir | macrocall | macrorepeat | purgedir| macrowhile | macrofor | macroforc| aliasdir | recorddir | smartdir
 groupdir : LABEL "GROUP"i segidlist
 idlist: LABEL | LABEL COMMA idlist
@@ -248,7 +248,7 @@ _insegdir: labeldef _insegmentdir | _insegmentdir
 //insegdirlist: _insegdir+
 _insegmentdir: instruction| datadir| controldir| startupdir| exitdir| offsetdir| labeldir| procdir  localdirlist? endpdir| procdir  localdirlist? _insegdir+ endpdir| invokedir| _generaldir | _linereminder
 
-asminstruction: mnemonic  exprlist?| instrprefix? mnemonic  exprlist?
+asminstruction: mnemonic  _exprlist?| instrprefix? mnemonic  _exprlist?
 //| PUSH allreglist
 //| POP allreglist
 
@@ -259,7 +259,7 @@ invokedir: "INVOKE"i expr commainvokelist? _linereminder
 invokelist: invokearg | invokearg commaoeol invokelist
 labeldef: LABEL ":" | LABEL "::"
 labeldir: LABEL "LABEL"i qualifiedtype _linereminder
-_linereminder: ENDOFLINE | COMMENT ENDOFLINE
+_linereminder: _ENDOFLINE | comment _ENDOFLINE
 listdir: listoption _linereminder
 localdef: "LOCAL"i idlist _linereminder
 localdir: "LOCAL"i parmlist _linereminder
@@ -305,7 +305,7 @@ parmlist: parm | parm commaoeol parmlist
 parmtype: "REQ"i | "=" textliteral| "VARARG"i
 poptions: distance?  langtype?  ovisibility?
 procdir: LABEL "PROC"i poptions  brmacroarglist?  usesregs? procparmlist? commaparmidvararg? _linereminder
-processordir: processor _linereminder | coprocessor _linereminder
+processordir: PROCESSOR _linereminder | coprocessor _linereminder
 procparmlist: commaparmlist
 protoarg : LABEL? ":" qualifiedtype
 protoarglist: commaprotolist
@@ -321,9 +321,9 @@ qualifier: "PROTO"i protospec | qualifiedtype
 //QUOTE: "'"" | "\""
 radixdir: ".RADIX"i expr _linereminder
 //readonly: READONLY
-//oldrecordfieldlist: exprlist
-recordconst_: "{" exprlist "}"| oldrecordinstance
-oldrecordinstance: "<" exprlist ">"
+//oldrecordfieldlist: _exprlist
+recordconst_: "{" _exprlist "}"| oldrecordinstance
+oldrecordinstance: "<" _exprlist ">"
 recordconst: LABEL recordconst_
 recorddir: LABEL "RECORD"i bitdeflist _linereminder
 //recordfieldlist: expr | expr commaoeol recordfieldlist
@@ -337,17 +337,17 @@ allreglist: anyregister+
 
 repeatblock: ".REPEAT"i _linereminder blockstatements untildir
 repeatdir: "REPEAT"i | "REPT"i
-scalarinstlist: initvalue | exprlist
+scalarinstlist: initvalue | _exprlist
 commaoeol: COMMA  _linereminder?
-segattrib: "PUBLIC"i | "STACK"i | "COMMON"i | "MEMORY"i | "AT"i expr| "PRIVATE"i
+!segattrib: "PUBLIC"i | "STACK"i | "COMMON"i | "MEMORY"i | "AT"i expr| "PRIVATE"i
 segdir: ".CODE"i LABEL? | ".DATA"i | ".DATA_"i| ".CONST"i | ".FARDATA"i LABEL? | ".FARDATA_"i LABEL? | ".STACK"i expr?
 segidlist : LABEL  COMMA segidlist | LABEL
-segmentdef: segmentdir  endsdir|segmentdir  _insegdir+  endsdir| simplesegdir | simplesegdir  endsdir | simplesegdir  _insegdir+   endsdir?
+_segmentdef: segmentdir  endsdir|segmentdir  _insegdir+  endsdir| simplesegdir | simplesegdir  endsdir | simplesegdir  _insegdir+   endsdir?
 segmentdir: LABEL "SEGMENT"i segoptionlist?  _linereminder
-segoption: segalign| segro| segattrib| segsize| classname
-segoptionlist: segoption+
+_segoption: segalign| segro| segattrib| segsize| classname
+segoptionlist: _segoption+
 segro: "READONLY"i
-segsize : "USE16"i | "USE32"i | "FLAT"i
+!segsize : "USE16"i | "USE32"i | "FLAT"i
 shiftop: "SHR"i | "SHL"i
 // sign: "-" | "+"
 simplesegdir: segdir _linereminder
@@ -369,7 +369,7 @@ textmacrodir: "CATSTR"i textlist? | "TEXTEQU"i textlist? | "SIZESTR"i textitem| 
 textstartcomma: expr  COMMA
 titledir: titletype arbitrarytext _linereminder
 titletype: "TITLE"i | "SUBTITLE"i | "SUBTTL"i
-type: LABEL| distance| datatype
+?type: LABEL| distance| datadecl
 typedefdir: LABEL "TYPEDEF"i qualifier
 untildir: ".UNTIL"i cexpr _linereminder | ".UNTILCXZ"i cxzexpr?  _linereminder
 usesregs: "USES"i allreglist
