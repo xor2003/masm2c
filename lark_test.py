@@ -5,7 +5,7 @@ import jsonpickle
 from lark import Lark, Transformer
 
 with open('masm2c/_masm61.lark') as g:
-    l = Lark(g, parser='lalr') #, keep_all_tokens=True)
+    l = Lark(g, parser='lalr', propagate_positions=True, debug=True)  # , keep_all_tokens=True)
 
 t = l.parse(""".386p
 
@@ -25,16 +25,17 @@ end start ;IGNORE
 """)
 print(t)
 print(t.pretty())
+
+
 class Tr(Transformer):
 
     def asminstruction(self, nodes):
-        print(jsonpickle.dumps(nodes,indent=2))
+        print(jsonpickle.dumps(nodes, indent=2))
         return nodes
 
-
-    #def expr(self, nodes):
+    # def expr(self, nodes):
     #    print(nodes)
     #    return nodes
 
-print(Tr().transform(t))
 
+print(Tr().transform(t))

@@ -146,7 +146,7 @@ anddir: _e02 "AND"i _e03
 notdir: "NOT"i _e04
 !sign: ("+"|"-")
 addop: _e05 sign _e06
-_unadd: sign _e08
+_unadd: _e07 sign _e08
 
 field: "." _e11
 fieldlist: field+
@@ -287,7 +287,7 @@ macrowhile: "WHILE"i _expr _linereminder macrobody "ENDM"i _linereminder
 modeldir: ".MODEL"i memoption commamodeloptlist? _linereminder
 modelopt: langtype| stackoption | "OS_DOS"i
 modeloptlist: modelopt | modelopt _COMMA modeloptlist
-mulop: "*"| "/" | "MOD"i
+!mulop: "*"| "/" | "MOD"i
 namedir: "NAME"i label _linereminder
 nearfar: "NEAR"i | "FAR"i
 nestedstruct: structkw  label?  _linereminder "ENDS"i _linereminder | structkw  label?  _linereminder structitem+ "ENDS"i _linereminder
