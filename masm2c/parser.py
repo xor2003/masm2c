@@ -34,7 +34,7 @@ import parglare
 from . import cpp as cpp_module
 from . import op
 from .Token import Token
-from .pgparser import ParglareParser
+from .pgparser import LarkParser
 from .proc import Proc
 
 INTEGERCNST = 'INTEGER'
@@ -84,7 +84,7 @@ class Parser:
         # self.__offsets = OrderedDict()
         self.pass_number = 0
 
-        self.__lex = ParglareParser()
+        self.__lex = LarkParser()
 
         #self.segments = OrderedDict()
         self.externals_vars = set()
@@ -1026,7 +1026,8 @@ class Parser:
         return self.parse_file_insideseg(text)
 
     def parse_file_insideseg(self, text):
-        return self.parse_args_new_data(text)[0][1][1][0].insegmentdir
+        result = self.parse_args_new_data(text)
+        return result[0][1][1][0].insegmentdir
 
     def parse_file_inside(self, text, file_name=None):
         return self.parse_include(text, file_name)
@@ -1034,7 +1035,7 @@ class Parser:
     def parse_args_new_data(self, text, file_name=None):
         logging.debug("parsing: [%s]", text)
 
-        result = self.__lex.parser.parse(text, file_name=file_name, extra=self)
+        result = self.__lex.parser.parse(text) #, file_name=file_name, extra=self)
         #with open('forest.txt', 'w') as f:
         #    f.write(result.to_str())
 
