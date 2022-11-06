@@ -14,7 +14,7 @@ structname: "structname"
 COMMENTKW: /comment\s+(\S)/ //[.\r\n]*?\1[^\r\n]*/x
 _ENDOFLINE: /[\r\n]+[\t \r\n]*/x
 //FLOAT: /-?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?/
-integer: /[0-9][0-9A-Fa-f]*[HOQTYhoqty]?/
+integer: /[+-]?[0-9][0-9A-Fa-f]*[HOQTYhoqty]?/
 WS: /([\t \b\v\f\x1a]+)|(\\;?[^\r\n]*[\r\n\t \b\v\f\x1a]+)/x
 SPACE: /[\t ]+/
 !comment: /;[^\r\n]*/x
