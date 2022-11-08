@@ -207,8 +207,8 @@ def structname(head, s, pos):
 
 def structdir(context, nodes, name, item):
     print("structdir", str(nodes))
-    structnames.insert(0, name.value.lower())
-    print("structname added ~~" + name.value + "~~")
+    structnames.insert(0, name.children.lower())
+    print("structname added ~~" + name.children + "~~")
     return []  # Token('structdir', nodes) TODO ignore by now
 
 def structinstdir(context, nodes, label, type, values):

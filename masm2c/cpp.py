@@ -124,8 +124,8 @@ class Cpp(Gen):
         self.label = ''
 
     def convert_label(self, token):
-        name_original = mangle_asm_labels(token.value)
-        token.value = name_original
+        name_original = mangle_asm_labels(token.children)
+        token.children = name_original
         name = name_original.lower()
         logging.debug("convert_label name = %s indirection = %s", name, self.__indirection)
 
@@ -483,7 +483,7 @@ class Cpp(Gen):
             result = ''
             for i in expr:
                 # TODO hack to handle ')register'
-                if len(result) and result[-1] == ')' and isinstance(i, Token) and i.type == 'register':
+                if len(result) and result[-1] == ')' and isinstance(i, Token) and i.data == 'register':
                     result += '+'
                 res = self.tokens_to_string(i)
                 res = re.sub(r'([Ee])\+', r'\g<1> +',
@@ -493,19 +493,19 @@ class Cpp(Gen):
             return result
         elif isinstance(expr, Token):
 
-            if expr.type == 'STRING':
-                m = re.match(r'^[\'\"](....)[\'\"]$', expr.value)  # char constants 'abcd'
+            if expr.data == 'STRING':
+                m = re.match(r'^[\'\"](....)[\'\"]$', expr.children)  # char constants 'abcd'
                 if m:
                     ex = m.group(1)
-                    expr.value = '0x'
+                    expr.children = '0x'
                     for i in range(0, 4):
                         # logging.debug("constant %s %d" %(ex,i))
                         ss = str(hex(ord(ex[i])))
                         # logging.debug("constant %s" %ss)
-                        expr.value += ss[2:]
-                expr.value = expr.value.replace('\\', '\\\\')  # escape c \ symbol
+                        expr.children += ss[2:]
+                expr.children = expr.children.replace('\\', '\\\\')  # escape c \ symbol
 
-            return self.tokens_to_string(expr.value)
+            return self.tokens_to_string(expr.children)
         return expr
 
     def render_instruction_argument(self, expr, def_size=0, destination=False, lea=False):
@@ -552,7 +552,7 @@ class Cpp(Gen):
         # if it is a destination argument and there is only number then we want to put data using memory pointer
         # represented by integer
         if isinstance(expr, list) and len(expr) == 1 and isinstance(expr[0], Token) and expr[
-            0].type == INTEGER and segoverride:
+            0].data == INTEGER and segoverride:
             indirection = IndirectionType.POINTER
             self.needs_dereference = True
 
@@ -589,7 +589,7 @@ class Cpp(Gen):
                 self.__work_segment = "ss"  # and segment is not overriden means base is "ss:"
                 self.isvariable = False
         if segoverride:  # if it was segment override then use provided value
-            self.__work_segment = segoverride[0].value
+            self.__work_segment = segoverride[0].children
 
         self.__current_size = size
         size_ovrr_by_ptr = size  # setting initial value
@@ -605,11 +605,11 @@ class Cpp(Gen):
                     origexpr = origexpr[0]
 
         # if just "label" or "[label]" or member
-        self.__isjustlabel = (isinstance(origexpr, Token) and origexpr.type == LABEL) \
-                             or (isinstance(origexpr, Token) and origexpr.type == SQEXPR \
-                                 and isinstance(origexpr.value, Token) and origexpr.value.type == LABEL) \
-                             or (isinstance(origexpr, Token) and origexpr.type == MEMBERDIR)
-        self.__isjustmember = isinstance(origexpr, Token) and origexpr.type == MEMBERDIR
+        self.__isjustlabel = (isinstance(origexpr, Token) and origexpr.data == LABEL) \
+                             or (isinstance(origexpr, Token) and origexpr.data == SQEXPR \
+                                 and isinstance(origexpr.children, Token) and origexpr.children.data == LABEL) \
+                             or (isinstance(origexpr, Token) and origexpr.data == MEMBERDIR)
+        self.__isjustmember = isinstance(origexpr, Token) and origexpr.data == MEMBERDIR
 
         self.__indirection = indirection
 
@@ -705,10 +705,10 @@ class Cpp(Gen):
 
         segoverride = Token.find_tokens(name, 'segoverride')
         if segoverride:
-            self.__work_segment = segoverride[0].value
+            self.__work_segment = segoverride[0].children
 
-        if isinstance(name, Token) and name.type == 'register':
-            name = name.value
+        if isinstance(name, Token) and name.data == 'register':
+            name = name.children
             indirection = IndirectionType.VALUE  # based register value
 
         labeldir = Token.find_tokens(name, 'LABEL')
@@ -1189,7 +1189,7 @@ static const dd kbegin = 0x1001;
 {type} {name} {{
 """
             for member in v.getdata().values():
-                structures += f"  {member.type} {member.label};\n"
+                structures += f"  {member.data} {member.label};\n"
             structures += """};
 """
         if len(strucs):
@@ -1314,7 +1314,7 @@ struct Memory{
         if ptrdir:
             type = ptrdir[0]
             if isinstance(type, Token):
-                type = type.value
+                type = type.children
             type = type.lower()
             src = Token.find_and_replace_tokens(src, 'ptrdir', self.return_empty)
         o = stmt  # self._context.get_global(dst)

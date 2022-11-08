@@ -126,9 +126,9 @@ class Tr(Transformer):
         param_names = []
         if parms:
             param_names = [i.lower() for i in Token.find_tokens(parms, 'LABEL')]
-        self.context.current_macro = Macro(name.value.lower(), param_names)
-        self.context.macro_names_stack.add(name.value.lower())
-        logging.debug("macroname added ~~%s~~", name.value)
+        self.context.current_macro = Macro(name.children.lower(), param_names)
+        self.context.macro_names_stack.add(name.children.lower())
+        logging.debug("macroname added ~~%s~~", name.children)
         return nodes
     
     
@@ -155,7 +155,7 @@ class Tr(Transformer):
             self.argvaluedict = OrderedDict(zip(params, args))
     
         def __call__(self, token):
-            return self.argvaluedict[token.value]
+            return self.argvaluedict[token.children]
     
     
     def macrocall(self, nodes, name, args):
@@ -184,22 +184,22 @@ class Tr(Transformer):
     
     def structdirhdr(self, nodes, name, type):
         # structure definition header
-        self.context.current_struct = op.Struct(name.value.lower(), type)
-        self.context.struct_names_stack.add(name.value.lower())
-        logging.debug("structname added ~~" + name.value + "~~")
+        self.context.current_struct = op.Struct(name.children.lower(), type)
+        self.context.struct_names_stack.add(name.children.lower())
+        logging.debug("structname added ~~" + name.children + "~~")
         return nodes
     
     
     def structinstdir(self, nodes, label, type, values):
         logging.debug(f"structinstdir {label} {type} {values}")
         # args = remove_str(Token.remove_tokens(remove_str(values), 'expr'))
-        args = values[0].value
+        args = values[0].children
         # args = Token.remove_tokens(remove_str(values), 'expr')
         if args is None:
             args = []
         # args = Token.remove(args, 'INTEGER')
         if label:
-            name = label.value.lower()
+            name = label.children.lower()
         else:
             name = ''
         self.context.add_structinstance(name, type.lower(), args, raw=self.get_raw(self.context))
@@ -210,7 +210,7 @@ class Tr(Transformer):
         logging.debug("datadir " + str(nodes) + " ~~")
     
         if label:
-            label = label.value
+            label = label.children
         else:
             label = ""
     
@@ -241,14 +241,14 @@ class Tr(Transformer):
             for o in options:
                 if isinstance(o, str):
                     opts.add(o.lower())
-                elif isinstance(o, Token) and o.type == 'STRING':
-                    segclass = o.value.lower()
+                elif isinstance(o, Token) and o.data == 'STRING':
+                    segclass = o.children.lower()
                     if segclass[0] in ['"', "'"] and segclass[0] == segclass[-1]:
                         segclass = segclass[1:-1]
                 else:
                     logging.warning('Unknown segment option')
     
-        self.context.create_segment(name.value, options=opts, segclass=segclass, raw=self.get_raw(self.context))
+        self.context.create_segment(name.children, options=opts, segclass=segclass, raw=self.get_raw(self.context))
         return nodes
     
     
@@ -277,19 +277,19 @@ class Tr(Transformer):
     
     def equdir(self, nodes, name, value):
         logging.debug("equdir " + str(nodes) + " ~~")
-        return self.context.action_equ(name.value, value, raw=self.get_raw(self.context), line_number=self.get_line_number(self.context))
+        return self.context.action_equ(name.children, value, raw=self.get_raw(self.context), line_number=self.get_line_number(self.context))
     
     
     def assdir(self, nodes, name, value):
         logging.debug("assdir " + str(nodes) + " ~~")
-        return self.context.action_assign(name.value, value, raw=self.get_raw(self.context), line_number=self.get_line_number(self.context))
+        return self.context.action_assign(name.children, value, raw=self.get_raw(self.context), line_number=self.get_line_number(self.context))
     
     
     def labeldef(self, nodes, name, colon):
         logging.debug("labeldef " + str(nodes) + " ~~")
-        return self.context.action_label(name.value, isproc=False, raw=self.get_raw_line(self.context),
-                                          line_number=self.get_line_number(self.context),
-                                          globl=(colon == '::'))
+        return self.context.action_label(name.children, isproc=False, raw=self.get_raw_line(self.context),
+                                         line_number=self.get_line_number(self.context),
+                                         globl=(colon == '::'))
     
     
     def instrprefix(self, nodes):
@@ -381,13 +381,13 @@ class Tr(Transformer):
     
     
     def radixdir(self, nodes, value):
-        self.context.radix = int(value.value.value)
+        self.context.radix = int(value.children.children)
         return nodes
     
     
     def externdef(self, nodes, extrnname, type):
         logging.debug('externdef %s', nodes)
-        self.context.add_extern(extrnname.value, type)
+        self.context.add_extern(extrnname.children, type)
         return nodes
     
     
@@ -395,7 +395,7 @@ class Tr(Transformer):
         # return nodes #Token(nodes[0].upper(), nodes[1].value)
         # TODO dirty workaround for now
         if nodes[0].lower() == 'size':
-            return [f'sizeof({nodes[1].value.lower()})']
+            return [f'sizeof({nodes[1].children.lower()})']
         else:
             return nodes
     
@@ -404,7 +404,7 @@ class Tr(Transformer):
         from .parser import Parser
         logging.debug(f'offsetdirtype {directive} {str(value)}')
         directive = directive.lower()
-        value = value.value.value if value else 2
+        value = value.children.children if value else 2
         if directive == 'align':
             self.context.align(Parser.parse_int(value))
         elif directive == 'even':

@@ -128,7 +128,7 @@ class Proc:
         # value = cpp.convert_number_to_c(value)
         if ptrdir := Token.find_tokens(value, PTRDIR):
             if isinstance(ptrdir[0], Token):
-                o.original_type = ptrdir[0].value.lower()
+                o.original_type = ptrdir[0].children.lower()
             elif isinstance(ptrdir[0], str):
                 o.original_type = ptrdir[0].lower()
 
@@ -145,7 +145,7 @@ class Proc:
         o = op._assignment([label, value])
         if ptrdir := Token.find_tokens(value, PTRDIR):
             if isinstance(ptrdir[0], Token):
-                o.original_type = ptrdir[0].value.lower()
+                o.original_type = ptrdir[0].children.lower()
             elif isinstance(ptrdir[0], str):
                 o.original_type = ptrdir[0].lower()
 
@@ -165,7 +165,7 @@ class Proc:
         to perform comparison of instruction side effects at run-time with the emulated"""
 
         def expr_is_register(e):
-            return isinstance(e, Token) and isinstance(e.value, Token) and e.value.type in ['register',
+            return isinstance(e, Token) and isinstance(e.children, Token) and e.children.data in ['register',
                                                                                             'segmentregister']
 
         def cmd_wo_args(stmt):
@@ -181,8 +181,8 @@ class Proc:
 
         def expr_is_mov_ss(e):
             return e.cmd == 'mov' and \
-                   isinstance(e.args[0], Token) and isinstance(e.args[0].value, Token) and e.args[0].value.type == 'segmentregister' and \
-                   e.args[0].value.value == 'ss'
+                   isinstance(e.args[0], Token) and isinstance(e.args[0].children, Token) and e.args[0].children.data == 'segmentregister' and \
+                   e.args[0].children.children == 'ss'
 
         if self.is_flow_change_stmt(stmt) and not stmt.syntetic:
             trace_mode = 'J'  # check for proper jump

@@ -67,8 +67,8 @@ class Gen:
             return self.calculate_size(expr)
 
         if isinstance(expr, list) and all(
-                isinstance(i, str) or (isinstance(i, Token) and i.type == 'INTEGER') for i in expr):
-            s = "".join([x.value if isinstance(x, Token) else x for x in expr])
+                isinstance(i, str) or (isinstance(i, Token) and i.data == 'INTEGER') for i in expr):
+            s = "".join([x.children if isinstance(x, Token) else x for x in expr])
             s = re.sub(r'^0+(?=\d)', '', s)  # TODO put it to parser
             try:
                 s = eval(s)
@@ -77,22 +77,22 @@ class Gen:
                 pass
 
         if isinstance(expr, Token):
-            if expr.type in ('register', 'segmentregister'):
-                return self._context.is_register(expr.value)
-            elif expr.type == 'INTEGER':
+            if expr.data in ('register', 'segmentregister'):
+                return self._context.is_register(expr.children)
+            elif expr.data == 'INTEGER':
                 try:
                     # v = self._context.parse_int(expr.value)
-                    v = eval(re.sub(r'^0+(?=\d)', '', expr.value))
+                    v = eval(re.sub(r'^0+(?=\d)', '', expr.children))
                     size = guess_int_size(v)
                     return size
                 except:
                     pass
-            elif expr.type == 'STRING':
-                m = re.match(r'\'(.+)\'$', expr.value)  # char constants
+            elif expr.data == 'STRING':
+                m = re.match(r'\'(.+)\'$', expr.children)  # char constants
                 if m:
                     return len(m.group(1))
-            elif expr.type == 'LABEL':
-                name = expr.value
+            elif expr.data == 'LABEL':
+                name = expr.children
                 logging.debug('name = %s', name)
                 try:
                     g = self._context.get_global(name)
@@ -105,8 +105,8 @@ class Gen:
                     return g.size
                 except:
                     pass
-            elif expr.type == MEMBERDIR:
-                label = Token.find_tokens(expr.value, LABEL)
+            elif expr.data == MEMBERDIR:
+                label = Token.find_tokens(expr.children, LABEL)
                 g = self._context.get_global(label[0])
                 if isinstance(g, op.Struct):
                     type = label[0]
@@ -118,7 +118,7 @@ class Gen:
                         g = self._context.get_global(type)
                         if isinstance(g, op.Struct):
                             g = g.getitem(member)
-                            type = g.type
+                            type = g.data
                         else:
                             return self.calculate_size(g)
                 except KeyError as ex:
@@ -156,8 +156,8 @@ class Gen:
         '''
         logging.debug(' calculate_member_size("%s")', expr)
 
-        if isinstance(expr, Token) and expr.type == MEMBERDIR:
-                label = Token.find_tokens(expr.value, LABEL)
+        if isinstance(expr, Token) and expr.data == MEMBERDIR:
+                label = Token.find_tokens(expr.children, LABEL)
                 g = self._context.get_global(label[0])
                 if isinstance(g, op.Struct):
                     type = label[0]

@@ -20,31 +20,33 @@
 #
 from typing import Callable
 
+import lark
+
 SQEXPR = 'sqexpr'
 
 
-class Token:
-    __slots__ = ('type', 'value')
+class Token(lark.Token):
+    __slots__ = ('data', 'children')
 
     def __init__(self, type, value):
-        self.type = type
-        self.value = value
+        self.data = type
+        self.children = value
 
-    def __str__(self):
-        return f"Token({self.type}, {self.value})"
+    #def __str__(self):
+    #    return f"Token({self.data}, {self.children})"
 
-    def __repr__(self):
-        return f"Token({self.type}, {self.value})"
+    #def __repr__(self):
+    #    return f"Token({self.data}, {self.children})"
 
     @staticmethod
     def find_tokens(expr, lookfor: str):
         l = []
         if isinstance(expr, Token):
-            if expr.type == lookfor:
-                l.append(expr.value)
+            if expr.data == lookfor:
+                l.append(expr.children)
             result = None
-            if not isinstance(expr.value, str):
-                result = Token.find_tokens(expr.value, lookfor)
+            if not isinstance(expr.children, str):
+                result = Token.find_tokens(expr.children, lookfor)
             if result:
                 l += result
         elif isinstance(expr, list):
@@ -58,11 +60,11 @@ class Token:
     @staticmethod
     def find_and_replace_tokens(expr, lookfor: str, call: Callable):
         if isinstance(expr, Token):
-            if expr.type == lookfor:
+            if expr.data == lookfor:
                 if call:
                     expr = call(expr)
-            elif not isinstance(expr.value, str):
-                expr.value = Token.find_and_replace_tokens(expr.value, lookfor, call)
+            elif not isinstance(expr.children, str):
+                expr.children = Token.find_and_replace_tokens(expr.children, lookfor, call)
         elif isinstance(expr, list):
             expr = [Token.find_and_replace_tokens(i, lookfor, call) for i in expr]
         return expr
@@ -72,13 +74,13 @@ class Token:
         if index is None:
             index = 0
         if isinstance(expr, Token):
-            if expr.type == SQEXPR:
-                expr = expr.value
+            if expr.data == SQEXPR:
+                expr = expr.children
                 expr, index = Token.remove_squere_bracets(expr, index)
             else:
                 oldindex = index
-                expr.value, index = Token.remove_squere_bracets(expr.value, index)
-                if isinstance(expr.value, str) and not (expr.type == 'INTEGER' and expr.value[0] in ['-', '+']):
+                expr.children, index = Token.remove_squere_bracets(expr.children, index)
+                if isinstance(expr.children, str) and not (expr.data == 'INTEGER' and expr.children[0] in ['-', '+']):
                     index = oldindex
                     index += 1
                     if index != 1:
@@ -95,14 +97,14 @@ class Token:
     @staticmethod
     def remove_tokens(expr, lookfor: list):
         if isinstance(expr, Token):
-            if expr.type in lookfor:
-                if isinstance(expr.value, str):
+            if expr.data in lookfor:
+                if isinstance(expr.children, str):
                     expr = None
                 else:
-                    expr = expr.value
+                    expr = expr.children
                     expr = Token.remove_tokens(expr, lookfor)
             else:
-                expr.value = Token.remove_tokens(expr.value, lookfor)
+                expr.children = Token.remove_tokens(expr.children, lookfor)
             return expr
         elif isinstance(expr, list):
             l = []

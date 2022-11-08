@@ -321,26 +321,26 @@ class Parser:
                 is_string |= is_string2
                 reslist += rr2
         elif isinstance(value, Token):
-            if value.type in ['offsetdir', 'segmdir']:
-                if isinstance(value.value, list):  # hack when '+' is glued to integer
-                    value.value = Token.remove_tokens(value.value, ['expr'])
-                    lst = [value.value[0]]
-                    for val in value.value[1:]:
-                        if isinstance(val, Token) and val.type == 'INTEGER':
+            if value.data in ['offsetdir', 'segmdir']:
+                if isinstance(value.children, list):  # hack when '+' is glued to integer
+                    value.children = Token.remove_tokens(value.children, ['expr'])
+                    lst = [value.children[0]]
+                    for val in value.children[1:]:
+                        if isinstance(val, Token) and val.data == 'INTEGER':
                             lst += ['+']
                         lst += [val]
-                    value.value = lst
-                elements, is_string, reslist = self.process_data_tokens(value.value, width)
-            elif value.type == 'expr':
-                el, is_string, res = self.process_data_tokens(value.value, width)
+                    value.children = lst
+                elements, is_string, reslist = self.process_data_tokens(value.children, width)
+            elif value.data == 'expr':
+                el, is_string, res = self.process_data_tokens(value.children, width)
                 if not is_string and len(res) != 1:
                     reslist = ["".join(str(x) for x in res)]
                     elements = 1
                 else:
                     reslist = res
                     elements = el
-            elif value.type == 'STRING':
-                value = value.value
+            elif value.data == 'STRING':
+                value = value.children
                 assert isinstance(value, str)
                 if not self.itislst:  # not for IDA .lst
                     value = value.replace("\'\'", "'").replace('\"\"', '"')  # masm behaviour
@@ -349,16 +349,16 @@ class Parser:
                 is_string = True
 
             # check if dup
-            elif value.type == 'dupdir':
+            elif value.data == 'dupdir':
                 # we should parse that
-                repeat = Parser.parse_int(self.escape(value.value[0]))
-                values = self.process_data_tokens(value.value[1], width)[2]
+                repeat = Parser.parse_int(self.escape(value.children[0]))
+                values = self.process_data_tokens(value.children[1], width)[2]
                 elements, reslist = self.action_dup(repeat, values)
 
-            elif value.type == 'INTEGER':
+            elif value.data == 'INTEGER':
                 elements += 1
                 try:  # just number or many
-                    value = value.value
+                    value = value.children
                     # if v == '?':
                     #    v = '0'
                     value = Parser.parse_int(value)
@@ -377,10 +377,10 @@ class Parser:
                 reslist = [value]
 
             # logging.debug("global/expr: ~%s~" % v)
-            elif value.type == 'LABEL':
+            elif value.data == 'LABEL':
                 elements = 1
                 try:
-                    value = value.value
+                    value = value.children
                     # width = 2  # TODO for 16 bit only
                     value = self.mangle_label(value)
                     value = self.get_global_value(value, width)
@@ -619,7 +619,7 @@ class Parser:
         if ptrdir:
             type = ptrdir[0]
             if isinstance(type, Token):
-                type = type.value
+                type = type.children
             type = type.lower()
             value = Token.find_and_replace_tokens(value, 'ptrdir', self.return_empty)
         o = Proc.create_equ_op(label, value, line_number=line_number)
@@ -663,9 +663,9 @@ class Parser:
             self.set_global(name, op.var(binary_width, offset, name, issegment=True))
 
     def action_proc(self, name, type, line_number=0, raw=''):
-        logging.info("      Found proc %s", name.value)
+        logging.info("      Found proc %s", name.children)
         self.action_endp()
-        name = self.mangle_label(name.value)
+        name = self.mangle_label(name.children)
         far = False
         for i in type:
             if i and i.lower() == 'far':
@@ -809,7 +809,8 @@ class Parser:
         mov ax, ''' + line + '''
         default_seg ends
         end start
-        ''').asminstruction.args[1]
+        ''')
+            result = result[0].children[1]  #result.asminstruction.args[1]
         except Exception as e:
             exc_type, exc_obj, exc_tb = sys.exc_info()
             fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
@@ -817,7 +818,7 @@ class Parser:
             logging.error("Error4")
             #result = [f'{e} {exc_type} {fname} {exc_tb.tb_lineno}']
             raise
-        del self.__globals['default_seg']
+        ### del self.__globals['default_seg']
         return result
 
     def parse_include(self, line, file_name=None):
@@ -846,7 +847,7 @@ class Parser:
         if isinstance(s, list):
             return [self.escape(i) for i in s]
         elif isinstance(s, Token):
-            return self.escape(s.value)
+            return self.escape(s.children)
         else:
             s = s.translate(s.maketrans({"\\": r"\\"}))
             # if not self.itislst:
@@ -857,16 +858,16 @@ class Parser:
         if isinstance(values, list):
             return sum(self.calculate_data_size_new(size, x) for x in values)
         elif isinstance(values, Token):
-            if values.type == 'expr':
-                if isinstance(values.value, Token) and values.value.type == STRINGCNST:
-                    return self.calculate_data_size_new(size, values.value)
+            if values.data == 'expr':
+                if isinstance(values.children, Token) and values.children.data == STRINGCNST:
+                    return self.calculate_data_size_new(size, values.children)
                 else:
                     return size
-            elif values.type == STRINGCNST:
-                return self.calculate_STRING_size(values.value)
-            elif values.type == 'dupdir':
-                return Parser.parse_int(self.escape(values.value[0])) * self.calculate_data_size_new(size,
-                                                                                                     values.value[1])
+            elif values.data == STRINGCNST:
+                return self.calculate_STRING_size(values.children)
+            elif values.data == 'dupdir':
+                return Parser.parse_int(self.escape(values.children[0])) * self.calculate_data_size_new(size,
+                                                                                                        values.children[1])
             else:
                 return size
         elif isinstance(values, str):
@@ -1027,7 +1028,8 @@ class Parser:
 
     def parse_file_insideseg(self, text):
         result = self.parse_args_new_data(text)
-        return result[0][1][1][0].insegmentdir
+        #print(result.children[2].children)
+        return result.children[2].children  #result[0][1][1][0].insegmentdir
 
     def parse_file_inside(self, text, file_name=None):
         return self.parse_include(text, file_name)
@@ -1064,7 +1066,7 @@ class Parser:
 
     def typetosize(self, value):
         if isinstance(value, Token):
-            value = value.value
+            value = value.children
         if not isinstance(value, str):
             logging.error("Type is not a string TODO " + str(value))
             return 0
@@ -1135,7 +1137,7 @@ class Parser:
     def add_extern(self, label, type):
         strtype = type
         if isinstance(type, Token):
-            strtype = type.value
+            strtype = type.children
         label = self.mangle_label(label)
         if strtype not in ['proc']:
             binary_width = self.typetosize(type)
@@ -1208,11 +1210,11 @@ class Parser:
     def handle_local_asm_jumps(self, instruction, args):
         if (instruction[0].lower() == 'j' or instruction[0].lower() == 'loop') and \
                 len(args) == 1 and isinstance(args[0], Token) and \
-                isinstance(args[0].value, Token) and args[0].value.type == 'LABEL':
-            if args[0].value.value.lower() == '@f':
-                args[0].value.value = "dummylabel" + str(self.__c_dummy_jump_label + 1)
-            elif args[0].value.value.lower() == '@b':
-                args[0].value.value = "dummylabel" + str(self.__c_dummy_jump_label)
+                isinstance(args[0].children, Token) and args[0].children.data == 'LABEL':
+            if args[0].children.children.lower() == '@f':
+                args[0].children.children = "dummylabel" + str(self.__c_dummy_jump_label + 1)
+            elif args[0].children.children.lower() == '@b':
+                args[0].children.children = "dummylabel" + str(self.__c_dummy_jump_label)
 
     def collect_labels(self, target, operation):
         for arg in operation.args:
