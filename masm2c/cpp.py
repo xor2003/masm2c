@@ -23,6 +23,8 @@ import os
 import re
 from builtins import hex, range, str
 
+from lark import Tree
+
 from . import op
 from . import proc as proc_module
 from .Token import Token
@@ -124,7 +126,7 @@ class Cpp(Gen):
         self.label = ''
 
     def convert_label(self, token):
-        name_original = mangle_asm_labels(token.children)
+        name_original = mangle_asm_labels(token.children[0])
         token.children = name_original
         name = name_original.lower()
         logging.debug("convert_label name = %s indirection = %s", name, self.__indirection)
@@ -138,7 +140,7 @@ class Cpp(Gen):
                 logging.debug("OFFSET = %s", offset)
                 self.__indirection = IndirectionType.VALUE
                 self.__used_data_offsets.add((name, offset))
-                return Token('LABEL', "(dw)m2c::k" + name)
+                return Token('label', "(dw)m2c::k" + name)
 
         try:
             g = self._context.get_global(name)
@@ -222,7 +224,7 @@ class Cpp(Gen):
                 self.__indirection = IndirectionType.VALUE
             else:
                 raise Exception("invalid indirection %d name '%s' size %u" % (self.__indirection, name, size))
-        return Token('LABEL', value)
+        return Token('label', value)
 
     def render_data_c(self, segments):
         """
@@ -491,7 +493,7 @@ class Cpp(Gen):
                 res = res.replace('+)', ')')  # TODO hack
                 result += res
             return result
-        elif isinstance(expr, Token):
+        elif isinstance(expr, Tree):
 
             if expr.data == 'STRING':
                 m = re.match(r'^[\'\"](....)[\'\"]$', expr.children)  # char constants 'abcd'
@@ -589,7 +591,7 @@ class Cpp(Gen):
                 self.__work_segment = "ss"  # and segment is not overriden means base is "ss:"
                 self.isvariable = False
         if segoverride:  # if it was segment override then use provided value
-            self.__work_segment = segoverride[0].children
+            self.__work_segment = segoverride[0][0].children[0]
 
         self.__current_size = size
         size_ovrr_by_ptr = size  # setting initial value
@@ -621,8 +623,8 @@ class Cpp(Gen):
                 # put registers and numbers first since asm have byte aligned pointers
                 # in comparison to C's type aligned
                 registers = Token.find_tokens(expr, 'register')
-                integers = Token.find_tokens(expr, 'INTEGER')
-                expr = Token.remove_tokens(expr, ['register', 'INTEGER'])
+                integers = Token.find_tokens(expr, 'integer')
+                expr = Token.remove_tokens(expr, ['register', 'integer'])
                 expr = self.tokens_to_string(expr)
                 while len(expr) and expr[0] == '+':
                     expr = expr[1:]

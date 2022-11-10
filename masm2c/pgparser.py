@@ -4,7 +4,7 @@ import re
 from collections import OrderedDict
 from copy import deepcopy, copy
 
-from lark import Transformer, Lark
+from lark import Transformer, Lark, v_args, Discard
 
 from . import op
 from .Macro import Macro
@@ -15,45 +15,46 @@ macronamere = re.compile(r'([A-Za-z_@$?][A-Za-z0-9_@$?]*)')
 commentid = re.compile(r'COMMENT\s+([^ ]).*?\1[^\r\n]*', flags=re.DOTALL)
 
 
-class Tr(Transformer):
+class Asm2IR(Transformer):
 
-    def __init__(self, context):
+    def __init__(self, context, input_str=''):
         self.context = context
-        
-    def get_line_number(self, context):
+        self.input_str = input_str
+
+    def get_line_number(self, meta):
         """
         It returns the line number of the current position in the input string
     
         :param context: the context object that is passed to the action function
         :return: The line number of the current position in the input string.
         """
-        return context.input_str[: context.start_position].count('\n') + 1
-    
-    
-    def get_raw(self, context):
+        return meta.line
+
+    def get_raw(self, meta):
         """
         It returns the raw text that was provided to parser
     
         :param context:
         :return: The raw string from the input string.
         """
-        return context.input_str[context.start_position: context.end_position].strip()
-    
-    
-    def get_raw_line(self, context):
+        return self.input_str[meta.start_pos: meta.end_pos].strip()
+
+    def get_raw_line(self, meta):
         """
         It returns the raw line of text that the cursor is currently on
-    
-        :param context: The context object that contains the current position in the input string, the start and end positions
-        of the current match, and the input string itself
+
         :return: The line of text from the input string.
         """
-        line_eol_pos = context.input_str.find('\n', context.end_position)
-        if line_eol_pos == -1:
-            line_eol_pos = context.end_position
-        return context.input_str[context.start_position: line_eol_pos]
-    
-    
+        try:
+            line_strt_pos = self.input_str.rfind('\n', 0, meta.start_pos) + 1
+
+            line_eol_pos = self.input_str.find('\n', meta.end_pos)
+            if line_eol_pos == -1:
+                line_eol_pos = len(self.input_str)
+        except Exception as ex:
+            print(ex)
+        return self.input_str[line_strt_pos: line_eol_pos]
+
     '''
     def build_ast(self, nodes, type=''):
         if isinstance(nodes, parglare.parser.NodeNonTerm) and nodes.children:
@@ -68,17 +69,13 @@ class Tr(Transformer):
         else:
             return Node(name=nodes.symbol.name, type=type, keyword=nodes.symbol.keyword, value=nodes.value)
     '''
-    
-    
 
     def expr(self, nodes):
         return nodes
-    
-    
+
     def dupdir(self, nodes, times, values):
-        return nodes #Token('dupdir', [times, values])
-    
-    
+        return nodes  # Token('dupdir', [times, values])
+
     def segoverride(self, nodes):
         # global cur_segment
         if isinstance(nodes[0], list):
@@ -86,28 +83,24 @@ class Tr(Transformer):
             return nodes[0][:-1] + [Token('segoverride', nodes[0][-1]), nodes[2]]
         # cur_segment = nodes[0] #!
         return [Token('segoverride', nodes[0]), nodes[2]]
-    
-    
+
     def ptrdir(self, nodes):
         if len(nodes) == 3:
             return [Token('ptrdir', nodes[0]), nodes[2]]
         else:
             return [Token('ptrdir', nodes[0]), nodes[1]]
-    
-    
+
     def integertok(self, nodes):
         from masm2c.cpp import Cpp
-        return nodes #Token('INTEGER', Cpp(self.context.convert_asm_number_into_c(nodes, self.context.radix))  # TODO remove this
-    
-    
+        return nodes  # Token('INTEGER', Cpp(self.context.convert_asm_number_into_c(nodes, self.context.radix))  # TODO remove this
+
     def commentkw(self, head, s, pos):
         # multiline comment
         if s[pos:pos + 7] == 'COMMENT':
             if mtch := commentid.match(s[pos:]):
                 return mtch.group(0)
         return None
-    
-    
+
     def macroname(self, s, pos):
         if macroses:
             # macro usage identifier
@@ -119,8 +112,7 @@ class Tr(Transformer):
                     logging.debug(" ~^~" + result + "~^~ in macronames")
                     return result
         return None
-    
-    
+
     def macrodirhead(self, nodes, name, parms):
         # macro definition header
         param_names = []
@@ -130,16 +122,14 @@ class Tr(Transformer):
         self.context.macro_names_stack.add(name.children.lower())
         logging.debug("macroname added ~~%s~~", name.children)
         return nodes
-    
-    
+
     def repeatbegin(self, nodes, value):
         # start of repeat macro
         self.context.current_macro = Macro("", [], value)
         self.context.macro_names_stack.add('')  # TODO
         logging.debug("repeatbegin")
         return nodes
-    
-    
+
     def endm(self, nodes):
         # macro definition end
         name = self.context.macro_names_stack.pop()
@@ -147,17 +137,15 @@ class Tr(Transformer):
         macroses[name] = self.context.current_macro
         self.context.current_macro = None
         return nodes
-    
-    
+
     class Getmacroargval:
-    
+
         def __init__(self, params, args):
             self.argvaluedict = OrderedDict(zip(params, args))
-    
+
         def __call__(self, token):
             return self.argvaluedict[token.children]
-    
-    
+
     def macrocall(self, nodes, name, args):
         # macro usage
         logging.debug("macrocall " + name + "~~")
@@ -168,8 +156,7 @@ class Tr(Transformer):
             instruction.args = Token.find_and_replace_tokens(instruction.args, 'LABEL', param_assigner)
         self.context.proc.stmts += instructions
         return nodes
-    
-    
+
     def structname(self, s, pos):
         if self.context.structures:
             mtch = macronamere.match(s[pos:])
@@ -180,16 +167,14 @@ class Tr(Transformer):
                     logging.debug(" ~^~" + result + "~^~ in structures")
                     return result
         return None
-    
-    
+
     def structdirhdr(self, nodes, name, type):
         # structure definition header
         self.context.current_struct = op.Struct(name.children.lower(), type)
         self.context.struct_names_stack.add(name.children.lower())
         logging.debug("structname added ~~" + name.children + "~~")
         return nodes
-    
-    
+
     def structinstdir(self, nodes, label, type, values):
         logging.debug(f"structinstdir {label} {type} {values}")
         # args = remove_str(Token.remove_tokens(remove_str(values), 'expr'))
@@ -204,193 +189,180 @@ class Tr(Transformer):
             name = ''
         self.context.add_structinstance(name, type.lower(), args, raw=self.get_raw(self.context))
         return nodes
-    
-    
+
     def datadir(self, nodes, label, type, values):
         logging.debug("datadir " + str(nodes) + " ~~")
-    
+
         if label:
             label = label.children
         else:
             label = ""
-    
+
         return self.context.datadir_action(label, type.lower(), values, raw=self.get_raw(self.context),
-                                            line_number=self.get_line_number(self.context))
-    
-    
+                                           line_number=self.get_line_number(self.context))
+
     def includedir(self, nodes, name):
         # context.parser.input_str = context.input_str[:context.end_position] + '\n' + read_asm_file(name) \
         # + '\n' + context.input_str[context.end_position:]
         fullpath = os.path.join(os.path.dirname(os.path.realpath(self.context._current_file)), name)
         result = self.context.parse_include_file_lines(fullpath)
         return result
-    
-    
+
     def segdir(self, nodes, type):
         logging.debug("segdir " + str(nodes) + " ~~")
         self.context.action_simplesegment(type, '')  # TODO
         return nodes
-    
-    
-    def segmentdir(self, nodes, name, options):
+
+    def label(self, node):
+        self.name = node[0]
+        return node
+
+    @v_args(meta=True)
+    def segmentdir(self, meta, nodes):
         logging.debug("segmentdir " + str(nodes) + " ~~")
-    
+
+        name = self.name
+        options = nodes
         opts = set()
         segclass = None
+        '''
         if options:
             for o in options:
                 if isinstance(o, str):
                     opts.add(o.lower())
-                elif isinstance(o, Token) and o.data == 'STRING':
-                    segclass = o.children.lower()
+                elif isinstance(o, lark.Tree) and o.data == 'label':
+                    segclass = o.children[0].lower()
                     if segclass[0] in ['"', "'"] and segclass[0] == segclass[-1]:
                         segclass = segclass[1:-1]
                 else:
                     logging.warning('Unknown segment option')
-    
-        self.context.create_segment(name.children, options=opts, segclass=segclass, raw=self.get_raw(self.context))
+        '''
+        self.context.create_segment(name, options=opts, segclass=segclass, raw=self.get_raw(meta))
         return nodes
-    
-    
-    def modeldir(self, nodes, model):
-        logging.debug("modeldir " + str(nodes) + " ~~")
-        return nodes
-    
-    
-    def endsdir(self, nodes, name):
+
+    def endsdir(self, nodes):
         logging.debug("ends " + str(nodes) + " ~~")
         self.context.action_ends()
         return nodes
-    
-    
+
     def procdir(self, nodes, name, type):
         logging.debug("procdir " + str(nodes) + " ~~")
-        self.context.action_proc(name, type, line_number=self.get_line_number(self.context), raw=self.get_raw_line(self.context))
+        self.context.action_proc(name, type, line_number=self.get_line_number(self.context),
+                                 raw=self.get_raw_line(self.context))
         return nodes
-    
-    
+
     def endpdir(self, nodes, name):
         logging.debug("endp " + str(name) + " ~~")
         self.context.action_endp()
         return nodes
-    
-    
+
     def equdir(self, nodes, name, value):
         logging.debug("equdir " + str(nodes) + " ~~")
-        return self.context.action_equ(name.children, value, raw=self.get_raw(self.context), line_number=self.get_line_number(self.context))
-    
-    
+        return self.context.action_equ(name.children, value, raw=self.get_raw(self.context),
+                                       line_number=self.get_line_number(self.context))
+
     def assdir(self, nodes, name, value):
         logging.debug("assdir " + str(nodes) + " ~~")
-        return self.context.action_assign(name.children, value, raw=self.get_raw(self.context), line_number=self.get_line_number(self.context))
-    
-    
+        return self.context.action_assign(name.children, value, raw=self.get_raw(self.context),
+                                          line_number=self.get_line_number(self.context))
+
     def labeldef(self, nodes, name, colon):
         logging.debug("labeldef " + str(nodes) + " ~~")
         return self.context.action_label(name.children, isproc=False, raw=self.get_raw_line(self.context),
                                          line_number=self.get_line_number(self.context),
                                          globl=(colon == '::'))
-    
-    
+
     def instrprefix(self, nodes):
         logging.debug("instrprefix " + str(nodes) + " ~~")
         instruction = nodes[0]
-        self.context.action_instruction(instruction, [], raw=self.get_raw_line(self.context), line_number=self.get_line_number(self.context))
+        self.context.action_instruction(instruction, [], raw=self.get_raw_line(self.context),
+                                        line_number=self.get_line_number(self.context))
         return []
-    
-    
-    def asminstruction(self, nodes, instruction, args):
+
+    def mnemonic(self, name):
+        self.instruction = name[0]
+        return Discard
+
+    @v_args(meta=True)
+    def asminstruction(self, meta, nodes):
         logging.debug("asminstruction " + str(nodes) + " ~~")
         # args = build_ast(args)
+        instruction = self.instruction
+        args = nodes[0].children
+        '''
         if not instruction:
             return nodes
         if args is None:
             args = []
-        return self.context.action_instruction(instruction, args, raw=self.get_raw_line(self.context),
-                                                line_number=self.get_line_number(self.context))
-    
-    
+        '''
+        return self.context.action_instruction(instruction, args, raw=self.get_raw_line(meta),
+                                               line_number=self.get_line_number(meta))
+
     def enddir(self, nodes, label):
         logging.debug("end " + str(nodes) + " ~~")
         self.context.action_end(label)
         return nodes
-    
-    
+
     def notdir(self, nodes):
         nodes[0] = '~'  # should be in Cpp module
         return nodes
-    
-    
+
     def ordir(self, nodes):
         nodes[1] = '|'
         return nodes
-    
-    
+
     def xordir(self, nodes):
         nodes[1] = '^'
         return nodes
-    
-    
+
     def anddir(self, nodes):
         nodes[1] = ' & '
         return nodes
-    
-    
+
     def register(self, nodes):
-        return nodes #Token('register', nodes[0].lower())
-    
-    
+        return nodes  # Token('register', nodes[0].lower())
+
     def segmentregister(self, nodes):
-        return nodes #Token('segmentregister', nodes[0].lower())
-    
-    
+        return nodes  # Token('segmentregister', nodes[0].lower())
+
     def sqexpr(self, nodes):
         logging.debug("/~" + str(nodes) + "~\\")
         res = nodes[1]
-        return nodes #Token('sqexpr', res)
-    
-    
+        return nodes  # Token('sqexpr', res)
+
     def offsetdir(self, nodes):
         logging.debug("offset /~" + str(nodes) + "~\\")
-        return nodes #Token('offsetdir', nodes[1])
-    
-    
+        return nodes  # Token('offsetdir', nodes[1])
+
     def segmdir(self, nodes):
         logging.debug("segmdir /~" + str(nodes) + "~\\")
         # global indirection
         # indirection = -1
-        return nodes #Token('segmdir', nodes[1])
-    
-    
+        return nodes  # Token('segmdir', nodes[1])
+
     def labeltok(self, nodes):
-        return nodes #Token('LABEL', nodes)
-    
-    
+        return nodes  # Token('LABEL', nodes)
+
     def STRING(self, nodes):
-        return nodes #Token('STRING', nodes)
-    
-    
+        return nodes  # Token('STRING', nodes)
+
     def structinstance(self, nodes, values):
-        return nodes #Token('structinstance', values)
-    
-    
+        return nodes  # Token('structinstance', values)
+
     def memberdir(self, nodes, variable, field):
         result = Token('memberdir', [variable, field])
         logging.debug(result)
         return result
-    
-    
+
     def radixdir(self, nodes, value):
         self.context.radix = int(value.children.children)
         return nodes
-    
-    
+
     def externdef(self, nodes, extrnname, type):
         logging.debug('externdef %s', nodes)
         self.context.add_extern(extrnname.children, type)
         return nodes
-    
-    
+
     def maked(self, nodes):
         # return nodes #Token(nodes[0].upper(), nodes[1].value)
         # TODO dirty workaround for now
@@ -398,8 +370,7 @@ class Tr(Transformer):
             return [f'sizeof({nodes[1].children.lower()})']
         else:
             return nodes
-    
-    
+
     def offsetdirtype(self, nodes, directive, value):
         from .parser import Parser
         logging.debug(f'offsetdirtype {directive} {str(value)}')
@@ -412,6 +383,7 @@ class Tr(Transformer):
         elif directive == 'org':
             self.context.org(Parser.parse_int(value))
         return nodes
+
 
 '''
 actions = {
@@ -476,6 +448,7 @@ recognizers = {
 }
 '''
 
+
 class LarkParser:
     def __new__(cls, *args, **kwargs):
         if not hasattr(cls, '_inst'):
@@ -493,11 +466,11 @@ class LarkParser:
 
 
 OFFSETDIR = 'offsetdir'
-LABEL = 'LABEL'
+LABEL = 'label'
 PTRDIR = 'ptrdir'
 REGISTER = 'register'
 SEGMENTREGISTER = 'segmentregister'
 SEGOVERRIDE = 'segoverride'
 SQEXPR = 'sqexpr'
-INTEGER = 'INTEGER'
+INTEGER = 'integer'
 MEMBERDIR = 'memberdir'

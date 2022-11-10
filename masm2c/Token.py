@@ -21,11 +21,12 @@
 from typing import Callable
 
 import lark
+from lark import Tree
 
 SQEXPR = 'sqexpr'
 
 
-class Token(lark.Token):
+class Token(lark.Tree):
     __slots__ = ('data', 'children')
 
     def __init__(self, type, value):
@@ -41,9 +42,12 @@ class Token(lark.Token):
     @staticmethod
     def find_tokens(expr, lookfor: str):
         l = []
-        if isinstance(expr, Token):
+        if isinstance(expr, Tree):
             if expr.data == lookfor:
-                l.append(expr.children)
+                if len(expr.children) == 1:
+                    l.append(expr.children[0])
+                else:
+                    l.append(expr.children)
             result = None
             if not isinstance(expr.children, str):
                 result = Token.find_tokens(expr.children, lookfor)
@@ -59,7 +63,7 @@ class Token(lark.Token):
 
     @staticmethod
     def find_and_replace_tokens(expr, lookfor: str, call: Callable):
-        if isinstance(expr, Token):
+        if isinstance(expr, Tree):
             if expr.data == lookfor:
                 if call:
                     expr = call(expr)
@@ -73,14 +77,14 @@ class Token(lark.Token):
     def remove_squere_bracets(expr, index=None):
         if index is None:
             index = 0
-        if isinstance(expr, Token):
+        if isinstance(expr, Tree):
             if expr.data == SQEXPR:
                 expr = expr.children
                 expr, index = Token.remove_squere_bracets(expr, index)
             else:
                 oldindex = index
                 expr.children, index = Token.remove_squere_bracets(expr.children, index)
-                if isinstance(expr.children, str) and not (expr.data == 'INTEGER' and expr.children[0] in ['-', '+']):
+                if isinstance(expr.children, str) and not (expr.data == 'integer' and expr.children[0] in ['-', '+']):
                     index = oldindex
                     index += 1
                     if index != 1:
@@ -96,9 +100,9 @@ class Token(lark.Token):
 
     @staticmethod
     def remove_tokens(expr, lookfor: list):
-        if isinstance(expr, Token):
+        if isinstance(expr, Tree):
             if expr.data in lookfor:
-                if isinstance(expr.children, str):
+                if len(expr.children)==1 and isinstance(expr.children[0], str):
                     expr = None
                 else:
                     expr = expr.children

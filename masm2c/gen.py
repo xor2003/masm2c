@@ -63,7 +63,7 @@ class Gen:
         issqexpr = Token.find_tokens(expr, SQEXPR)
         segover = Token.find_tokens(expr, 'segoverride')
         if issqexpr or segover:
-            expr = Token.remove_tokens(expr, ['segmentregister', 'register', 'INTEGER', SQEXPR, 'segoverride'])
+            expr = Token.remove_tokens(expr, ['segmentregister', 'register', 'integer', SQEXPR, 'segoverride'])
             return self.calculate_size(expr)
 
         if isinstance(expr, list) and all(
@@ -79,7 +79,7 @@ class Gen:
         if isinstance(expr, Token):
             if expr.data in ('register', 'segmentregister'):
                 return self._context.is_register(expr.children)
-            elif expr.data == 'INTEGER':
+            elif expr.data == 'integer':
                 try:
                     # v = self._context.parse_int(expr.value)
                     v = eval(re.sub(r'^0+(?=\d)', '', expr.children))
@@ -91,7 +91,7 @@ class Gen:
                 m = re.match(r'\'(.+)\'$', expr.children)  # char constants
                 if m:
                     return len(m.group(1))
-            elif expr.data == 'LABEL':
+            elif expr.data == 'label':
                 name = expr.children
                 logging.debug('name = %s', name)
                 try:

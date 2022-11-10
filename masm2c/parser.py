@@ -34,10 +34,10 @@ import parglare
 from . import cpp as cpp_module
 from . import op
 from .Token import Token
-from .pgparser import LarkParser
+from .pgparser import LarkParser, Asm2IR
 from .proc import Proc
 
-INTEGERCNST = 'INTEGER'
+INTEGERCNST = 'integer'
 STRINGCNST = 'STRING'
 
 
@@ -810,7 +810,7 @@ class Parser:
         default_seg ends
         end start
         ''')
-            result = result[0].children[1]  #result.asminstruction.args[1]
+            result = result[0].children[1].children[1]  #result.asminstruction.args[1]
         except Exception as e:
             exc_type, exc_obj, exc_tb = sys.exc_info()
             fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
@@ -1028,7 +1028,7 @@ class Parser:
 
     def parse_file_insideseg(self, text):
         result = self.parse_args_new_data(text)
-        #print(result.children[2].children)
+        print(result.pretty())
         return result.children[2].children  #result[0][1][1][0].insegmentdir
 
     def parse_file_inside(self, text, file_name=None):
@@ -1038,6 +1038,7 @@ class Parser:
         logging.debug("parsing: [%s]", text)
 
         result = self.__lex.parser.parse(text) #, file_name=file_name, extra=self)
+        result = Asm2IR(self, text).transform(result)
         #with open('forest.txt', 'w') as f:
         #    f.write(result.to_str())
 
