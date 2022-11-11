@@ -8,7 +8,7 @@ from lark import Transformer, Lark, v_args, Discard
 
 from . import op
 from .Macro import Macro
-from .Token import Token
+from .Token import Token, Integer
 
 macroses = OrderedDict()
 macronamere = re.compile(r'([A-Za-z_@$?][A-Za-z0-9_@$?]*)')
@@ -20,6 +20,7 @@ class Asm2IR(Transformer):
     def __init__(self, context, input_str=''):
         self.context = context
         self.input_str = input_str
+        self.radix=10
 
     def get_line_number(self, meta):
         """
@@ -90,9 +91,11 @@ class Asm2IR(Transformer):
         else:
             return [Token('ptrdir', nodes[0]), nodes[1]]
 
-    def integertok(self, nodes):
-        from masm2c.cpp import Cpp
-        return nodes  # Token('INTEGER', Cpp(self.context.convert_asm_number_into_c(nodes, self.context.radix))  # TODO remove this
+    def integer(self, nodes):
+        from .parser import parse_asm_number
+        i = Integer(*parse_asm_number(nodes[0], self.radix))
+        #from masm2c.cpp import Cpp
+        return i  # Token('INTEGER', Cpp(self.context.convert_asm_number_into_c(nodes, self.context.radix))  # TODO remove this
 
     def commentkw(self, head, s, pos):
         # multiline comment
@@ -280,14 +283,14 @@ class Asm2IR(Transformer):
         return []
 
     def mnemonic(self, name):
-        self.instruction = name[0]
+        self.instruction_name = name[0]
         return Discard
 
     @v_args(meta=True)
-    def asminstruction(self, meta, nodes):
+    def instruction(self, meta, nodes):
         logging.debug("asminstruction " + str(nodes) + " ~~")
         # args = build_ast(args)
-        instruction = self.instruction
+        instruction = self.instruction_name
         args = nodes[0].children
         '''
         if not instruction:
@@ -296,7 +299,7 @@ class Asm2IR(Transformer):
             args = []
         '''
         return self.context.action_instruction(instruction, args, raw=self.get_raw_line(meta),
-                                               line_number=self.get_line_number(meta))
+                                               line_number=self.get_line_number(meta)) or Discard
 
     def enddir(self, nodes, label):
         logging.debug("end " + str(nodes) + " ~~")
@@ -319,8 +322,8 @@ class Asm2IR(Transformer):
         nodes[1] = ' & '
         return nodes
 
-    def register(self, nodes):
-        return nodes  # Token('register', nodes[0].lower())
+    #def register(self, nodes):
+    #    return nodes  # Token('register', nodes[0].lower())
 
     def segmentregister(self, nodes):
         return nodes  # Token('segmentregister', nodes[0].lower())
@@ -354,9 +357,9 @@ class Asm2IR(Transformer):
         logging.debug(result)
         return result
 
-    def radixdir(self, nodes, value):
-        self.context.radix = int(value.children.children)
-        return nodes
+    def radixdir(self, children):
+        self.radix = int(children[0])
+        return children
 
     def externdef(self, nodes, extrnname, type):
         logging.debug('externdef %s', nodes)

@@ -33,10 +33,10 @@ class Token(lark.Tree):
         self.data = type
         self.children = value
 
-    #def __str__(self):
+    # def __str__(self):
     #    return f"Token({self.data}, {self.children})"
 
-    #def __repr__(self):
+    # def __repr__(self):
     #    return f"Token({self.data}, {self.children})"
 
     @staticmethod
@@ -97,12 +97,11 @@ class Token(lark.Tree):
             index = 0
         return expr, index
 
-
     @staticmethod
     def remove_tokens(expr, lookfor: list):
         if isinstance(expr, Tree):
             if expr.data in lookfor:
-                if len(expr.children)==1 and isinstance(expr.children[0], str):
+                if len(expr.children) == 1 and isinstance(expr.children[0], str):
                     expr = None
                 else:
                     expr = expr.children
@@ -116,7 +115,20 @@ class Token(lark.Tree):
                 result = Token.remove_tokens(expr[i], lookfor)
                 if result != None:
                     l.append(result)
-            #if not l:
+            # if not l:
             #    l = None
             return l
         return expr
+
+
+class Integer:
+
+    def __init__(self, number, radix):
+        self.number = number
+        self.radix = radix
+
+    def __int__(self):
+        return self.number
+
+    def __repr__(self):
+        return {2: bin(self.number), 8: oct(self.number), 10: str(self.number), 16: hex(self.number)}[self.radix]

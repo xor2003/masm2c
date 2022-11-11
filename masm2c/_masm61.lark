@@ -250,11 +250,11 @@ _insegdir: labeldef _insegmentdir | _insegmentdir
 //insegdirlist: _insegdir+
 _insegmentdir: instruction| datadir| controldir| startupdir| exitdir| offsetdir| labeldir| procdir  localdirlist? endpdir| procdir  localdirlist? _insegdir+ endpdir| invokedir| _generaldir | _linereminder
 
-asminstruction: instrprefix? mnemonic  exprlist?
+_asminstruction: instrprefix? mnemonic  exprlist?
 //| PUSH allreglist
 //| POP allreglist
 
-instruction: asminstruction _linereminder
+instruction: _asminstruction _linereminder
 
 invokearg: _anyregister "::" register| "ADDR"i _expr | _expr
 invokedir: "INVOKE"i _expr commainvokelist? _linereminder

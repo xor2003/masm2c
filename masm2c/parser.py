@@ -661,6 +661,7 @@ class Parser:
             # self.__segment.append(op.Data(name, 'db', DataType.ARRAY, [], 0, 0, comment='segment start zero label'))
 
             self.set_global(name, op.var(binary_width, offset, name, issegment=True))
+        return self.__segment
 
     def action_proc(self, name, type, line_number=0, raw=''):
         logging.info("      Found proc %s", name.children)
@@ -1204,9 +1205,10 @@ class Parser:
             self.need_label |= self.flow_terminated
 
             self.collect_labels(self.proc.used_labels, o)
+            return o
         else:
             self.current_macro.instructions.append(o)
-        return o
+            return None
 
     def handle_local_asm_jumps(self, instruction, args):
         if (instruction[0].lower() == 'j' or instruction[0].lower() == 'loop') and \
@@ -1274,4 +1276,7 @@ def parse_asm_number(expr, radix):
             raise ValueError(expr)
         sign = m['sign'] if m['sign'] else ''
         value = m['value']
-    return radix, sign, value
+        value = int(value, radix)
+        if sign == '-':
+            value *= -1
+    return value, radix

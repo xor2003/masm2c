@@ -16,7 +16,7 @@ _DATA   ends ;IGNORE
 _TEXT   segment use16 word public 'CODE' ;IGNORE
 assume  cs:_TEXT,ds:_DATA
 start:
-mov ax,4
+mov ax,4 ;coment
 add word ptr [var1-2],5*5
 mov bl,-3
 mov cl,+5
