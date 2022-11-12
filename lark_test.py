@@ -19,7 +19,7 @@ start:
 mov ax,4 ;coment
 ;inc bx
 ;lahf
-add word ptr [var1-2],5*5
+add word ptr [var1-2],3+5*5
 add word ptr [var1+3],5+5
 mov bl,-3
 mov cl,+5
