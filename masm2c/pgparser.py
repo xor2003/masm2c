@@ -85,9 +85,9 @@ class Asm2IR(Transformer):
         self.indirection = IndirectionType.POINTER
         return nodes
 
-    def integer(self, nodes):
+    def INTEGER(self, nodes):
         from .parser import parse_asm_number
-        i = Integer(*parse_asm_number(nodes[0], self.radix))
+        i = Integer(*parse_asm_number(nodes, self.radix))
         #from masm2c.cpp import Cpp
         return i  # Token('INTEGER', Cpp(self.context.convert_asm_number_into_c(nodes, self.context.radix))  # TODO remove this
 
@@ -276,7 +276,7 @@ class Asm2IR(Transformer):
                                         line_number=self.get_line_number(self.context))
         return []
 
-    def mnemonic(self, name):
+    def MNEMONIC(self, name):
         self.instruction_name = name[0]
         return Discard
 

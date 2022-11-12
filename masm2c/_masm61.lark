@@ -14,14 +14,16 @@ structname: "structname"
 COMMENTKW: /comment\s+(\S)/ //[.\r\n]*?\1[^\r\n]*/x
 _ENDOFLINE: /[\r\n]+[\t \r\n]*/x
 //FLOAT: /-?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?/
-integer: /[0-9][0-9A-Fa-f]*[HOQTYhoqty]?/
-_integer_: sign? integer
+INTEGER: /[0-9][0-9A-Fa-f]*[HOQTYhoqty]?/
+_signed_integer.30: sign INTEGER
+_integer_.30: INTEGER | _signed_integer
+
 WS: /([\t \b\v\f\x1a]+)|(\\;?[^\r\n]*[\r\n\t \b\v\f\x1a]+)/x
 SPACE: /[\t ]+/
 !comment: /;[^\r\n]*/x
 KEYWORD: /\w+/
 arbitrarytext: /[^\r\n]+/x
-!mnemonic: "AAA"i|"AAD"i|"AAM"i|"AAS"i|"ADC"i|"ADD"i|"AND"i|"CALL"i|"CBW"i|"CLC"i|"CLD"i|"CLI"i|"CMC"i|"CMP"i|"CMPS"i|"CMPSB"i|"CMPSW"i|"CMPXCHG8B"i|"CWD"i|"DAA"i|"DAS"i|"DEC"i|"DIV"i|"ESC"i|"HLT"i|"IDIV"i|"IMUL"i|"IN"i|"INC"i|"INT"i|"INTO"i|"IRET"i|"JA"i|"JAE"i|"JB"i|"JBE"i|"JC"i|"JCXZ"i|"JE"i|"JG"i|"JGE"i|"JL"i|"JLE"i|"JMP"i|"JNA"i|"JNAE"i|"JNB"i|"JNBE"i|"JNC"i|"JNE"i|"JNG"i|"JNGE"i|"JNL"i|"JNLE"i|"JNO"i|"JNP"i|"JNS"i|"JNZ"i|"JO"i|"JP"i|"JPE"i|"JPO"i|"JS"i|"JZ"i|"LAHF"i|"LDS"i|"LEA"i|"LES"i|"LODS"i|"LODSB"i|"LODSW"i|"LOOP"i|"LOOPE"i|"LOOPEW"i|"LOOPNE"i|"LOOPNEW"i|"LOOPNZ"i|"LOOPNZW"i|"LOOPW"i|"LOOPZ"i|"LOOPZW"i|"MOV"i|"MOVS"i|"MOVSB"i|"MOVSW"i|"MUL"i|"NEG"i|"NOP"i|"NOT"i|"OR"i|"OUT"i|"POP"i|"POPF"i|"PUSH"i|"PUSHF"i|"RCL"i|"RCR"i|"RET"i|"RETF"i|"RETN"i|"ROL"i|"ROR"i|"SAHF"i|"SAL"i|"SAR"i|"SBB"i|"SCAS"i|"SCASB"i|"SCASW"i|"SHL"i|"SHR"i|"STC"i|"STD"i|"STI"i|"STOS"i|"STOSB"i|"STOSW"i|"SUB"i|"TEST"i|"WAIT"i|"XCHG"i|"XLAT"i|"XLATB"i|"XOR"i|"BOUND"i|"ENTER"i|"INS"i|"INSB"i|"INSW"i|"LEAVE"i|"OUTS"i|"OUTSB"i|"OUTSW"i|"POPA"i|"PUSHA"i|"PUSHW"i|"BSF"i|"BSR"i|"BT"i|"BTC"i|"BTR"i|"BTS"i|"CDQ"i|"CMPSD"i|"CWDE"i|"INSD"i|"IRETD"i|"IRETDF"i|"IRETF"i|"JECXZ"i|"LFS"i|"LGS"i|"LODSD"i|"LOOPD"i|"LOOPED"i|"LOOPNED"i|"LOOPNZD"i|"LOOPZD"i|"LSS"i|"MOVSD"i|"MOVSX"i|"MOVZX"i|"OUTSD"i|"POPAD"i|"POPFD"i|"PUSHAD"i|"PUSHD"i|"PUSHFD"i|"SCASD"i|"SETA"i|"SETAE"i|"SETB"i|"SETBE"i|"SETC"i|"SETE"i|"SETG"i|"SETGE"i|"SETL"i|"SETLE"i|"SETNA"i|"SETNAE"i|"SETNB"i|"SETNBE"i|"SETNC"i|"SETNE"i|"SETNG"i|"SETNGE"i|"SETNL"i|"SETNLE"i|"SETNO"i|"SETNP"i|"SETNS"i|"SETNZ"i|"SETO"i|"SETP"i|"SETPE"i|"SETPO"i|"SETS"i|"SETZ"i|"SHLD"i|"SHRD"i|"STOSD"i|"BSWAP"i|"CMPXCHG"i|"XADD"i
+mnemonic: "AAA"i|"AAD"i|"AAM"i|"AAS"i|"ADC"i|"ADD"i|"AND"i|"CALL"i|"CBW"i|"CLC"i|"CLD"i|"CLI"i|"CMC"i|"CMP"i|"CMPS"i|"CMPSB"i|"CMPSW"i|"CMPXCHG8B"i|"CWD"i|"DAA"i|"DAS"i|"DEC"i|"DIV"i|"ESC"i|"HLT"i|"IDIV"i|"IMUL"i|"IN"i|"INC"i|"INT"i|"INTO"i|"IRET"i|"JA"i|"JAE"i|"JB"i|"JBE"i|"JC"i|"JCXZ"i|"JE"i|"JG"i|"JGE"i|"JL"i|"JLE"i|"JMP"i|"JNA"i|"JNAE"i|"JNB"i|"JNBE"i|"JNC"i|"JNE"i|"JNG"i|"JNGE"i|"JNL"i|"JNLE"i|"JNO"i|"JNP"i|"JNS"i|"JNZ"i|"JO"i|"JP"i|"JPE"i|"JPO"i|"JS"i|"JZ"i|"LAHF"i|"LDS"i|"LEA"i|"LES"i|"LODS"i|"LODSB"i|"LODSW"i|"LOOP"i|"LOOPE"i|"LOOPEW"i|"LOOPNE"i|"LOOPNEW"i|"LOOPNZ"i|"LOOPNZW"i|"LOOPW"i|"LOOPZ"i|"LOOPZW"i|"MOV"i|"MOVS"i|"MOVSB"i|"MOVSW"i|"MUL"i|"NEG"i|"NOP"i|"NOT"i|"OR"i|"OUT"i|"POP"i|"POPF"i|"PUSH"i|"PUSHF"i|"RCL"i|"RCR"i|"RET"i|"RETF"i|"RETN"i|"ROL"i|"ROR"i|"SAHF"i|"SAL"i|"SAR"i|"SBB"i|"SCAS"i|"SCASB"i|"SCASW"i|"SHL"i|"SHR"i|"STC"i|"STD"i|"STI"i|"STOS"i|"STOSB"i|"STOSW"i|"SUB"i|"TEST"i|"WAIT"i|"XCHG"i|"XLAT"i|"XLATB"i|"XOR"i|"BOUND"i|"ENTER"i|"INS"i|"INSB"i|"INSW"i|"LEAVE"i|"OUTS"i|"OUTSB"i|"OUTSW"i|"POPA"i|"PUSHA"i|"PUSHW"i|"BSF"i|"BSR"i|"BT"i|"BTC"i|"BTR"i|"BTS"i|"CDQ"i|"CMPSD"i|"CWDE"i|"INSD"i|"IRETD"i|"IRETDF"i|"IRETF"i|"JECXZ"i|"LFS"i|"LGS"i|"LODSD"i|"LOOPD"i|"LOOPED"i|"LOOPNED"i|"LOOPNZD"i|"LOOPZD"i|"LSS"i|"MOVSD"i|"MOVSX"i|"MOVZX"i|"OUTSD"i|"POPAD"i|"POPFD"i|"PUSHAD"i|"PUSHD"i|"PUSHFD"i|"SCASD"i|"SETA"i|"SETAE"i|"SETB"i|"SETBE"i|"SETC"i|"SETE"i|"SETG"i|"SETGE"i|"SETL"i|"SETLE"i|"SETNA"i|"SETNAE"i|"SETNB"i|"SETNBE"i|"SETNC"i|"SETNE"i|"SETNG"i|"SETNGE"i|"SETNL"i|"SETNLE"i|"SETNO"i|"SETNP"i|"SETNS"i|"SETNZ"i|"SETO"i|"SETP"i|"SETPE"i|"SETPO"i|"SETS"i|"SETZ"i|"SHLD"i|"SHRD"i|"STOSD"i|"BSWAP"i|"CMPXCHG"i|"XADD"i
 //| F2XM1| FABS| FADD| FADDP| FBLD| FBSTP| FCHS| FCLEX| FCOM| FCOMP| FCOMPP| FDECSTP| FDISI| FDIV| FDIVP| FDIVR| FDIVRP
 //| FENI| FFREE| FIADD| FICOM| FICOMP| FIDIV| FIDIVR| FILD| FIMUL| FINCSTP| FINIT| FIST| FISTP| FISUB| FISUBR| FLD| FLD1
 //| FLDCW| FLDENV| FLDENVW| FLDL2E| FLDL2T| FLDLG2| FLDLN2| FLDPI| FLDZ| FMUL| FMULP| FNCLEX| FNDISI| FNENI| FNINIT
@@ -31,35 +33,36 @@ arbitrarytext: /[^\r\n]+/x
 //| FUCOMP| FUCOMPP
 //
 //datadecl: /(?i)(DB) | (DW) | (DD) | (DF) | (DQ) | (DT) | (BYTE)|(SBYTE)|(WORD)|(SWORD)|(DWORD)|(SDWORD)|(FWORD)|(QWORD)|(TBYTE)|(REAL4)|(REAL8)|(REAL10)/
-!datadecl: "DB"i | "DW"i | "DD"i | "DF"i | "DQ"i | "DT"i | "BYTE"i | "SBYTE"i|"WORD"i|"SWORD"i|"DWORD"i|"SDWORD"i|"FWORD"i|"QWORD"i|"TBYTE"i|"REAL4"i|"REAL8"i|"REAL10"i
-!datatype: "BYTE"i|"SBYTE"i|"WORD"i|"SWORD"i|"DWORD"i|"SDWORD"i|"FWORD"i|"QWORD"i|"TBYTE"i|"REAL4"i|"REAL8"i|"REAL10"i
-!register: "AX"i|"EAX"i|"BX"i|"EBX"i|"CX"i|"ECX"i|"DX"i|"EDX"i|"BP"i|"EBP"i|"SP"i|"ESP"i|"DI"i|"EDI"i|"SI"i|"ESI"i|"AL"i|"AH"i|"BL"i|"BH"i|"CL"i|"CH"i|"DL"i|"DH"i
-!segmentregister: "CS"i|"DS"i|"ES"i|"FS"i|"GS"i|"SS"i
-!specialregister: "CR0"i|"CR2"i|"CR3"i|"DR0"i|"DR1"i|"DR2"i|"DR3"i|"DR6"i|"DR7"i|"TR3"i|"TR4"i|"TR5"i|"TR6"i|"TR7"i
-!instrprefix: "REP"i|"REPE"i|"REPZ"i|"REPNE"i|"REPNZ"i|"LOCK"i
-!langtype: "C"i|"PASCAL"i|"FORTRAN"i|"BASIC"i|"SYSCALL"i|"STDCALL"i
-!relop: "EQ"i|"NE"i|"LT"i|"LE"i|"GT"i|"GE"i
-!maptype: "ALL"i|"NONE"i|"NOTPUBLIC"i
-!memoption: "TINY"i|"SMALL"i|"MEDIUM"i|"COMPACT"i|"LARGE"i|"HUGE"i|"FLAT"i
-!listoption: ".LIST"i|".NOLIST"i|".XLIST"i|".LISTALL"i|".LISTIF"i|".LFCOND"i|".NOLISTIF"i|".SFCOND"i|".TFCOND"i|".LISTMACROALL"i|".LALL"i|".NOLISTMACRO"i|".SALL"i|".LISTMACRO"i|".XALL"i
-PROCESSOR: ".8086"i|".186"i|".286"i|".286C"i|".286P"i|".386"i|".386C"i|".386P"i|".486"i|".486P"i|".586"i|".586P"i|".686"i|".686P"i|".K3D"i|".MMX"i|".XMM"i
-!coprocessor: ".8087"i|".287"i|".387"i|".NO87"i
-!segalign: "BYTE"i|"WORD"i|"DWORD"i|"PARA"i|"PAGE"i
-!segorderdir: ".ALPHA"i|".SEQ"i|".DOSSEG"i|"DOSSEG"i
-ASSUMENOTHING: "ASSUME NOTHING"i
+datadecl: "DB"i | "DW"i | "DD"i | "DF"i | "DQ"i | "DT"i | "BYTE"i | "SBYTE"i|"WORD"i|"SWORD"i|"DWORD"i|"SDWORD"i|"FWORD"i|"QWORD"i|"TBYTE"i|"REAL4"i|"REAL8"i|"REAL10"i
+datatype: "BYTE"i|"SBYTE"i|"WORD"i|"SWORD"i|"DWORD"i|"SDWORD"i|"FWORD"i|"QWORD"i|"TBYTE"i|"REAL4"i|"REAL8"i|"REAL10"i
+register: "AX"i|"EAX"i|"BX"i|"EBX"i|"CX"i|"ECX"i|"DX"i|"EDX"i|"BP"i|"EBP"i|"SP"i|"ESP"i|"DI"i|"EDI"i|"SI"i|"ESI"i|"AL"i|"AH"i|"BL"i|"BH"i|"CL"i|"CH"i|"DL"i|"DH"i
+segmentregister: "CS"i|"DS"i|"ES"i|"FS"i|"GS"i|"SS"i
+specialregister: "CR0"i|"CR2"i|"CR3"i|"DR0"i|"DR1"i|"DR2"i|"DR3"i|"DR6"i|"DR7"i|"TR3"i|"TR4"i|"TR5"i|"TR6"i|"TR7"i
+instrprefix: "REP"i|"REPE"i|"REPZ"i|"REPNE"i|"REPNZ"i|"LOCK"i
+langtype: "C"i|"PASCAL"i|"FORTRAN"i|"BASIC"i|"SYSCALL"i|"STDCALL"i
+relop: "EQ"i|"NE"i|"LT"i|"LE"i|"GT"i|"GE"i
+maptype: "ALL"i|"NONE"i|"NOTPUBLIC"i
+memoption: "TINY"i|"SMALL"i|"MEDIUM"i|"COMPACT"i|"LARGE"i|"HUGE"i|"FLAT"i
+listoption: ".LIST"i|".NOLIST"i|".XLIST"i|".LISTALL"i|".LISTIF"i|".LFCOND"i|".NOLISTIF"i|".SFCOND"i|".TFCOND"i|".LISTMACROALL"i|".LALL"i|".NOLISTMACRO"i|".SALL"i|".LISTMACRO"i|".XALL"i
+processor: ".8086"i|".186"i|".286"i|".286C"i|".286P"i|".386"i|".386C"i|".386P"i|".486"i|".486P"i|".586"i|".586P"i|".686"i|".686P"i|".K3D"i|".MMX"i|".XMM"i
+coprocessor: ".8087"i|".287"i|".387"i|".NO87"i
+segalign: "BYTE"i|"WORD"i|"DWORD"i|"PARA"i|"PAGE"i
+segorderdir: ".ALPHA"i|".SEQ"i|".DOSSEG"i|"DOSSEG"i
+assumenothing: "ASSUME NOTHING"i
 
 aliasdir: "ALIAS"i
+binaryop: "=="| "!="| ">="| "<="| ">"| "<"| "&"
+
 altidq: "(" label ")"
 assdir: label "=" _expr _linereminder
-assumedir: "ASSUME"i assumelist _linereminder| ASSUMENOTHING _linereminder
+assumedir: "ASSUME"i assumelist _linereminder| assumenothing _linereminder
 assumelist : assumeregister| assumeregister _COMMA assumelist
 assumereg: register ":" assumeval
 assumeregister: assumesegreg| assumereg
 assumesegreg: segmentregister ":" assumesegval
 assumesegval: "NOTHING"i | "ERROR"i | frameexpr
 assumeval: "NOTHING"i | "ERROR"i | qualifiedtype
-//bcdconst: _unadd?  decnumber
-binaryop: "=="| "!="| ">="| "<="| ">"| "<"| "&"
+//bcdconst: unadd?  decnumber
 //bitdef: bitfieldid ":" _expr eqconstexpr?
 bitdef: bitfieldid ":" _expr
 bitdeflist: bitdef | bitdef commaoeol bitdeflist
@@ -146,8 +149,8 @@ xordir: _e01 "XOR"i _e02
 anddir: _e02 "AND"i _e03
 notdir: "NOT"i _e04
 !sign: ("+"|"-")
-!addop.15: _e05 sign _e06
-_unadd.15: _e07 sign _e08
+!addop: _e05 sign _e06
+unadd: _e07 sign _e08
 
 field: "." _e11
 fieldlist: field+
@@ -166,7 +169,7 @@ _e05: addop
 _e06: _e06 mulop _e07
 | _e06 shiftop _e07
 | _e07
-_e07: _unadd
+_e07: unadd
 | _e08
 _e08: "HIGH"i _e09
 | "LOW"i _e09
@@ -251,7 +254,8 @@ _insegdir: labeldef _insegmentdir | _insegmentdir
 //insegdirlist: _insegdir+
 _insegmentdir: instruction| datadir| controldir| startupdir| exitdir| offsetdir| labeldir| procdir  localdirlist? endpdir| procdir  localdirlist? _insegdir+ endpdir| invokedir| _generaldir | _linereminder
 
-!arglist: _expr (_COMMA _expr)*
+arg: _expr
+arglist: arg (_COMMA arg)*
 _asminstruction: instrprefix? mnemonic  arglist?
 //| PUSH allreglist
 //| POP allreglist
@@ -309,7 +313,7 @@ parmlist: parm | parm commaoeol parmlist
 parmtype: "REQ"i | "=" textliteral| "VARARG"i
 poptions: distance?  langtype?  ovisibility?
 procdir: label "PROC"i poptions  brmacroarglist?  usesregs? procparmlist? commaparmidvararg? _linereminder
-processordir: PROCESSOR _linereminder | coprocessor _linereminder
+processordir: processor _linereminder | coprocessor _linereminder
 procparmlist: commaparmlist
 protoarg : label? ":" qualifiedtype
 protoarglist: commaprotolist
@@ -353,7 +357,7 @@ segoptionlist: _segoption+
 segro: "READONLY"i
 !segsize : "USE16"i | "USE32"i | "FLAT"i
 shiftop: "SHR"i | "SHL"i
-// _unadd: "-" | "+"
+// unadd: "-" | "+"
 simplesegdir: segdir _linereminder
 stackoption: "NEARSTACK"i | "FARSTACK"i
 startupdir: ".STARTUP"i _linereminder
