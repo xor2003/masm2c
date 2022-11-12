@@ -49,7 +49,7 @@ class Asm2IR(Transformer):
         try:
             line_strt_pos = self.input_str.rfind('\n', 0, meta.start_pos) + 1
 
-            line_eol_pos = self.input_str.find('\n', meta.end_pos)
+            line_eol_pos = self.input_str.find('\n', meta.start_pos)
             if line_eol_pos == -1:
                 line_eol_pos = len(self.input_str)
         except Exception as ex:
@@ -78,18 +78,12 @@ class Asm2IR(Transformer):
         return nodes  # Token('dupdir', [times, values])
 
     def segoverride(self, nodes):
-        # global cur_segment
-        if isinstance(nodes[0], list):
-            # cur_segment = nodes[0][-1]
-            return nodes[0][:-1] + [Token('segoverride', nodes[0][-1]), nodes[2]]
-        # cur_segment = nodes[0] #!
-        return [Token('segoverride', nodes[0]), nodes[2]]
+        self.__work_segment = nodes[0]
+        return Discard
 
     def ptrdir(self, nodes):
-        if len(nodes) == 3:
-            return [Token('ptrdir', nodes[0]), nodes[2]]
-        else:
-            return [Token('ptrdir', nodes[0]), nodes[1]]
+        self.indirection = IndirectionType.POINTER
+        return nodes
 
     def integer(self, nodes):
         from .parser import parse_asm_number
@@ -291,6 +285,8 @@ class Asm2IR(Transformer):
         logging.debug("asminstruction " + str(nodes) + " ~~")
         # args = build_ast(args)
         instruction = self.instruction_name
+        if instruction == 'lea':
+            self.indirection = IndirectionType.OFFSET
         args = nodes[0].children
         '''
         if not instruction:
@@ -298,13 +294,14 @@ class Asm2IR(Transformer):
         if args is None:
             args = []
         '''
+        #indirection: IndirectionType = IndirectionType.VALUE
         return self.context.action_instruction(instruction, args, raw=self.get_raw_line(meta),
                                                line_number=self.get_line_number(meta)) or Discard
 
-    def enddir(self, nodes, label):
-        logging.debug("end " + str(nodes) + " ~~")
-        self.context.action_end(label)
-        return nodes
+    def enddir(self, children):
+        logging.debug("end %s ~~", children)
+        self.context.action_end(children[0][0])
+        return children
 
     def notdir(self, nodes):
         nodes[0] = '~'  # should be in Cpp module
@@ -329,12 +326,15 @@ class Asm2IR(Transformer):
         return nodes  # Token('segmentregister', nodes[0].lower())
 
     def sqexpr(self, nodes):
-        logging.debug("/~" + str(nodes) + "~\\")
-        res = nodes[1]
+        from .gen import IndirectionType
+        logging.debug("/~%s~\\", nodes)
+        #res = nodes[1]
+        self.indirection = IndirectionType.POINTER
         return nodes  # Token('sqexpr', res)
 
     def offsetdir(self, nodes):
-        logging.debug("offset /~" + str(nodes) + "~\\")
+        logging.debug("offset /~%s~\\", nodes)
+        self.indirection = IndirectionType.OFFSET
         return nodes  # Token('offsetdir', nodes[1])
 
     def segmdir(self, nodes):

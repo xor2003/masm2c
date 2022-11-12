@@ -14,7 +14,8 @@ structname: "structname"
 COMMENTKW: /comment\s+(\S)/ //[.\r\n]*?\1[^\r\n]*/x
 _ENDOFLINE: /[\r\n]+[\t \r\n]*/x
 //FLOAT: /-?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?/
-integer: /[+-]?[0-9][0-9A-Fa-f]*[HOQTYhoqty]?/
+integer: /[0-9][0-9A-Fa-f]*[HOQTYhoqty]?/
+_integer_: sign? integer
 WS: /([\t \b\v\f\x1a]+)|(\\;?[^\r\n]*[\r\n\t \b\v\f\x1a]+)/x
 SPACE: /[\t ]+/
 !comment: /;[^\r\n]*/x
@@ -100,7 +101,7 @@ datadir: label? datadecl scalarinstlist _linereminder | structinstdir | recordin
 structinstdir: label? structname structinstlist _linereminder
 recordinstdir: label? label recordinstlist _linereminder
 //dataitem: datadecl scalarinstlist| label structinstlist| label recordinstlist
-decnumber: integer
+decnumber: _integer_
 digits: decnumber
 _directive: _generaldir| _segmentdef | _linereminder
 _directivelist: _directive+
@@ -145,8 +146,8 @@ xordir: _e01 "XOR"i _e02
 anddir: _e02 "AND"i _e03
 notdir: "NOT"i _e04
 !sign: ("+"|"-")
-addop: _e05 sign _e06
-_unadd: _e07 sign _e08
+!addop.15: _e05 sign _e06
+_unadd.15: _e07 sign _e08
 
 field: "." _e11
 fieldlist: field+
@@ -194,7 +195,7 @@ _e11: "(" _expr ")"
 | dir3
 | recordconst
 | STRING
-| integer
+| _integer_
 | type
 | "$"
 | _anyregister
@@ -250,7 +251,8 @@ _insegdir: labeldef _insegmentdir | _insegmentdir
 //insegdirlist: _insegdir+
 _insegmentdir: instruction| datadir| controldir| startupdir| exitdir| offsetdir| labeldir| procdir  localdirlist? endpdir| procdir  localdirlist? _insegdir+ endpdir| invokedir| _generaldir | _linereminder
 
-_asminstruction: instrprefix? mnemonic  exprlist?
+!arglist: _expr (_COMMA _expr)*
+_asminstruction: instrprefix? mnemonic  arglist?
 //| PUSH allreglist
 //| POP allreglist
 

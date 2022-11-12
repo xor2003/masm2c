@@ -519,7 +519,7 @@ class Cpp(Gen):
         :param lea: if it is lea operation
         :return: Argument in C format as string
         '''
-        logging.debug(str(expr))
+        logging.debug("%s", expr)
 
         expr = Token.remove_tokens(expr, ['expr'])  # no need expr token any more
         origexpr = expr  # save original expression before we will change it

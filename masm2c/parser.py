@@ -1043,7 +1043,7 @@ class Parser:
         #with open('forest.txt', 'w') as f:
         #    f.write(result.to_str())
 
-        logging.debug(str(result))
+        logging.debug("%s",result)
         return result
 
     @staticmethod
@@ -1242,7 +1242,7 @@ class Parser:
     def action_end(self, label):
         if label:
             self.main_file = True
-            self.entry_point = Token.find_tokens(label, 'LABEL')[0].lower()
+            self.entry_point = label
             self.add_call_to_entrypoint()
 
     def parse_rt_info(self, name):
