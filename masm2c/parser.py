@@ -34,7 +34,7 @@ import parglare
 from . import cpp as cpp_module
 from . import op
 from .Token import Token
-from .pgparser import LarkParser, Asm2IR
+from .pgparser import LarkParser, Asm2IR, ExprRemover
 from .proc import Proc
 
 INTEGERCNST = 'integer'
@@ -1039,6 +1039,7 @@ class Parser:
         logging.debug("parsing: [%s]", text)
 
         result = self.__lex.parser.parse(text) #, file_name=file_name, extra=self)
+        result = ExprRemover().transform(result)
         result = Asm2IR(self, text).transform(result)
         #with open('forest.txt', 'w') as f:
         #    f.write(result.to_str())

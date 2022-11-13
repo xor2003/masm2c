@@ -2,7 +2,9 @@ import json
 from pprint import pprint
 
 import jsonpickle
-from lark import Lark, Transformer
+from lark import Lark, Transformer, Discard, v_args, Tree
+
+from masm2c.Token import Token
 
 with open('masm2c/_masm61.lark') as g:
     l = Lark(g, parser='lalr', propagate_positions=True, debug=True)  # , keep_all_tokens=True)
@@ -28,6 +30,19 @@ _TEXT   ends ;IGNORE
 
 end start ;IGNORE
 """)
+
+
+class ExprRemover(Transformer):
+    @v_args(meta=True)
+    def expr(self, meta, children):
+        children = Token.remove_tokens(children, 'expr')
+
+        return Tree('expr', children, meta)
+
+
+e = ExprRemover()
+t = e.transform(t)
+
 print(t)
 print(t.pretty())
 

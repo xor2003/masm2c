@@ -23,6 +23,8 @@ from typing import Callable
 import lark
 from lark import Tree
 
+#from masm2c.gen import IndirectionType
+
 SQEXPR = 'sqexpr'
 
 
@@ -101,11 +103,11 @@ class Token(lark.Tree):
     def remove_tokens(expr, lookfor: list):
         if isinstance(expr, Tree):
             if expr.data in lookfor:
-                if len(expr.children) == 1 and isinstance(expr.children[0], str):
-                    expr = None
-                else:
-                    expr = expr.children
-                    expr = Token.remove_tokens(expr, lookfor)
+                #if len(expr.children) == 1 and isinstance(expr.children[0], str):
+                #    expr = None
+                #else:
+                expr = expr.children
+                expr = Token.remove_tokens(expr, lookfor)
             else:
                 expr.children = Token.remove_tokens(expr.children, lookfor)
             return expr
@@ -114,21 +116,34 @@ class Token(lark.Tree):
             for i in range(len(expr)):
                 result = Token.remove_tokens(expr[i], lookfor)
                 if result != None:
-                    l.append(result)
+                    if isinstance(result, list):
+                        l.extend(result)
+                    else:
+                        l.append(result)
             # if not l:
             #    l = None
             return l
         return expr
 
 
-class Integer:
+class Integer(lark.Token):
 
     def __init__(self, number, radix):
         self.number = number
         self.radix = radix
+        self.type = 'Integer'
 
     def __int__(self):
         return self.number
 
     def __repr__(self):
         return {2: bin(self.number), 8: oct(self.number), 10: str(self.number), 16: hex(self.number)}[self.radix]
+
+class Expression(lark.Tree):
+
+    def __init__(self):
+        #super().__init__()
+        self.data = "Expression"
+        self.children = []
+        self.size = 0
+        self.mods = set()

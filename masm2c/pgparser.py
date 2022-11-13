@@ -4,11 +4,13 @@ import re
 from collections import OrderedDict
 from copy import deepcopy, copy
 
-from lark import Transformer, Lark, v_args, Discard
+from lark import Transformer, Lark, v_args, Discard, Tree
 
 from . import op
 from .Macro import Macro
-from .Token import Token, Integer
+from .Token import Token, Integer, Expression
+
+# from .gen import IndirectionType
 
 macroses = OrderedDict()
 macronamere = re.compile(r'([A-Za-z_@$?][A-Za-z0-9_@$?]*)')
@@ -20,7 +22,8 @@ class Asm2IR(Transformer):
     def __init__(self, context, input_str=''):
         self.context = context
         self.input_str = input_str
-        self.radix=10
+        self.radix = 10
+        self.expression = None
 
     def get_line_number(self, meta):
         """
@@ -71,8 +74,12 @@ class Asm2IR(Transformer):
             return Node(name=nodes.symbol.name, type=type, keyword=nodes.symbol.keyword, value=nodes.value)
     '''
 
-    def expr(self, nodes):
-        return nodes
+    def expr(self, children):
+        self.expression = self.expression or Expression()
+        self.expression.children = children
+        result = self.expression
+        self.expression = None
+        return result
 
     def dupdir(self, nodes, times, values):
         return nodes  # Token('dupdir', [times, values])
@@ -81,14 +88,21 @@ class Asm2IR(Transformer):
         self.__work_segment = nodes[0]
         return Discard
 
-    def ptrdir(self, nodes):
-        self.indirection = IndirectionType.POINTER
-        return nodes
+    def ptrdir(self, children):
+        self.expression = self.expression or Expression()
+        self.expression.mods.add('ptrdir')
+        self.expression.size = self.size
+        return children
+
+    def datadecl(self, children):
+        self.expression = self.expression or Expression()
+        self.size = self.context.typetosize(children[0])
+        return Discard
 
     def INTEGER(self, nodes):
         from .parser import parse_asm_number
         i = Integer(*parse_asm_number(nodes, self.radix))
-        #from masm2c.cpp import Cpp
+        # from masm2c.cpp import Cpp
         return i  # Token('INTEGER', Cpp(self.context.convert_asm_number_into_c(nodes, self.context.radix))  # TODO remove this
 
     def commentkw(self, head, s, pos):
@@ -276,17 +290,20 @@ class Asm2IR(Transformer):
                                         line_number=self.get_line_number(self.context))
         return []
 
-    def MNEMONIC(self, name):
+    def mnemonic(self, name):
         self.instruction_name = name[0]
         return Discard
 
     @v_args(meta=True)
     def instruction(self, meta, nodes):
-        logging.debug("asminstruction " + str(nodes) + " ~~")
+        logging.debug("asminstruction %s ~~", nodes)
         # args = build_ast(args)
+
+        self.expression = self.expression or Expression()
         instruction = self.instruction_name
         if instruction == 'lea':
-            self.indirection = IndirectionType.OFFSET
+            # self.expression.indirection = IndirectionType.OFFSET
+            self.expression.mods.add('lea')
         args = nodes[0].children
         '''
         if not instruction:
@@ -294,7 +311,7 @@ class Asm2IR(Transformer):
         if args is None:
             args = []
         '''
-        #indirection: IndirectionType = IndirectionType.VALUE
+        # indirection: IndirectionType = IndirectionType.VALUE
         return self.context.action_instruction(instruction, args, raw=self.get_raw_line(meta),
                                                line_number=self.get_line_number(meta)) or Discard
 
@@ -319,7 +336,7 @@ class Asm2IR(Transformer):
         nodes[1] = ' & '
         return nodes
 
-    #def register(self, nodes):
+    # def register(self, nodes):
     #    return nodes  # Token('register', nodes[0].lower())
 
     def segmentregister(self, nodes):
@@ -328,13 +345,17 @@ class Asm2IR(Transformer):
     def sqexpr(self, nodes):
         from .gen import IndirectionType
         logging.debug("/~%s~\\", nodes)
-        #res = nodes[1]
-        self.indirection = IndirectionType.POINTER
+        # res = nodes[1]
+        self.expression = self.expression or Expression()
+        # self.expression.indirection = IndirectionType.POINTER
+        self.expression.mods.add('ptrdir')
         return nodes  # Token('sqexpr', res)
 
     def offsetdir(self, nodes):
         logging.debug("offset /~%s~\\", nodes)
-        self.indirection = IndirectionType.OFFSET
+        self.expression = self.expression or Expression()
+        # self.expression.indirection = IndirectionType.OFFSET
+        self.expression.mods.add('offset')
         return nodes  # Token('offsetdir', nodes[1])
 
     def segmdir(self, nodes):
@@ -467,6 +488,12 @@ class LarkParser:
 
         return cls._inst
 
+class ExprRemover(Transformer):
+    @v_args(meta=True)
+    def expr(self, meta, children):
+        children = Token.remove_tokens(children, 'expr')
+
+        return Tree('expr', children, meta)
 
 OFFSETDIR = 'offsetdir'
 LABEL = 'label'
