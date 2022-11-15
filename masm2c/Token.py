@@ -142,8 +142,8 @@ class Integer(lark.Token):
 class Expression(lark.Tree):
 
     def __init__(self):
-        #super().__init__()
-        self.data = "Expression"
-        self.children = []
+        super().__init__("expr", [])
+        #self.data = "expr"
+        #self.children = []
         self.size = 0
         self.mods = set()

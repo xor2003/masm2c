@@ -4,7 +4,8 @@ import re
 from collections import OrderedDict
 from copy import deepcopy, copy
 
-from lark import Transformer, Lark, v_args, Discard, Tree
+from lark import Transformer, Lark, v_args, Discard, Tree, Visitor
+from lark.visitors import Interpreter
 
 from . import op
 from .Macro import Macro
@@ -17,6 +18,43 @@ macronamere = re.compile(r'([A-Za-z_@$?][A-Za-z0-9_@$?]*)')
 commentid = re.compile(r'COMMENT\s+([^ ]).*?\1[^\r\n]*', flags=re.DOTALL)
 
 
+def get_line_number(meta):
+    """
+    It returns the line number of the current position in the input string
+
+    :param context: the context object that is passed to the action function
+    :return: The line number of the current position in the input string.
+    """
+    return meta.line
+
+
+def get_raw(input_str, meta):
+    """
+    It returns the raw text that was provided to parser
+
+    :param context:
+    :return: The raw string from the input string.
+    """
+    return input_str[meta.start_pos: meta.end_pos].strip()
+
+
+def get_raw_line(input_str, meta):
+    """
+    It returns the raw line of text that the cursor is currently on
+
+    :return: The line of text from the input string.
+    """
+    try:
+        line_strt_pos = input_str.rfind('\n', 0, meta.start_pos) + 1
+
+        line_eol_pos = input_str.find('\n', meta.start_pos)
+        if line_eol_pos == -1:
+            line_eol_pos = len(input_str)
+    except Exception as ex:
+        print(ex)
+    return input_str[line_strt_pos: line_eol_pos]
+
+
 class Asm2IR(Transformer):
 
     def __init__(self, context, input_str=''):
@@ -25,39 +63,6 @@ class Asm2IR(Transformer):
         self.radix = 10
         self.expression = None
 
-    def get_line_number(self, meta):
-        """
-        It returns the line number of the current position in the input string
-    
-        :param context: the context object that is passed to the action function
-        :return: The line number of the current position in the input string.
-        """
-        return meta.line
-
-    def get_raw(self, meta):
-        """
-        It returns the raw text that was provided to parser
-    
-        :param context:
-        :return: The raw string from the input string.
-        """
-        return self.input_str[meta.start_pos: meta.end_pos].strip()
-
-    def get_raw_line(self, meta):
-        """
-        It returns the raw line of text that the cursor is currently on
-
-        :return: The line of text from the input string.
-        """
-        try:
-            line_strt_pos = self.input_str.rfind('\n', 0, meta.start_pos) + 1
-
-            line_eol_pos = self.input_str.find('\n', meta.start_pos)
-            if line_eol_pos == -1:
-                line_eol_pos = len(self.input_str)
-        except Exception as ex:
-            print(ex)
-        return self.input_str[line_strt_pos: line_eol_pos]
 
     '''
     def build_ast(self, nodes, type=''):
@@ -76,7 +81,9 @@ class Asm2IR(Transformer):
 
     def expr(self, children):
         self.expression = self.expression or Expression()
-        self.expression.children = children
+        #while isinstance(children, list) and len(children) == 1:
+        #    children = children[0]
+        self.expression.children = children[0]
         result = self.expression
         self.expression = None
         return result
@@ -198,7 +205,7 @@ class Asm2IR(Transformer):
             name = label.children.lower()
         else:
             name = ''
-        self.context.add_structinstance(name, type.lower(), args, raw=self.get_raw(self.context))
+        self.context.add_structinstance(name, type.lower(), args, raw=get_raw(self.input_str, self.context))
         return nodes
 
     def datadir(self, nodes, label, type, values):
@@ -209,8 +216,8 @@ class Asm2IR(Transformer):
         else:
             label = ""
 
-        return self.context.datadir_action(label, type.lower(), values, raw=self.get_raw(self.context),
-                                           line_number=self.get_line_number(self.context))
+        return self.context.datadir_action(label, type.lower(), values, raw=get_raw(self.input_str, self.context),
+                                           line_number=get_line_number(self.context))
 
     def includedir(self, nodes, name):
         # context.parser.input_str = context.input_str[:context.end_position] + '\n' + read_asm_file(name) \
@@ -223,10 +230,26 @@ class Asm2IR(Transformer):
         logging.debug("segdir " + str(nodes) + " ~~")
         self.context.action_simplesegment(type, '')  # TODO
         return nodes
+    @v_args(meta=True)
+    def label(self, meta, children):
+        self.name = children[0]
 
-    def label(self, node):
-        self.name = node[0]
-        return node
+        logging.debug('name = %s', self.name)
+        l = Tree('label', children, meta)
+        try:
+            g = self.context.get_global(self.name)
+            if isinstance(g, (op._equ, op._assignment)):
+                #if g.value != origexpr:  # prevent loop
+                self.expression.size = self.calculate_size(g.value)
+                #else:
+                #    return 0
+            logging.debug('get_size res %d', g.size)
+            self.expression.size = g.size
+            l.size = g.size
+        except:
+            pass
+
+        return l
 
     @v_args(meta=True)
     def segmentdir(self, meta, nodes):
@@ -248,7 +271,7 @@ class Asm2IR(Transformer):
                 else:
                     logging.warning('Unknown segment option')
         '''
-        self.context.create_segment(name, options=opts, segclass=segclass, raw=self.get_raw(meta))
+        self.context.create_segment(name, options=opts, segclass=segclass, raw=get_raw(self.input_str, meta))
         return nodes
 
     def endsdir(self, nodes):
@@ -258,8 +281,8 @@ class Asm2IR(Transformer):
 
     def procdir(self, nodes, name, type):
         logging.debug("procdir " + str(nodes) + " ~~")
-        self.context.action_proc(name, type, line_number=self.get_line_number(self.context),
-                                 raw=self.get_raw_line(self.context))
+        self.context.action_proc(name, type, line_number=get_line_number(self.context),
+                                 raw=get_raw_line(self.input_str, self.context))
         return nodes
 
     def endpdir(self, nodes, name):
@@ -269,25 +292,20 @@ class Asm2IR(Transformer):
 
     def equdir(self, nodes, name, value):
         logging.debug("equdir " + str(nodes) + " ~~")
-        return self.context.action_equ(name.children, value, raw=self.get_raw(self.context),
-                                       line_number=self.get_line_number(self.context))
+        return self.context.action_equ(name.children, value, raw=get_raw(self.input_str, self.context),
+                                       line_number=get_line_number(self.context))
 
     def assdir(self, nodes, name, value):
         logging.debug("assdir " + str(nodes) + " ~~")
-        return self.context.action_assign(name.children, value, raw=self.get_raw(self.context),
-                                          line_number=self.get_line_number(self.context))
+        return self.context.action_assign(name.children, value, raw=get_raw(self.input_str, self.context),
+                                          line_number=get_line_number(self.context))
 
-    def labeldef(self, nodes, name, colon):
-        logging.debug("labeldef " + str(nodes) + " ~~")
-        return self.context.action_label(name.children, isproc=False, raw=self.get_raw_line(self.context),
-                                         line_number=self.get_line_number(self.context),
-                                         globl=(colon == '::'))
 
     def instrprefix(self, nodes):
         logging.debug("instrprefix " + str(nodes) + " ~~")
         instruction = nodes[0]
-        self.context.action_instruction(instruction, [], raw=self.get_raw_line(self.context),
-                                        line_number=self.get_line_number(self.context))
+        self.context.action_instruction(instruction, [], raw=get_raw_line(self.input_str, self.context),
+                                        line_number=get_line_number(self.context))
         return []
 
     def mnemonic(self, name):
@@ -301,10 +319,11 @@ class Asm2IR(Transformer):
 
         self.expression = self.expression or Expression()
         instruction = self.instruction_name
+        args = nodes[0].children
         if instruction == 'lea':
             # self.expression.indirection = IndirectionType.OFFSET
-            self.expression.mods.add('lea')
-        args = nodes[0].children
+            for arg in args:
+                arg.mods.add('lea')
         '''
         if not instruction:
             return nodes
@@ -312,12 +331,13 @@ class Asm2IR(Transformer):
             args = []
         '''
         # indirection: IndirectionType = IndirectionType.VALUE
-        return self.context.action_instruction(instruction, args, raw=self.get_raw_line(meta),
-                                               line_number=self.get_line_number(meta)) or Discard
+        return Tree(instruction, args, meta)
+        return self.context.action_instruction(instruction, args, raw=get_raw_line(self.input_str, meta),
+                                               line_number=get_line_number(meta)) or Discard
 
     def enddir(self, children):
         logging.debug("end %s ~~", children)
-        self.context.action_end(children[0][0])
+        self.context.action_end(children[0].children[0].children[0])
         return children
 
     def notdir(self, nodes):
@@ -336,14 +356,18 @@ class Asm2IR(Transformer):
         nodes[1] = ' & '
         return nodes
 
-    # def register(self, nodes):
-    #    return nodes  # Token('register', nodes[0].lower())
+    def register(self, children):
+        self.expression = self.expression or Expression()
+        self.expression.size = self.context.is_register(children[0])
+        return Tree('register', children)  # Token('segmentregister', nodes[0].lower())
 
-    def segmentregister(self, nodes):
-        return nodes  # Token('segmentregister', nodes[0].lower())
+    def segmentregister(self, children):
+        self.expression = self.expression or Expression()
+        self.expression.size = self.context.is_register(children[0])
+        return children  # Token('segmentregister', nodes[0].lower())
 
     def sqexpr(self, nodes):
-        from .gen import IndirectionType
+
         logging.debug("/~%s~\\", nodes)
         # res = nodes[1]
         self.expression = self.expression or Expression()
@@ -356,6 +380,7 @@ class Asm2IR(Transformer):
         self.expression = self.expression or Expression()
         # self.expression.indirection = IndirectionType.OFFSET
         self.expression.mods.add('offset')
+        self.size = 2
         return nodes  # Token('offsetdir', nodes[1])
 
     def segmdir(self, nodes):
@@ -494,6 +519,32 @@ class ExprRemover(Transformer):
         children = Token.remove_tokens(children, 'expr')
 
         return Tree('expr', children, meta)
+    
+class LabelsCollector(Visitor):
+    
+    def __init__(self, context, input_str):
+        self.context = context
+        self.input_str = input_str
+    @v_args(meta=True)
+    def labeldef(self, meta, children):
+        logging.debug("labeldef %s ~~", children)
+        colon = children  # TODO
+        return self.context.action_label(children[0], isproc=False, raw=get_raw_line(self.input_str, meta),
+                                         line_number=get_line_number(meta),
+                                         globl=(colon == '::'))
+    
+
+class IR2Cpp(Interpreter):
+
+    def __default__(self, tree):
+        result = ''
+        for child in tree.children:
+            if isinstance(child, Tree):
+                result += self.visit(child)
+            else:
+                result += child
+        return result
+
 
 OFFSETDIR = 'offsetdir'
 LABEL = 'label'

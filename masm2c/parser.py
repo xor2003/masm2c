@@ -34,7 +34,7 @@ import parglare
 from . import cpp as cpp_module
 from . import op
 from .Token import Token
-from .pgparser import LarkParser, Asm2IR, ExprRemover
+from .pgparser import LarkParser, Asm2IR, ExprRemover, IR2Cpp
 from .proc import Proc
 
 INTEGERCNST = 'integer'
@@ -52,6 +52,7 @@ def read_whole_file(file_name):
     with open(file_name, 'rt', encoding="cp437") as file:
         content = file.read()
     return content
+
 
 def dump_object(value):
     """
@@ -75,7 +76,7 @@ def dump_object(value):
 class Parser:
     c_dummy_label = 0
 
-    def __init__(self, args=None, skip_binary_data:list=None):
+    def __init__(self, args=None, skip_binary_data: list = None):
         '''
         Assembler parser
         '''
@@ -86,7 +87,7 @@ class Parser:
 
         self.__lex = LarkParser()
 
-        #self.segments = OrderedDict()
+        # self.segments = OrderedDict()
         self.externals_vars = set()
         self.externals_procs = set()
         self.__files = set()
@@ -96,6 +97,7 @@ class Parser:
 
         if not args:
             class MyDummyObj: pass
+
             args = MyDummyObj()
             args.mergeprocs = 'separate'
         self.args = args
@@ -249,7 +251,7 @@ class Parser:
         # logging.debug "~2~ %s" %v
         if re.match(r'^[+-]?[0-8]+[OoQq]$', v):
             v = int(v[:-1], 8)
-        #elif re.match(r'^[+-]?[0-9]+[Dd]?$', v):
+        # elif re.match(r'^[+-]?[0-9]+[Dd]?$', v):
         #    v = int(v[:-1], 10)
         elif re.match(r'^[+-]?[0-9][0-9A-Fa-f]*[Hh]$', v):
             v = int(v[:-1], 16)
@@ -265,7 +267,6 @@ class Parser:
 
         # logging.debug "~4~ %s" %v
         return int(v)
-
 
     def calculate_STRING_size(self, v):
         if not self.itislst:
@@ -438,7 +439,7 @@ class Parser:
         _, l.real_offset, l.real_seg = self.get_lst_offsets(raw)
 
         if l.real_seg:
-            self.procs_start.discard(l.real_seg*0x10 + l.real_offset)
+            self.procs_start.discard(l.real_seg * 0x10 + l.real_offset)
         self.proc.add_label(name, l)
         # self.set_offset(name,
         #                ("&m." + name.lower() + " - &m." + self.__segment_name, self.proc, self.__offset_id))
@@ -455,7 +456,7 @@ class Parser:
             else:
                 offset = self.__cur_seg_offset
             pname = f'{self.__segment.name}_{offset:x}_proc'  # automatically generated proc name
-            #pname = f'{self.__segment.name}_proc'
+            # pname = f'{self.__segment.name}_proc'
             if pname in self.proc_list:
                 self.proc = self.get_global(pname)
             else:
@@ -476,7 +477,8 @@ class Parser:
             self.data_merge_candidats = 0
 
             self.__segment.append(
-                op.Data(label, 'db', op.DataType.ARRAY, [0], num, num, comment='for alignment', align=True, offset=offset))
+                op.Data(label, 'db', op.DataType.ARRAY, [0], num, num, comment='for alignment', align=True,
+                        offset=offset))
 
     def move_offset(self, pointer, raw):
         if pointer > self.__binary_data_size:
@@ -488,7 +490,8 @@ class Parser:
             self.__binary_data_size += num
 
             self.__segment.append(
-                op.Data(label, 'db', op.DataType.ARRAY, [0], num, num, comment='move_offset', align=True, offset=offset))
+                op.Data(label, 'db', op.DataType.ARRAY, [0], num, num, comment='move_offset', align=True,
+                        offset=offset))
         elif pointer < self.__binary_data_size and not self.itislst:
             self.data_merge_candidats = 0
             logging.warning(f'Maybe wrong offset current:{self.__binary_data_size:x} should be:{pointer:x} ~{raw}~')
@@ -682,7 +685,7 @@ class Parser:
         # if self.__separate_proc:
         offset, real_offset, real_seg = self.get_lst_offsets(raw)
         if real_seg:
-            self.procs_start.discard(real_seg*0x10 + real_offset)
+            self.procs_start.discard(real_seg * 0x10 + real_offset)
         proc = Proc(name, far=far, line_number=line_number, offset=offset,
                     real_offset=real_offset, real_seg=real_seg,
                     segment=self.__segment.name)
@@ -811,13 +814,15 @@ class Parser:
         default_seg ends
         end start
         ''')
-            result = result[0].children[1].children[1]  #result.asminstruction.args[1]
+            result = result[0].children[1].children[1]  # result.asminstruction.args[1]
         except Exception as e:
             exc_type, exc_obj, exc_tb = sys.exc_info()
             fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-            print(e,exc_type, fname, exc_tb.tb_lineno)
-            logging.error("Error4")
-            #result = [f'{e} {exc_type} {fname} {exc_tb.tb_lineno}']
+            print(e, exc_type, fname, exc_tb.tb_lineno)
+            import traceback, logging
+
+            logging.error(traceback.format_exc())
+            # result = [f'{e} {exc_type} {fname} {exc_tb.tb_lineno}']
             raise
         ### del self.__globals['default_seg']
         return result
@@ -868,7 +873,8 @@ class Parser:
                 return self.calculate_STRING_size(values.children)
             elif values.data == 'dupdir':
                 return Parser.parse_int(self.escape(values.children[0])) * self.calculate_data_size_new(size,
-                                                                                                        values.children[1])
+                                                                                                        values.children[
+                                                                                                            1])
             else:
                 return size
         elif isinstance(values, str):
@@ -1029,8 +1035,8 @@ class Parser:
 
     def parse_file_insideseg(self, text):
         result = self.parse_args_new_data(text)
-        print(result.pretty())
-        return result.children[2].children  #result[0][1][1][0].insegmentdir
+        print(result)
+        return result.children[2].children  # result[0][1][1][0].insegmentdir
 
     def parse_file_inside(self, text, file_name=None):
         return self.parse_include(text, file_name)
@@ -1038,13 +1044,15 @@ class Parser:
     def parse_args_new_data(self, text, file_name=None):
         logging.debug("parsing: [%s]", text)
 
-        result = self.__lex.parser.parse(text) #, file_name=file_name, extra=self)
+        result = self.__lex.parser.parse(text)  # , file_name=file_name, extra=self)
         result = ExprRemover().transform(result)
+        result = result.children[2].children[1].children[1]
         result = Asm2IR(self, text).transform(result)
-        #with open('forest.txt', 'w') as f:
-        #    f.write(result.to_str())
+        result = IR2Cpp().visit(result)
 
-        logging.debug("%s",result)
+        # with open('forest.txt', 'w') as f:
+        #    f.write(result.to_str())
+        logging.debug("%s", result)
         return result
 
     @staticmethod
@@ -1121,7 +1129,8 @@ class Parser:
         d.setvalue(args)
 
         if number > 1:
-            d = op.Data(label, type, op.DataType.ARRAY, number * [d], number, number * s.getsize(), comment='object array',
+            d = op.Data(label, type, op.DataType.ARRAY, number * [d], number, number * s.getsize(),
+                        comment='object array',
                         offset=offset)
 
         isstruct = len(self.struct_names_stack) != 0
@@ -1185,8 +1194,9 @@ class Parser:
         if self.current_macro is None:
             _, o.real_offset, o.real_seg = self.get_lst_offsets(raw)
             if not self.need_label and o.real_seg and len(self.procs_start) \
-                    and (o.real_seg*0x10+o.real_offset) in self.procs_start:
-                logging.warning(f"Add a label since run-time info contain flow enter at this address {o.real_seg:x}:{o.real_offset:x} line={line_number}")
+                    and (o.real_seg * 0x10 + o.real_offset) in self.procs_start:
+                logging.warning(
+                    f"Add a label since run-time info contain flow enter at this address {o.real_seg:x}:{o.real_offset:x} line={line_number}")
                 self.need_label = True
             if self.need_label and self.flow_terminated:
                 logging.warning(f"Flow terminated and it was no label yet line={line_number}")
@@ -1225,7 +1235,8 @@ class Parser:
             labels = Token.find_tokens(arg, 'LABEL')
             #  If it is call to a proc then does not take it into account
             #  TODO: check for calls into middle of proc
-            if labels and not operation.cmd.startswith('call') and not (self.args.mergeprocs == 'separate' and operation.cmd == 'jmp'):
+            if labels and not operation.cmd.startswith('call') and not (
+                    self.args.mergeprocs == 'separate' and operation.cmd == 'jmp'):
                 label = labels[0]
                 target.add(self.mangle_label(label))
 
@@ -1247,11 +1258,11 @@ class Parser:
             self.add_call_to_entrypoint()
 
     def parse_rt_info(self, name):
-        #dbx_img_offset = int(self.args.loadsegment, 0)  # para
-        #ida_load = 0x1000
+        # dbx_img_offset = int(self.args.loadsegment, 0)  # para
+        # ida_load = 0x1000
 
         try:
-            with open(name+".json") as infile:
+            with open(name + ".json") as infile:
                 logging.info(f' *** Loading {name}.json')
                 j = jsonpickle.decode(infile.read())
                 self.initial_procs_start = self.procs_start = set(j['Jumps'])
