@@ -4,12 +4,12 @@ import re
 from collections import OrderedDict
 from copy import deepcopy, copy
 
-from lark import Transformer, Lark, v_args, Discard, Tree, Visitor
+from lark import Transformer, Lark, v_args, Discard, Tree, Visitor, lark
 from lark.visitors import Interpreter
 
 from . import op
 from .Macro import Macro
-from .Token import Token, Integer, Expression
+from .Token import Token, Expression
 
 # from .gen import IndirectionType
 
@@ -106,11 +106,12 @@ class Asm2IR(Transformer):
         self.size = self.context.typetosize(children[0])
         return Discard
 
-    def INTEGER(self, nodes):
+    def INTEGER(self, value):
         from .parser import parse_asm_number
-        i = Integer(*parse_asm_number(nodes, self.radix))
-        # from masm2c.cpp import Cpp
-        return i  # Token('INTEGER', Cpp(self.context.convert_asm_number_into_c(nodes, self.context.radix))  # TODO remove this
+        value, radix = parse_asm_number(value, self.radix)
+        t = lark.Token(type='INTEGER', value=value)
+        t.column = radix
+        return t  # Token('INTEGER', Cpp(self.context.convert_asm_number_into_c(nodes, self.context.radix))  # TODO remove this
 
     def commentkw(self, head, s, pos):
         # multiline comment
@@ -230,12 +231,11 @@ class Asm2IR(Transformer):
         logging.debug("segdir " + str(nodes) + " ~~")
         self.context.action_simplesegment(type, '')  # TODO
         return nodes
-    @v_args(meta=True)
-    def label(self, meta, children):
+    def label(self, children):
         self.name = children[0]
 
         logging.debug('name = %s', self.name)
-        l = Tree('label', children, meta)
+        l = lark.Token(type='label', value=children[0])
         try:
             g = self.context.get_global(self.name)
             if isinstance(g, (op._equ, op._assignment)):
@@ -534,16 +534,28 @@ class LabelsCollector(Visitor):
                                          globl=(colon == '::'))
     
 
-class IR2Cpp(Interpreter):
-
-    def __default__(self, tree):
-        result = ''
-        for child in tree.children:
-            if isinstance(child, Tree):
-                result += self.visit(child)
+class TopDownVisitor:
+    def visit(self, node):
+        result = ""
+        if isinstance(node, Tree):
+            if hasattr(self, node.data):
+                result += getattr(self, node.data)(node)
             else:
-                result += child
+                result += "".join(self.visit(node.children))
+        elif isinstance(node, list):
+            result += "".join([self.visit(i) for i in node])
+        else:
+            if hasattr(self, node.type):
+                result += getattr(self, node.type)(node)
+            else:
+                result += node.value
         return result
+
+class IR2Cpp(TopDownVisitor):
+
+    def INTEGER(self, token):
+        s = {2: bin(token.value), 8: oct(token.value), 10: str(token.value), 16: hex(token.value)}[token.column]
+        return s
 
 
 OFFSETDIR = 'offsetdir'

@@ -126,18 +126,6 @@ class Token(lark.Tree):
         return expr
 
 
-class Integer(lark.Token):
-
-    def __init__(self, number, radix):
-        self.number = number
-        self.radix = radix
-        self.type = 'Integer'
-
-    def __int__(self):
-        return self.number
-
-    def __repr__(self):
-        return {2: bin(self.number), 8: oct(self.number), 10: str(self.number), 16: hex(self.number)}[self.radix]
 
 class Expression(lark.Tree):
 
