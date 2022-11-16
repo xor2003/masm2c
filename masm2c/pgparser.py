@@ -507,7 +507,7 @@ class LarkParser:
             file_name = os.path.dirname(os.path.realpath(__file__)) + "/_masm61.lark"
             debug = False
             with open(file_name, 'rt') as gr:
-                cls._inst.or_parser = Lark(gr, parser='lalr', propagate_positions=True, debug=debug)
+                cls._inst.or_parser = Lark(gr, parser='lalr', propagate_positions=True, cache=True, debug=debug)
 
             cls._inst.parser = copy(cls._inst.or_parser)
 

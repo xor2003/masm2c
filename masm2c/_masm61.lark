@@ -15,7 +15,7 @@ COMMENTKW: /comment\s+(\S)/ //[.\r\n]*?\1[^\r\n]*/x
 _ENDOFLINE: /[\r\n]+[\t \r\n]*/x
 //FLOAT: /-?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?/
 INTEGER: /[0-9][0-9A-Fa-f]*[HOQTYhoqty]?/
-_signed_integer.30: sign INTEGER
+_signed_integer.30: SIGN INTEGER
 _integer_.30: INTEGER | _signed_integer
 
 WS: /([\t \b\v\f\x1a]+)|(\\;?[^\r\n]*[\r\n\t \b\v\f\x1a]+)/x
@@ -148,9 +148,9 @@ ordir: _e01 "OR"i _e02
 xordir: _e01 "XOR"i _e02
 anddir: _e02 "AND"i _e03
 notdir: "NOT"i _e04
-!sign: ("+"|"-")
-!addop: _e05 sign _e06
-unadd: _e07 sign _e08
+SIGN: ("+"|"-")
+!addop: _e05 SIGN _e06
+unadd: _e07 SIGN _e08
 
 field: "." _e11
 fieldlist: field+

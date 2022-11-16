@@ -542,7 +542,8 @@ class Parser:
             content = re.sub(r'^(?P<segment>[_0-9A-Za-z]+):(?P<offset>[0-9A-Fa-f]{4,8})(?P<remain>.*)',
                              lambda m: f'{m.group("remain")} ;~ {segmap.get(m.group("segment"))}:{m.group("offset")}',
                              content, flags=re.MULTILINE)
-        self.parse_args_new_data(content, file_name=file_name)
+        result = self.parse_args_new_data1(content, file_name=file_name)
+        self.parse_args_new_data2(content, result)
 
     def read_segments_map(self, file_name):
         """
@@ -754,30 +755,40 @@ class Parser:
         self.need_label = False
         self.segments = OrderedDict()
         try:
-            result = self.parse_args_new_data_('''.model tiny
+            text = f'''.model tiny
     default_seg segment
-        ''' + line + '''
+        {line}
     default_seg ends
         end start
-        ''').asminstruction
+            '''
+            self.test_pre_parse()
+            result1 = self.parse_args_new_data1(text)
+            result1 = result1.children[2].children[1].children[1]
+            result1 = self.parse_args_new_data2(text, result1)
+            result = result1  # .asminstruction
         except Exception as e:
             print(e)
             logging.error("Error1")
             result = [str(e)]
             raise
-        del self.__globals['default_seg']
+        #del self.__globals['default_seg']
         return result
 
     def test_size(self, line):
         self.test_mode = True
         self.segments = OrderedDict()
         try:
-            result = self.parse_args_new_data_('''.model tiny
+            text = '''.model tiny
         default_seg segment
         mov ax, ''' + line + '''
         default_seg ends
             end start
-            ''').asminstruction.args[1]
+            '''
+            self.test_pre_parse()
+            result1 = self.parse_args_new_data1(text)
+            result1 = result1.children[2].children[1].children[1]
+            result1 = self.parse_args_new_data2(text, result1)
+            result = result1.asminstruction.args[1]
         except Exception as e:
             print(e)
             logging.error("Error2")
@@ -790,12 +801,17 @@ class Parser:
         self.test_mode = True
         self.segments = OrderedDict()
         try:
-            result = self.parse_args_new_data_('''.model tiny
+            text = '''.model tiny
     default_seg segment
     ''' + line + '''
     default_seg ends
     end start
-    ''')
+    '''
+            self.test_pre_parse()
+            result1 = self.parse_args_new_data1(text)
+            result1 = result1.children[2].children[1].children[1]
+            result1 = self.parse_args_new_data2(text, result1)
+            result = result1
         except Exception as e:
             print(str(e))
             logging.error("Error3")
@@ -808,13 +824,16 @@ class Parser:
         self.test_mode = True
         self.segments = OrderedDict()
         try:
-            result = self.parse_args_new_data_('''.model tiny
+            text = '''.model tiny
         default_seg segment
         mov ax, ''' + line + '''
         default_seg ends
         end start
-        ''')
-            result = result[0].children[1].children[1]  # result.asminstruction.args[1]
+        '''
+            self.test_pre_parse()
+            result = self.parse_args_new_data1(text)
+            result = result.children[2].children[1].children[1]
+            result = self.parse_args_new_data2(text, result)
         except Exception as e:
             exc_type, exc_obj, exc_tb = sys.exc_info()
             fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
@@ -1025,28 +1044,22 @@ class Parser:
             self.c_data[addr] = str(v)
     '''
 
-    def parse_args_new_data_(self, text):
-        # self.__pgcontext = PGContext(extra = self)
+    def test_pre_parse(self):
         self.__binary_data_size = 0
-        # TODO check if required self.__c_dummy_label = 0  # one dummy number is used for "default_seg" creation
         self.__c_dummy_jump_label = 0
         self.__c_extra_dummy_jump_label = 0
-        return self.parse_file_insideseg(text)
-
-    def parse_file_insideseg(self, text):
-        result = self.parse_args_new_data(text)
-        print(result)
-        return result.children[2].children  # result[0][1][1][0].insegmentdir
 
     def parse_file_inside(self, text, file_name=None):
         return self.parse_include(text, file_name)
 
-    def parse_args_new_data(self, text, file_name=None):
+    def parse_args_new_data1(self, text, file_name=None):
         logging.debug("parsing: [%s]", text)
 
         result = self.__lex.parser.parse(text)  # , file_name=file_name, extra=self)
+        return result
+
+    def parse_args_new_data2(self, text, result):
         result = ExprRemover().transform(result)
-        result = result.children[2].children[1].children[1]
         result = Asm2IR(self, text).transform(result)
         result = IR2Cpp().visit(result)
 
