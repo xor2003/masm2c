@@ -83,7 +83,7 @@ class Asm2IR(Transformer):
         self.expression = self.expression or Expression()
         #while isinstance(children, list) and len(children) == 1:
         #    children = children[0]
-        self.expression.children = children[0]
+        self.expression.children = children #[0]
         result = self.expression
         self.expression = None
         return result
@@ -544,6 +544,9 @@ class TopDownVisitor:
                 result += "".join(self.visit(node.children))
         elif isinstance(node, list):
             result += "".join([self.visit(i) for i in node])
+        elif isinstance(node, str):
+            print(f"{node} is a str")
+            result += node
         else:
             if hasattr(self, node.type):
                 result += getattr(self, node.type)(node)
@@ -557,6 +560,8 @@ class IR2Cpp(TopDownVisitor):
         s = {2: bin(token.value), 8: oct(token.value), 10: str(token.value), 16: hex(token.value)}[token.column]
         return s
 
+    def expr(self, tree):
+        return "".join((self.visit(child) for child in tree.children))
 
 OFFSETDIR = 'offsetdir'
 LABEL = 'label'
