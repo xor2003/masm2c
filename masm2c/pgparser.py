@@ -542,16 +542,19 @@ class TopDownVisitor:
                 result += getattr(self, node.data)(node)
             else:
                 result += "".join(self.visit(node.children))
+        elif isinstance(node, lark.Token):
+            if hasattr(self, node.type):
+                result += getattr(self, node.type)(node)
+            else:
+                result += node.value
         elif isinstance(node, list):
             result += "".join([self.visit(i) for i in node])
         elif isinstance(node, str):
             print(f"{node} is a str")
             result += node
         else:
-            if hasattr(self, node.type):
-                result += getattr(self, node.type)(node)
-            else:
-                result += node.value
+            logging.error("Error unknown type")
+            raise ValueError()
         return result
 
 class IR2Cpp(TopDownVisitor):
