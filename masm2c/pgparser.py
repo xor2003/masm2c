@@ -433,6 +433,8 @@ class Asm2IR(Transformer):
             self.context.org(Parser.parse_int(value))
         return nodes
 
+    def STRING(self, token):
+        return token
 
 '''
 actions = {
@@ -562,6 +564,20 @@ class IR2Cpp(TopDownVisitor):
     def INTEGER(self, token):
         s = {2: bin(token.value), 8: oct(token.value), 10: str(token.value), 16: hex(token.value)}[token.column]
         return s
+
+    def STRING(self, token):
+        result = token.value
+        m = re.match(r'^[\'\"](....)[\'\"]$', token.value)  # char constants 'abcd'
+        if m:
+            ex = m.group(1)
+            result = '0x'
+            for i in range(0, 4):
+                # logging.debug("constant %s %d" %(ex,i))
+                ss = str(hex(ord(ex[i])))
+                # logging.debug("constant %s" %ss)
+                result += ss[2:]
+        result = result.replace('\\', '\\\\')  # escape c \ symbol
+        return result
 
     def expr(self, tree):
         return "".join((self.visit(child) for child in tree.children))
