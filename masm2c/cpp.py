@@ -420,36 +420,38 @@ class Cpp(Gen):
             raise Exception("invalid var '%s' size %u" % (str(label), size))
         return value
 
-    def convert_sqbr_reference(self, expr, destination, size, islabel, lea=False):
+    def convert_sqbr_reference(self, segment: str, expr, destination: bool, size: int, islabel: bool, lea: bool=False):
         if not lea or destination:
             if not islabel or not self.isvariable:
                 self.needs_dereference = True
                 self.itispointer = True
                 if size == 1:
-                    expr = f"raddr({self.__work_segment},{expr})"
+                    expr = f"raddr({segment},{expr})"
                 elif size == 2:
-                    expr = f"(dw*)(raddr({self.__work_segment},{expr}))"
+                    expr = f"(dw*)(raddr({segment},{expr}))"
                 elif size == 4:
-                    expr = f"(dd*)(raddr({self.__work_segment},{expr}))"
+                    expr = f"(dd*)(raddr({segment},{expr}))"
                 elif size == 8:
-                    expr = f"(dq*)(raddr({self.__work_segment},{expr}))"
+                    expr = f"(dq*)(raddr({segment},{expr}))"
                 else:
                     logging.error(f"~{expr}~ invalid size {size}")
-                    expr = f"raddr({self.__work_segment},{expr})"
+                    expr = f"raddr({segment},{expr})"
             else:
                 if self.size_changed:  # or not self.__isjustlabel:
-                    expr = self.render_new_pointer_size(expr, size)
+                    expr = Cpp.render_new_pointer_size(self.itispointer, expr, size)
+                    self.size_changed = False
 
             logging.debug(f"expr: {expr}")
         return expr
 
-    def render_new_pointer_size(self, expr, size):
+    @staticmethod
+    def render_new_pointer_size(itispointer: bool, expr, size: int):
         """
         :param expr: the expression to be rendered
         :param size: the new size of the pointer
         :return: The expression with the new size.
         """
-        if self.itispointer:
+        if itispointer:
             if size == 1:
                 expr = f"(db*)({expr})"
             elif size == 2:
@@ -472,7 +474,6 @@ class Cpp(Gen):
             else:
                 logging.error(f"~{expr}~ unknown size {size}")
 
-        self.size_changed = False
         return expr
 
     def tokens_to_string(self, expr):
@@ -510,7 +511,7 @@ class Cpp(Gen):
             return self.tokens_to_string(expr.children)
         return expr
 
-    def render_instruction_argument(self, expr, def_size=0, destination=False, lea=False):
+    def render_instruction_argument(self, expr, def_size: int=0, destination: bool=False, lea: bool=False):
         '''
         Convert instruction argument Tokens into C
         :param expr: argument Tokens
@@ -651,11 +652,12 @@ class Cpp(Gen):
 
         expr = self.tokens_to_string(expr)
 
-        if indirection == IndirectionType.POINTER and not memberdir and (not self.__isjustlabel or self.size_changed):
-            expr = self.convert_sqbr_reference(expr, destination, size, islabel, lea=lea)
+        if not memberdir and indirection == IndirectionType.POINTER and (not self.__isjustlabel or self.size_changed):
+            expr = self.convert_sqbr_reference(self.__work_segment, expr, destination, size, islabel, lea=lea)
 
         if self.size_changed:  # or not self.__isjustlabel:
-            expr = self.render_new_pointer_size(expr, size)
+            expr = Cpp.render_new_pointer_size(self.itispointer, expr, size)
+            self.size_changed = False
 
         if indirection == IndirectionType.POINTER and self.needs_dereference:
             if expr[0] == '(' and expr[-1] == ')':

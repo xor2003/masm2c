@@ -135,3 +135,5 @@ class Expression(lark.Tree):
         #self.children = []
         self.size = 0
         self.mods = set()
+        self.registers = set()
+        self.segment_register = "ds"

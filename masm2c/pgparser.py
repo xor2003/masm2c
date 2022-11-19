@@ -61,7 +61,7 @@ class Asm2IR(Transformer):
         self.context = context
         self.input_str = input_str
         self.radix = 10
-        self.expression = None
+        self._expression = None
 
 
     '''
@@ -80,12 +80,12 @@ class Asm2IR(Transformer):
     '''
 
     def expr(self, children):
-        self.expression = self.expression or Expression()
+        # self.expression = self.expression or Expression()
         #while isinstance(children, list) and len(children) == 1:
         #    children = children[0]
         self.expression.children = children #[0]
-        result = self.expression
-        self.expression = None
+        result = self._expression
+        self._expression = None
         return result
 
     def dupdir(self, nodes, times, values):
@@ -96,13 +96,13 @@ class Asm2IR(Transformer):
         return Discard
 
     def ptrdir(self, children):
-        self.expression = self.expression or Expression()
+        # self.expression = self.expression or Expression()
         self.expression.mods.add('ptrdir')
         self.expression.size = self.size
         return children
 
     def datadecl(self, children):
-        self.expression = self.expression or Expression()
+        # self.expression = self.expression or Expression()
         self.size = self.context.typetosize(children[0])
         return Discard
 
@@ -317,7 +317,7 @@ class Asm2IR(Transformer):
         logging.debug("asminstruction %s ~~", nodes)
         # args = build_ast(args)
 
-        self.expression = self.expression or Expression()
+        # self.expression = self.expression or Expression()
         instruction = self.instruction_name
         args = nodes[0].children
         if instruction == 'lea':
@@ -356,28 +356,33 @@ class Asm2IR(Transformer):
         nodes[1] = ' & '
         return nodes
 
+    @property
+    def expression(self):
+        self._expression  = self._expression or Expression()
+        return self._expression
     def register(self, children):
-        self.expression = self.expression or Expression()
+        # self.expression = self.expression or Expression()
         self.expression.size = self.context.is_register(children[0])
-        return Tree('register', children)  # Token('segmentregister', nodes[0].lower())
+        self.expression.registers.add(children[0])
+        return children[0]  # Token('segmentregister', nodes[0].lower())
 
     def segmentregister(self, children):
-        self.expression = self.expression or Expression()
-        self.expression.size = self.context.is_register(children[0])
-        return children  # Token('segmentregister', nodes[0].lower())
+        # self.expression = self.expression or Expression()
+        self.expression.segment_register = children[0]
+        return children[0]  # Token('segmentregister', nodes[0].lower())
 
     def sqexpr(self, nodes):
 
         logging.debug("/~%s~\\", nodes)
         # res = nodes[1]
-        self.expression = self.expression or Expression()
+        # self.expression = self.expression or Expression()
         # self.expression.indirection = IndirectionType.POINTER
         self.expression.mods.add('ptrdir')
         return nodes  # Token('sqexpr', res)
 
     def offsetdir(self, nodes):
         logging.debug("offset /~%s~\\", nodes)
-        self.expression = self.expression or Expression()
+        # self.expression = self.expression or Expression()
         # self.expression.indirection = IndirectionType.OFFSET
         self.expression.mods.add('offset')
         self.size = 2
