@@ -8,7 +8,7 @@ text: /[^\r\n]+/x
 STRING: /((?<!')'(?!').+?(?<!')'(?!'))|((?<!")"(?!").+?(?<!")"(?!"))/
 macroname: "macroname"
 structname: "structname"
-!label: /[A-Za-z@_$?][A-Za-z@_$?0-9]*/
+LABEL: /[A-Za-z@_$?][A-Za-z@_$?0-9]*/
 //MONKEY: /@@|@B|@F/
 
 COMMENTKW: /comment\s+(\S)/ //[.\r\n]*?\1[^\r\n]*/x
@@ -53,8 +53,8 @@ DATATYPE: "BYTE"i|"SBYTE"i|"WORD"i|"SWORD"i|"DWORD"i|"SDWORD"i|"FWORD"i|"QWORD"i
 !aliasdir: "ALIAS"i
 !binaryop: "=="| "!="| ">="| "<="| ">"| "<"| "&"
 
-altidq: "(" label ")"
-assdir: label "=" expr _linereminder
+altidq: "(" LABEL ")"
+assdir: LABEL "=" expr _linereminder
 assumedir: "ASSUME"i assumelist _linereminder| assumenothing _linereminder
 assumelist : assumeregister| assumeregister _COMMA assumelist
 assumereg: register ":" assumeval
@@ -66,21 +66,21 @@ assumeval: "NOTHING"i | "ERROR"i | qualifiedtype
 //bitdef: bitfieldid ":" expr eqconstexpr?
 bitdef: bitfieldid ":" expr
 bitdeflist: bitdef | bitdef commaoeol bitdeflist
-bitfieldid : label
+bitfieldid : LABEL
 blockstatements: ".CONTINUE"i ifcexpr? _linereminder | ".BREAK"i ifcexpr? _linereminder| _insegdir+
 bool: "TRUE"i | "FALSE"i
 brmacroarglist: "<" macroarglist ">"
 classname: STRING
-commaidvararg: commaoeol   label? "VARARG"i
+commaidvararg: commaoeol   LABEL? "VARARG"i
 commainvokelist: commaoeol invokelist
 commamodeloptlist: _COMMA modeloptlist
 commanonuniq: _COMMA "NONUNIQUE"i
 commapagewidth: _COMMA expr
-commaparmidvararg: commaoeol  label "VARARG"i
+commaparmidvararg: commaoeol  LABEL "VARARG"i
 commaparmlist: commaoeol? parmlist
 commaprotolist: commaoeol  protolist
 commatextlen: _COMMA expr
-commdecl: nearfar?   langtype?  label ":" commtype eqconstexpr?
+commdecl: nearfar?   langtype?  LABEL ":" commtype eqconstexpr?
 commdir: "COMM"i commlist _linereminder
 //commentdir: COMMENTKW DELIMITER text text DELIMITER text _linereminder; TODO
 commentdir: COMMENTKW _linereminder
@@ -97,13 +97,13 @@ controlif: ".IF"i cexpr _linereminder _insegdir+ controlelseif? elsedirectivelis
 crefdir: crefoption _linereminder
 crefoption: ".CREF"i | ".XCREF"i idlist? | ".NOCREF"i idlist?
 //datadecl: DB | DW | DD | DF | DQ | DT | DATATYPE
-//datadir: label? dataitem _linereminder
-datadir: label? datadecl scalarinstlist _linereminder | structinstdir | recordinstdir
-//datadir: label? datadecl scalarinstlist _linereminder | label? label structinstlist _linereminder
-//datadir: label? datadecl scalarinstlist _linereminder
-structinstdir: label? structname structinstlist _linereminder
-recordinstdir: label? label recordinstlist _linereminder
-//dataitem: datadecl scalarinstlist| label structinstlist| label recordinstlist
+//datadir: LABEL? dataitem _linereminder
+datadir: LABEL? datadecl scalarinstlist _linereminder | structinstdir | recordinstdir
+//datadir: LABEL? datadecl scalarinstlist _linereminder | LABEL? LABEL structinstlist _linereminder
+//datadir: LABEL? datadecl scalarinstlist _linereminder
+structinstdir: LABEL? structname structinstlist _linereminder
+recordinstdir: LABEL? LABEL recordinstlist _linereminder
+//dataitem: datadecl scalarinstlist| LABEL structinstlist| LABEL recordinstlist
 decnumber: _integer_
 digits: decnumber
 _directive: _generaldir| _segmentdef | _linereminder
@@ -136,7 +136,7 @@ primary: expr binaryop expr| flagname| expr
 cxzexpr: "!" expr| expr  "==" expr| expr  "!=" expr | expr
 
 sqexpr: "[" expr "]"
-//sqexprlist: label? sqexpr sqexpr?
+//sqexprlist: LABEL? sqexpr sqexpr?
 offsetdirmy: "OFFSET"i _e10
 segmdir: "SEG"i _e10
 segoverride: _e09 ":" _e10
@@ -187,12 +187,12 @@ _e09: offsetdirmy
 _e10: memberdir
 | _e10 expr
 | _e11
-dir3: "WIDTH"i label
-| "MASK"i label
+dir3: "WIDTH"i LABEL
+| "MASK"i LABEL
 | "SIZE"i sizearg
 | "SIZEOF"i sizearg
-| "LENGTH"i label
-| "LENGTHOF"i label
+| "LENGTH"i LABEL
+| "LENGTHOF"i LABEL
 _e11: "(" expr ")"
 | sqexpr
 | dir3
@@ -212,20 +212,20 @@ sizearg: _e10
 echodir: "ECHO"i arbitrarytext _linereminder | ".OUT"i arbitrarytext _linereminder
 elsedirectivelist: ".ELSE"i _linereminder _insegdir+
 elseifblock: elseifstatement _linereminder _insegdir+ elseifblock?
-elseifstatement: "ELSEIF"i expr| "ELSEIFE"i expr| "ELSEIFB"i textitem| "ELSEIFNB"i textitem | "ELSEIFDEF"i label| "ELSEIFNDEF"i label| "ELSEIFDIF"i textitem _COMMA textitem| "ELSEIFDIFI"i textitem _COMMA textitem| "ELSEIFIDN"i textitem _COMMA textitem| "ELSEIFIDNI"i textitem _COMMA textitem| "ELSEIF1"i | "ELSEIF2"i
+elseifstatement: "ELSEIF"i expr| "ELSEIFE"i expr| "ELSEIFB"i textitem| "ELSEIFNB"i textitem | "ELSEIFDEF"i LABEL| "ELSEIFNDEF"i LABEL| "ELSEIFDIF"i textitem _COMMA textitem| "ELSEIFDIFI"i textitem _COMMA textitem| "ELSEIFIDN"i textitem _COMMA textitem| "ELSEIFIDNI"i textitem _COMMA textitem| "ELSEIF1"i | "ELSEIF2"i
 enddir: "END"i expr?  _linereminder?
-endpdir: label "ENDP"i _linereminder
-endsdir: label "ENDS"i _linereminder
+endpdir: LABEL "ENDP"i _linereminder
+endsdir: LABEL "ENDS"i _linereminder
 eqconstexpr: "=" expr
-equdir: label "EQU"i equtype _linereminder
+equdir: LABEL "EQU"i equtype _linereminder
 equtype: expr| textliteral
 errordir: erroropt _linereminder
-erroropt: ".ERR"i textitem? | ".ERRE"i expr opttext? | ".ERRNZ"i expr opttext? | ".ERRB"i textitem opttext? | ".ERRNB"i textitem opttext? | ".ERRDEF"i label  opttext? | ".ERRNDEF"i label opttext? | ".ERRDIF"i textitem _COMMA textitem  opttext? | ".ERRDIFI"i textitem _COMMA textitem  opttext? | ".ERRIDN"i textitem _COMMA textitem  opttext? | ".ERRIDNI"i textitem _COMMA textitem  opttext? | ".ERR1"i textitem? | ".ERR2"i textitem?
+erroropt: ".ERR"i textitem? | ".ERRE"i expr opttext? | ".ERRNZ"i expr opttext? | ".ERRB"i textitem opttext? | ".ERRNB"i textitem opttext? | ".ERRDEF"i LABEL  opttext? | ".ERRNDEF"i LABEL opttext? | ".ERRDIF"i textitem _COMMA textitem  opttext? | ".ERRDIFI"i textitem _COMMA textitem  opttext? | ".ERRIDN"i textitem _COMMA textitem  opttext? | ".ERRIDNI"i textitem _COMMA textitem  opttext? | ".ERR1"i textitem? | ".ERR2"i textitem?
 exitdir: ".EXIT"i expr?  _linereminder
 exitmdir: "EXITM"i textitem? _linereminder
 exprlist: expr (_COMMA expr)*
 exprspacelist: expr+
-externdef: langtype?  label altidq? ":" externtype
+externdef: langtype?  LABEL altidq? ":" externtype
 externdir: externkey externlist _linereminder
 externkey: "EXTRN"i | "EXTERN"i | "EXTERNDEF"i
 externlist: externdef | externdef commaoeol externlist
@@ -237,15 +237,15 @@ flagname: "ZERO?"i | "CARRY?"i | "OVERFLOW?"i | "SIGN?"i | "PARITY?"i
 floatnumber : SIGNED_FLOAT | digits "R"| digits "r"
 forcdir: "FORC"i | "IRPC"i
 fordir: "FOR"i | "IRP"i
-forparm: label dotdotforparmtype?
+forparm: LABEL dotdotforparmtype?
 forparmtype: "REQ"i | "=" textliteral
-?frameexpr: "SEG"i label | "DGROUP"i ":" label| segmentregister ":" label| label
+?frameexpr: "SEG"i LABEL | "DGROUP"i ":" LABEL| segmentregister ":" LABEL| LABEL
 _generaldir: modeldir | segorderdir | namedir| includelibdir | commentdir| groupdir | assumedir| structdir | typedefdir| externdir | publicdir | commdir | prototypedir| equdir | assdir | textdir| contextdir | optiondir | processordir| radixdir | titledir | pagedir | listdir | crefdir | echodir| ifdir | errordir | includedir | macrodir | macrocall | macrorepeat | purgedir| macrowhile | macrofor | macroforc| aliasdir | recorddir | smartdir
-groupdir : label "GROUP"i segidlist
-idlist: label | label _COMMA idlist
+groupdir : LABEL "GROUP"i segidlist
+idlist: LABEL | LABEL _COMMA idlist
 ifcexpr: ".IF"i cexpr
 ifdir: ifstatement _linereminder _insegdir+ elseifblock? elsedirectivelist? "ENDIF"i _linereminder
-ifstatement: "IF"i expr| "IFE"i expr| "IFB"i textitem| "IFNB"i textitem| "IFDEF"i label| "IFNDEF"i label| "IFDIF"i textitem _COMMA textitem| "IFDIFI"i textitem _COMMA textitem| "IFIDN"i textitem _COMMA textitem| "IFIDNI"i textitem _COMMA textitem| "IF1"i | "IF2"i
+ifstatement: "IF"i expr| "IFE"i expr| "IFB"i textitem| "IFNB"i textitem| "IFDEF"i LABEL| "IFNDEF"i LABEL| "IFDIF"i textitem _COMMA textitem| "IFDIFI"i textitem _COMMA textitem| "IFIDN"i textitem _COMMA textitem| "IFIDNI"i textitem _COMMA textitem| "IF1"i | "IF2"i
 includedir: "INCLUDE"i filespec _linereminder
 includelibdir: "INCLUDELIB"i filespec _linereminder
 dupdir: expr "DUP"i "(" scalarinstlist ")"
@@ -263,28 +263,28 @@ instruction: _asminstruction _linereminder
 invokearg: _anyregister "::" register| "ADDR"i expr | expr
 invokedir: "INVOKE"i expr commainvokelist? _linereminder
 invokelist: invokearg | invokearg commaoeol invokelist
-labeldef: label ":" | label "::"
-labeldir: label "label"i qualifiedtype _linereminder
+labeldef: LABEL ":" | LABEL "::"
+labeldir: LABEL "LABEL"i qualifiedtype _linereminder
 _linereminder: _ENDOFLINE | comment _ENDOFLINE
 listdir: listoption _linereminder
 localdef: "LOCAL"i idlist _linereminder
 localdir: "LOCAL"i parmlist _linereminder
 localdirlist: localdir+
 locallist: localdef+
-macroarg: "%" expr| "%" label "(" macroarglist ")" | "<" arbitrarytext ">" | arbitrarytext | STRING
+macroarg: "%" expr| "%" LABEL "(" macroarglist ")" | "<" arbitrarytext ">" | arbitrarytext | STRING
 macroarglist: macroarg | macroarg _COMMA macroarglist
 macrobody: locallist? macrostmtlist
 macrocall: macroname  "(" macroarglist ")" | macroname macroarglist? _linereminder
-macrodirhead: label "MACRO"i macroparmlist?
+macrodirhead: LABEL "MACRO"i macroparmlist?
 macrodir: macrodirhead _linereminder macrobody "ENDM"i _linereminder
 macrofor: fordir forparm  _COMMA "<" macroarglist ">" _linereminder macrobody "ENDM"i _linereminder
-macroforc: forcdir label  _COMMA textliteral _linereminder macrobody "ENDM"i _linereminder
-macronamelist: label | label _COMMA macronamelist
-macroparm: label dotdotparmtype?
+macroforc: forcdir LABEL  _COMMA textliteral _linereminder macrobody "ENDM"i _linereminder
+macronamelist: LABEL | LABEL _COMMA macronamelist
+macroparm: LABEL dotdotparmtype?
 macroparmlist: macroparm | macroparm commaoeol macroparmlist
 macrorepeat: repeatbegin _linereminder macrobody "ENDM"i _linereminder
 repeatbegin: repeatdir expr
-macrostmt: instruction | labeldef | _directive| exitmdir| ":" label _linereminder| "GOTO"i label _linereminder
+macrostmt: instruction | labeldef | _directive| exitmdir| ":" LABEL _linereminder| "GOTO"i LABEL _linereminder
 macrostmtlist: macrostmt+
 macrowhile: "WHILE"i expr _linereminder macrobody "ENDM"i _linereminder
 
@@ -292,33 +292,33 @@ modeldir: ".MODEL"i memoption commamodeloptlist? _linereminder
 modelopt: langtype| stackoption | "OS_DOS"i
 modeloptlist: modelopt | modelopt _COMMA modeloptlist
 !mulop: "*"| "/" | "MOD"i
-namedir: "NAME"i label _linereminder
+namedir: "NAME"i LABEL _linereminder
 nearfar: "NEAR"i | "FAR"i
-nestedstruct: structkw  label?  _linereminder "ENDS"i _linereminder | structkw  label?  _linereminder structitem+ "ENDS"i _linereminder
+nestedstruct: structkw  LABEL?  _linereminder "ENDS"i _linereminder | structkw  LABEL?  _linereminder structitem+ "ENDS"i _linereminder
 offsetdir: offsetdirtype _linereminder
 offsetdirtype: "EVEN"i | "ORG"i expr| "ALIGN"i expr?
 offsettype: "GROUP"i | "SEGMENT"i | "FLAT"i
 optiondir: "OPTION"i optionlist _linereminder
-optionitem: "CASEMAP"i ":" maptype| "DOTNAME"i | "NODOTNAME"i | "EMULATOR"i | "NOEMULATOR"i | "EPILOGUE"i ":" label| "EXPR16"i | "EXPR32"i | "LANGUAGE"i ":" langtype| "LJMP"i | "NOLJMP"i | "M510"i | "NOM510"i | "NOSIGNEXTEND"i | "OFFSET"i ":" offsettype| "OLDMACROS"i | "NOOLDMACROS"i | "OLDSTRUCTS"i | "NOOLDSTRUCTS"i | "PROC"i ":" ovisibility| "PROLOGUE"i ":" label| "READONLY"i | "NOREADONLY"i | "SCOPED"i | "NOSCOPED"i | "SEGMENT"i ":" segsize| "SETIF2"i ":" bool
+optionitem: "CASEMAP"i ":" maptype| "DOTNAME"i | "NODOTNAME"i | "EMULATOR"i | "NOEMULATOR"i | "EPILOGUE"i ":" LABEL| "EXPR16"i | "EXPR32"i | "LANGUAGE"i ":" langtype| "LJMP"i | "NOLJMP"i | "M510"i | "NOM510"i | "NOSIGNEXTEND"i | "OFFSET"i ":" offsettype| "OLDMACROS"i | "NOOLDMACROS"i | "OLDSTRUCTS"i | "NOOLDSTRUCTS"i | "PROC"i ":" ovisibility| "PROLOGUE"i ":" LABEL| "READONLY"i | "NOREADONLY"i | "SCOPED"i | "NOSCOPED"i | "SEGMENT"i ":" segsize| "SETIF2"i ":" bool
 optionlist: optionitem | optionitem commaoeol optionlist
 opttext: _COMMA textitem
 orop: "OR"i | "XOR"i
 ovisibility: "PUBLIC"i | "PRIVATE"i | "EXPORT"i
 pagedir: "PAGE"i pageexpr? _linereminder
 pageexpr: "+"|  expr commapagewidth? | commapagewidth
-parm: label  expr? dotdotqualifiedtype?
+parm: LABEL  expr? dotdotqualifiedtype?
 parmlist: parm | parm commaoeol parmlist
 parmtype: "REQ"i | "=" textliteral| "VARARG"i
 poptions: distance?  langtype?  ovisibility?
-procdir: label "PROC"i poptions  brmacroarglist?  usesregs? procparmlist? commaparmidvararg? _linereminder
+procdir: LABEL "PROC"i poptions  brmacroarglist?  usesregs? procparmlist? commaparmidvararg? _linereminder
 processordir: processor _linereminder | coprocessor _linereminder
 procparmlist: commaparmlist
-protoarg : label? ":" qualifiedtype
+protoarg : LABEL? ":" qualifiedtype
 protoarglist: commaprotolist
 protolist: protoarg | protoarg commaoeol protolist
-protospec: label | distance?   langtype? protoarglist? commaidvararg?
-prototypedir: label "PROTO"i protospec
-pubdef: langtype?  label
+protospec: LABEL | distance?   langtype? protoarglist? commaidvararg?
+prototypedir: LABEL "PROTO"i protospec
+pubdef: langtype?  LABEL
 publicdir: "PUBLIC"i publist _linereminder
 publist: pubdef | pubdef commaoeol publist
 purgedir: "PURGE"i macronamelist
@@ -330,8 +330,8 @@ radixdir: ".RADIX"i expr _linereminder
 //oldrecordfieldlist: exprlist
 recordconst_: "{" exprlist "}"| oldrecordinstance
 oldrecordinstance: "<" exprlist ">"
-recordconst: label recordconst_
-recorddir: label "RECORD"i bitdeflist _linereminder
+recordconst: LABEL recordconst_
+recorddir: LABEL "RECORD"i bitdeflist _linereminder
 //recordfieldlist: expr | expr commaoeol recordfieldlist
 recordfieldlist: scalarinstlist
 recordinstance_: "{"  _linereminder? recordfieldlist _linereminder?  "}"
@@ -346,10 +346,10 @@ repeatdir: "REPEAT"i | "REPT"i
 scalarinstlist: initvalue | exprlist
 commaoeol: _COMMA  _linereminder?
 !segattrib: "PUBLIC"i | "STACK"i | "COMMON"i | "MEMORY"i | "AT"i expr| "PRIVATE"i
-segdir: ".CODE"i label? | ".DATA"i | ".DATA_"i| ".CONST"i | ".FARDATA"i label? | ".FARDATA_"i label? | ".STACK"i expr?
-segidlist : label  _COMMA segidlist | label
+segdir: ".CODE"i LABEL? | ".DATA"i | ".DATA_"i| ".CONST"i | ".FARDATA"i LABEL? | ".FARDATA_"i LABEL? | ".STACK"i expr?
+segidlist : LABEL  _COMMA segidlist | LABEL
 _segmentdef: segmentdir  endsdir|segmentdir  _insegdir+  endsdir| simplesegdir | simplesegdir  endsdir | simplesegdir  _insegdir+   endsdir?
-segmentdir: label "SEGMENT"i segoptionlist?  _linereminder
+segmentdir: LABEL "SEGMENT"i segoptionlist?  _linereminder
 _segoption: segalign| segro| segattrib| segsize| classname
 segoptionlist: _segoption+
 segro: "READONLY"i
@@ -360,23 +360,23 @@ simplesegdir: segdir _linereminder
 stackoption: "NEARSTACK"i | "FARSTACK"i
 startupdir: ".STARTUP"i _linereminder
 structbody: structitem+
-structdirhdr: label structkw  expr?  commanonuniq?
+structdirhdr: LABEL structkw  expr?  commanonuniq?
 structdir: structdirhdr _linereminder endsdir | structdirhdr _linereminder structitem+ endsdir
 structkw: "STRUC"i | "STRUCT"i | "UNION"i
 structdup: expr "DUP"i "(" structinstlist ")"
 structinstance: "<"  fieldinitlist?  ">"| "{" _linereminder?   fieldinitlist?   _linereminder?  "}"| structdup
 structinstlist: structinstance | structinstance commaoeol structinstlist
 structitem: datadir| _generaldir| offsetdir| nestedstruct| _linereminder
-textdir: label textmacrodir _linereminder
-textitem: textliteral| "%" expr //| label
+textdir: LABEL textmacrodir _linereminder
+textitem: textliteral| "%" expr //| LABEL
 textlist: textitem | textitem commaoeol textlist
 textliteral: "<" text ">" _linereminder
 textmacrodir: "CATSTR"i textlist? | "TEXTEQU"i textlist? | "SIZESTR"i textitem| "SUBSTR"i textitem  _COMMA expr commatextlen| "INSTR"i textstartcomma? textitem  _COMMA textitem
 textstartcomma: expr  _COMMA
 titledir: titletype arbitrarytext _linereminder
 titletype: "TITLE"i | "SUBTITLE"i | "SUBTTL"i
-?type: label| distance| datadecl
-typedefdir: label "TYPEDEF"i qualifier
+?type: LABEL| distance| datadecl
+typedefdir: LABEL "TYPEDEF"i qualifier
 untildir: ".UNTIL"i cexpr _linereminder | ".UNTILCXZ"i cxzexpr?  _linereminder
 usesregs: "USES"i allreglist
 whileblock: ".WHILE"i cexpr _linereminder blockstatements ".ENDW"i

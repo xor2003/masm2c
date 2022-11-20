@@ -34,7 +34,7 @@ import parglare
 from . import cpp as cpp_module
 from . import op
 from .Token import Token
-from .pgparser import LarkParser, Asm2IR, ExprRemover, IR2Cpp
+from .pgparser import LarkParser, Asm2IR, ExprRemover
 from .proc import Proc
 
 INTEGERCNST = 'integer'
@@ -532,18 +532,24 @@ class Parser:
         return self
 
     def parse_file_lines(self, file_name):
+        from .cpp import IR2Cpp
         self._current_file = file_name
         self.__current_file_hash = hashlib.blake2s(self._current_file.encode('utf8')).hexdigest()
         content = read_whole_file(file_name)
         if file_name.lower().endswith('.lst'):  # for .lst provided by IDA move address to comments after ;~
             # we want exact placement so program could work
-            self.itislst = True
-            segmap = self.read_segments_map(file_name)
-            content = re.sub(r'^(?P<segment>[_0-9A-Za-z]+):(?P<offset>[0-9A-Fa-f]{4,8})(?P<remain>.*)',
-                             lambda m: f'{m.group("remain")} ;~ {segmap.get(m.group("segment"))}:{m.group("offset")}',
-                             content, flags=re.MULTILINE)
-        result = self.parse_args_new_data1(content, file_name=file_name)
-        self.parse_args_new_data2(content, result)
+            content = self.extract_addresses_from_lst(file_name, content)
+        result = self.parse_file_content(content, file_name=file_name)
+        result = self.process_ast(content, result)
+        result = IR2Cpp().visit(result)
+
+    def extract_addresses_from_lst(self, file_name, content):
+        self.itislst = True
+        segmap = self.read_segments_map(file_name)
+        content = re.sub(r'^(?P<segment>[_0-9A-Za-z]+):(?P<offset>[0-9A-Fa-f]{4,8})(?P<remain>.*)',
+                         lambda m: f'{m.group("remain")} ;~ {segmap.get(m.group("segment"))}:{m.group("offset")}',
+                         content, flags=re.MULTILINE)
+        return content
 
     def read_segments_map(self, file_name):
         """
@@ -751,6 +757,7 @@ class Parser:
     '''
 
     def action_code(self, line):
+        from .cpp import IR2Cpp
         self.test_mode = True
         self.need_label = False
         self.segments = OrderedDict()
@@ -762,10 +769,11 @@ class Parser:
         end start
             '''
             self.test_pre_parse()
-            result1 = self.parse_args_new_data1(text)
-            result1 = result1.children[2].children[1].children[1]
-            result1 = self.parse_args_new_data2(text, result1)
-            result = result1  # .asminstruction
+            result = self.parse_file_content(text)
+            result = result.children[2].children[1].children[1]
+            result = self.process_ast(text, result)
+            result = IR2Cpp().visit(result)
+            #result = result1  # .asminstruction
         except Exception as e:
             print(e)
             logging.error("Error1")
@@ -775,6 +783,7 @@ class Parser:
         return result
 
     def test_size(self, line):
+        from .cpp import IR2Cpp
         self.test_mode = True
         self.segments = OrderedDict()
         try:
@@ -785,10 +794,11 @@ class Parser:
             end start
             '''
             self.test_pre_parse()
-            result1 = self.parse_args_new_data1(text)
-            result1 = result1.children[2].children[1].children[1]
-            result1 = self.parse_args_new_data2(text, result1)
-            result = result1.asminstruction.args[1]
+            result = self.parse_file_content(text)
+            result = result.children[2].children[1].children[1]
+            result = self.process_ast(text, result)
+            result = IR2Cpp().visit(result)
+            result = result.asminstruction.args[1]
         except Exception as e:
             print(e)
             logging.error("Error2")
@@ -798,6 +808,7 @@ class Parser:
         return result
 
     def action_data(self, line):
+        from .cpp import IR2Cpp
         self.test_mode = True
         self.segments = OrderedDict()
         try:
@@ -808,10 +819,10 @@ class Parser:
     end start
     '''
             self.test_pre_parse()
-            result1 = self.parse_args_new_data1(text)
-            result1 = result1.children[2].children[1].children[1]
-            result1 = self.parse_args_new_data2(text, result1)
-            result = result1
+            result = self.parse_file_content(text)
+            result = result.children[2].children[1].children[1]
+            result = self.process_ast(text, result)
+            result = IR2Cpp().visit(result)
         except Exception as e:
             print(str(e))
             logging.error("Error3")
@@ -820,7 +831,8 @@ class Parser:
         del self.__globals['default_seg']
         return result
 
-    def parse_arg(self, line):
+    def parse_arg(self, line, def_size=0, destination=False):
+        from .cpp import IR2Cpp
         self.test_mode = True
         self.segments = OrderedDict()
         try:
@@ -831,9 +843,14 @@ class Parser:
         end start
         '''
             self.test_pre_parse()
-            result = self.parse_args_new_data1(text)
+            result = self.parse_file_content(text)
             result = result.children[2].children[1].children[1]
-            result = self.parse_args_new_data2(text, result)
+            result = self.process_ast(text, result)
+            if destination:
+                result.mods.add("destination")
+            if def_size and result.size == 0:
+                result.size = def_size
+            result = IR2Cpp(self).visit(result)
         except Exception as e:
             exc_type, exc_obj, exc_tb = sys.exc_info()
             fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
@@ -977,11 +994,11 @@ class Parser:
         if self.data_merge_candidats == size:
             if self.__segment.getdata()[-size].offset + size - 1 != self.__segment.getdata()[-1].offset:
                 logging.debug(
-                    f'Cannot merge {self.__segment.getdata()[-size].label} - {self.__segment.getdata()[-1].label}')
+                    f'Cannot merge {self.__segment.getdata()[-size].__label} - {self.__segment.getdata()[-1].__label}')
                 self.data_merge_candidats = 0
             else:
                 logging.debug(
-                    f'Merging data at {self.__segment.getdata()[-size].label} - {self.__segment.getdata()[-1].label}')
+                    f'Merging data at {self.__segment.getdata()[-size].__label} - {self.__segment.getdata()[-1].__label}')
                 array = [x.array[0] for x in self.__segment.getdata()[-size:]]
                 if not any(array):  # all zeros
                     array = [0]
@@ -1052,20 +1069,15 @@ class Parser:
     def parse_file_inside(self, text, file_name=None):
         return self.parse_include(text, file_name)
 
-    def parse_args_new_data1(self, text, file_name=None):
+    def parse_file_content(self, text, file_name=None):
         logging.debug("parsing: [%s]", text)
 
         result = self.__lex.parser.parse(text)  # , file_name=file_name, extra=self)
         return result
 
-    def parse_args_new_data2(self, text, result):
+    def process_ast(self, text, result):
         result = ExprRemover().transform(result)
         result = Asm2IR(self, text).transform(result)
-        result = IR2Cpp().visit(result)
-
-        # with open('forest.txt', 'w') as f:
-        #    f.write(result.to_str())
-        logging.debug("%s", result)
         return result
 
     @staticmethod

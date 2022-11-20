@@ -228,7 +228,7 @@ class Proc:
 
     def generate_full_cmd_line(self, visitor, stmt):
         prefix = visitor.prefix
-        visitor.label = ''
+        visitor.__label = ''
         visitor.dispatch = ''
         visitor.prefix = ''
         command = stmt.accept(visitor)
@@ -240,7 +240,7 @@ class Proc:
         if full_command:
             full_command = self.set_instruction_compare_subclass(stmt, full_command, visitor._context.itislst)
 
-        full_line = visitor.label + visitor.dispatch + full_command
+        full_line = visitor.__label + visitor.dispatch + full_command
         return full_line
 
     def generate_c_cmd(self, visitor, stmt):

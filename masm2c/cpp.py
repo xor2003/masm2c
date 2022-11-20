@@ -29,7 +29,8 @@ from . import op
 from . import proc as proc_module
 from .Token import Token
 from .gen import Gen, mangle_asm_labels, IndirectionType, InjectCode
-from .pgparser import OFFSETDIR, LABEL, PTRDIR, REGISTER, SEGMENTREGISTER, SEGOVERRIDE, SQEXPR, INTEGER, MEMBERDIR
+from .pgparser import OFFSETDIR, LABEL, PTRDIR, REGISTER, SEGMENTREGISTER, SEGOVERRIDE, SQEXPR, INTEGER, MEMBERDIR, \
+    TopDownVisitor
 
 
 class SeparateProcStrategy:
@@ -83,7 +84,7 @@ bool __dispatch_call(m2c::_offsets __disp, struct m2c::_STATE* _state);
 class Cpp(Gen):
     ''' Visitor which can produce C++ equivalents for asm instructions '''
 
-    def __init__(self, context, outfile="", skip_output=None,
+    def __init__(self, context=None, outfile="", skip_output=None,
                  merge_data_segments=True):
         # proc_strategy = SingleProcStrategy()):
         '''
@@ -123,7 +124,7 @@ class Cpp(Gen):
 
         self.dispatch = ''
         self.prefix = ''
-        self.label = ''
+        self.__label = ''
 
     def convert_label(self, token):
         name_original = mangle_asm_labels(token.children[0])
@@ -773,9 +774,9 @@ class Cpp(Gen):
     def _label(self, name, isproc):
         if isproc:
             raise RuntimeError('Should not happen anymore probably')
-            self.label = self.proc_strategy.produce_proc_start(name)
+            self.__label = self.proc_strategy.produce_proc_start(name)
         else:
-            self.label = "%s:\n" % self.cpp_mangle_label(name)
+            self.__label = "%s:\n" % self.cpp_mangle_label(name)
         return ''
 
     def _call(self, name):
@@ -1193,7 +1194,7 @@ static const dd kbegin = 0x1001;
 {type} {name} {{
 """
             for member in v.getdata().values():
-                structures += f"  {member.data} {member.label};\n"
+                structures += f"  {member.data} {member.__label};\n"
             structures += """};
 """
         if len(strucs):
@@ -1328,11 +1329,11 @@ struct Memory{
         o.implemented = True
         self._context.reset_global(dst, o)
 
-        self.label += "#undef %s\n#define %s %s\n" % (dst, dst, self.render_instruction_argument(src))
+        self.__label += "#undef %s\n#define %s %s\n" % (dst, dst, self.render_instruction_argument(src))
         return ''
 
     def _equ(self, dst, src):
-        self.label += "#define %s %s\n" % (dst, self.render_instruction_argument(src))
+        self.__label += "#define %s %s\n" % (dst, self.render_instruction_argument(src))
         return ''
 
     @staticmethod
@@ -1548,4 +1549,39 @@ struct Memory{
             result = f'{sign}{hex(int(value, 2))}'  # convert binary
         else:
             result = str(int(expr, radix))
+        return result
+
+
+class IR2Cpp(TopDownVisitor, Cpp):
+
+    def __init__(self, parser):
+        super(IR2Cpp, self).__init__(context=parser)
+
+    def INTEGER(self, token):
+        s = {2: bin(token.value), 8: oct(token.value), 10: str(token.value), 16: hex(token.value)}[token.column]
+        return s
+
+    def STRING(self, token):
+        result = token.value
+        m = re.match(r'^[\'\"](....)[\'\"]$', token.value)  # char constants 'abcd'
+        if m:
+            ex = m.group(1)
+            result = '0x'
+            for i in range(0, 4):
+                # logging.debug("constant %s %d" %(ex,i))
+                ss = str(hex(ord(ex[i])))
+                # logging.debug("constant %s" %ss)
+                result += ss[2:]
+        result = result.replace('\\', '\\\\')  # escape c \ symbol
+        return result
+
+    def expr(self, tree):
+        result = "".join((self.visit(child) for child in tree.children))
+        result = self.convert_sqbr_reference(tree.segment_register, result, 'destination' in tree.mods, tree.size, 'label' in tree.mods, lea='lea' in tree.mods)
+        #if indirection == IndirectionType.POINTER and \
+        if self.needs_dereference:
+            if result[0] == '(' and result[-1] == ')':
+                result = "*%s" % result
+            else:
+                result = "*(%s)" % result
         return result

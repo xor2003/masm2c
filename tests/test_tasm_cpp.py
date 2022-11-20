@@ -22,31 +22,31 @@ class CppTest(unittest.TestCase):
         self.cpp = Cpp(self.parser)
 
     def test_cpp_20010(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'[a+1]'), def_size=1, destination=False), u'*(raddr(ds,a+1))')
+        self.assertEqual(self.parser.parse_arg(u'[a+1]', def_size=1, destination=False), u'*(raddr(ds,a+1))')
 
     def test_cpp_20020(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'ds:40h[eax*2]'), def_size=0, destination=False), u'*(raddr(ds,0x40+eax*2))')
+        self.assertEqual(self.parser.parse_arg(u'ds:40h[eax*2]', def_size=0, destination=False), u'*(raddr(ds,0x40+eax*2))')
 
     def test_cpp_20030(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u"'Z' - 'A' +1"), def_size=1, destination=False), u"'Z'-'A'+1")
+        self.assertEqual(self.parser.parse_arg(u"'Z' - 'A' +1", def_size=1, destination=False), u"'Z'-'A'+1")
 
     def test_cpp_20040(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u"'a'"), def_size=1, destination=False), u"'a'")
+        self.assertEqual(self.parser.parse_arg(u"'a'", def_size=1, destination=False), u"'a'")
 
     def test_cpp_20050(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'(1024*10/16)+5'), def_size=2, destination=False), u'(1024*10/16)+5')
+        self.assertEqual(self.parser.parse_arg(u'(1024*10/16)+5', def_size=2, destination=False), u'(1024*10/16)+5')
 
     def test_cpp_20060(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'(1024*10/16)-1'), def_size=2, destination=False), u'(1024*10/16)-1')
+        self.assertEqual(self.parser.parse_arg(u'(1024*10/16)-1', def_size=2, destination=False), u'(1024*10/16)-1')
 
     #def test_cpp_20070(self):
         # self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'(offset str_buffer+800h)'),def_size=4,destination=False),u'str_buffer+0x800')
 
     def test_cpp_20080(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'-40h'), def_size=0, destination=False), u'-0x40')
+        self.assertEqual(self.parser.parse_arg(u'-40h', def_size=0, destination=False), u'-0x40')
 
     def test_cpp_20090(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'+40h'), def_size=0, destination=False), u'+0x40')
+        self.assertEqual(self.parser.parse_arg(u'+40h', def_size=0, destination=False), u'+0x40')
 
     #def test_cpp_20100(self):
         # self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'+0x4000'),def_size=0,destination=False),u'+0x4000')
@@ -130,886 +130,886 @@ class CppTest(unittest.TestCase):
         # self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'-4'),def_size=0,destination=False),u'-4')
 
     def test_cpp_20370(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'0'), def_size=0, destination=False), u'0')
+        self.assertEqual(self.parser.parse_arg(u'0', def_size=0, destination=False), u'0')
 
     def test_cpp_20380(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'0'), def_size=1, destination=False), u'0')
+        self.assertEqual(self.parser.parse_arg(u'0', def_size=1, destination=False), u'0')
 
     def test_cpp_20390(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'0002h'), def_size=1, destination=False), u'0x0002')
+        self.assertEqual(self.parser.parse_arg(u'0002h', def_size=1, destination=False), u'0x0002')
 
     def test_cpp_20400(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'0007'), def_size=1, destination=False), u'0007')
+        self.assertEqual(self.parser.parse_arg(u'0007', def_size=1, destination=False), u'0007')
 
     def test_cpp_20410(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'000f3h'), def_size=1, destination=False), u'0x000f3')
+        self.assertEqual(self.parser.parse_arg(u'000f3h', def_size=1, destination=False), u'0x000f3')
 
     def test_cpp_20420(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'000ff00ffh'), def_size=4, destination=False), u'0x000ff00ff')
+        self.assertEqual(self.parser.parse_arg(u'000ff00ffh', def_size=4, destination=False), u'0x000ff00ff')
 
     def test_cpp_20430(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'001111111B'), def_size=1, destination=False), u'0x7f')
+        self.assertEqual(self.parser.parse_arg(u'001111111B', def_size=1, destination=False), u'0x7f')
 
     def test_cpp_20440(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'00fffh'), def_size=2, destination=False), u'0x00fff')
+        self.assertEqual(self.parser.parse_arg(u'00fffh', def_size=2, destination=False), u'0x00fff')
 
     def test_cpp_20450(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'00h'), def_size=1, destination=False), u'0x00')
+        self.assertEqual(self.parser.parse_arg(u'00h', def_size=1, destination=False), u'0x00')
 
     def test_cpp_20460(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'0100b'), def_size=4, destination=False), u'0x4')
+        self.assertEqual(self.parser.parse_arg(u'0100b', def_size=4, destination=False), u'0x4')
 
     def test_cpp_20470(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'01010101010101010b'), def_size=2, destination=False), u'0xaaaa')
+        self.assertEqual(self.parser.parse_arg(u'01010101010101010b', def_size=2, destination=False), u'0xaaaa')
 
     def test_cpp_20480(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'0101010101010101b'), def_size=4, destination=False), u'0x5555')
+        self.assertEqual(self.parser.parse_arg(u'0101010101010101b', def_size=4, destination=False), u'0x5555')
 
     def test_cpp_20490(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'0101b'), def_size=4, destination=False), u'0x5')
+        self.assertEqual(self.parser.parse_arg(u'0101b', def_size=4, destination=False), u'0x5')
 
     def test_cpp_20500(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'010B'), def_size=1, destination=False), u'0x2')
+        self.assertEqual(self.parser.parse_arg(u'010B', def_size=1, destination=False), u'0x2')
 
     def test_cpp_20510(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'010B'), def_size=4, destination=False), u'0x2')
+        self.assertEqual(self.parser.parse_arg(u'010B', def_size=4, destination=False), u'0x2')
 
     def test_cpp_20520(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'011111100B'), def_size=1, destination=False), u'0xfc')
+        self.assertEqual(self.parser.parse_arg(u'011111100B', def_size=1, destination=False), u'0xfc')
 
     def test_cpp_20530(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'011111111111111111111111111111111b'), def_size=4, destination=False), u'0xffffffff')
+        self.assertEqual(self.parser.parse_arg(u'011111111111111111111111111111111b', def_size=4, destination=False), u'0xffffffff')
 
     def test_cpp_20540(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'01111111111111111b'), def_size=2, destination=False), u'0xffff')
+        self.assertEqual(self.parser.parse_arg(u'01111111111111111b', def_size=2, destination=False), u'0xffff')
 
     def test_cpp_20550(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'011111111B'), def_size=1, destination=False), u'0xff')
+        self.assertEqual(self.parser.parse_arg(u'011111111B', def_size=1, destination=False), u'0xff')
 
     def test_cpp_20560(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'012345678h'), def_size=4, destination=False), u'0x012345678')
+        self.assertEqual(self.parser.parse_arg(u'012345678h', def_size=4, destination=False), u'0x012345678')
 
     def test_cpp_20570(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'01B'), def_size=4, destination=False), u'0x1')
+        self.assertEqual(self.parser.parse_arg(u'01B', def_size=4, destination=False), u'0x1')
 
     def test_cpp_20580(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'01h'), def_size=1, destination=False), u'0x01')
+        self.assertEqual(self.parser.parse_arg(u'01h', def_size=1, destination=False), u'0x01')
 
     def test_cpp_20590(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'02h'), def_size=1, destination=False), u'0x02')
+        self.assertEqual(self.parser.parse_arg(u'02h', def_size=1, destination=False), u'0x02')
 
     def test_cpp_20600(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'03dh'), def_size=1, destination=False), u'0x03d')
+        self.assertEqual(self.parser.parse_arg(u'03dh', def_size=1, destination=False), u'0x03d')
 
     def test_cpp_20610(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'03eh'), def_size=1, destination=False), u'0x03e')
+        self.assertEqual(self.parser.parse_arg(u'03eh', def_size=1, destination=False), u'0x03e')
 
     def test_cpp_20620(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'03fh'), def_size=1, destination=False), u'0x03f')
+        self.assertEqual(self.parser.parse_arg(u'03fh', def_size=1, destination=False), u'0x03f')
 
     def test_cpp_20630(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'042h'), def_size=1, destination=False), u'0x042')
+        self.assertEqual(self.parser.parse_arg(u'042h', def_size=1, destination=False), u'0x042')
 
     def test_cpp_20640(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'077123456h'), def_size=4, destination=False), u'0x077123456')
+        self.assertEqual(self.parser.parse_arg(u'077123456h', def_size=4, destination=False), u'0x077123456')
 
     def test_cpp_20650(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'077aaFF00h'), def_size=4, destination=False), u'0x077aaFF00')
+        self.assertEqual(self.parser.parse_arg(u'077aaFF00h', def_size=4, destination=False), u'0x077aaFF00')
 
     def test_cpp_20660(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'08h'), def_size=1, destination=False), u'0x08')
+        self.assertEqual(self.parser.parse_arg(u'08h', def_size=1, destination=False), u'0x08')
 
     def test_cpp_20670(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'0B'), def_size=1, destination=False), u'0x0')
+        self.assertEqual(self.parser.parse_arg(u'0B', def_size=1, destination=False), u'0x0')
 
     def test_cpp_20680(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'0BC6058h'), def_size=0, destination=False), u'0x0BC6058')
+        self.assertEqual(self.parser.parse_arg(u'0BC6058h', def_size=0, destination=False), u'0x0BC6058')
 
     def test_cpp_20690(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'0D5h'), def_size=1, destination=False), u'0x0D5')
+        self.assertEqual(self.parser.parse_arg(u'0D5h', def_size=1, destination=False), u'0x0D5')
 
     def test_cpp_20700(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'0Eh'), def_size=1, destination=False), u'0x0E')
+        self.assertEqual(self.parser.parse_arg(u'0Eh', def_size=1, destination=False), u'0x0E')
 
     def test_cpp_20710(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'0F7h'), def_size=1, destination=False), u'0x0F7')
+        self.assertEqual(self.parser.parse_arg(u'0F7h', def_size=1, destination=False), u'0x0F7')
 
     def test_cpp_20720(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'0FBCA7654h'), def_size=4, destination=False), u'0x0FBCA7654')
+        self.assertEqual(self.parser.parse_arg(u'0FBCA7654h', def_size=4, destination=False), u'0x0FBCA7654')
 
     def test_cpp_20730(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'0FBCA7h'), def_size=4, destination=False), u'0x0FBCA7')
+        self.assertEqual(self.parser.parse_arg(u'0FBCA7h', def_size=4, destination=False), u'0x0FBCA7')
 
     def test_cpp_20740(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'0FEh'), def_size=1, destination=False), u'0x0FE')
+        self.assertEqual(self.parser.parse_arg(u'0FEh', def_size=1, destination=False), u'0x0FE')
 
     def test_cpp_20750(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'0FFEh'), def_size=2, destination=False), u'0x0FFE')
+        self.assertEqual(self.parser.parse_arg(u'0FFEh', def_size=2, destination=False), u'0x0FFE')
 
     def test_cpp_20760(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'0FFFC70F9h'), def_size=4, destination=False), u'0x0FFFC70F9')
+        self.assertEqual(self.parser.parse_arg(u'0FFFC70F9h', def_size=4, destination=False), u'0x0FFFC70F9')
 
     def test_cpp_20770(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'0FFFE0080h'), def_size=4, destination=False), u'0x0FFFE0080')
+        self.assertEqual(self.parser.parse_arg(u'0FFFE0080h', def_size=4, destination=False), u'0x0FFFE0080')
 
     def test_cpp_20780(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'0FFFEDCBFh'), def_size=4, destination=False), u'0x0FFFEDCBF')
+        self.assertEqual(self.parser.parse_arg(u'0FFFEDCBFh', def_size=4, destination=False), u'0x0FFFEDCBF')
 
     def test_cpp_20790(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'0FFFEFDFCh'), def_size=4, destination=False), u'0x0FFFEFDFC')
+        self.assertEqual(self.parser.parse_arg(u'0FFFEFDFCh', def_size=4, destination=False), u'0x0FFFEFDFC')
 
     def test_cpp_20800(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'0FFFEh'), def_size=2, destination=False), u'0x0FFFE')
+        self.assertEqual(self.parser.parse_arg(u'0FFFEh', def_size=2, destination=False), u'0x0FFFE')
 
     def test_cpp_20810(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'0FFFF7FFFh'), def_size=4, destination=False), u'0x0FFFF7FFF')
+        self.assertEqual(self.parser.parse_arg(u'0FFFF7FFFh', def_size=4, destination=False), u'0x0FFFF7FFF')
 
     def test_cpp_20820(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'0FFFFA549h'), def_size=4, destination=False), u'0x0FFFFA549')
+        self.assertEqual(self.parser.parse_arg(u'0FFFFA549h', def_size=4, destination=False), u'0x0FFFFA549')
 
     def test_cpp_20830(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'0FFFFEh'), def_size=4, destination=False), u'0x0FFFFE')
+        self.assertEqual(self.parser.parse_arg(u'0FFFFEh', def_size=4, destination=False), u'0x0FFFFE')
 
     def test_cpp_20840(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'0FFFFFED4h'), def_size=4, destination=False), u'0x0FFFFFED4')
+        self.assertEqual(self.parser.parse_arg(u'0FFFFFED4h', def_size=4, destination=False), u'0x0FFFFFED4')
 
     def test_cpp_20850(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'0FFFFFEh'), def_size=4, destination=False), u'0x0FFFFFE')
+        self.assertEqual(self.parser.parse_arg(u'0FFFFFEh', def_size=4, destination=False), u'0x0FFFFFE')
 
     def test_cpp_20860(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'0FFFFFFD3h'), def_size=4, destination=False), u'0x0FFFFFFD3')
+        self.assertEqual(self.parser.parse_arg(u'0FFFFFFD3h', def_size=4, destination=False), u'0x0FFFFFFD3')
 
     def test_cpp_20870(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'0FFFFFFECh'), def_size=4, destination=False), u'0x0FFFFFFEC')
+        self.assertEqual(self.parser.parse_arg(u'0FFFFFFECh', def_size=4, destination=False), u'0x0FFFFFFEC')
 
     def test_cpp_20880(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'0FFFFFFEh'), def_size=4, destination=False), u'0x0FFFFFFE')
+        self.assertEqual(self.parser.parse_arg(u'0FFFFFFEh', def_size=4, destination=False), u'0x0FFFFFFE')
 
     def test_cpp_20890(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'0FFFFFFF0h'), def_size=4, destination=False), u'0x0FFFFFFF0')
+        self.assertEqual(self.parser.parse_arg(u'0FFFFFFF0h', def_size=4, destination=False), u'0x0FFFFFFF0')
 
     def test_cpp_20900(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'0FFFFFFF7h'), def_size=4, destination=False), u'0x0FFFFFFF7')
+        self.assertEqual(self.parser.parse_arg(u'0FFFFFFF7h', def_size=4, destination=False), u'0x0FFFFFFF7')
 
     def test_cpp_20910(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'0FFFFFFFAh'), def_size=4, destination=False), u'0x0FFFFFFFA')
+        self.assertEqual(self.parser.parse_arg(u'0FFFFFFFAh', def_size=4, destination=False), u'0x0FFFFFFFA')
 
     def test_cpp_20920(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'0FFFFFFFBh'), def_size=4, destination=False), u'0x0FFFFFFFB')
+        self.assertEqual(self.parser.parse_arg(u'0FFFFFFFBh', def_size=4, destination=False), u'0x0FFFFFFFB')
 
     def test_cpp_20930(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'0FFFFFFFCh'), def_size=4, destination=False), u'0x0FFFFFFFC')
+        self.assertEqual(self.parser.parse_arg(u'0FFFFFFFCh', def_size=4, destination=False), u'0x0FFFFFFFC')
 
     def test_cpp_20940(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'0FFFFFFFDh'), def_size=4, destination=False), u'0x0FFFFFFFD')
+        self.assertEqual(self.parser.parse_arg(u'0FFFFFFFDh', def_size=4, destination=False), u'0x0FFFFFFFD')
 
     def test_cpp_20950(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'0FFFFFFFEh'), def_size=4, destination=False), u'0x0FFFFFFFE')
+        self.assertEqual(self.parser.parse_arg(u'0FFFFFFFEh', def_size=4, destination=False), u'0x0FFFFFFFE')
 
     def test_cpp_20960(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'0FFFFFFFFh'), def_size=4, destination=False), u'0x0FFFFFFFF')
+        self.assertEqual(self.parser.parse_arg(u'0FFFFFFFFh', def_size=4, destination=False), u'0x0FFFFFFFF')
 
     def test_cpp_20970(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'0FFFFFFFh'), def_size=4, destination=False), u'0x0FFFFFFF')
+        self.assertEqual(self.parser.parse_arg(u'0FFFFFFFh', def_size=4, destination=False), u'0x0FFFFFFF')
 
     def test_cpp_20980(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'0FFFFFFh'), def_size=4, destination=False), u'0x0FFFFFF')
+        self.assertEqual(self.parser.parse_arg(u'0FFFFFFh', def_size=4, destination=False), u'0x0FFFFFF')
 
     def test_cpp_20990(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'0FFFFFh'), def_size=4, destination=False), u'0x0FFFFF')
+        self.assertEqual(self.parser.parse_arg(u'0FFFFFh', def_size=4, destination=False), u'0x0FFFFF')
 
     def test_cpp_21000(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'0FFFFh'), def_size=2, destination=False), u'0x0FFFF')
+        self.assertEqual(self.parser.parse_arg(u'0FFFFh', def_size=2, destination=False), u'0x0FFFF')
 
     def test_cpp_21010(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'0FFFh'), def_size=2, destination=False), u'0x0FFF')
+        self.assertEqual(self.parser.parse_arg(u'0FFFh', def_size=2, destination=False), u'0x0FFF')
 
     def test_cpp_21020(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'0FFh'), def_size=1, destination=False), u'0x0FF')
+        self.assertEqual(self.parser.parse_arg(u'0FFh', def_size=1, destination=False), u'0x0FF')
 
     def test_cpp_21030(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'0Fh'), def_size=1, destination=False), u'0x0F')
+        self.assertEqual(self.parser.parse_arg(u'0Fh', def_size=1, destination=False), u'0x0F')
 
     def test_cpp_21040(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'0a0000h'), def_size=4, destination=False), u'0x0a0000')
+        self.assertEqual(self.parser.parse_arg(u'0a0000h', def_size=4, destination=False), u'0x0a0000')
 
     def test_cpp_21050(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'0a000h'), def_size=2, destination=False), u'0x0a000')
+        self.assertEqual(self.parser.parse_arg(u'0a000h', def_size=2, destination=False), u'0x0a000')
 
     def test_cpp_21060(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'0aabbccddh'), def_size=4, destination=False), u'0x0aabbccdd')
+        self.assertEqual(self.parser.parse_arg(u'0aabbccddh', def_size=4, destination=False), u'0x0aabbccdd')
 
     def test_cpp_21070(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'0abcdef77h'), def_size=4, destination=False), u'0x0abcdef77')
+        self.assertEqual(self.parser.parse_arg(u'0abcdef77h', def_size=4, destination=False), u'0x0abcdef77')
 
     def test_cpp_21080(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'0af222h'), def_size=4, destination=False), u'0x0af222')
+        self.assertEqual(self.parser.parse_arg(u'0af222h', def_size=4, destination=False), u'0x0af222')
 
     def test_cpp_21090(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'0cch'), def_size=1, destination=False), u'0x0cc')
+        self.assertEqual(self.parser.parse_arg(u'0cch', def_size=1, destination=False), u'0x0cc')
 
     def test_cpp_21100(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'0ddh'), def_size=1, destination=False), u'0x0dd')
+        self.assertEqual(self.parser.parse_arg(u'0ddh', def_size=1, destination=False), u'0x0dd')
 
     def test_cpp_21110(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'0df01h'), def_size=2, destination=False), u'0x0df01')
+        self.assertEqual(self.parser.parse_arg(u'0df01h', def_size=2, destination=False), u'0x0df01')
 
     def test_cpp_21120(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'0dff1h'), def_size=2, destination=False), u'0x0dff1')
+        self.assertEqual(self.parser.parse_arg(u'0dff1h', def_size=2, destination=False), u'0x0dff1')
 
     def test_cpp_21130(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'0f0ffh'), def_size=2, destination=False), u'0x0f0ff')
+        self.assertEqual(self.parser.parse_arg(u'0f0ffh', def_size=2, destination=False), u'0x0f0ff')
 
     def test_cpp_21140(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'0f0h'), def_size=1, destination=False), u'0x0f0')
+        self.assertEqual(self.parser.parse_arg(u'0f0h', def_size=1, destination=False), u'0x0f0')
 
     def test_cpp_21150(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'0f222h'), def_size=2, destination=False), u'0x0f222')
+        self.assertEqual(self.parser.parse_arg(u'0f222h', def_size=2, destination=False), u'0x0f222')
 
     def test_cpp_21160(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'0ffff0003h'), def_size=4, destination=False), u'0x0ffff0003')
+        self.assertEqual(self.parser.parse_arg(u'0ffff0003h', def_size=4, destination=False), u'0x0ffff0003')
 
     def test_cpp_21170(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'0ffff00f3h'), def_size=4, destination=False), u'0x0ffff00f3')
+        self.assertEqual(self.parser.parse_arg(u'0ffff00f3h', def_size=4, destination=False), u'0x0ffff00f3')
 
     def test_cpp_21180(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'0ffff01ffh'), def_size=4, destination=False), u'0x0ffff01ff')
+        self.assertEqual(self.parser.parse_arg(u'0ffff01ffh', def_size=4, destination=False), u'0x0ffff01ff')
 
     def test_cpp_21190(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'0ffffff00h'), def_size=4, destination=False), u'0x0ffffff00')
+        self.assertEqual(self.parser.parse_arg(u'0ffffff00h', def_size=4, destination=False), u'0x0ffffff00')
 
     def test_cpp_21200(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'0ffffff03h'), def_size=4, destination=False), u'0x0ffffff03')
+        self.assertEqual(self.parser.parse_arg(u'0ffffff03h', def_size=4, destination=False), u'0x0ffffff03')
 
     def test_cpp_21210(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'0fffffff3h'), def_size=4, destination=False), u'0x0fffffff3')
+        self.assertEqual(self.parser.parse_arg(u'0fffffff3h', def_size=4, destination=False), u'0x0fffffff3')
 
     def test_cpp_21220(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'0ffffffffh'), def_size=4, destination=False), u'0x0ffffffff')
+        self.assertEqual(self.parser.parse_arg(u'0ffffffffh', def_size=4, destination=False), u'0x0ffffffff')
 
     def test_cpp_21230(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'0ffffh'), def_size=2, destination=False), u'0x0ffff')
+        self.assertEqual(self.parser.parse_arg(u'0ffffh', def_size=2, destination=False), u'0x0ffff')
 
     def test_cpp_21240(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'0ffh'), def_size=1, destination=False), u'0x0ff')
+        self.assertEqual(self.parser.parse_arg(u'0ffh', def_size=1, destination=False), u'0x0ff')
 
     def test_cpp_21250(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'1'), def_size=0, destination=False), u'1')
+        self.assertEqual(self.parser.parse_arg(u'1', def_size=0, destination=False), u'1')
 
     def test_cpp_21260(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'1'), def_size=1, destination=False), u'1')
+        self.assertEqual(self.parser.parse_arg(u'1', def_size=1, destination=False), u'1')
 
     def test_cpp_21270(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'10'), def_size=1, destination=False), u'10')
+        self.assertEqual(self.parser.parse_arg(u'10', def_size=1, destination=False), u'10')
 
     def test_cpp_21280(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'10000h'), def_size=4, destination=False), u'0x10000')
+        self.assertEqual(self.parser.parse_arg(u'10000h', def_size=4, destination=False), u'0x10000')
 
     def test_cpp_21290(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'1000h'), def_size=2, destination=False), u'0x1000')
+        self.assertEqual(self.parser.parse_arg(u'1000h', def_size=2, destination=False), u'0x1000')
 
     def test_cpp_21300(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'100h'), def_size=2, destination=False), u'0x100')
+        self.assertEqual(self.parser.parse_arg(u'100h', def_size=2, destination=False), u'0x100')
 
     def test_cpp_21310(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'1024*10/16'), def_size=2, destination=False), u'1024*10/16')
+        self.assertEqual(self.parser.parse_arg(u'1024*10/16', def_size=2, destination=False), u'1024*10/16')
 
     def test_cpp_21320(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'1024*1024'), def_size=4, destination=False), u'1024*1024')
+        self.assertEqual(self.parser.parse_arg(u'1024*1024', def_size=4, destination=False), u'1024*1024')
 
     def test_cpp_21330(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'10B'), def_size=4, destination=False), u'0x2')
+        self.assertEqual(self.parser.parse_arg(u'10B', def_size=4, destination=False), u'0x2')
 
     def test_cpp_21340(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'10h'), def_size=0, destination=False), u'0x10')
+        self.assertEqual(self.parser.parse_arg(u'10h', def_size=0, destination=False), u'0x10')
 
     def test_cpp_21350(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'10h'), def_size=1, destination=False), u'0x10')
+        self.assertEqual(self.parser.parse_arg(u'10h', def_size=1, destination=False), u'0x10')
 
     def test_cpp_21360(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'11'), def_size=1, destination=False), u'11')
+        self.assertEqual(self.parser.parse_arg(u'11', def_size=1, destination=False), u'11')
 
     def test_cpp_21370(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'111'), def_size=1, destination=False), u'111')
+        self.assertEqual(self.parser.parse_arg(u'111', def_size=1, destination=False), u'111')
 
     def test_cpp_21380(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'114h'), def_size=2, destination=False), u'0x114')
+        self.assertEqual(self.parser.parse_arg(u'114h', def_size=2, destination=False), u'0x114')
 
     def test_cpp_21390(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'11h'), def_size=1, destination=False), u'0x11')
+        self.assertEqual(self.parser.parse_arg(u'11h', def_size=1, destination=False), u'0x11')
 
     def test_cpp_21400(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'12'), def_size=1, destination=False), u'12')
+        self.assertEqual(self.parser.parse_arg(u'12', def_size=1, destination=False), u'12')
 
     def test_cpp_21410(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'12340004h'), def_size=4, destination=False), u'0x12340004')
+        self.assertEqual(self.parser.parse_arg(u'12340004h', def_size=4, destination=False), u'0x12340004')
 
     def test_cpp_21420(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'1234001Dh'), def_size=4, destination=False), u'0x1234001D')
+        self.assertEqual(self.parser.parse_arg(u'1234001Dh', def_size=4, destination=False), u'0x1234001D')
 
     def test_cpp_21430(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'12340128h'), def_size=4, destination=False), u'0x12340128')
+        self.assertEqual(self.parser.parse_arg(u'12340128h', def_size=4, destination=False), u'0x12340128')
 
     def test_cpp_21440(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'12340205h'), def_size=4, destination=False), u'0x12340205')
+        self.assertEqual(self.parser.parse_arg(u'12340205h', def_size=4, destination=False), u'0x12340205')
 
     def test_cpp_21450(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'12340306h'), def_size=4, destination=False), u'0x12340306')
+        self.assertEqual(self.parser.parse_arg(u'12340306h', def_size=4, destination=False), u'0x12340306')
 
     def test_cpp_21460(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'12340407h'), def_size=4, destination=False), u'0x12340407')
+        self.assertEqual(self.parser.parse_arg(u'12340407h', def_size=4, destination=False), u'0x12340407')
 
     def test_cpp_21470(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'1234040Ah'), def_size=4, destination=False), u'0x1234040A')
+        self.assertEqual(self.parser.parse_arg(u'1234040Ah', def_size=4, destination=False), u'0x1234040A')
 
     def test_cpp_21480(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'12340503h'), def_size=4, destination=False), u'0x12340503')
+        self.assertEqual(self.parser.parse_arg(u'12340503h', def_size=4, destination=False), u'0x12340503')
 
     def test_cpp_21490(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'12340506h'), def_size=4, destination=False), u'0x12340506')
+        self.assertEqual(self.parser.parse_arg(u'12340506h', def_size=4, destination=False), u'0x12340506')
 
     def test_cpp_21500(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'12340507h'), def_size=4, destination=False), u'0x12340507')
+        self.assertEqual(self.parser.parse_arg(u'12340507h', def_size=4, destination=False), u'0x12340507')
 
     def test_cpp_21510(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'12340547h'), def_size=4, destination=False), u'0x12340547')
+        self.assertEqual(self.parser.parse_arg(u'12340547h', def_size=4, destination=False), u'0x12340547')
 
     def test_cpp_21520(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'12340559h'), def_size=4, destination=False), u'0x12340559')
+        self.assertEqual(self.parser.parse_arg(u'12340559h', def_size=4, destination=False), u'0x12340559')
 
     def test_cpp_21530(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'12340560h'), def_size=4, destination=False), u'0x12340560')
+        self.assertEqual(self.parser.parse_arg(u'12340560h', def_size=4, destination=False), u'0x12340560')
 
     def test_cpp_21540(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'1234059Fh'), def_size=4, destination=False), u'0x1234059F')
+        self.assertEqual(self.parser.parse_arg(u'1234059Fh', def_size=4, destination=False), u'0x1234059F')
 
     def test_cpp_21550(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'123405A0h'), def_size=4, destination=False), u'0x123405A0')
+        self.assertEqual(self.parser.parse_arg(u'123405A0h', def_size=4, destination=False), u'0x123405A0')
 
     def test_cpp_21560(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'123405FAh'), def_size=4, destination=False), u'0x123405FA')
+        self.assertEqual(self.parser.parse_arg(u'123405FAh', def_size=4, destination=False), u'0x123405FA')
 
     def test_cpp_21570(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'12341678h'), def_size=4, destination=False), u'0x12341678')
+        self.assertEqual(self.parser.parse_arg(u'12341678h', def_size=4, destination=False), u'0x12341678')
 
     def test_cpp_21580(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'12341h'), def_size=4, destination=False), u'0x12341')
+        self.assertEqual(self.parser.parse_arg(u'12341h', def_size=4, destination=False), u'0x12341')
 
     def test_cpp_21590(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'12343h'), def_size=4, destination=False), u'0x12343')
+        self.assertEqual(self.parser.parse_arg(u'12343h', def_size=4, destination=False), u'0x12343')
 
     def test_cpp_21600(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'12345'), def_size=2, destination=False), u'12345')
+        self.assertEqual(self.parser.parse_arg(u'12345', def_size=2, destination=False), u'12345')
 
     def test_cpp_21610(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'1234561Dh'), def_size=4, destination=False), u'0x1234561D')
+        self.assertEqual(self.parser.parse_arg(u'1234561Dh', def_size=4, destination=False), u'0x1234561D')
 
     def test_cpp_21620(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'12345678h'), def_size=4, destination=False), u'0x12345678')
+        self.assertEqual(self.parser.parse_arg(u'12345678h', def_size=4, destination=False), u'0x12345678')
 
     def test_cpp_21630(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'12345h'), def_size=4, destination=False), u'0x12345')
+        self.assertEqual(self.parser.parse_arg(u'12345h', def_size=4, destination=False), u'0x12345')
 
     def test_cpp_21640(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'12347F7Fh'), def_size=4, destination=False), u'0x12347F7F')
+        self.assertEqual(self.parser.parse_arg(u'12347F7Fh', def_size=4, destination=False), u'0x12347F7F')
 
     def test_cpp_21650(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'12347FFFh'), def_size=4, destination=False), u'0x12347FFF')
+        self.assertEqual(self.parser.parse_arg(u'12347FFFh', def_size=4, destination=False), u'0x12347FFF')
 
     def test_cpp_21660(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'12348000h'), def_size=4, destination=False), u'0x12348000')
+        self.assertEqual(self.parser.parse_arg(u'12348000h', def_size=4, destination=False), u'0x12348000')
 
     def test_cpp_21670(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'12348080h'), def_size=4, destination=False), u'0x12348080')
+        self.assertEqual(self.parser.parse_arg(u'12348080h', def_size=4, destination=False), u'0x12348080')
 
     def test_cpp_21680(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'1234h'), def_size=2, destination=False), u'0x1234')
+        self.assertEqual(self.parser.parse_arg(u'1234h', def_size=2, destination=False), u'0x1234')
 
     def test_cpp_21690(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'127Eh'), def_size=2, destination=False), u'0x127E')
+        self.assertEqual(self.parser.parse_arg(u'127Eh', def_size=2, destination=False), u'0x127E')
 
     def test_cpp_21700(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'12Ch'), def_size=2, destination=False), u'0x12C')
+        self.assertEqual(self.parser.parse_arg(u'12Ch', def_size=2, destination=False), u'0x12C')
 
     def test_cpp_21710(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'13'), def_size=1, destination=False), u'13')
+        self.assertEqual(self.parser.parse_arg(u'13', def_size=1, destination=False), u'13')
 
     def test_cpp_21720(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'132'), def_size=1, destination=False), u'132')
+        self.assertEqual(self.parser.parse_arg(u'132', def_size=1, destination=False), u'132')
 
     def test_cpp_21730(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'133'), def_size=1, destination=False), u'133')
+        self.assertEqual(self.parser.parse_arg(u'133', def_size=1, destination=False), u'133')
 
     def test_cpp_21740(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'13h'), def_size=1, destination=False), u'0x13')
+        self.assertEqual(self.parser.parse_arg(u'13h', def_size=1, destination=False), u'0x13')
 
     def test_cpp_21750(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'14'), def_size=1, destination=False), u'14')
+        self.assertEqual(self.parser.parse_arg(u'14', def_size=1, destination=False), u'14')
 
     def test_cpp_21760(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'14*320'), def_size=4, destination=False), u'14*320')
+        self.assertEqual(self.parser.parse_arg(u'14*320', def_size=4, destination=False), u'14*320')
 
     def test_cpp_21770(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'14h'), def_size=1, destination=False), u'0x14')
+        self.assertEqual(self.parser.parse_arg(u'14h', def_size=1, destination=False), u'0x14')
 
     def test_cpp_21780(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'15'), def_size=1, destination=False), u'15')
+        self.assertEqual(self.parser.parse_arg(u'15', def_size=1, destination=False), u'15')
 
     def test_cpp_21790(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'16'), def_size=1, destination=False), u'16')
+        self.assertEqual(self.parser.parse_arg(u'16', def_size=1, destination=False), u'16')
 
     def test_cpp_21800(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'17'), def_size=1, destination=False), u'17')
+        self.assertEqual(self.parser.parse_arg(u'17', def_size=1, destination=False), u'17')
 
     def test_cpp_21810(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'17h'), def_size=1, destination=False), u'0x17')
+        self.assertEqual(self.parser.parse_arg(u'17h', def_size=1, destination=False), u'0x17')
 
     def test_cpp_21820(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'18'), def_size=1, destination=False), u'18')
+        self.assertEqual(self.parser.parse_arg(u'18', def_size=1, destination=False), u'18')
 
     def test_cpp_21830(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'18h'), def_size=1, destination=False), u'0x18')
+        self.assertEqual(self.parser.parse_arg(u'18h', def_size=1, destination=False), u'0x18')
 
     def test_cpp_21840(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'19'), def_size=1, destination=False), u'19')
+        self.assertEqual(self.parser.parse_arg(u'19', def_size=1, destination=False), u'19')
 
     def test_cpp_21850(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'192'), def_size=1, destination=False), u'192')
+        self.assertEqual(self.parser.parse_arg(u'192', def_size=1, destination=False), u'192')
 
     def test_cpp_21860(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'193'), def_size=1, destination=False), u'193')
+        self.assertEqual(self.parser.parse_arg(u'193', def_size=1, destination=False), u'193')
 
     def test_cpp_21870(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'1Ch'), def_size=1, destination=False), u'0x1C')
+        self.assertEqual(self.parser.parse_arg(u'1Ch', def_size=1, destination=False), u'0x1C')
 
     def test_cpp_21880(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'1Eh'), def_size=1, destination=False), u'0x1E')
+        self.assertEqual(self.parser.parse_arg(u'1Eh', def_size=1, destination=False), u'0x1E')
 
     def test_cpp_21890(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'1FEh'), def_size=2, destination=False), u'0x1FE')
+        self.assertEqual(self.parser.parse_arg(u'1FEh', def_size=2, destination=False), u'0x1FE')
 
     def test_cpp_21900(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'1FF7Fh'), def_size=4, destination=False), u'0x1FF7F')
+        self.assertEqual(self.parser.parse_arg(u'1FF7Fh', def_size=4, destination=False), u'0x1FF7F')
 
     def test_cpp_21910(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'1FF80h'), def_size=4, destination=False), u'0x1FF80')
+        self.assertEqual(self.parser.parse_arg(u'1FF80h', def_size=4, destination=False), u'0x1FF80')
 
     def test_cpp_21920(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'1FF81h'), def_size=4, destination=False), u'0x1FF81')
+        self.assertEqual(self.parser.parse_arg(u'1FF81h', def_size=4, destination=False), u'0x1FF81')
 
     def test_cpp_21930(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'1FFEh'), def_size=2, destination=False), u'0x1FFE')
+        self.assertEqual(self.parser.parse_arg(u'1FFEh', def_size=2, destination=False), u'0x1FFE')
 
     def test_cpp_21940(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'1FFFEh'), def_size=4, destination=False), u'0x1FFFE')
+        self.assertEqual(self.parser.parse_arg(u'1FFFEh', def_size=4, destination=False), u'0x1FFFE')
 
     def test_cpp_21950(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'1FFFFEh'), def_size=4, destination=False), u'0x1FFFFE')
+        self.assertEqual(self.parser.parse_arg(u'1FFFFEh', def_size=4, destination=False), u'0x1FFFFE')
 
     def test_cpp_21960(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'1FFFFFEh'), def_size=4, destination=False), u'0x1FFFFFE')
+        self.assertEqual(self.parser.parse_arg(u'1FFFFFEh', def_size=4, destination=False), u'0x1FFFFFE')
 
     def test_cpp_21970(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'1FFFFFFEh'), def_size=4, destination=False), u'0x1FFFFFFE')
+        self.assertEqual(self.parser.parse_arg(u'1FFFFFFEh', def_size=4, destination=False), u'0x1FFFFFFE')
 
     def test_cpp_21980(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'1FFFFFFFh'), def_size=4, destination=False), u'0x1FFFFFFF')
+        self.assertEqual(self.parser.parse_arg(u'1FFFFFFFh', def_size=4, destination=False), u'0x1FFFFFFF')
 
     def test_cpp_21990(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'1FFFFFFh'), def_size=4, destination=False), u'0x1FFFFFF')
+        self.assertEqual(self.parser.parse_arg(u'1FFFFFFh', def_size=4, destination=False), u'0x1FFFFFF')
 
     def test_cpp_22000(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'1FFFFFh'), def_size=4, destination=False), u'0x1FFFFF')
+        self.assertEqual(self.parser.parse_arg(u'1FFFFFh', def_size=4, destination=False), u'0x1FFFFF')
 
     def test_cpp_22010(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'1FFFFh'), def_size=4, destination=False), u'0x1FFFF')
+        self.assertEqual(self.parser.parse_arg(u'1FFFFh', def_size=4, destination=False), u'0x1FFFF')
 
     def test_cpp_22020(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'1FFFh'), def_size=2, destination=False), u'0x1FFF')
+        self.assertEqual(self.parser.parse_arg(u'1FFFh', def_size=2, destination=False), u'0x1FFF')
 
     def test_cpp_22030(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'1FFh'), def_size=2, destination=False), u'0x1FF')
+        self.assertEqual(self.parser.parse_arg(u'1FFh', def_size=2, destination=False), u'0x1FF')
 
     def test_cpp_22040(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'1Fh'), def_size=1, destination=False), u'0x1F')
+        self.assertEqual(self.parser.parse_arg(u'1Fh', def_size=1, destination=False), u'0x1F')
 
     def test_cpp_22050(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'2'), def_size=0, destination=False), u'2')
+        self.assertEqual(self.parser.parse_arg(u'2', def_size=0, destination=False), u'2')
 
     def test_cpp_22060(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'2'), def_size=1, destination=False), u'2')
+        self.assertEqual(self.parser.parse_arg(u'2', def_size=1, destination=False), u'2')
 
     def test_cpp_22070(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'20'), def_size=1, destination=False), u'20')
+        self.assertEqual(self.parser.parse_arg(u'20', def_size=1, destination=False), u'20')
 
     def test_cpp_22080(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'20000h'), def_size=4, destination=False), u'0x20000')
+        self.assertEqual(self.parser.parse_arg(u'20000h', def_size=4, destination=False), u'0x20000')
 
     def test_cpp_22090(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'20h'), def_size=1, destination=False), u'0x20')
+        self.assertEqual(self.parser.parse_arg(u'20h', def_size=1, destination=False), u'0x20')
 
     def test_cpp_22100(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'21'), def_size=1, destination=False), u'21')
+        self.assertEqual(self.parser.parse_arg(u'21', def_size=1, destination=False), u'21')
 
     def test_cpp_22110(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'21AD3D34h'), def_size=4, destination=False), u'0x21AD3D34')
+        self.assertEqual(self.parser.parse_arg(u'21AD3D34h', def_size=4, destination=False), u'0x21AD3D34')
 
     def test_cpp_22120(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'21h'), def_size=0, destination=False), u'0x21')
+        self.assertEqual(self.parser.parse_arg(u'21h', def_size=0, destination=False), u'0x21')
 
     def test_cpp_22130(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'22'), def_size=1, destination=False), u'22')
+        self.assertEqual(self.parser.parse_arg(u'22', def_size=1, destination=False), u'22')
 
     def test_cpp_22140(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'23'), def_size=1, destination=False), u'23')
+        self.assertEqual(self.parser.parse_arg(u'23', def_size=1, destination=False), u'23')
 
     def test_cpp_22150(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'24'), def_size=1, destination=False), u'24')
+        self.assertEqual(self.parser.parse_arg(u'24', def_size=1, destination=False), u'24')
 
     def test_cpp_22160(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'24h'), def_size=1, destination=False), u'0x24')
+        self.assertEqual(self.parser.parse_arg(u'24h', def_size=1, destination=False), u'0x24')
 
     def test_cpp_22170(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'25'), def_size=1, destination=False), u'25')
+        self.assertEqual(self.parser.parse_arg(u'25', def_size=1, destination=False), u'25')
 
     def test_cpp_22180(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'255'), def_size=1, destination=False), u'255')
+        self.assertEqual(self.parser.parse_arg(u'255', def_size=1, destination=False), u'255')
 
     def test_cpp_22190(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'256'), def_size=2, destination=False), u'256')
+        self.assertEqual(self.parser.parse_arg(u'256', def_size=2, destination=False), u'256')
 
     def test_cpp_22200(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'256*3'), def_size=2, destination=False), u'256*3')
+        self.assertEqual(self.parser.parse_arg(u'256*3', def_size=2, destination=False), u'256*3')
 
     def test_cpp_22210(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'256+3'), def_size=2, destination=False), u'256+3')
+        self.assertEqual(self.parser.parse_arg(u'256+3', def_size=2, destination=False), u'256+3')
 
     def test_cpp_22220(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'256+3+65536'), def_size=4, destination=False), u'256+3+65536')
+        self.assertEqual(self.parser.parse_arg(u'256+3+65536', def_size=4, destination=False), u'256+3+65536')
 
     def test_cpp_22230(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'26'), def_size=1, destination=False), u'26')
+        self.assertEqual(self.parser.parse_arg(u'26', def_size=1, destination=False), u'26')
 
     def test_cpp_22240(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'27'), def_size=1, destination=False), u'27')
+        self.assertEqual(self.parser.parse_arg(u'27', def_size=1, destination=False), u'27')
 
     def test_cpp_22250(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'28'), def_size=1, destination=False), u'28')
+        self.assertEqual(self.parser.parse_arg(u'28', def_size=1, destination=False), u'28')
 
     def test_cpp_22260(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'29'), def_size=1, destination=False), u'29')
+        self.assertEqual(self.parser.parse_arg(u'29', def_size=1, destination=False), u'29')
 
     def test_cpp_22270(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'2Ch'), def_size=1, destination=False), u'0x2C')
+        self.assertEqual(self.parser.parse_arg(u'2Ch', def_size=1, destination=False), u'0x2C')
 
     def test_cpp_22280(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'2Dh'), def_size=1, destination=False), u'0x2D')
+        self.assertEqual(self.parser.parse_arg(u'2Dh', def_size=1, destination=False), u'0x2D')
 
     def test_cpp_22290(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'2Dh'), def_size=2, destination=False), u'0x2D')
+        self.assertEqual(self.parser.parse_arg(u'2Dh', def_size=2, destination=False), u'0x2D')
 
     def test_cpp_22300(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'2Dh'), def_size=4, destination=False), u'0x2D')
+        self.assertEqual(self.parser.parse_arg(u'2Dh', def_size=4, destination=False), u'0x2D')
 
     def test_cpp_22310(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'3'), def_size=0, destination=False), u'3')
+        self.assertEqual(self.parser.parse_arg(u'3', def_size=0, destination=False), u'3')
 
     def test_cpp_22320(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'3'), def_size=1, destination=False), u'3')
+        self.assertEqual(self.parser.parse_arg(u'3', def_size=1, destination=False), u'3')
 
     def test_cpp_22330(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'3*4'), def_size=4, destination=False), u'3*4')
+        self.assertEqual(self.parser.parse_arg(u'3*4', def_size=4, destination=False), u'3*4')
 
     def test_cpp_22340(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'30'), def_size=1, destination=False), u'30')
+        self.assertEqual(self.parser.parse_arg(u'30', def_size=1, destination=False), u'30')
 
     def test_cpp_22350(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'303Bh'), def_size=2, destination=False), u'0x303B')
+        self.assertEqual(self.parser.parse_arg(u'303Bh', def_size=2, destination=False), u'0x303B')
 
     def test_cpp_22360(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'30h'), def_size=1, destination=False), u'0x30')
+        self.assertEqual(self.parser.parse_arg(u'30h', def_size=1, destination=False), u'0x30')
 
     def test_cpp_22370(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'31'), def_size=1, destination=False), u'31')
+        self.assertEqual(self.parser.parse_arg(u'31', def_size=1, destination=False), u'31')
 
     def test_cpp_22380(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'31h'), def_size=0, destination=False), u'0x31')
+        self.assertEqual(self.parser.parse_arg(u'31h', def_size=0, destination=False), u'0x31')
 
     def test_cpp_22390(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'32'), def_size=1, destination=False), u'32')
+        self.assertEqual(self.parser.parse_arg(u'32', def_size=1, destination=False), u'32')
 
     def test_cpp_22400(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'320*200/4'), def_size=4, destination=False), u'320*200/4')
+        self.assertEqual(self.parser.parse_arg(u'320*200/4', def_size=4, destination=False), u'320*200/4')
 
     def test_cpp_22410(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'32432434h'), def_size=4, destination=False), u'0x32432434')
+        self.assertEqual(self.parser.parse_arg(u'32432434h', def_size=4, destination=False), u'0x32432434')
 
     def test_cpp_22420(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'340128h'), def_size=4, destination=False), u'0x340128')
+        self.assertEqual(self.parser.parse_arg(u'340128h', def_size=4, destination=False), u'0x340128')
 
     def test_cpp_22430(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'35'), def_size=1, destination=False), u'35')
+        self.assertEqual(self.parser.parse_arg(u'35', def_size=1, destination=False), u'35')
 
     def test_cpp_22440(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'37'), def_size=1, destination=False), u'37')
+        self.assertEqual(self.parser.parse_arg(u'37', def_size=1, destination=False), u'37')
 
     def test_cpp_22450(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'39h'), def_size=1, destination=False), u'0x39')
+        self.assertEqual(self.parser.parse_arg(u'39h', def_size=1, destination=False), u'0x39')
 
     def test_cpp_22460(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'3Ch'), def_size=1, destination=False), u'0x3C')
+        self.assertEqual(self.parser.parse_arg(u'3Ch', def_size=1, destination=False), u'0x3C')
 
     def test_cpp_22470(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'3DAh'), def_size=2, destination=False), u'0x3DA')
+        self.assertEqual(self.parser.parse_arg(u'3DAh', def_size=2, destination=False), u'0x3DA')
 
     def test_cpp_22480(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'3Eh'), def_size=1, destination=False), u'0x3E')
+        self.assertEqual(self.parser.parse_arg(u'3Eh', def_size=1, destination=False), u'0x3E')
 
     def test_cpp_22490(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'3FEh'), def_size=2, destination=False), u'0x3FE')
+        self.assertEqual(self.parser.parse_arg(u'3FEh', def_size=2, destination=False), u'0x3FE')
 
     def test_cpp_22500(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'3FFEh'), def_size=2, destination=False), u'0x3FFE')
+        self.assertEqual(self.parser.parse_arg(u'3FFEh', def_size=2, destination=False), u'0x3FFE')
 
     def test_cpp_22510(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'3FFFEh'), def_size=4, destination=False), u'0x3FFFE')
+        self.assertEqual(self.parser.parse_arg(u'3FFFEh', def_size=4, destination=False), u'0x3FFFE')
 
     def test_cpp_22520(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'3FFFFEh'), def_size=4, destination=False), u'0x3FFFFE')
+        self.assertEqual(self.parser.parse_arg(u'3FFFFEh', def_size=4, destination=False), u'0x3FFFFE')
 
     def test_cpp_22530(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'3FFFFFEh'), def_size=4, destination=False), u'0x3FFFFFE')
+        self.assertEqual(self.parser.parse_arg(u'3FFFFFEh', def_size=4, destination=False), u'0x3FFFFFE')
 
     def test_cpp_22540(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'3FFFFFFEh'), def_size=4, destination=False), u'0x3FFFFFFE')
+        self.assertEqual(self.parser.parse_arg(u'3FFFFFFEh', def_size=4, destination=False), u'0x3FFFFFFE')
 
     def test_cpp_22550(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'3FFFFFFFh'), def_size=4, destination=False), u'0x3FFFFFFF')
+        self.assertEqual(self.parser.parse_arg(u'3FFFFFFFh', def_size=4, destination=False), u'0x3FFFFFFF')
 
     def test_cpp_22560(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'3FFFFFFh'), def_size=4, destination=False), u'0x3FFFFFF')
+        self.assertEqual(self.parser.parse_arg(u'3FFFFFFh', def_size=4, destination=False), u'0x3FFFFFF')
 
     def test_cpp_22570(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'3FFFFFh'), def_size=4, destination=False), u'0x3FFFFF')
+        self.assertEqual(self.parser.parse_arg(u'3FFFFFh', def_size=4, destination=False), u'0x3FFFFF')
 
     def test_cpp_22580(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'3FFFFh'), def_size=4, destination=False), u'0x3FFFF')
+        self.assertEqual(self.parser.parse_arg(u'3FFFFh', def_size=4, destination=False), u'0x3FFFF')
 
     def test_cpp_22590(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'3FFFh'), def_size=2, destination=False), u'0x3FFF')
+        self.assertEqual(self.parser.parse_arg(u'3FFFh', def_size=2, destination=False), u'0x3FFF')
 
     def test_cpp_22600(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'3FFh'), def_size=2, destination=False), u'0x3FF')
+        self.assertEqual(self.parser.parse_arg(u'3FFh', def_size=2, destination=False), u'0x3FF')
 
     def test_cpp_22610(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'3Fh'), def_size=1, destination=False), u'0x3F')
+        self.assertEqual(self.parser.parse_arg(u'3Fh', def_size=1, destination=False), u'0x3F')
 
     def test_cpp_22620(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'3c8h'), def_size=2, destination=False), u'0x3c8')
+        self.assertEqual(self.parser.parse_arg(u'3c8h', def_size=2, destination=False), u'0x3c8')
 
     def test_cpp_22630(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'3c9h'), def_size=2, destination=False), u'0x3c9')
+        self.assertEqual(self.parser.parse_arg(u'3c9h', def_size=2, destination=False), u'0x3c9')
 
     def test_cpp_22640(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'3h'), def_size=1, destination=False), u'0x3')
+        self.assertEqual(self.parser.parse_arg(u'3h', def_size=1, destination=False), u'0x3')
 
     def test_cpp_22650(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'4'), def_size=1, destination=False), u'4')
+        self.assertEqual(self.parser.parse_arg(u'4', def_size=1, destination=False), u'4')
 
     def test_cpp_22660(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'4+5*256'), def_size=2, destination=False), u'4+5*256')
+        self.assertEqual(self.parser.parse_arg(u'4+5*256', def_size=2, destination=False), u'4+5*256')
 
     def test_cpp_22670(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'4000000'), def_size=4, destination=False), u'4000000')
+        self.assertEqual(self.parser.parse_arg(u'4000000', def_size=4, destination=False), u'4000000')
 
     def test_cpp_22680(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'40h'), def_size=1, destination=False), u'0x40')
+        self.assertEqual(self.parser.parse_arg(u'40h', def_size=1, destination=False), u'0x40')
 
     def test_cpp_22690(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'43210123h'), def_size=4, destination=False), u'0x43210123')
+        self.assertEqual(self.parser.parse_arg(u'43210123h', def_size=4, destination=False), u'0x43210123')
 
     def test_cpp_22700(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'48h'), def_size=1, destination=False), u'0x48')
+        self.assertEqual(self.parser.parse_arg(u'48h', def_size=1, destination=False), u'0x48')
 
     def test_cpp_22710(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'49h'), def_size=1, destination=False), u'0x49')
+        self.assertEqual(self.parser.parse_arg(u'49h', def_size=1, destination=False), u'0x49')
 
     def test_cpp_22720(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'4Ah'), def_size=1, destination=False), u'0x4A')
+        self.assertEqual(self.parser.parse_arg(u'4Ah', def_size=1, destination=False), u'0x4A')
 
     def test_cpp_22730(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'4Ch'), def_size=1, destination=False), u'0x4C')
+        self.assertEqual(self.parser.parse_arg(u'4Ch', def_size=1, destination=False), u'0x4C')
 
     def test_cpp_22740(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'4ch'), def_size=1, destination=False), u'0x4c')
+        self.assertEqual(self.parser.parse_arg(u'4ch', def_size=1, destination=False), u'0x4c')
 
     def test_cpp_22750(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'5'), def_size=1, destination=False), u'5')
+        self.assertEqual(self.parser.parse_arg(u'5', def_size=1, destination=False), u'5')
 
     def test_cpp_22760(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'50'), def_size=1, destination=False), u'50')
+        self.assertEqual(self.parser.parse_arg(u'50', def_size=1, destination=False), u'50')
 
     def test_cpp_22770(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'501h'), def_size=2, destination=False), u'0x501')
+        self.assertEqual(self.parser.parse_arg(u'501h', def_size=2, destination=False), u'0x501')
 
     def test_cpp_22780(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'511'), def_size=2, destination=False), u'511')
+        self.assertEqual(self.parser.parse_arg(u'511', def_size=2, destination=False), u'511')
 
     def test_cpp_22790(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'55'), def_size=1, destination=False), u'55')
+        self.assertEqual(self.parser.parse_arg(u'55', def_size=1, destination=False), u'55')
 
     def test_cpp_22800(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'56'), def_size=1, destination=False), u'56')
+        self.assertEqual(self.parser.parse_arg(u'56', def_size=1, destination=False), u'56')
 
     def test_cpp_22810(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'57'), def_size=1, destination=False), u'57')
+        self.assertEqual(self.parser.parse_arg(u'57', def_size=1, destination=False), u'57')
 
     def test_cpp_22820(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'6'), def_size=1, destination=False), u'6')
+        self.assertEqual(self.parser.parse_arg(u'6', def_size=1, destination=False), u'6')
 
     def test_cpp_22830(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'6*256+5'), def_size=2, destination=False), u'6*256+5')
+        self.assertEqual(self.parser.parse_arg(u'6*256+5', def_size=2, destination=False), u'6*256+5')
 
     def test_cpp_22840(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'60'), def_size=1, destination=False), u'60')
+        self.assertEqual(self.parser.parse_arg(u'60', def_size=1, destination=False), u'60')
 
     def test_cpp_22850(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'65324h'), def_size=4, destination=False), u'0x65324')
+        self.assertEqual(self.parser.parse_arg(u'65324h', def_size=4, destination=False), u'0x65324')
 
     def test_cpp_22860(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'65423456h'), def_size=4, destination=False), u'0x65423456')
+        self.assertEqual(self.parser.parse_arg(u'65423456h', def_size=4, destination=False), u'0x65423456')
 
     def test_cpp_22870(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'6789ABCDh'), def_size=4, destination=False), u'0x6789ABCD')
+        self.assertEqual(self.parser.parse_arg(u'6789ABCDh', def_size=4, destination=False), u'0x6789ABCD')
 
     def test_cpp_22880(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'7'), def_size=1, destination=False), u'7')
+        self.assertEqual(self.parser.parse_arg(u'7', def_size=1, destination=False), u'7')
 
     def test_cpp_22890(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'7Eh'), def_size=1, destination=False), u'0x7E')
+        self.assertEqual(self.parser.parse_arg(u'7Eh', def_size=1, destination=False), u'0x7E')
 
     def test_cpp_22900(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'7FEh'), def_size=2, destination=False), u'0x7FE')
+        self.assertEqual(self.parser.parse_arg(u'7FEh', def_size=2, destination=False), u'0x7FE')
 
     def test_cpp_22910(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'7FFEh'), def_size=2, destination=False), u'0x7FFE')
+        self.assertEqual(self.parser.parse_arg(u'7FFEh', def_size=2, destination=False), u'0x7FFE')
 
     def test_cpp_22920(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'7FFFEh'), def_size=4, destination=False), u'0x7FFFE')
+        self.assertEqual(self.parser.parse_arg(u'7FFFEh', def_size=4, destination=False), u'0x7FFFE')
 
     def test_cpp_22930(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'7FFFFEh'), def_size=4, destination=False), u'0x7FFFFE')
+        self.assertEqual(self.parser.parse_arg(u'7FFFFEh', def_size=4, destination=False), u'0x7FFFFE')
 
     def test_cpp_22940(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'7FFFFFEh'), def_size=4, destination=False), u'0x7FFFFFE')
+        self.assertEqual(self.parser.parse_arg(u'7FFFFFEh', def_size=4, destination=False), u'0x7FFFFFE')
 
     def test_cpp_22950(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'7FFFFFFEh'), def_size=4, destination=False), u'0x7FFFFFFE')
+        self.assertEqual(self.parser.parse_arg(u'7FFFFFFEh', def_size=4, destination=False), u'0x7FFFFFFE')
 
     def test_cpp_22960(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'7FFFFFFFh'), def_size=4, destination=False), u'0x7FFFFFFF')
+        self.assertEqual(self.parser.parse_arg(u'7FFFFFFFh', def_size=4, destination=False), u'0x7FFFFFFF')
 
     def test_cpp_22970(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'7FFFFFFh'), def_size=4, destination=False), u'0x7FFFFFF')
+        self.assertEqual(self.parser.parse_arg(u'7FFFFFFh', def_size=4, destination=False), u'0x7FFFFFF')
 
     def test_cpp_22980(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'7FFFFFh'), def_size=4, destination=False), u'0x7FFFFF')
+        self.assertEqual(self.parser.parse_arg(u'7FFFFFh', def_size=4, destination=False), u'0x7FFFFF')
 
     def test_cpp_22990(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'7FFFFh'), def_size=4, destination=False), u'0x7FFFF')
+        self.assertEqual(self.parser.parse_arg(u'7FFFFh', def_size=4, destination=False), u'0x7FFFF')
 
     def test_cpp_23000(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'7FFFh'), def_size=2, destination=False), u'0x7FFF')
+        self.assertEqual(self.parser.parse_arg(u'7FFFh', def_size=2, destination=False), u'0x7FFF')
 
     def test_cpp_23010(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'7FFFh'), def_size=4, destination=False), u'0x7FFF')
+        self.assertEqual(self.parser.parse_arg(u'7FFFh', def_size=4, destination=False), u'0x7FFF')
 
     def test_cpp_23020(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'7FFh'), def_size=2, destination=False), u'0x7FF')
+        self.assertEqual(self.parser.parse_arg(u'7FFh', def_size=2, destination=False), u'0x7FF')
 
     def test_cpp_23030(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'7Fh'), def_size=1, destination=False), u'0x7F')
+        self.assertEqual(self.parser.parse_arg(u'7Fh', def_size=1, destination=False), u'0x7F')
 
     def test_cpp_23040(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'8'), def_size=0, destination=False), u'8')
+        self.assertEqual(self.parser.parse_arg(u'8', def_size=0, destination=False), u'8')
 
     def test_cpp_23050(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'8'), def_size=1, destination=False), u'8')
+        self.assertEqual(self.parser.parse_arg(u'8', def_size=1, destination=False), u'8')
 
     def test_cpp_23060(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'80000000h'), def_size=4, destination=False), u'0x80000000')
+        self.assertEqual(self.parser.parse_arg(u'80000000h', def_size=4, destination=False), u'0x80000000')
 
     def test_cpp_23070(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'80000001h'), def_size=4, destination=False), u'0x80000001')
+        self.assertEqual(self.parser.parse_arg(u'80000001h', def_size=4, destination=False), u'0x80000001')
 
     def test_cpp_23080(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'80008481h'), def_size=4, destination=False), u'0x80008481')
+        self.assertEqual(self.parser.parse_arg(u'80008481h', def_size=4, destination=False), u'0x80008481')
 
     def test_cpp_23090(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'80008688h'), def_size=4, destination=False), u'0x80008688')
+        self.assertEqual(self.parser.parse_arg(u'80008688h', def_size=4, destination=False), u'0x80008688')
 
     def test_cpp_23100(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'8000h'), def_size=2, destination=False), u'0x8000')
+        self.assertEqual(self.parser.parse_arg(u'8000h', def_size=2, destination=False), u'0x8000')
 
     def test_cpp_23110(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'8000h'), def_size=4, destination=False), u'0x8000')
+        self.assertEqual(self.parser.parse_arg(u'8000h', def_size=4, destination=False), u'0x8000')
 
     def test_cpp_23120(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'801h'), def_size=2, destination=False), u'0x801')
+        self.assertEqual(self.parser.parse_arg(u'801h', def_size=2, destination=False), u'0x801')
 
     def test_cpp_23130(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'80h'), def_size=1, destination=False), u'0x80')
+        self.assertEqual(self.parser.parse_arg(u'80h', def_size=1, destination=False), u'0x80')
 
     def test_cpp_23140(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'81234567h'), def_size=4, destination=False), u'0x81234567')
+        self.assertEqual(self.parser.parse_arg(u'81234567h', def_size=4, destination=False), u'0x81234567')
 
     def test_cpp_23150(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'81238567h'), def_size=4, destination=False), u'0x81238567')
+        self.assertEqual(self.parser.parse_arg(u'81238567h', def_size=4, destination=False), u'0x81238567')
 
     def test_cpp_23160(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'812FADAh'), def_size=4, destination=False), u'0x812FADA')
+        self.assertEqual(self.parser.parse_arg(u'812FADAh', def_size=4, destination=False), u'0x812FADA')
 
     def test_cpp_23170(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'813F3421h'), def_size=4, destination=False), u'0x813F3421')
+        self.assertEqual(self.parser.parse_arg(u'813F3421h', def_size=4, destination=False), u'0x813F3421')
 
     def test_cpp_23180(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'81h'), def_size=1, destination=False), u'0x81')
+        self.assertEqual(self.parser.parse_arg(u'81h', def_size=1, destination=False), u'0x81')
 
     def test_cpp_23190(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'82345679h'), def_size=4, destination=False), u'0x82345679')
+        self.assertEqual(self.parser.parse_arg(u'82345679h', def_size=4, destination=False), u'0x82345679')
 
     def test_cpp_23200(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'8234A6F8h'), def_size=4, destination=False), u'0x8234A6F8')
+        self.assertEqual(self.parser.parse_arg(u'8234A6F8h', def_size=4, destination=False), u'0x8234A6F8')
 
     def test_cpp_23210(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'8345A1F2h'), def_size=4, destination=False), u'0x8345A1F2')
+        self.assertEqual(self.parser.parse_arg(u'8345A1F2h', def_size=4, destination=False), u'0x8345A1F2')
 
     def test_cpp_23220(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'8C5h'), def_size=2, destination=False), u'0x8C5')
+        self.assertEqual(self.parser.parse_arg(u'8C5h', def_size=2, destination=False), u'0x8C5')
 
     def test_cpp_23230(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'8D5h'), def_size=2, destination=False), u'0x8D5')
+        self.assertEqual(self.parser.parse_arg(u'8D5h', def_size=2, destination=False), u'0x8D5')
 
     def test_cpp_23240(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'9'), def_size=1, destination=False), u'9')
+        self.assertEqual(self.parser.parse_arg(u'9', def_size=1, destination=False), u'9')
 
     def test_cpp_23250(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'9ABCDEFh'), def_size=0, destination=False), u'0x9ABCDEF')
+        self.assertEqual(self.parser.parse_arg(u'9ABCDEFh', def_size=0, destination=False), u'0x9ABCDEF')
 
     def test_cpp_23260(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'AL'), def_size=1, destination=True), u'al')
+        self.assertEqual(self.parser.parse_arg(u'AL', def_size=1, destination=True), u'al')
 
     def test_cpp_23270(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'B'), def_size=4, destination=False), u'B')
+        self.assertEqual(self.parser.parse_arg(u'B', def_size=4, destination=False), u'B')
 
     def test_cpp_23280(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'CC'), def_size=4, destination=False), u'CC')
+        self.assertEqual(self.parser.parse_arg(u'CC', def_size=4, destination=False), u'CC')
 
     def test_cpp_23290(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'DDD'), def_size=0, destination=False), u'DDD')
+        self.assertEqual(self.parser.parse_arg(u'DDD', def_size=0, destination=False), u'DDD')
 
     def test_cpp_23300(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'DX'), def_size=2, destination=True), u'dx')
+        self.assertEqual(self.parser.parse_arg(u'DX', def_size=2, destination=True), u'dx')
 
     #def test_cpp_23310(self):
         # self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'OFFSET ASCiI'),def_size=4,destination=False),u'offset(_data,ASCII)')
@@ -1018,31 +1018,31 @@ class CppTest(unittest.TestCase):
         # self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'OFFSET AsCii'),def_size=4,destination=False),u'offset(_data,ASCII)')
 
     def test_cpp_23330(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'TWO'), def_size=4, destination=False), u'TWO')
+        self.assertEqual(self.parser.parse_arg(u'TWO', def_size=4, destination=False), u'TWO')
 
     def test_cpp_23340(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'ah'), def_size=1, destination=False), u'ah')
+        self.assertEqual(self.parser.parse_arg(u'ah', def_size=1, destination=False), u'ah')
 
     def test_cpp_23350(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'ah'), def_size=1, destination=True), u'ah')
+        self.assertEqual(self.parser.parse_arg(u'ah', def_size=1, destination=True), u'ah')
 
     def test_cpp_23360(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'al'), def_size=0, destination=False), u'al')
+        self.assertEqual(self.parser.parse_arg(u'al', def_size=0, destination=False), u'al')
 
     def test_cpp_23370(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'al'), def_size=1, destination=False), u'al')
+        self.assertEqual(self.parser.parse_arg(u'al', def_size=1, destination=False), u'al')
 
     def test_cpp_23380(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'al'), def_size=1, destination=True), u'al')
+        self.assertEqual(self.parser.parse_arg(u'al', def_size=1, destination=True), u'al')
 
     def test_cpp_23390(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'ax'), def_size=0, destination=False), u'ax')
+        self.assertEqual(self.parser.parse_arg(u'ax', def_size=0, destination=False), u'ax')
 
     def test_cpp_23400(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'ax'), def_size=2, destination=False), u'ax')
+        self.assertEqual(self.parser.parse_arg(u'ax', def_size=2, destination=False), u'ax')
 
     def test_cpp_23410(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'ax'), def_size=2, destination=True), u'ax')
+        self.assertEqual(self.parser.parse_arg(u'ax', def_size=2, destination=True), u'ax')
 
     #def test_cpp_23420(self):
         # self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'b'),def_size=0,destination=False),u'offset(_data,b)')
@@ -1054,202 +1054,202 @@ class CppTest(unittest.TestCase):
         # self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'beginningdata'),def_size=0,destination=False),u'offset(_data,beginningdata)')
 
     def test_cpp_23450(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'bh'), def_size=0, destination=False), u'bh')
+        self.assertEqual(self.parser.parse_arg(u'bh', def_size=0, destination=False), u'bh')
 
     def test_cpp_23460(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'bh'), def_size=1, destination=False), u'bh')
+        self.assertEqual(self.parser.parse_arg(u'bh', def_size=1, destination=False), u'bh')
 
     def test_cpp_23470(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'bh'), def_size=1, destination=True), u'bh')
+        self.assertEqual(self.parser.parse_arg(u'bh', def_size=1, destination=True), u'bh')
 
     def test_cpp_23480(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'bl'), def_size=0, destination=False), u'bl')
+        self.assertEqual(self.parser.parse_arg(u'bl', def_size=0, destination=False), u'bl')
 
     def test_cpp_23490(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'bl'), def_size=1, destination=False), u'bl')
+        self.assertEqual(self.parser.parse_arg(u'bl', def_size=1, destination=False), u'bl')
 
     def test_cpp_23500(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'bl'), def_size=1, destination=True), u'bl')
+        self.assertEqual(self.parser.parse_arg(u'bl', def_size=1, destination=True), u'bl')
 
     def test_cpp_23510(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'bp'), def_size=2, destination=False), u'bp')
+        self.assertEqual(self.parser.parse_arg(u'bp', def_size=2, destination=False), u'bp')
 
     #def test_cpp_23520(self):
         # self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'buffer'),def_size=0,destination=False),u'offset(_data,buffer)')
 
     def test_cpp_23530(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'bx'), def_size=0, destination=False), u'bx')
+        self.assertEqual(self.parser.parse_arg(u'bx', def_size=0, destination=False), u'bx')
 
     def test_cpp_23540(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'bx'), def_size=2, destination=False), u'bx')
+        self.assertEqual(self.parser.parse_arg(u'bx', def_size=2, destination=False), u'bx')
 
     def test_cpp_23550(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'bx'), def_size=2, destination=True), u'bx')
+        self.assertEqual(self.parser.parse_arg(u'bx', def_size=2, destination=True), u'bx')
 
     #def test_cpp_23560(self):
         # self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'c'),def_size=4,destination=True),u'c')
 
     def test_cpp_23570(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'ch'), def_size=1, destination=True), u'ch')
+        self.assertEqual(self.parser.parse_arg(u'ch', def_size=1, destination=True), u'ch')
 
     def test_cpp_23580(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'cl'), def_size=0, destination=False), u'cl')
+        self.assertEqual(self.parser.parse_arg(u'cl', def_size=0, destination=False), u'cl')
 
     def test_cpp_23590(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'cl'), def_size=1, destination=False), u'cl')
+        self.assertEqual(self.parser.parse_arg(u'cl', def_size=1, destination=False), u'cl')
 
     def test_cpp_23600(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'cl'), def_size=1, destination=True), u'cl')
+        self.assertEqual(self.parser.parse_arg(u'cl', def_size=1, destination=True), u'cl')
 
     def test_cpp_23610(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'cx'), def_size=0, destination=False), u'cx')
+        self.assertEqual(self.parser.parse_arg(u'cx', def_size=0, destination=False), u'cx')
 
     def test_cpp_23620(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'cx'), def_size=2, destination=False), u'cx')
+        self.assertEqual(self.parser.parse_arg(u'cx', def_size=2, destination=False), u'cx')
 
     def test_cpp_23630(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'cx'), def_size=2, destination=True), u'cx')
+        self.assertEqual(self.parser.parse_arg(u'cx', def_size=2, destination=True), u'cx')
 
     def test_cpp_23640(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'di'), def_size=2, destination=False), u'di')
+        self.assertEqual(self.parser.parse_arg(u'di', def_size=2, destination=False), u'di')
 
     def test_cpp_23650(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'dl'), def_size=0, destination=False), u'dl')
+        self.assertEqual(self.parser.parse_arg(u'dl', def_size=0, destination=False), u'dl')
 
     def test_cpp_23660(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'dl'), def_size=1, destination=False), u'dl')
+        self.assertEqual(self.parser.parse_arg(u'dl', def_size=1, destination=False), u'dl')
 
     def test_cpp_23670(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'dl'), def_size=1, destination=True), u'dl')
+        self.assertEqual(self.parser.parse_arg(u'dl', def_size=1, destination=True), u'dl')
 
     def test_cpp_23680(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'ds'), def_size=0, destination=False), u'ds')
+        self.assertEqual(self.parser.parse_arg(u'ds', def_size=0, destination=False), u'ds')
 
     def test_cpp_23690(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'ds'), def_size=2, destination=True), u'ds')
+        self.assertEqual(self.parser.parse_arg(u'ds', def_size=2, destination=True), u'ds')
 
     def test_cpp_23700(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'dx'), def_size=0, destination=False), u'dx')
+        self.assertEqual(self.parser.parse_arg(u'dx', def_size=0, destination=False), u'dx')
 
     def test_cpp_23710(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'dx'), def_size=2, destination=False), u'dx')
+        self.assertEqual(self.parser.parse_arg(u'dx', def_size=2, destination=False), u'dx')
 
     def test_cpp_23720(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'dx'), def_size=2, destination=True), u'dx')
+        self.assertEqual(self.parser.parse_arg(u'dx', def_size=2, destination=True), u'dx')
 
     def test_cpp_23730(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'eax'), def_size=0, destination=False), u'eax')
+        self.assertEqual(self.parser.parse_arg(u'eax', def_size=0, destination=False), u'eax')
 
     def test_cpp_23740(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'eax'), def_size=4, destination=False), u'eax')
+        self.assertEqual(self.parser.parse_arg(u'eax', def_size=4, destination=False), u'eax')
 
     def test_cpp_23750(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'eax'), def_size=4, destination=True), u'eax')
+        self.assertEqual(self.parser.parse_arg(u'eax', def_size=4, destination=True), u'eax')
 
     def test_cpp_23760(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'eax_0'), def_size=0, destination=False), u'eax_0')
+        self.assertEqual(self.parser.parse_arg(u'eax_0', def_size=0, destination=False), u'eax_0')
 
     def test_cpp_23770(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'ebp'), def_size=0, destination=False), u'ebp')
+        self.assertEqual(self.parser.parse_arg(u'ebp', def_size=0, destination=False), u'ebp')
 
     def test_cpp_23780(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'ebp'), def_size=4, destination=False), u'ebp')
+        self.assertEqual(self.parser.parse_arg(u'ebp', def_size=4, destination=False), u'ebp')
 
     def test_cpp_23790(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'ebp'), def_size=4, destination=True), u'ebp')
+        self.assertEqual(self.parser.parse_arg(u'ebp', def_size=4, destination=True), u'ebp')
 
     def test_cpp_23800(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'ebx'), def_size=0, destination=False), u'ebx')
+        self.assertEqual(self.parser.parse_arg(u'ebx', def_size=0, destination=False), u'ebx')
 
     def test_cpp_23810(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'ebx'), def_size=4, destination=False), u'ebx')
+        self.assertEqual(self.parser.parse_arg(u'ebx', def_size=4, destination=False), u'ebx')
 
     def test_cpp_23820(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'ebx'), def_size=4, destination=True), u'ebx')
+        self.assertEqual(self.parser.parse_arg(u'ebx', def_size=4, destination=True), u'ebx')
 
     def test_cpp_23830(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'ecx'), def_size=0, destination=False), u'ecx')
+        self.assertEqual(self.parser.parse_arg(u'ecx', def_size=0, destination=False), u'ecx')
 
     def test_cpp_23840(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'ecx'), def_size=4, destination=False), u'ecx')
+        self.assertEqual(self.parser.parse_arg(u'ecx', def_size=4, destination=False), u'ecx')
 
     def test_cpp_23850(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'ecx'), def_size=4, destination=True), u'ecx')
+        self.assertEqual(self.parser.parse_arg(u'ecx', def_size=4, destination=True), u'ecx')
 
     def test_cpp_23860(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'ecx_0'), def_size=0, destination=False), u'ecx_0')
+        self.assertEqual(self.parser.parse_arg(u'ecx_0', def_size=0, destination=False), u'ecx_0')
 
     def test_cpp_23870(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'ecx_0_0'), def_size=0, destination=False), u'ecx_0_0')
+        self.assertEqual(self.parser.parse_arg(u'ecx_0_0', def_size=0, destination=False), u'ecx_0_0')
 
     def test_cpp_23880(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'edi'), def_size=0, destination=False), u'edi')
+        self.assertEqual(self.parser.parse_arg(u'edi', def_size=0, destination=False), u'edi')
 
     def test_cpp_23890(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'edi'), def_size=4, destination=False), u'edi')
+        self.assertEqual(self.parser.parse_arg(u'edi', def_size=4, destination=False), u'edi')
 
     def test_cpp_23900(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'edi'), def_size=4, destination=True), u'edi')
+        self.assertEqual(self.parser.parse_arg(u'edi', def_size=4, destination=True), u'edi')
 
     def test_cpp_23910(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'edi_0'), def_size=0, destination=False), u'edi_0')
+        self.assertEqual(self.parser.parse_arg(u'edi_0', def_size=0, destination=False), u'edi_0')
 
     def test_cpp_23920(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'edi_0'), def_size=0, destination=True), u'edi_0')
+        self.assertEqual(self.parser.parse_arg(u'edi_0', def_size=0, destination=True), u'edi_0')
 
     def test_cpp_23930(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'edx'), def_size=0, destination=False), u'edx')
+        self.assertEqual(self.parser.parse_arg(u'edx', def_size=0, destination=False), u'edx')
 
     def test_cpp_23940(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'edx'), def_size=4, destination=False), u'edx')
+        self.assertEqual(self.parser.parse_arg(u'edx', def_size=4, destination=False), u'edx')
 
     def test_cpp_23950(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'edx'), def_size=4, destination=True), u'edx')
+        self.assertEqual(self.parser.parse_arg(u'edx', def_size=4, destination=True), u'edx')
 
     def test_cpp_23960(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'edx_0_0'), def_size=0, destination=False), u'edx_0_0')
+        self.assertEqual(self.parser.parse_arg(u'edx_0_0', def_size=0, destination=False), u'edx_0_0')
 
     def test_cpp_23970(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'edx_0_0'), def_size=4, destination=True), u'edx_0_0')
+        self.assertEqual(self.parser.parse_arg(u'edx_0_0', def_size=4, destination=True), u'edx_0_0')
 
     def test_cpp_23980(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'eflags'), def_size=1, destination=True), u'eflags')
+        self.assertEqual(self.parser.parse_arg(u'eflags', def_size=1, destination=True), u'eflags')
 
     def test_cpp_23990(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'eflags'), def_size=2, destination=True), u'eflags')
+        self.assertEqual(self.parser.parse_arg(u'eflags', def_size=2, destination=True), u'eflags')
 
     #def test_cpp_24000(self):
         # self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'enddata'),def_size=0,destination=False),u'offset(_data,enddata)')
 
     def test_cpp_24010(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'es'), def_size=0, destination=False), u'es')
+        self.assertEqual(self.parser.parse_arg(u'es', def_size=0, destination=False), u'es')
 
     def test_cpp_24020(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'es'), def_size=2, destination=True), u'es')
+        self.assertEqual(self.parser.parse_arg(u'es', def_size=2, destination=True), u'es')
 
     def test_cpp_24030(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'esi'), def_size=0, destination=False), u'esi')
+        self.assertEqual(self.parser.parse_arg(u'esi', def_size=0, destination=False), u'esi')
 
     def test_cpp_24040(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'esi'), def_size=4, destination=False), u'esi')
+        self.assertEqual(self.parser.parse_arg(u'esi', def_size=4, destination=False), u'esi')
 
     def test_cpp_24050(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'esi'), def_size=4, destination=True), u'esi')
+        self.assertEqual(self.parser.parse_arg(u'esi', def_size=4, destination=True), u'esi')
 
     def test_cpp_24060(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'esi_0'), def_size=0, destination=False), u'esi_0')
+        self.assertEqual(self.parser.parse_arg(u'esi_0', def_size=0, destination=False), u'esi_0')
 
     def test_cpp_24070(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'esi_0'), def_size=4, destination=False), u'esi_0')
+        self.assertEqual(self.parser.parse_arg(u'esi_0', def_size=4, destination=False), u'esi_0')
 
     def test_cpp_24080(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'esi_0'), def_size=4, destination=True), u'esi_0')
+        self.assertEqual(self.parser.parse_arg(u'esi_0', def_size=4, destination=True), u'esi_0')
 
     def test_cpp_24090(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'esp'), def_size=4, destination=False), u'esp')
+        self.assertEqual(self.parser.parse_arg(u'esp', def_size=4, destination=False), u'esp')
 
     def test_cpp_24100(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'esp'), def_size=4, destination=True), u'esp')
+        self.assertEqual(self.parser.parse_arg(u'esp', def_size=4, destination=True), u'esp')
 
     #def test_cpp_24110(self):
         # self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'f'),def_size=0,destination=False),u'offset(_data,f)')
@@ -1258,49 +1258,49 @@ class CppTest(unittest.TestCase):
         # self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'fileName'),def_size=0,destination=False),u'offset(_data,fileName)')
 
     def test_cpp_24130(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'flags'), def_size=0, destination=False), u'flags')
+        self.assertEqual(self.parser.parse_arg(u'flags', def_size=0, destination=False), u'flags')
 
     def test_cpp_24140(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'flags'), def_size=1, destination=True), u'flags')
+        self.assertEqual(self.parser.parse_arg(u'flags', def_size=1, destination=True), u'flags')
 
     def test_cpp_24150(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'flags'), def_size=2, destination=True), u'flags')
+        self.assertEqual(self.parser.parse_arg(u'flags', def_size=2, destination=True), u'flags')
 
     def test_cpp_24160(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'flags'), def_size=4, destination=False), u'flags')
+        self.assertEqual(self.parser.parse_arg(u'flags', def_size=4, destination=False), u'flags')
 
     def test_cpp_24170(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'fs'), def_size=0, destination=False), u'fs')
+        self.assertEqual(self.parser.parse_arg(u'fs', def_size=0, destination=False), u'fs')
 
     def test_cpp_24180(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'fs'), def_size=2, destination=False), u'fs')
+        self.assertEqual(self.parser.parse_arg(u'fs', def_size=2, destination=False), u'fs')
 
     def test_cpp_24190(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'fs'), def_size=2, destination=True), u'fs')
+        self.assertEqual(self.parser.parse_arg(u'fs', def_size=2, destination=True), u'fs')
 
     #def test_cpp_24200(self):
         # self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'g'),def_size=4,destination=False),u'g')
 
     def test_cpp_24210(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'i'), def_size=0, destination=False), u'i')
+        self.assertEqual(self.parser.parse_arg(u'i', def_size=0, destination=False), u'i')
 
     def test_cpp_24220(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'i'), def_size=0, destination=True), u'i')
+        self.assertEqual(self.parser.parse_arg(u'i', def_size=0, destination=True), u'i')
 
     def test_cpp_24230(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'i'), def_size=1, destination=True), u'i')
+        self.assertEqual(self.parser.parse_arg(u'i', def_size=1, destination=True), u'i')
 
     def test_cpp_24240(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'i'), def_size=2, destination=True), u'i')
+        self.assertEqual(self.parser.parse_arg(u'i', def_size=2, destination=True), u'i')
 
     def test_cpp_24250(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'i'), def_size=4, destination=False), u'i')
+        self.assertEqual(self.parser.parse_arg(u'i', def_size=4, destination=False), u'i')
 
     def test_cpp_24260(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'i'), def_size=4, destination=True), u'i')
+        self.assertEqual(self.parser.parse_arg(u'i', def_size=4, destination=True), u'i')
 
     def test_cpp_24270(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u"'tseT'"), def_size=4, destination=False), u'0x74736554')
+        self.assertEqual(self.parser.parse_arg(u"'tseT'", def_size=4, destination=False), u'0x74736554')
 
     '''
     #def test_cpp_24280(self):
@@ -1694,13 +1694,13 @@ class CppTest(unittest.TestCase):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'byte ptr es:[0]'),def_size=1,destination=True),u'*(raddr(es,0))')
     '''
     def test_cpp_25580(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'ds:[eax*2]'), def_size=0, destination=False), u'*(raddr(ds,eax*2))')
+        self.assertEqual(self.parser.parse_arg(u'ds:[eax*2]', def_size=0, destination=False), u'*(raddr(ds,eax*2))')
 
     def test_cpp_25590(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'ds:[ebx*4]'), def_size=0, destination=False), u'*(raddr(ds,ebx*4))')
+        self.assertEqual(self.parser.parse_arg(u'ds:[ebx*4]', def_size=0, destination=False), u'*(raddr(ds,ebx*4))')
 
     def test_cpp_25600(self):
-        self.assertEqual(self.cpp.render_instruction_argument(expr=self.parser.parse_arg(u'ds:[ecx*8]'), def_size=0, destination=False), u'*(raddr(ds,ecx*8))')
+        self.assertEqual(self.parser.parse_arg(u'ds:[ecx*8]', def_size=0, destination=False), u'*(raddr(ds,ecx*8))')
     '''
     def test_cpp_25610(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'ds:40h[ebx*4]'), def_size=0, destination=False), u'*(raddr(ds,0x40+ebx*4))')

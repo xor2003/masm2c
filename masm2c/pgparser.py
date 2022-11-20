@@ -5,7 +5,6 @@ from collections import OrderedDict
 from copy import deepcopy, copy
 
 from lark import Transformer, Lark, v_args, Discard, Tree, Visitor, lark
-from lark.visitors import Interpreter
 
 from . import op
 from .Macro import Macro
@@ -231,11 +230,11 @@ class Asm2IR(Transformer):
         logging.debug("segdir " + str(nodes) + " ~~")
         self.context.action_simplesegment(type, '')  # TODO
         return nodes
-    def label(self, children):
-        self.name = children[0]
+    def LABEL(self, value):
+        self.name = value
 
         logging.debug('name = %s', self.name)
-        l = lark.Token(type='label', value=children[0])
+        l = lark.Token(type='label', value=value)
         try:
             g = self.context.get_global(self.name)
             if isinstance(g, (op._equ, op._assignment)):
@@ -320,6 +319,8 @@ class Asm2IR(Transformer):
         # self.expression = self.expression or Expression()
         instruction = self.instruction_name
         args = nodes[0].children
+        if args >= 2:
+            args[0].mods.add('destination')
         if instruction == 'lea':
             # self.expression.indirection = IndirectionType.OFFSET
             for arg in args:
@@ -551,6 +552,7 @@ class TopDownVisitor:
                 result += "".join(self.visit(node.children))
         elif isinstance(node, lark.Token):
             if hasattr(self, node.type):
+
                 result += getattr(self, node.type)(node)
             else:
                 result += node.value
@@ -564,28 +566,6 @@ class TopDownVisitor:
             raise ValueError()
         return result
 
-class IR2Cpp(TopDownVisitor):
-
-    def INTEGER(self, token):
-        s = {2: bin(token.value), 8: oct(token.value), 10: str(token.value), 16: hex(token.value)}[token.column]
-        return s
-
-    def STRING(self, token):
-        result = token.value
-        m = re.match(r'^[\'\"](....)[\'\"]$', token.value)  # char constants 'abcd'
-        if m:
-            ex = m.group(1)
-            result = '0x'
-            for i in range(0, 4):
-                # logging.debug("constant %s %d" %(ex,i))
-                ss = str(hex(ord(ex[i])))
-                # logging.debug("constant %s" %ss)
-                result += ss[2:]
-        result = result.replace('\\', '\\\\')  # escape c \ symbol
-        return result
-
-    def expr(self, tree):
-        return "".join((self.visit(child) for child in tree.children))
 
 OFFSETDIR = 'offsetdir'
 LABEL = 'label'
