@@ -1558,9 +1558,9 @@ class IR2Cpp(TopDownVisitor, Cpp):
         super(IR2Cpp, self).__init__(context=parser)
         self._sqresult = ""
 
-    def INTEGER(self, token):
-        s = {2: hex(token.value), 8: oct(token.value), 10: str(token.value), 16: hex(token.value)}[token.column]
-        return s
+    def INTEGER(self, t):
+        #s = {2: hex(token.value), 8: oct(token.value), 10: str(token.value), 16: hex(token.value)}[token.column]
+        return self.produce_number_c('',t.start_pos, t.line, t.column)
 
     def STRING(self, token):
         result = token.value

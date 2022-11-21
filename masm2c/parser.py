@@ -1006,7 +1006,7 @@ class Parser:
                 self.__segment.getdata()[-size].array = array
                 self.__segment.getdata()[-size].elements = size
                 self.__segment.getdata()[-size].data_internal_type = op.DataType.ARRAY
-                self.__segment.getdata()[-size].element_size = size
+                self.__segment.getdata()[-size].size = size
                 self.__segment.setdata(self.__segment.getdata()[:-(size - 1)])
                 self.data_merge_candidats = 0
 
@@ -1313,7 +1313,7 @@ def parse_asm_number(expr, radix):
             raise ValueError(expr)
         sign = m['sign'] if m['sign'] else ''
         value = m['value']
-        value = int(value, radix)
-        if sign == '-':
-            value *= -1
-    return value, radix
+        #value = int(value, radix)
+        #if sign == '-':
+        #    value *= -1
+    return radix, sign, value

@@ -107,9 +107,14 @@ class Asm2IR(Transformer):
 
     def INTEGER(self, value):
         from .parser import parse_asm_number
-        value, radix = parse_asm_number(value, self.radix)
-        t = lark.Token(type='INTEGER', value=value)
-        t.column = radix
+        radix, sign, value = parse_asm_number(value, self.radix)
+        '''
+        val = int(value, radix)
+        if sign == '-':
+            val *= -1
+        '''
+        t = lark.Token(type='INTEGER', value=sign+value)
+        t.start_pos, t.line, t.column = radix, sign, value
         return t  # Token('INTEGER', Cpp(self.context.convert_asm_number_into_c(nodes, self.context.radix))  # TODO remove this
 
     def commentkw(self, head, s, pos):

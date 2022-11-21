@@ -101,8 +101,8 @@ class Gen:
                             return self.calculate_size(g.value)
                         else:
                             return 0
-                    logging.debug('get_size res %d', g.element_size)
-                    return g.element_size
+                    logging.debug('get_size res %d', g.size)
+                    return g.size
                 except:
                     pass
             elif expr.data == MEMBERDIR:
