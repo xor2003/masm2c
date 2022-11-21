@@ -635,7 +635,7 @@ class Parser:
         o = Proc.create_equ_op(label, value, line_number=line_number)
         o.filename = self._current_file
         o.raw_line = raw.rstrip()
-        o.size = size
+        o.element_size = size
         if ptrdir:
             o.original_type = type
         self.set_global(label, o)
@@ -844,13 +844,13 @@ class Parser:
         '''
             self.test_pre_parse()
             result = self.parse_file_content(text)
-            result = result.children[2].children[1].children[1]
-            result = self.process_ast(text, result)
+            expr = result.children[2].children[1].children[1]
+            expr = self.process_ast(text, expr)
             if destination:
-                result.mods.add("destination")
-            if def_size and result.size == 0:
-                result.size = def_size
-            result = IR2Cpp(self).visit(result)
+                expr.mods.add("destination")
+            if def_size and expr.element_size == 0:
+                expr.element_size = def_size
+            result = IR2Cpp(self).visit(expr)
         except Exception as e:
             exc_type, exc_obj, exc_tb = sys.exc_info()
             fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
@@ -1006,7 +1006,7 @@ class Parser:
                 self.__segment.getdata()[-size].array = array
                 self.__segment.getdata()[-size].elements = size
                 self.__segment.getdata()[-size].data_internal_type = op.DataType.ARRAY
-                self.__segment.getdata()[-size].size = size
+                self.__segment.getdata()[-size].element_size = size
                 self.__segment.setdata(self.__segment.getdata()[:-(size - 1)])
                 self.data_merge_candidats = 0
 

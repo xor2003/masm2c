@@ -23,7 +23,7 @@ import os
 import re
 from builtins import hex, range, str
 
-from lark import Tree
+from lark import Tree, lark
 
 from . import op
 from . import proc as proc_module
@@ -1323,7 +1323,7 @@ struct Memory{
             type = type.lower()
             src = Token.find_and_replace_tokens(src, 'ptrdir', self.return_empty)
         o = stmt  # self._context.get_global(dst)
-        o.size = size
+        o.element_size = size
         if ptrdir:
             o.original_type = type
         o.implemented = True
@@ -1556,9 +1556,10 @@ class IR2Cpp(TopDownVisitor, Cpp):
 
     def __init__(self, parser):
         super(IR2Cpp, self).__init__(context=parser)
+        self._sqresult = ""
 
     def INTEGER(self, token):
-        s = {2: bin(token.value), 8: oct(token.value), 10: str(token.value), 16: hex(token.value)}[token.column]
+        s = {2: hex(token.value), 8: oct(token.value), 10: str(token.value), 16: hex(token.value)}[token.column]
         return s
 
     def STRING(self, token):
@@ -1575,9 +1576,24 @@ class IR2Cpp(TopDownVisitor, Cpp):
         result = result.replace('\\', '\\\\')  # escape c \ symbol
         return result
 
+    def sqexpr(self, tree):
+        result = ""
+        if self._sqresult:
+            result += '+'
+        return result + self.visit(tree.children)
+    def list_visitor(self, l):
+        result = ""
+        for child in l:
+            res = self.visit(child)
+            result += res
+            self._sqresult = res
+        #self._sqresult = ""
+        return result
+
     def expr(self, tree):
-        result = "".join((self.visit(child) for child in tree.children))
-        result = self.convert_sqbr_reference(tree.segment_register, result, 'destination' in tree.mods, tree.size, 'label' in tree.mods, lea='lea' in tree.mods)
+        result = self.visit(tree.children)
+        if 'ptrdir' in tree.mods:
+            result = self.convert_sqbr_reference(tree.segment_register, result, 'destination' in tree.mods, tree.ptr_size, 'label' in tree.mods, lea='lea' in tree.mods)
         #if indirection == IndirectionType.POINTER and \
         if self.needs_dereference:
             if result[0] == '(' and result[-1] == ')':

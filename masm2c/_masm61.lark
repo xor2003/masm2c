@@ -155,6 +155,7 @@ unadd: _e07 SIGN _e08
 field: "." _e11
 fieldlist: field+
 memberdir: _e10 fieldlist
+!braces: "(" expr ")"
 
 _e01: ordir | xordir
 | _e02
@@ -193,7 +194,7 @@ dir3: "WIDTH"i LABEL
 | "SIZEOF"i sizearg
 | "LENGTH"i LABEL
 | "LENGTHOF"i LABEL
-_e11: "(" expr ")"
+_e11: braces
 | sqexpr
 | dir3
 | recordconst

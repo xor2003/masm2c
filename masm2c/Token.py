@@ -133,7 +133,8 @@ class Expression(lark.Tree):
         super().__init__("expr", [])
         #self.data = "expr"
         #self.children = []
-        self.size = 0
+        self.element_size = 0
+        self.ptr_size = 1
         self.mods = set()
         self.registers = set()
         self.segment_register = "ds"

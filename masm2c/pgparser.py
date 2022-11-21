@@ -92,12 +92,12 @@ class Asm2IR(Transformer):
 
     def segoverride(self, nodes):
         self.__work_segment = nodes[0]
-        return Discard
+        return nodes[1:]
 
     def ptrdir(self, children):
         # self.expression = self.expression or Expression()
         self.expression.mods.add('ptrdir')
-        self.expression.size = self.size
+        self.expression.ptr_size = self.size
         return children
 
     def datadecl(self, children):
@@ -239,11 +239,11 @@ class Asm2IR(Transformer):
             g = self.context.get_global(self.name)
             if isinstance(g, (op._equ, op._assignment)):
                 #if g.value != origexpr:  # prevent loop
-                self.expression.size = self.calculate_size(g.value)
+                self.expression.element_size = self.calculate_size(g.value)
                 #else:
                 #    return 0
             logging.debug('get_size res %d', g.size)
-            self.expression.size = g.size
+            self.expression.element_size = g.size
             l.size = g.size
         except:
             pass
@@ -363,7 +363,7 @@ class Asm2IR(Transformer):
         return self._expression
     def register(self, children):
         # self.expression = self.expression or Expression()
-        self.expression.size = self.context.is_register(children[0])
+        self.expression.element_size = self.context.is_register(children[0])
         self.expression.registers.add(children[0])
         return children[0]  # Token('segmentregister', nodes[0].lower())
 
@@ -379,7 +379,7 @@ class Asm2IR(Transformer):
         # self.expression = self.expression or Expression()
         # self.expression.indirection = IndirectionType.POINTER
         self.expression.mods.add('ptrdir')
-        return nodes  # Token('sqexpr', res)
+        return lark.Tree(data='sqexpr', children=nodes)  # Token('sqexpr', res)
 
     def offsetdir(self, nodes):
         logging.debug("offset /~%s~\\", nodes)
@@ -552,18 +552,20 @@ class TopDownVisitor:
                 result += "".join(self.visit(node.children))
         elif isinstance(node, lark.Token):
             if hasattr(self, node.type):
-
                 result += getattr(self, node.type)(node)
             else:
                 result += node.value
         elif isinstance(node, list):
-            result += "".join([self.visit(i) for i in node])
+            if hasattr(self, 'list_visitor'):
+                result += self.list_visitor(node)
+            else:
+                result += "".join([self.visit(i) for i in node])
         elif isinstance(node, str):
             print(f"{node} is a str")
             result += node
         else:
-            logging.error("Error unknown type")
-            raise ValueError()
+            logging.error(f"Error unknown type {node}")
+            raise ValueError(f"Error unknown type {node}")
         return result
 
 
