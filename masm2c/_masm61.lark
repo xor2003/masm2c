@@ -113,6 +113,36 @@ dotdotforparmtype: ":" forparmtype
 dotdotparmtype: ":" parmtype
 dotdotqualifiedtype: ":" qualifiedtype
 
+cexpr: aexpr "||" cexpr | aexpr
+aexpr: term "&&" aexpr | term
+term: "!" simpleexpr | simpleexpr
+simpleexpr: "(" cexpr ")"| primary
+primary: expr binaryop expr| flagname| expr
+cxzexpr: "!" expr| expr  "==" expr| expr  "!=" expr | expr
+
+sqexpr: "[" expr "]"
+!braces: "(" expr ")"
+//sqexprlist: LABEL? sqexpr sqexpr?
+offsetdirmy: "OFFSET"i _e10
+segmdir: "SEG"i _e10
+segoverride: _e09 ":" _e10
+ptrdir: _e09 "PTR"i _e10
+| "LARGE"i _e10
+| "SMALL"i _e10
+| "SHORT"i _e10
+ordir: _e01 ("OR"i|"XOR"i) _e02
+anddir: _e02 "AND"i _e03
+notdir: "NOT"i _e04
+SIGN: ("+"|"-")
+!addop: _e05 SIGN _e06
+unadd: _e07 SIGN _e08
+!mulop: "*"| "/" | "MOD"i //| "SHL"i | "SHR"i
+shiftop: "SHR"i | "SHL"i
+
+field: "." _e11
+fieldlist: field+
+memberdir: _e10 fieldlist
+
 // Precedence Operators
 // 1 ( ), [ ]
 // 2 LENGTH , SIZE , WIDTH , MASK, LENGTHOF, SIZEOF
@@ -128,36 +158,8 @@ dotdotqualifiedtype: ":" qualifiedtype
 // 12 AND
 // 13 OR , XOR
 // 14 OPATTR , SHORT , .TYPE
-cexpr: aexpr "||" cexpr | aexpr
-aexpr: term "&&" aexpr | term
-term: "!" simpleexpr | simpleexpr
-simpleexpr: "(" cexpr ")"| primary
-primary: expr binaryop expr| flagname| expr
-cxzexpr: "!" expr| expr  "==" expr| expr  "!=" expr | expr
 
-sqexpr: "[" expr "]"
-//sqexprlist: LABEL? sqexpr sqexpr?
-offsetdirmy: "OFFSET"i _e10
-segmdir: "SEG"i _e10
-segoverride: _e09 ":" _e10
-ptrdir: _e09 "PTR"i _e10
-| "LARGE"i _e10
-| "SMALL"i _e10
-| "SHORT"i _e10
-ordir: _e01 "OR"i _e02
-xordir: _e01 "XOR"i _e02
-anddir: _e02 "AND"i _e03
-notdir: "NOT"i _e04
-SIGN: ("+"|"-")
-!addop: _e05 SIGN _e06
-unadd: _e07 SIGN _e08
-
-field: "." _e11
-fieldlist: field+
-memberdir: _e10 fieldlist
-!braces: "(" expr ")"
-
-_e01: ordir | xordir
+_e01: ordir
 | _e02
 _e02: anddir
 | _e03
@@ -186,7 +188,7 @@ _e09: offsetdirmy
 | segoverride //| _e09 ":" _e10
 | _e10
 _e10: memberdir
-| _e10 expr
+| _e10 "[" expr "]"
 | _e11
 dir3: "WIDTH"i LABEL
 | "MASK"i LABEL
@@ -292,7 +294,6 @@ macrowhile: "WHILE"i expr _linereminder macrobody "ENDM"i _linereminder
 modeldir: ".MODEL"i memoption commamodeloptlist? _linereminder
 modelopt: langtype| stackoption | "OS_DOS"i
 modeloptlist: modelopt | modelopt _COMMA modeloptlist
-!mulop: "*"| "/" | "MOD"i
 namedir: "NAME"i LABEL _linereminder
 nearfar: "NEAR"i | "FAR"i
 nestedstruct: structkw  LABEL?  _linereminder "ENDS"i _linereminder | structkw  LABEL?  _linereminder structitem+ "ENDS"i _linereminder
@@ -355,8 +356,6 @@ _segoption: segalign| segro| segattrib| segsize| classname
 segoptionlist: _segoption+
 segro: "READONLY"i
 !segsize : "USE16"i | "USE32"i | "FLAT"i
-shiftop: "SHR"i | "SHL"i
-// unadd: "-" | "+"
 simplesegdir: segdir _linereminder
 stackoption: "NEARSTACK"i | "FARSTACK"i
 startupdir: ".STARTUP"i _linereminder
