@@ -107,12 +107,15 @@ class Asm2IR(Transformer):
 
     def INTEGER(self, value):
         from .parser import parse_asm_number
+        from .gen import guess_int_size
+
         radix, sign, value = parse_asm_number(value, self.radix)
-        '''
+
         val = int(value, radix)
         if sign == '-':
             val *= -1
-        '''
+        self.expression.element_size = max(guess_int_size(val), self.expression.element_size)
+
         t = lark.Token(type='INTEGER', value=sign+value)
         t.start_pos, t.line, t.column = radix, sign, value
         return t  # Token('INTEGER', Cpp(self.context.convert_asm_number_into_c(nodes, self.context.radix))  # TODO remove this

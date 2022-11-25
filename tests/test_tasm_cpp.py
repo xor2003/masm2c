@@ -1965,1102 +1965,1102 @@ class CppTest(unittest.TestCase):
     '''
 
     def test_cpp_26480(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u"'Z' - 'A' +1")), 1)
+        self.assertEqual(self.parser.test_size(u"'Z' - 'A' +1"), 1)
 
     def test_cpp_26490(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u"'a'")), 1)
+        self.assertEqual(self.parser.test_size(u"'a'"), 1)
 
     def test_cpp_26500(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u"'c'")), 1)
+        self.assertEqual(self.parser.test_size(u"'c'"), 1)
 
     def test_cpp_26510(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u"'d'")), 1)
+        self.assertEqual(self.parser.test_size(u"'d'"), 1)
 
     def test_cpp_26520(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u"'dcba'")), 4)
+        self.assertEqual(self.parser.test_size(u"'dcba'"), 4)
 
     def test_cpp_26530(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u"'tseT'")), 4)
+        self.assertEqual(self.parser.test_size(u"'tseT'"), 4)
 
     def test_cpp_26540(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'(1024*10/16)+5')), 2)
+        self.assertEqual(self.parser.test_size(u'(1024*10/16)+5'), 2)
 
     def test_cpp_26550(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'(1024*10/16)-1')), 2)
+        self.assertEqual(self.parser.test_size(u'(1024*10/16)-1'), 2)
 
     def test_cpp_26560(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'(offset str_buffer+800h)')), 2)
+        self.assertEqual(self.parser.test_size(u'(offset str_buffer+800h)'), 2)
 
     def test_cpp_26570(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'(offset str_buffer+810h)')), 2)
+        self.assertEqual(self.parser.test_size(u'(offset str_buffer+810h)'), 2)
 
     def test_cpp_26580(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'+40h')), 1)
+        self.assertEqual(self.parser.test_size(u'+40h'), 1)
 
     def test_cpp_26590(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'+4000H')), 2)
+        self.assertEqual(self.parser.test_size(u'+4000H'), 2)
 
     def test_cpp_26600(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'-108h')), 2)
+        self.assertEqual(self.parser.test_size(u'-108h'), 2)
 
     def test_cpp_26610(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'-1Ch')), 1)
+        self.assertEqual(self.parser.test_size(u'-1Ch'), 1)
 
     def test_cpp_26620(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'-20h')), 1)
+        self.assertEqual(self.parser.test_size(u'-20h'), 1)
 
     def test_cpp_26630(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'-28h')), 1)
+        self.assertEqual(self.parser.test_size(u'-28h'), 1)
 
     def test_cpp_26640(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'-2Ch')), 1)
+        self.assertEqual(self.parser.test_size(u'-2Ch'), 1)
 
     def test_cpp_26650(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'-1')), 1)
+        self.assertEqual(self.parser.test_size(u'-1'), 1)
 
     def test_cpp_26660(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'-1-(-2+3)')), 1)
+        self.assertEqual(self.parser.test_size(u'-1-(-2+3)'), 1)
 
     def test_cpp_26670(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'-12')), 1)
+        self.assertEqual(self.parser.test_size(u'-12'), 1)
 
     def test_cpp_26680(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'0')), 1)
+        self.assertEqual(self.parser.test_size(u'0'), 1)
 
     def test_cpp_26690(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'0002h')), 1)
+        self.assertEqual(self.parser.test_size(u'0002h'), 1)
 
     def test_cpp_26700(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'0007')), 1)
+        self.assertEqual(self.parser.test_size(u'0007'), 1)
 
     def test_cpp_26710(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'000f3h')), 1)
+        self.assertEqual(self.parser.test_size(u'000f3h'), 1)
 
     def test_cpp_26720(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'000ff00ffh')), 4)
+        self.assertEqual(self.parser.test_size(u'000ff00ffh'), 4)
 
     def test_cpp_26730(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'001111111B')), 1)
+        self.assertEqual(self.parser.test_size(u'001111111B'), 1)
 
     def test_cpp_26740(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'00fffh')), 2)
+        self.assertEqual(self.parser.test_size(u'00fffh'), 2)
 
     def test_cpp_26750(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'00h')), 1)
+        self.assertEqual(self.parser.test_size(u'00h'), 1)
 
     def test_cpp_26760(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'0100b')), 1)
+        self.assertEqual(self.parser.test_size(u'0100b'), 1)
 
     def test_cpp_26770(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'01010101010101010b')), 2)
+        self.assertEqual(self.parser.test_size(u'01010101010101010b'), 2)
 
     def test_cpp_26780(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'0101010101010101b')), 2)
+        self.assertEqual(self.parser.test_size(u'0101010101010101b'), 2)
 
     def test_cpp_26790(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'0101b')), 1)
+        self.assertEqual(self.parser.test_size(u'0101b'), 1)
 
     def test_cpp_26800(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'010B')), 1)
+        self.assertEqual(self.parser.test_size(u'010B'), 1)
 
     def test_cpp_26810(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'011111100B')), 1)
+        self.assertEqual(self.parser.test_size(u'011111100B'), 1)
 
     def test_cpp_26820(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'011111111111111111111111111111111b')), 4)
+        self.assertEqual(self.parser.test_size(u'011111111111111111111111111111111b'), 4)
 
     def test_cpp_26830(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'01111111111111111b')), 2)
+        self.assertEqual(self.parser.test_size(u'01111111111111111b'), 2)
 
     def test_cpp_26840(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'011111111B')), 1)
+        self.assertEqual(self.parser.test_size(u'011111111B'), 1)
 
     def test_cpp_26850(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'012345678h')), 4)
+        self.assertEqual(self.parser.test_size(u'012345678h'), 4)
 
     def test_cpp_26860(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'01B')), 1)
+        self.assertEqual(self.parser.test_size(u'01B'), 1)
 
     def test_cpp_26870(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'01h')), 1)
+        self.assertEqual(self.parser.test_size(u'01h'), 1)
 
     def test_cpp_26880(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'02h')), 1)
+        self.assertEqual(self.parser.test_size(u'02h'), 1)
 
     def test_cpp_26890(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'03dh')), 1)
+        self.assertEqual(self.parser.test_size(u'03dh'), 1)
 
     def test_cpp_26900(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'03eh')), 1)
+        self.assertEqual(self.parser.test_size(u'03eh'), 1)
 
     def test_cpp_26910(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'03fh')), 1)
+        self.assertEqual(self.parser.test_size(u'03fh'), 1)
 
     def test_cpp_26920(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'042h')), 1)
+        self.assertEqual(self.parser.test_size(u'042h'), 1)
 
     def test_cpp_26930(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'077123456h')), 4)
+        self.assertEqual(self.parser.test_size(u'077123456h'), 4)
 
     def test_cpp_26940(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'077aaFF00h')), 4)
+        self.assertEqual(self.parser.test_size(u'077aaFF00h'), 4)
 
     def test_cpp_26950(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'08h')), 1)
+        self.assertEqual(self.parser.test_size(u'08h'), 1)
 
     def test_cpp_26960(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'0B')), 1)
+        self.assertEqual(self.parser.test_size(u'0B'), 1)
 
     def test_cpp_26970(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'0BC6058h')), 4)
+        self.assertEqual(self.parser.test_size(u'0BC6058h'), 4)
 
     def test_cpp_26980(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'0D5h')), 1)
+        self.assertEqual(self.parser.test_size(u'0D5h'), 1)
 
     def test_cpp_26990(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'0Eh')), 1)
+        self.assertEqual(self.parser.test_size(u'0Eh'), 1)
 
     def test_cpp_27000(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'0F7h')), 1)
+        self.assertEqual(self.parser.test_size(u'0F7h'), 1)
 
     def test_cpp_27010(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'0FBCA7654h')), 4)
+        self.assertEqual(self.parser.test_size(u'0FBCA7654h'), 4)
 
     def test_cpp_27020(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'0FBCA7h')), 4)
+        self.assertEqual(self.parser.test_size(u'0FBCA7h'), 4)
 
     def test_cpp_27030(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'0FEh')), 1)
+        self.assertEqual(self.parser.test_size(u'0FEh'), 1)
 
     def test_cpp_27040(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'0FFEh')), 2)
+        self.assertEqual(self.parser.test_size(u'0FFEh'), 2)
 
     def test_cpp_27050(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'0FFFC70F9h')), 4)
+        self.assertEqual(self.parser.test_size(u'0FFFC70F9h'), 4)
 
     def test_cpp_27060(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'0FFFE0080h')), 4)
+        self.assertEqual(self.parser.test_size(u'0FFFE0080h'), 4)
 
     def test_cpp_27070(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'0FFFEDCBFh')), 4)
+        self.assertEqual(self.parser.test_size(u'0FFFEDCBFh'), 4)
 
     def test_cpp_27080(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'0FFFEFDFCh')), 4)
+        self.assertEqual(self.parser.test_size(u'0FFFEFDFCh'), 4)
 
     def test_cpp_27090(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'0FFFEh')), 2)
+        self.assertEqual(self.parser.test_size(u'0FFFEh'), 2)
 
     def test_cpp_27100(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'0FFFF7FFFh')), 4)
+        self.assertEqual(self.parser.test_size(u'0FFFF7FFFh'), 4)
 
     def test_cpp_27110(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'0FFFFA549h')), 4)
+        self.assertEqual(self.parser.test_size(u'0FFFFA549h'), 4)
 
     def test_cpp_27120(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'0FFFFEh')), 4)
+        self.assertEqual(self.parser.test_size(u'0FFFFEh'), 4)
 
     def test_cpp_27130(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'0FFFFFED4h')), 4)
+        self.assertEqual(self.parser.test_size(u'0FFFFFED4h'), 4)
 
     def test_cpp_27140(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'0FFFFFEh')), 4)
+        self.assertEqual(self.parser.test_size(u'0FFFFFEh'), 4)
 
     def test_cpp_27150(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'0FFFFFFD3h')), 4)
+        self.assertEqual(self.parser.test_size(u'0FFFFFFD3h'), 4)
 
     def test_cpp_27160(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'0FFFFFFECh')), 4)
+        self.assertEqual(self.parser.test_size(u'0FFFFFFECh'), 4)
 
     def test_cpp_27170(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'0FFFFFFEh')), 4)
+        self.assertEqual(self.parser.test_size(u'0FFFFFFEh'), 4)
 
     def test_cpp_27180(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'0FFFFFFF0h')), 4)
+        self.assertEqual(self.parser.test_size(u'0FFFFFFF0h'), 4)
 
     def test_cpp_27190(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'0FFFFFFF7h')), 4)
+        self.assertEqual(self.parser.test_size(u'0FFFFFFF7h'), 4)
 
     def test_cpp_27200(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'0FFFFFFFAh')), 4)
+        self.assertEqual(self.parser.test_size(u'0FFFFFFFAh'), 4)
 
     def test_cpp_27210(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'0FFFFFFFBh')), 4)
+        self.assertEqual(self.parser.test_size(u'0FFFFFFFBh'), 4)
 
     def test_cpp_27220(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'0FFFFFFFCh')), 4)
+        self.assertEqual(self.parser.test_size(u'0FFFFFFFCh'), 4)
 
     def test_cpp_27230(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'0FFFFFFFDh')), 4)
+        self.assertEqual(self.parser.test_size(u'0FFFFFFFDh'), 4)
 
     def test_cpp_27240(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'0FFFFFFFEh')), 4)
+        self.assertEqual(self.parser.test_size(u'0FFFFFFFEh'), 4)
 
     def test_cpp_27250(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'0FFFFFFFFh')), 4)
+        self.assertEqual(self.parser.test_size(u'0FFFFFFFFh'), 4)
 
     def test_cpp_27260(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'0FFFFFFFh')), 4)
+        self.assertEqual(self.parser.test_size(u'0FFFFFFFh'), 4)
 
     def test_cpp_27270(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'0FFFFFFh')), 4)
+        self.assertEqual(self.parser.test_size(u'0FFFFFFh'), 4)
 
     def test_cpp_27280(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'0FFFFFh')), 4)
+        self.assertEqual(self.parser.test_size(u'0FFFFFh'), 4)
 
     def test_cpp_27290(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'0FFFFh')), 2)
+        self.assertEqual(self.parser.test_size(u'0FFFFh'), 2)
 
     def test_cpp_27300(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'0FFFh')), 2)
+        self.assertEqual(self.parser.test_size(u'0FFFh'), 2)
 
     def test_cpp_27310(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'0FFh')), 1)
+        self.assertEqual(self.parser.test_size(u'0FFh'), 1)
 
     def test_cpp_27320(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'0Fh')), 1)
+        self.assertEqual(self.parser.test_size(u'0Fh'), 1)
 
     def test_cpp_27330(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'0a0000h')), 4)
+        self.assertEqual(self.parser.test_size(u'0a0000h'), 4)
 
     def test_cpp_27340(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'0a000h')), 2)
+        self.assertEqual(self.parser.test_size(u'0a000h'), 2)
 
     def test_cpp_27350(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'0aabbccddh')), 4)
+        self.assertEqual(self.parser.test_size(u'0aabbccddh'), 4)
 
     def test_cpp_27360(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'0abcdef77h')), 4)
+        self.assertEqual(self.parser.test_size(u'0abcdef77h'), 4)
 
     def test_cpp_27370(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'0af222h')), 4)
+        self.assertEqual(self.parser.test_size(u'0af222h'), 4)
 
     def test_cpp_27380(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'0cch')), 1)
+        self.assertEqual(self.parser.test_size(u'0cch'), 1)
 
     def test_cpp_27390(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'0ddh')), 1)
+        self.assertEqual(self.parser.test_size(u'0ddh'), 1)
 
     def test_cpp_27400(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'0df01h')), 2)
+        self.assertEqual(self.parser.test_size(u'0df01h'), 2)
 
     def test_cpp_27410(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'0dff1h')), 2)
+        self.assertEqual(self.parser.test_size(u'0dff1h'), 2)
 
     def test_cpp_27420(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'0f0ffh')), 2)
+        self.assertEqual(self.parser.test_size(u'0f0ffh'), 2)
 
     def test_cpp_27430(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'0f0h')), 1)
+        self.assertEqual(self.parser.test_size(u'0f0h'), 1)
 
     def test_cpp_27440(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'0f222h')), 2)
+        self.assertEqual(self.parser.test_size(u'0f222h'), 2)
 
     def test_cpp_27450(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'0ffff0003h')), 4)
+        self.assertEqual(self.parser.test_size(u'0ffff0003h'), 4)
 
     def test_cpp_27460(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'0ffff00f3h')), 4)
+        self.assertEqual(self.parser.test_size(u'0ffff00f3h'), 4)
 
     def test_cpp_27470(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'0ffff01ffh')), 4)
+        self.assertEqual(self.parser.test_size(u'0ffff01ffh'), 4)
 
     def test_cpp_27480(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'0ffffff00h')), 4)
+        self.assertEqual(self.parser.test_size(u'0ffffff00h'), 4)
 
     def test_cpp_27490(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'0ffffff03h')), 4)
+        self.assertEqual(self.parser.test_size(u'0ffffff03h'), 4)
 
     def test_cpp_27500(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'0fffffff3h')), 4)
+        self.assertEqual(self.parser.test_size(u'0fffffff3h'), 4)
 
     def test_cpp_27510(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'0ffffffffh')), 4)
+        self.assertEqual(self.parser.test_size(u'0ffffffffh'), 4)
 
     def test_cpp_27520(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'0ffffh')), 2)
+        self.assertEqual(self.parser.test_size(u'0ffffh'), 2)
 
     def test_cpp_27530(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'0ffh')), 1)
+        self.assertEqual(self.parser.test_size(u'0ffh'), 1)
 
     def test_cpp_27540(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'0Ch')), 1)
+        self.assertEqual(self.parser.test_size(u'0Ch'), 1)
 
     def test_cpp_27550(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'1')), 1)
+        self.assertEqual(self.parser.test_size(u'1'), 1)
 
     def test_cpp_27560(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'10')), 1)
+        self.assertEqual(self.parser.test_size(u'10'), 1)
 
     def test_cpp_27570(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'10000h')), 4)
+        self.assertEqual(self.parser.test_size(u'10000h'), 4)
 
     def test_cpp_27580(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'1000h')), 2)
+        self.assertEqual(self.parser.test_size(u'1000h'), 2)
 
     def test_cpp_27590(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'100h')), 2)
+        self.assertEqual(self.parser.test_size(u'100h'), 2)
 
     def test_cpp_27600(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'1024*10/16')), 2)
+        self.assertEqual(self.parser.test_size(u'1024*10/16'), 2)
 
     def test_cpp_27610(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'1024*1024')), 4)
+        self.assertEqual(self.parser.test_size(u'1024*1024'), 4)
 
     def test_cpp_27620(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'10B')), 1)
+        self.assertEqual(self.parser.test_size(u'10B'), 1)
 
     def test_cpp_27630(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'10h')), 1)
+        self.assertEqual(self.parser.test_size(u'10h'), 1)
 
     def test_cpp_27640(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'11')), 1)
+        self.assertEqual(self.parser.test_size(u'11'), 1)
 
     def test_cpp_27650(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'111')), 1)
+        self.assertEqual(self.parser.test_size(u'111'), 1)
 
     def test_cpp_27660(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'114h')), 2)
+        self.assertEqual(self.parser.test_size(u'114h'), 2)
 
     def test_cpp_27670(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'11h')), 1)
+        self.assertEqual(self.parser.test_size(u'11h'), 1)
 
     def test_cpp_27680(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'12')), 1)
+        self.assertEqual(self.parser.test_size(u'12'), 1)
 
     def test_cpp_27690(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'12340004h')), 4)
+        self.assertEqual(self.parser.test_size(u'12340004h'), 4)
 
     def test_cpp_27700(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'1234001Dh')), 4)
+        self.assertEqual(self.parser.test_size(u'1234001Dh'), 4)
 
     def test_cpp_27710(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'12340128h')), 4)
+        self.assertEqual(self.parser.test_size(u'12340128h'), 4)
 
     def test_cpp_27720(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'12340205h')), 4)
+        self.assertEqual(self.parser.test_size(u'12340205h'), 4)
 
     def test_cpp_27730(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'12340306h')), 4)
+        self.assertEqual(self.parser.test_size(u'12340306h'), 4)
 
     def test_cpp_27740(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'12340407h')), 4)
+        self.assertEqual(self.parser.test_size(u'12340407h'), 4)
 
     def test_cpp_27750(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'1234040Ah')), 4)
+        self.assertEqual(self.parser.test_size(u'1234040Ah'), 4)
 
     def test_cpp_27760(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'12340503h')), 4)
+        self.assertEqual(self.parser.test_size(u'12340503h'), 4)
 
     def test_cpp_27770(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'12340506h')), 4)
+        self.assertEqual(self.parser.test_size(u'12340506h'), 4)
 
     def test_cpp_27780(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'12340507h')), 4)
+        self.assertEqual(self.parser.test_size(u'12340507h'), 4)
 
     def test_cpp_27790(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'12340547h')), 4)
+        self.assertEqual(self.parser.test_size(u'12340547h'), 4)
 
     def test_cpp_27800(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'12340559h')), 4)
+        self.assertEqual(self.parser.test_size(u'12340559h'), 4)
 
     def test_cpp_27810(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'12340560h')), 4)
+        self.assertEqual(self.parser.test_size(u'12340560h'), 4)
 
     def test_cpp_27820(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'1234059Fh')), 4)
+        self.assertEqual(self.parser.test_size(u'1234059Fh'), 4)
 
     def test_cpp_27830(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'123405A0h')), 4)
+        self.assertEqual(self.parser.test_size(u'123405A0h'), 4)
 
     def test_cpp_27840(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'123405FAh')), 4)
+        self.assertEqual(self.parser.test_size(u'123405FAh'), 4)
 
     def test_cpp_27850(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'12341678h')), 4)
+        self.assertEqual(self.parser.test_size(u'12341678h'), 4)
 
     def test_cpp_27860(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'12341h')), 4)
+        self.assertEqual(self.parser.test_size(u'12341h'), 4)
 
     def test_cpp_27870(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'12343h')), 4)
+        self.assertEqual(self.parser.test_size(u'12343h'), 4)
 
     def test_cpp_27880(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'12345')), 2)
+        self.assertEqual(self.parser.test_size(u'12345'), 2)
 
     def test_cpp_27890(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'1234561Dh')), 4)
+        self.assertEqual(self.parser.test_size(u'1234561Dh'), 4)
 
     def test_cpp_27900(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'12345678h')), 4)
+        self.assertEqual(self.parser.test_size(u'12345678h'), 4)
 
     def test_cpp_27910(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'12345h')), 4)
+        self.assertEqual(self.parser.test_size(u'12345h'), 4)
 
     def test_cpp_27920(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'12347F7Fh')), 4)
+        self.assertEqual(self.parser.test_size(u'12347F7Fh'), 4)
 
     def test_cpp_27930(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'12347FFFh')), 4)
+        self.assertEqual(self.parser.test_size(u'12347FFFh'), 4)
 
     def test_cpp_27940(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'12348000h')), 4)
+        self.assertEqual(self.parser.test_size(u'12348000h'), 4)
 
     def test_cpp_27950(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'12348080h')), 4)
+        self.assertEqual(self.parser.test_size(u'12348080h'), 4)
 
     def test_cpp_27960(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'1234h')), 2)
+        self.assertEqual(self.parser.test_size(u'1234h'), 2)
 
     def test_cpp_27970(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'127Eh')), 2)
+        self.assertEqual(self.parser.test_size(u'127Eh'), 2)
 
     def test_cpp_27980(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'12Ch')), 2)
+        self.assertEqual(self.parser.test_size(u'12Ch'), 2)
 
     def test_cpp_27990(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'13')), 1)
+        self.assertEqual(self.parser.test_size(u'13'), 1)
 
     def test_cpp_28000(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'132')), 1)
+        self.assertEqual(self.parser.test_size(u'132'), 1)
 
     def test_cpp_28010(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'133')), 1)
+        self.assertEqual(self.parser.test_size(u'133'), 1)
 
     def test_cpp_28020(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'13h')), 1)
+        self.assertEqual(self.parser.test_size(u'13h'), 1)
 
     def test_cpp_28030(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'14')), 1)
+        self.assertEqual(self.parser.test_size(u'14'), 1)
 
     def test_cpp_28040(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'14*320')), 2)
+        self.assertEqual(self.parser.test_size(u'14*320'), 2)
 
     def test_cpp_28050(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'14h')), 1)
+        self.assertEqual(self.parser.test_size(u'14h'), 1)
 
     def test_cpp_28060(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'15')), 1)
+        self.assertEqual(self.parser.test_size(u'15'), 1)
 
     def test_cpp_28070(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'16')), 1)
+        self.assertEqual(self.parser.test_size(u'16'), 1)
 
     def test_cpp_28080(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'17')), 1)
+        self.assertEqual(self.parser.test_size(u'17'), 1)
 
     def test_cpp_28090(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'17h')), 1)
+        self.assertEqual(self.parser.test_size(u'17h'), 1)
 
     def test_cpp_28100(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'18')), 1)
+        self.assertEqual(self.parser.test_size(u'18'), 1)
 
     def test_cpp_28110(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'18h')), 1)
+        self.assertEqual(self.parser.test_size(u'18h'), 1)
 
     def test_cpp_28120(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'19')), 1)
+        self.assertEqual(self.parser.test_size(u'19'), 1)
 
     def test_cpp_28130(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'192')), 1)
+        self.assertEqual(self.parser.test_size(u'192'), 1)
 
     def test_cpp_28140(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'193')), 1)
+        self.assertEqual(self.parser.test_size(u'193'), 1)
 
     def test_cpp_28150(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'1Ch')), 1)
+        self.assertEqual(self.parser.test_size(u'1Ch'), 1)
 
     def test_cpp_28160(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'1Eh')), 1)
+        self.assertEqual(self.parser.test_size(u'1Eh'), 1)
 
     def test_cpp_28170(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'1FEh')), 2)
+        self.assertEqual(self.parser.test_size(u'1FEh'), 2)
 
     def test_cpp_28180(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'1FF7Fh')), 4)
+        self.assertEqual(self.parser.test_size(u'1FF7Fh'), 4)
 
     def test_cpp_28190(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'1FF80h')), 4)
+        self.assertEqual(self.parser.test_size(u'1FF80h'), 4)
 
     def test_cpp_28200(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'1FF81h')), 4)
+        self.assertEqual(self.parser.test_size(u'1FF81h'), 4)
 
     def test_cpp_28210(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'1FFEh')), 2)
+        self.assertEqual(self.parser.test_size(u'1FFEh'), 2)
 
     def test_cpp_28220(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'1FFFEh')), 4)
+        self.assertEqual(self.parser.test_size(u'1FFFEh'), 4)
 
     def test_cpp_28230(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'1FFFFEh')), 4)
+        self.assertEqual(self.parser.test_size(u'1FFFFEh'), 4)
 
     def test_cpp_28240(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'1FFFFFEh')), 4)
+        self.assertEqual(self.parser.test_size(u'1FFFFFEh'), 4)
 
     def test_cpp_28250(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'1FFFFFFEh')), 4)
+        self.assertEqual(self.parser.test_size(u'1FFFFFFEh'), 4)
 
     def test_cpp_28260(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'1FFFFFFFh')), 4)
+        self.assertEqual(self.parser.test_size(u'1FFFFFFFh'), 4)
 
     def test_cpp_28270(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'1FFFFFFh')), 4)
+        self.assertEqual(self.parser.test_size(u'1FFFFFFh'), 4)
 
     def test_cpp_28280(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'1FFFFFh')), 4)
+        self.assertEqual(self.parser.test_size(u'1FFFFFh'), 4)
 
     def test_cpp_28290(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'1FFFFh')), 4)
+        self.assertEqual(self.parser.test_size(u'1FFFFh'), 4)
 
     def test_cpp_28300(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'1FFFh')), 2)
+        self.assertEqual(self.parser.test_size(u'1FFFh'), 2)
 
     def test_cpp_28310(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'1FFh')), 2)
+        self.assertEqual(self.parser.test_size(u'1FFh'), 2)
 
     def test_cpp_28320(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'1Fh')), 1)
+        self.assertEqual(self.parser.test_size(u'1Fh'), 1)
 
     def test_cpp_28330(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'2')), 1)
+        self.assertEqual(self.parser.test_size(u'2'), 1)
 
     def test_cpp_28340(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'20')), 1)
+        self.assertEqual(self.parser.test_size(u'20'), 1)
 
     def test_cpp_28350(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'20000h')), 4)
+        self.assertEqual(self.parser.test_size(u'20000h'), 4)
 
     def test_cpp_28360(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'20h')), 1)
+        self.assertEqual(self.parser.test_size(u'20h'), 1)
 
     def test_cpp_28370(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'21')), 1)
+        self.assertEqual(self.parser.test_size(u'21'), 1)
 
     def test_cpp_28380(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'21AD3D34h')), 4)
+        self.assertEqual(self.parser.test_size(u'21AD3D34h'), 4)
 
     def test_cpp_28390(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'21h')), 1)
+        self.assertEqual(self.parser.test_size(u'21h'), 1)
 
     def test_cpp_28400(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'22')), 1)
+        self.assertEqual(self.parser.test_size(u'22'), 1)
 
     def test_cpp_28410(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'23')), 1)
+        self.assertEqual(self.parser.test_size(u'23'), 1)
 
     def test_cpp_28420(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'24')), 1)
+        self.assertEqual(self.parser.test_size(u'24'), 1)
 
     def test_cpp_28430(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'24h')), 1)
+        self.assertEqual(self.parser.test_size(u'24h'), 1)
 
     def test_cpp_28440(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'25')), 1)
+        self.assertEqual(self.parser.test_size(u'25'), 1)
 
     def test_cpp_28450(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'255')), 1)
+        self.assertEqual(self.parser.test_size(u'255'), 1)
 
     def test_cpp_28460(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'256')), 2)
+        self.assertEqual(self.parser.test_size(u'256'), 2)
 
     def test_cpp_28470(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'256*3')), 2)
+        self.assertEqual(self.parser.test_size(u'256*3'), 2)
 
     def test_cpp_28480(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'256+3')), 2)
+        self.assertEqual(self.parser.test_size(u'256+3'), 2)
 
     def test_cpp_28490(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'256+3+65536')), 4)
+        self.assertEqual(self.parser.test_size(u'256+3+65536'), 4)
 
     def test_cpp_28500(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'26')), 1)
+        self.assertEqual(self.parser.test_size(u'26'), 1)
 
     def test_cpp_28510(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'2Dh')), 1)
+        self.assertEqual(self.parser.test_size(u'2Dh'), 1)
 
     def test_cpp_28520(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'3')), 1)
+        self.assertEqual(self.parser.test_size(u'3'), 1)
 
     def test_cpp_28530(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'3*4')), 1)
+        self.assertEqual(self.parser.test_size(u'3*4'), 1)
 
     def test_cpp_28540(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'30')), 1)
+        self.assertEqual(self.parser.test_size(u'30'), 1)
 
     def test_cpp_28550(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'303Bh')), 2)
+        self.assertEqual(self.parser.test_size(u'303Bh'), 2)
 
     def test_cpp_28560(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'30h')), 1)
+        self.assertEqual(self.parser.test_size(u'30h'), 1)
 
     def test_cpp_28570(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'31')), 1)
+        self.assertEqual(self.parser.test_size(u'31'), 1)
 
     def test_cpp_28580(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'31h')), 1)
+        self.assertEqual(self.parser.test_size(u'31h'), 1)
 
     def test_cpp_28590(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'32')), 1)
+        self.assertEqual(self.parser.test_size(u'32'), 1)
 
     def test_cpp_28600(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'320*200/4')), 2)
+        self.assertEqual(self.parser.test_size(u'320*200/4'), 2)
 
     def test_cpp_28610(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'32432434h')), 4)
+        self.assertEqual(self.parser.test_size(u'32432434h'), 4)
 
     def test_cpp_28620(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'340128h')), 4)
+        self.assertEqual(self.parser.test_size(u'340128h'), 4)
 
     def test_cpp_28630(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'35')), 1)
+        self.assertEqual(self.parser.test_size(u'35'), 1)
 
     def test_cpp_28640(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'37')), 1)
+        self.assertEqual(self.parser.test_size(u'37'), 1)
 
     def test_cpp_28650(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'39h')), 1)
+        self.assertEqual(self.parser.test_size(u'39h'), 1)
 
     def test_cpp_28660(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'3Ch')), 1)
+        self.assertEqual(self.parser.test_size(u'3Ch'), 1)
 
     def test_cpp_28670(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'3DAh')), 2)
+        self.assertEqual(self.parser.test_size(u'3DAh'), 2)
 
     def test_cpp_28680(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'3Eh')), 1)
+        self.assertEqual(self.parser.test_size(u'3Eh'), 1)
 
     def test_cpp_28690(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'3FEh')), 2)
+        self.assertEqual(self.parser.test_size(u'3FEh'), 2)
 
     def test_cpp_28700(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'3FFEh')), 2)
+        self.assertEqual(self.parser.test_size(u'3FFEh'), 2)
 
     def test_cpp_28710(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'3FFFEh')), 4)
+        self.assertEqual(self.parser.test_size(u'3FFFEh'), 4)
 
     def test_cpp_28720(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'3FFFFEh')), 4)
+        self.assertEqual(self.parser.test_size(u'3FFFFEh'), 4)
 
     def test_cpp_28730(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'3FFFFFEh')), 4)
+        self.assertEqual(self.parser.test_size(u'3FFFFFEh'), 4)
 
     def test_cpp_28740(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'3FFFFFFEh')), 4)
+        self.assertEqual(self.parser.test_size(u'3FFFFFFEh'), 4)
 
     def test_cpp_28750(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'3FFFFFFFh')), 4)
+        self.assertEqual(self.parser.test_size(u'3FFFFFFFh'), 4)
 
     def test_cpp_28760(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'3FFFFFFh')), 4)
+        self.assertEqual(self.parser.test_size(u'3FFFFFFh'), 4)
 
     def test_cpp_28770(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'3FFFFFh')), 4)
+        self.assertEqual(self.parser.test_size(u'3FFFFFh'), 4)
 
     def test_cpp_28780(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'3FFFFh')), 4)
+        self.assertEqual(self.parser.test_size(u'3FFFFh'), 4)
 
     def test_cpp_28790(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'3FFFh')), 2)
+        self.assertEqual(self.parser.test_size(u'3FFFh'), 2)
 
     def test_cpp_28800(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'3FFh')), 2)
+        self.assertEqual(self.parser.test_size(u'3FFh'), 2)
 
     def test_cpp_28810(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'3Fh')), 1)
+        self.assertEqual(self.parser.test_size(u'3Fh'), 1)
 
     def test_cpp_28820(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'3c8h')), 2)
+        self.assertEqual(self.parser.test_size(u'3c8h'), 2)
 
     def test_cpp_28830(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'3c9h')), 2)
+        self.assertEqual(self.parser.test_size(u'3c9h'), 2)
 
     def test_cpp_28840(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'3h')), 1)
+        self.assertEqual(self.parser.test_size(u'3h'), 1)
 
     def test_cpp_28850(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'4')), 1)
+        self.assertEqual(self.parser.test_size(u'4'), 1)
 
     def test_cpp_28860(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'4+5*256')), 2)
+        self.assertEqual(self.parser.test_size(u'4+5*256'), 2)
 
     def test_cpp_28870(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'4000000')), 4)
+        self.assertEqual(self.parser.test_size(u'4000000'), 4)
 
     def test_cpp_28880(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'40h')), 1)
+        self.assertEqual(self.parser.test_size(u'40h'), 1)
 
     def test_cpp_28890(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'43210123h')), 4)
+        self.assertEqual(self.parser.test_size(u'43210123h'), 4)
 
     def test_cpp_28900(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'48h')), 1)
+        self.assertEqual(self.parser.test_size(u'48h'), 1)
 
     def test_cpp_28910(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'49h')), 1)
+        self.assertEqual(self.parser.test_size(u'49h'), 1)
 
     def test_cpp_28920(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'4Ah')), 1)
+        self.assertEqual(self.parser.test_size(u'4Ah'), 1)
 
     def test_cpp_28930(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'4Ch')), 1)
+        self.assertEqual(self.parser.test_size(u'4Ch'), 1)
 
     def test_cpp_28940(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'4ch')), 1)
+        self.assertEqual(self.parser.test_size(u'4ch'), 1)
 
     def test_cpp_28950(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'5')), 1)
+        self.assertEqual(self.parser.test_size(u'5'), 1)
 
     def test_cpp_28960(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'50')), 1)
+        self.assertEqual(self.parser.test_size(u'50'), 1)
 
     def test_cpp_28970(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'501h')), 2)
+        self.assertEqual(self.parser.test_size(u'501h'), 2)
 
     def test_cpp_28980(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'511')), 2)
+        self.assertEqual(self.parser.test_size(u'511'), 2)
 
     def test_cpp_28990(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'55')), 1)
+        self.assertEqual(self.parser.test_size(u'55'), 1)
 
     def test_cpp_29000(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'56')), 1)
+        self.assertEqual(self.parser.test_size(u'56'), 1)
 
     def test_cpp_29010(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'57')), 1)
+        self.assertEqual(self.parser.test_size(u'57'), 1)
 
     def test_cpp_29020(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'6')), 1)
+        self.assertEqual(self.parser.test_size(u'6'), 1)
 
     def test_cpp_29030(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'6*256+5')), 2)
+        self.assertEqual(self.parser.test_size(u'6*256+5'), 2)
 
     def test_cpp_29040(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'60')), 1)
+        self.assertEqual(self.parser.test_size(u'60'), 1)
 
     def test_cpp_29050(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'65324h')), 4)
+        self.assertEqual(self.parser.test_size(u'65324h'), 4)
 
     def test_cpp_29060(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'65423456h')), 4)
+        self.assertEqual(self.parser.test_size(u'65423456h'), 4)
 
     def test_cpp_29070(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'6789ABCDh')), 4)
+        self.assertEqual(self.parser.test_size(u'6789ABCDh'), 4)
 
     def test_cpp_29080(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'7')), 1)
+        self.assertEqual(self.parser.test_size(u'7'), 1)
 
     def test_cpp_29090(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'7Eh')), 1)
+        self.assertEqual(self.parser.test_size(u'7Eh'), 1)
 
     def test_cpp_29100(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'7FEh')), 2)
+        self.assertEqual(self.parser.test_size(u'7FEh'), 2)
 
     def test_cpp_29110(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'7FFEh')), 2)
+        self.assertEqual(self.parser.test_size(u'7FFEh'), 2)
 
     def test_cpp_29120(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'7FFFEh')), 4)
+        self.assertEqual(self.parser.test_size(u'7FFFEh'), 4)
 
     def test_cpp_29130(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'7FFFFEh')), 4)
+        self.assertEqual(self.parser.test_size(u'7FFFFEh'), 4)
 
     def test_cpp_29140(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'7FFFFFEh')), 4)
+        self.assertEqual(self.parser.test_size(u'7FFFFFEh'), 4)
 
     def test_cpp_29150(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'7FFFFFFEh')), 4)
+        self.assertEqual(self.parser.test_size(u'7FFFFFFEh'), 4)
 
     def test_cpp_29160(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'7FFFFFFFh')), 4)
+        self.assertEqual(self.parser.test_size(u'7FFFFFFFh'), 4)
 
     def test_cpp_29170(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'7FFFFFFh')), 4)
+        self.assertEqual(self.parser.test_size(u'7FFFFFFh'), 4)
 
     def test_cpp_29180(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'7FFFFFh')), 4)
+        self.assertEqual(self.parser.test_size(u'7FFFFFh'), 4)
 
     def test_cpp_29190(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'7FFFFh')), 4)
+        self.assertEqual(self.parser.test_size(u'7FFFFh'), 4)
 
     def test_cpp_29200(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'7FFFh')), 2)
+        self.assertEqual(self.parser.test_size(u'7FFFh'), 2)
 
     def test_cpp_29210(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'7FFh')), 2)
+        self.assertEqual(self.parser.test_size(u'7FFh'), 2)
 
     def test_cpp_29220(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'7Fh')), 1)
+        self.assertEqual(self.parser.test_size(u'7Fh'), 1)
 
     def test_cpp_29230(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'8')), 1)
+        self.assertEqual(self.parser.test_size(u'8'), 1)
 
     def test_cpp_29240(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'80000000h')), 4)
+        self.assertEqual(self.parser.test_size(u'80000000h'), 4)
 
     def test_cpp_29250(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'80000001h')), 4)
+        self.assertEqual(self.parser.test_size(u'80000001h'), 4)
 
     def test_cpp_29260(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'80008481h')), 4)
+        self.assertEqual(self.parser.test_size(u'80008481h'), 4)
 
     def test_cpp_29270(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'80008688h')), 4)
+        self.assertEqual(self.parser.test_size(u'80008688h'), 4)
 
     def test_cpp_29280(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'8000h')), 2)
+        self.assertEqual(self.parser.test_size(u'8000h'), 2)
 
     def test_cpp_29290(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'801h')), 2)
+        self.assertEqual(self.parser.test_size(u'801h'), 2)
 
     def test_cpp_29300(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'80h')), 1)
+        self.assertEqual(self.parser.test_size(u'80h'), 1)
 
     def test_cpp_29310(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'81234567h')), 4)
+        self.assertEqual(self.parser.test_size(u'81234567h'), 4)
 
     def test_cpp_29320(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'81238567h')), 4)
+        self.assertEqual(self.parser.test_size(u'81238567h'), 4)
 
     def test_cpp_29330(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'812FADAh')), 4)
+        self.assertEqual(self.parser.test_size(u'812FADAh'), 4)
 
     def test_cpp_29340(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'813F3421h')), 4)
+        self.assertEqual(self.parser.test_size(u'813F3421h'), 4)
 
     def test_cpp_29350(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'81h')), 1)
+        self.assertEqual(self.parser.test_size(u'81h'), 1)
 
     def test_cpp_29360(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'82345679h')), 4)
+        self.assertEqual(self.parser.test_size(u'82345679h'), 4)
 
     def test_cpp_29370(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'8234A6F8h')), 4)
+        self.assertEqual(self.parser.test_size(u'8234A6F8h'), 4)
 
     def test_cpp_29380(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'8345A1F2h')), 4)
+        self.assertEqual(self.parser.test_size(u'8345A1F2h'), 4)
 
     def test_cpp_29390(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'8C5h')), 2)
+        self.assertEqual(self.parser.test_size(u'8C5h'), 2)
 
     def test_cpp_29400(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'8D5h')), 2)
+        self.assertEqual(self.parser.test_size(u'8D5h'), 2)
 
     def test_cpp_29410(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'9')), 1)
+        self.assertEqual(self.parser.test_size(u'9'), 1)
 
     def test_cpp_29420(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'9ABCDEFh')), 4)
+        self.assertEqual(self.parser.test_size(u'9ABCDEFh'), 4)
 
     def test_cpp_29430(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'AL')), 1)
+        self.assertEqual(self.parser.test_size(u'AL'), 1)
 
     def test_cpp_29440(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'B')), 0)
+        self.assertEqual(self.parser.test_size(u'B'), 0)
 
     def test_cpp_29450(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'CC')), 0)
+        self.assertEqual(self.parser.test_size(u'CC'), 0)
 
     def test_cpp_29460(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'DDD')), 0)
+        self.assertEqual(self.parser.test_size(u'DDD'), 0)
 
     def test_cpp_29470(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'DX')), 2)
+        self.assertEqual(self.parser.test_size(u'DX'), 2)
 
     def test_cpp_29480(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'OFFSET ASCiI')), 2)
+        self.assertEqual(self.parser.test_size(u'OFFSET ASCiI'), 2)
 
     def test_cpp_29490(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'OFFSET AsCii')), 2)
+        self.assertEqual(self.parser.test_size(u'OFFSET AsCii'), 2)
 
     def test_cpp_29500(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'TWO')), 0)
+        self.assertEqual(self.parser.test_size(u'TWO'), 0)
 
     def test_cpp_29510(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[a+1]')), 0)
+        self.assertEqual(self.parser.test_size(u'[a+1]'), 0)
 
     #def test_cpp_29520(self):
         # self.assertEqual(self.cpp.get_size(self.parser.test_size(u'[a]')),0)
 
     def test_cpp_29530(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[cs:table+ax]')), 0)
+        self.assertEqual(self.parser.test_size(u'[cs:table+ax]'), 0)
 
     def test_cpp_29540(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[doublequote+4]')), 0)
+        self.assertEqual(self.parser.test_size(u'[doublequote+4]'), 0)
 
     def test_cpp_29550(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[eax+4000h]')), 0)
+        self.assertEqual(self.parser.test_size(u'[eax+4000h]'), 0)
 
     def test_cpp_29560(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[eax+40h]')), 0)
+        self.assertEqual(self.parser.test_size(u'[eax+40h]'), 0)
 
     def test_cpp_29570(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[eax+ecx+40h]')), 0)
+        self.assertEqual(self.parser.test_size(u'[eax+ecx+40h]'), 0)
 
     def test_cpp_29580(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[eax+ecx]')), 0)
+        self.assertEqual(self.parser.test_size(u'[eax+ecx]'), 0)
 
     def test_cpp_29590(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[eax]')), 0)
+        self.assertEqual(self.parser.test_size(u'[eax]'), 0)
 
     def test_cpp_29600(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[ebp+ecx_0]')), 0)
+        self.assertEqual(self.parser.test_size(u'[ebp+ecx_0]'), 0)
 
     def test_cpp_29610(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[ebp+ecx_vals]')), 0)
+        self.assertEqual(self.parser.test_size(u'[ebp+ecx_vals]'), 0)
 
     def test_cpp_29620(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[ebp+edx_0]')), 0)
+        self.assertEqual(self.parser.test_size(u'[ebp+edx_0]'), 0)
 
     def test_cpp_29630(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[ebp+i*4+ecx_vals]')), 0)
+        self.assertEqual(self.parser.test_size(u'[ebp+i*4+ecx_vals]'), 0)
 
     def test_cpp_29640(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[ebp+i+table]')), 0)
+        self.assertEqual(self.parser.test_size(u'[ebp+i+table]'), 0)
 
     def test_cpp_29650(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[ebp+iflags]')), 0)
+        self.assertEqual(self.parser.test_size(u'[ebp+iflags]'), 0)
 
     def test_cpp_29660(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[ebp+op0]')), 0)
+        self.assertEqual(self.parser.test_size(u'[ebp+op0]'), 0)
 
     def test_cpp_29670(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[ebp+op0h]')), 0)
+        self.assertEqual(self.parser.test_size(u'[ebp+op0h]'), 0)
 
     def test_cpp_29680(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[ebp+s0]')), 0)
+        self.assertEqual(self.parser.test_size(u'[ebp+s0]'), 0)
 
     def test_cpp_29690(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[ebp+s1]')), 0)
+        self.assertEqual(self.parser.test_size(u'[ebp+s1]'), 0)
 
     def test_cpp_29700(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[ebp+s2]')), 0)
+        self.assertEqual(self.parser.test_size(u'[ebp+s2]'), 0)
 
     def test_cpp_29710(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[ebp+table]')), 0)
+        self.assertEqual(self.parser.test_size(u'[ebp+table]'), 0)
 
     def test_cpp_29720(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[ebp+var_1C]')), 0)
+        self.assertEqual(self.parser.test_size(u'[ebp+var_1C]'), 0)
 
     def test_cpp_29730(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[ebp+var_20]')), 0)
+        self.assertEqual(self.parser.test_size(u'[ebp+var_20]'), 0)
 
     def test_cpp_29740(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[ebp+var_4]')), 0)
+        self.assertEqual(self.parser.test_size(u'[ebp+var_4]'), 0)
 
     def test_cpp_29750(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[ebx+4000h]')), 0)
+        self.assertEqual(self.parser.test_size(u'[ebx+4000h]'), 0)
 
     def test_cpp_29760(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[ebx+40h]')), 0)
+        self.assertEqual(self.parser.test_size(u'[ebx+40h]'), 0)
 
     def test_cpp_29770(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[ebx+edx+4000h]')), 0)
+        self.assertEqual(self.parser.test_size(u'[ebx+edx+4000h]'), 0)
 
     def test_cpp_29780(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[ebx+edx]')), 0)
+        self.assertEqual(self.parser.test_size(u'[ebx+edx]'), 0)
 
     def test_cpp_29790(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[ebx]')), 0)
+        self.assertEqual(self.parser.test_size(u'[ebx]'), 0)
 
     def test_cpp_29800(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[ecx+4000h]')), 0)
+        self.assertEqual(self.parser.test_size(u'[ecx+4000h]'), 0)
 
     def test_cpp_29810(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[ecx+40h]')), 0)
+        self.assertEqual(self.parser.test_size(u'[ecx+40h]'), 0)
 
     def test_cpp_29820(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[ecx+ecx*2+4000h]')), 0)
+        self.assertEqual(self.parser.test_size(u'[ecx+ecx*2+4000h]'), 0)
 
     def test_cpp_29830(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[ecx+ecx*2-0Ah]')), 0)
+        self.assertEqual(self.parser.test_size(u'[ecx+ecx*2-0Ah]'), 0)
 
     def test_cpp_29840(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[ecx+ecx*2]')), 0)
+        self.assertEqual(self.parser.test_size(u'[ecx+ecx*2]'), 0)
 
     def test_cpp_29850(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[ecx+ecx]')), 0)
+        self.assertEqual(self.parser.test_size(u'[ecx+ecx]'), 0)
 
     def test_cpp_29860(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[ecx]')), 0)
+        self.assertEqual(self.parser.test_size(u'[ecx]'), 0)
 
     def test_cpp_29870(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[edi+1]')), 0)
+        self.assertEqual(self.parser.test_size(u'[edi+1]'), 0)
 
     def test_cpp_29880(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[edi+4000h]')), 0)
+        self.assertEqual(self.parser.test_size(u'[edi+4000h]'), 0)
 
     def test_cpp_29890(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[edi+40h]')), 0)
+        self.assertEqual(self.parser.test_size(u'[edi+40h]'), 0)
 
     def test_cpp_29900(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[edi+ecx]')), 0)
+        self.assertEqual(self.parser.test_size(u'[edi+ecx]'), 0)
 
     def test_cpp_29910(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[edi]')), 0)
+        self.assertEqual(self.parser.test_size(u'[edi]'), 0)
 
     def test_cpp_29920(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[edx+4000h]')), 0)
+        self.assertEqual(self.parser.test_size(u'[edx+4000h]'), 0)
 
     def test_cpp_29930(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[edx+40h]')), 0)
+        self.assertEqual(self.parser.test_size(u'[edx+40h]'), 0)
 
     def test_cpp_29940(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[edx+ecx*4+4000h]')), 0)
+        self.assertEqual(self.parser.test_size(u'[edx+ecx*4+4000h]'), 0)
 
     def test_cpp_29950(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[edx+ecx*4-0Ah]')), 0)
+        self.assertEqual(self.parser.test_size(u'[edx+ecx*4-0Ah]'), 0)
 
     def test_cpp_29960(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[edx+ecx*4]')), 0)
+        self.assertEqual(self.parser.test_size(u'[edx+ecx*4]'), 0)
 
     def test_cpp_29970(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[edx+ecx]')), 0)
+        self.assertEqual(self.parser.test_size(u'[edx+ecx]'), 0)
 
     def test_cpp_29980(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[edx]')), 0)
+        self.assertEqual(self.parser.test_size(u'[edx]'), 0)
 
     def test_cpp_29990(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[esi+4000h]')), 0)
+        self.assertEqual(self.parser.test_size(u'[esi+4000h]'), 0)
 
     def test_cpp_30000(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[esi+40h]')), 0)
+        self.assertEqual(self.parser.test_size(u'[esi+40h]'), 0)
 
     def test_cpp_30010(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[esi+ecx*8+4000h]')), 0)
+        self.assertEqual(self.parser.test_size(u'[esi+ecx*8+4000h]'), 0)
 
     def test_cpp_30020(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[esi+ecx*8-0Ah]')), 0)
+        self.assertEqual(self.parser.test_size(u'[esi+ecx*8-0Ah]'), 0)
 
     def test_cpp_30030(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[esi+ecx*8]')), 0)
+        self.assertEqual(self.parser.test_size(u'[esi+ecx*8]'), 0)
 
     def test_cpp_30040(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[esi+ecx]')), 0)
+        self.assertEqual(self.parser.test_size(u'[esi+ecx]'), 0)
 
     def test_cpp_30050(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[esi]')), 0)
+        self.assertEqual(self.parser.test_size(u'[esi]'), 0)
 
     def test_cpp_30060(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[esp+0Ch]')), 0)
+        self.assertEqual(self.parser.test_size(u'[esp+0Ch]'), 0)
 
     def test_cpp_30070(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[esp+10h]')), 0)
+        self.assertEqual(self.parser.test_size(u'[esp+10h]'), 0)
 
     def test_cpp_30080(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[esp+14h]')), 0)
+        self.assertEqual(self.parser.test_size(u'[esp+14h]'), 0)
 
     def test_cpp_30090(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[esp+18h]')), 0)
+        self.assertEqual(self.parser.test_size(u'[esp+18h]'), 0)
 
     def test_cpp_30100(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[esp+1Ch]')), 0)
+        self.assertEqual(self.parser.test_size(u'[esp+1Ch]'), 0)
 
     def test_cpp_30110(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[esp+4]')), 0)
+        self.assertEqual(self.parser.test_size(u'[esp+4]'), 0)
 
     def test_cpp_30120(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[esp+8]')), 0)
+        self.assertEqual(self.parser.test_size(u'[esp+8]'), 0)
 
     def test_cpp_30130(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[esp]')), 0)
+        self.assertEqual(self.parser.test_size(u'[esp]'), 0)
 
     #def test_cpp_30140(self):
         # self.assertEqual(self.cpp.get_size(self.parser.test_size(u'[g]')),0)
@@ -3069,52 +3069,52 @@ class CppTest(unittest.TestCase):
         # self.assertEqual(self.cpp.get_size(self.parser.test_size(u'[h2]')),0)
 
     def test_cpp_30160(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[i+1]')), 0)
+        self.assertEqual(self.parser.test_size(u'[i+1]'), 0)
 
     def test_cpp_30170(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[i+2]')), 0)
+        self.assertEqual(self.parser.test_size(u'[i+2]'), 0)
 
     def test_cpp_30180(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[i+3]')), 0)
+        self.assertEqual(self.parser.test_size(u'[i+3]'), 0)
 
     def test_cpp_30190(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[i+4]')), 0)
+        self.assertEqual(self.parser.test_size(u'[i+4]'), 0)
 
     def test_cpp_30200(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[i+56h]')), 0)
+        self.assertEqual(self.parser.test_size(u'[i+56h]'), 0)
 
     def test_cpp_30210(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[i+5]')), 0)
+        self.assertEqual(self.parser.test_size(u'[i+5]'), 0)
 
     def test_cpp_30220(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[i-10h]')), 0)
+        self.assertEqual(self.parser.test_size(u'[i-10h]'), 0)
 
     #def test_cpp_30230(self):
         # self.assertEqual(self.cpp.get_size(self.parser.test_size(u'[load_handle]')),0)
 
     def test_cpp_30240(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[var+3]')), 0)
+        self.assertEqual(self.parser.test_size(u'[var+3]'), 0)
 
     def test_cpp_30250(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[var+4]')), 0)
+        self.assertEqual(self.parser.test_size(u'[var+4]'), 0)
 
     def test_cpp_30260(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[var-1]')), 0)
+        self.assertEqual(self.parser.test_size(u'[var-1]'), 0)
 
     def test_cpp_30270(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[var0+5]')), 0)
+        self.assertEqual(self.parser.test_size(u'[var0+5]'), 0)
 
     def test_cpp_30280(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[var1+1]')), 0)
+        self.assertEqual(self.parser.test_size(u'[var1+1]'), 0)
 
     #def test_cpp_30290(self):
         # self.assertEqual(self.cpp.get_size(self.parser.test_size(u'[var1]')),0)
 
     def test_cpp_30300(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[var2+2]')), 0)
+        self.assertEqual(self.parser.test_size(u'[var2+2]'), 0)
 
     def test_cpp_30310(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[var2-1]')), 0)
+        self.assertEqual(self.parser.test_size(u'[var2-1]'), 0)
 
     #def test_cpp_30320(self):
         # self.assertEqual(self.cpp.get_size(self.parser.test_size(u'[var2]')),0)
@@ -3123,10 +3123,10 @@ class CppTest(unittest.TestCase):
         # self.assertEqual(self.cpp.get_size(self.parser.test_size(u'[var2]')),0)
 
     def test_cpp_30340(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[var3+3*4]')), 0)
+        self.assertEqual(self.parser.test_size(u'[var3+3*4]'), 0)
 
     def test_cpp_30350(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'[var3+ebp]')), 0)
+        self.assertEqual(self.parser.test_size(u'[var3+ebp]'), 0)
 
     #def test_cpp_30360(self):
         # self.assertEqual(self.cpp.get_size(self.parser.test_size(u'[var3]')),0)
@@ -3147,13 +3147,13 @@ class CppTest(unittest.TestCase):
         # self.assertEqual(self.cpp.get_size(self.parser.test_size(u'a')),1)
 
     def test_cpp_30420(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'ah')), 1)
+        self.assertEqual(self.parser.test_size(u'ah'), 1)
 
     def test_cpp_30430(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'al')), 1)
+        self.assertEqual(self.parser.test_size(u'al'), 1)
 
     def test_cpp_30440(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'ax')), 2)
+        self.assertEqual(self.parser.test_size(u'ax'), 2)
 
     #def test_cpp_30450(self):
         # self.assertEqual(self.cpp.get_size(self.parser.test_size(u'b')),1)
@@ -3165,319 +3165,319 @@ class CppTest(unittest.TestCase):
         # self.assertEqual(self.cpp.get_size(self.parser.test_size(u'beginningdata')),1)
 
     def test_cpp_30480(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'bh')), 1)
+        self.assertEqual(self.parser.test_size(u'bh'), 1)
 
     def test_cpp_30490(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'bl')), 1)
+        self.assertEqual(self.parser.test_size(u'bl'), 1)
 
     def test_cpp_30500(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'bp')), 2)
+        self.assertEqual(self.parser.test_size(u'bp'), 2)
 
     #def test_cpp_30510(self):
         # self.assertEqual(self.cpp.get_size(self.parser.test_size(u'buffer')),1)
 
     def test_cpp_30520(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'bx')), 2)
+        self.assertEqual(self.parser.test_size(u'bx'), 2)
 
     def test_cpp_30530(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'byte ptr [a]')), 1)
+        self.assertEqual(self.parser.test_size(u'byte ptr [a]'), 1)
 
     def test_cpp_30540(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'byte ptr [ebp+var_20]')), 1)
+        self.assertEqual(self.parser.test_size(u'byte ptr [ebp+var_20]'), 1)
 
     def test_cpp_30550(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'byte ptr [edi+1]')), 1)
+        self.assertEqual(self.parser.test_size(u'byte ptr [edi+1]'), 1)
 
     def test_cpp_30560(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'byte ptr [edi+7]')), 1)
+        self.assertEqual(self.parser.test_size(u'byte ptr [edi+7]'), 1)
 
     def test_cpp_30570(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'byte ptr [esi]')), 1)
+        self.assertEqual(self.parser.test_size(u'byte ptr [esi]'), 1)
 
     def test_cpp_30580(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'byte ptr [h2]')), 1)
+        self.assertEqual(self.parser.test_size(u'byte ptr [h2]'), 1)
 
     def test_cpp_30590(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'byte ptr [h]')), 1)
+        self.assertEqual(self.parser.test_size(u'byte ptr [h]'), 1)
 
     def test_cpp_30600(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'byte ptr [testOVerlap+1]')), 1)
+        self.assertEqual(self.parser.test_size(u'byte ptr [testOVerlap+1]'), 1)
 
     def test_cpp_30610(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'byte ptr [var1+1]')), 1)
+        self.assertEqual(self.parser.test_size(u'byte ptr [var1+1]'), 1)
 
     def test_cpp_30620(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'byte ptr [var1+2]')), 1)
+        self.assertEqual(self.parser.test_size(u'byte ptr [var1+2]'), 1)
 
     def test_cpp_30630(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'byte ptr dl')), 1)
+        self.assertEqual(self.parser.test_size(u'byte ptr dl'), 1)
 
     def test_cpp_30640(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'byte ptr ds:[0]')), 1)
+        self.assertEqual(self.parser.test_size(u'byte ptr ds:[0]'), 1)
 
     def test_cpp_30650(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'byte ptr es:[0]')), 1)
+        self.assertEqual(self.parser.test_size(u'byte ptr es:[0]'), 1)
 
     #def test_cpp_30660(self):
         # self.assertEqual(self.cpp.get_size(self.parser.test_size(u'c')),4)
 
     def test_cpp_30670(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'ch')), 1)
+        self.assertEqual(self.parser.test_size(u'ch'), 1)
 
     def test_cpp_30680(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'cl')), 1)
+        self.assertEqual(self.parser.test_size(u'cl'), 1)
 
     def test_cpp_30690(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'cx')), 2)
+        self.assertEqual(self.parser.test_size(u'cx'), 2)
 
     def test_cpp_30700(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'di')), 2)
+        self.assertEqual(self.parser.test_size(u'di'), 2)
 
     def test_cpp_30710(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'dl')), 1)
+        self.assertEqual(self.parser.test_size(u'dl'), 1)
 
     def test_cpp_30720(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'ds')), 2)
+        self.assertEqual(self.parser.test_size(u'ds'), 2)
 
     def test_cpp_30730(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'ds:0[eax*2]')), 0)
+        self.assertEqual(self.parser.test_size(u'ds:0[eax*2]'), 0)
 
     def test_cpp_30740(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'ds:0[ebx*4]')), 0)
+        self.assertEqual(self.parser.test_size(u'ds:0[ebx*4]'), 0)
 
     def test_cpp_30750(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'ds:0[ecx*8]')), 0)
+        self.assertEqual(self.parser.test_size(u'ds:0[ecx*8]'), 0)
 
     def test_cpp_30760(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'ds:40h[eax*2]')), 0)
+        self.assertEqual(self.parser.test_size(u'ds:40h[eax*2]'), 0)
 
     def test_cpp_30770(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'ds:40h[ebx*4]')), 0)
+        self.assertEqual(self.parser.test_size(u'ds:40h[ebx*4]'), 0)
 
     def test_cpp_30780(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'ds:40h[ecx*8]')), 0)
+        self.assertEqual(self.parser.test_size(u'ds:40h[ecx*8]'), 0)
 
     def test_cpp_30790(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'ds:[edi]')), 0)
+        self.assertEqual(self.parser.test_size(u'ds:[edi]'), 0)
 
     #def test_cpp_30800(self):
         # self.assertEqual(self.cpp.get_size(self.parser.test_size(u'ds:byte_41411F[eax]')),1)
 
     def test_cpp_30810(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'dword ptr [ebp+var_20+4]')), 4)
+        self.assertEqual(self.parser.test_size(u'dword ptr [ebp+var_20+4]'), 4)
 
     def test_cpp_30820(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'dword ptr [ebp+var_20]')), 4)
+        self.assertEqual(self.parser.test_size(u'dword ptr [ebp+var_20]'), 4)
 
     def test_cpp_30830(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'dword ptr [ebx-4]')), 4)
+        self.assertEqual(self.parser.test_size(u'dword ptr [ebx-4]'), 4)
 
     def test_cpp_30840(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'dword ptr [esp+0Ch]')), 4)
+        self.assertEqual(self.parser.test_size(u'dword ptr [esp+0Ch]'), 4)
 
     def test_cpp_30850(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'dword ptr [esp+10h]')), 4)
+        self.assertEqual(self.parser.test_size(u'dword ptr [esp+10h]'), 4)
 
     def test_cpp_30860(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'dword ptr [esp+14h]')), 4)
+        self.assertEqual(self.parser.test_size(u'dword ptr [esp+14h]'), 4)
 
     def test_cpp_30870(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'dword ptr [esp+1Ch]')), 4)
+        self.assertEqual(self.parser.test_size(u'dword ptr [esp+1Ch]'), 4)
 
     def test_cpp_30880(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'dword ptr [esp+4]')), 4)
+        self.assertEqual(self.parser.test_size(u'dword ptr [esp+4]'), 4)
 
     def test_cpp_30890(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'dword ptr [esp+8]')), 4)
+        self.assertEqual(self.parser.test_size(u'dword ptr [esp+8]'), 4)
 
     def test_cpp_30900(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'dword ptr [esp]')), 4)
+        self.assertEqual(self.parser.test_size(u'dword ptr [esp]'), 4)
 
     def test_cpp_30910(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'dword ptr buffer')), 4)
+        self.assertEqual(self.parser.test_size(u'dword ptr buffer'), 4)
 
     def test_cpp_30920(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'dword ptr es:[0]')), 4)
+        self.assertEqual(self.parser.test_size(u'dword ptr es:[0]'), 4)
 
     def test_cpp_30930(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'dword ptr es:[20*320+160]')), 4)
+        self.assertEqual(self.parser.test_size(u'dword ptr es:[20*320+160]'), 4)
 
     def test_cpp_30940(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'dword ptr var4')), 4)
+        self.assertEqual(self.parser.test_size(u'dword ptr var4'), 4)
 
     def test_cpp_30950(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'dx')), 2)
+        self.assertEqual(self.parser.test_size(u'dx'), 2)
 
     def test_cpp_30960(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'eax')), 4)
+        self.assertEqual(self.parser.test_size(u'eax'), 4)
 
     def test_cpp_30970(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'eax_0')), 0)
+        self.assertEqual(self.parser.test_size(u'eax_0'), 0)
 
     def test_cpp_30980(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'ebp')), 4)
+        self.assertEqual(self.parser.test_size(u'ebp'), 4)
 
     def test_cpp_30990(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'ebx')), 4)
+        self.assertEqual(self.parser.test_size(u'ebx'), 4)
 
     def test_cpp_31000(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'ecx')), 4)
+        self.assertEqual(self.parser.test_size(u'ecx'), 4)
 
     def test_cpp_31010(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'ecx_0')), 0)
+        self.assertEqual(self.parser.test_size(u'ecx_0'), 0)
 
     def test_cpp_31020(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'ecx_0_0')), 0)
+        self.assertEqual(self.parser.test_size(u'ecx_0_0'), 0)
 
     def test_cpp_31030(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'edi')), 4)
+        self.assertEqual(self.parser.test_size(u'edi'), 4)
 
     def test_cpp_31040(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'edi_0')), 0)
+        self.assertEqual(self.parser.test_size(u'edi_0'), 0)
 
     def test_cpp_31050(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'edx')), 4)
+        self.assertEqual(self.parser.test_size(u'edx'), 4)
 
     def test_cpp_31060(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'edx_0_0')), 0)
+        self.assertEqual(self.parser.test_size(u'edx_0_0'), 0)
 
     def test_cpp_31070(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'eflags')), 0)
+        self.assertEqual(self.parser.test_size(u'eflags'), 0)
 
     #def test_cpp_31080(self):
         # self.assertEqual(self.cpp.get_size(self.parser.test_size(u'enddata')),1)
 
     def test_cpp_31090(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'es')), 2)
+        self.assertEqual(self.parser.test_size(u'es'), 2)
 
     def test_cpp_31100(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'esi')), 4)
+        self.assertEqual(self.parser.test_size(u'esi'), 4)
 
     def test_cpp_31110(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'esi_0')), 0)
+        self.assertEqual(self.parser.test_size(u'esi_0'), 0)
 
     def test_cpp_31120(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'esp')), 4)
+        self.assertEqual(self.parser.test_size(u'esp'), 4)
 
     #def test_cpp_31130(self):
         # self.assertEqual(self.cpp.get_size(self.parser.test_size(u'fileName')),1)
 
     def test_cpp_31140(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'flags')), 0)
+        self.assertEqual(self.parser.test_size(u'flags'), 0)
 
     def test_cpp_31150(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'fs')), 2)
+        self.assertEqual(self.parser.test_size(u'fs'), 2)
 
     #def test_cpp_31160(self):
         # self.assertEqual(self.cpp.get_size(self.parser.test_size(u'g')),4)
 
     def test_cpp_31170(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'i')), 0)
+        self.assertEqual(self.parser.test_size(u'i'), 0)
 
     def test_cpp_31180(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'large ds:4000h')), 4)
+        self.assertEqual(self.parser.test_size(u'large ds:4000h'), 4)
 
     def test_cpp_31190(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'offset _msg')), 2)
+        self.assertEqual(self.parser.test_size(u'offset _msg'), 2)
 
     def test_cpp_31200(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'offset _test_btc')), 2)
+        self.assertEqual(self.parser.test_size(u'offset _test_btc'), 2)
 
     def test_cpp_31210(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'offset pal_jeu')), 2)
+        self.assertEqual(self.parser.test_size(u'offset pal_jeu'), 2)
 
     def test_cpp_31220(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'offset str1')), 2)
+        self.assertEqual(self.parser.test_size(u'offset str1'), 2)
 
     def test_cpp_31230(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'offset str2')), 2)
+        self.assertEqual(self.parser.test_size(u'offset str2'), 2)
 
     def test_cpp_31240(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'offset str3')), 2)
+        self.assertEqual(self.parser.test_size(u'offset str3'), 2)
 
     def test_cpp_31250(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'offset str_buffer+810h')), 2)
+        self.assertEqual(self.parser.test_size(u'offset str_buffer+810h'), 2)
 
     def test_cpp_31260(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'offset testOVerlap')), 2)
+        self.assertEqual(self.parser.test_size(u'offset testOVerlap'), 2)
 
     def test_cpp_31270(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'offset unk_40E008')), 2)
+        self.assertEqual(self.parser.test_size(u'offset unk_40E008'), 2)
 
     def test_cpp_31280(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'offset unk_40F064')), 2)
+        self.assertEqual(self.parser.test_size(u'offset unk_40F064'), 2)
 
     def test_cpp_31290(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'offset var1')), 2)
+        self.assertEqual(self.parser.test_size(u'offset var1'), 2)
 
     def test_cpp_31300(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'offset var1+1')), 2)
+        self.assertEqual(self.parser.test_size(u'offset var1+1'), 2)
 
     def test_cpp_31310(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'offset var2')), 2)
+        self.assertEqual(self.parser.test_size(u'offset var2'), 2)
 
     def test_cpp_31320(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'offset var3')), 2)
+        self.assertEqual(self.parser.test_size(u'offset var3'), 2)
 
     def test_cpp_31330(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'offset var3+4')), 2)
+        self.assertEqual(self.parser.test_size(u'offset var3+4'), 2)
 
     def test_cpp_31340(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'offset var4')), 2)
+        self.assertEqual(self.parser.test_size(u'offset var4'), 2)
 
     def test_cpp_31350(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'offset var4+1')), 2)
+        self.assertEqual(self.parser.test_size(u'offset var4+1'), 2)
 
     def test_cpp_31360(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'offset var4+4')), 2)
+        self.assertEqual(self.parser.test_size(u'offset var4+4'), 2)
 
     def test_cpp_31370(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'op0')), 0)
+        self.assertEqual(self.parser.test_size(u'op0'), 0)
 
     def test_cpp_31380(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'op1')), 0)
+        self.assertEqual(self.parser.test_size(u'op1'), 0)
 
     def test_cpp_31390(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'printf')), 0)
+        self.assertEqual(self.parser.test_size(u'printf'), 0)
 
     def test_cpp_31400(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'r')), 0)
+        self.assertEqual(self.parser.test_size(u'r'), 0)
 
     def test_cpp_31410(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'res')), 0)
+        self.assertEqual(self.parser.test_size(u'res'), 0)
 
     def test_cpp_31420(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'resh')), 0)
+        self.assertEqual(self.parser.test_size(u'resh'), 0)
 
     def test_cpp_31430(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'resz')), 0)
+        self.assertEqual(self.parser.test_size(u'resz'), 0)
 
     def test_cpp_31440(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'rh')), 0)
+        self.assertEqual(self.parser.test_size(u'rh'), 0)
 
     def test_cpp_31450(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u's0_0')), 0)
+        self.assertEqual(self.parser.test_size(u's0_0'), 0)
 
     def test_cpp_31460(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u's1_0')), 0)
+        self.assertEqual(self.parser.test_size(u's1_0'), 0)
 
     def test_cpp_31470(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'si')), 2)
+        self.assertEqual(self.parser.test_size(u'si'), 2)
 
     def test_cpp_31480(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u't')), 0)
+        self.assertEqual(self.parser.test_size(u't'), 0)
 
     def test_cpp_31490(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'taille_moire')), 0)
+        self.assertEqual(self.parser.test_size(u'taille_moire'), 0)
 
     def test_cpp_31500(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'teST2')), 0)
+        self.assertEqual(self.parser.test_size(u'teST2'), 0)
 
     def test_cpp_31500(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'teST2')), 0)
+        self.assertEqual(self.parser.test_size(u'teST2'), 0)
 
     def test_cpp_31510(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'fs: 8')), 0)
+        self.assertEqual(self.parser.test_size(u'fs: 8'), 0)
 
     #def test_cpp_31520(self):
         # self.assertEqual(self.cpp.get_size(self.parser.test_size(u'var1')),1)
@@ -3501,25 +3501,25 @@ class CppTest(unittest.TestCase):
     #    self.assertEqual(self.cpp.get_size(self.parser.test_size(u'var3+3*4')),4)
 
     def test_cpp_31590(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'var3+ebp')), 4)
+        self.assertEqual(self.parser.test_size(u'var3+ebp'), 4)
 
     #def test_cpp_31600(self):
     #   self.assertEqual(self.cpp.get_size(self.parser.test_size(u'var5')),1)
 
     def test_cpp_31610(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'word ptr [d]')), 2)
+        self.assertEqual(self.parser.test_size(u'word ptr [d]'), 2)
 
     def test_cpp_31620(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'word ptr [e]')), 2)
+        self.assertEqual(self.parser.test_size(u'word ptr [e]'), 2)
 
     def test_cpp_31630(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'word ptr [ebp+var_20]')), 2)
+        self.assertEqual(self.parser.test_size(u'word ptr [ebp+var_20]'), 2)
 
     def test_cpp_31640(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'word ptr [var5+2]')), 2)
+        self.assertEqual(self.parser.test_size(u'word ptr [var5+2]'), 2)
 
     def test_cpp_31650(self):
-        self.assertEqual(self.cpp.calculate_size(self.parser.test_size(u'word ptr var5')), 2)
+        self.assertEqual(self.parser.test_size(u'word ptr var5'), 2)
 
     def test_cpp_31660(self):
         self.assertEqual(self.parser.is_register(expr=u'_data'), 0)
