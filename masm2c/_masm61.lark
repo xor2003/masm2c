@@ -122,7 +122,6 @@ cxzexpr: "!" expr| expr  "==" expr| expr  "!=" expr | expr
 sqexpr: "[" expr "]"
 !braces: "(" expr ")"
 //sqexprlist: LABEL? sqexpr sqexpr?
-offsetdirmy: "OFFSET"i e10
 segmdir: "SEG"i e10
 ptrdir: e09 "PTR"i e10
 | "LARGE"i e10
@@ -166,7 +165,7 @@ WORDOP: ("HIGH"i|"LOW"i|"HIGHWORD"i|"LOWWORD"i)
 | e08
 ?e08: WORDOP e09
 | e09
-?e09: offsetdirmy
+?e09: "OFFSET"i e10 -> offsetdir
 | segmdir
 | "LROFFSET"i e10
 | "TYPE"i e10

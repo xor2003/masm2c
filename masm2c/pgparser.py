@@ -370,13 +370,12 @@ class Asm2IR(Transformer):
         self._expression  = self._expression or Expression()
         return self._expression
     def register(self, children):
-        # self.expression = self.expression or Expression()
         self.expression.element_size = self.context.is_register(children[0])
         self.expression.registers.add(children[0].lower())
         return children[0].lower()  # Token('segmentregister', nodes[0].lower())
 
     def segmentregister(self, children):
-        # self.expression = self.expression or Expression()
+        self.expression.element_size = self.context.is_register(children[0])
         self.expression.segment_register = children[0].lower()
         return children[0].lower()  # Token('segmentregister', nodes[0].lower())
 
@@ -403,7 +402,7 @@ class Asm2IR(Transformer):
         # self.expression = self.expression or Expression()
         # self.expression.indirection = IndirectionType.OFFSET
         self.expression.mods.add('offset')
-        self.size = 2
+        self.expression.element_size = 2
         return nodes  # Token('offsetdir', nodes[1])
 
     def segmdir(self, nodes):
@@ -416,6 +415,9 @@ class Asm2IR(Transformer):
         return nodes  # Token('LABEL', nodes)
 
     def STRING(self, nodes):
+        m = re.match(r'\'(.+)\'$', nodes)  # char constants
+        if m:
+            self.expression.element_size = len(m.group(1))
         return nodes  # Token('STRING', nodes)
 
     def structinstance(self, nodes, values):
@@ -456,8 +458,8 @@ class Asm2IR(Transformer):
             self.context.org(Parser.parse_int(value))
         return nodes
 
-    def STRING(self, token):
-        return token
+    #def STRING(self, token):
+    #    return token
 
 '''
 actions = {

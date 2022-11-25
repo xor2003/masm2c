@@ -796,8 +796,7 @@ class Parser:
             self.test_pre_parse()
             result = self.parse_file_content(text)
             result = result.children[2].children[1].children[1]
-            result = self.process_ast(text, result)
-            #result = IR2Cpp(self).visit(result)
+            expr = self.process_ast(text, result)
             #result = result.asminstruction.args[1]
         except Exception as e:
             print(e)
@@ -806,7 +805,7 @@ class Parser:
             result = [str(e)]
             raise
         #del self.__globals['default_seg']
-        return result.element_size
+        return expr.size()
 
     def action_data(self, line):
         from .cpp import IR2Cpp
