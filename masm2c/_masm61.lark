@@ -15,8 +15,8 @@ COMMENTKW: /comment\s+(\S)/ //[.\r\n]*?\1[^\r\n]*/x
 _ENDOFLINE: /[\r\n]+[\t \r\n]*/x
 //FLOAT: /-?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?/
 INTEGER: /[0-9][0-9A-Fa-f]*[HOQTYhoqty]?/
-_signed_integer.30: SIGN INTEGER
-_integer_.30: INTEGER | _signed_integer
+//_signed_integer: SIGN INTEGER
+_integer_: INTEGER //| _signed_integer
 
 WS: /([\t \b\v\f\x1a]+)|(\\;?[^\r\n]*[\r\n\t \b\v\f\x1a]+)/x
 SPACE: /[\t ]+/
@@ -40,7 +40,6 @@ DATATYPE: "BYTE"i|"SBYTE"i|"WORD"i|"SWORD"i|"DWORD"i|"SDWORD"i|"FWORD"i|"QWORD"i
 !specialregister: "CR0"i|"CR2"i|"CR3"i|"DR0"i|"DR1"i|"DR2"i|"DR3"i|"DR6"i|"DR7"i|"TR3"i|"TR4"i|"TR5"i|"TR6"i|"TR7"i
 !instrprefix: "REP"i|"REPE"i|"REPZ"i|"REPNE"i|"REPNZ"i|"LOCK"i
 !langtype: "C"i|"PASCAL"i|"FORTRAN"i|"BASIC"i|"SYSCALL"i|"STDCALL"i
-!relop: "EQ"i|"NE"i|"LT"i|"LE"i|"GT"i|"GE"i
 !maptype: "ALL"i|"NONE"i|"NOTPUBLIC"i
 !memoption: "TINY"i|"SMALL"i|"MEDIUM"i|"COMPACT"i|"LARGE"i|"HUGE"i|"FLAT"i
 !listoption: ".LIST"i|".NOLIST"i|".XLIST"i|".LISTALL"i|".LISTIF"i|".LFCOND"i|".NOLISTIF"i|".SFCOND"i|".TFCOND"i|".LISTMACROALL"i|".LALL"i|".NOLISTMACRO"i|".SALL"i|".LISTMACRO"i|".XALL"i
@@ -123,25 +122,17 @@ cxzexpr: "!" expr| expr  "==" expr| expr  "!=" expr | expr
 sqexpr: "[" expr "]"
 !braces: "(" expr ")"
 //sqexprlist: LABEL? sqexpr sqexpr?
-offsetdirmy: "OFFSET"i _e10
-segmdir: "SEG"i _e10
-segoverride: _e09 ":" _e10
-ptrdir: _e09 "PTR"i _e10
-| "LARGE"i _e10
-| "SMALL"i _e10
-| "SHORT"i _e10
-ordir: _e01 ("OR"i|"XOR"i) _e02
-anddir: _e02 "AND"i _e03
-notdir: "NOT"i _e04
-SIGN: ("+"|"-")
-!addop: _e05 SIGN _e06
-unadd: _e07 SIGN _e08
-!mulop: "*"| "/" | "MOD"i //| "SHL"i | "SHR"i
-shiftop: "SHR"i | "SHL"i
+offsetdirmy: "OFFSET"i e10
+segmdir: "SEG"i e10
+segoverride: e09 ":" e10
+ptrdir: e09 "PTR"i e10
+| "LARGE"i e10
+| "SMALL"i e10
+| "SHORT"i e10
 
-field: "." _e11
+field: "." e11
 fieldlist: field+
-memberdir: _e10 fieldlist
+memberdir: e10 fieldlist
 
 // Precedence Operators
 // 1 ( ), [ ]
@@ -158,45 +149,42 @@ memberdir: _e10 fieldlist
 // 12 AND
 // 13 OR , XOR
 // 14 OPATTR , SHORT , .TYPE
+SIGN: ("+"|"-")
+MULOP: ("*"| "/" | "MOD"i)
+RELOP: ("EQ"i|"NE"i|"LT"i|"LE"i|"GT"i|"GE"i)
+OROP: ("OR"i|"XOR"i)
+SHOP: ("SHR"i | "SHL"i)
+WORDOP: ("HIGH"i|"LOW"i|"HIGHWORD"i|"LOWWORD"i)
 
-_e01: ordir
-| _e02
-_e02: anddir
-| _e03
-_e03: notdir
-| _e04
-_e04: _e04 relop _e05
-| _e05
-_e05: addop
-| _e06
-_e06: _e06 mulop _e07
-| _e06 shiftop _e07
-| _e07
-_e07: unadd
-| _e08
-_e08: "HIGH"i _e09
-| "LOW"i _e09
-| "HIGHWORD"i _e09
-| "LOWWORD"i _e09
-| _e09
-_e09: offsetdirmy
+?e01: e02 | e01 OROP e02 -> ordir
+?e02: e03 | e02 "AND"i e03 -> anddir
+?e03: e04 | "NOT"i e04 -> notdir
+?e04: e05 | e04 RELOP e05 -> reldir
+?e05: e06 | e05 SIGN e06 -> adddir
+?e06: e07 | e06 MULOP e07 -> muldir
+| e06 SHOP e07 -> shiftdir
+?e07: SIGN e07 -> unadddir
+| e08
+?e08: WORDOP e09
+| e09
+?e09: offsetdirmy
 | segmdir
-| "LROFFSET"i _e10
-| "TYPE"i _e10
-| "THIS"i _e10
+| "LROFFSET"i e10
+| "TYPE"i e10
+| "THIS"i e10
 | ptrdir
-| segoverride //| _e09 ":" _e10
-| _e10
-_e10: memberdir
-| _e10 "[" expr "]"
-| _e11
+| segoverride //| e09 ":" e10
+| e10
+?e10: memberdir
+| e10 "[" expr "]"
+| e11
 dir3: "WIDTH"i LABEL
 | "MASK"i LABEL
 | "SIZE"i sizearg
 | "SIZEOF"i sizearg
 | "LENGTH"i LABEL
 | "LENGTHOF"i LABEL
-_e11: braces
+?e11: braces
 | sqexpr
 | dir3
 | recordconst
@@ -207,10 +195,10 @@ _e11: braces
 | _anyregister
 | "ST"i
 | "ST"i "(" expr ")"
-expr: ".TYPE"i _e01
-| "OPATTR"i _e01
-| _e01
-sizearg: _e10
+expr: ".TYPE"i e01
+| "OPATTR"i e01
+| e01
+sizearg: e10
 
 echodir: "ECHO"i arbitrarytext _linereminder | ".OUT"i arbitrarytext _linereminder
 elsedirectivelist: ".ELSE"i _linereminder _insegdir+
