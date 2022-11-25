@@ -370,7 +370,7 @@ class Asm2IR(Transformer):
         # self.expression = self.expression or Expression()
         self.expression.element_size = self.context.is_register(children[0])
         self.expression.registers.add(children[0].lower())
-        return children[0]  # Token('segmentregister', nodes[0].lower())
+        return children[0].lower()  # Token('segmentregister', nodes[0].lower())
 
     def segmentregister(self, children):
         # self.expression = self.expression or Expression()
