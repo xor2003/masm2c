@@ -374,17 +374,26 @@ class Asm2IR(Transformer):
 
     def segmentregister(self, children):
         # self.expression = self.expression or Expression()
-        self.expression.segment_register = children[0]
-        return children[0]  # Token('segmentregister', nodes[0].lower())
+        self.expression.segment_register = children[0].lower()
+        return children[0].lower()  # Token('segmentregister', nodes[0].lower())
 
     def sqexpr(self, nodes):
-
         logging.debug("/~%s~\\", nodes)
         # res = nodes[1]
         # self.expression = self.expression or Expression()
         # self.expression.indirection = IndirectionType.POINTER
         self.expression.mods.add('ptrdir')
-        return lark.Tree(data='sqexpr', children=nodes)  # Token('sqexpr', res)
+        return nodes  # lark.Tree(data='sqexpr', children=nodes)
+
+    def sqexpr2(self, nodes):
+        logging.debug("/~%s~\\", nodes)
+        # res = nodes[1]
+        # self.expression = self.expression or Expression()
+        # self.expression.indirection = IndirectionType.POINTER
+        self.expression.mods.add('ptrdir')
+        nodes.insert(1, lark.Token(type='PLUS', value='+'))
+        nodes = [lark.Tree(data='adddir', children=nodes)]
+        return nodes  # lark.Tree(data='sqexpr', children=nodes)
 
     def offsetdir(self, nodes):
         logging.debug("offset /~%s~\\", nodes)

@@ -124,7 +124,6 @@ sqexpr: "[" expr "]"
 //sqexprlist: LABEL? sqexpr sqexpr?
 offsetdirmy: "OFFSET"i e10
 segmdir: "SEG"i e10
-segoverride: e09 ":" e10
 ptrdir: e09 "PTR"i e10
 | "LARGE"i e10
 | "SMALL"i e10
@@ -132,7 +131,7 @@ ptrdir: e09 "PTR"i e10
 
 field: "." e11
 fieldlist: field+
-memberdir: e10 fieldlist
+
 
 // Precedence Operators
 // 1 ( ), [ ]
@@ -173,10 +172,10 @@ WORDOP: ("HIGH"i|"LOW"i|"HIGHWORD"i|"LOWWORD"i)
 | "TYPE"i e10
 | "THIS"i e10
 | ptrdir
-| segoverride //| e09 ":" e10
+| e09 ":" e10 -> segoverride
 | e10
-?e10: memberdir
-| e10 "[" expr "]"
+?e10: e10 fieldlist -> memberdir
+| e10 "[" expr "]" -> sqexpr2
 | e11
 dir3: "WIDTH"i LABEL
 | "MASK"i LABEL

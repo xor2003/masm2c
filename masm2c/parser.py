@@ -797,11 +797,12 @@ class Parser:
             result = self.parse_file_content(text)
             result = result.children[2].children[1].children[1]
             result = self.process_ast(text, result)
-            result = IR2Cpp().visit(result)
+            result = IR2Cpp(self).visit(result)
             result = result.asminstruction.args[1]
         except Exception as e:
             print(e)
-            logging.error("Error2")
+            import traceback
+            logging.error(traceback.format_exc())
             result = [str(e)]
             raise
         del self.__globals['default_seg']

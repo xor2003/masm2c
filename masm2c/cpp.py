@@ -1556,7 +1556,6 @@ class IR2Cpp(TopDownVisitor, Cpp):
 
     def __init__(self, parser):
         super(IR2Cpp, self).__init__(context=parser)
-        self._sqresult = ""
 
     def INTEGER(self, t):
         #s = {2: hex(token.value), 8: oct(token.value), 10: str(token.value), 16: hex(token.value)}[token.column]
@@ -1576,18 +1575,12 @@ class IR2Cpp(TopDownVisitor, Cpp):
         result = result.replace('\\', '\\\\')  # escape c \ symbol
         return result
 
-    def sqexpr(self, tree):
-        result = ""
-        if self._sqresult:
-            result += '+'
-        return result + self.visit(tree.children)
+
     def list_visitor(self, l):
         result = ""
         for child in l:
             res = self.visit(child)
             result += res
-            self._sqresult = res
-        #self._sqresult = ""
         return result
 
     def expr(self, tree):
