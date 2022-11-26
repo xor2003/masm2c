@@ -225,9 +225,9 @@ class Asm2IR(Transformer):
         self.context.add_structinstance(name, type.lower(), args, raw=get_raw(self.input_str, self.context))
         return nodes
 
-    def datadir(self, nodes, label, type, values):
-        logging.debug("datadir " + str(nodes) + " ~~")
-
+    def datadir(self, children):
+        logging.debug("datadir %s ~~", children)
+        nodes, label, type, values = children
         if label:
             label = label.children
         else:
