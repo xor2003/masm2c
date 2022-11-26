@@ -91,14 +91,23 @@ class Asm2IR(Transformer):
         return nodes  # Token('dupdir', [times, values])
 
     def segoverride(self, nodes):
-        self.__work_segment = nodes[0]
+        seg = nodes[0]
+        if isinstance(seg, list):
+            seg = seg[0]
+        self.__work_segment = seg.lower()
+        self.expression.mods.add('ptrdir')
         return nodes[1:]
 
     def ptrdir(self, children):
-        # self.expression = self.expression or Expression()
         self.expression.mods.add('ptrdir')
         self.expression.ptr_size = self.size
         return children
+
+    def ptrdir2(self, children):  # tasm?
+        self.expression.mods.add('ptrdir')
+        self.__work_segment = children[1].lower()
+        self.expression.ptr_size = self.context.typetosize(children[0])
+        return children[3:]
 
     def datadecl(self, children):
         # self.expression = self.expression or Expression()

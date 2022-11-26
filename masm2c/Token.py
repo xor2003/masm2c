@@ -149,7 +149,7 @@ class Expression(lark.Tree):
                 from masm2c.parser import Parser
                 from masm2c.cpp import IR2Cpp
                 from masm2c.gen import guess_int_size
-                result = max(result, guess_int_size(eval(IR2Cpp(Parser()).visit(self))))
+                result = max(result, guess_int_size(eval(IR2Cpp(Parser()).visit(self))))  # TODO is this required? Reduces perf?
             except:
                 pass
             return result

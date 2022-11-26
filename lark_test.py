@@ -22,7 +22,7 @@ mov ax,'Z' - 'A' + 1 ;coment
 ;inc bx
 ;lahf
 add word ptr [var1-2],3+5*5
-add word ptr [var1+3],5+5
+add eax, large ds:4000h
 mov bl,-3
 mov cl,+5
 

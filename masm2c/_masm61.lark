@@ -119,18 +119,10 @@ simpleexpr: "(" cexpr ")"| primary
 primary: expr binaryop expr| flagname| expr
 cxzexpr: "!" expr| expr  "==" expr| expr  "!=" expr | expr
 
-sqexpr: "[" expr "]"
 !braces: "(" expr ")"
-//sqexprlist: LABEL? sqexpr sqexpr?
-segmdir: "SEG"i e10
-ptrdir: e09 "PTR"i e10
-| "LARGE"i e10
-| "SMALL"i e10
-| "SHORT"i e10
 
 field: "." e11
 fieldlist: field+
-
 
 // Precedence Operators
 // 1 ( ), [ ]
@@ -153,6 +145,7 @@ RELOP: ("EQ"i|"NE"i|"LT"i|"LE"i|"GT"i|"GE"i)
 OROP: ("OR"i|"XOR"i)
 SHOP: ("SHR"i | "SHL"i)
 WORDOP: ("HIGH"i|"LOW"i|"HIGHWORD"i|"LOWWORD"i)
+!ptrdir2: ("LARGE"i|"SMALL"i|"SHORT"i) segmentregister ":" e10
 
 ?e01: e02 | e01 OROP e02 -> ordir
 ?e02: e03 | e02 "AND"i e03 -> anddir
@@ -166,11 +159,12 @@ WORDOP: ("HIGH"i|"LOW"i|"HIGHWORD"i|"LOWWORD"i)
 ?e08: WORDOP e09
 | e09
 ?e09: "OFFSET"i e10 -> offsetdir
-| segmdir
+| "SEG"i e10 -> segmdir
 | "LROFFSET"i e10
 | "TYPE"i e10
 | "THIS"i e10
-| ptrdir
+| e09 "PTR"i e10 -> ptrdir
+| ptrdir2
 | e09 ":" e10 -> segoverride
 | e10
 ?e10: e10 fieldlist -> memberdir
@@ -183,7 +177,7 @@ dir3: "WIDTH"i LABEL
 | "LENGTH"i LABEL
 | "LENGTHOF"i LABEL
 ?e11: braces
-| sqexpr
+| "[" expr "]" -> sqexpr
 | dir3
 | recordconst
 | STRING
