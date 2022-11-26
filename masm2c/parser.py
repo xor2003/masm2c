@@ -820,7 +820,7 @@ class Parser:
     '''
             self.test_pre_parse()
             result = self.parse_file_content(text)
-            result = result.children[2].children[1].children[1]
+            result = result.children[2]
             result = self.process_ast(text, result)
             result = IR2Cpp().visit(result)
         except Exception as e:

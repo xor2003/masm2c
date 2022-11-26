@@ -13,6 +13,7 @@ t = l.parse(""".386p
 
 _DATA   segment use16 word public 'DATA' ;IGNORE
 var1 db 2
+ASCII DB '00000000',0Dh,0Ah,'$' ; buffer for ASCII string
 _DATA   ends ;IGNORE
 
 _TEXT   segment use16 word public 'CODE' ;IGNORE
