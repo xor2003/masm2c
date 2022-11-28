@@ -97,7 +97,7 @@ crefdir: crefoption _linereminder
 crefoption: ".CREF"i | ".XCREF"i idlist? | ".NOCREF"i idlist?
 //datadecl: DB | DW | DD | DF | DQ | DT | DATATYPE
 //datadir: LABEL? dataitem _linereminder
-datadir: LABEL? datadecl scalarinstlist _linereminder | structinstdir | recordinstdir
+!datadir: LABEL? datadecl scalarinstlist _linereminder | structinstdir | recordinstdir
 //datadir: LABEL? datadecl scalarinstlist _linereminder | LABEL? LABEL structinstlist _linereminder
 //datadir: LABEL? datadecl scalarinstlist _linereminder
 structinstdir: LABEL? structname structinstlist _linereminder

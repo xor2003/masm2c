@@ -135,6 +135,8 @@ class Expression(lark.Tree):
         #self.data = "expr"
         #self.children = []
         self.element_size = 0
+        self.element_number = 1
+        self.element_size_guess = 0
         self.ptr_size = 0
         self.mods = set()
         self.registers = set()
@@ -144,12 +146,12 @@ class Expression(lark.Tree):
         if 'ptrdir' in self.mods:
             return self.ptr_size
         else:
-            result = self.element_size
+            result = self.element_size * self.element_number
             try:
                 from masm2c.parser import Parser
                 from masm2c.cpp import IR2Cpp
                 from masm2c.gen import guess_int_size
-                result = max(result, guess_int_size(eval(IR2Cpp(Parser()).visit(self))))  # TODO is this required? Reduces perf?
+                result = max(result, self.element_size_guess, guess_int_size(eval(IR2Cpp(Parser()).visit(self))))  # TODO is this required? Reduces perf?
             except:
                 pass
             return result

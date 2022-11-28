@@ -27,13 +27,16 @@ import sys
 from builtins import range, str
 from collections import OrderedDict
 from copy import copy, deepcopy
+from functools import reduce
+from itertools import accumulate
 
 import jsonpickle
 import parglare
+from lark import lark
 
 from . import cpp as cpp_module
 from . import op
-from .Token import Token
+from .Token import Token, Expression
 from .pgparser import LarkParser, Asm2IR, ExprRemover
 from .proc import Proc
 
@@ -297,9 +300,10 @@ class Parser:
         logging.debug(v)
         return v
 
-    def identify_data_internal_type(self, r, elements, is_string) -> op.DataType:
+    def identify_data_internal_type(self, args, elements, is_string) -> op.DataType:
         if is_string:
-            if len(r) >= 2 and r[-1] == 0:
+            if elements >= 2 and isinstance(args[-1].children[-1], lark.Token) \
+                    and args[-1].children[-1].type == 'INTEGER' and args[-1].children[-1].value == '0':
                 cur_data_type = op.DataType.ZERO_STRING  # 0 terminated string
             else:
                 cur_data_type = op.DataType.ARRAY_STRING  # array string
@@ -920,16 +924,17 @@ class Parser:
         else:
             raise NotImplementedError('Unknown Token: ' + str(values))
 
-    def datadir_action(self, label, type, args, raw='', line_number=0):
+    def datadir_action(self, label, type, args, is_string=False, raw='', line_number=0):
         if self.__cur_seg_offset > 0xffff:
             return []
         if self.__cur_seg_offset & 0xff == 0:
             logging.info(f"      Current offset {self.__cur_seg_offset:x} line={line_number}")
         isstruct = len(self.struct_names_stack) != 0
 
-        label = self.mangle_label(label)
+        #label = self.mangle_label(label)
         binary_width = self.typetosize(type)
-        size = self.calculate_data_size_new(binary_width, args)
+        size = sum(map(Expression.size, args))  #self.calculate_data_size_new(binary_width, args)
+        elements = sum(arg.element_number for arg in args)
 
         offset = self.__cur_seg_offset
         if not isstruct:
@@ -945,10 +950,10 @@ class Parser:
         logging.debug("convert_data %s %d %s", label, binary_width, args)
         # original_label = label
 
-        elements, is_string, array = self.process_data_tokens(args, binary_width)
-        data_internal_type = self.identify_data_internal_type(array, elements, is_string)
-        if data_internal_type == op.DataType.ARRAY and not any(array) and not isstruct:  # all zeros
-            array = [0]
+        #elements, is_string, array = self.process_data_tokens(args, binary_width)
+        data_internal_type = self.identify_data_internal_type(args, elements, is_string)
+        # TODO if data_internal_type == op.DataType.ARRAY and not any(array) and not isstruct:  # all zeros
+        #    array = [0]
 
         logging.debug("~size %d elements %d", binary_width, elements)
         if label and not isstruct:

@@ -2031,7 +2031,7 @@ class CppTest(unittest.TestCase):
         self.assertEqual(self.parser.test_size(u'0002h'), 1)
 
     def test_cpp_26700(self):
-        self.assertEqual(self.parser.test_size(u'0007'), 1)
+        self.assertEqual(self.parser.test_size(u'0007'), 1)  # it is hard to guess size of octal number
 
     def test_cpp_26710(self):
         self.assertEqual(self.parser.test_size(u'000f3h'), 1)

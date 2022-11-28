@@ -62,6 +62,9 @@ class Asm2IR(Transformer):
         self.radix = 10
         self._expression = None
 
+        self.is_string = False
+
+
 
     '''
     def build_ast(self, nodes, type=''):
@@ -112,6 +115,7 @@ class Asm2IR(Transformer):
     def datadecl(self, children):
         # self.expression = self.expression or Expression()
         self.size = self.context.typetosize(children[0])
+        self.element_type = children[0].lower()
         return Discard
 
     def INTEGER(self, value):
@@ -123,7 +127,8 @@ class Asm2IR(Transformer):
         val = int(value, radix)
         if sign == '-':
             val *= -1
-        self.expression.element_size = max(guess_int_size(val), self.expression.element_size)
+        self.expression.element_size_guess = guess_int_size(val)
+        #self.expression.element_size = max(guess_int_size(val), self.expression.element_size)
 
         t = lark.Token(type='INTEGER', value=sign+value)
         t.start_pos, t.line, t.column = radix, sign, value
@@ -225,16 +230,18 @@ class Asm2IR(Transformer):
         self.context.add_structinstance(name, type.lower(), args, raw=get_raw(self.input_str, self.context))
         return nodes
 
-    def datadir(self, children):
+    @v_args(meta=True)
+    def datadir(self, meta, children):
         logging.debug("datadir %s ~~", children)
-        nodes, label, type, values = children
-        if label:
-            label = label.children
-        else:
-            label = ""
+        label = self.context.mangle_label(children[0])
+        values = children[1].children[0].children
+        type = self.element_type
 
-        return self.context.datadir_action(label, type.lower(), values, raw=get_raw(self.input_str, self.context),
-                                           line_number=get_line_number(self.context))
+        is_string = self.is_string
+        self.is_string = False
+
+        return self.context.datadir_action(label, type, values, is_string=is_string, raw=get_raw(self.input_str, meta),
+                                           line_number=get_line_number(meta))
 
     def includedir(self, nodes, name):
         # context.parser.input_str = context.input_str[:context.end_position] + '\n' + read_asm_file(name) \
@@ -426,7 +433,9 @@ class Asm2IR(Transformer):
     def STRING(self, nodes):
         m = re.match(r'\'(.+)\'$', nodes)  # char constants
         if m:
-            self.expression.element_size = len(m.group(1))
+            self.expression.element_number = len(m.group(1))
+            self.expression.element_size = 1
+            self.is_string = True
         return nodes  # Token('STRING', nodes)
 
     def structinstance(self, nodes, values):
