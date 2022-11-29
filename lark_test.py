@@ -5,6 +5,8 @@ import jsonpickle
 from lark import Lark, Transformer, Discard, v_args, Tree
 
 from masm2c.Token import Token
+import logging
+logger = logging.getLogger(__file__)
 
 with open('masm2c/_masm61.lark') as g:
     l = Lark(g, parser='lalr', propagate_positions=True, debug=True)  # , keep_all_tokens=True)
@@ -14,6 +16,7 @@ t = l.parse(""".386p
 _DATA   segment use16 word public 'DATA' ;IGNORE
 var1 db 2
 ASCII DB '00000000',0Dh,0Ah,'$' ; buffer for ASCII string
+_a070295122642\tdb '07/02/95 12:26:42',0 ; DATA XREF: seg003:off_2462E\x19o
 _DATA   ends ;IGNORE
 
 _TEXT   segment use16 word public 'CODE' ;IGNORE

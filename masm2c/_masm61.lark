@@ -19,6 +19,8 @@ INTEGER: /[0-9][0-9A-Fa-f]*[HOQTYhoqty]?/
 _integer_: INTEGER //| _signed_integer
 
 WS: /([\t \b\v\f\x1a]+)|(\\;?[^\r\n]*[\r\n\t \b\v\f\x1a]+)/x
+%ignore WS
+// WS
 SPACE: /[\t ]+/
 !comment: /;[^\r\n]*/x
 KEYWORD: /\w+/
