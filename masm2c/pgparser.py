@@ -580,13 +580,13 @@ class LabelsCollector(Visitor):
     
 
 class TopDownVisitor:
-    def visit(self, node):
-        result = ""
+    def visit(self, node, result=None):
+        result = result or []
         if isinstance(node, Tree):
             if hasattr(self, node.data):
                 result += getattr(self, node.data)(node)
             else:
-                result += "".join(self.visit(node.children))
+                result = self.visit(node.children, result)
         elif isinstance(node, lark.Token):
             if hasattr(self, node.type):
                 result += getattr(self, node.type)(node)
@@ -594,16 +594,41 @@ class TopDownVisitor:
                 result += node.value
         elif isinstance(node, list):
             if hasattr(self, 'list_visitor'):
-                result += self.list_visitor(node)
+                result = self.list_visitor(node, result)
             else:
-                result += "".join([self.visit(i) for i in node])
+                for i in node:
+                    result = self.visit(i, result)
         elif isinstance(node, str):
             print(f"{node} is a str")
-            result += node
+            result += [node]
         else:
             logging.error(f"Error unknown type {node}")
             raise ValueError(f"Error unknown type {node}")
         return result
+
+def flatten(expr):
+    if not isinstance(expr, list):
+        return expr
+    else:
+        if len(expr) == 1:
+            return flatten(expr[0])
+        else:
+            return [flatten(i) for i in  expr]
+
+class AsmData2IR(TopDownVisitor):
+
+    def INTEGER(self, t):
+        radix, sign, value = t.start_pos, t.line, t.column
+        val = int(value, radix)
+        if sign == '-':
+            val *= -1
+        return [val]
+
+    def STRING(self, token):
+        result = token.value
+        result = result.replace('\\', '\\\\')  # escape c \ symbol
+        return list(result[1:-1])
+
 
 
 OFFSETDIR = 'offsetdir'

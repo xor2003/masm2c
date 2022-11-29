@@ -37,7 +37,7 @@ from lark import lark
 from . import cpp as cpp_module
 from . import op
 from .Token import Token, Expression
-from .pgparser import LarkParser, Asm2IR, ExprRemover
+from .pgparser import LarkParser, Asm2IR, ExprRemover, AsmData2IR
 from .proc import Proc
 
 INTEGERCNST = 'integer'
@@ -545,7 +545,7 @@ class Parser:
             content = self.extract_addresses_from_lst(file_name, content)
         result = self.parse_file_content(content, file_name=file_name)
         result = self.process_ast(content, result)
-        result = IR2Cpp().visit(result)
+        result = "".join(IR2Cpp().visit(result))
 
     def extract_addresses_from_lst(self, file_name, content):
         self.itislst = True
@@ -776,7 +776,7 @@ class Parser:
             result = self.parse_file_content(text)
             result = result.children[2].children[1].children[1]
             result = self.process_ast(text, result)
-            result = IR2Cpp().visit(result)
+            result = "".join(IR2Cpp().visit(result))
             #result = result1  # .asminstruction
         except Exception as e:
             print(e)
@@ -826,13 +826,13 @@ class Parser:
             result = self.parse_file_content(text)
             result = result.children[2]
             result = self.process_ast(text, result)
-            result = IR2Cpp().visit(result)
+            #result = tuple(IR2Cpp(Parser()).visit(result))
         except Exception as e:
             print(str(e))
             logging.error("Error3")
             result = [str(e)]
             raise
-        del self.__globals['default_seg']
+        #del self.__globals['default_seg']
         return result
 
     def parse_arg(self, line, def_size=0, destination=False):
@@ -854,7 +854,7 @@ class Parser:
                 expr.mods.add("destination")
             if def_size and expr.element_size == 0:
                 expr.element_size = def_size
-            result = IR2Cpp(self).visit(expr)
+            result = "".join(IR2Cpp(self).visit(expr))
         except Exception as e:
             exc_type, exc_obj, exc_tb = sys.exc_info()
             fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
@@ -972,6 +972,7 @@ class Parser:
             self.__binary_data_size += size
             self.__cur_seg_offset += size
             data_type = 'usual data'
+        array = AsmData2IR().visit(args)
         data = op.Data(label, type, data_internal_type, array, elements, size, filename=self._current_file,
                        raw_line=raw,
                        line_number=line_number, comment=data_type, offset=offset)

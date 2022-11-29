@@ -1336,6 +1336,8 @@ struct Memory{
         self.__label += "#define %s %s\n" % (dst, self.render_instruction_argument(src))
         return ''
 
+    def data(self, tree):
+        return Cpp.produce_c_data_single(tree)
     @staticmethod
     def produce_c_data_single(data):
         # For unit test
@@ -1559,7 +1561,7 @@ class IR2Cpp(TopDownVisitor, Cpp):
 
     def INTEGER(self, t):
         #s = {2: hex(token.value), 8: oct(token.value), 10: str(token.value), 16: hex(token.value)}[token.column]
-        return self.produce_number_c('',t.start_pos, t.line, t.column)
+        return [self.produce_number_c('',t.start_pos, t.line, t.column)]
 
     def STRING(self, token):
         result = token.value
@@ -1573,18 +1575,19 @@ class IR2Cpp(TopDownVisitor, Cpp):
                 # logging.debug("constant %s" %ss)
                 result += ss[2:]
         result = result.replace('\\', '\\\\')  # escape c \ symbol
-        return result
+        return [result]
 
-
+    '''
     def list_visitor(self, l):
         result = ""
         for child in l:
             res = self.visit(child)
             result += res
         return result
+    '''
 
     def expr(self, tree):
-        result = self.visit(tree.children)
+        result = "".join(self.visit(tree.children))
         if 'ptrdir' in tree.mods:
             result = self.convert_sqbr_reference(tree.segment_register, result, 'destination' in tree.mods, tree.ptr_size, 'label' in tree.mods, lea='lea' in tree.mods)
         #if indirection == IndirectionType.POINTER and \

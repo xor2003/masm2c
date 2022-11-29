@@ -22,6 +22,9 @@ from builtins import str
 from collections import OrderedDict
 from enum import Enum
 
+from lark import lark
+
+
 # import traceback
 
 
@@ -446,7 +449,7 @@ class DataType(Enum):
     OBJECT = 5
 
 
-class Data(baseop):
+class Data(baseop, lark.Tree):
     # __slots__ = ['label', 'type', 'data_internal_type', 'array', 'elements', 'size', 'members',
     #             'filename', 'line', 'line_number']
 
@@ -469,7 +472,7 @@ class Data(baseop):
         '''
         super().__init__()
         self.label = label
-        self.type = type
+        self.data_type = type
         self.data_internal_type = data_internal_type
         self.elements = elements
         self.size = size
@@ -482,6 +485,9 @@ class Data(baseop):
         # self.comment = comment
         self.real_seg, self.real_offset = None, None
         self.offset = offset
+
+        self.data = 'data'
+        self.children = []
 
     def isobject(self):
         return self.data_internal_type == DataType.OBJECT
@@ -506,13 +512,13 @@ class Data(baseop):
         return self.size
 
     def gettype(self):
-        return self.type
+        return self.data_type
 
     def getinttype(self):
         return self.data_internal_type
 
     def getdata(self):
-        return self.label, self.type, self.data_internal_type, self.array, self.elements, self.size
+        return self.label, self.data_type, self.data_internal_type, self.array, self.elements, self.size
 
     def is_align(self):
         return self.align
