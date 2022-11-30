@@ -64,8 +64,6 @@ class Asm2IR(Transformer):
 
         self.is_string = False
 
-
-
     '''
     def build_ast(self, nodes, type=''):
         if isinstance(nodes, parglare.parser.NodeNonTerm) and nodes.children:
@@ -83,9 +81,9 @@ class Asm2IR(Transformer):
 
     def expr(self, children):
         # self.expression = self.expression or Expression()
-        #while isinstance(children, list) and len(children) == 1:
+        # while isinstance(children, list) and len(children) == 1:
         #    children = children[0]
-        self.expression.children = children #[0]
+        self.expression.children = children  # [0]
         result = self._expression
         self._expression = None
         return result
@@ -128,9 +126,9 @@ class Asm2IR(Transformer):
         if sign == '-':
             val *= -1
         self.expression.element_size_guess = guess_int_size(val)
-        #self.expression.element_size = max(guess_int_size(val), self.expression.element_size)
+        # self.expression.element_size = max(guess_int_size(val), self.expression.element_size)
 
-        t = lark.Token(type='INTEGER', value=sign+value)
+        t = lark.Token(type='INTEGER', value=sign + value)
         t.start_pos, t.line, t.column = radix, sign, value
         return t  # Token('INTEGER', Cpp(self.context.convert_asm_number_into_c(nodes, self.context.radix))  # TODO remove this
 
@@ -231,10 +229,13 @@ class Asm2IR(Transformer):
         return nodes
 
     @v_args(meta=True)
-    def datadir(self, meta, children):
+    def datadir(self, meta, children: list):
         logging.debug("datadir %s ~~", children)
-        label = self.context.mangle_label(children[0])
-        values = children[1].children[0].children
+        if isinstance(children[0], lark.Token) and children[0].type == 'label':
+            label = self.context.mangle_label(children.pop(0))
+        else:
+            label = ''
+        values = children[0].children[0].children
         type = self.element_type
 
         is_string = self.is_string
@@ -254,7 +255,9 @@ class Asm2IR(Transformer):
         logging.debug("segdir " + str(nodes) + " ~~")
         self.context.action_simplesegment(type, '')  # TODO
         return nodes
+
     def LABEL(self, value):
+        #value = self.context.mangle_label(value)
         self.name = value
 
         logging.debug('name = %s', self.name)
@@ -262,9 +265,9 @@ class Asm2IR(Transformer):
         try:
             g = self.context.get_global(self.name)
             if isinstance(g, (op._equ, op._assignment)):
-                #if g.value != origexpr:  # prevent loop
+                # if g.value != origexpr:  # prevent loop
                 self.expression.element_size = self.calculate_size(g.value)
-                #else:
+                # else:
                 #    return 0
             logging.debug('get_size res %d', g.size)
             self.expression.element_size = g.size
@@ -322,7 +325,6 @@ class Asm2IR(Transformer):
         logging.debug("assdir " + str(nodes) + " ~~")
         return self.context.action_assign(name.children, value, raw=get_raw(self.input_str, self.context),
                                           line_number=get_line_number(self.context))
-
 
     def instrprefix(self, nodes):
         logging.debug("instrprefix " + str(nodes) + " ~~")
@@ -383,8 +385,9 @@ class Asm2IR(Transformer):
 
     @property
     def expression(self):
-        self._expression  = self._expression or Expression()
+        self._expression = self._expression or Expression()
         return self._expression
+
     def register(self, children):
         self.expression.element_size = self.context.is_register(children[0])
         self.expression.registers.add(children[0].lower())
@@ -476,8 +479,9 @@ class Asm2IR(Transformer):
             self.context.org(Parser.parse_int(value))
         return nodes
 
-    #def STRING(self, token):
+    # def STRING(self, token):
     #    return token
+
 
 '''
 actions = {
@@ -558,18 +562,21 @@ class LarkParser:
 
         return cls._inst
 
+
 class ExprRemover(Transformer):
     @v_args(meta=True)
     def expr(self, meta, children):
         children = Token.remove_tokens(children, 'expr')
 
         return Tree('expr', children, meta)
-    
+
+
 class LabelsCollector(Visitor):
-    
+
     def __init__(self, context, input_str):
         self.context = context
         self.input_str = input_str
+
     @v_args(meta=True)
     def labeldef(self, meta, children):
         logging.debug("labeldef %s ~~", children)
@@ -577,7 +584,7 @@ class LabelsCollector(Visitor):
         return self.context.action_label(children[0], isproc=False, raw=get_raw_line(self.input_str, meta),
                                          line_number=get_line_number(meta),
                                          globl=(colon == '::'))
-    
+
 
 class TopDownVisitor:
     def visit(self, node, result=None):
@@ -606,14 +613,6 @@ class TopDownVisitor:
             raise ValueError(f"Error unknown type {node}")
         return result
 
-def flatten(expr):
-    if not isinstance(expr, list):
-        return expr
-    else:
-        if len(expr) == 1:
-            return flatten(expr[0])
-        else:
-            return [flatten(i) for i in  expr]
 
 class AsmData2IR(TopDownVisitor):
 
@@ -628,7 +627,6 @@ class AsmData2IR(TopDownVisitor):
         result = token.value
         result = result.replace('\\', '\\\\')  # escape c \ symbol
         return list(result[1:-1])
-
 
 
 OFFSETDIR = 'offsetdir'

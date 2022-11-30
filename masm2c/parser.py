@@ -933,6 +933,8 @@ class Parser:
 
         #label = self.mangle_label(label)
         binary_width = self.typetosize(type)
+        for ex in args:
+            ex.element_size = binary_width
         size = sum(map(Expression.size, args))  #self.calculate_data_size_new(binary_width, args)
         elements = sum(arg.element_number for arg in args)
 
