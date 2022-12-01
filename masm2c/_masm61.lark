@@ -1,5 +1,5 @@
 ?start: _directivelist?  enddir
-%ignore " "
+//%ignore " "
 
 U_DOT: "."
 _COMMA: ","
@@ -13,14 +13,15 @@ LABEL: /[A-Za-z@_$?][A-Za-z@_$?0-9]*/
 
 COMMENTKW: /comment\s+(\S)/ //[.\r\n]*?\1[^\r\n]*/x
 _ENDOFLINE: /[\r\n]+[\t \r\n]*/x
-//FLOAT: /-?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?/
-INTEGER: /[0-9][0-9A-Fa-f]*[HOQTYhoqty]?/
+INTEGER: /[0-9][0-9A-Fa-f]*[HOQTYhoqty]?\b/
+SIGNED_FLOAT: /-?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?\b/
 //_signed_integer: SIGN INTEGER
 _integer_: INTEGER //| _signed_integer
 
-WS: /([\t \b\v\f\x1a]+)|(\\;?[^\r\n]*[\r\n\t \b\v\f\x1a]+)/x
+WS: /[\t \b\v\f\x1a]+/x
+//WS: /([\t \b\v\f\x1a]+)|(\\;?[^\r\n]*[\r\n\t \b\v\f\x1a]+)/x
 %ignore WS
-// WS
+
 SPACE: /[\t ]+/
 !comment: /;[^\r\n]*/x
 KEYWORD: /\w+/
@@ -366,4 +367,4 @@ WHITESPACECHARACTER: WS
 smartdir: "SMART"i | "NOSMART"i
 layout: layoutitem | layout layoutitem
 layoutitem: WS?
-%import common.SIGNED_FLOAT
+//%import common.SIGNED_FLOAT

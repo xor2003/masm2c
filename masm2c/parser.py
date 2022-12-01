@@ -828,7 +828,7 @@ class Parser:
             result = self.process_ast(text, result)
             #result = tuple(IR2Cpp(Parser()).visit(result))
         except Exception as e:
-            print(str(e))
+            print(e)
             logging.error("Error3")
             result = [str(e)]
             raise
