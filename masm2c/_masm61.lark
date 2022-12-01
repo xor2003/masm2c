@@ -162,7 +162,7 @@ WORDOP: ("HIGH"i|"LOW"i|"HIGHWORD"i|"LOWWORD"i)
 ?e08: WORDOP e09
 | e09
 ?e09: "OFFSET"i e10 -> offsetdir
-| "SEG"i e10 -> segmdir
+| "SEG"i e10 -> seg
 | "LROFFSET"i e10
 | "TYPE"i e10
 | "THIS"i e10

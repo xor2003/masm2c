@@ -1336,20 +1336,17 @@ struct Memory{
         self.__label += "#define %s %s\n" % (dst, self.render_instruction_argument(src))
         return ''
 
-    def data(self, tree):
-        return Cpp.produce_c_data_single(tree)
-    @staticmethod
-    def produce_c_data_single(data):
+    def data(self, data):
         # For unit test
         from masm2c.parser import Parser
         Parser.c_dummy_label = 0
-        c, h, size = Cpp.produce_c_data_single_(data)
+        c, h, size = self.produce_c_data_single_(data)
         c += ", // " + data.getlabel() + "\n"  # TODO can put original_label
         h += ";\n"
         return c, h, size
 
-    @staticmethod
-    def produce_c_data_single_(data):
+
+    def produce_c_data_single_(self, data):
         """
         It takes an assembler data and returns a C++ object
 
@@ -1360,33 +1357,34 @@ struct Memory{
         internal_data_type = data.getinttype()
 
         logging.debug(f"current data type = {internal_data_type}")
-        rc, rh = {op.DataType.NUMBER: Cpp.produce_c_data_number,
-                  op.DataType.ARRAY: Cpp.produce_c_data_array,
-                  op.DataType.ZERO_STRING: Cpp.produce_c_data_zero_string,
-                  op.DataType.ARRAY_STRING: Cpp.produce_c_data_array_string,
-                  op.DataType.OBJECT: Cpp.produce_c_data_object
+        rc, rh = {op.DataType.NUMBER: self.produce_c_data_number,
+                  op.DataType.ARRAY: self.produce_c_data_array,
+                  op.DataType.ZERO_STRING: self.produce_c_data_zero_string,
+                  op.DataType.ARRAY_STRING: self.produce_c_data_array_string,
+                  op.DataType.OBJECT: self.produce_c_data_object
                   }[internal_data_type](data)
 
         logging.debug(rc)
         logging.debug(rh)
         return rc, rh, data.getsize()
 
-    @staticmethod
-    def produce_c_data_number(data: op.Data):
+
+    def produce_c_data_number(self, data: op.Data):
         label, data_ctype, _, r, elements, size = data.getdata()
-        rc = ''.join([str(i) for i in r])
+        #rc = ''.join([self.visit(i) for i in r])
+        rc = ''.join(self.visit(r))
         rh = f'{data_ctype} {label}'
         return rc, rh
 
-    @staticmethod
-    def produce_c_data_array(data: op.Data):
+
+    def produce_c_data_array(self, data: op.Data):
         label, data_ctype, _, r, elements, _ = data.getdata()
         rc = '{'
         for i, v in enumerate(r):
             if i != 0:
                 rc += ','
             if isinstance(v, op.Data):
-                c, _, _ = Cpp.produce_c_data_single_(v)
+                c, _, _ = self.produce_c_data_single_(v)
                 rc += c
             else:
                 rc += str(v)
@@ -1395,41 +1393,41 @@ struct Memory{
         rh = f'{data_ctype} {label}[{elements}]'
         return rc, rh
 
-    @staticmethod
-    def produce_c_data_zero_string(data: op.Data):
+
+    def produce_c_data_zero_string(self, data: op.Data):
         label, data_ctype, _, r, elements, size = data.getdata()
-        rc = '"' + ''.join([Cpp.convert_str(i) for i in r[:-1]]) + '"'
+        rc = '"' + ''.join([self.convert_str(i) for i in r[:-1]]) + '"'
         rc = re.sub(r'(\\x[0-9a-f][0-9a-f])([0-9a-fA-F])', r'\g<1>" "\g<2>', rc)  # fix for stupid C hex escapes: \xaef
         rh = f'char {label}[{str(len(r))}]'
         return rc, rh
 
-    @staticmethod
-    def produce_c_data_array_string(data: op.Data):
+
+    def produce_c_data_array_string(self, data: op.Data):
         label, data_ctype, _, r, elements, size = data.getdata()
-        rc = '{' + ",".join([Cpp.convert_char(i) for i in r]) + '}'
+        rc = '{' + ",".join([self.convert_char(i) for i in r]) + '}'
         rh = f'char {label}[{str(len(r))}]'
         return rc, rh
 
-    @staticmethod
-    def produce_c_data_object(data: op.Data):
+
+    def produce_c_data_object(self, data: op.Data):
         label, data_ctype, _, r, elements, size = data.getdata()
         # rc = '{' + ",".join([str(i) for i in r]) + '}'
         rc = []
         for i in data.getmembers():
-            c, _, _ = Cpp.produce_c_data_single_(i)
+            c, _, _ = self.produce_c_data_single_(i)
             rc += [c]
         rc = '{' + ','.join(rc) + '}'
         rh = f'{data_ctype} {label}'
         return rc, rh
 
-    @staticmethod
-    def convert_char(c):
+
+    def convert_char(self, c):
         if isinstance(c, int) and c not in [10, 13]:
             return str(c)
-        return "'" + Cpp.convert_str(c) + "'"
+        return "'" + self.convert_str(c) + "'"
 
-    @staticmethod
-    def convert_str(c):
+
+    def convert_str(self, c):
         vvv = ""
         if isinstance(c, int):
             if c == 13:
@@ -1576,6 +1574,9 @@ class IR2Cpp(TopDownVisitor, Cpp):
                 result += ss[2:]
         result = result.replace('\\', '\\\\')  # escape c \ symbol
         return [result]
+
+    def seg(self, tree):
+        return [f'seg_offset({tree.children[0]})']
 
     '''
     def list_visitor(self, l):

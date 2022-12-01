@@ -812,6 +812,7 @@ class Parser:
         return expr.size()
 
     def action_data(self, line):
+        ''' For tests only '''
         from .cpp import IR2Cpp
         self.test_mode = True
         self.segments = OrderedDict()
@@ -826,7 +827,7 @@ class Parser:
             result = self.parse_file_content(text)
             result = result.children[2]
             result = self.process_ast(text, result)
-            #result = tuple(IR2Cpp(Parser()).visit(result))
+            result = tuple(IR2Cpp(Parser()).visit(result))
         except Exception as e:
             print(e)
             logging.error("Error3")
@@ -964,7 +965,7 @@ class Parser:
                                           filename=self._current_file, raw=raw, line_number=line_number))
 
         dummy_label = False
-        if len(label) == 0:
+        if not label:
             dummy_label = True
             label = self.get_dummy_label()
 

@@ -424,11 +424,13 @@ class Asm2IR(Transformer):
         self.expression.element_size = 2
         return nodes  # Token('offsetdir', nodes[1])
 
-    def segmdir(self, nodes):
+    '''
+    def seg(self, nodes):
         logging.debug("segmdir /~" + str(nodes) + "~\\")
         # global indirection
         # indirection = -1
         return nodes  # Token('segmdir', nodes[1])
+    '''
 
     def labeltok(self, nodes):
         return nodes  # Token('LABEL', nodes)
@@ -616,8 +618,8 @@ class TopDownVisitor:
 
 class AsmData2IR(TopDownVisitor):
 
-    def INTEGER(self, t):
-        radix, sign, value = t.start_pos, t.line, t.column
+    def INTEGER(self, token):
+        radix, sign, value = token.start_pos, token.line, token.column
         val = int(value, radix)
         if sign == '-':
             val *= -1
@@ -628,6 +630,10 @@ class AsmData2IR(TopDownVisitor):
         result = result.replace('\\', '\\\\')  # escape c \ symbol
         return list(result[1:-1])
 
+    def bypass(self, tree):
+        return [tree]
+
+    seg = bypass
 
 OFFSETDIR = 'offsetdir'
 LABEL = 'label'
