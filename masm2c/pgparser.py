@@ -88,6 +88,9 @@ class Asm2IR(Transformer):
         self._expression = None
         return result
 
+    def initvalue(self, expr):
+        return lark.Tree(data='exprlist', children=[self.expr(expr)])
+
     def dupdir(self, nodes, times, values):
         return nodes  # Token('dupdir', [times, values])
 
@@ -115,6 +118,9 @@ class Asm2IR(Transformer):
         self.size = self.context.typetosize(children[0])
         self.element_type = children[0].lower()
         return Discard
+
+    def ANYTHING(self, value):
+        return self.INTEGER('0')
 
     def INTEGER(self, value):
         from .parser import parse_asm_number
