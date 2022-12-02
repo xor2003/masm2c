@@ -1379,6 +1379,8 @@ struct Memory{
 
     def produce_c_data_array(self, data: op.Data):
         label, data_ctype, _, r, elements, _ = data.getdata()
+        if not any(r):  # all zeros
+            r = [0]
         rc = '{'
         for i, v in enumerate(r):
             if i != 0:

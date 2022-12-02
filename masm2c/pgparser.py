@@ -91,8 +91,14 @@ class Asm2IR(Transformer):
     def initvalue(self, expr):
         return lark.Tree(data='exprlist', children=[self.expr(expr)])
 
-    def dupdir(self, nodes, times, values):
-        return nodes  # Token('dupdir', [times, values])
+    def dupdir(self, children):
+        from masm2c.cpp import IR2Cpp
+        from masm2c.parser import Parser
+        repeat = children[0]
+        repeat = eval("".join(IR2Cpp(Parser()).visit(repeat)))
+        value = children[1]
+        self.expression.element_number *= repeat
+        return repeat * [value]  # Token('dupdir', [times, values])
 
     def segoverride(self, nodes):
         seg = nodes[0]
