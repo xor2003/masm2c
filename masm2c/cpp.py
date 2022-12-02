@@ -1371,8 +1371,8 @@ struct Memory{
 
     def produce_c_data_number(self, data: op.Data):
         label, data_ctype, _, r, elements, size = data.getdata()
-        #rc = ''.join([self.visit(i) for i in r])
-        rc = ''.join(self.visit(r))
+        rc = ''.join([str(i) if isinstance(i, int) else "".join(self.visit(i)) for i in r])
+        #rc = ''.join(self.visit(r))
         rh = f'{data_ctype} {label}'
         return rc, rh
 
