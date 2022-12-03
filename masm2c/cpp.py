@@ -1371,7 +1371,8 @@ struct Memory{
 
     def produce_c_data_number(self, data: op.Data):
         label, data_ctype, _, r, elements, size = data.getdata()
-        rc = ''.join([str(i) if isinstance(i, int) else "".join(self.visit(i)) for i in r])
+        #rc = ''.join([str(i) if isinstance(i, int) else "".join(self.visit(i)) for i in r])
+        rc = ''.join([str(i) for i in r])
         #rc = ''.join(self.visit(r))
         rh = f'{data_ctype} {label}'
         return rc, rh
@@ -1577,8 +1578,6 @@ class IR2Cpp(TopDownVisitor, Cpp):
         result = result.replace('\\', '\\\\')  # escape c \ symbol
         return [result]
 
-    def seg(self, tree):
-        return [f'seg_offset({tree.children[0]})']
 
     '''
     def list_visitor(self, l):

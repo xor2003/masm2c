@@ -269,7 +269,7 @@ class Asm2IR(Transformer):
         return nodes
 
     def LABEL(self, value):
-        #value = self.context.mangle_label(value)
+        # value = self.context.mangle_label(value)
         self.name = value
 
         logging.debug('name = %s', self.name)
@@ -628,13 +628,20 @@ class TopDownVisitor:
         return result
 
 
-class AsmData2IR(TopDownVisitor):
+class AsmData2IR(TopDownVisitor):  # TODO Remove it
+
+    def seg(self, tree):
+        return [f'seg_offset({tree.children[0]})']
+
+    def expr(self, tree):
+        self.element_size = tree.element_size
+        return self.visit(tree.children)
 
     def INTEGER(self, token):
         radix, sign, value = token.start_pos, token.line, token.column
         val = int(value, radix)
         if sign == '-':
-            val *= -1
+            val = 2 ** (8 * self.element_size) - val
         return [val]
 
     def STRING(self, token):
@@ -646,6 +653,7 @@ class AsmData2IR(TopDownVisitor):
         return [tree]
 
     seg = bypass
+
 
 OFFSETDIR = 'offsetdir'
 LABEL = 'label'
