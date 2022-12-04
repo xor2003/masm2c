@@ -448,11 +448,15 @@ class Asm2IR(Transformer):
         return nodes  # Token('LABEL', nodes)
 
     def STRING(self, nodes):
-        m = re.match(r'\'(.+)\'$', nodes)  # char constants
+        m = re.match(r'[\'"](.+)[\'"]$', nodes)  # char constants
         if m:
-            self.expression.element_number = len(m.group(1))
+            string = m.group(1)
+            if not self.context.itislst:  # not for IDA .lst
+                string = string.replace("\'\'", "'").replace('\"\"', '"')  # masm behaviour
+            self.expression.element_number = len(string)
             self.expression.element_size = 1
             self.is_string = True
+            nodes = lark.Token(type='STRING', value=string)
         return nodes  # Token('STRING', nodes)
 
     def structinstance(self, nodes, values):
@@ -646,8 +650,8 @@ class AsmData2IR(TopDownVisitor):  # TODO Remove it
 
     def STRING(self, token):
         result = token.value
-        result = result.replace('\\', '\\\\')  # escape c \ symbol
-        return list(result[1:-1])
+        #result = result.replace('\\', '\\\\')  # escape c \ symbol
+        return list(result)
 
     def bypass(self, tree):
         return [tree]

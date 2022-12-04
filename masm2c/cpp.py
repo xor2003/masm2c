@@ -1399,16 +1399,16 @@ struct Memory{
 
     def produce_c_data_zero_string(self, data: op.Data):
         label, data_ctype, _, r, elements, size = data.getdata()
-        rc = '"' + ''.join([self.convert_str(i) for i in r[:-1]]) + '"'
+        rc = '"' + ''.join(self.convert_str(i) for i in r[:-1]) + '"'
         rc = re.sub(r'(\\x[0-9a-f][0-9a-f])([0-9a-fA-F])', r'\g<1>" "\g<2>', rc)  # fix for stupid C hex escapes: \xaef
-        rh = f'char {label}[{str(len(r))}]'
+        rh = f'char {label}[{size}]'
         return rc, rh
 
 
     def produce_c_data_array_string(self, data: op.Data):
         label, data_ctype, _, r, elements, size = data.getdata()
         rc = '{' + ",".join([self.convert_char(i) for i in r]) + '}'
-        rh = f'char {label}[{str(len(r))}]'
+        rh = f'char {label}[{size}]'
         return rc, rh
 
 
@@ -1445,6 +1445,10 @@ struct Memory{
                 vvv = chr(c)
         elif isinstance(c, str):
             # logging.debug "~~ " + r[i] + str(ord(r[i]))
+            res = ''
+            #string = c
+            #for c in string:
+
             if c in ["\'", '\"', '\\']:
                 vvv = "\\" + c
             elif ord(c) > 127:
@@ -1455,7 +1459,8 @@ struct Memory{
                 vvv = '\\0'
             else:
                 vvv = c
-            # vvv = "'" + vvv + "'"
+            #res += vvv
+            #vvv = res
         return vvv
 
     def produce_global_jump_table(self, globals, itislst):
@@ -1566,9 +1571,10 @@ class IR2Cpp(TopDownVisitor, Cpp):
 
     def STRING(self, token):
         result = token.value
-        m = re.match(r'^[\'\"](....)[\'\"]$', token.value)  # char constants 'abcd'
-        if m:
-            ex = m.group(1)
+        #m = re.match(r'^[\'\"](....)[\'\"]$', token.value)  # char constants 'abcd'
+        if len(token.value)==4: #m:
+            ex = token
+            #ex = m.group(1)
             result = '0x'
             for i in range(0, 4):
                 # logging.debug("constant %s %d" %(ex,i))
@@ -1576,6 +1582,7 @@ class IR2Cpp(TopDownVisitor, Cpp):
                 # logging.debug("constant %s" %ss)
                 result += ss[2:]
         result = result.replace('\\', '\\\\')  # escape c \ symbol
+        result = "'" + result + "'"
         return [result]
 
 
