@@ -1572,7 +1572,7 @@ class IR2Cpp(TopDownVisitor, Cpp):
     def STRING(self, token):
         result = token.value
         #m = re.match(r'^[\'\"](....)[\'\"]$', token.value)  # char constants 'abcd'
-        if len(token.value)==4: #m:
+        if len(token.value) == 4: #m:
             ex = token
             #ex = m.group(1)
             result = '0x'
@@ -1581,8 +1581,9 @@ class IR2Cpp(TopDownVisitor, Cpp):
                 ss = str(hex(ord(ex[i])))
                 # logging.debug("constant %s" %ss)
                 result += ss[2:]
-        result = result.replace('\\', '\\\\')  # escape c \ symbol
-        result = "'" + result + "'"
+        else:
+            result = result.replace('\\', '\\\\')  # escape c \ symbol
+            result = "'" + result + "'"
         return [result]
 
 

@@ -14,7 +14,7 @@ with open('masm2c/_masm61.lark') as g:
 t = l.parse(""".386p
 
 _DATA   segment use16 word public 'DATA' ;IGNORE
-db 3 dup(0),88h
+db 88h,3 dup(0)
 _dword_1DCEC	dd 10524E49h		; DATA XREF: _loadcfg+1Ar
 var1 db 2.3E+4
 ASCII DB '00000000',0Dh,0Ah,'$' ; buffer for ASCII string
