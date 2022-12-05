@@ -22,7 +22,6 @@ WS: /[\t \b\v\f\x1a]+/x
 //WS: /([\t \b\v\f\x1a]+)|(\\;?[^\r\n]*[\r\n\t \b\v\f\x1a]+)/x
 %ignore WS
 
-SPACE: /[\t ]+/
 !comment: /;[^\r\n]*/x
 KEYWORD: /\w+/
 arbitrarytext: /[^\r\n]+/x
@@ -37,7 +36,7 @@ arbitrarytext: /[^\r\n]+/x
 //
 //datadecl: /(?i)(DB) | (DW) | (DD) | (DF) | (DQ) | (DT) | (BYTE)|(SBYTE)|(WORD)|(SWORD)|(DWORD)|(SDWORD)|(FWORD)|(QWORD)|(TBYTE)|(REAL4)|(REAL8)|(REAL10)/
 !datadecl: "DB"i | "DW"i | "DD"i | "DF"i | "DQ"i | "DT"i | "BYTE"i | "SBYTE"i|"WORD"i|"SWORD"i|"DWORD"i|"SDWORD"i|"FWORD"i|"QWORD"i|"TBYTE"i|"REAL4"i|"REAL8"i|"REAL10"i
-DATATYPE: "BYTE"i|"SBYTE"i|"WORD"i|"SWORD"i|"DWORD"i|"SDWORD"i|"FWORD"i|"QWORD"i|"TBYTE"i|"REAL4"i|"REAL8"i|"REAL10"i
+//DATATYPE: "BYTE"i|"SBYTE"i|"WORD"i|"SWORD"i|"DWORD"i|"SDWORD"i|"FWORD"i|"QWORD"i|"TBYTE"i|"REAL4"i|"REAL8"i|"REAL10"i
 !register: "AX"i|"EAX"i|"BX"i|"EBX"i|"CX"i|"ECX"i|"DX"i|"EDX"i|"BP"i|"EBP"i|"SP"i|"ESP"i|"DI"i|"EDI"i|"SI"i|"ESI"i|"AL"i|"AH"i|"BL"i|"BH"i|"CL"i|"CH"i|"DL"i|"DH"i
 !segmentregister: "CS"i|"DS"i|"ES"i|"FS"i|"GS"i|"SS"i
 !specialregister: "CR0"i|"CR2"i|"CR3"i|"DR0"i|"DR1"i|"DR2"i|"DR3"i|"DR6"i|"DR7"i|"TR3"i|"TR4"i|"TR5"i|"TR6"i|"TR7"i
@@ -210,7 +209,6 @@ erroropt: ".ERR"i textitem? | ".ERRE"i expr opttext? | ".ERRNZ"i expr opttext? |
 exitdir: ".EXIT"i expr?  _linereminder
 exitmdir: "EXITM"i textitem? _linereminder
 exprlist: expr (_COMMA expr)*
-exprspacelist: expr+
 externdef: langtype?  LABEL altidq? ":" externtype
 externdir: externkey externlist _linereminder
 externkey: "EXTRN"i | "EXTERN"i | "EXTERNDEF"i
@@ -288,7 +286,6 @@ optiondir: "OPTION"i optionlist _linereminder
 optionitem: "CASEMAP"i ":" maptype| "DOTNAME"i | "NODOTNAME"i | "EMULATOR"i | "NOEMULATOR"i | "EPILOGUE"i ":" LABEL| "EXPR16"i | "EXPR32"i | "LANGUAGE"i ":" langtype| "LJMP"i | "NOLJMP"i | "M510"i | "NOM510"i | "NOSIGNEXTEND"i | "OFFSET"i ":" offsettype| "OLDMACROS"i | "NOOLDMACROS"i | "OLDSTRUCTS"i | "NOOLDSTRUCTS"i | "PROC"i ":" ovisibility| "PROLOGUE"i ":" LABEL| "READONLY"i | "NOREADONLY"i | "SCOPED"i | "NOSCOPED"i | "SEGMENT"i ":" segsize| "SETIF2"i ":" bool
 optionlist: optionitem | optionitem commaoeol optionlist
 opttext: _COMMA textitem
-orop: "OR"i | "XOR"i
 ovisibility: "PUBLIC"i | "PRIVATE"i | "EXPORT"i
 pagedir: "PAGE"i pageexpr? _linereminder
 pageexpr: "+"|  expr commapagewidth? | commapagewidth
@@ -324,7 +321,7 @@ recordinstance_: "{"  _linereminder? recordfieldlist _linereminder?  "}"
 recordinstance: recordinstance_ | oldrecordinstance | expr "DUP"i "(" recordinstance ")"
 recordinstlist: recordinstance | recordinstance commaoeol recordinstlist
 _anyregister: segmentregister | register | specialregister
-reglist: register+
+//reglist: register+
 allreglist: _anyregister+
 
 repeatblock: ".REPEAT"i _linereminder blockstatements untildir
@@ -364,8 +361,6 @@ typedefdir: LABEL "TYPEDEF"i qualifier
 untildir: ".UNTIL"i cexpr _linereminder | ".UNTILCXZ"i cxzexpr?  _linereminder
 usesregs: "USES"i allreglist
 whileblock: ".WHILE"i cexpr _linereminder blockstatements ".ENDW"i
-WHITESPACECHARACTER: WS
+//WHITESPACECHARACTER: WS
 smartdir: "SMART"i | "NOSMART"i
-layout: layoutitem | layout layoutitem
-layoutitem: WS?
 //%import common.SIGNED_FLOAT
