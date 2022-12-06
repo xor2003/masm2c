@@ -99,12 +99,12 @@ crefdir: crefoption _linereminder
 crefoption: ".CREF"i | ".XCREF"i idlist? | ".NOCREF"i idlist?
 //datadecl: DB | DW | DD | DF | DQ | DT | DATATYPE
 //datadir: LABEL? dataitem _linereminder
-!datadir: LABEL? datadecl scalarinstlist _linereminder | structinstdir | recordinstdir
-//datadir: LABEL? datadecl scalarinstlist _linereminder | LABEL? LABEL structinstlist _linereminder
-//datadir: LABEL? datadecl scalarinstlist _linereminder
+!datadir: LABEL? datadecl exprlist _linereminder | structinstdir | recordinstdir
+//datadir: LABEL? datadecl exprlist _linereminder | LABEL? LABEL structinstlist _linereminder
+//datadir: LABEL? datadecl exprlist _linereminder
 structinstdir: LABEL? structname structinstlist _linereminder
 recordinstdir: LABEL? LABEL recordinstlist _linereminder
-//dataitem: datadecl scalarinstlist| LABEL structinstlist| LABEL recordinstlist
+//dataitem: datadecl exprlist| LABEL structinstlist| LABEL recordinstlist
 decnumber: _integer_
 digits: decnumber
 _directive: _generaldir| _segmentdef | _linereminder
@@ -208,14 +208,13 @@ errordir: erroropt _linereminder
 erroropt: ".ERR"i textitem? | ".ERRE"i expr opttext? | ".ERRNZ"i expr opttext? | ".ERRB"i textitem opttext? | ".ERRNB"i textitem opttext? | ".ERRDEF"i LABEL  opttext? | ".ERRNDEF"i LABEL opttext? | ".ERRDIF"i textitem _COMMA textitem  opttext? | ".ERRDIFI"i textitem _COMMA textitem  opttext? | ".ERRIDN"i textitem _COMMA textitem  opttext? | ".ERRIDNI"i textitem _COMMA textitem  opttext? | ".ERR1"i textitem? | ".ERR2"i textitem?
 exitdir: ".EXIT"i expr?  _linereminder
 exitmdir: "EXITM"i textitem? _linereminder
-exprlist: expr (_COMMA expr)*
 externdef: langtype?  LABEL altidq? ":" externtype
 externdir: externkey externlist _linereminder
 externkey: "EXTRN"i | "EXTERN"i | "EXTERNDEF"i
 externlist: externdef | externdef commaoeol externlist
 externtype: "ABS"i | qualifiedtype
-fieldinit: initvalue| structinstance | expr
-fieldinitlist: fieldinit | fieldinit commaoeol fieldinitlist
+fieldinit: initvalue? | structinstance
+fieldinitlist: fieldinit (commaoeol fieldinitlist)*
 filespec: charlist| textliteral
 flagname: "ZERO?"i | "CARRY?"i | "OVERFLOW?"i | "SIGN?"i | "PARITY?"i
 floatnumber : SIGNED_FLOAT | digits "R"| digits "r"
@@ -232,9 +231,6 @@ ifdir: ifstatement _linereminder _insegdir+ elseifblock? elsedirectivelist? "END
 ifstatement: "IF"i expr| "IFE"i expr| "IFB"i textitem| "IFNB"i textitem| "IFDEF"i LABEL| "IFNDEF"i LABEL| "IFDIF"i textitem _COMMA textitem| "IFDIFI"i textitem _COMMA textitem| "IFIDN"i textitem _COMMA textitem| "IFIDNI"i textitem _COMMA textitem| "IF1"i | "IF2"i
 includedir: "INCLUDE"i filespec _linereminder
 includelibdir: "INCLUDELIB"i filespec _linereminder
-dupdir: expr "DUP"i "(" scalarinstlist ")"
-ANYTHING: "?"
-!initvalue: ANYTHING| dupdir | floatnumber
 _insegdir: labeldef _insegmentdir | _insegmentdir
 //insegdirlist: _insegdir+
 _insegmentdir: instruction| datadir| controldir| startupdir| exitdir| offsetdir| labeldir| procdir  localdirlist? endpdir| procdir  localdirlist? _insegdir+ endpdir| invokedir| _generaldir | _linereminder
@@ -315,9 +311,7 @@ recordconst_: "{" exprlist "}"| oldrecordinstance
 oldrecordinstance: "<" exprlist ">"
 recordconst: LABEL recordconst_
 recorddir: LABEL "RECORD"i bitdeflist _linereminder
-//recordfieldlist: expr | expr commaoeol recordfieldlist
-recordfieldlist: scalarinstlist
-recordinstance_: "{"  _linereminder? recordfieldlist _linereminder?  "}"
+recordinstance_: "{"  _linereminder? exprlist _linereminder?  "}"
 recordinstance: recordinstance_ | oldrecordinstance | expr "DUP"i "(" recordinstance ")"
 recordinstlist: recordinstance | recordinstance commaoeol recordinstlist
 _anyregister: segmentregister | register | specialregister
@@ -326,7 +320,14 @@ allreglist: _anyregister+
 
 repeatblock: ".REPEAT"i _linereminder blockstatements untildir
 repeatdir: "REPEAT"i | "REPT"i
-scalarinstlist: initvalue (_COMMA _ENDOFLINE? scalarinstlist)? | exprlist
+//?exprlist: exprlist
+//exprlist: expr | expr commaoeol exprlist
+//?exprlist: exprlist -> exprlist
+exprlist: initvalue (_COMMA _ENDOFLINE? initvalue)*
+dupdir: expr "DUP"i "(" exprlist ")"
+ANYTHING: "?"
+initvalue: ANYTHING| dupdir | floatnumber | expr -> expr
+
 commaoeol: _COMMA  _linereminder?
 !segattrib: "PUBLIC"i | "STACK"i | "COMMON"i | "MEMORY"i | "AT"i expr| "PRIVATE"i
 segdir: ".CODE"i LABEL? | ".DATA"i | ".DATA_"i| ".CONST"i | ".FARDATA"i LABEL? | ".FARDATA_"i LABEL? | ".STACK"i expr?

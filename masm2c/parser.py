@@ -36,13 +36,35 @@ from lark import lark
 
 from . import cpp as cpp_module
 from . import op
-from .Token import Token, Expression
-from .pgparser import LarkParser, Asm2IR, ExprRemover, AsmData2IR
+from .Token import Token
+from .pgparser import LarkParser, Asm2IR, ExprRemover, AsmData2IR, TopDownVisitor
 from .proc import Proc
 
 INTEGERCNST = 'integer'
 STRINGCNST = 'STRING'
 
+class ExprSizeCalculator(TopDownVisitor):
+
+    def __init__(self, element_size=0):
+        self.size = 0
+        self.element_number = 0
+        self.element_size = element_size
+    def expr(self, tree):
+        if self.element_size:
+            tree.element_size = self.element_size
+        self.element_number += tree.element_number
+        self.size += tree.size()
+        return []  # tree.size()
+
+
+    '''
+    def __default__(self, tree):
+        if isinstance(tree, lark.Tree):
+            self.visit(tree.children)
+        elif isinstance(tree, list):
+            for child in tree:
+                self.visit(child)
+    '''
 
 def read_whole_file(file_name):
     """
@@ -934,10 +956,15 @@ class Parser:
 
         #label = self.mangle_label(label)
         binary_width = self.typetosize(type)
-        for ex in args:
-            ex.element_size = binary_width
-        size = sum(map(Expression.size, args))  #self.calculate_data_size_new(binary_width, args)
-        elements = sum(arg.element_number for arg in args)
+        #for ex in args:
+        #    ex.element_size = binary_width
+
+        calc = ExprSizeCalculator(element_size=binary_width)
+        calc.visit(args)
+        size = calc.size
+        #size = sum(map(Expression.size, args))  #self.calculate_data_size_new(binary_width, args)
+        #elements = sum(arg.element_number for arg in args)
+        elements = calc.element_number
 
         offset = self.__cur_seg_offset
         if not isstruct:

@@ -247,7 +247,11 @@ class Asm2IR(Transformer):
             label = self.context.mangle_label(children.pop(0))
         else:
             label = ''
-        values = children[0].children[0].children
+        values = children[0].children
+
+        #while isinstance(values, list) and len(values) == 1 and isinstance(values[0], list):
+        #    values = values[0]
+
         type = self.element_type
 
         is_string = self.is_string
@@ -606,29 +610,35 @@ class LabelsCollector(Visitor):
 
 class TopDownVisitor:
     def visit(self, node, result=None):
-        result = result or []
-        if isinstance(node, Tree):
-            if hasattr(self, node.data):
-                result += getattr(self, node.data)(node)
+        try:
+            if result is None:
+                result = []
+            if isinstance(node, Tree):
+                if hasattr(self, node.data):
+                    result += getattr(self, node.data)(node)
+                else:
+                    result = self.visit(node.children, result)
+            elif isinstance(node, lark.Token):
+                if hasattr(self, node.type):
+                    result += getattr(self, node.type)(node)
+                else:
+                    result += node.value
+            elif isinstance(node, list):
+                if hasattr(self, 'list_visitor'):
+                    result = self.list_visitor(node, result)
+                else:
+                    for i in node:
+                        result = self.visit(i, result)
+            elif isinstance(node, str):
+                print(f"{node} is a str")
+                result += [node]
             else:
-                result = self.visit(node.children, result)
-        elif isinstance(node, lark.Token):
-            if hasattr(self, node.type):
-                result += getattr(self, node.type)(node)
-            else:
-                result += node.value
-        elif isinstance(node, list):
-            if hasattr(self, 'list_visitor'):
-                result = self.list_visitor(node, result)
-            else:
-                for i in node:
-                    result = self.visit(i, result)
-        elif isinstance(node, str):
-            print(f"{node} is a str")
-            result += [node]
-        else:
-            logging.error(f"Error unknown type {node}")
-            raise ValueError(f"Error unknown type {node}")
+                logging.error(f"Error unknown type {node}")
+                raise ValueError(f"Error unknown type {node}")
+        except:
+            import traceback, logging
+            i = traceback.format_exc()
+            raise
         return result
 
 

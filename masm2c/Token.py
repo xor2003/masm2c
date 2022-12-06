@@ -21,7 +21,7 @@
 from typing import Callable
 
 import lark
-from lark import Tree
+from lark import Tree, Visitor
 
 
 #from masm2c.gen import IndirectionType
@@ -155,3 +155,4 @@ class Expression(lark.Tree):
             except:
                 pass
             return result
+
