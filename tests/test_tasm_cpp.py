@@ -1,12 +1,5 @@
-from __future__ import absolute_import
-from __future__ import print_function
-
-from masm2c import op
-from masm2c import cpp
-from mock import patch
 from masm2c.cpp import Cpp
 from masm2c.parser import Parser
-import logging
 import unittest
 
 from random import randint

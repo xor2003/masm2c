@@ -666,7 +666,7 @@ class AsmData2IR(TopDownVisitor):  # TODO Remove it
     def bypass(self, tree):
         return [tree]
 
-    seg = bypass
+    #seg = bypass
 
 
 OFFSETDIR = 'offsetdir'
