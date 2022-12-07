@@ -1336,15 +1336,6 @@ struct Memory{
         self.__label += "#define %s %s\n" % (dst, self.render_instruction_argument(src))
         return ''
 
-    def data(self, data):
-        # For unit test
-        from masm2c.parser import Parser
-        Parser.c_dummy_label = 0
-        c, h, size = self.produce_c_data_single_(data)
-        c += ", // " + data.getlabel() + "\n"  # TODO can put original_label
-        h += ";\n"
-        return c, h, size
-
 
     def produce_c_data_single_(self, data):
         """
@@ -1607,3 +1598,15 @@ class IR2Cpp(TopDownVisitor, Cpp):
             else:
                 result = "*(%s)" % result
         return result
+
+    def data(self, data):
+        # For unit test
+        from masm2c.parser import Parser
+        Parser.c_dummy_label = 0
+        c, h, size = self.produce_c_data_single_(data)
+        c += ", // " + data.getlabel() + "\n"  # TODO can put original_label
+        h += ";\n"
+        return c, h, size
+
+    def LABEL(self, token):
+        return self.get_global_value(token)

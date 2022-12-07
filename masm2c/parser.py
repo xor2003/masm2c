@@ -849,7 +849,7 @@ class Parser:
             result = self.parse_file_content(text)
             result = result.children[2]
             result = self.process_ast(text, result)
-            result = tuple(IR2Cpp(Parser()).visit(result))
+            result = tuple(IR2Cpp(self).visit(result))
         except Exception as e:
             print(e)
             logging.error("Error3")
@@ -982,8 +982,6 @@ class Parser:
 
         #elements, is_string, array = self.process_data_tokens(args, binary_width)
         data_internal_type = self.identify_data_internal_type(args, elements, is_string)
-        # TODO if data_internal_type == op.DataType.ARRAY and not any(array) and not isstruct:  # all zeros
-        #    array = [0]
 
         logging.debug("~size %d elements %d", binary_width, elements)
         if label and not isstruct:
@@ -1003,6 +1001,8 @@ class Parser:
             self.__cur_seg_offset += size
             data_type = 'usual data'
         array = AsmData2IR().visit(args)
+        # TODO if data_internal_type == op.DataType.ARRAY and not any(array) and not isstruct:  # all zeros
+        #    array = [0]
         data = op.Data(label, type, data_internal_type, array, elements, size, filename=self._current_file,
                        raw_line=raw,
                        line_number=line_number, comment=data_type, offset=offset)
