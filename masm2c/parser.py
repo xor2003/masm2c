@@ -301,6 +301,8 @@ class Parser:
     def get_global_value(self, v, size=2):  # TODO it is C++ specific
         logging.debug("get_global_value(%s)", v)
         v = self.mangle_label(v)
+        if not self.has_global(v):
+            return v
         g = self.get_global(v)
         logging.debug(g)
         if isinstance(g, (op._equ, op._assignment)):

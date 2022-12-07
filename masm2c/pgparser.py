@@ -243,7 +243,7 @@ class Asm2IR(Transformer):
     @v_args(meta=True)
     def datadir(self, meta, children: list):
         logging.debug("datadir %s ~~", children)
-        if isinstance(children[0], lark.Token) and children[0].type == 'label':
+        if isinstance(children[0], lark.Token) and children[0].type == 'LABEL':
             label = self.context.mangle_label(children.pop(0))
         else:
             label = ''
@@ -277,7 +277,7 @@ class Asm2IR(Transformer):
         self.name = value
 
         logging.debug('name = %s', self.name)
-        l = lark.Token(type='label', value=value)
+        l = lark.Token(type='LABEL', value=value)
         try:
             g = self.context.get_global(self.name)
             if isinstance(g, (op._equ, op._assignment)):
@@ -666,7 +666,7 @@ class AsmData2IR(TopDownVisitor):  # TODO Remove it
     def bypass(self, tree):
         return [tree]
 
-    #seg = bypass
+    LABEL = bypass
 
 
 OFFSETDIR = 'offsetdir'

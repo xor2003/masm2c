@@ -1346,6 +1346,7 @@ struct Memory{
         """
         # Real conversion
         internal_data_type = data.getinttype()
+        self.element_size = data.getsize()
 
         logging.debug(f"current data type = {internal_data_type}")
         rc, rh = {op.DataType.NUMBER: self.produce_c_data_number,
@@ -1362,9 +1363,8 @@ struct Memory{
 
     def produce_c_data_number(self, data: op.Data):
         label, data_ctype, _, r, elements, size = data.getdata()
-        #rc = ''.join([str(i) if isinstance(i, int) else "".join(self.visit(i)) for i in r])
-        rc = ''.join([str(i) for i in r])
-        #rc = ''.join(self.visit(r))
+        rc = ''.join(str(i) if isinstance(i, int) else ''.join(str(x) for x in self.visit(i)) for i in r)
+        #rc = ''.join([str(i) if isinstance(i, int) else self.visit(i) for i in r])
         rh = f'{data_ctype} {label}'
         return rc, rh
 
@@ -1588,6 +1588,7 @@ class IR2Cpp(TopDownVisitor, Cpp):
     '''
 
     def expr(self, tree):
+        self.element_size = tree.element_size
         result = "".join(self.visit(tree.children))
         if 'ptrdir' in tree.mods:
             result = self.convert_sqbr_reference(tree.segment_register, result, 'destination' in tree.mods, tree.ptr_size, 'label' in tree.mods, lea='lea' in tree.mods)
@@ -1609,4 +1610,4 @@ class IR2Cpp(TopDownVisitor, Cpp):
         return c, h, size
 
     def LABEL(self, token):
-        return self.get_global_value(token)
+        return self._context.get_global_value(token, size=self.element_size)
