@@ -97,8 +97,10 @@ class Asm2IR(Transformer):
         repeat = children[0]
         repeat = eval("".join(IR2Cpp(Parser()).visit(repeat)))
         value = children[1]
-        self.expression.element_number *= repeat
-        return repeat * [value]  # Token('dupdir', [times, values])
+        #self.expression.element_number *= repeat
+        result = lark.Tree(data='dupdir', children=value)
+        result.repeat = repeat
+        return result  # Token('dupdir', [times, values])
 
     def segoverride(self, nodes):
         seg = nodes[0]
@@ -247,7 +249,7 @@ class Asm2IR(Transformer):
             label = self.context.mangle_label(children.pop(0))
         else:
             label = ''
-        values = children[0].children
+        values = lark.Tree(data='data', children=children[0].children)
 
         #while isinstance(values, list) and len(values) == 1 and isinstance(values[0], list):
         #    values = values[0]
@@ -629,10 +631,11 @@ class TopDownVisitor:
                 else:
                     for i in node:
                         result = self.visit(i, result)
-            elif isinstance(node, str):
-                print(f"{node} is a str")
-                result += [node]
+            elif isinstance(node, (str, int)):
+                #print(f"{node} is a str")
+                result += [f'{node}']
             else:
+                import logging
                 logging.error(f"Error unknown type {node}")
                 raise ValueError(f"Error unknown type {node}")
         except:
@@ -642,15 +645,48 @@ class TopDownVisitor:
         return result
 
 
-class AsmData2IR(TopDownVisitor):  # TODO Remove it
+class BottomUpVisitor:
+
+    def __init__(self, init):
+        self.init = init
+    def visit(self, node):
+        result = copy(self.init)
+        try:
+            if isinstance(node, Tree):
+                result = self.visit(node.children)
+                if hasattr(self, node.data):
+                    result = getattr(self, node.data)(node, result)
+            elif isinstance(node, lark.Token):
+                if hasattr(self, node.type):
+                    result += getattr(self, node.type)(node)
+            elif isinstance(node, list):
+                for i in node:
+                    result += self.visit(i)
+            else:
+                import logging
+                logging.error(f"Error unknown type {node}")
+                raise ValueError(f"Error unknown type {node}")
+        except:
+            import traceback, logging
+            i = traceback.format_exc()
+            raise
+        return result
+
+class AsmData2IR(TopDownVisitor):  # TODO HACK Remove it
 
     def seg(self, tree):
         return [f'seg_offset({tree.children[0]})']
 
     def expr(self, tree):
         self.element_size = tree.element_size
-        return self.visit(tree.children)
+        result = self.visit(tree.children)
+        if len(result) > 1:
+            result = [result]
+        return result
 
+    def dupdir(self, tree):
+        result = tree.repeat * self.visit(tree.children)
+        return result
     def INTEGER(self, token):
         radix, sign, value = token.start_pos, token.line, token.column
         val = int(value, radix)
@@ -666,7 +702,9 @@ class AsmData2IR(TopDownVisitor):  # TODO Remove it
     def bypass(self, tree):
         return [tree]
 
-    LABEL = bypass
+    def LABEL(self, tree):
+        return [lark.Token(type='LABEL', value=tree.lower())]  # TODO HACK
+    #LABEL = bypass
 
 
 OFFSETDIR = 'offsetdir'

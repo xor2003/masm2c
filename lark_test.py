@@ -15,6 +15,8 @@ with open('masm2c/_masm61.lark') as g:
 t = l.parse(""".386p
 
 _DATA   segment use16 word public 'DATA' ;IGNORE
+var3 db 5*5 dup (0)
+var3 db 5*5 dup (0,testEqu*2,2*2*3,3)
 db 88h,3 dup(0),87h
 _dword_1DCEC	dd 10524E49h		; DATA XREF: _loadcfg+1Ar
 var1 db 2.3E+4

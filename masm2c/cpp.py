@@ -33,6 +33,13 @@ from .pgparser import OFFSETDIR, LABEL, PTRDIR, REGISTER, SEGMENTREGISTER, SEGOV
     TopDownVisitor
 
 
+def flatten(s):
+    if not s:
+        return s
+    if isinstance(s[0], list):
+        return flatten(s[0]) + flatten(s[1:])
+    return s[:1] + flatten(s[1:])
+
 class SeparateProcStrategy:
 
     def __init__(self, renderer):
@@ -125,6 +132,14 @@ class Cpp(Gen):
         self.dispatch = ''
         self.prefix = ''
         self.__label = ''
+
+        self.__type_table = {op.DataType.NUMBER: self.produce_c_data_number,
+                  op.DataType.ARRAY: self.produce_c_data_array,
+                  op.DataType.ZERO_STRING: self.produce_c_data_zero_string,
+                  op.DataType.ARRAY_STRING: self.produce_c_data_array_string,
+                  op.DataType.OBJECT: self.produce_c_data_object
+                  }
+
 
     def convert_label(self, token):
         name_original = mangle_asm_labels(token.children[0])
@@ -1349,12 +1364,7 @@ struct Memory{
         self.element_size = data.getsize()
 
         logging.debug(f"current data type = {internal_data_type}")
-        rc, rh = {op.DataType.NUMBER: self.produce_c_data_number,
-                  op.DataType.ARRAY: self.produce_c_data_array,
-                  op.DataType.ZERO_STRING: self.produce_c_data_zero_string,
-                  op.DataType.ARRAY_STRING: self.produce_c_data_array_string,
-                  op.DataType.OBJECT: self.produce_c_data_object
-                  }[internal_data_type](data)
+        rc, rh = self.__type_table[internal_data_type](data)
 
         logging.debug(rc)
         logging.debug(rh)
@@ -1378,8 +1388,15 @@ struct Memory{
             if i != 0:
                 rc += ','
             if isinstance(v, op.Data):
-                c, _, _ = self.produce_c_data_single_(v)
+                c = self.produce_c_data_single_(v)[0]
                 rc += c
+            #elif isinstance(v, (lark.Token, lark.Tree)):
+            #    rc += "".join(flatten(self.visit(v)))
+            elif isinstance(v, list):
+                #print(v)
+                l = [str(i) for i in v]
+                #print(l)
+                rc += "".join(l)
             else:
                 rc += str(v)
         rc += '}'
@@ -1390,6 +1407,7 @@ struct Memory{
 
     def produce_c_data_zero_string(self, data: op.Data):
         label, data_ctype, _, r, elements, size = data.getdata()
+        r = flatten(r)
         rc = '"' + ''.join(self.convert_str(i) for i in r[:-1]) + '"'
         rc = re.sub(r'(\\x[0-9a-f][0-9a-f])([0-9a-fA-F])', r'\g<1>" "\g<2>', rc)  # fix for stupid C hex escapes: \xaef
         rh = f'char {label}[{size}]'
@@ -1398,6 +1416,7 @@ struct Memory{
 
     def produce_c_data_array_string(self, data: op.Data):
         label, data_ctype, _, r, elements, size = data.getdata()
+        r = flatten(r)
         rc = '{' + ",".join([self.convert_char(i) for i in r]) + '}'
         rh = f'char {label}[{size}]'
         return rc, rh

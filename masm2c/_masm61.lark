@@ -323,10 +323,10 @@ repeatdir: "REPEAT"i | "REPT"i
 //?exprlist: exprlist
 //exprlist: expr | expr commaoeol exprlist
 //?exprlist: exprlist -> exprlist
-exprlist: initvalue (_COMMA _ENDOFLINE? initvalue)*
+exprlist: (initvalue|dupdir) (_COMMA _ENDOFLINE? (initvalue|dupdir))*
 dupdir: expr "DUP"i "(" exprlist ")"
 ANYTHING: "?"
-initvalue: ANYTHING| dupdir | floatnumber | expr -> expr
+initvalue: ANYTHING | floatnumber | expr -> expr
 
 commaoeol: _COMMA  _linereminder?
 !segattrib: "PUBLIC"i | "STACK"i | "COMMON"i | "MEMORY"i | "AT"i expr| "PRIVATE"i

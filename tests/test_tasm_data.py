@@ -1031,7 +1031,7 @@ class ParserDataTest(unittest.TestCase):
         self.assertEqual(self.parser.action_data(line="dw offset byte_10F8E+0F3h"), ('offset(default_seg,byte_10f8e)+243, // dummy0_0\n', 'dw dummy0_0;\n', 2))
 
     def test_data_15950(self):
-        self.assertEqual(self.parser.action_data(line='db 0A0h,3 dup(0),88h,3 dup(0),82h'), ('{160,0,0,0,136,0,0,0,130}, // dummy0_0\n', 'db dummy0_0[9];\n', 9))
+        self.assertEqual(self.parser.action_data(line='db 0A0h,3 dup(0,1),88h,3 dup(0),82h'), ('{160,0,1,0,1,0,1,136,0,0,0,130}, // dummy0_0\n', 'db dummy0_0[12];\n', 12))
 
     def test_data_15960(self):
         self.assertEqual(self.parser.action_data(line="var6 dd 9,8,7,1\ndw var6+4"), ('{9,8,7,1}, // var6\n', 'dd var6[4];\n', 16))

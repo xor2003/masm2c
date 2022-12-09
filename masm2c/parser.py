@@ -27,44 +27,69 @@ import sys
 from builtins import range, str
 from collections import OrderedDict
 from copy import copy, deepcopy
-from functools import reduce
-from itertools import accumulate
+
 
 import jsonpickle
 import parglare
-from lark import lark
+from lark import lark, Visitor
 
 from . import cpp as cpp_module
 from . import op
 from .Token import Token
-from .pgparser import LarkParser, Asm2IR, ExprRemover, AsmData2IR, TopDownVisitor
+from .pgparser import LarkParser, Asm2IR, ExprRemover, AsmData2IR, TopDownVisitor, BottomUpVisitor
 from .proc import Proc
 
 INTEGERCNST = 'integer'
 STRINGCNST = 'STRING'
 
-class ExprSizeCalculator(TopDownVisitor):
+class Vector:
 
-    def __init__(self, element_size=0):
-        self.size = 0
+    def __init__(self, *args):
+        self.__value = args
+
+    def __add__(self, vec):
+        if vec is not None:
+            self.__value = [a + b for a, b in zip(self.__value, vec)]
+        return self
+
+    def __mul__(self, other):
+        self.__value = list(a * other for a in self)
+        return self
+
+    #@property
+    #def value(self):
+    #    return self.__value
+
+    def __getitem__(self, item):
+        return self.__value[item]
+
+    def __repr__(self):
+        return f"{self.__value}"
+
+class ExprSizeCalculator(BottomUpVisitor):
+
+    def __init__(self, element_size=0, **kwargs):
+        super().__init__(**kwargs)
+        #self.size = 0
         self.element_number = 0
         self.element_size = element_size
-    def expr(self, tree):
+
+    def expr(self, tree, size):
         if self.element_size:
             tree.element_size = self.element_size
+        '''
         self.element_number += tree.element_number
-        self.size += tree.size()
-        return []  # tree.size()
+        size += tree.size()
+        #self.size += size
+        '''
+        ##return size + (tree.size(), tree.element_number)
+        #return size + (self.element_size, tree.element_number)
+        return Vector(tree.size(), tree.element_number)
 
+    def dupdir(self, tree, size):
+        #self.element_number += tree.repeat
+        return size * tree.repeat
 
-    '''
-    def __default__(self, tree):
-        if isinstance(tree, lark.Tree):
-            self.visit(tree.children)
-        elif isinstance(tree, list):
-            for child in tree:
-                self.visit(child)
-    '''
 
 def read_whole_file(file_name):
     """
@@ -324,7 +349,8 @@ class Parser:
         logging.debug(v)
         return v
 
-    def identify_data_internal_type(self, args, elements, is_string) -> op.DataType:
+    def identify_data_internal_type(self, data, elements, is_string) -> op.DataType:
+        args = data.children
         if is_string:
             if elements >= 2 and isinstance(args[-1].children[-1], lark.Token) \
                     and args[-1].children[-1].type == 'INTEGER' and args[-1].children[-1].value == '0':
@@ -961,12 +987,12 @@ class Parser:
         #for ex in args:
         #    ex.element_size = binary_width
 
-        calc = ExprSizeCalculator(element_size=binary_width)
-        calc.visit(args)
-        size = calc.size
-        #size = sum(map(Expression.size, args))  #self.calculate_data_size_new(binary_width, args)
-        #elements = sum(arg.element_number for arg in args)
-        elements = calc.element_number
+        calc = ExprSizeCalculator(element_size=binary_width, init=Vector(0, 0))
+        size, elements = calc.visit(args) #, result=0)
+        #size = calc.size
+        ##size = sum(map(Expression.size, args))  #self.calculate_data_size_new(binary_width, args)
+        ##elements = sum(arg.element_number for arg in args)
+        #elements = calc.element_number
 
         offset = self.__cur_seg_offset
         if not isstruct:
@@ -1003,8 +1029,11 @@ class Parser:
             self.__cur_seg_offset += size
             data_type = 'usual data'
         array = AsmData2IR().visit(args)
-        # TODO if data_internal_type == op.DataType.ARRAY and not any(array) and not isstruct:  # all zeros
-        #    array = [0]
+        if data_internal_type == op.DataType.ARRAY and not any(array) and not isstruct:  # all zeros
+            array = [0]
+        #while isinstance(array, list) and len(array) == 1 and isinstance(array[0], list):
+        #    array = array[0]
+        #array = [el[0] if isinstance(el, list) and len(el) == 1 else el for el in array]
         data = op.Data(label, type, data_internal_type, array, elements, size, filename=self._current_file,
                        raw_line=raw,
                        line_number=line_number, comment=data_type, offset=offset)
