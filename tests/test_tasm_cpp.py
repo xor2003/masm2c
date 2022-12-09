@@ -14,1946 +14,1946 @@ class CppTest(unittest.TestCase):
         self.parser = Parser()
         self.cpp = Cpp(self.parser)
 
-    def test_cpp_20010(self):
+    def test_args_20010(self):
         self.assertEqual(self.parser.parse_arg(u'[a+1]', def_size=1, destination=False), u'*(raddr(ds,a+1))')
 
-    def test_cpp_20020(self):
+    def test_args_20020(self):
         self.assertEqual(self.parser.parse_arg(u'ds:40h[eax*2]', def_size=0, destination=False), u'*(raddr(ds,0x40+eax*2))')
 
-    def test_cpp_20030(self):
+    def test_args_20030(self):
         self.assertEqual(self.parser.parse_arg(u"'Z' - 'A' +1", def_size=1, destination=False), u"'Z'-'A'+1")
 
-    def test_cpp_20040(self):
+    def test_args_20040(self):
         self.assertEqual(self.parser.parse_arg(u"'a'", def_size=1, destination=False), u"'a'")
 
-    def test_cpp_20050(self):
+    def test_args_20050(self):
         self.assertEqual(self.parser.parse_arg(u'(1024*10/16)+5', def_size=2, destination=False), u'(1024*10/16)+5')
 
-    def test_cpp_20060(self):
+    def test_args_20060(self):
         self.assertEqual(self.parser.parse_arg(u'(1024*10/16)-1', def_size=2, destination=False), u'(1024*10/16)-1')
 
-    #def test_cpp_20070(self):
+    #def test_args_20070(self):
         # self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'(offset str_buffer+800h)'),def_size=4,destination=False),u'str_buffer+0x800')
 
-    def test_cpp_20080(self):
+    def test_args_20080(self):
         self.assertEqual(self.parser.parse_arg(u'-40h', def_size=0, destination=False), u'-0x40')
 
-    def test_cpp_20090(self):
+    def test_args_20090(self):
         self.assertEqual(self.parser.parse_arg(u'+40h', def_size=0, destination=False), u'+0x40')
 
-    #def test_cpp_20100(self):
+    #def test_args_20100(self):
         # self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'+0x4000'),def_size=0,destination=False),u'+0x4000')
 
-    #def test_cpp_20110(self):
+    #def test_args_20110(self):
         # self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'+ecx'),def_size=0,destination=False),u'+ecx')
 
-    #def test_cpp_20120(self):
+    #def test_args_20120(self):
         # self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'+ecx*2'),def_size=0,destination=False),u'+ecx*2')
 
-    #def test_cpp_20130(self):
+    #def test_args_20130(self):
         # self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'+ecx*2+0x4000'),def_size=0,destination=False),u'+ecx*2+0x4000')
 
-    #def test_cpp_20140(self):
+    #def test_args_20140(self):
         # self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'+ecx*2-0x0A'),def_size=0,destination=False),u'+ecx*2-0x0A')
 
-    #def test_cpp_20150(self):
+    #def test_args_20150(self):
         # self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'+ecx*4'),def_size=0,destination=False),u'+ecx*4')
 
-    #def test_cpp_20160(self):
+    #def test_args_20160(self):
         # self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'+ecx*4+0x4000'),def_size=0,destination=False),u'+ecx*4+0x4000')
 
-    #def test_cpp_20170(self):
+    #def test_args_20170(self):
         # self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'+ecx*4-0x0A'),def_size=0,destination=False),u'+ecx*4-0x0A')
 
-    #def test_cpp_20180(self):
+    #def test_args_20180(self):
         # self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'+ecx+0x40'),def_size=0,destination=False),u'+ecx+0x40')
 
-    #def test_cpp_20190(self):
+    #def test_args_20190(self):
         # self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'+edx'),def_size=0,destination=False),u'+edx')
 
-    #def test_cpp_20200(self):
+    #def test_args_20200(self):
         # self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'+edx+0x4000'),def_size=0,destination=False),u'+edx+0x4000')
 
-    #def test_cpp_20210(self):
+    #def test_args_20210(self):
         # self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'-0x108'),def_size=0,destination=False),u'-0x108')
 
-    #def test_cpp_20220(self):
+    #def test_args_20220(self):
         # self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'-0x1C'),def_size=0,destination=False),u'-0x1C')
 
-    #def test_cpp_20230(self):
+    #def test_args_20230(self):
         # self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'-0x20'),def_size=0,destination=False),u'-0x20')
 
-    #def test_cpp_20240(self):
+    #def test_args_20240(self):
         # self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'-0x28'),def_size=0,destination=False),u'-0x28')
 
-    #def test_cpp_20250(self):
+    #def test_args_20250(self):
         # self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'-0x2C'),def_size=0,destination=False),u'-0x2C')
 
-    #def test_cpp_20260(self):
+    #def test_args_20260(self):
         # self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'-1'),def_size=1,destination=False),u'-1')
 
-    #def test_cpp_20270(self):
+    #def test_args_20270(self):
         # self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'-1'),def_size=2,destination=False),u'-1')
 
-    #def test_cpp_20280(self):
+    #def test_args_20280(self):
         # self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'-1'),def_size=4,destination=False),u'-1')
 
-    #def test_cpp_20290(self):
+    #def test_args_20290(self):
         # self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'-1-(-2+3)'),def_size=4,destination=False),u'-1-(-2+3)')
 
-    #def test_cpp_20300(self):
+    #def test_args_20300(self):
         # self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'-12'),def_size=4,destination=False),u'-12')
 
-    #def test_cpp_20310(self):
+    #def test_args_20310(self):
         # self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'-13'),def_size=4,destination=False),u'-13')
 
-    #def test_cpp_20320(self):
+    #def test_args_20320(self):
         # self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'-2'),def_size=1,destination=False),u'-2')
 
-    #def test_cpp_20330(self):
+    #def test_args_20330(self):
         # self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'-2'),def_size=4,destination=False),u'-2')
 
-    #def test_cpp_20340(self):
+    #def test_args_20340(self):
         # self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'-2Dh'),def_size=2,destination=False),u'-0x2D')
 
-    #def test_cpp_20350(self):
+    #def test_args_20350(self):
         # self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'-2Dh'),def_size=4,destination=False),u'-0x2D')
 
-    #def test_cpp_20360(self):
+    #def test_args_20360(self):
         # self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'-4'),def_size=0,destination=False),u'-4')
 
-    def test_cpp_20370(self):
+    def test_args_20370(self):
         self.assertEqual(self.parser.parse_arg(u'0', def_size=0, destination=False), u'0')
 
-    def test_cpp_20380(self):
+    def test_args_20380(self):
         self.assertEqual(self.parser.parse_arg(u'0', def_size=1, destination=False), u'0')
 
-    def test_cpp_20390(self):
+    def test_args_20390(self):
         self.assertEqual(self.parser.parse_arg(u'0002h', def_size=1, destination=False), u'0x0002')
 
-    def test_cpp_20400(self):
+    def test_args_20400(self):
         self.assertEqual(self.parser.parse_arg(u'0007', def_size=1, destination=False), u'0007')
 
-    def test_cpp_20410(self):
+    def test_args_20410(self):
         self.assertEqual(self.parser.parse_arg(u'000f3h', def_size=1, destination=False), u'0x000f3')
 
-    def test_cpp_20420(self):
+    def test_args_20420(self):
         self.assertEqual(self.parser.parse_arg(u'000ff00ffh', def_size=4, destination=False), u'0x000ff00ff')
 
-    def test_cpp_20430(self):
+    def test_args_20430(self):
         self.assertEqual(self.parser.parse_arg(u'001111111B', def_size=1, destination=False), u'0x7f')
 
-    def test_cpp_20440(self):
+    def test_args_20440(self):
         self.assertEqual(self.parser.parse_arg(u'00fffh', def_size=2, destination=False), u'0x00fff')
 
-    def test_cpp_20450(self):
+    def test_args_20450(self):
         self.assertEqual(self.parser.parse_arg(u'00h', def_size=1, destination=False), u'0x00')
 
-    def test_cpp_20460(self):
+    def test_args_20460(self):
         self.assertEqual(self.parser.parse_arg(u'0100b', def_size=4, destination=False), u'0x4')
 
-    def test_cpp_20470(self):
+    def test_args_20470(self):
         self.assertEqual(self.parser.parse_arg(u'01010101010101010b', def_size=2, destination=False), u'0xaaaa')
 
-    def test_cpp_20480(self):
+    def test_args_20480(self):
         self.assertEqual(self.parser.parse_arg(u'0101010101010101b', def_size=4, destination=False), u'0x5555')
 
-    def test_cpp_20490(self):
+    def test_args_20490(self):
         self.assertEqual(self.parser.parse_arg(u'0101b', def_size=4, destination=False), u'0x5')
 
-    def test_cpp_20500(self):
+    def test_args_20500(self):
         self.assertEqual(self.parser.parse_arg(u'010B', def_size=1, destination=False), u'0x2')
 
-    def test_cpp_20510(self):
+    def test_args_20510(self):
         self.assertEqual(self.parser.parse_arg(u'010B', def_size=4, destination=False), u'0x2')
 
-    def test_cpp_20520(self):
+    def test_args_20520(self):
         self.assertEqual(self.parser.parse_arg(u'011111100B', def_size=1, destination=False), u'0xfc')
 
-    def test_cpp_20530(self):
+    def test_args_20530(self):
         self.assertEqual(self.parser.parse_arg(u'011111111111111111111111111111111b', def_size=4, destination=False), u'0xffffffff')
 
-    def test_cpp_20540(self):
+    def test_args_20540(self):
         self.assertEqual(self.parser.parse_arg(u'01111111111111111b', def_size=2, destination=False), u'0xffff')
 
-    def test_cpp_20550(self):
+    def test_args_20550(self):
         self.assertEqual(self.parser.parse_arg(u'011111111B', def_size=1, destination=False), u'0xff')
 
-    def test_cpp_20560(self):
+    def test_args_20560(self):
         self.assertEqual(self.parser.parse_arg(u'012345678h', def_size=4, destination=False), u'0x012345678')
 
-    def test_cpp_20570(self):
+    def test_args_20570(self):
         self.assertEqual(self.parser.parse_arg(u'01B', def_size=4, destination=False), u'0x1')
 
-    def test_cpp_20580(self):
+    def test_args_20580(self):
         self.assertEqual(self.parser.parse_arg(u'01h', def_size=1, destination=False), u'0x01')
 
-    def test_cpp_20590(self):
+    def test_args_20590(self):
         self.assertEqual(self.parser.parse_arg(u'02h', def_size=1, destination=False), u'0x02')
 
-    def test_cpp_20600(self):
+    def test_args_20600(self):
         self.assertEqual(self.parser.parse_arg(u'03dh', def_size=1, destination=False), u'0x03d')
 
-    def test_cpp_20610(self):
+    def test_args_20610(self):
         self.assertEqual(self.parser.parse_arg(u'03eh', def_size=1, destination=False), u'0x03e')
 
-    def test_cpp_20620(self):
+    def test_args_20620(self):
         self.assertEqual(self.parser.parse_arg(u'03fh', def_size=1, destination=False), u'0x03f')
 
-    def test_cpp_20630(self):
+    def test_args_20630(self):
         self.assertEqual(self.parser.parse_arg(u'042h', def_size=1, destination=False), u'0x042')
 
-    def test_cpp_20640(self):
+    def test_args_20640(self):
         self.assertEqual(self.parser.parse_arg(u'077123456h', def_size=4, destination=False), u'0x077123456')
 
-    def test_cpp_20650(self):
+    def test_args_20650(self):
         self.assertEqual(self.parser.parse_arg(u'077aaFF00h', def_size=4, destination=False), u'0x077aaFF00')
 
-    def test_cpp_20660(self):
+    def test_args_20660(self):
         self.assertEqual(self.parser.parse_arg(u'08h', def_size=1, destination=False), u'0x08')
 
-    def test_cpp_20670(self):
+    def test_args_20670(self):
         self.assertEqual(self.parser.parse_arg(u'0B', def_size=1, destination=False), u'0x0')
 
-    def test_cpp_20680(self):
+    def test_args_20680(self):
         self.assertEqual(self.parser.parse_arg(u'0BC6058h', def_size=0, destination=False), u'0x0BC6058')
 
-    def test_cpp_20690(self):
+    def test_args_20690(self):
         self.assertEqual(self.parser.parse_arg(u'0D5h', def_size=1, destination=False), u'0x0D5')
 
-    def test_cpp_20700(self):
+    def test_args_20700(self):
         self.assertEqual(self.parser.parse_arg(u'0Eh', def_size=1, destination=False), u'0x0E')
 
-    def test_cpp_20710(self):
+    def test_args_20710(self):
         self.assertEqual(self.parser.parse_arg(u'0F7h', def_size=1, destination=False), u'0x0F7')
 
-    def test_cpp_20720(self):
+    def test_args_20720(self):
         self.assertEqual(self.parser.parse_arg(u'0FBCA7654h', def_size=4, destination=False), u'0x0FBCA7654')
 
-    def test_cpp_20730(self):
+    def test_args_20730(self):
         self.assertEqual(self.parser.parse_arg(u'0FBCA7h', def_size=4, destination=False), u'0x0FBCA7')
 
-    def test_cpp_20740(self):
+    def test_args_20740(self):
         self.assertEqual(self.parser.parse_arg(u'0FEh', def_size=1, destination=False), u'0x0FE')
 
-    def test_cpp_20750(self):
+    def test_args_20750(self):
         self.assertEqual(self.parser.parse_arg(u'0FFEh', def_size=2, destination=False), u'0x0FFE')
 
-    def test_cpp_20760(self):
+    def test_args_20760(self):
         self.assertEqual(self.parser.parse_arg(u'0FFFC70F9h', def_size=4, destination=False), u'0x0FFFC70F9')
 
-    def test_cpp_20770(self):
+    def test_args_20770(self):
         self.assertEqual(self.parser.parse_arg(u'0FFFE0080h', def_size=4, destination=False), u'0x0FFFE0080')
 
-    def test_cpp_20780(self):
+    def test_args_20780(self):
         self.assertEqual(self.parser.parse_arg(u'0FFFEDCBFh', def_size=4, destination=False), u'0x0FFFEDCBF')
 
-    def test_cpp_20790(self):
+    def test_args_20790(self):
         self.assertEqual(self.parser.parse_arg(u'0FFFEFDFCh', def_size=4, destination=False), u'0x0FFFEFDFC')
 
-    def test_cpp_20800(self):
+    def test_args_20800(self):
         self.assertEqual(self.parser.parse_arg(u'0FFFEh', def_size=2, destination=False), u'0x0FFFE')
 
-    def test_cpp_20810(self):
+    def test_args_20810(self):
         self.assertEqual(self.parser.parse_arg(u'0FFFF7FFFh', def_size=4, destination=False), u'0x0FFFF7FFF')
 
-    def test_cpp_20820(self):
+    def test_args_20820(self):
         self.assertEqual(self.parser.parse_arg(u'0FFFFA549h', def_size=4, destination=False), u'0x0FFFFA549')
 
-    def test_cpp_20830(self):
+    def test_args_20830(self):
         self.assertEqual(self.parser.parse_arg(u'0FFFFEh', def_size=4, destination=False), u'0x0FFFFE')
 
-    def test_cpp_20840(self):
+    def test_args_20840(self):
         self.assertEqual(self.parser.parse_arg(u'0FFFFFED4h', def_size=4, destination=False), u'0x0FFFFFED4')
 
-    def test_cpp_20850(self):
+    def test_args_20850(self):
         self.assertEqual(self.parser.parse_arg(u'0FFFFFEh', def_size=4, destination=False), u'0x0FFFFFE')
 
-    def test_cpp_20860(self):
+    def test_args_20860(self):
         self.assertEqual(self.parser.parse_arg(u'0FFFFFFD3h', def_size=4, destination=False), u'0x0FFFFFFD3')
 
-    def test_cpp_20870(self):
+    def test_args_20870(self):
         self.assertEqual(self.parser.parse_arg(u'0FFFFFFECh', def_size=4, destination=False), u'0x0FFFFFFEC')
 
-    def test_cpp_20880(self):
+    def test_args_20880(self):
         self.assertEqual(self.parser.parse_arg(u'0FFFFFFEh', def_size=4, destination=False), u'0x0FFFFFFE')
 
-    def test_cpp_20890(self):
+    def test_args_20890(self):
         self.assertEqual(self.parser.parse_arg(u'0FFFFFFF0h', def_size=4, destination=False), u'0x0FFFFFFF0')
 
-    def test_cpp_20900(self):
+    def test_args_20900(self):
         self.assertEqual(self.parser.parse_arg(u'0FFFFFFF7h', def_size=4, destination=False), u'0x0FFFFFFF7')
 
-    def test_cpp_20910(self):
+    def test_args_20910(self):
         self.assertEqual(self.parser.parse_arg(u'0FFFFFFFAh', def_size=4, destination=False), u'0x0FFFFFFFA')
 
-    def test_cpp_20920(self):
+    def test_args_20920(self):
         self.assertEqual(self.parser.parse_arg(u'0FFFFFFFBh', def_size=4, destination=False), u'0x0FFFFFFFB')
 
-    def test_cpp_20930(self):
+    def test_args_20930(self):
         self.assertEqual(self.parser.parse_arg(u'0FFFFFFFCh', def_size=4, destination=False), u'0x0FFFFFFFC')
 
-    def test_cpp_20940(self):
+    def test_args_20940(self):
         self.assertEqual(self.parser.parse_arg(u'0FFFFFFFDh', def_size=4, destination=False), u'0x0FFFFFFFD')
 
-    def test_cpp_20950(self):
+    def test_args_20950(self):
         self.assertEqual(self.parser.parse_arg(u'0FFFFFFFEh', def_size=4, destination=False), u'0x0FFFFFFFE')
 
-    def test_cpp_20960(self):
+    def test_args_20960(self):
         self.assertEqual(self.parser.parse_arg(u'0FFFFFFFFh', def_size=4, destination=False), u'0x0FFFFFFFF')
 
-    def test_cpp_20970(self):
+    def test_args_20970(self):
         self.assertEqual(self.parser.parse_arg(u'0FFFFFFFh', def_size=4, destination=False), u'0x0FFFFFFF')
 
-    def test_cpp_20980(self):
+    def test_args_20980(self):
         self.assertEqual(self.parser.parse_arg(u'0FFFFFFh', def_size=4, destination=False), u'0x0FFFFFF')
 
-    def test_cpp_20990(self):
+    def test_args_20990(self):
         self.assertEqual(self.parser.parse_arg(u'0FFFFFh', def_size=4, destination=False), u'0x0FFFFF')
 
-    def test_cpp_21000(self):
+    def test_args_21000(self):
         self.assertEqual(self.parser.parse_arg(u'0FFFFh', def_size=2, destination=False), u'0x0FFFF')
 
-    def test_cpp_21010(self):
+    def test_args_21010(self):
         self.assertEqual(self.parser.parse_arg(u'0FFFh', def_size=2, destination=False), u'0x0FFF')
 
-    def test_cpp_21020(self):
+    def test_args_21020(self):
         self.assertEqual(self.parser.parse_arg(u'0FFh', def_size=1, destination=False), u'0x0FF')
 
-    def test_cpp_21030(self):
+    def test_args_21030(self):
         self.assertEqual(self.parser.parse_arg(u'0Fh', def_size=1, destination=False), u'0x0F')
 
-    def test_cpp_21040(self):
+    def test_args_21040(self):
         self.assertEqual(self.parser.parse_arg(u'0a0000h', def_size=4, destination=False), u'0x0a0000')
 
-    def test_cpp_21050(self):
+    def test_args_21050(self):
         self.assertEqual(self.parser.parse_arg(u'0a000h', def_size=2, destination=False), u'0x0a000')
 
-    def test_cpp_21060(self):
+    def test_args_21060(self):
         self.assertEqual(self.parser.parse_arg(u'0aabbccddh', def_size=4, destination=False), u'0x0aabbccdd')
 
-    def test_cpp_21070(self):
+    def test_args_21070(self):
         self.assertEqual(self.parser.parse_arg(u'0abcdef77h', def_size=4, destination=False), u'0x0abcdef77')
 
-    def test_cpp_21080(self):
+    def test_args_21080(self):
         self.assertEqual(self.parser.parse_arg(u'0af222h', def_size=4, destination=False), u'0x0af222')
 
-    def test_cpp_21090(self):
+    def test_args_21090(self):
         self.assertEqual(self.parser.parse_arg(u'0cch', def_size=1, destination=False), u'0x0cc')
 
-    def test_cpp_21100(self):
+    def test_args_21100(self):
         self.assertEqual(self.parser.parse_arg(u'0ddh', def_size=1, destination=False), u'0x0dd')
 
-    def test_cpp_21110(self):
+    def test_args_21110(self):
         self.assertEqual(self.parser.parse_arg(u'0df01h', def_size=2, destination=False), u'0x0df01')
 
-    def test_cpp_21120(self):
+    def test_args_21120(self):
         self.assertEqual(self.parser.parse_arg(u'0dff1h', def_size=2, destination=False), u'0x0dff1')
 
-    def test_cpp_21130(self):
+    def test_args_21130(self):
         self.assertEqual(self.parser.parse_arg(u'0f0ffh', def_size=2, destination=False), u'0x0f0ff')
 
-    def test_cpp_21140(self):
+    def test_args_21140(self):
         self.assertEqual(self.parser.parse_arg(u'0f0h', def_size=1, destination=False), u'0x0f0')
 
-    def test_cpp_21150(self):
+    def test_args_21150(self):
         self.assertEqual(self.parser.parse_arg(u'0f222h', def_size=2, destination=False), u'0x0f222')
 
-    def test_cpp_21160(self):
+    def test_args_21160(self):
         self.assertEqual(self.parser.parse_arg(u'0ffff0003h', def_size=4, destination=False), u'0x0ffff0003')
 
-    def test_cpp_21170(self):
+    def test_args_21170(self):
         self.assertEqual(self.parser.parse_arg(u'0ffff00f3h', def_size=4, destination=False), u'0x0ffff00f3')
 
-    def test_cpp_21180(self):
+    def test_args_21180(self):
         self.assertEqual(self.parser.parse_arg(u'0ffff01ffh', def_size=4, destination=False), u'0x0ffff01ff')
 
-    def test_cpp_21190(self):
+    def test_args_21190(self):
         self.assertEqual(self.parser.parse_arg(u'0ffffff00h', def_size=4, destination=False), u'0x0ffffff00')
 
-    def test_cpp_21200(self):
+    def test_args_21200(self):
         self.assertEqual(self.parser.parse_arg(u'0ffffff03h', def_size=4, destination=False), u'0x0ffffff03')
 
-    def test_cpp_21210(self):
+    def test_args_21210(self):
         self.assertEqual(self.parser.parse_arg(u'0fffffff3h', def_size=4, destination=False), u'0x0fffffff3')
 
-    def test_cpp_21220(self):
+    def test_args_21220(self):
         self.assertEqual(self.parser.parse_arg(u'0ffffffffh', def_size=4, destination=False), u'0x0ffffffff')
 
-    def test_cpp_21230(self):
+    def test_args_21230(self):
         self.assertEqual(self.parser.parse_arg(u'0ffffh', def_size=2, destination=False), u'0x0ffff')
 
-    def test_cpp_21240(self):
+    def test_args_21240(self):
         self.assertEqual(self.parser.parse_arg(u'0ffh', def_size=1, destination=False), u'0x0ff')
 
-    def test_cpp_21250(self):
+    def test_args_21250(self):
         self.assertEqual(self.parser.parse_arg(u'1', def_size=0, destination=False), u'1')
 
-    def test_cpp_21260(self):
+    def test_args_21260(self):
         self.assertEqual(self.parser.parse_arg(u'1', def_size=1, destination=False), u'1')
 
-    def test_cpp_21270(self):
+    def test_args_21270(self):
         self.assertEqual(self.parser.parse_arg(u'10', def_size=1, destination=False), u'10')
 
-    def test_cpp_21280(self):
+    def test_args_21280(self):
         self.assertEqual(self.parser.parse_arg(u'10000h', def_size=4, destination=False), u'0x10000')
 
-    def test_cpp_21290(self):
+    def test_args_21290(self):
         self.assertEqual(self.parser.parse_arg(u'1000h', def_size=2, destination=False), u'0x1000')
 
-    def test_cpp_21300(self):
+    def test_args_21300(self):
         self.assertEqual(self.parser.parse_arg(u'100h', def_size=2, destination=False), u'0x100')
 
-    def test_cpp_21310(self):
+    def test_args_21310(self):
         self.assertEqual(self.parser.parse_arg(u'1024*10/16', def_size=2, destination=False), u'1024*10/16')
 
-    def test_cpp_21320(self):
+    def test_args_21320(self):
         self.assertEqual(self.parser.parse_arg(u'1024*1024', def_size=4, destination=False), u'1024*1024')
 
-    def test_cpp_21330(self):
+    def test_args_21330(self):
         self.assertEqual(self.parser.parse_arg(u'10B', def_size=4, destination=False), u'0x2')
 
-    def test_cpp_21340(self):
+    def test_args_21340(self):
         self.assertEqual(self.parser.parse_arg(u'10h', def_size=0, destination=False), u'0x10')
 
-    def test_cpp_21350(self):
+    def test_args_21350(self):
         self.assertEqual(self.parser.parse_arg(u'10h', def_size=1, destination=False), u'0x10')
 
-    def test_cpp_21360(self):
+    def test_args_21360(self):
         self.assertEqual(self.parser.parse_arg(u'11', def_size=1, destination=False), u'11')
 
-    def test_cpp_21370(self):
+    def test_args_21370(self):
         self.assertEqual(self.parser.parse_arg(u'111', def_size=1, destination=False), u'111')
 
-    def test_cpp_21380(self):
+    def test_args_21380(self):
         self.assertEqual(self.parser.parse_arg(u'114h', def_size=2, destination=False), u'0x114')
 
-    def test_cpp_21390(self):
+    def test_args_21390(self):
         self.assertEqual(self.parser.parse_arg(u'11h', def_size=1, destination=False), u'0x11')
 
-    def test_cpp_21400(self):
+    def test_args_21400(self):
         self.assertEqual(self.parser.parse_arg(u'12', def_size=1, destination=False), u'12')
 
-    def test_cpp_21410(self):
+    def test_args_21410(self):
         self.assertEqual(self.parser.parse_arg(u'12340004h', def_size=4, destination=False), u'0x12340004')
 
-    def test_cpp_21420(self):
+    def test_args_21420(self):
         self.assertEqual(self.parser.parse_arg(u'1234001Dh', def_size=4, destination=False), u'0x1234001D')
 
-    def test_cpp_21430(self):
+    def test_args_21430(self):
         self.assertEqual(self.parser.parse_arg(u'12340128h', def_size=4, destination=False), u'0x12340128')
 
-    def test_cpp_21440(self):
+    def test_args_21440(self):
         self.assertEqual(self.parser.parse_arg(u'12340205h', def_size=4, destination=False), u'0x12340205')
 
-    def test_cpp_21450(self):
+    def test_args_21450(self):
         self.assertEqual(self.parser.parse_arg(u'12340306h', def_size=4, destination=False), u'0x12340306')
 
-    def test_cpp_21460(self):
+    def test_args_21460(self):
         self.assertEqual(self.parser.parse_arg(u'12340407h', def_size=4, destination=False), u'0x12340407')
 
-    def test_cpp_21470(self):
+    def test_args_21470(self):
         self.assertEqual(self.parser.parse_arg(u'1234040Ah', def_size=4, destination=False), u'0x1234040A')
 
-    def test_cpp_21480(self):
+    def test_args_21480(self):
         self.assertEqual(self.parser.parse_arg(u'12340503h', def_size=4, destination=False), u'0x12340503')
 
-    def test_cpp_21490(self):
+    def test_args_21490(self):
         self.assertEqual(self.parser.parse_arg(u'12340506h', def_size=4, destination=False), u'0x12340506')
 
-    def test_cpp_21500(self):
+    def test_args_21500(self):
         self.assertEqual(self.parser.parse_arg(u'12340507h', def_size=4, destination=False), u'0x12340507')
 
-    def test_cpp_21510(self):
+    def test_args_21510(self):
         self.assertEqual(self.parser.parse_arg(u'12340547h', def_size=4, destination=False), u'0x12340547')
 
-    def test_cpp_21520(self):
+    def test_args_21520(self):
         self.assertEqual(self.parser.parse_arg(u'12340559h', def_size=4, destination=False), u'0x12340559')
 
-    def test_cpp_21530(self):
+    def test_args_21530(self):
         self.assertEqual(self.parser.parse_arg(u'12340560h', def_size=4, destination=False), u'0x12340560')
 
-    def test_cpp_21540(self):
+    def test_args_21540(self):
         self.assertEqual(self.parser.parse_arg(u'1234059Fh', def_size=4, destination=False), u'0x1234059F')
 
-    def test_cpp_21550(self):
+    def test_args_21550(self):
         self.assertEqual(self.parser.parse_arg(u'123405A0h', def_size=4, destination=False), u'0x123405A0')
 
-    def test_cpp_21560(self):
+    def test_args_21560(self):
         self.assertEqual(self.parser.parse_arg(u'123405FAh', def_size=4, destination=False), u'0x123405FA')
 
-    def test_cpp_21570(self):
+    def test_args_21570(self):
         self.assertEqual(self.parser.parse_arg(u'12341678h', def_size=4, destination=False), u'0x12341678')
 
-    def test_cpp_21580(self):
+    def test_args_21580(self):
         self.assertEqual(self.parser.parse_arg(u'12341h', def_size=4, destination=False), u'0x12341')
 
-    def test_cpp_21590(self):
+    def test_args_21590(self):
         self.assertEqual(self.parser.parse_arg(u'12343h', def_size=4, destination=False), u'0x12343')
 
-    def test_cpp_21600(self):
+    def test_args_21600(self):
         self.assertEqual(self.parser.parse_arg(u'12345', def_size=2, destination=False), u'12345')
 
-    def test_cpp_21610(self):
+    def test_args_21610(self):
         self.assertEqual(self.parser.parse_arg(u'1234561Dh', def_size=4, destination=False), u'0x1234561D')
 
-    def test_cpp_21620(self):
+    def test_args_21620(self):
         self.assertEqual(self.parser.parse_arg(u'12345678h', def_size=4, destination=False), u'0x12345678')
 
-    def test_cpp_21630(self):
+    def test_args_21630(self):
         self.assertEqual(self.parser.parse_arg(u'12345h', def_size=4, destination=False), u'0x12345')
 
-    def test_cpp_21640(self):
+    def test_args_21640(self):
         self.assertEqual(self.parser.parse_arg(u'12347F7Fh', def_size=4, destination=False), u'0x12347F7F')
 
-    def test_cpp_21650(self):
+    def test_args_21650(self):
         self.assertEqual(self.parser.parse_arg(u'12347FFFh', def_size=4, destination=False), u'0x12347FFF')
 
-    def test_cpp_21660(self):
+    def test_args_21660(self):
         self.assertEqual(self.parser.parse_arg(u'12348000h', def_size=4, destination=False), u'0x12348000')
 
-    def test_cpp_21670(self):
+    def test_args_21670(self):
         self.assertEqual(self.parser.parse_arg(u'12348080h', def_size=4, destination=False), u'0x12348080')
 
-    def test_cpp_21680(self):
+    def test_args_21680(self):
         self.assertEqual(self.parser.parse_arg(u'1234h', def_size=2, destination=False), u'0x1234')
 
-    def test_cpp_21690(self):
+    def test_args_21690(self):
         self.assertEqual(self.parser.parse_arg(u'127Eh', def_size=2, destination=False), u'0x127E')
 
-    def test_cpp_21700(self):
+    def test_args_21700(self):
         self.assertEqual(self.parser.parse_arg(u'12Ch', def_size=2, destination=False), u'0x12C')
 
-    def test_cpp_21710(self):
+    def test_args_21710(self):
         self.assertEqual(self.parser.parse_arg(u'13', def_size=1, destination=False), u'13')
 
-    def test_cpp_21720(self):
+    def test_args_21720(self):
         self.assertEqual(self.parser.parse_arg(u'132', def_size=1, destination=False), u'132')
 
-    def test_cpp_21730(self):
+    def test_args_21730(self):
         self.assertEqual(self.parser.parse_arg(u'133', def_size=1, destination=False), u'133')
 
-    def test_cpp_21740(self):
+    def test_args_21740(self):
         self.assertEqual(self.parser.parse_arg(u'13h', def_size=1, destination=False), u'0x13')
 
-    def test_cpp_21750(self):
+    def test_args_21750(self):
         self.assertEqual(self.parser.parse_arg(u'14', def_size=1, destination=False), u'14')
 
-    def test_cpp_21760(self):
+    def test_args_21760(self):
         self.assertEqual(self.parser.parse_arg(u'14*320', def_size=4, destination=False), u'14*320')
 
-    def test_cpp_21770(self):
+    def test_args_21770(self):
         self.assertEqual(self.parser.parse_arg(u'14h', def_size=1, destination=False), u'0x14')
 
-    def test_cpp_21780(self):
+    def test_args_21780(self):
         self.assertEqual(self.parser.parse_arg(u'15', def_size=1, destination=False), u'15')
 
-    def test_cpp_21790(self):
+    def test_args_21790(self):
         self.assertEqual(self.parser.parse_arg(u'16', def_size=1, destination=False), u'16')
 
-    def test_cpp_21800(self):
+    def test_args_21800(self):
         self.assertEqual(self.parser.parse_arg(u'17', def_size=1, destination=False), u'17')
 
-    def test_cpp_21810(self):
+    def test_args_21810(self):
         self.assertEqual(self.parser.parse_arg(u'17h', def_size=1, destination=False), u'0x17')
 
-    def test_cpp_21820(self):
+    def test_args_21820(self):
         self.assertEqual(self.parser.parse_arg(u'18', def_size=1, destination=False), u'18')
 
-    def test_cpp_21830(self):
+    def test_args_21830(self):
         self.assertEqual(self.parser.parse_arg(u'18h', def_size=1, destination=False), u'0x18')
 
-    def test_cpp_21840(self):
+    def test_args_21840(self):
         self.assertEqual(self.parser.parse_arg(u'19', def_size=1, destination=False), u'19')
 
-    def test_cpp_21850(self):
+    def test_args_21850(self):
         self.assertEqual(self.parser.parse_arg(u'192', def_size=1, destination=False), u'192')
 
-    def test_cpp_21860(self):
+    def test_args_21860(self):
         self.assertEqual(self.parser.parse_arg(u'193', def_size=1, destination=False), u'193')
 
-    def test_cpp_21870(self):
+    def test_args_21870(self):
         self.assertEqual(self.parser.parse_arg(u'1Ch', def_size=1, destination=False), u'0x1C')
 
-    def test_cpp_21880(self):
+    def test_args_21880(self):
         self.assertEqual(self.parser.parse_arg(u'1Eh', def_size=1, destination=False), u'0x1E')
 
-    def test_cpp_21890(self):
+    def test_args_21890(self):
         self.assertEqual(self.parser.parse_arg(u'1FEh', def_size=2, destination=False), u'0x1FE')
 
-    def test_cpp_21900(self):
+    def test_args_21900(self):
         self.assertEqual(self.parser.parse_arg(u'1FF7Fh', def_size=4, destination=False), u'0x1FF7F')
 
-    def test_cpp_21910(self):
+    def test_args_21910(self):
         self.assertEqual(self.parser.parse_arg(u'1FF80h', def_size=4, destination=False), u'0x1FF80')
 
-    def test_cpp_21920(self):
+    def test_args_21920(self):
         self.assertEqual(self.parser.parse_arg(u'1FF81h', def_size=4, destination=False), u'0x1FF81')
 
-    def test_cpp_21930(self):
+    def test_args_21930(self):
         self.assertEqual(self.parser.parse_arg(u'1FFEh', def_size=2, destination=False), u'0x1FFE')
 
-    def test_cpp_21940(self):
+    def test_args_21940(self):
         self.assertEqual(self.parser.parse_arg(u'1FFFEh', def_size=4, destination=False), u'0x1FFFE')
 
-    def test_cpp_21950(self):
+    def test_args_21950(self):
         self.assertEqual(self.parser.parse_arg(u'1FFFFEh', def_size=4, destination=False), u'0x1FFFFE')
 
-    def test_cpp_21960(self):
+    def test_args_21960(self):
         self.assertEqual(self.parser.parse_arg(u'1FFFFFEh', def_size=4, destination=False), u'0x1FFFFFE')
 
-    def test_cpp_21970(self):
+    def test_args_21970(self):
         self.assertEqual(self.parser.parse_arg(u'1FFFFFFEh', def_size=4, destination=False), u'0x1FFFFFFE')
 
-    def test_cpp_21980(self):
+    def test_args_21980(self):
         self.assertEqual(self.parser.parse_arg(u'1FFFFFFFh', def_size=4, destination=False), u'0x1FFFFFFF')
 
-    def test_cpp_21990(self):
+    def test_args_21990(self):
         self.assertEqual(self.parser.parse_arg(u'1FFFFFFh', def_size=4, destination=False), u'0x1FFFFFF')
 
-    def test_cpp_22000(self):
+    def test_args_22000(self):
         self.assertEqual(self.parser.parse_arg(u'1FFFFFh', def_size=4, destination=False), u'0x1FFFFF')
 
-    def test_cpp_22010(self):
+    def test_args_22010(self):
         self.assertEqual(self.parser.parse_arg(u'1FFFFh', def_size=4, destination=False), u'0x1FFFF')
 
-    def test_cpp_22020(self):
+    def test_args_22020(self):
         self.assertEqual(self.parser.parse_arg(u'1FFFh', def_size=2, destination=False), u'0x1FFF')
 
-    def test_cpp_22030(self):
+    def test_args_22030(self):
         self.assertEqual(self.parser.parse_arg(u'1FFh', def_size=2, destination=False), u'0x1FF')
 
-    def test_cpp_22040(self):
+    def test_args_22040(self):
         self.assertEqual(self.parser.parse_arg(u'1Fh', def_size=1, destination=False), u'0x1F')
 
-    def test_cpp_22050(self):
+    def test_args_22050(self):
         self.assertEqual(self.parser.parse_arg(u'2', def_size=0, destination=False), u'2')
 
-    def test_cpp_22060(self):
+    def test_args_22060(self):
         self.assertEqual(self.parser.parse_arg(u'2', def_size=1, destination=False), u'2')
 
-    def test_cpp_22070(self):
+    def test_args_22070(self):
         self.assertEqual(self.parser.parse_arg(u'20', def_size=1, destination=False), u'20')
 
-    def test_cpp_22080(self):
+    def test_args_22080(self):
         self.assertEqual(self.parser.parse_arg(u'20000h', def_size=4, destination=False), u'0x20000')
 
-    def test_cpp_22090(self):
+    def test_args_22090(self):
         self.assertEqual(self.parser.parse_arg(u'20h', def_size=1, destination=False), u'0x20')
 
-    def test_cpp_22100(self):
+    def test_args_22100(self):
         self.assertEqual(self.parser.parse_arg(u'21', def_size=1, destination=False), u'21')
 
-    def test_cpp_22110(self):
+    def test_args_22110(self):
         self.assertEqual(self.parser.parse_arg(u'21AD3D34h', def_size=4, destination=False), u'0x21AD3D34')
 
-    def test_cpp_22120(self):
+    def test_args_22120(self):
         self.assertEqual(self.parser.parse_arg(u'21h', def_size=0, destination=False), u'0x21')
 
-    def test_cpp_22130(self):
+    def test_args_22130(self):
         self.assertEqual(self.parser.parse_arg(u'22', def_size=1, destination=False), u'22')
 
-    def test_cpp_22140(self):
+    def test_args_22140(self):
         self.assertEqual(self.parser.parse_arg(u'23', def_size=1, destination=False), u'23')
 
-    def test_cpp_22150(self):
+    def test_args_22150(self):
         self.assertEqual(self.parser.parse_arg(u'24', def_size=1, destination=False), u'24')
 
-    def test_cpp_22160(self):
+    def test_args_22160(self):
         self.assertEqual(self.parser.parse_arg(u'24h', def_size=1, destination=False), u'0x24')
 
-    def test_cpp_22170(self):
+    def test_args_22170(self):
         self.assertEqual(self.parser.parse_arg(u'25', def_size=1, destination=False), u'25')
 
-    def test_cpp_22180(self):
+    def test_args_22180(self):
         self.assertEqual(self.parser.parse_arg(u'255', def_size=1, destination=False), u'255')
 
-    def test_cpp_22190(self):
+    def test_args_22190(self):
         self.assertEqual(self.parser.parse_arg(u'256', def_size=2, destination=False), u'256')
 
-    def test_cpp_22200(self):
+    def test_args_22200(self):
         self.assertEqual(self.parser.parse_arg(u'256*3', def_size=2, destination=False), u'256*3')
 
-    def test_cpp_22210(self):
+    def test_args_22210(self):
         self.assertEqual(self.parser.parse_arg(u'256+3', def_size=2, destination=False), u'256+3')
 
-    def test_cpp_22220(self):
+    def test_args_22220(self):
         self.assertEqual(self.parser.parse_arg(u'256+3+65536', def_size=4, destination=False), u'256+3+65536')
 
-    def test_cpp_22230(self):
+    def test_args_22230(self):
         self.assertEqual(self.parser.parse_arg(u'26', def_size=1, destination=False), u'26')
 
-    def test_cpp_22240(self):
+    def test_args_22240(self):
         self.assertEqual(self.parser.parse_arg(u'27', def_size=1, destination=False), u'27')
 
-    def test_cpp_22250(self):
+    def test_args_22250(self):
         self.assertEqual(self.parser.parse_arg(u'28', def_size=1, destination=False), u'28')
 
-    def test_cpp_22260(self):
+    def test_args_22260(self):
         self.assertEqual(self.parser.parse_arg(u'29', def_size=1, destination=False), u'29')
 
-    def test_cpp_22270(self):
+    def test_args_22270(self):
         self.assertEqual(self.parser.parse_arg(u'2Ch', def_size=1, destination=False), u'0x2C')
 
-    def test_cpp_22280(self):
+    def test_args_22280(self):
         self.assertEqual(self.parser.parse_arg(u'2Dh', def_size=1, destination=False), u'0x2D')
 
-    def test_cpp_22290(self):
+    def test_args_22290(self):
         self.assertEqual(self.parser.parse_arg(u'2Dh', def_size=2, destination=False), u'0x2D')
 
-    def test_cpp_22300(self):
+    def test_args_22300(self):
         self.assertEqual(self.parser.parse_arg(u'2Dh', def_size=4, destination=False), u'0x2D')
 
-    def test_cpp_22310(self):
+    def test_args_22310(self):
         self.assertEqual(self.parser.parse_arg(u'3', def_size=0, destination=False), u'3')
 
-    def test_cpp_22320(self):
+    def test_args_22320(self):
         self.assertEqual(self.parser.parse_arg(u'3', def_size=1, destination=False), u'3')
 
-    def test_cpp_22330(self):
+    def test_args_22330(self):
         self.assertEqual(self.parser.parse_arg(u'3*4', def_size=4, destination=False), u'3*4')
 
-    def test_cpp_22340(self):
+    def test_args_22340(self):
         self.assertEqual(self.parser.parse_arg(u'30', def_size=1, destination=False), u'30')
 
-    def test_cpp_22350(self):
+    def test_args_22350(self):
         self.assertEqual(self.parser.parse_arg(u'303Bh', def_size=2, destination=False), u'0x303B')
 
-    def test_cpp_22360(self):
+    def test_args_22360(self):
         self.assertEqual(self.parser.parse_arg(u'30h', def_size=1, destination=False), u'0x30')
 
-    def test_cpp_22370(self):
+    def test_args_22370(self):
         self.assertEqual(self.parser.parse_arg(u'31', def_size=1, destination=False), u'31')
 
-    def test_cpp_22380(self):
+    def test_args_22380(self):
         self.assertEqual(self.parser.parse_arg(u'31h', def_size=0, destination=False), u'0x31')
 
-    def test_cpp_22390(self):
+    def test_args_22390(self):
         self.assertEqual(self.parser.parse_arg(u'32', def_size=1, destination=False), u'32')
 
-    def test_cpp_22400(self):
+    def test_args_22400(self):
         self.assertEqual(self.parser.parse_arg(u'320*200/4', def_size=4, destination=False), u'320*200/4')
 
-    def test_cpp_22410(self):
+    def test_args_22410(self):
         self.assertEqual(self.parser.parse_arg(u'32432434h', def_size=4, destination=False), u'0x32432434')
 
-    def test_cpp_22420(self):
+    def test_args_22420(self):
         self.assertEqual(self.parser.parse_arg(u'340128h', def_size=4, destination=False), u'0x340128')
 
-    def test_cpp_22430(self):
+    def test_args_22430(self):
         self.assertEqual(self.parser.parse_arg(u'35', def_size=1, destination=False), u'35')
 
-    def test_cpp_22440(self):
+    def test_args_22440(self):
         self.assertEqual(self.parser.parse_arg(u'37', def_size=1, destination=False), u'37')
 
-    def test_cpp_22450(self):
+    def test_args_22450(self):
         self.assertEqual(self.parser.parse_arg(u'39h', def_size=1, destination=False), u'0x39')
 
-    def test_cpp_22460(self):
+    def test_args_22460(self):
         self.assertEqual(self.parser.parse_arg(u'3Ch', def_size=1, destination=False), u'0x3C')
 
-    def test_cpp_22470(self):
+    def test_args_22470(self):
         self.assertEqual(self.parser.parse_arg(u'3DAh', def_size=2, destination=False), u'0x3DA')
 
-    def test_cpp_22480(self):
+    def test_args_22480(self):
         self.assertEqual(self.parser.parse_arg(u'3Eh', def_size=1, destination=False), u'0x3E')
 
-    def test_cpp_22490(self):
+    def test_args_22490(self):
         self.assertEqual(self.parser.parse_arg(u'3FEh', def_size=2, destination=False), u'0x3FE')
 
-    def test_cpp_22500(self):
+    def test_args_22500(self):
         self.assertEqual(self.parser.parse_arg(u'3FFEh', def_size=2, destination=False), u'0x3FFE')
 
-    def test_cpp_22510(self):
+    def test_args_22510(self):
         self.assertEqual(self.parser.parse_arg(u'3FFFEh', def_size=4, destination=False), u'0x3FFFE')
 
-    def test_cpp_22520(self):
+    def test_args_22520(self):
         self.assertEqual(self.parser.parse_arg(u'3FFFFEh', def_size=4, destination=False), u'0x3FFFFE')
 
-    def test_cpp_22530(self):
+    def test_args_22530(self):
         self.assertEqual(self.parser.parse_arg(u'3FFFFFEh', def_size=4, destination=False), u'0x3FFFFFE')
 
-    def test_cpp_22540(self):
+    def test_args_22540(self):
         self.assertEqual(self.parser.parse_arg(u'3FFFFFFEh', def_size=4, destination=False), u'0x3FFFFFFE')
 
-    def test_cpp_22550(self):
+    def test_args_22550(self):
         self.assertEqual(self.parser.parse_arg(u'3FFFFFFFh', def_size=4, destination=False), u'0x3FFFFFFF')
 
-    def test_cpp_22560(self):
+    def test_args_22560(self):
         self.assertEqual(self.parser.parse_arg(u'3FFFFFFh', def_size=4, destination=False), u'0x3FFFFFF')
 
-    def test_cpp_22570(self):
+    def test_args_22570(self):
         self.assertEqual(self.parser.parse_arg(u'3FFFFFh', def_size=4, destination=False), u'0x3FFFFF')
 
-    def test_cpp_22580(self):
+    def test_args_22580(self):
         self.assertEqual(self.parser.parse_arg(u'3FFFFh', def_size=4, destination=False), u'0x3FFFF')
 
-    def test_cpp_22590(self):
+    def test_args_22590(self):
         self.assertEqual(self.parser.parse_arg(u'3FFFh', def_size=2, destination=False), u'0x3FFF')
 
-    def test_cpp_22600(self):
+    def test_args_22600(self):
         self.assertEqual(self.parser.parse_arg(u'3FFh', def_size=2, destination=False), u'0x3FF')
 
-    def test_cpp_22610(self):
+    def test_args_22610(self):
         self.assertEqual(self.parser.parse_arg(u'3Fh', def_size=1, destination=False), u'0x3F')
 
-    def test_cpp_22620(self):
+    def test_args_22620(self):
         self.assertEqual(self.parser.parse_arg(u'3c8h', def_size=2, destination=False), u'0x3c8')
 
-    def test_cpp_22630(self):
+    def test_args_22630(self):
         self.assertEqual(self.parser.parse_arg(u'3c9h', def_size=2, destination=False), u'0x3c9')
 
-    def test_cpp_22640(self):
+    def test_args_22640(self):
         self.assertEqual(self.parser.parse_arg(u'3h', def_size=1, destination=False), u'0x3')
 
-    def test_cpp_22650(self):
+    def test_args_22650(self):
         self.assertEqual(self.parser.parse_arg(u'4', def_size=1, destination=False), u'4')
 
-    def test_cpp_22660(self):
+    def test_args_22660(self):
         self.assertEqual(self.parser.parse_arg(u'4+5*256', def_size=2, destination=False), u'4+5*256')
 
-    def test_cpp_22670(self):
+    def test_args_22670(self):
         self.assertEqual(self.parser.parse_arg(u'4000000', def_size=4, destination=False), u'4000000')
 
-    def test_cpp_22680(self):
+    def test_args_22680(self):
         self.assertEqual(self.parser.parse_arg(u'40h', def_size=1, destination=False), u'0x40')
 
-    def test_cpp_22690(self):
+    def test_args_22690(self):
         self.assertEqual(self.parser.parse_arg(u'43210123h', def_size=4, destination=False), u'0x43210123')
 
-    def test_cpp_22700(self):
+    def test_args_22700(self):
         self.assertEqual(self.parser.parse_arg(u'48h', def_size=1, destination=False), u'0x48')
 
-    def test_cpp_22710(self):
+    def test_args_22710(self):
         self.assertEqual(self.parser.parse_arg(u'49h', def_size=1, destination=False), u'0x49')
 
-    def test_cpp_22720(self):
+    def test_args_22720(self):
         self.assertEqual(self.parser.parse_arg(u'4Ah', def_size=1, destination=False), u'0x4A')
 
-    def test_cpp_22730(self):
+    def test_args_22730(self):
         self.assertEqual(self.parser.parse_arg(u'4Ch', def_size=1, destination=False), u'0x4C')
 
-    def test_cpp_22740(self):
+    def test_args_22740(self):
         self.assertEqual(self.parser.parse_arg(u'4ch', def_size=1, destination=False), u'0x4c')
 
-    def test_cpp_22750(self):
+    def test_args_22750(self):
         self.assertEqual(self.parser.parse_arg(u'5', def_size=1, destination=False), u'5')
 
-    def test_cpp_22760(self):
+    def test_args_22760(self):
         self.assertEqual(self.parser.parse_arg(u'50', def_size=1, destination=False), u'50')
 
-    def test_cpp_22770(self):
+    def test_args_22770(self):
         self.assertEqual(self.parser.parse_arg(u'501h', def_size=2, destination=False), u'0x501')
 
-    def test_cpp_22780(self):
+    def test_args_22780(self):
         self.assertEqual(self.parser.parse_arg(u'511', def_size=2, destination=False), u'511')
 
-    def test_cpp_22790(self):
+    def test_args_22790(self):
         self.assertEqual(self.parser.parse_arg(u'55', def_size=1, destination=False), u'55')
 
-    def test_cpp_22800(self):
+    def test_args_22800(self):
         self.assertEqual(self.parser.parse_arg(u'56', def_size=1, destination=False), u'56')
 
-    def test_cpp_22810(self):
+    def test_args_22810(self):
         self.assertEqual(self.parser.parse_arg(u'57', def_size=1, destination=False), u'57')
 
-    def test_cpp_22820(self):
+    def test_args_22820(self):
         self.assertEqual(self.parser.parse_arg(u'6', def_size=1, destination=False), u'6')
 
-    def test_cpp_22830(self):
+    def test_args_22830(self):
         self.assertEqual(self.parser.parse_arg(u'6*256+5', def_size=2, destination=False), u'6*256+5')
 
-    def test_cpp_22840(self):
+    def test_args_22840(self):
         self.assertEqual(self.parser.parse_arg(u'60', def_size=1, destination=False), u'60')
 
-    def test_cpp_22850(self):
+    def test_args_22850(self):
         self.assertEqual(self.parser.parse_arg(u'65324h', def_size=4, destination=False), u'0x65324')
 
-    def test_cpp_22860(self):
+    def test_args_22860(self):
         self.assertEqual(self.parser.parse_arg(u'65423456h', def_size=4, destination=False), u'0x65423456')
 
-    def test_cpp_22870(self):
+    def test_args_22870(self):
         self.assertEqual(self.parser.parse_arg(u'6789ABCDh', def_size=4, destination=False), u'0x6789ABCD')
 
-    def test_cpp_22880(self):
+    def test_args_22880(self):
         self.assertEqual(self.parser.parse_arg(u'7', def_size=1, destination=False), u'7')
 
-    def test_cpp_22890(self):
+    def test_args_22890(self):
         self.assertEqual(self.parser.parse_arg(u'7Eh', def_size=1, destination=False), u'0x7E')
 
-    def test_cpp_22900(self):
+    def test_args_22900(self):
         self.assertEqual(self.parser.parse_arg(u'7FEh', def_size=2, destination=False), u'0x7FE')
 
-    def test_cpp_22910(self):
+    def test_args_22910(self):
         self.assertEqual(self.parser.parse_arg(u'7FFEh', def_size=2, destination=False), u'0x7FFE')
 
-    def test_cpp_22920(self):
+    def test_args_22920(self):
         self.assertEqual(self.parser.parse_arg(u'7FFFEh', def_size=4, destination=False), u'0x7FFFE')
 
-    def test_cpp_22930(self):
+    def test_args_22930(self):
         self.assertEqual(self.parser.parse_arg(u'7FFFFEh', def_size=4, destination=False), u'0x7FFFFE')
 
-    def test_cpp_22940(self):
+    def test_args_22940(self):
         self.assertEqual(self.parser.parse_arg(u'7FFFFFEh', def_size=4, destination=False), u'0x7FFFFFE')
 
-    def test_cpp_22950(self):
+    def test_args_22950(self):
         self.assertEqual(self.parser.parse_arg(u'7FFFFFFEh', def_size=4, destination=False), u'0x7FFFFFFE')
 
-    def test_cpp_22960(self):
+    def test_args_22960(self):
         self.assertEqual(self.parser.parse_arg(u'7FFFFFFFh', def_size=4, destination=False), u'0x7FFFFFFF')
 
-    def test_cpp_22970(self):
+    def test_args_22970(self):
         self.assertEqual(self.parser.parse_arg(u'7FFFFFFh', def_size=4, destination=False), u'0x7FFFFFF')
 
-    def test_cpp_22980(self):
+    def test_args_22980(self):
         self.assertEqual(self.parser.parse_arg(u'7FFFFFh', def_size=4, destination=False), u'0x7FFFFF')
 
-    def test_cpp_22990(self):
+    def test_args_22990(self):
         self.assertEqual(self.parser.parse_arg(u'7FFFFh', def_size=4, destination=False), u'0x7FFFF')
 
-    def test_cpp_23000(self):
+    def test_args_23000(self):
         self.assertEqual(self.parser.parse_arg(u'7FFFh', def_size=2, destination=False), u'0x7FFF')
 
-    def test_cpp_23010(self):
+    def test_args_23010(self):
         self.assertEqual(self.parser.parse_arg(u'7FFFh', def_size=4, destination=False), u'0x7FFF')
 
-    def test_cpp_23020(self):
+    def test_args_23020(self):
         self.assertEqual(self.parser.parse_arg(u'7FFh', def_size=2, destination=False), u'0x7FF')
 
-    def test_cpp_23030(self):
+    def test_args_23030(self):
         self.assertEqual(self.parser.parse_arg(u'7Fh', def_size=1, destination=False), u'0x7F')
 
-    def test_cpp_23040(self):
+    def test_args_23040(self):
         self.assertEqual(self.parser.parse_arg(u'8', def_size=0, destination=False), u'8')
 
-    def test_cpp_23050(self):
+    def test_args_23050(self):
         self.assertEqual(self.parser.parse_arg(u'8', def_size=1, destination=False), u'8')
 
-    def test_cpp_23060(self):
+    def test_args_23060(self):
         self.assertEqual(self.parser.parse_arg(u'80000000h', def_size=4, destination=False), u'0x80000000')
 
-    def test_cpp_23070(self):
+    def test_args_23070(self):
         self.assertEqual(self.parser.parse_arg(u'80000001h', def_size=4, destination=False), u'0x80000001')
 
-    def test_cpp_23080(self):
+    def test_args_23080(self):
         self.assertEqual(self.parser.parse_arg(u'80008481h', def_size=4, destination=False), u'0x80008481')
 
-    def test_cpp_23090(self):
+    def test_args_23090(self):
         self.assertEqual(self.parser.parse_arg(u'80008688h', def_size=4, destination=False), u'0x80008688')
 
-    def test_cpp_23100(self):
+    def test_args_23100(self):
         self.assertEqual(self.parser.parse_arg(u'8000h', def_size=2, destination=False), u'0x8000')
 
-    def test_cpp_23110(self):
+    def test_args_23110(self):
         self.assertEqual(self.parser.parse_arg(u'8000h', def_size=4, destination=False), u'0x8000')
 
-    def test_cpp_23120(self):
+    def test_args_23120(self):
         self.assertEqual(self.parser.parse_arg(u'801h', def_size=2, destination=False), u'0x801')
 
-    def test_cpp_23130(self):
+    def test_args_23130(self):
         self.assertEqual(self.parser.parse_arg(u'80h', def_size=1, destination=False), u'0x80')
 
-    def test_cpp_23140(self):
+    def test_args_23140(self):
         self.assertEqual(self.parser.parse_arg(u'81234567h', def_size=4, destination=False), u'0x81234567')
 
-    def test_cpp_23150(self):
+    def test_args_23150(self):
         self.assertEqual(self.parser.parse_arg(u'81238567h', def_size=4, destination=False), u'0x81238567')
 
-    def test_cpp_23160(self):
+    def test_args_23160(self):
         self.assertEqual(self.parser.parse_arg(u'812FADAh', def_size=4, destination=False), u'0x812FADA')
 
-    def test_cpp_23170(self):
+    def test_args_23170(self):
         self.assertEqual(self.parser.parse_arg(u'813F3421h', def_size=4, destination=False), u'0x813F3421')
 
-    def test_cpp_23180(self):
+    def test_args_23180(self):
         self.assertEqual(self.parser.parse_arg(u'81h', def_size=1, destination=False), u'0x81')
 
-    def test_cpp_23190(self):
+    def test_args_23190(self):
         self.assertEqual(self.parser.parse_arg(u'82345679h', def_size=4, destination=False), u'0x82345679')
 
-    def test_cpp_23200(self):
+    def test_args_23200(self):
         self.assertEqual(self.parser.parse_arg(u'8234A6F8h', def_size=4, destination=False), u'0x8234A6F8')
 
-    def test_cpp_23210(self):
+    def test_args_23210(self):
         self.assertEqual(self.parser.parse_arg(u'8345A1F2h', def_size=4, destination=False), u'0x8345A1F2')
 
-    def test_cpp_23220(self):
+    def test_args_23220(self):
         self.assertEqual(self.parser.parse_arg(u'8C5h', def_size=2, destination=False), u'0x8C5')
 
-    def test_cpp_23230(self):
+    def test_args_23230(self):
         self.assertEqual(self.parser.parse_arg(u'8D5h', def_size=2, destination=False), u'0x8D5')
 
-    def test_cpp_23240(self):
+    def test_args_23240(self):
         self.assertEqual(self.parser.parse_arg(u'9', def_size=1, destination=False), u'9')
 
-    def test_cpp_23250(self):
+    def test_args_23250(self):
         self.assertEqual(self.parser.parse_arg(u'9ABCDEFh', def_size=0, destination=False), u'0x9ABCDEF')
 
-    def test_cpp_23260(self):
+    def test_args_23260(self):
         self.assertEqual(self.parser.parse_arg(u'AL', def_size=1, destination=True), u'al')
 
-    def test_cpp_23270(self):
+    def test_args_23270(self):
         self.assertEqual(self.parser.parse_arg(u'B', def_size=4, destination=False), u'B')
 
-    def test_cpp_23280(self):
+    def test_args_23280(self):
         self.assertEqual(self.parser.parse_arg(u'CC', def_size=4, destination=False), u'CC')
 
-    def test_cpp_23290(self):
+    def test_args_23290(self):
         self.assertEqual(self.parser.parse_arg(u'DDD', def_size=0, destination=False), u'DDD')
 
-    def test_cpp_23300(self):
+    def test_args_23300(self):
         self.assertEqual(self.parser.parse_arg(u'DX', def_size=2, destination=True), u'dx')
 
-    #def test_cpp_23310(self):
+    #def test_args_23310(self):
         # self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'OFFSET ASCiI'),def_size=4,destination=False),u'offset(_data,ASCII)')
 
-    #def test_cpp_23320(self):
+    #def test_args_23320(self):
         # self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'OFFSET AsCii'),def_size=4,destination=False),u'offset(_data,ASCII)')
 
-    def test_cpp_23330(self):
+    def test_args_23330(self):
         self.assertEqual(self.parser.parse_arg(u'TWO', def_size=4, destination=False), u'TWO')
 
-    def test_cpp_23340(self):
+    def test_args_23340(self):
         self.assertEqual(self.parser.parse_arg(u'ah', def_size=1, destination=False), u'ah')
 
-    def test_cpp_23350(self):
+    def test_args_23350(self):
         self.assertEqual(self.parser.parse_arg(u'ah', def_size=1, destination=True), u'ah')
 
-    def test_cpp_23360(self):
+    def test_args_23360(self):
         self.assertEqual(self.parser.parse_arg(u'al', def_size=0, destination=False), u'al')
 
-    def test_cpp_23370(self):
+    def test_args_23370(self):
         self.assertEqual(self.parser.parse_arg(u'al', def_size=1, destination=False), u'al')
 
-    def test_cpp_23380(self):
+    def test_args_23380(self):
         self.assertEqual(self.parser.parse_arg(u'al', def_size=1, destination=True), u'al')
 
-    def test_cpp_23390(self):
+    def test_args_23390(self):
         self.assertEqual(self.parser.parse_arg(u'ax', def_size=0, destination=False), u'ax')
 
-    def test_cpp_23400(self):
+    def test_args_23400(self):
         self.assertEqual(self.parser.parse_arg(u'ax', def_size=2, destination=False), u'ax')
 
-    def test_cpp_23410(self):
+    def test_args_23410(self):
         self.assertEqual(self.parser.parse_arg(u'ax', def_size=2, destination=True), u'ax')
 
-    #def test_cpp_23420(self):
+    #def test_args_23420(self):
         # self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'b'),def_size=0,destination=False),u'offset(_data,b)')
 
-    #def test_cpp_23430(self):
+    #def test_args_23430(self):
         # self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'b'),def_size=2,destination=True),u'b')
 
-    #def test_cpp_23440(self):
+    #def test_args_23440(self):
         # self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'beginningdata'),def_size=0,destination=False),u'offset(_data,beginningdata)')
 
-    def test_cpp_23450(self):
+    def test_args_23450(self):
         self.assertEqual(self.parser.parse_arg(u'bh', def_size=0, destination=False), u'bh')
 
-    def test_cpp_23460(self):
+    def test_args_23460(self):
         self.assertEqual(self.parser.parse_arg(u'bh', def_size=1, destination=False), u'bh')
 
-    def test_cpp_23470(self):
+    def test_args_23470(self):
         self.assertEqual(self.parser.parse_arg(u'bh', def_size=1, destination=True), u'bh')
 
-    def test_cpp_23480(self):
+    def test_args_23480(self):
         self.assertEqual(self.parser.parse_arg(u'bl', def_size=0, destination=False), u'bl')
 
-    def test_cpp_23490(self):
+    def test_args_23490(self):
         self.assertEqual(self.parser.parse_arg(u'bl', def_size=1, destination=False), u'bl')
 
-    def test_cpp_23500(self):
+    def test_args_23500(self):
         self.assertEqual(self.parser.parse_arg(u'bl', def_size=1, destination=True), u'bl')
 
-    def test_cpp_23510(self):
+    def test_args_23510(self):
         self.assertEqual(self.parser.parse_arg(u'bp', def_size=2, destination=False), u'bp')
 
-    #def test_cpp_23520(self):
+    #def test_args_23520(self):
         # self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'buffer'),def_size=0,destination=False),u'offset(_data,buffer)')
 
-    def test_cpp_23530(self):
+    def test_args_23530(self):
         self.assertEqual(self.parser.parse_arg(u'bx', def_size=0, destination=False), u'bx')
 
-    def test_cpp_23540(self):
+    def test_args_23540(self):
         self.assertEqual(self.parser.parse_arg(u'bx', def_size=2, destination=False), u'bx')
 
-    def test_cpp_23550(self):
+    def test_args_23550(self):
         self.assertEqual(self.parser.parse_arg(u'bx', def_size=2, destination=True), u'bx')
 
-    #def test_cpp_23560(self):
+    #def test_args_23560(self):
         # self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'c'),def_size=4,destination=True),u'c')
 
-    def test_cpp_23570(self):
+    def test_args_23570(self):
         self.assertEqual(self.parser.parse_arg(u'ch', def_size=1, destination=True), u'ch')
 
-    def test_cpp_23580(self):
+    def test_args_23580(self):
         self.assertEqual(self.parser.parse_arg(u'cl', def_size=0, destination=False), u'cl')
 
-    def test_cpp_23590(self):
+    def test_args_23590(self):
         self.assertEqual(self.parser.parse_arg(u'cl', def_size=1, destination=False), u'cl')
 
-    def test_cpp_23600(self):
+    def test_args_23600(self):
         self.assertEqual(self.parser.parse_arg(u'cl', def_size=1, destination=True), u'cl')
 
-    def test_cpp_23610(self):
+    def test_args_23610(self):
         self.assertEqual(self.parser.parse_arg(u'cx', def_size=0, destination=False), u'cx')
 
-    def test_cpp_23620(self):
+    def test_args_23620(self):
         self.assertEqual(self.parser.parse_arg(u'cx', def_size=2, destination=False), u'cx')
 
-    def test_cpp_23630(self):
+    def test_args_23630(self):
         self.assertEqual(self.parser.parse_arg(u'cx', def_size=2, destination=True), u'cx')
 
-    def test_cpp_23640(self):
+    def test_args_23640(self):
         self.assertEqual(self.parser.parse_arg(u'di', def_size=2, destination=False), u'di')
 
-    def test_cpp_23650(self):
+    def test_args_23650(self):
         self.assertEqual(self.parser.parse_arg(u'dl', def_size=0, destination=False), u'dl')
 
-    def test_cpp_23660(self):
+    def test_args_23660(self):
         self.assertEqual(self.parser.parse_arg(u'dl', def_size=1, destination=False), u'dl')
 
-    def test_cpp_23670(self):
+    def test_args_23670(self):
         self.assertEqual(self.parser.parse_arg(u'dl', def_size=1, destination=True), u'dl')
 
-    def test_cpp_23680(self):
+    def test_args_23680(self):
         self.assertEqual(self.parser.parse_arg(u'ds', def_size=0, destination=False), u'ds')
 
-    def test_cpp_23690(self):
+    def test_args_23690(self):
         self.assertEqual(self.parser.parse_arg(u'ds', def_size=2, destination=True), u'ds')
 
-    def test_cpp_23700(self):
+    def test_args_23700(self):
         self.assertEqual(self.parser.parse_arg(u'dx', def_size=0, destination=False), u'dx')
 
-    def test_cpp_23710(self):
+    def test_args_23710(self):
         self.assertEqual(self.parser.parse_arg(u'dx', def_size=2, destination=False), u'dx')
 
-    def test_cpp_23720(self):
+    def test_args_23720(self):
         self.assertEqual(self.parser.parse_arg(u'dx', def_size=2, destination=True), u'dx')
 
-    def test_cpp_23730(self):
+    def test_args_23730(self):
         self.assertEqual(self.parser.parse_arg(u'eax', def_size=0, destination=False), u'eax')
 
-    def test_cpp_23740(self):
+    def test_args_23740(self):
         self.assertEqual(self.parser.parse_arg(u'eax', def_size=4, destination=False), u'eax')
 
-    def test_cpp_23750(self):
+    def test_args_23750(self):
         self.assertEqual(self.parser.parse_arg(u'eax', def_size=4, destination=True), u'eax')
 
-    def test_cpp_23760(self):
+    def test_args_23760(self):
         self.assertEqual(self.parser.parse_arg(u'eax_0', def_size=0, destination=False), u'eax_0')
 
-    def test_cpp_23770(self):
+    def test_args_23770(self):
         self.assertEqual(self.parser.parse_arg(u'ebp', def_size=0, destination=False), u'ebp')
 
-    def test_cpp_23780(self):
+    def test_args_23780(self):
         self.assertEqual(self.parser.parse_arg(u'ebp', def_size=4, destination=False), u'ebp')
 
-    def test_cpp_23790(self):
+    def test_args_23790(self):
         self.assertEqual(self.parser.parse_arg(u'ebp', def_size=4, destination=True), u'ebp')
 
-    def test_cpp_23800(self):
+    def test_args_23800(self):
         self.assertEqual(self.parser.parse_arg(u'ebx', def_size=0, destination=False), u'ebx')
 
-    def test_cpp_23810(self):
+    def test_args_23810(self):
         self.assertEqual(self.parser.parse_arg(u'ebx', def_size=4, destination=False), u'ebx')
 
-    def test_cpp_23820(self):
+    def test_args_23820(self):
         self.assertEqual(self.parser.parse_arg(u'ebx', def_size=4, destination=True), u'ebx')
 
-    def test_cpp_23830(self):
+    def test_args_23830(self):
         self.assertEqual(self.parser.parse_arg(u'ecx', def_size=0, destination=False), u'ecx')
 
-    def test_cpp_23840(self):
+    def test_args_23840(self):
         self.assertEqual(self.parser.parse_arg(u'ecx', def_size=4, destination=False), u'ecx')
 
-    def test_cpp_23850(self):
+    def test_args_23850(self):
         self.assertEqual(self.parser.parse_arg(u'ecx', def_size=4, destination=True), u'ecx')
 
-    def test_cpp_23860(self):
+    def test_args_23860(self):
         self.assertEqual(self.parser.parse_arg(u'ecx_0', def_size=0, destination=False), u'ecx_0')
 
-    def test_cpp_23870(self):
+    def test_args_23870(self):
         self.assertEqual(self.parser.parse_arg(u'ecx_0_0', def_size=0, destination=False), u'ecx_0_0')
 
-    def test_cpp_23880(self):
+    def test_args_23880(self):
         self.assertEqual(self.parser.parse_arg(u'edi', def_size=0, destination=False), u'edi')
 
-    def test_cpp_23890(self):
+    def test_args_23890(self):
         self.assertEqual(self.parser.parse_arg(u'edi', def_size=4, destination=False), u'edi')
 
-    def test_cpp_23900(self):
+    def test_args_23900(self):
         self.assertEqual(self.parser.parse_arg(u'edi', def_size=4, destination=True), u'edi')
 
-    def test_cpp_23910(self):
+    def test_args_23910(self):
         self.assertEqual(self.parser.parse_arg(u'edi_0', def_size=0, destination=False), u'edi_0')
 
-    def test_cpp_23920(self):
+    def test_args_23920(self):
         self.assertEqual(self.parser.parse_arg(u'edi_0', def_size=0, destination=True), u'edi_0')
 
-    def test_cpp_23930(self):
+    def test_args_23930(self):
         self.assertEqual(self.parser.parse_arg(u'edx', def_size=0, destination=False), u'edx')
 
-    def test_cpp_23940(self):
+    def test_args_23940(self):
         self.assertEqual(self.parser.parse_arg(u'edx', def_size=4, destination=False), u'edx')
 
-    def test_cpp_23950(self):
+    def test_args_23950(self):
         self.assertEqual(self.parser.parse_arg(u'edx', def_size=4, destination=True), u'edx')
 
-    def test_cpp_23960(self):
+    def test_args_23960(self):
         self.assertEqual(self.parser.parse_arg(u'edx_0_0', def_size=0, destination=False), u'edx_0_0')
 
-    def test_cpp_23970(self):
+    def test_args_23970(self):
         self.assertEqual(self.parser.parse_arg(u'edx_0_0', def_size=4, destination=True), u'edx_0_0')
 
-    def test_cpp_23980(self):
+    def test_args_23980(self):
         self.assertEqual(self.parser.parse_arg(u'eflags', def_size=1, destination=True), u'eflags')
 
-    def test_cpp_23990(self):
+    def test_args_23990(self):
         self.assertEqual(self.parser.parse_arg(u'eflags', def_size=2, destination=True), u'eflags')
 
-    #def test_cpp_24000(self):
+    #def test_args_24000(self):
         # self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'enddata'),def_size=0,destination=False),u'offset(_data,enddata)')
 
-    def test_cpp_24010(self):
+    def test_args_24010(self):
         self.assertEqual(self.parser.parse_arg(u'es', def_size=0, destination=False), u'es')
 
-    def test_cpp_24020(self):
+    def test_args_24020(self):
         self.assertEqual(self.parser.parse_arg(u'es', def_size=2, destination=True), u'es')
 
-    def test_cpp_24030(self):
+    def test_args_24030(self):
         self.assertEqual(self.parser.parse_arg(u'esi', def_size=0, destination=False), u'esi')
 
-    def test_cpp_24040(self):
+    def test_args_24040(self):
         self.assertEqual(self.parser.parse_arg(u'esi', def_size=4, destination=False), u'esi')
 
-    def test_cpp_24050(self):
+    def test_args_24050(self):
         self.assertEqual(self.parser.parse_arg(u'esi', def_size=4, destination=True), u'esi')
 
-    def test_cpp_24060(self):
+    def test_args_24060(self):
         self.assertEqual(self.parser.parse_arg(u'esi_0', def_size=0, destination=False), u'esi_0')
 
-    def test_cpp_24070(self):
+    def test_args_24070(self):
         self.assertEqual(self.parser.parse_arg(u'esi_0', def_size=4, destination=False), u'esi_0')
 
-    def test_cpp_24080(self):
+    def test_args_24080(self):
         self.assertEqual(self.parser.parse_arg(u'esi_0', def_size=4, destination=True), u'esi_0')
 
-    def test_cpp_24090(self):
+    def test_args_24090(self):
         self.assertEqual(self.parser.parse_arg(u'esp', def_size=4, destination=False), u'esp')
 
-    def test_cpp_24100(self):
+    def test_args_24100(self):
         self.assertEqual(self.parser.parse_arg(u'esp', def_size=4, destination=True), u'esp')
 
-    #def test_cpp_24110(self):
+    #def test_args_24110(self):
         # self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'f'),def_size=0,destination=False),u'offset(_data,f)')
 
-    #def test_cpp_24120(self):
+    #def test_args_24120(self):
         # self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'fileName'),def_size=0,destination=False),u'offset(_data,fileName)')
 
-    def test_cpp_24130(self):
+    def test_args_24130(self):
         self.assertEqual(self.parser.parse_arg(u'flags', def_size=0, destination=False), u'flags')
 
-    def test_cpp_24140(self):
+    def test_args_24140(self):
         self.assertEqual(self.parser.parse_arg(u'flags', def_size=1, destination=True), u'flags')
 
-    def test_cpp_24150(self):
+    def test_args_24150(self):
         self.assertEqual(self.parser.parse_arg(u'flags', def_size=2, destination=True), u'flags')
 
-    def test_cpp_24160(self):
+    def test_args_24160(self):
         self.assertEqual(self.parser.parse_arg(u'flags', def_size=4, destination=False), u'flags')
 
-    def test_cpp_24170(self):
+    def test_args_24170(self):
         self.assertEqual(self.parser.parse_arg(u'fs', def_size=0, destination=False), u'fs')
 
-    def test_cpp_24180(self):
+    def test_args_24180(self):
         self.assertEqual(self.parser.parse_arg(u'fs', def_size=2, destination=False), u'fs')
 
-    def test_cpp_24190(self):
+    def test_args_24190(self):
         self.assertEqual(self.parser.parse_arg(u'fs', def_size=2, destination=True), u'fs')
 
-    #def test_cpp_24200(self):
+    #def test_args_24200(self):
         # self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'g'),def_size=4,destination=False),u'g')
 
-    def test_cpp_24210(self):
+    def test_args_24210(self):
         self.assertEqual(self.parser.parse_arg(u'i', def_size=0, destination=False), u'i')
 
-    def test_cpp_24220(self):
+    def test_args_24220(self):
         self.assertEqual(self.parser.parse_arg(u'i', def_size=0, destination=True), u'i')
 
-    def test_cpp_24230(self):
+    def test_args_24230(self):
         self.assertEqual(self.parser.parse_arg(u'i', def_size=1, destination=True), u'i')
 
-    def test_cpp_24240(self):
+    def test_args_24240(self):
         self.assertEqual(self.parser.parse_arg(u'i', def_size=2, destination=True), u'i')
 
-    def test_cpp_24250(self):
+    def test_args_24250(self):
         self.assertEqual(self.parser.parse_arg(u'i', def_size=4, destination=False), u'i')
 
-    def test_cpp_24260(self):
+    def test_args_24260(self):
         self.assertEqual(self.parser.parse_arg(u'i', def_size=4, destination=True), u'i')
 
-    def test_cpp_24270(self):
+    def test_args_24270(self):
         self.assertEqual(self.parser.parse_arg(u"'tseT'", def_size=4, destination=False), u'0x74736554')
 
     '''
-    #def test_cpp_24280(self):
+    #def test_args_24280(self):
         # self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[a+1]'),def_size=1,destination=False),u'*(raddr(ds,offset(_data,a)+1))')
 
-    #def test_cpp_24290(self):
+    #def test_args_24290(self):
         # self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[a]'),def_size=1,destination=False),u'*(raddr(ds,offset(_data,a)))')
 
-    #def test_cpp_24300(self):
+    #def test_args_24300(self):
         # self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[a]'),def_size=1,destination=True),u'*(raddr(ds,offset(_data,a)))')
 
-    #def test_cpp_24310(self):
+    #def test_args_24310(self):
         # self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[cs:table+ax]'),def_size=0,destination=True),u'*(dw*)(raddr(cs,offset(_text,table)+ax))')
 
-    #def test_cpp_24320(self):
+    #def test_args_24320(self):
         # self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[doublequote+4]'),def_size=1,destination=True),u'*(raddr(ds,offset(_data,doublequote)+4))')
 
-    #def test_cpp_24330(self):
+    #def test_args_24330(self):
         # self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[eax+4000h]'),def_size=0,destination=False),u'eax+0x4000')
 
-    #def test_cpp_24340(self):
+    #def test_args_24340(self):
         # self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[eax+40h]'),def_size=0,destination=False),u'eax+0x40')
 
-    #def test_cpp_24350(self):
+    #def test_args_24350(self):
         # self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[eax+ecx+40h]'),def_size=0,destination=False),u'eax+ecx+0x40')
 
-    def test_cpp_24360(self):
+    def test_args_24360(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[eax+ecx]'),def_size=0,destination=False),u'eax+ecx')
 
-    def test_cpp_24370(self):
+    def test_args_24370(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[eax]'),def_size=0,destination=False),u'eax')
 
-    def test_cpp_24380(self):
+    def test_args_24380(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[ebp+ecx_0]'),def_size=0,destination=True),u'*(dw*)(raddr(ds,ebp+ecx_0))')
 
-    def test_cpp_24390(self):
+    def test_args_24390(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[ebp+ecx_0]'),def_size=4,destination=False),u'*(dd*)(raddr(ds,ebp+ecx_0))')
 
-    def test_cpp_24400(self):
+    def test_args_24400(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[ebp+ecx_vals]'),def_size=0,destination=False),u'ebp+ecx_vals')
 
-    def test_cpp_24410(self):
+    def test_args_24410(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[ebp+edx_0]'),def_size=4,destination=False),u'*(dd*)(raddr(ds,ebp+edx_0))')
 
-    def test_cpp_24420(self):
+    def test_args_24420(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[ebp+edx_0]'),def_size=4,destination=True),u'*(dd*)(raddr(ds,ebp+edx_0))')
 
-    def test_cpp_24430(self):
+    def test_args_24430(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[ebp+i*4+ecx_vals]'),def_size=4,destination=False),u'*(dd*)(raddr(ds,ebp+i*4+ecx_vals))')
 
-    def test_cpp_24440(self):
+    def test_args_24440(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[ebp+i+table]'),def_size=1,destination=True),u'*(raddr(ds,ebp+i+table))')
 
-    def test_cpp_24450(self):
+    def test_args_24450(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[ebp+iflags]'),def_size=4,destination=False),u'*(dd*)(raddr(ds,ebp+iflags))')
 
-    def test_cpp_24460(self):
+    def test_args_24460(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[ebp+op0]'),def_size=4,destination=False),u'*(dd*)(raddr(ds,ebp+op0))')
 
-    def test_cpp_24470(self):
+    def test_args_24470(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[ebp+op0h]'),def_size=4,destination=False),u'*(dd*)(raddr(ds,ebp+op0h))')
 
-    def test_cpp_24480(self):
+    def test_args_24480(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[ebp+s0]'),def_size=4,destination=False),u'*(dd*)(raddr(ds,ebp+s0))')
 
-    def test_cpp_24490(self):
+    def test_args_24490(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[ebp+s0]'),def_size=4,destination=True),u'*(dd*)(raddr(ds,ebp+s0))')
 
-    def test_cpp_24500(self):
+    def test_args_24500(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[ebp+s1]'),def_size=1,destination=True),u'*(raddr(ds,ebp+s1))')
 
-    def test_cpp_24510(self):
+    def test_args_24510(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[ebp+s1]'),def_size=4,destination=False),u'*(dd*)(raddr(ds,ebp+s1))')
 
-    def test_cpp_24520(self):
+    def test_args_24520(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[ebp+s2]'),def_size=4,destination=False),u'*(dd*)(raddr(ds,ebp+s2))')
 
-    def test_cpp_24530(self):
+    def test_args_24530(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[ebp+s2]'),def_size=4,destination=True),u'*(dd*)(raddr(ds,ebp+s2))')
 
-    def test_cpp_24540(self):
+    def test_args_24540(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[ebp+table]'),def_size=0,destination=False),u'ebp+table')
 
-    def test_cpp_24550(self):
+    def test_args_24550(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[ebp+var_1C]'),def_size=4,destination=False),u'*(dd*)(raddr(ds,ebp+var_1C))')
 
-    def test_cpp_24560(self):
+    def test_args_24560(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[ebp+var_1C]'),def_size=4,destination=True),u'*(dd*)(raddr(ds,ebp+var_1C))')
 
-    def test_cpp_24570(self):
+    def test_args_24570(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[ebp+var_20]'),def_size=0,destination=False),u'*(dw*)(raddr(ds,ebp+var_20))')
 
-    def test_cpp_24580(self):
+    def test_args_24580(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[ebp+var_20]'),def_size=4,destination=False),u'*(dd*)(raddr(ds,ebp+var_20))')
 
-    def test_cpp_24590(self):
+    def test_args_24590(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[ebp+var_20]'),def_size=4,destination=True),u'*(dd*)(raddr(ds,ebp+var_20))')
 
-    def test_cpp_24600(self):
+    def test_args_24600(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[ebp+var_4]'),def_size=4,destination=False),u'*(dd*)(raddr(ds,ebp+var_4))')
 
-    def test_cpp_24610(self):
+    def test_args_24610(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[ebx+4000h]'),def_size=0,destination=False),u'ebx+0x4000')
 
-    def test_cpp_24620(self):
+    def test_args_24620(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[ebx+40h]'),def_size=0,destination=False),u'ebx+0x40')
 
-    def test_cpp_24630(self):
+    def test_args_24630(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[ebx+edx+4000h]'),def_size=0,destination=False),u'ebx+edx+0x4000')
 
-    def test_cpp_24640(self):
+    def test_args_24640(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[ebx+edx]'),def_size=0,destination=False),u'ebx+edx')
 
-    def test_cpp_24650(self):
+    def test_args_24650(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[ebx]'),def_size=0,destination=False),u'ebx')
 
-    def test_cpp_24660(self):
+    def test_args_24660(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[ecx+4000h]'),def_size=0,destination=False),u'ecx+0x4000')
 
-    def test_cpp_24670(self):
+    def test_args_24670(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[ecx+40h]'),def_size=0,destination=False),u'ecx+0x40')
 
-    def test_cpp_24680(self):
+    def test_args_24680(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[ecx+ecx*2+4000h]'),def_size=0,destination=False),u'ecx+ecx*2+0x4000')
 
-    def test_cpp_24690(self):
+    def test_args_24690(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[ecx+ecx*2-0Ah]'),def_size=0,destination=False),u'ecx+ecx*2-0x0A')
 
-    def test_cpp_24700(self):
+    def test_args_24700(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[ecx+ecx*2]'),def_size=0,destination=False),u'ecx+ecx*2')
 
-    def test_cpp_24710(self):
+    def test_args_24710(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[ecx+ecx]'),def_size=0,destination=False),u'ecx+ecx')
 
-    def test_cpp_24720(self):
+    def test_args_24720(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[ecx]'),def_size=0,destination=False),u'ecx')
 
-    def test_cpp_24730(self):
+    def test_args_24730(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[edi+1]'),def_size=1,destination=False),u'*(raddr(ds,edi+1))')
 
-    def test_cpp_24740(self):
+    def test_args_24740(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[edi+1]'),def_size=2,destination=False),u'*(dw*)(raddr(ds,edi+1))')
 
-    def test_cpp_24750(self):
+    def test_args_24750(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[edi+4000h]'),def_size=0,destination=False),u'edi+0x4000')
 
-    def test_cpp_24760(self):
+    def test_args_24760(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[edi+40h]'),def_size=0,destination=False),u'edi+0x40')
 
-    def test_cpp_24770(self):
+    def test_args_24770(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[edi+ecx]'),def_size=0,destination=False),u'edi+ecx')
 
-    def test_cpp_24780(self):
+    def test_args_24780(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[edi]'),def_size=0,destination=False),u'edi')
 
-    def test_cpp_24790(self):
+    def test_args_24790(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[edi]'),def_size=1,destination=False),u'*(raddr(ds,edi))')
 
-    def test_cpp_24800(self):
+    def test_args_24800(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[edx+4000h]'),def_size=0,destination=False),u'edx+0x4000')
 
-    def test_cpp_24810(self):
+    def test_args_24810(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[edx+40h]'),def_size=0,destination=False),u'edx+0x40')
 
-    def test_cpp_24820(self):
+    def test_args_24820(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[edx+ecx*4+4000h]'),def_size=0,destination=False),u'edx+ecx*4+0x4000')
 
-    def test_cpp_24830(self):
+    def test_args_24830(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[edx+ecx*4-0Ah]'),def_size=0,destination=False),u'edx+ecx*4-0x0A')
 
-    def test_cpp_24840(self):
+    def test_args_24840(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[edx+ecx*4]'),def_size=0,destination=False),u'edx+ecx*4')
 
-    def test_cpp_24850(self):
+    def test_args_24850(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[edx+ecx]'),def_size=0,destination=False),u'edx+ecx')
 
-    def test_cpp_24860(self):
+    def test_args_24860(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[edx]'),def_size=0,destination=False),u'edx')
 
-    def test_cpp_24870(self):
+    def test_args_24870(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[esi+4000h]'),def_size=0,destination=False),u'esi+0x4000')
 
-    def test_cpp_24880(self):
+    def test_args_24880(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[esi+40h]'),def_size=0,destination=False),u'esi+0x40')
 
-    def test_cpp_24890(self):
+    def test_args_24890(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[esi+ecx*8+4000h]'),def_size=0,destination=False),u'esi+ecx*8+0x4000')
 
-    def test_cpp_24900(self):
+    def test_args_24900(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[esi+ecx*8-0Ah]'),def_size=0,destination=False),u'esi+ecx*8-0x0A')
 
-    def test_cpp_24910(self):
+    def test_args_24910(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[esi+ecx*8]'),def_size=0,destination=False),u'esi+ecx*8')
 
-    def test_cpp_24920(self):
+    def test_args_24920(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[esi+ecx]'),def_size=0,destination=False),u'esi+ecx')
 
-    def test_cpp_24930(self):
+    def test_args_24930(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[esi]'),def_size=0,destination=False),u'esi')
 
-    def test_cpp_24940(self):
+    def test_args_24940(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[esp+0Ch]'),def_size=0,destination=True),u'*(dw*)(raddr(ds,esp+0x0C))')
 
-    def test_cpp_24950(self):
+    def test_args_24950(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[esp+0Ch]'),def_size=4,destination=True),u'*(dd*)(raddr(ds,esp+0x0C))')
 
-    def test_cpp_24960(self):
+    def test_args_24960(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[esp+10h]'),def_size=0,destination=True),u'*(dw*)(raddr(ds,esp+0x10))')
 
-    def test_cpp_24970(self):
+    def test_args_24970(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[esp+10h]'),def_size=4,destination=True),u'*(dd*)(raddr(ds,esp+0x10))')
 
-    def test_cpp_24980(self):
+    def test_args_24980(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[esp+14h]'),def_size=0,destination=True),u'*(dw*)(raddr(ds,esp+0x14))')
 
-    def test_cpp_24990(self):
+    def test_args_24990(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[esp+14h]'),def_size=4,destination=True),u'*(dd*)(raddr(ds,esp+0x14))')
 
-    def test_cpp_25000(self):
+    def test_args_25000(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[esp+18h]'),def_size=0,destination=True),u'*(dw*)(raddr(ds,esp+0x18))')
 
-    def test_cpp_25010(self):
+    def test_args_25010(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[esp+18h]'),def_size=4,destination=True),u'*(dd*)(raddr(ds,esp+0x18))')
 
-    def test_cpp_25020(self):
+    def test_args_25020(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[esp+1Ch]'),def_size=4,destination=True),u'*(dd*)(raddr(ds,esp+0x1C))')
 
-    def test_cpp_25030(self):
+    def test_args_25030(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[esp+4]'),def_size=0,destination=True),u'*(dw*)(raddr(ds,esp+4))')
 
-    def test_cpp_25040(self):
+    def test_args_25040(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[esp+4]'),def_size=4,destination=True),u'*(dd*)(raddr(ds,esp+4))')
 
-    def test_cpp_25050(self):
+    def test_args_25050(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[esp+8]'),def_size=0,destination=True),u'*(dw*)(raddr(ds,esp+8))')
 
-    def test_cpp_25060(self):
+    def test_args_25060(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[esp+8]'),def_size=4,destination=True),u'*(dd*)(raddr(ds,esp+8))')
 
-    def test_cpp_25070(self):
+    def test_args_25070(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[esp]'),def_size=0,destination=False),u'*(dw*)(raddr(ds,esp))')
 
-    def test_cpp_25080(self):
+    def test_args_25080(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[esp]'),def_size=4,destination=True),u'*(dd*)(raddr(ds,esp))')
 
-    def test_cpp_25090(self):
+    def test_args_25090(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[g]'),def_size=4,destination=False),u'*(dd*)(raddr(ds,offset(_data,g)))')
 
-    def test_cpp_25100(self):
+    def test_args_25100(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[h2]'),def_size=0,destination=False),u'*(raddr(ds,offset(_data,h2)))')
 
-    def test_cpp_25110(self):
+    def test_args_25110(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[i+1]'),def_size=0,destination=False),u'i+1')
 
-    def test_cpp_25120(self):
+    def test_args_25120(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[i+2]'),def_size=0,destination=False),u'i+2')
 
-    def test_cpp_25130(self):
+    def test_args_25130(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[i+3]'),def_size=0,destination=False),u'i+3')
 
-    def test_cpp_25140(self):
+    def test_args_25140(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[i+4]'),def_size=0,destination=False),u'i+4')
 
-    def test_cpp_25150(self):
+    def test_args_25150(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[i+56h]'),def_size=0,destination=False),u'i+0x56')
 
-    def test_cpp_25160(self):
+    def test_args_25160(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[i+5]'),def_size=0,destination=False),u'i+5')
 
-    def test_cpp_25170(self):
+    def test_args_25170(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[i-10h]'),def_size=0,destination=False),u'i-0x10')
 
-    def test_cpp_25180(self):
+    def test_args_25180(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[load_handle]'),def_size=4,destination=False),u'*(dd*)(raddr(ds,offset(_data,load_handle)))')
 
-    def test_cpp_25190(self):
+    def test_args_25190(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[load_handle]'),def_size=4,destination=True),u'*(dd*)(raddr(ds,offset(_data,load_handle)))')
 
-    def test_cpp_25200(self):
+    def test_args_25200(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[var+3]'),def_size=1,destination=True),u'*(raddr(ds,offset(_data,var)+3))')
 
-    def test_cpp_25210(self):
+    def test_args_25210(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[var+4]'),def_size=1,destination=True),u'*(raddr(ds,offset(_data,var)+4))')
 
-    def test_cpp_25220(self):
+    def test_args_25220(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[var-1]'),def_size=1,destination=True),u'*(raddr(ds,offset(_data,var)-1))')
 
-    def test_cpp_25230(self):
+    def test_args_25230(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[var0+5]'),def_size=1,destination=True),u'*(raddr(ds,offset(_data,var0)+5))')
 
-    def test_cpp_25240(self):
+    def test_args_25240(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[var1+1]'),def_size=1,destination=True),u'*(raddr(ds,offset(_data,var1)+1))')
 
-    def test_cpp_25250(self):
+    def test_args_25250(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[var1]'),def_size=0,destination=False),u'*(raddr(ds,offset(_data,var1)))')
 
-    def test_cpp_25260(self):
+    def test_args_25260(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[var1]'),def_size=1,destination=True),u'*(raddr(ds,offset(_data,var1)))')
 
-    def test_cpp_25270(self):
+    def test_args_25270(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[var2+2]'),def_size=1,destination=True),u'*(raddr(ds,offset(_data,var2)+2))')
 
-    def test_cpp_25280(self):
+    def test_args_25280(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[var2-1]'),def_size=1,destination=True),u'*(raddr(ds,offset(_data,var2)-1))')
 
-    def test_cpp_25290(self):
+    def test_args_25290(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[var2]'),def_size=0,destination=False),u'*(dw*)(raddr(ds,offset(_data,var2)))')
 
-    def test_cpp_25300(self):
+    def test_args_25300(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[var2]'),def_size=1,destination=True),u'*(raddr(ds,offset(_data,var2)))')
 
-    def test_cpp_25310(self):
+    def test_args_25310(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[var2]'),def_size=2,destination=True),u'*(dw*)(raddr(ds,offset(_data,var2)))')
 
-    def test_cpp_25320(self):
+    def test_args_25320(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[var3+3*4]'),def_size=4,destination=True),u'*(dd*)(raddr(ds,offset(_data,var3)+3*4))')
 
-    def test_cpp_25330(self):
+    def test_args_25330(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[var3+ebp]'),def_size=4,destination=True),u'*(dd*)(raddr(ds,offset(_data,var3)+ebp))')
 
-    def test_cpp_25340(self):
+    def test_args_25340(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[var3]'),def_size=0,destination=False),u'*(dd*)(raddr(ds,offset(_data,var3)))')
 
-    def test_cpp_25350(self):
+    def test_args_25350(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[var3]'),def_size=4,destination=True),u'*(dd*)(raddr(ds,offset(_data,var3)))')
 
-    def test_cpp_25360(self):
+    def test_args_25360(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[var4+t]'),def_size=1,destination=True),u'*(raddr(ds,offset(_data,var4)+t))')
 
-    def test_cpp_25370(self):
+    def test_args_25370(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[var4]'),def_size=1,destination=True),u'*(raddr(ds,offset(_data,var4)))')
 
-    def test_cpp_25380(self):
+    def test_args_25380(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'[var]'),def_size=1,destination=True),u'*(raddr(ds,offset(_data,var)))')
 
-    def test_cpp_25390(self):
+    def test_args_25390(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'_data'),def_size=1,destination=False),u'seg_offset(_data)')
 
-    def test_cpp_25400(self):
+    def test_args_25400(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'a'),def_size=1,destination=True),u'a')
 
-    def test_cpp_25410(self):
+    def test_args_25410(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'byte ptr [a]'),def_size=1,destination=True),u'*(raddr(ds,offset(_data,a)))')
 
-    def test_cpp_25420(self):
+    def test_args_25420(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'byte ptr [ebp+var_20]'),def_size=1,destination=False),u'*(raddr(ds,ebp+var_20))')
 
-    def test_cpp_25430(self):
+    def test_args_25430(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'byte ptr [ebp+var_20]'),def_size=1,destination=True),u'*(raddr(ds,ebp+var_20))')
 
-    def test_cpp_25440(self):
+    def test_args_25440(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'byte ptr [edi+1]'),def_size=0,destination=False),u'*(raddr(ds,edi+1))')
 
-    def test_cpp_25450(self):
+    def test_args_25450(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'byte ptr [edi+1]'),def_size=1,destination=True),u'*(raddr(ds,edi+1))')
 
-    def test_cpp_25460(self):
+    def test_args_25460(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'byte ptr [edi+7]'),def_size=0,destination=False),u'*(raddr(ds,edi+7))')
 
-    def test_cpp_25470(self):
+    def test_args_25470(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'byte ptr [edi+7]'),def_size=1,destination=True),u'*(raddr(ds,edi+7))')
 
-    def test_cpp_25480(self):
+    def test_args_25480(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'byte ptr [esi]'),def_size=1,destination=True),u'*(raddr(ds,esi))')
 
-    def test_cpp_25490(self):
+    def test_args_25490(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'byte ptr [h2]'),def_size=0,destination=False),u'*(raddr(ds,offset(_data,h2)))')
 
-    def test_cpp_25500(self):
+    def test_args_25500(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'byte ptr [h]'),def_size=0,destination=False),u'*(raddr(ds,offset(_data,h)))')
 
-    def test_cpp_25510(self):
+    def test_args_25510(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'byte ptr [testOVerlap+1]'),def_size=1,destination=True),u'*(raddr(ds,offset(_data,testOVerlap)+1))')
 
-    def test_cpp_25520(self):
+    def test_args_25520(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'byte ptr [var1+1]'),def_size=1,destination=True),u'*(raddr(ds,offset(_data,var1)+1))')
 
-    def test_cpp_25530(self):
+    def test_args_25530(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'byte ptr [var1+2]'),def_size=1,destination=True),u'*(raddr(ds,offset(_data,var1)+2))')
 
-    def test_cpp_25540(self):
+    def test_args_25540(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'byte ptr dl'),def_size=1,destination=True),u'dl')
 
-    def test_cpp_25550(self):
+    def test_args_25550(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'byte ptr ds:[0]'),def_size=1,destination=True),u'*(raddr(ds,0))')
 
-    def test_cpp_25560(self):
+    def test_args_25560(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'byte ptr es:[0]'),def_size=0,destination=False),u'*(raddr(es,0))')
 
-    def test_cpp_25570(self):
+    def test_args_25570(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'byte ptr es:[0]'),def_size=1,destination=True),u'*(raddr(es,0))')
     '''
-    def test_cpp_25580(self):
+    def test_args_25580(self):
         self.assertEqual(self.parser.parse_arg(u'ds:[eax*2]', def_size=0, destination=False), u'*(raddr(ds,eax*2))')
 
-    def test_cpp_25590(self):
+    def test_args_25590(self):
         self.assertEqual(self.parser.parse_arg(u'ds:[ebx*4]', def_size=0, destination=False), u'*(raddr(ds,ebx*4))')
 
-    def test_cpp_25600(self):
+    def test_args_25600(self):
         self.assertEqual(self.parser.parse_arg(u'ds:[ecx*8]', def_size=0, destination=False), u'*(raddr(ds,ecx*8))')
     '''
-    def test_cpp_25610(self):
+    def test_args_25610(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'ds:40h[ebx*4]'), def_size=0, destination=False), u'*(raddr(ds,0x40+ebx*4))')
 
-    def test_cpp_25620(self):
+    def test_args_25620(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'ds:40h[ecx*8]'), def_size=0, destination=False), u'*(raddr(ds,0x40+ecx*8))')
 
-    def test_cpp_25630(self):
+    def test_args_25630(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'ds:[edi]'),def_size=1,destination=True),u'*(raddr(ds,edi))')
 
-    def test_cpp_25640(self):
+    def test_args_25640(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'ds:byte_41411F[eax]'),def_size=1,destination=True),u'*(raddr(ds,offset(_bss,byte_41411F)+eax))')
 
-    def test_cpp_25650(self):
+    def test_args_25650(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'dword ptr [ebp+var_20+4]'),def_size=4,destination=False),u'*(dd*)(raddr(ds,ebp+var_20+4))')
 
-    def test_cpp_25660(self):
+    def test_args_25660(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'dword ptr [ebp+var_20+4]'),def_size=4,destination=True),u'*(dd*)(raddr(ds,ebp+var_20+4))')
 
-    def test_cpp_25670(self):
+    def test_args_25670(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'dword ptr [ebp+var_20]'),def_size=4,destination=False),u'*(dd*)(raddr(ds,ebp+var_20))')
 
-    def test_cpp_25680(self):
+    def test_args_25680(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'dword ptr [ebp+var_20]'),def_size=4,destination=True),u'*(dd*)(raddr(ds,ebp+var_20))')
 
-    def test_cpp_25690(self):
+    def test_args_25690(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'dword ptr [ebx-4]'),def_size=0,destination=True),u'*(dd*)(raddr(ds,ebx-4))')
 
-    def test_cpp_25700(self):
+    def test_args_25700(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'dword ptr [esp+0Ch]'),def_size=4,destination=True),u'*(dd*)(raddr(ds,esp+0x0C))')
 
-    def test_cpp_25710(self):
+    def test_args_25710(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'dword ptr [esp+10h]'),def_size=4,destination=True),u'*(dd*)(raddr(ds,esp+0x10))')
 
-    def test_cpp_25720(self):
+    def test_args_25720(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'dword ptr [esp+14h]'),def_size=4,destination=True),u'*(dd*)(raddr(ds,esp+0x14))')
 
-    def test_cpp_25730(self):
+    def test_args_25730(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'dword ptr [esp+1Ch]'),def_size=4,destination=True),u'*(dd*)(raddr(ds,esp+0x1C))')
 
-    def test_cpp_25740(self):
+    def test_args_25740(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'dword ptr [esp+4]'),def_size=4,destination=True),u'*(dd*)(raddr(ds,esp+4))')
 
-    def test_cpp_25750(self):
+    def test_args_25750(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'dword ptr [esp+8]'),def_size=4,destination=True),u'*(dd*)(raddr(ds,esp+8))')
 
-    def test_cpp_25760(self):
+    def test_args_25760(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'dword ptr [esp]'),def_size=4,destination=True),u'*(dd*)(raddr(ds,esp))')
 
-    def test_cpp_25770(self):
+    def test_args_25770(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'dword ptr buffer'),def_size=4,destination=True),u'*(dd*)(raddr(ds,offset(_data,buffer)))')
 
-    def test_cpp_25780(self):
+    def test_args_25780(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'dword ptr es:[0]'),def_size=4,destination=True),u'*(dd*)(raddr(es,0))')
 
-    def test_cpp_25790(self):
+    def test_args_25790(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'dword ptr es:[20*320+160]'),def_size=4,destination=True),u'*(dd*)(raddr(es,20*320+160))')
 
-    def test_cpp_25800(self):
+    def test_args_25800(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'dword ptr var4'),def_size=4,destination=True),u'*(dd*)(raddr(ds,offset(_data,var4)))')
 
-    def test_cpp_25810(self):
+    def test_args_25810(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'large ds:4000h'),def_size=0,destination=False),u'large ds:0x4000')
 
-    def test_cpp_25820(self):
+    def test_args_25820(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'offset _msg'),def_size=4,destination=False),u'offset(_data,_msg)')
 
-    def test_cpp_25830(self):
+    def test_args_25830(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'offset _test_btc'),def_size=4,destination=False),u'offset(initcall,_test_btc)')
 
-    def test_cpp_25840(self):
+    def test_args_25840(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'offset a0x4000'),def_size=4,destination=False),u'offset(_rdata,a0x4000)')
 
-    def test_cpp_25850(self):
+    def test_args_25850(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'offset aXorl'),def_size=4,destination=False),u'offset(_rdata,aXorl)')
 
-    def test_cpp_25860(self):
+    def test_args_25860(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'offset aXorw'),def_size=4,destination=False),u'offset(_rdata,aXorw)')
 
-    def test_cpp_25870(self):
+    def test_args_25870(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'offset pal_jeu'),def_size=4,destination=False),u'offset(_data,pal_jeu)')
 
-    def test_cpp_25880(self):
+    def test_args_25880(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'offset str1'),def_size=4,destination=False),u'offset(_data,str1)')
 
-    def test_cpp_25890(self):
+    def test_args_25890(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'offset str2'),def_size=4,destination=False),u'offset(_data,str2)')
 
-    def test_cpp_25900(self):
+    def test_args_25900(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'offset str3'),def_size=4,destination=False),u'offset(_data,str3)')
 
-    def test_cpp_25910(self):
+    def test_args_25910(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'offset testOVerlap'),def_size=4,destination=False),u'offset(_data,testOVerlap)')
 
-    def test_cpp_25920(self):
+    def test_args_25920(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'offset unk_40E008'),def_size=4,destination=False),u'offset(_data,unk_40E008)')
 
-    def test_cpp_25930(self):
+    def test_args_25930(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'offset unk_40F064'),def_size=4,destination=False),u'offset(initcall,unk_40F064)')
 
-    def test_cpp_25940(self):
+    def test_args_25940(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'offset var1'),def_size=4,destination=False),u'offset(_data,var1)')
 
-    def test_cpp_25950(self):
+    def test_args_25950(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'offset var1+1'),def_size=4,destination=False),u'offset(_data,var1)+1')
 
-    def test_cpp_25960(self):
+    def test_args_25960(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'offset var2'),def_size=4,destination=False),u'offset(_data,var2)')
 
-    def test_cpp_25970(self):
+    def test_args_25970(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'offset var3'),def_size=4,destination=False),u'offset(_data,var3)')
 
-    def test_cpp_25980(self):
+    def test_args_25980(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'offset var3+4'),def_size=4,destination=False),u'offset(_data,var3)+4')
 
-    def test_cpp_25990(self):
+    def test_args_25990(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'offset var4'),def_size=4,destination=False),u'offset(_data,var4)')
 
-    def test_cpp_26000(self):
+    def test_args_26000(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'offset var4+1'),def_size=4,destination=False),u'offset(_data,var4)+1')
 
-    def test_cpp_26010(self):
+    def test_args_26010(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'offset var4+4'),def_size=4,destination=False),u'offset(_data,var4)+4')
 
-    def test_cpp_26020(self):
+    def test_args_26020(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'op0'),def_size=0,destination=False),u'op0')
 
-    def test_cpp_26030(self):
+    def test_args_26030(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'op0'),def_size=4,destination=True),u'op0')
 
-    def test_cpp_26040(self):
+    def test_args_26040(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'op1'),def_size=0,destination=False),u'op1')
 
-    def test_cpp_26050(self):
+    def test_args_26050(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'printf'),def_size=0,destination=True),u'printf')
 
-    def test_cpp_26060(self):
+    def test_args_26060(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'ptr'),def_size=0,destination=False),u'ptr')
 
-    def test_cpp_26070(self):
+    def test_args_26070(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'r'),def_size=0,destination=False),u'r')
 
-    def test_cpp_26080(self):
+    def test_args_26080(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'res'),def_size=0,destination=False),u'res')
 
-    def test_cpp_26090(self):
+    def test_args_26090(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'res'),def_size=0,destination=True),u'res')
 
-    def test_cpp_26100(self):
+    def test_args_26100(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'res'),def_size=4,destination=False),u'res')
 
-    def test_cpp_26110(self):
+    def test_args_26110(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'res'),def_size=4,destination=True),u'res')
 
-    def test_cpp_26120(self):
+    def test_args_26120(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'resh'),def_size=0,destination=False),u'resh')
 
-    def test_cpp_26130(self):
+    def test_args_26130(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'resh'),def_size=4,destination=False),u'resh')
 
-    def test_cpp_26140(self):
+    def test_args_26140(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'resz'),def_size=0,destination=False),u'resz')
 
-    def test_cpp_26150(self):
+    def test_args_26150(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'rh'),def_size=0,destination=False),u'rh')
 
-    def test_cpp_26160(self):
+    def test_args_26160(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u's0_0'),def_size=0,destination=False),u's0_0')
 
-    def test_cpp_26170(self):
+    def test_args_26170(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u's0_0'),def_size=4,destination=False),u's0_0')
 
-    def test_cpp_26180(self):
+    def test_args_26180(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u's1_0'),def_size=0,destination=False),u's1_0')
 
-    def test_cpp_26190(self):
+    def test_args_26190(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u's1_0'),def_size=4,destination=False),u's1_0')
 
-    def test_cpp_26200(self):
+    def test_args_26200(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'si'),def_size=2,destination=False),u'si')
 
-    def test_cpp_26210(self):
+    def test_args_26210(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'small'),def_size=0,destination=False),u'small')
 
-    def test_cpp_26220(self):
+    def test_args_26220(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u't'),def_size=4,destination=False),u't')
 
-    def test_cpp_26230(self):
+    def test_args_26230(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'taille_moire'),def_size=4,destination=False),u'taille_moire')
 
-    def test_cpp_26240(self):
+    def test_args_26240(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'teST2'),def_size=4,destination=False),u'teST2')
 
-    def test_cpp_26250(self):
+    def test_args_26250(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'testOVerlap'),def_size=0,destination=False),u'offset(_data,testOVerlap)')
 
-    def test_cpp_26260(self):
+    def test_args_26260(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'var1'),def_size=0,destination=False),u'var1')
 
-    def test_cpp_26270(self):
+    def test_args_26270(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'var1'),def_size=0,destination=False),u'offset(_data,var1)')
 
-    def test_cpp_26280(self):
+    def test_args_26280(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'var1'),def_size=1,destination=False),u'var1')
 
-    def test_cpp_26290(self):
+    def test_args_26290(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'var1'),def_size=1,destination=True),u'*(db*)&m.var1')
 
-    def test_cpp_26300(self):
+    def test_args_26300(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'var1'),def_size=1,destination=True),u'var1')
 
-    def test_cpp_26310(self):
+    def test_args_26310(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'var1[1]'),def_size=1,destination=True),u'*(raddr(ds,offset(_data,var1)+1))')
 
-    def test_cpp_26320(self):
+    def test_args_26320(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'var1[bx+si]'),def_size=1,destination=True),u'*(raddr(ds,offset(_data,var1)+bx+si))')
 
-    def test_cpp_26330(self):
+    def test_args_26330(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'var1[bx]'),def_size=1,destination=True),u'*(raddr(ds,offset(_data,var1)+bx))')
 
-    def test_cpp_26340(self):
+    def test_args_26340(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'var2'),def_size=0,destination=False),u'offset(_data,var2)')
 
-    def test_cpp_26350(self):
+    def test_args_26350(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'var2'),def_size=2,destination=True),u'var2')
 
-    #def test_cpp_26360(self):
+    #def test_args_26360(self):
     #    self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'var3'),def_size=4,destination=True),u'var3')
 
-    def test_cpp_26370(self):
+    def test_args_26370(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'var3+3*4'),def_size=4,destination=True),u'*(dd*)(raddr(ds,offset(_data,var3)+3*4))')
 
-    def test_cpp_26380(self):
+    def test_args_26380(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'var3+ebp'),def_size=4,destination=True),u'*(dd*)(raddr(ds,offset(_data,var3)+ebp))')
 
-    def test_cpp_26390(self):
+    def test_args_26390(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'var5'),def_size=0,destination=False),u'offset(_data,var5)')
 
-    def test_cpp_26400(self):
+    def test_args_26400(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'word ptr [d]'),def_size=2,destination=False),u'*(dw*)(raddr(ds,offset(_data,d)))')
 
-    def test_cpp_26410(self):
+    def test_args_26410(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'word ptr [e]'),def_size=2,destination=False),u'*(dw*)(raddr(ds,offset(_data,e)))')
 
-    def test_cpp_26420(self):
+    def test_args_26420(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'word ptr [ebp+var_20]'),def_size=2,destination=False),u'*(dw*)(raddr(ds,ebp+var_20))')
 
-    def test_cpp_26430(self):
+    def test_args_26430(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'word ptr [ebp+var_20]'),def_size=2,destination=True),u'*(dw*)(raddr(ds,ebp+var_20))')
 
-    def test_cpp_26440(self):
+    def test_args_26440(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'word ptr [var5+2]'),def_size=2,destination=True),u'*(dw*)(raddr(ds,offset(_data,var5)+2))')
 
-    def test_cpp_26450(self):
+    def test_args_26450(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'word ptr var5'),def_size=2,destination=True),u'*(dw*)(raddr(ds,offset(_data,var5)))')
 
-    def test_cpp_26460(self):
+    def test_args_26460(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'word'),def_size=0,destination=False),u'word')
 
-    def test_cpp_26470(self):
+    def test_args_26470(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'var3'),def_size=0,destination=False),u'var3')
     '''
 
