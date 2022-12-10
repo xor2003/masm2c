@@ -22,10 +22,27 @@ class MatchTag:
 
     def __init__(self, context):
         self.context = context
+        self.last_type = None
+        self.last = None
+
     def process(self, stream: Iterator[lark.Token]) -> Iterator[lark.Token]:
         for t in stream:
-            if t.type == "LABEL" and t.value in self.context.structures:
+            if self.last_type == 'LABEL' and t.type == "LABEL" and t.value.lower() in ['struc','struct','union']:  # HACK workaround
+                # print(1, self.last_type, self.last, t)
+                t.type = "STRUCTHDR"
+            if self.last_type == 'LABEL' and t.type == "STRUCTHDR":
+                self.context.structures[self.last.lower()] = True
+                # print(1, self.last_type, self.last, t)
+
+            # if t.type == "STRUCTHDR":
+            #    print(2, t)
+            #    print(self.last)
+            if self.context.structures and self.last_type == 'LABEL' \
+                    and t.type == "LABEL" and t.value.lower() in self.context.structures:
+                # print(3, t)
                 t.type = "STRUCTNAME"
+            self.last_type = t.type
+            self.last = t.value
             yield t
 
 def get_line_number(meta):
@@ -234,9 +251,9 @@ class Asm2IR(Transformer):
     def structdirhdr(self, nodes):
         name, type = nodes
         # structure definition header
-        self.context.current_struct = op.Struct(name.children.lower(), type)
-        self.context.struct_names_stack.add(name.children.lower())
-        logging.debug("structname added ~~" + name.children + "~~")
+        self.context.current_struct = op.Struct(name.lower(), type.lower())
+        self.context.struct_names_stack.add(name.lower())
+        logging.debug("structname added ~~" + name + "~~")
         return nodes
 
     def structinstdir(self, nodes, label, type, values):

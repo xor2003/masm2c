@@ -329,7 +329,7 @@ class Parser:
         if not self.has_global(v):
             return v
         g = self.get_global(v)
-        logging.debug(g)
+        #logging.debug(g)
         if isinstance(g, (op._equ, op._assignment)):
             v = g.original_name
         elif isinstance(g, op.var):
@@ -344,6 +344,8 @@ class Parser:
                     logging.error(f'Some unknown data size {size} for {g.name}')
         elif isinstance(g, (op.label, Proc)):
             v = f"m2c::k{g.name.lower()}"
+        elif isinstance(g, op.Struct):
+            pass
         else:
             v = g.offset
         logging.debug(v)

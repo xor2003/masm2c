@@ -6,7 +6,6 @@ _COMMA: ","
 charlist: /[^\r\n\t ]+/x
 text: /[^\r\n]+/x
 STRING: /((?<!')'(?!').+?(?<!')'(?!'))|((?<!")"(?!").+?(?<!")"(?!"))/
-macroname: "macroname"
 LABEL: /[A-Za-z@_$?][A-Za-z@_$?0-9]*/
 //MONKEY: /@@|@B|@F/
 
@@ -101,8 +100,10 @@ crefoption: ".CREF"i | ".XCREF"i idlist? | ".NOCREF"i idlist?
 !datadir: LABEL? datadecl exprlist _linereminder | structinstdir | recordinstdir
 //datadir: LABEL? datadecl exprlist _linereminder | LABEL? LABEL structinstlist _linereminder
 %declare STRUCTNAME
+%declare RECORDNAME
+%declare MACRONAME
 structinstdir: LABEL? STRUCTNAME structinstlist _linereminder
-recordinstdir: LABEL? LABEL recordinstlist _linereminder
+recordinstdir: LABEL? RECORDNAME recordinstlist _linereminder
 //dataitem: datadecl exprlist| LABEL structinstlist| LABEL recordinstlist
 decnumber: _integer_
 digits: decnumber
@@ -254,7 +255,7 @@ locallist: localdef+
 macroarg: "%" expr| "%" LABEL "(" macroarglist ")" | "<" arbitrarytext ">" | arbitrarytext | STRING
 macroarglist: macroarg | macroarg _COMMA macroarglist
 macrobody: locallist? macrostmtlist
-macrocall: macroname  "(" macroarglist ")" | macroname macroarglist? _linereminder
+macrocall: MACRONAME  "(" macroarglist ")" | MACRONAME macroarglist? _linereminder
 macrodirhead: LABEL "MACRO"i macroparmlist?
 macrodir: macrodirhead _linereminder macrobody "ENDM"i _linereminder
 macrofor: fordir forparm  _COMMA "<" macroarglist ">" _linereminder macrobody "ENDM"i _linereminder

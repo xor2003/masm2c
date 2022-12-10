@@ -13,25 +13,38 @@ from masm2c.Token import Token
 
 #logger.setLevel(logging.DEBUG)
 class MatchTag:
-    always_accept = "LABEL"
+    always_accept = "LABEL", "STRUCTHDR"
+
+    def __init__(self):
+        self.last_type = None
+        self.last = None
 
     def process(self, stream: Iterator[lark.Token]) -> Iterator[lark.Token]:
         for t in stream:
-            if t.type == "LABEL" and t.value == 'VECTOR':
+            if t.type == "LABEL" and t.value == 'struc':
+                #print(1, self.last_type, self.last, t)
+                t.type = "STRUCTHDR"
+            #if t.type == "STRUCTHDR":
+            #    print(2, t)
+            #    print(self.last)
+            if self.last_type == 'LABEL' and t.type == "LABEL" and t.value == 'VECTOR':
+                #print(3, t)
                 t.type = "STRUCTNAME"
+            self.last_type = t.type
+            self.last = t.value
             yield t
 
 with open('masm2c/_masm61.lark') as g:
     l = Lark(g, parser='lalr', propagate_positions=True, debug=True,
              postlex=MatchTag())  # , keep_all_tokens=True)
 
-''''''
+''' 
+'''
 t = l.parse(""".386p
-
-COMMENT B
-svsvr
-nrt B qdqwdqw
-
+VECTOR struc
+    vx dw ?
+ VECTOR ends
+ 
  TRANSFORMEDSHAPE struc
     ts_shapeptr dw ?
     ts_rectptr dw ?

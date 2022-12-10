@@ -544,7 +544,7 @@ class Struct:
         self.__type = Struct.Type.UNION if dtype.lower() == 'union' else Struct.Type.STRUCT
 
     def append(self, data):
-        self.__fields[data.__label.lower()] = data
+        self.__fields[data.label.lower()] = data
         if self.__type == Struct.Type.STRUCT:
             self.__size += data.getsize()
         else:  # Union

@@ -1574,6 +1574,7 @@ class IR2Cpp(TopDownVisitor, Cpp):
 
     def __init__(self, parser):
         super(IR2Cpp, self).__init__(context=parser)
+        self.element_size = -1
 
     def INTEGER(self, t):
         #s = {2: hex(token.value), 8: oct(token.value), 10: str(token.value), 16: hex(token.value)}[token.column]
