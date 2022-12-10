@@ -7,11 +7,10 @@ charlist: /[^\r\n\t ]+/x
 text: /[^\r\n]+/x
 STRING: /((?<!')'(?!').+?(?<!')'(?!'))|((?<!")"(?!").+?(?<!")"(?!"))/
 macroname: "macroname"
-structname: "structname"
 LABEL: /[A-Za-z@_$?][A-Za-z@_$?0-9]*/
 //MONKEY: /@@|@B|@F/
 
-COMMENTKW: /comment\s+(\S)/ //[.\r\n]*?\1[^\r\n]*/x
+COMMENTKW: "COMMENT"i /\s+(?P<delim>\S).+?(?P=delim)[^\r\n]*/isx
 _ENDOFLINE: /[\r\n]+[\t \r\n]*/x
 INTEGER: /[+-]?[0-9][0-9A-Fa-f]*[HOQTYhoqty]?\b/
 SIGNED_FLOAT: /[+-]?[0-9]+\.[0-9]*([eE][-+]?[0-9]+)?\b/
@@ -101,8 +100,8 @@ crefoption: ".CREF"i | ".XCREF"i idlist? | ".NOCREF"i idlist?
 //datadir: LABEL? dataitem _linereminder
 !datadir: LABEL? datadecl exprlist _linereminder | structinstdir | recordinstdir
 //datadir: LABEL? datadecl exprlist _linereminder | LABEL? LABEL structinstlist _linereminder
-//datadir: LABEL? datadecl exprlist _linereminder
-structinstdir: LABEL? structname structinstlist _linereminder
+%declare STRUCTNAME
+structinstdir: LABEL? STRUCTNAME structinstlist _linereminder
 recordinstdir: LABEL? LABEL recordinstlist _linereminder
 //dataitem: datadecl exprlist| LABEL structinstlist| LABEL recordinstlist
 decnumber: _integer_
@@ -214,7 +213,7 @@ externkey: "EXTRN"i | "EXTERN"i | "EXTERNDEF"i
 externlist: externdef | externdef commaoeol externlist
 externtype: "ABS"i | qualifiedtype
 fieldinit: initvalue? | structinstance
-fieldinitlist: fieldinit (commaoeol fieldinitlist)*
+fieldinitlist: fieldinit (commaoeol fieldinit)*
 filespec: charlist| textliteral
 flagname: "ZERO?"i | "CARRY?"i | "OVERFLOW?"i | "SIGN?"i | "PARITY?"i
 floatnumber : SIGNED_FLOAT | digits "R"| digits "r"
@@ -274,7 +273,7 @@ modelopt: langtype| stackoption | "OS_DOS"i
 modeloptlist: modelopt | modelopt _COMMA modeloptlist
 namedir: "NAME"i LABEL _linereminder
 nearfar: "NEAR"i | "FAR"i
-nestedstruct: structkw  LABEL?  _linereminder "ENDS"i _linereminder | structkw  LABEL?  _linereminder structitem+ "ENDS"i _linereminder
+nestedstruct: STRUCTHDR  LABEL?  _linereminder "ENDS"i _linereminder | STRUCTHDR  LABEL?  _linereminder structitem+ "ENDS"i _linereminder
 offsetdir: offsetdirtype _linereminder
 offsetdirtype: "EVEN"i | "ORG"i expr| "ALIGN"i expr?
 offsettype: "GROUP"i | "SEGMENT"i | "FLAT"i
@@ -341,13 +340,13 @@ segro: "READONLY"i
 simplesegdir: segdir _linereminder
 stackoption: "NEARSTACK"i | "FARSTACK"i
 startupdir: ".STARTUP"i _linereminder
-structbody: structitem+
-structdirhdr: LABEL structkw  expr?  commanonuniq?
+structdirhdr: LABEL STRUCTHDR expr?  commanonuniq?
+STRUCTHDR: "STRUC"i | "STRUCT"i | "UNION"i
 structdir: structdirhdr _linereminder endsdir | structdirhdr _linereminder structitem+ endsdir
-structkw: "STRUC"i | "STRUCT"i | "UNION"i
-structdup: expr "DUP"i "(" structinstlist ")"
+structbody: structitem+
 structinstance: "<"  fieldinitlist?  ">"| "{" _linereminder?   fieldinitlist?   _linereminder?  "}"| structdup
-structinstlist: structinstance | structinstance commaoeol structinstlist
+structdup: expr "DUP"i "(" structinstlist ")"
+structinstlist: structinstance (commaoeol structinstance)*
 structitem: datadir| _generaldir| offsetdir| nestedstruct| _linereminder
 textdir: LABEL textmacrodir _linereminder
 textitem: textliteral| "%" expr //| LABEL

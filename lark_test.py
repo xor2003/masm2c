@@ -1,20 +1,57 @@
 import json
 from pprint import pprint
+from typing import Iterator
 
 import jsonpickle
-from lark import Lark, Transformer, Discard, v_args, Tree, logger
+from lark import Lark, Transformer, Discard, v_args, Tree, logger, lark
 
-from masm2c.Token import Token
 import logging
 
+import masm2c
+from masm2c.Token import Token
+
+
 #logger.setLevel(logging.DEBUG)
+class MatchTag:
+    always_accept = "LABEL"
+
+    def process(self, stream: Iterator[lark.Token]) -> Iterator[lark.Token]:
+        for t in stream:
+            if t.type == "LABEL" and t.value == 'VECTOR':
+                t.type = "STRUCTNAME"
+            yield t
 
 with open('masm2c/_masm61.lark') as g:
-    l = Lark(g, parser='lalr', propagate_positions=True, debug=True)  # , keep_all_tokens=True)
+    l = Lark(g, parser='lalr', propagate_positions=True, debug=True,
+             postlex=MatchTag())  # , keep_all_tokens=True)
 
+''''''
 t = l.parse(""".386p
 
+COMMENT B
+svsvr
+nrt B qdqwdqw
+
+ TRANSFORMEDSHAPE struc
+    ts_shapeptr dw ?
+    ts_rectptr dw ?
+    ts_rOTvec VECTOR <>
+    ts_vec VECTOR 3 dup (<>)
+ TRANSFORMEDSHAPE ends
+ 
+GAMEINFO struc
+game_opponenttype dw ?
+game_opponentmaterial dd ?
+game_opponentcarid db 4 dup (?)
+GAMEINFO ends
+extrn gameconfig:GAMEINFO
+
+
+ var_transshape = TRANSFORMEDSHAPE ptr -50
+
+
 _DATA   segment use16 word public 'DATA' ;IGNORE
+head db '^',10,10
 var3 db 5*5 dup (0)
 var3 db 5*5 dup (0,testEqu*2,2*2*3,3)
 db 88h,3 dup(0),87h

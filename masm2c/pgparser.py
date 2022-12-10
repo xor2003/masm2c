@@ -3,6 +3,7 @@ import os
 import re
 from collections import OrderedDict
 from copy import deepcopy, copy
+from typing import Iterator
 
 from lark import Transformer, Lark, v_args, Discard, Tree, Visitor, lark
 
@@ -16,6 +17,16 @@ macroses = OrderedDict()
 macronamere = re.compile(r'([A-Za-z_@$?][A-Za-z0-9_@$?]*)')
 commentid = re.compile(r'COMMENT\s+([^ ]).*?\1[^\r\n]*', flags=re.DOTALL)
 
+class MatchTag:
+    always_accept = "LABEL"
+
+    def __init__(self, context):
+        self.context = context
+    def process(self, stream: Iterator[lark.Token]) -> Iterator[lark.Token]:
+        for t in stream:
+            if t.type == "LABEL" and t.value in self.context.structures:
+                t.type = "STRUCTNAME"
+            yield t
 
 def get_line_number(meta):
     """
@@ -220,7 +231,8 @@ class Asm2IR(Transformer):
                     return result
         return None
 
-    def structdirhdr(self, nodes, name, type):
+    def structdirhdr(self, nodes):
+        name, type = nodes
         # structure definition header
         self.context.current_struct = op.Struct(name.children.lower(), type)
         self.context.struct_names_stack.add(name.children.lower())
@@ -580,7 +592,8 @@ class LarkParser:
             file_name = os.path.dirname(os.path.realpath(__file__)) + "/_masm61.lark"
             debug = False
             with open(file_name, 'rt') as gr:
-                cls._inst.or_parser = Lark(gr, parser='lalr', propagate_positions=True, cache=True, debug=debug)
+                cls._inst.or_parser = Lark(gr, parser='lalr', propagate_positions=True, cache=True, debug=debug,
+                                           postlex=MatchTag(context=kwargs['context']))
 
             cls._inst.parser = copy(cls._inst.or_parser)
 

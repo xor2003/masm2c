@@ -135,7 +135,7 @@ class Parser:
         # self.__offsets = OrderedDict()
         self.pass_number = 0
 
-        self.__lex = LarkParser()
+        self.__lex = LarkParser(context=self)
 
         # self.segments = OrderedDict()
         self.externals_vars = set()
