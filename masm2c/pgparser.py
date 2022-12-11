@@ -18,7 +18,7 @@ macronamere = re.compile(r'([A-Za-z_@$?][A-Za-z0-9_@$?]*)')
 commentid = re.compile(r'COMMENT\s+([^ ]).*?\1[^\r\n]*', flags=re.DOTALL)
 
 class MatchTag:
-    always_accept = "LABEL"
+    always_accept = "LABEL", "structinstdir", "STRUCTNAME"
 
     def __init__(self, context):
         self.context = context
@@ -30,6 +30,12 @@ class MatchTag:
             if self.last_type == 'LABEL' and t.type == "LABEL" and t.value.lower() in ['struc','struct','union']:  # HACK workaround
                 # print(1, self.last_type, self.last, t)
                 t.type = "STRUCTHDR"
+            #if t.type == "LABEL" and t.value.lower() in ['ends']:  # HACK workaround
+            #    t.type = "endsdir"
+
+            #if t.type == "LABEL" and t.value == 'VECTOR':
+            #    print(t)
+
             if self.last_type == 'LABEL' and t.type == "STRUCTHDR":
                 self.context.structures[self.last.lower()] = True
                 # print(1, self.last_type, self.last, t)

@@ -136,8 +136,7 @@ game_opponentcarid db 4 dup (?)
 GAMEINFO ends
 extrn gameconfig:GAMEINFO
 head db '^',10,10
-''')
-        self.__class__.parser.action_data(line='''
+
  VECTOR struc
     vx dw ?
  VECTOR ends
