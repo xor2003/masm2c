@@ -842,17 +842,11 @@ class Parser:
         self.test_mode = True
         self.segments = OrderedDict()
         try:
-            text = '''.model tiny
-        default_seg segment
-        mov ax, ''' + line + '''
-        default_seg ends
-            end start
-            '''
             self.test_pre_parse()
-            result = self.parse_file_content(text)
-            result = result.children[2].children[1].children[1]
-            expr = self.process_ast(text, result)
-            #result = result.asminstruction.args[1]
+            result = self.parse_file_content(line, start_rule='expr')
+            #result = result.children[2].children[1].children[1]
+            expr = self.process_ast(line, result)
+            result = expr.size()
         except Exception as e:
             print(e)
             import traceback
@@ -860,7 +854,7 @@ class Parser:
             result = [str(e)]
             raise
         #del self.__globals['default_seg']
-        return expr.size()
+        return result
 
     def action_data(self, line):
         ''' For tests only '''
@@ -888,7 +882,7 @@ class Parser:
         return result
 
     def parse_arg(self, line, def_size=0, destination=False):
-        from .cpp import IR2Cpp
+        from .cpp import Cpp
         self.test_mode = True
         self.segments = OrderedDict()
         try:
@@ -900,7 +894,8 @@ class Parser:
                 expr.mods.add("destination")
             if def_size and expr.element_size == 0:
                 expr.element_size = def_size
-            result = "".join(IR2Cpp(self).visit(expr))
+            #result = "".join(IR2Cpp(self).visit(expr))
+            result = Cpp(self).render_instruction_argument(expr)
         except Exception as e:
             exc_type, exc_obj, exc_tb = sys.exc_info()
             fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
