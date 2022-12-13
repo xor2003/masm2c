@@ -488,7 +488,6 @@ class Data(baseop, lark.Tree):
         self.offset = offset
 
         self.data = 'data'
-        self.children = []
         self._meta = meta
 
     def isobject(self):

@@ -869,7 +869,7 @@ class Parser:
     end start
     '''
             self.test_pre_parse()
-            result = self.parse_file_content(line, start_rule='insegdirlist')
+            result = self.parse_file_content(line+"\n", start_rule='insegdirlist')
             #result = result.children[2]
             result = self.process_ast(line, result)
             result = tuple(IR2Cpp(self).visit(result))
@@ -890,12 +890,12 @@ class Parser:
             expr = self.parse_file_content(line, start_rule='expr')
             #expr = result.children[2].children[1].children[1]
             expr = self.process_ast(line, expr)
-            if destination:
-                expr.mods.add("destination")
-            if def_size and expr.element_size == 0:
-                expr.element_size = def_size
+            #if destination:
+            #    expr.mods.add("destination")
+            #if def_size and expr.element_size == 0:
+            #    expr.element_size = def_size
             #result = "".join(IR2Cpp(self).visit(expr))
-            result = Cpp(self).render_instruction_argument(expr)
+            result = Cpp(self).render_instruction_argument(expr, def_size=def_size, destination=destination)
         except Exception as e:
             exc_type, exc_obj, exc_tb = sys.exc_info()
             fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
