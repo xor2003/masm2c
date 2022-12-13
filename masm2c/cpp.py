@@ -1291,7 +1291,12 @@ struct Memory{
         self.a = self.render_instruction_argument(dst)
         return "%s(%s)" % (cmd.upper(), self.a)
 
-    def render_instruction_argument(self, expr):
+    def render_instruction_argument(self, expr, def_size: int=0, destination: bool=False, lea: bool=False):
+        #def_size = expr.size()
+        if destination:
+            expr.mods.add("destination")
+        if def_size and expr.element_size == 0:
+            expr.element_size = def_size
         return "".join(IR2Cpp(self._context).visit(expr))
     def _jump(self, cmd, label):
         result = self.isrelativejump(label)

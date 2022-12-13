@@ -72,6 +72,83 @@ class ParserTestSimple(unittest.TestCase):
     def test_instr_100(self):
         self.assertEqual(*self.doTest('shld    dx, bx, cl', 'SHLD(dx, bx, cl)'))
 
+    def test_instr_110(self):
+        self.assertEqual(*self.doTest('shld    edx, ebx, cl', 'SHLD(edx, ebx, cl)'))
+
+    def test_instr_120(self):
+        self.assertEqual(*self.doTest('shr     dl, cl', 'SHR(dl, cl)'))
+
+    def test_instr_130(self):
+        self.assertEqual(*self.doTest('bsr     eax, esi', 'BSR(eax, esi)'))
+
+    def test_instr_140(self):
+        self.assertEqual(*self.doTest('shr     dx, cl', 'SHR(dx, cl)'))
+
+    def test_instr_150(self):
+        self.assertEqual(*self.doTest('shr     edx, cl', 'SHR(edx, cl)'))
+
+    def test_instr_160(self):
+        self.assertEqual(*self.doTest('shr eax,16', 'SHR(eax, 16)'))
+
+    def test_instr_170(self):
+        self.assertEqual(*self.doTest('shr ecx,16', 'SHR(ecx, 16)'))
+
+    def test_instr_180(self):
+        self.assertEqual(*self.doTest('shrd    dx, bx, cl', 'SHRD(dx, bx, cl)'))
+
+    def test_instr_190(self):
+        self.assertEqual(*self.doTest('shrd    edx, ebx, cl', 'SHRD(edx, ebx, cl)'))
+
+    def test_instr_200(self):
+        self.assertEqual(*self.doTest('shrd eax, edx, 8', 'SHRD(eax, edx, 8)'))
+
+    def test_instr_210(self):
+        self.assertEqual(*self.doTest('stc', 'STC'))
+
+    def test_instr_220(self):
+        self.assertEqual(*self.doTest('std', 'STD'))
+
+    def test_instr_230(self):
+        self.assertEqual(*self.doTest('sti                             ; Set The Interrupt Flag', 'STI'))
+
+    def test_instr_240(self):
+        self.assertEqual(*self.doTest('bsr     edx, eax', 'BSR(edx, eax)'))
+
+    def test_instr_250(self):
+        self.assertEqual(*self.doTest('stosb', 'STOSB'))
+
+    def test_instr_260(self):
+        self.assertEqual(*self.doTest('stosd', 'STOSD'))
+
+    def test_instr_270(self):
+        self.assertEqual(*self.doTest('stosw', 'STOSW'))
+
+    def test_instr_280(self):
+        self.assertEqual(*self.doTest('sub     dl, cl', 'SUB(dl, cl)'))
+
+    def test_instr_290(self):
+        self.assertEqual(*self.doTest('sub     dx, cx', 'SUB(dx, cx)'))
+
+    def test_instr_300(self):
+        self.assertEqual(*self.doTest('sub     edx, ecx', 'SUB(edx, ecx)'))
+
+    def test_instr_310(self):
+        self.assertEqual(*self.doTest('sub     esp, 10h', 'SUB(esp, 0x10)'))
+
+    def test_instr_320(self):
+        self.assertEqual(*self.doTest('sub     esp, 114h', 'SUB(esp, 0x114)'))
+
+    def test_instr_330(self):
+        self.assertEqual(*self.doTest('sub     esp, 14h', 'SUB(esp, 0x14)'))
+
+    def test_instr_340(self):
+        self.assertEqual(*self.doTest('sub eax,eax', 'SUB(eax, eax)'))
+
+    def test_instr_350(self):
+        self.assertEqual(*self.doTest('bswap   eax', 'BSWAP(eax)'))
+
+    def test_instr_360(self):
+        self.assertEqual(*self.doTest('sub eax,ebx', 'SUB(eax, ebx)'))
 
 class ParserTest(unittest.TestCase):
     # First define a class variable that determines
@@ -283,83 +360,6 @@ head db '^',10,10
     def test_instr_10(self):
         self.assertEqual(*self.doTest('mov    ax, offset     failure', 'ax = m2c::kfailure;'))
 
-    def test_instr_110(self):
-        self.assertEqual(*self.doTest('shld    edx, ebx, cl', 'SHLD(edx, ebx, cl)'))
-
-    def test_instr_120(self):
-        self.assertEqual(*self.doTest('shr     dl, cl', 'SHR(dl, cl)'))
-
-    def test_instr_130(self):
-        self.assertEqual(*self.doTest('bsr     eax, esi', 'BSR(eax, esi)'))
-
-    def test_instr_140(self):
-        self.assertEqual(*self.doTest('shr     dx, cl', 'SHR(dx, cl)'))
-
-    def test_instr_150(self):
-        self.assertEqual(*self.doTest('shr     edx, cl', 'SHR(edx, cl)'))
-
-    def test_instr_160(self):
-        self.assertEqual(*self.doTest('shr eax,16', 'SHR(eax, 16)'))
-
-    def test_instr_170(self):
-        self.assertEqual(*self.doTest('shr ecx,16', 'SHR(ecx, 16)'))
-
-    def test_instr_180(self):
-        self.assertEqual(*self.doTest('shrd    dx, bx, cl', 'SHRD(dx, bx, cl)'))
-
-    def test_instr_190(self):
-        self.assertEqual(*self.doTest('shrd    edx, ebx, cl', 'SHRD(edx, ebx, cl)'))
-
-    def test_instr_200(self):
-        self.assertEqual(*self.doTest('shrd eax, edx, 8', 'SHRD(eax, edx, 8)'))
-
-    def test_instr_210(self):
-        self.assertEqual(*self.doTest('stc', 'STC'))
-
-    def test_instr_220(self):
-        self.assertEqual(*self.doTest('std', 'STD'))
-
-    def test_instr_230(self):
-        self.assertEqual(*self.doTest('sti                             ; Set The Interrupt Flag', 'STI'))
-
-    def test_instr_240(self):
-        self.assertEqual(*self.doTest('bsr     edx, eax', 'BSR(edx, eax)'))
-
-    def test_instr_250(self):
-        self.assertEqual(*self.doTest('stosb', 'STOSB'))
-
-    def test_instr_260(self):
-        self.assertEqual(*self.doTest('stosd', 'STOSD'))
-
-    def test_instr_270(self):
-        self.assertEqual(*self.doTest('stosw', 'STOSW'))
-
-    def test_instr_280(self):
-        self.assertEqual(*self.doTest('sub     dl, cl', 'SUB(dl, cl)'))
-
-    def test_instr_290(self):
-        self.assertEqual(*self.doTest('sub     dx, cx', 'SUB(dx, cx)'))
-
-    def test_instr_300(self):
-        self.assertEqual(*self.doTest('sub     edx, ecx', 'SUB(edx, ecx)'))
-
-    def test_instr_310(self):
-        self.assertEqual(*self.doTest('sub     esp, 10h', 'SUB(esp, 0x10)'))
-
-    def test_instr_320(self):
-        self.assertEqual(*self.doTest('sub     esp, 114h', 'SUB(esp, 0x114)'))
-
-    def test_instr_330(self):
-        self.assertEqual(*self.doTest('sub     esp, 14h', 'SUB(esp, 0x14)'))
-
-    def test_instr_340(self):
-        self.assertEqual(*self.doTest('sub eax,eax', 'SUB(eax, eax)'))
-
-    def test_instr_350(self):
-        self.assertEqual(*self.doTest('bswap   eax', 'BSWAP(eax)'))
-
-    def test_instr_360(self):
-        self.assertEqual(*self.doTest('sub eax,ebx', 'SUB(eax, ebx)'))
 
     def test_instr_370(self):
         self.assertEqual(*self.doTest('sub word ptr [singlequad+2],25', 'SUB(*(dw*)(((db*)&singlequad)+2), 25)'))
