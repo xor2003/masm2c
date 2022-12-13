@@ -1287,8 +1287,7 @@ struct Memory{
     def _instruction0(self, cmd):
         return "%s" % (cmd.upper())
 
-    def _instruction1(self, node) -> str:
-        cmd, dst = node.cmd, node.args
+    def _instruction1(self, cmd, dst) -> str:
         self.a = self.render_instruction_argument(dst)
         return "%s(%s)" % (cmd.upper(), self.a)
 
