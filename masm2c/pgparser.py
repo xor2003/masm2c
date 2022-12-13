@@ -30,8 +30,9 @@ class MatchTag:
             if self.last_type == 'LABEL' and t.type == "LABEL" and t.value.lower() in ['struc','struct','union']:  # HACK workaround
                 # print(1, self.last_type, self.last, t)
                 t.type = "STRUCTHDR"
-            #if t.type == "LABEL" and t.value.lower() in ['ends']:  # HACK workaround
-            #    t.type = "endsdir"
+            if t.type == "LABEL" and t.value.lower() in ['ends']:  # HACK workaround
+                print(self.last_type, self.last)
+                t.type = "endsdir"
 
             #if t.type == "LABEL" and t.value == 'VECTOR':
             #    print(t)
@@ -258,23 +259,25 @@ class Asm2IR(Transformer):
         name, type = nodes
         # structure definition header
         self.context.current_struct = op.Struct(name.lower(), type.lower())
-        self.context.struct_names_stack.add(name.lower())
+        self.context.struct_names_stack.append(name.lower())
         logging.debug("structname added ~~" + name + "~~")
         return nodes
 
-    def structinstdir(self, nodes, label, type, values):
+    @v_args(meta=True)
+    def structinstdir(self, meta, nodes):
+        label, type, values = nodes
         logging.debug(f"structinstdir {label} {type} {values}")
         # args = remove_str(Token.remove_tokens(remove_str(values), 'expr'))
-        args = values[0].children
+        args = values.children[0]
         # args = Token.remove_tokens(remove_str(values), 'expr')
         if args is None:
             args = []
         # args = Token.remove(args, 'INTEGER')
         if label:
-            name = label.children.lower()
+            name = label.lower()
         else:
             name = ''
-        self.context.add_structinstance(name, type.lower(), args, raw=get_raw(self.input_str, self.context))
+        self.context.add_structinstance(name, type.lower(), args, raw=get_raw(self.input_str, meta))
         return nodes
 
     @v_args(meta=True)
@@ -284,12 +287,12 @@ class Asm2IR(Transformer):
             label = self.context.mangle_label(children.pop(0))
         else:
             label = ''
-        values = lark.Tree(data='data', children=children[0].children)
-
-        #while isinstance(values, list) and len(values) == 1 and isinstance(values[0], list):
-        #    values = values[0]
-
-        type = self.element_type
+        if isinstance(children[0], (lark.Token, lark.Tree)):  # Data
+            values = lark.Tree(data='data', children=children[0].children)
+            type = self.element_type
+        else:
+            type = children[0][1].lower()  # Structs
+            values = children[0][1:3]
 
         is_string = self.is_string
         self.is_string = False
@@ -374,10 +377,12 @@ class Asm2IR(Transformer):
         return self.context.action_equ(name.children, value, raw=get_raw(self.input_str, self.context),
                                        line_number=get_line_number(self.context))
 
-    def assdir(self, nodes, name, value):
+    @v_args(meta=True)
+    def assdir(self, meta, nodes):
+        name, value = nodes
         logging.debug("assdir " + str(nodes) + " ~~")
-        return self.context.action_assign(name.children, value, raw=get_raw(self.input_str, self.context),
-                                          line_number=get_line_number(self.context))
+        return self.context.action_assign(name, value, raw=get_raw(self.input_str, meta),
+                                          line_number=get_line_number(meta))
 
     def instrprefix(self, nodes):
         logging.debug("instrprefix " + str(nodes) + " ~~")
@@ -397,8 +402,8 @@ class Asm2IR(Transformer):
 
         # self.expression = self.expression or Expression()
         instruction = self.instruction_name
-        args = nodes[0].children
-        if args >= 2:
+        args = nodes[0].children if len(nodes) else []
+        if len(args) >= 2:
             args[0].mods.add('destination')
         if instruction == 'lea':
             # self.expression.indirection = IndirectionType.OFFSET
@@ -411,7 +416,7 @@ class Asm2IR(Transformer):
             args = []
         '''
         # indirection: IndirectionType = IndirectionType.VALUE
-        return Tree(instruction, args, meta)
+        #return Tree(instruction, args, meta)
         return self.context.action_instruction(instruction, args, raw=get_raw_line(self.input_str, meta),
                                                line_number=get_line_number(meta)) or Discard
 
@@ -500,7 +505,7 @@ class Asm2IR(Transformer):
             nodes = lark.Token(type='STRING', value=string)
         return nodes  # Token('STRING', nodes)
 
-    def structinstance(self, nodes, values):
+    def structinstance(self, nodes): #, values):
         return nodes  # Token('structinstance', values)
 
     def memberdir(self, nodes, variable, field):
@@ -512,9 +517,11 @@ class Asm2IR(Transformer):
         self.radix = int(children[0])
         return children
 
-    def externdef(self, nodes, extrnname, type):
+    def externdef(self, nodes):
+        label, type = nodes
+        type = type.children[0].children[0]
         logging.debug('externdef %s', nodes)
-        self.context.add_extern(extrnname.children, type)
+        self.context.add_extern(label, type)
         return nodes
 
     def maked(self, nodes):
@@ -616,7 +623,8 @@ class LarkParser:
             debug = False
             with open(file_name, 'rt') as gr:
                 cls._inst.or_parser = Lark(gr, parser='lalr', propagate_positions=True, cache=True, debug=debug,
-                                           postlex=MatchTag(context=kwargs['context']))
+                                           postlex=MatchTag(context=kwargs['context']), start=['start', 'insegdirlist',
+                                                                                               'instruction', 'expr'])
 
             cls._inst.parser = copy(cls._inst.or_parser)
 
@@ -661,6 +669,8 @@ class TopDownVisitor:
                     result += getattr(self, node.type)(node)
                 else:
                     result += node.value
+            elif isinstance(node, op.Data):
+                result = self.visit(node.children)
             elif isinstance(node, list):
                 if hasattr(self, 'list_visitor'):
                     result = self.list_visitor(node, result)
@@ -670,6 +680,8 @@ class TopDownVisitor:
             elif isinstance(node, (str, int)):
                 #print(f"{node} is a str")
                 result += [f'{node}']
+            elif hasattr(self, type(node).__name__):
+                result = getattr(self, type(node).__name__)(node)
             else:
                 import logging
                 logging.error(f"Error unknown type {node}")

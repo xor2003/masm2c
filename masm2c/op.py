@@ -97,310 +97,311 @@ class var:
         return self.original_type
 
 
-class Segment:
-    # __slots__ = ['name', 'offset', '__data', 'original_name', 'used']
-    simple_segments = {
-        "tiny": {
-            ".CODE": {
-                "Name": "_TEXT",
-                "Align": 2,
-                "Combine": "public",
-                "Class": "CODE",
-                "Group": "DGROUP"
-            },
-            ".FARDATA": {
-                "Name": "FAR_DATA",
-                "Align": 0x10,
-                "Combine": "private",
-                "Class": "FAR_DATA",
-                "Group": ""
-            },
-            ".FARDATA?": {
-                "Name": "FAR_BSS",
-                "Align": 0x10,
-                "Combine": "private",
-                "Class": "FAR_BSS",
-                "Group": ""
-            },
-            ".DATA": {
-                "Name": "_DATA",
-                "Align": 2,
-                "Combine": "public",
-                "Class": "DATA",
-                "Group": "DGROUP"
-            },
-            ".CONST": {
-                "Name": "CONST",
-                "Align": 2,
-                "Combine": "public",
-                "Class": "CONST",
-                "Group": "DGROUP"
-            },
-            ".DATA?": {
-                "Name": "_BSS",
-                "Align": 2,
-                "Combine": "public",
-                "Class": "BSS",
-                "Group": "DGROUP"
-            }
+SIMPLE_SEGMENTS = {
+    "tiny": {
+        ".CODE": {
+            "Name": "_TEXT",
+            "Align": 2,
+            "Combine": "public",
+            "Class": "CODE",
+            "Group": "DGROUP"
         },
-        "small": {
-            ".CODE": {
-                "Name": "_TEXT",
-                "Align": 2,
-                "Combine": "public",
-                "Class": "CODE",
-                "Group": ""
-            },
-            ".FARDATA": {
-                "Name": "FAR_DATA",
-                "Align": 0x10,
-                "Combine": "private",
-                "Class": "FAR_DATA",
-                "Group": ""
-            },
-            ".FARDATA?": {
-                "Name": "FAR_BSS",
-                "Align": 0x10,
-                "Combine": "private",
-                "Class": "FAR_BSS",
-                "Group": ""
-            },
-            ".DATA": {
-                "Name": "_DATA",
-                "Align": 2,
-                "Combine": "public",
-                "Class": "DATA",
-                "Group": "DGROUP"
-            },
-            ".CONST": {
-                "Name": "CONST",
-                "Align": 2,
-                "Combine": "public",
-                "Class": "CONST",
-                "Group": "DGROUP"
-            },
-            ".DATA?": {
-                "Name": "_BSS",
-                "Align": 2,
-                "Combine": "public",
-                "Class": "BSS",
-                "Group": "DGROUP"
-            },
-            ".STACK": {
-                "Name": "STACK",
-                "Align": 0x10,
-                "Combine": "STACK",
-                "Class": "STACK",
-                "Group": "DGROUP*"
-            }
+        ".FARDATA": {
+            "Name": "FAR_DATA",
+            "Align": 0x10,
+            "Combine": "private",
+            "Class": "FAR_DATA",
+            "Group": ""
         },
-        "medium": {
-            ".CODE": {
-                "Name": "name_TEXT",
-                "Align": 2,
-                "Combine": "public",
-                "Class": "CODE",
-                "Group": ""
-            },
+        ".FARDATA?": {
+            "Name": "FAR_BSS",
+            "Align": 0x10,
+            "Combine": "private",
+            "Class": "FAR_BSS",
+            "Group": ""
+        },
+        ".DATA": {
+            "Name": "_DATA",
+            "Align": 2,
+            "Combine": "public",
+            "Class": "DATA",
+            "Group": "DGROUP"
+        },
+        ".CONST": {
+            "Name": "CONST",
+            "Align": 2,
+            "Combine": "public",
+            "Class": "CONST",
+            "Group": "DGROUP"
+        },
+        ".DATA?": {
+            "Name": "_BSS",
+            "Align": 2,
+            "Combine": "public",
+            "Class": "BSS",
+            "Group": "DGROUP"
+        }
+    },
+    "small": {
+        ".CODE": {
+            "Name": "_TEXT",
+            "Align": 2,
+            "Combine": "public",
+            "Class": "CODE",
+            "Group": ""
+        },
+        ".FARDATA": {
+            "Name": "FAR_DATA",
+            "Align": 0x10,
+            "Combine": "private",
+            "Class": "FAR_DATA",
+            "Group": ""
+        },
+        ".FARDATA?": {
+            "Name": "FAR_BSS",
+            "Align": 0x10,
+            "Combine": "private",
+            "Class": "FAR_BSS",
+            "Group": ""
+        },
+        ".DATA": {
+            "Name": "_DATA",
+            "Align": 2,
+            "Combine": "public",
+            "Class": "DATA",
+            "Group": "DGROUP"
+        },
+        ".CONST": {
+            "Name": "CONST",
+            "Align": 2,
+            "Combine": "public",
+            "Class": "CONST",
+            "Group": "DGROUP"
+        },
+        ".DATA?": {
+            "Name": "_BSS",
+            "Align": 2,
+            "Combine": "public",
+            "Class": "BSS",
+            "Group": "DGROUP"
+        },
+        ".STACK": {
+            "Name": "STACK",
+            "Align": 0x10,
+            "Combine": "STACK",
+            "Class": "STACK",
+            "Group": "DGROUP*"
+        }
+    },
+    "medium": {
+        ".CODE": {
+            "Name": "name_TEXT",
+            "Align": 2,
+            "Combine": "public",
+            "Class": "CODE",
+            "Group": ""
+        },
 
-            ".FARDATA": {
-                "Name": "FAR_DATA",
-                "Align": 0x10,
-                "Combine": "private",
-                "Class": "FAR_DATA",
-                "Group": ""
-            },
-            ".FARDATA?": {
-                "Name": "FAR_BSS",
-                "Align": 0x10,
-                "Combine": "private",
-                "Class": "FAR_BSS",
-                "Group": ""
-            },
-            ".DATA": {
-                "Name": "_DATA",
-                "Align": 2,
-                "Combine": "public",
-                "Class": "DATA",
-                "Group": "DGROUP"
-            },
-            ".CONST": {
-                "Name": "CONST",
-                "Align": 2,
-                "Combine": "public",
-                "Class": "CONST",
-                "Group": "DGROUP"
-            },
-            ".DATA?": {
-                "Name": "_BSS",
-                "Align": 2,
-                "Combine": "public",
-                "Class": "BSS",
-                "Group": "DGROUP"
-            },
-            ".STACK": {
-                "Name": "STACK",
-                "Align": 0x10,
-                "Combine": "STACK",
-                "Class": "STACK",
-                "Group": "DGROUP*"
-            }
+        ".FARDATA": {
+            "Name": "FAR_DATA",
+            "Align": 0x10,
+            "Combine": "private",
+            "Class": "FAR_DATA",
+            "Group": ""
         },
-        "compact": {
-            ".CODE": {
-                "Name": "_TEXT",
-                "Align": 2,
-                "Combine": "public",
-                "Class": "CODE",
-                "Group": ""
-            },
-            ".FARDATA": {
-                "Name": "FAR_DATA",
-                "Align": 0x10,
-                "Combine": "private",
-                "Class": "FAR_DATA",
-                "Group": ""
-            },
-            ".FARDATA?": {
-                "Name": "FAR_BSS",
-                "Align": 0x10,
-                "Combine": "private",
-                "Class": "FAR_BSS",
-                "Group": ""
-            },
-            ".DATA": {
-                "Name": "_DATA",
-                "Align": 2,
-                "Combine": "public",
-                "Class": "DATA",
-                "Group": "DGROUP"
-            },
-            ".CONST": {
-                "Name": "CONST",
-                "Align": 2,
-                "Combine": "public",
-                "Class": "CONST",
-                "Group": "DGROUP"
-            },
-            ".DATA?": {
-                "Name": "_BSS",
-                "Align": 2,
-                "Combine": "public",
-                "Class": "BSS",
-                "Group": "DGROUP"
-            },
-            ".STACK": {
-                "Name": "STACK",
-                "Align": 0x10,
-                "Combine": "STACK",
-                "Class": "STACK",
-                "Group": "DGROUP*"
-            }
+        ".FARDATA?": {
+            "Name": "FAR_BSS",
+            "Align": 0x10,
+            "Combine": "private",
+            "Class": "FAR_BSS",
+            "Group": ""
         },
-        "large": {  # or huge
-            ".CODE": {
-                "Name": "name_TEXT",
-                "Align": 2,
-                "Combine": "public",
-                "Class": "CODE",
-                "Group": ""
-            },
-            ".FARDATA": {
-                "Name": "FAR_DATA",
-                "Align": 0x10,
-                "Combine": "private",
-                "Class": "FAR_DATA",
-                "Group": ""
-            },
-            ".FARDATA?": {
-                "Name": "FAR_BSS",
-                "Align": 0x10,
-                "Combine": "private",
-                "Class": "FAR_BSS",
-                "Group": ""
-            },
-            ".DATA": {
-                "Name": "_DATA",
-                "Align": 2,
-                "Combine": "public",
-                "Class": "DATA",
-                "Group": "DGROUP"
-            },
-            ".CONST": {
-                "Name": "CONST",
-                "Align": 2,
-                "Combine": "public",
-                "Class": "CONST",
-                "Group": "DGROUP"
-            },
-            ".DATA?": {
-                "Name": "_BSS",
-                "Align": 2,
-                "Combine": "public",
-                "Class": "BSS",
-                "Group": "DGROUP"
-            },
-            ".STACK": {
-                "Name": "STACK",
-                "Align": 0x10,
-                "Combine": "STACK",
-                "Class": "STACK",
-                "Group": "DGROUP*"
-            }
+        ".DATA": {
+            "Name": "_DATA",
+            "Align": 2,
+            "Combine": "public",
+            "Class": "DATA",
+            "Group": "DGROUP"
         },
-        "flat": {
-            ".CODE": {
-                "Name": "_TEXT",
-                "Align": 4,
-                "Combine": "public",
-                "Class": "CODE",
-                "Group": ""
-            },
-            ".FARDATA": {
-                "Name": "_DATA",
-                "Align": 4,
-                "Combine": "public",
-                "Class": "DATA",
-                "Group": ""
-            },
-            ".FARDATA?": {
-                "Name": "_BSS",
-                "Align": 4,
-                "Combine": "public",
-                "Class": "BSS",
-                "Group": ""
-            },
-            ".DATA": {
-                "Name": "_DATA",
-                "Align": 4,
-                "Combine": "public",
-                "Class": "DATA",
-                "Group": ""
-            },
-            ".CONST": {
-                "Name": "CONST",
-                "Align": 4,
-                "Combine": "public",
-                "Class": "CONST",
-                "Group": ""
-            },
-            ".DATA?": {
-                "Name": "_BSS",
-                "Align": 4,
-                "Combine": "public",
-                "Class": "BSS",
-                "Group": ""
-            },
-            ".STACK": {
-                "Name": "STACK",
-                "Align": 4,
-                "Combine": "public",
-                "Class": "STACK",
-                "Group": ""
-            }
+        ".CONST": {
+            "Name": "CONST",
+            "Align": 2,
+            "Combine": "public",
+            "Class": "CONST",
+            "Group": "DGROUP"
+        },
+        ".DATA?": {
+            "Name": "_BSS",
+            "Align": 2,
+            "Combine": "public",
+            "Class": "BSS",
+            "Group": "DGROUP"
+        },
+        ".STACK": {
+            "Name": "STACK",
+            "Align": 0x10,
+            "Combine": "STACK",
+            "Class": "STACK",
+            "Group": "DGROUP*"
+        }
+    },
+    "compact": {
+        ".CODE": {
+            "Name": "_TEXT",
+            "Align": 2,
+            "Combine": "public",
+            "Class": "CODE",
+            "Group": ""
+        },
+        ".FARDATA": {
+            "Name": "FAR_DATA",
+            "Align": 0x10,
+            "Combine": "private",
+            "Class": "FAR_DATA",
+            "Group": ""
+        },
+        ".FARDATA?": {
+            "Name": "FAR_BSS",
+            "Align": 0x10,
+            "Combine": "private",
+            "Class": "FAR_BSS",
+            "Group": ""
+        },
+        ".DATA": {
+            "Name": "_DATA",
+            "Align": 2,
+            "Combine": "public",
+            "Class": "DATA",
+            "Group": "DGROUP"
+        },
+        ".CONST": {
+            "Name": "CONST",
+            "Align": 2,
+            "Combine": "public",
+            "Class": "CONST",
+            "Group": "DGROUP"
+        },
+        ".DATA?": {
+            "Name": "_BSS",
+            "Align": 2,
+            "Combine": "public",
+            "Class": "BSS",
+            "Group": "DGROUP"
+        },
+        ".STACK": {
+            "Name": "STACK",
+            "Align": 0x10,
+            "Combine": "STACK",
+            "Class": "STACK",
+            "Group": "DGROUP*"
+        }
+    },
+    "large": {  # or huge
+        ".CODE": {
+            "Name": "name_TEXT",
+            "Align": 2,
+            "Combine": "public",
+            "Class": "CODE",
+            "Group": ""
+        },
+        ".FARDATA": {
+            "Name": "FAR_DATA",
+            "Align": 0x10,
+            "Combine": "private",
+            "Class": "FAR_DATA",
+            "Group": ""
+        },
+        ".FARDATA?": {
+            "Name": "FAR_BSS",
+            "Align": 0x10,
+            "Combine": "private",
+            "Class": "FAR_BSS",
+            "Group": ""
+        },
+        ".DATA": {
+            "Name": "_DATA",
+            "Align": 2,
+            "Combine": "public",
+            "Class": "DATA",
+            "Group": "DGROUP"
+        },
+        ".CONST": {
+            "Name": "CONST",
+            "Align": 2,
+            "Combine": "public",
+            "Class": "CONST",
+            "Group": "DGROUP"
+        },
+        ".DATA?": {
+            "Name": "_BSS",
+            "Align": 2,
+            "Combine": "public",
+            "Class": "BSS",
+            "Group": "DGROUP"
+        },
+        ".STACK": {
+            "Name": "STACK",
+            "Align": 0x10,
+            "Combine": "STACK",
+            "Class": "STACK",
+            "Group": "DGROUP*"
+        }
+    },
+    "flat": {
+        ".CODE": {
+            "Name": "_TEXT",
+            "Align": 4,
+            "Combine": "public",
+            "Class": "CODE",
+            "Group": ""
+        },
+        ".FARDATA": {
+            "Name": "_DATA",
+            "Align": 4,
+            "Combine": "public",
+            "Class": "DATA",
+            "Group": ""
+        },
+        ".FARDATA?": {
+            "Name": "_BSS",
+            "Align": 4,
+            "Combine": "public",
+            "Class": "BSS",
+            "Group": ""
+        },
+        ".DATA": {
+            "Name": "_DATA",
+            "Align": 4,
+            "Combine": "public",
+            "Class": "DATA",
+            "Group": ""
+        },
+        ".CONST": {
+            "Name": "CONST",
+            "Align": 4,
+            "Combine": "public",
+            "Class": "CONST",
+            "Group": ""
+        },
+        ".DATA?": {
+            "Name": "_BSS",
+            "Align": 4,
+            "Combine": "public",
+            "Class": "BSS",
+            "Group": ""
+        },
+        ".STACK": {
+            "Name": "STACK",
+            "Align": 4,
+            "Combine": "public",
+            "Class": "STACK",
+            "Group": ""
         }
     }
+}
+
+class Segment:
+    # __slots__ = ['name', 'offset', '__data', 'original_name', 'used']
 
     def __init__(self, name, offset, options=None, segclass=None, comment=''):
         '''
@@ -454,7 +455,7 @@ class Data(baseop, lark.Tree):
     #             'filename', 'line', 'line_number']
 
     def __init__(self, label, type, data_internal_type: DataType, array, elements, size, filename='', raw_line='',
-                 line_number=0, comment='', align=False, offset=0):
+                 line_number=0, comment='', align=False, offset=0, meta=None):
         '''
         One element of data
 
@@ -476,7 +477,7 @@ class Data(baseop, lark.Tree):
         self.data_internal_type = data_internal_type
         self.elements = elements
         self.size = size
-        self.array = array
+        self.children = array
         self.__members = []
         self.filename = filename
         self.raw_line = raw_line
@@ -488,6 +489,7 @@ class Data(baseop, lark.Tree):
 
         self.data = 'data'
         self.children = []
+        self._meta = meta
 
     def isobject(self):
         return self.data_internal_type == DataType.OBJECT
@@ -503,7 +505,7 @@ class Data(baseop, lark.Tree):
             for m, v in zip(self.__members, value):
                 m.setvalue(v)
         else:
-            self.array = value
+            self.children = value
 
     def getlabel(self):
         return self.label
@@ -518,7 +520,7 @@ class Data(baseop, lark.Tree):
         return self.data_internal_type
 
     def getdata(self):
-        return self.label, self.data_type, self.data_internal_type, self.array, self.elements, self.size
+        return self.label, self.data_type, self.data_internal_type, self.children, self.elements, self.size
 
     def is_align(self):
         return self.align

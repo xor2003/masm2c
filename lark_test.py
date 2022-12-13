@@ -48,9 +48,10 @@ VECTOR struc
  TRANSFORMEDSHAPE struc
     ts_shapeptr dw ?
     ts_rectptr dw ?
-    ts_rOTvec VECTOR <>
-    ts_vec VECTOR 3 dup (<>)
+    ;ts_rOTvec VECTOR <>
+    ;ts_vec VECTOR 3 dup (<>)
  TRANSFORMEDSHAPE ends
+ var_transshape = TRANSFORMEDSHAPE ptr -50
  
 GAMEINFO struc
 game_opponenttype dw ?

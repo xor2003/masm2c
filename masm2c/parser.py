@@ -200,7 +200,7 @@ class Parser:
         self.current_macro = None
         self.current_struct = None
 
-        self.struct_names_stack = set()
+        self.struct_names_stack = list()
 
         self._current_file = ''
         self.__current_file_hash = '0'
@@ -825,11 +825,10 @@ class Parser:
         end start
             '''
             self.test_pre_parse()
-            result = self.parse_file_content(text)
-            result = result.children[2].children[1].children[1]
-            result = self.process_ast(text, result)
-            result = "".join(IR2Cpp().visit(result))
-            #result = result1  # .asminstruction
+            result = self.parse_file_content(line+"\n", start_rule='instruction')
+            #result = result.children[2].children[1].children[1]
+            result = self.process_ast(line, result)
+            #result = "".join(IR2Cpp(self).visit(result))
         except Exception as e:
             print(e)
             logging.error("Error1")
@@ -876,9 +875,9 @@ class Parser:
     end start
     '''
             self.test_pre_parse()
-            result = self.parse_file_content(text)
-            result = result.children[2]
-            result = self.process_ast(text, result)
+            result = self.parse_file_content(line, start_rule='insegdirlist')
+            #result = result.children[2]
+            result = self.process_ast(line, result)
             result = tuple(IR2Cpp(self).visit(result))
         except Exception as e:
             print(e)
@@ -893,16 +892,10 @@ class Parser:
         self.test_mode = True
         self.segments = OrderedDict()
         try:
-            text = '''.model tiny
-        default_seg segment
-        mov ax, ''' + line + '''
-        default_seg ends
-        end start
-        '''
             self.test_pre_parse()
-            result = self.parse_file_content(text)
-            expr = result.children[2].children[1].children[1]
-            expr = self.process_ast(text, expr)
+            expr = self.parse_file_content(line, start_rule='expr')
+            #expr = result.children[2].children[1].children[1]
+            expr = self.process_ast(line, expr)
             if destination:
                 expr.mods.add("destination")
             if def_size and expr.element_size == 0:
@@ -1010,8 +1003,11 @@ class Parser:
         logging.debug("convert_data %s %d %s", label, binary_width, args)
         # original_label = label
 
-        #elements, is_string, array = self.process_data_tokens(args, binary_width)
         data_internal_type = self.identify_data_internal_type(args, elements, is_string)
+        #elements, is_string, array = self.process_data_tokens(args, binary_width)
+        array = AsmData2IR().visit(args)
+        if data_internal_type == op.DataType.ARRAY and not any(array) and not isstruct:  # all zeros
+            array = [0]
 
         logging.debug("~size %d elements %d", binary_width, elements)
         if label and not isstruct:
@@ -1030,12 +1026,6 @@ class Parser:
             self.__binary_data_size += size
             self.__cur_seg_offset += size
             data_type = 'usual data'
-        array = AsmData2IR().visit(args)
-        if data_internal_type == op.DataType.ARRAY and not any(array) and not isstruct:  # all zeros
-            array = [0]
-        #while isinstance(array, list) and len(array) == 1 and isinstance(array[0], list):
-        #    array = array[0]
-        #array = [el[0] if isinstance(el, list) and len(el) == 1 else el for el in array]
         data = op.Data(label, type, data_internal_type, array, elements, size, filename=self._current_file,
                        raw_line=raw,
                        line_number=line_number, comment=data_type, offset=offset)
@@ -1068,11 +1058,11 @@ class Parser:
             else:
                 logging.debug(
                     f'Merging data at {self.__segment.getdata()[-size].__label} - {self.__segment.getdata()[-1].__label}')
-                array = [x.array[0] for x in self.__segment.getdata()[-size:]]
+                array = [x.children[0] for x in self.__segment.getdata()[-size:]]
                 if not any(array):  # all zeros
                     array = [0]
 
-                self.__segment.getdata()[-size].array = array
+                self.__segment.getdata()[-size].children = array
                 self.__segment.getdata()[-size].elements = size
                 self.__segment.getdata()[-size].data_internal_type = op.DataType.ARRAY
                 self.__segment.getdata()[-size].size = size
@@ -1138,10 +1128,10 @@ class Parser:
     def parse_file_inside(self, text, file_name=None):
         return self.parse_include(text, file_name)
 
-    def parse_file_content(self, text, file_name=None):
+    def parse_file_content(self, text, file_name=None, start_rule='start'):
         logging.debug("parsing: [%s]", text)
 
-        result = self.__lex.parser.parse(text)  # , file_name=file_name, extra=self)
+        result = self.__lex.parser.parse(text, start=start_rule)  # , file_name=file_name, extra=self)
         return result
 
     def process_ast(self, text, result):

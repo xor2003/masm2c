@@ -91,8 +91,8 @@ contextitem: "ASSUMES"i | "RADIX"i | "LISTING"i | "CPU"i | "ALL"i
 contextitemlist: contextitem | contextitem _COMMA contextitemlist
 controlblock: whileblock| repeatblock
 controldir: controlif| controlblock
-controlelseif: ".ELSEIF"i cexpr _linereminder _insegdir+ controlelseif?
-controlif: ".IF"i cexpr _linereminder _insegdir+ controlelseif? elsedirectivelist? ".ENDIF"i _linereminder
+controlelseif: ".ELSEIF"i cexpr _linereminder insegdirlist controlelseif?
+controlif: ".IF"i cexpr _linereminder insegdirlist controlelseif? elsedirectivelist? ".ENDIF"i _linereminder
 crefdir: crefoption _linereminder
 crefoption: ".CREF"i | ".XCREF"i idlist? | ".NOCREF"i idlist?
 //datadecl: DB | DW | DD | DF | DQ | DT | DATATYPE
@@ -196,7 +196,7 @@ sizearg: e10
 
 echodir: "ECHO"i arbitrarytext _linereminder | ".OUT"i arbitrarytext _linereminder
 elsedirectivelist: ".ELSE"i _linereminder _insegdir+
-elseifblock: elseifstatement _linereminder _insegdir+ elseifblock?
+elseifblock: elseifstatement _linereminder insegdirlist elseifblock?
 elseifstatement: "ELSEIF"i expr| "ELSEIFE"i expr| "ELSEIFB"i textitem| "ELSEIFNB"i textitem | "ELSEIFDEF"i LABEL| "ELSEIFNDEF"i LABEL| "ELSEIFDIF"i textitem _COMMA textitem| "ELSEIFDIFI"i textitem _COMMA textitem| "ELSEIFIDN"i textitem _COMMA textitem| "ELSEIFIDNI"i textitem _COMMA textitem| "ELSEIF1"i | "ELSEIF2"i
 enddir: "END"i expr?  _linereminder?
 endpdir: LABEL "ENDP"i _linereminder
@@ -227,13 +227,13 @@ _generaldir: modeldir | segorderdir | namedir| includelibdir | commentdir| group
 groupdir : LABEL "GROUP"i segidlist
 idlist: LABEL | LABEL _COMMA idlist
 ifcexpr: ".IF"i cexpr
-ifdir: ifstatement _linereminder _insegdir+ elseifblock? elsedirectivelist? "ENDIF"i _linereminder
+ifdir: ifstatement _linereminder insegdirlist elseifblock? elsedirectivelist? "ENDIF"i _linereminder
 ifstatement: "IF"i expr| "IFE"i expr| "IFB"i textitem| "IFNB"i textitem| "IFDEF"i LABEL| "IFNDEF"i LABEL| "IFDIF"i textitem _COMMA textitem| "IFDIFI"i textitem _COMMA textitem| "IFIDN"i textitem _COMMA textitem| "IFIDNI"i textitem _COMMA textitem| "IF1"i | "IF2"i
 includedir: "INCLUDE"i filespec _linereminder
 includelibdir: "INCLUDELIB"i filespec _linereminder
 _insegdir: labeldef _insegmentdir | _insegmentdir
-//insegdirlist: _insegdir+
-_insegmentdir: instruction| datadir| controldir| startupdir| exitdir| offsetdir| labeldir| procdir  localdirlist? endpdir| procdir  localdirlist? _insegdir+ endpdir| invokedir| _generaldir | _linereminder
+insegdirlist: _insegdir+
+_insegmentdir: instruction| datadir| controldir| startupdir| exitdir| offsetdir| labeldir| procdir  localdirlist? endpdir| procdir  localdirlist? insegdirlist endpdir| invokedir| _generaldir | _linereminder
 
 _asminstruction: instrprefix? mnemonic  exprlist?
 //| PUSH allreglist
@@ -332,7 +332,7 @@ commaoeol: _COMMA  _linereminder?
 !segattrib: "PUBLIC"i | "STACK"i | "COMMON"i | "MEMORY"i | "AT"i expr| "PRIVATE"i
 segdir: ".CODE"i LABEL? | ".DATA"i | ".DATA_"i| ".CONST"i | ".FARDATA"i LABEL? | ".FARDATA_"i LABEL? | ".STACK"i expr?
 segidlist : LABEL  _COMMA segidlist | LABEL
-_segmentdef: segmentdir  endsdir|segmentdir  _insegdir+  endsdir| simplesegdir | simplesegdir  endsdir | simplesegdir  _insegdir+   endsdir?
+_segmentdef: segmentdir  endsdir|segmentdir  insegdirlist  endsdir| simplesegdir | simplesegdir  endsdir | simplesegdir  insegdirlist   endsdir?
 segmentdir: LABEL "SEGMENT"i segoptionlist?  _linereminder
 _segoption: segalign| segro| segattrib| segsize| classname
 segoptionlist: _segoption+

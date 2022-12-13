@@ -527,7 +527,7 @@ class Cpp(Gen):
             return self.tokens_to_string(expr.children)
         return expr
 
-    def render_instruction_argument(self, expr, def_size: int=0, destination: bool=False, lea: bool=False):
+    def render_instruction_argument_(self, expr, def_size: int=0, destination: bool=False, lea: bool=False):
         '''
         Convert instruction argument Tokens into C
         :param expr: argument Tokens
@@ -1287,10 +1287,13 @@ struct Memory{
     def _instruction0(self, cmd):
         return "%s" % (cmd.upper())
 
-    def _instruction1(self, cmd, dst):
+    def _instruction1(self, node) -> str:
+        cmd, dst = node.cmd, node.args
         self.a = self.render_instruction_argument(dst)
         return "%s(%s)" % (cmd.upper(), self.a)
 
+    def render_instruction_argument(self, expr):
+        return "".join(IR2Cpp(self._context).visit(expr))
     def _jump(self, cmd, label):
         result = self.isrelativejump(label)
         if result:
@@ -1327,7 +1330,8 @@ struct Memory{
     def return_empty(self, _):
         return []
 
-    def _assignment(self, stmt, dst, src):
+    def _assignment(self, stmt):
+        dst, src = stmt.args
         src = Token.remove_tokens(src, ['expr'])
         size = self.calculate_size(src)
         ptrdir = Token.find_tokens(src, 'ptrdir')

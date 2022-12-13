@@ -16,6 +16,62 @@ from random import randint
 # Random order for tests runs. (Original is: -1 if x<y, 0 if x==y, 1 if x>y).
 #unittest.TestLoader.sortTestMethodsUsing = lambda _, x, y: randint(-1, 1)
 
+class ParserTestSimple(unittest.TestCase):
+    # First define a class variable that determines
+    # if setUp was ever run
+    ClassIsSetup = False
+
+    def setUp(self):
+        # If it was not setup yet, do it
+        if not self.ClassIsSetup:
+            print("Initializing testing environment")
+            # run the real setup
+            self.setupClass()
+            # remember that it was setup already
+            self.__class__.ClassIsSetup = True
+
+    def setupClass(self):
+        # Do the real setup
+        unittest.TestCase.setUp(self)
+        self.__class__.parser = Parser([])
+        self.__class__.parser.test_mode = True
+        self.__class__.cpp = cpp.Cpp(self.__class__.parser)
+        self.__class__.proc = Proc('mainproc')
+        self.__class__.cpp.proc = self.__class__.proc
+        self.__class__.results = {}
+
+    def doTest(self, input, second):
+        result = self.proc.generate_c_cmd(self.cpp, self.parser.action_code(input))
+        #self.__class__.results[input] = result
+        return (result, second)
+
+    def test_instr_20(self):
+        self.assertEqual(*self.doTest('bsr     eax, edx', 'BSR(eax, edx)'))
+
+    def test_instr_30(self):
+        self.assertEqual(*self.doTest('scasw', 'SCASW'))
+
+    def test_instr_40(self):
+        self.assertEqual(*self.doTest('setb    al', 'SETB(al)'))
+
+    def test_instr_50(self):
+        self.assertEqual(*self.doTest('setnz bh', 'SETNZ(bh)'))
+
+    def test_instr_60(self):
+        self.assertEqual(*self.doTest('setz    cl', 'SETZ(cl)'))
+
+    def test_instr_70(self):
+        self.assertEqual(*self.doTest('shl     dl, cl', 'SHL(dl, cl)'))
+
+    def test_instr_80(self):
+        self.assertEqual(*self.doTest('shl     dx, cl', 'SHL(dx, cl)'))
+
+    def test_instr_90(self):
+        self.assertEqual(*self.doTest('shl     edx, cl', 'SHL(edx, cl)'))
+
+    def test_instr_100(self):
+        self.assertEqual(*self.doTest('shld    dx, bx, cl', 'SHLD(dx, bx, cl)'))
+
 
 class ParserTest(unittest.TestCase):
     # First define a class variable that determines
@@ -226,33 +282,6 @@ head db '^',10,10
 
     def test_instr_10(self):
         self.assertEqual(*self.doTest('mov    ax, offset     failure', 'ax = m2c::kfailure;'))
-
-    def test_instr_20(self):
-        self.assertEqual(*self.doTest('bsr     eax, edx', 'BSR(eax, edx)'))
-
-    def test_instr_30(self):
-        self.assertEqual(*self.doTest('scasw', 'SCASW'))
-
-    def test_instr_40(self):
-        self.assertEqual(*self.doTest('setb    al', 'SETB(al)'))
-
-    def test_instr_50(self):
-        self.assertEqual(*self.doTest('setnz bh', 'SETNZ(bh)'))
-
-    def test_instr_60(self):
-        self.assertEqual(*self.doTest('setz    cl', 'SETZ(cl)'))
-
-    def test_instr_70(self):
-        self.assertEqual(*self.doTest('shl     dl, cl', 'SHL(dl, cl)'))
-
-    def test_instr_80(self):
-        self.assertEqual(*self.doTest('shl     dx, cl', 'SHL(dx, cl)'))
-
-    def test_instr_90(self):
-        self.assertEqual(*self.doTest('shl     edx, cl', 'SHL(edx, cl)'))
-
-    def test_instr_100(self):
-        self.assertEqual(*self.doTest('shld    dx, bx, cl', 'SHLD(dx, bx, cl)'))
 
     def test_instr_110(self):
         self.assertEqual(*self.doTest('shld    edx, ebx, cl', 'SHLD(edx, ebx, cl)'))
