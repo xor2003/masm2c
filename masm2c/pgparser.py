@@ -395,6 +395,10 @@ class Asm2IR(Transformer):
         self.instruction_name = name[0]
         return Discard
 
+    def comment(self, children):
+        self._comment = children
+        return Discard
+
     @v_args(meta=True)
     def instruction(self, meta, nodes):
         logging.debug("asminstruction %s ~~", nodes)
