@@ -119,7 +119,10 @@ class Asm2IR(Transformer):
         # while isinstance(children, list) and len(children) == 1:
         #    children = children[0]
         self.expression.children = children  # [0]
-        result = self._expression
+        result:Expression = self._expression
+        if not self.expression.segment_overriden and 'ptrdir' in result.mods and \
+                any(reg in result.registers for reg in {'bp', 'ebp', 'sp', 'esp'}):
+            result.segment_register = 'ss'
         self._expression = None
         return result
 
@@ -143,6 +146,7 @@ class Asm2IR(Transformer):
             seg = seg[0]
         self.__work_segment = seg.lower()
         self.expression.mods.add('ptrdir')
+        self.expression.segment_overriden = True
         return nodes[1:]
 
     def ptrdir(self, children):
@@ -292,7 +296,7 @@ class Asm2IR(Transformer):
             type = self.element_type
         else:
             type = children[0][1].lower()  # Structs
-            values = children[0][1:3]
+            values = children[0][2:3][0]
 
         is_string = self.is_string
         self.is_string = False

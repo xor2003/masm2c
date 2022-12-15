@@ -141,6 +141,7 @@ class Expression(lark.Tree):
         self.mods = set()
         self.registers = set()
         self.segment_register = "ds"
+        self.segment_overriden = False
 
     def size(self):
         if 'ptrdir' in self.mods:

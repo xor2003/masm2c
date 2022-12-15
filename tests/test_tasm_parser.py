@@ -45,6 +45,9 @@ class ParserTestSimple(unittest.TestCase):
         #self.__class__.results[input] = result
         return (result, second)
 
+    def test_instr_6740(self):
+        self.assertEqual(*self.doTest('mov     dword ptr [esp+8], 0 ; op1', 'MOV(*(dd*)(raddr(ss,esp+8)), 0)'))
+
     def test_instr_20(self):
         self.assertEqual(*self.doTest('bsr     eax, edx', 'BSR(eax, edx)'))
 
@@ -2274,12 +2277,6 @@ head db '^',10,10
 
     def test_instr_6730(self):
         self.assertEqual(*self.doTest('mov     dword ptr [esp+8], 0 ; iflags', 'MOV(*(dd*)(raddr(ss,esp+8)), 0)'))
-
-    def test_instr_6740(self):
-        self.assertEqual(*self.doTest('mov     dword ptr [esp+8], 0 ; op1', 'MOV(*(dd*)(raddr(ss,esp+8)), 0)'))
-
-    def test_instr_6750(self):
-        self.assertEqual(*self.doTest('mov     dword ptr [esp+8], 0', 'MOV(*(dd*)(raddr(ss,esp+8)), 0)'))
 
     def test_instr_6760(self):
         self.assertEqual(*self.doTest('mov     dword ptr [esp+8], 0FBCA7654h', 'MOV(*(dd*)(raddr(ss,esp+8)), 0x0FBCA7654)'))

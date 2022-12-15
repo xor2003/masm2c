@@ -20,6 +20,7 @@
 #
 from builtins import str
 from collections import OrderedDict
+from copy import deepcopy
 from enum import Enum
 
 from lark import lark
@@ -489,6 +490,13 @@ class Data(baseop, lark.Tree):
 
         self.data = 'data'
         self._meta = meta
+
+    def __deepcopy__(self, memo):
+        cls = self.__class__
+        result = cls.__new__(cls)
+        for k, v in self.__dict__.items():
+            setattr(result, k, deepcopy(v))
+        return result
 
     def isobject(self):
         return self.data_internal_type == DataType.OBJECT
