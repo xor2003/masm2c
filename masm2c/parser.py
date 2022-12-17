@@ -35,7 +35,7 @@ from lark import lark, Visitor
 
 from . import cpp as cpp_module
 from . import op
-from .Token import Token
+from .Token import Token, Expression
 from .pgparser import LarkParser, Asm2IR, ExprRemover, AsmData2IR, TopDownVisitor, BottomUpVisitor
 from .proc import Proc
 
@@ -595,7 +595,7 @@ class Parser:
         if file_name.lower().endswith('.lst'):  # for .lst provided by IDA move address to comments after ;~
             # we want exact placement so program could work
             content = self.extract_addresses_from_lst(file_name, content)
-        result = self.parse_file_content(content, file_name=file_name)
+        result = self.parse_text(content, file_name=file_name)
         result = self.process_ast(content, result)
         result = "".join(IR2Cpp().visit(result))
 
@@ -671,6 +671,9 @@ class Parser:
         o.implemented = True
 
     def action_equ_test(self, label="", value="", raw='', line_number=0):
+        result = self.parse_text(value, start_rule='equtype')
+        value = self.process_ast(value, result)
+
         o = self.action_equ(label, value, raw, line_number)
         o.implemented = True
 
@@ -679,20 +682,20 @@ class Parser:
 
     def action_equ(self, label="", value="", raw='', line_number=0):
         label = self.mangle_label(label)
-        value = Token.remove_tokens(value, ['expr'])
-        size = cpp_module.Cpp(self).calculate_size(value)
-        ptrdir = Token.find_tokens(value, 'ptrdir')
-        if ptrdir:
-            type = ptrdir[0]
-            if isinstance(type, Token):
-                type = type.children
+        #value = Token.remove_tokens(value, ['expr'])
+        size = value.size() if isinstance(value, Expression) else 0
+        #size = cpp_module.Cpp(self).calculate_size(value)
+        #ptrdir = Token.find_tokens(value, 'ptrdir')
+        type = None
+        if isinstance(value, Expression) and 'ptrdir' in value.mods:
+            type = 'TODO1'
             type = type.lower()
-            value = Token.find_and_replace_tokens(value, 'ptrdir', self.return_empty)
+            #value = Token.find_and_replace_tokens(value, 'ptrdir', self.return_empty)
         o = Proc.create_equ_op(label, value, line_number=line_number)
         o.filename = self._current_file
         o.raw_line = raw.rstrip()
         o.element_size = size
-        if ptrdir:
+        if type:
             o.original_type = type
         self.set_global(label, o)
         proc = self.get_global("mainproc")
@@ -825,7 +828,7 @@ class Parser:
         end start
             '''
             self.test_pre_parse()
-            result = self.parse_file_content(line+"\n", start_rule='instruction')
+            result = self.parse_text(line + "\n", start_rule='instruction')
             #result = result.children[2].children[1].children[1]
             result = self.process_ast(line, result)
             #result = "".join(IR2Cpp(self).visit(result))
@@ -843,7 +846,7 @@ class Parser:
         self.segments = OrderedDict()
         try:
             self.test_pre_parse()
-            result = self.parse_file_content(line, start_rule='expr')
+            result = self.parse_text(line, start_rule='expr')
             #result = result.children[2].children[1].children[1]
             expr = self.process_ast(line, result)
             result = expr.size()
@@ -863,8 +866,7 @@ class Parser:
         self.segments = OrderedDict()
         try:
             self.test_pre_parse()
-            result = self.parse_file_content(line+"\n", start_rule='insegdirlist')
-            #result = result.children[2]
+            result = self.parse_text(line + "\n", start_rule='insegdirlist')
             result = self.process_ast(line, result)
             result = tuple(IR2Cpp(self).visit(result))
         except Exception as e:
@@ -881,7 +883,7 @@ class Parser:
         self.segments = OrderedDict()
         try:
             self.test_pre_parse()
-            expr = self.parse_file_content(line, start_rule='expr')
+            expr = self.parse_text(line, start_rule='expr')
             #expr = result.children[2].children[1].children[1]
             expr = self.process_ast(line, expr)
             #if destination:
@@ -1117,7 +1119,7 @@ class Parser:
     def parse_file_inside(self, text, file_name=None):
         return self.parse_include(text, file_name)
 
-    def parse_file_content(self, text, file_name=None, start_rule='start'):
+    def parse_text(self, text, file_name=None, start_rule='start'):
         logging.debug("parsing: [%s]", text)
 
         result = self.__lex.parser.parse(text, start=start_rule)  # , file_name=file_name, extra=self)

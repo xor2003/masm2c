@@ -642,7 +642,8 @@ class LarkParser:
             with open(file_name, 'rt') as gr:
                 cls._inst.or_parser = Lark(gr, parser='lalr', propagate_positions=True, cache=True, debug=debug,
                                            postlex=MatchTag(context=kwargs['context']), start=['start', 'insegdirlist',
-                                                                                               'instruction', 'expr'])
+                                                                                               'instruction', 'expr',
+                                                                                               'equtype'])
 
             cls._inst.parser = copy(cls._inst.or_parser)
 

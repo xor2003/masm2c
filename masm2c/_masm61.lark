@@ -203,7 +203,7 @@ endpdir: LABEL "ENDP"i _linereminder
 endsdir: LABEL "ENDS"i _linereminder
 eqconstexpr: "=" expr
 equdir: LABEL "EQU"i equtype _linereminder
-equtype: expr| textliteral
+?equtype: expr| textliteral
 errordir: erroropt _linereminder
 erroropt: ".ERR"i textitem? | ".ERRE"i expr opttext? | ".ERRNZ"i expr opttext? | ".ERRB"i textitem opttext? | ".ERRNB"i textitem opttext? | ".ERRDEF"i LABEL  opttext? | ".ERRNDEF"i LABEL opttext? | ".ERRDIF"i textitem _COMMA textitem  opttext? | ".ERRDIFI"i textitem _COMMA textitem  opttext? | ".ERRIDN"i textitem _COMMA textitem  opttext? | ".ERRIDNI"i textitem _COMMA textitem  opttext? | ".ERR1"i textitem? | ".ERR2"i textitem?
 exitdir: ".EXIT"i expr?  _linereminder

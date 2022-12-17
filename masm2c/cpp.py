@@ -29,6 +29,7 @@ from . import op
 from . import proc as proc_module
 from .Token import Token
 from .gen import Gen, mangle_asm_labels, IndirectionType, InjectCode
+from .parser import ExprSizeCalculator, Vector
 from .pgparser import OFFSETDIR, LABEL, PTRDIR, REGISTER, SEGMENTREGISTER, SEGOVERRIDE, SQEXPR, INTEGER, MEMBERDIR, \
     TopDownVisitor
 
@@ -1338,8 +1339,11 @@ struct Memory{
 
     def _assignment(self, stmt):
         dst, src = stmt.args
-        src = Token.remove_tokens(src, ['expr'])
-        size = self.calculate_size(src)
+        #src = Token.remove_tokens(src, ['expr'])
+        #size = self.calculate_size(src)
+        calc = ExprSizeCalculator(init=Vector(0, 0))
+        size = calc.visit(src)[0]
+
         ptrdir = Token.find_tokens(src, 'ptrdir')
         if ptrdir:
             type = ptrdir[0]

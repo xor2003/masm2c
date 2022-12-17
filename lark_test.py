@@ -75,6 +75,9 @@ _DATA   ends ;IGNORE
  var_transshape = TRANSFORMEDSHAPE ptr -50
 '''
 t = l.parse(""".386p
+a = byte ptr -50
+b = -50
+d equ 8
 
 
 _TEXT   segment use16 word public 'CODE' ;IGNORE
