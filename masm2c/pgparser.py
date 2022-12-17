@@ -96,6 +96,7 @@ class Asm2IR(Transformer):
         self.input_str = input_str
         self.radix = 10
         self._expression = None
+        self.element_type = None
 
         self.is_string = False
 
@@ -123,6 +124,8 @@ class Asm2IR(Transformer):
         if not self.expression.segment_overriden and 'ptrdir' in result.mods and \
                 any(reg in result.registers for reg in {'bp', 'ebp', 'sp', 'esp'}):
             result.segment_register = 'ss'
+        if 'ptrdir' in result.mods:
+            self.expression.original_type = self.element_type
         self._expression = None
         return result
 
@@ -161,6 +164,7 @@ class Asm2IR(Transformer):
         #self.__work_segment = children[1].lower()
         self.expression.segment_overriden = True
         self.expression.ptr_size = self.context.typetosize(children[0])
+        self.element_type = children[0].lower()
         return children[3:]
 
     def datadecl(self, children):

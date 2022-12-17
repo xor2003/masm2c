@@ -667,6 +667,8 @@ class Parser:
         return o
 
     def action_assign_test(self, label="", value="", raw='', line_number=0):
+        #result = self.parse_text(value, start_rule='expr')
+        #value = self.process_ast(value, result)
         o = self.action_assign(label, value, raw, line_number)
         o.implemented = True
 
@@ -683,20 +685,19 @@ class Parser:
     def action_equ(self, label="", value="", raw='', line_number=0):
         label = self.mangle_label(label)
         #value = Token.remove_tokens(value, ['expr'])
-        size = value.size() if isinstance(value, Expression) else 0
+        #size = value.size() if isinstance(value, Expression) else 0
+        calc = ExprSizeCalculator(init=Vector(0, 0))
+        size = calc.visit(value)[0]
+
         #size = cpp_module.Cpp(self).calculate_size(value)
         #ptrdir = Token.find_tokens(value, 'ptrdir')
-        type = None
-        if isinstance(value, Expression) and 'ptrdir' in value.mods:
-            type = 'TODO1'
-            type = type.lower()
             #value = Token.find_and_replace_tokens(value, 'ptrdir', self.return_empty)
         o = Proc.create_equ_op(label, value, line_number=line_number)
         o.filename = self._current_file
         o.raw_line = raw.rstrip()
         o.element_size = size
-        if type:
-            o.original_type = type
+        if isinstance(value, Expression) and 'ptrdir' in value.mods:
+            o.original_type = value.original_type
         self.set_global(label, o)
         proc = self.get_global("mainproc")
         proc.stmts.append(o)
