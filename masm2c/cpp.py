@@ -869,8 +869,10 @@ class Cpp(Gen):
                 logging.debug("parse2: %s %s both sizes are 0", dst, src)
                 # raise Exception("both sizes are 0")
             dst_size = src_size
+            #dst.element_size = dst_size
         if src_size == 0:
             src_size = dst_size
+            #src.element_size = src_size
 
         dst = self.render_instruction_argument(dst, dst_size, destination=True)
         src = self.render_instruction_argument(src, src_size)
@@ -1619,7 +1621,7 @@ class IR2Cpp(TopDownVisitor, Cpp):
         self.element_size = tree.element_size
         result = "".join(self.visit(tree.children))
         if 'ptrdir' in tree.mods:
-            result = self.convert_sqbr_reference(tree.segment_register, result, 'destination' in tree.mods, tree.ptr_size, 'label' in tree.mods, lea='lea' in tree.mods)
+            result = self.convert_sqbr_reference(tree.segment_register, result, 'destination' in tree.mods, tree.element_size, 'label' in tree.mods, lea='lea' in tree.mods)
         #if indirection == IndirectionType.POINTER and \
         if self.needs_dereference:
             if result[0] == '(' and result[-1] == ')':

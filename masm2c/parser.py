@@ -862,14 +862,8 @@ class Parser:
         self.test_mode = True
         self.segments = OrderedDict()
         try:
-            text = '''.model tiny
-    default_seg segment
-    ''' + line + '''
-    default_seg ends
-    end start
-    '''
             self.test_pre_parse()
-            result = self.parse_file_content(line+"\n", start_rule='insegdir')
+            result = self.parse_file_content(line+"\n", start_rule='insegdirlist')
             #result = result.children[2]
             result = self.process_ast(line, result)
             result = tuple(IR2Cpp(self).visit(result))

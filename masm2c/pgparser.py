@@ -146,12 +146,14 @@ class Asm2IR(Transformer):
             seg = seg[0]
         #self.__work_segment = seg.lower()
         self.expression.mods.add('ptrdir')
+        self.expression.element_size = 0
         self.expression.segment_overriden = True
         return nodes[1:]
 
     def ptrdir(self, children):
         self.expression.mods.add('ptrdir')
         self.expression.ptr_size = self.size
+        self.expression.element_size = 0
         return children
 
     def ptrdir2(self, children):  # tasm?
@@ -476,6 +478,7 @@ class Asm2IR(Transformer):
         # self.expression = self.expression or Expression()
         # self.expression.indirection = IndirectionType.POINTER
         self.expression.mods.add('ptrdir')
+        self.expression.element_size = 0
         return nodes  # lark.Tree(data='sqexpr', children=nodes)
 
     def sqexpr2(self, nodes):
@@ -484,6 +487,7 @@ class Asm2IR(Transformer):
         # self.expression = self.expression or Expression()
         # self.expression.indirection = IndirectionType.POINTER
         self.expression.mods.add('ptrdir')
+        self.expression.element_size = 0
         nodes.insert(1, lark.Token(type='PLUS', value='+'))
         nodes = [lark.Tree(data='adddir', children=nodes)]
         return nodes  # lark.Tree(data='sqexpr', children=nodes)
@@ -637,7 +641,7 @@ class LarkParser:
             debug = False
             with open(file_name, 'rt') as gr:
                 cls._inst.or_parser = Lark(gr, parser='lalr', propagate_positions=True, cache=True, debug=debug,
-                                           postlex=MatchTag(context=kwargs['context']), start=['start', 'insegdir',
+                                           postlex=MatchTag(context=kwargs['context']), start=['start', 'insegdirlist',
                                                                                                'instruction', 'expr'])
 
             cls._inst.parser = copy(cls._inst.or_parser)
