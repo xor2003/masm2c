@@ -153,6 +153,11 @@ class ParserTestSimple(unittest.TestCase):
     def test_instr_360(self):
         self.assertEqual(*self.doTest('sub eax,ebx', 'SUB(eax, ebx)'))
 
+
+    def test_instr_1830(self):
+        self.assertEqual(*self.doTest('mov     eax, fs:8', 'MOV(eax, *(dd*)(raddr(fs,8)))'))
+
+
 class ParserTest(unittest.TestCase):
     # First define a class variable that determines
     # if setUp was ever run
@@ -804,9 +809,6 @@ head db '^',10,10
 
     def test_instr_1820(self):
         self.assertEqual(*self.doTest('mov     al, byte ptr [bx+GAMEINFO.game_opponenttype]', 'MOV(al, TODB(((gameinfo*)raddr(ds,bx))->game_opponenttype))'))
-
-    def test_instr_1830(self):
-        self.assertEqual(*self.doTest('mov     eax, fs:8', 'MOV(eax, *(dd*)(raddr(fs,8)))'))
 
     def test_instr_1840(self):
         self.assertEqual(*self.doTest('mov     ax, fs:8', 'MOV(ax, *(dw*)(raddr(fs,8)))'))

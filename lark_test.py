@@ -24,6 +24,9 @@ class MatchTag:
             if t.type == "LABEL" and t.value == 'struc':
                 #print(1, self.last_type, self.last, t)
                 t.type = "STRUCTHDR"
+            elif t.type == "LABEL" and t.value == 'ends':
+                #print(1, self.last_type, self.last, t)
+                t.type = "endsdir"
             #if t.type == "STRUCTHDR":
             #    print(2, t)
             #    print(self.last)
@@ -39,8 +42,6 @@ with open('masm2c/_masm61.lark') as g:
              postlex=MatchTag())  # , keep_all_tokens=True)
 
 ''' 
-'''
-t = l.parse(""".386p
 VECTOR struc
     vx dw ?
  VECTOR ends
@@ -60,10 +61,6 @@ game_opponentcarid db 4 dup (?)
 GAMEINFO ends
 extrn gameconfig:GAMEINFO
 
-
- var_transshape = TRANSFORMEDSHAPE ptr -50
-
-
 _DATA   segment use16 word public 'DATA' ;IGNORE
 head db '^',10,10
 var3 db 5*5 dup (0)
@@ -75,9 +72,15 @@ ASCII DB '00000000',0Dh,0Ah,'$' ; buffer for ASCII string
 _a070295122642\tdb '07/02/95 12:26:42',0 ; DATA XREF: seg003:off_2462E\x19o
 _DATA   ends ;IGNORE
 
+ var_transshape = TRANSFORMEDSHAPE ptr -50
+'''
+t = l.parse(""".386p
+
+
 _TEXT   segment use16 word public 'CODE' ;IGNORE
 assume  cs:_TEXT,ds:_DATA
 start:
+shr     dx, cl
 mov ax,'Z' - 'A' + 1 ;coment
 ;inc bx
 ;lahf

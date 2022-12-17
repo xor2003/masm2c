@@ -46,6 +46,11 @@ class Gen:
         return l
 
     def calculate_size(self, expr):
+        result = expr.size()
+        assert result == self.calculate_size_(expr)
+        return result
+
+    def calculate_size_(self, expr):
         '''
         Calculate inmemory size for token
         :param expr: Tokens

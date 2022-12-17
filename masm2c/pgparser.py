@@ -304,7 +304,7 @@ class Asm2IR(Transformer):
         return self.context.datadir_action(label, type, values, is_string=is_string, raw=get_raw(self.input_str, meta),
                                            line_number=get_line_number(meta))
 
-    def includedir(self, nodes, name):
+    def includedir(self, name):
         # context.parser.input_str = context.input_str[:context.end_position] + '\n' + read_asm_file(name) \
         # + '\n' + context.input_str[context.end_position:]
         fullpath = os.path.join(os.path.dirname(os.path.realpath(self.context._current_file)), name)
@@ -365,10 +365,12 @@ class Asm2IR(Transformer):
         self.context.action_ends()
         return nodes
 
-    def procdir(self, nodes, name, type):
+    @v_args(meta=True)
+    def procdir(self, meta, nodes):
+        name, type = nodes
         logging.debug("procdir " + str(nodes) + " ~~")
-        self.context.action_proc(name, type, line_number=get_line_number(self.context),
-                                 raw=get_raw_line(self.input_str, self.context))
+        self.context.action_proc(name, type, line_number=get_line_number(meta),
+                                 raw=get_raw_line(self.input_str, meta))
         return nodes
 
     def endpdir(self, nodes, name):
@@ -376,10 +378,12 @@ class Asm2IR(Transformer):
         self.context.action_endp()
         return nodes
 
-    def equdir(self, nodes, name, value):
+    @v_args(meta=True)
+    def equdir(self, meta, nodes):
+        name, value = nodes
         logging.debug("equdir " + str(nodes) + " ~~")
-        return self.context.action_equ(name.children, value, raw=get_raw(self.input_str, self.context),
-                                       line_number=get_line_number(self.context))
+        return self.context.action_equ(name.children, value, raw=get_raw(self.input_str, meta),
+                                       line_number=get_line_number(meta))
 
     @v_args(meta=True)
     def assdir(self, meta, nodes):
@@ -388,11 +392,12 @@ class Asm2IR(Transformer):
         return self.context.action_assign(name, value, raw=get_raw(self.input_str, meta),
                                           line_number=get_line_number(meta))
 
-    def instrprefix(self, nodes):
+    @v_args(meta=True)
+    def instrprefix(self, meta, nodes):
         logging.debug("instrprefix " + str(nodes) + " ~~")
         instruction = nodes[0]
-        self.context.action_instruction(instruction, [], raw=get_raw_line(self.input_str, self.context),
-                                        line_number=get_line_number(self.context))
+        self.context.action_instruction(instruction, [], raw=get_raw_line(self.input_str, meta),
+                                        line_number=get_line_number(meta))
         return []
 
     def mnemonic(self, name):
