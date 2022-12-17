@@ -45,6 +45,126 @@ class ParserTestSimple(unittest.TestCase):
         #self.__class__.results[input] = result
         return (result, second)
 
+    def test_instr_3720(self):
+        self.assertEqual(*self.doTest('imul    ax, cx', 'IMUL2_2(ax,cx)'))
+
+    def test_instr_3730(self):
+        self.assertEqual(*self.doTest('imul    ax, cx, 2Dh', 'IMUL3_2(ax,cx,0x2D)'))
+
+    def test_instr_3740(self):
+        self.assertEqual(*self.doTest('imul    ax, di, 8000h', 'IMUL3_2(ax,di,0x8000)'))
+
+    def test_instr_3750(self):
+        self.assertEqual(*self.doTest('imul    ax, dx, -2Dh', 'IMUL3_2(ax,dx,-0x2D)'))
+
+    def test_instr_3760(self):
+        self.assertEqual(*self.doTest('imul    ax, si, 7FFFh', 'IMUL3_2(ax,si,0x7FFF)'))
+
+    def test_instr_3770(self):
+        self.assertEqual(*self.doTest('imul    cl', 'IMUL1_1(cl)'))
+
+    def test_instr_3780(self):
+        self.assertEqual(*self.doTest('imul    cx', 'IMUL1_2(cx)'))
+
+    def test_instr_3790(self):
+        self.assertEqual(*self.doTest('imul    eax, ecx, 2Dh', 'IMUL3_4(eax,ecx,0x2D)'))
+
+    def test_instr_3800(self):
+        self.assertEqual(*self.doTest('imul    eax, edi, 8000h', 'IMUL3_4(eax,edi,0x8000)'))
+
+    def test_instr_3810(self):
+        self.assertEqual(*self.doTest('imul    eax, edx, -2Dh', 'IMUL3_4(eax,edx,-0x2D)'))
+
+    def test_instr_3900(self):
+        self.assertEqual(*self.doTest('inc byte ptr [edi+7]', 'INC(*(raddr(ds,edi+7)))'))
+
+    def test_instr_3910(self):
+        self.assertEqual(*self.doTest('inc byte ptr es:[0]', 'INC(*(raddr(es,0)))'))
+
+    def test_instr_3950(self):
+        self.assertEqual(*self.doTest('inc edi              ; increase target address', 'INC(edi)'))
+
+    def test_instr_9610(self):
+        self.assertEqual(*self.doTest('movsx ecx,cx', 'MOVSX(ecx, cx)'))
+
+    def test_instr_9630(self):
+        self.assertEqual(*self.doTest('movzx ecx,bx', 'MOVZX(ecx, bx)'))
+
+    def test_instr_9640(self):
+        self.assertEqual(*self.doTest('bsf     eax, ebx', 'BSF(eax, ebx)'))
+
+    def test_instr_9650(self):
+        self.assertEqual(*self.doTest('mul     cl', 'MUL1_1(cl)'))
+
+    def test_instr_9660(self):
+        self.assertEqual(*self.doTest('mul     cx', 'MUL1_2(cx)'))
+
+    def test_instr_9680(self):
+        self.assertEqual(*self.doTest('neg     dl', 'NEG(dl)'))
+
+    def test_instr_9690(self):
+        self.assertEqual(*self.doTest('neg     dx', 'NEG(dx)'))
+
+    def test_instr_9710(self):
+        self.assertEqual(*self.doTest('neg     edx', 'NEG(edx)'))
+
+    def test_instr_9740(self):
+        self.assertEqual(*self.doTest('not     dl', 'NOT(dl)'))
+
+    def test_instr_9750(self):
+        self.assertEqual(*self.doTest('bsf     eax, edi', 'BSF(eax, edi)'))
+
+    def test_instr_9760(self):
+        self.assertEqual(*self.doTest('not     dx', 'NOT(dx)'))
+
+    def test_instr_9770(self):
+        self.assertEqual(*self.doTest('not     edx', 'NOT(edx)'))
+
+    def test_instr_9780(self):
+        self.assertEqual(*self.doTest('not ax', 'NOT(ax)'))
+
+    def test_instr_9790(self):
+        self.assertEqual(*self.doTest('not eax', 'NOT(eax)'))
+
+    def test_instr_9800(self):
+        self.assertEqual(*self.doTest('or      dl, cl', 'OR(dl, cl)'))
+
+    def test_instr_9810(self):
+        self.assertEqual(*self.doTest('or      dx, cx', 'OR(dx, cx)'))
+
+    def test_instr_9820(self):
+        self.assertEqual(*self.doTest('or      ebx, 0FFFFFFFFh', 'OR(ebx, 0x0FFFFFFFF)'))
+
+    def test_instr_9830(self):
+        self.assertEqual(*self.doTest('or      edx, ecx', 'OR(edx, ecx)'))
+
+    def test_instr_990(self):
+        self.assertEqual(*self.doTest('lea     eax, ds:40h[ebx*4]', 'eax = 0x40+ebx*4'))
+
+    def test_instr_380(self):
+        self.assertEqual(*self.doTest('test    ebx, ebx', 'TEST(ebx, ebx)'))
+
+    def test_instr_390(self):
+        self.assertEqual(*self.doTest('test al,010B', 'TEST(al, 0x2)'))
+
+    def test_instr_400(self):
+        self.assertEqual(*self.doTest('test al,0B', 'TEST(al, 0x0)'))
+
+    def test_instr_410(self):
+        self.assertEqual(*self.doTest('test ax,ax', 'TEST(ax, ax)'))
+
+    def test_instr_420(self):
+        self.assertEqual(*self.doTest('test bh,01h', 'TEST(bh, 0x01)'))
+
+    def test_instr_430(self):
+        self.assertEqual(*self.doTest('test bh,02h', 'TEST(bh, 0x02)'))
+
+    def test_instr_440(self):
+        self.assertEqual(*self.doTest('test eax,eax', 'TEST(eax, eax)'))
+
+    def test_instr_450(self):
+        self.assertEqual(*self.doTest('bt      cx, dx', 'BT(cx, dx)'))
+
     def test_instr_6740(self):
         self.assertEqual(*self.doTest('mov     dword ptr [esp+8], 0 ; op1', 'MOV(*(dd*)(raddr(ss,esp+8)), 0)'))
 
@@ -153,9 +273,59 @@ class ParserTestSimple(unittest.TestCase):
     def test_instr_360(self):
         self.assertEqual(*self.doTest('sub eax,ebx', 'SUB(eax, ebx)'))
 
-
     def test_instr_1830(self):
         self.assertEqual(*self.doTest('mov     eax, fs:8', 'MOV(eax, *(dd*)(raddr(fs,8)))'))
+
+    def test_instr_590(self):
+        self.assertEqual(*self.doTest('xchg    eax, edx', 'XCHG(eax, edx)'))
+
+    def test_instr_600(self):
+        self.assertEqual(*self.doTest('xchg eax,ebx', 'XCHG(eax, ebx)'))
+
+    def test_instr_610(self):
+        self.assertEqual(*self.doTest('xlat', 'XLAT'))
+
+    def test_instr_620(self):
+        self.assertEqual(*self.doTest('xor     dl, cl', 'XOR(dl, cl)'))
+
+    def test_instr_630(self):
+        self.assertEqual(*self.doTest('xor     dx, cx', 'XOR(dx, cx)'))
+
+    def test_instr_640(self):
+        self.assertEqual(*self.doTest('bt eax,0', 'BT(eax, 0)'))
+
+    def test_instr_650(self):
+        self.assertEqual(*self.doTest('xor     edx, ecx', 'XOR(edx, ecx)'))
+
+    def test_instr_660(self):
+        self.assertEqual(*self.doTest('xor al,bl', 'XOR(al, bl)'))
+
+    def test_instr_670(self):
+        self.assertEqual(*self.doTest('xor ax,bx', 'XOR(ax, bx)'))
+
+    def test_instr_680(self):
+        self.assertEqual(*self.doTest('xor ch,bh', 'XOR(ch, bh)'))
+
+    def test_instr_690(self):
+        self.assertEqual(*self.doTest('bt eax,2', 'BT(eax, 2)'))
+
+    def test_instr_700(self):
+        self.assertEqual(*self.doTest('xor eax,ebx', 'XOR(eax, ebx)'))
+
+    def test_instr_710(self):
+        self.assertEqual(*self.doTest('xor edx,edx', 'XOR(edx, edx)'))
+
+    def test_instr_720(self):
+        self.assertEqual(*self.doTest('iret', 'IRET'))
+
+    def test_instr_730(self):
+        self.assertEqual(*self.doTest('btc     cx, dx', 'BTC(cx, dx)'))
+
+    def test_instr_740(self):
+        self.assertEqual(*self.doTest('retf', 'RETF(0)'))
+
+    def test_instr_750(self):
+        self.assertEqual(*self.doTest('retf 2', 'RETF(2)'))
 
 
 class ParserTest(unittest.TestCase):
@@ -372,29 +542,6 @@ head db '^',10,10
     def test_instr_370(self):
         self.assertEqual(*self.doTest('sub word ptr [singlequad+2],25', 'SUB(*(dw*)(((db*)&singlequad)+2), 25)'))
 
-    def test_instr_380(self):
-        self.assertEqual(*self.doTest('test    ebx, ebx', 'TEST(ebx, ebx)'))
-
-    def test_instr_390(self):
-        self.assertEqual(*self.doTest('test al,010B', 'TEST(al, 0x2)'))
-
-    def test_instr_400(self):
-        self.assertEqual(*self.doTest('test al,0B', 'TEST(al, 0x0)'))
-
-    def test_instr_410(self):
-        self.assertEqual(*self.doTest('test ax,ax', 'TEST(ax, ax)'))
-
-    def test_instr_420(self):
-        self.assertEqual(*self.doTest('test bh,01h', 'TEST(bh, 0x01)'))
-
-    def test_instr_430(self):
-        self.assertEqual(*self.doTest('test bh,02h', 'TEST(bh, 0x02)'))
-
-    def test_instr_440(self):
-        self.assertEqual(*self.doTest('test eax,eax', 'TEST(eax, eax)'))
-
-    def test_instr_450(self):
-        self.assertEqual(*self.doTest('bt      cx, dx', 'BT(cx, dx)'))
 
     def test_instr_460(self):
         self.assertEqual(*self.doTest('xadd    byte ptr [ebp+var_20], al', 'XADD(*(raddr(ss,ebp+var_20)), al)'))
@@ -435,56 +582,6 @@ head db '^',10,10
     def test_instr_580(self):
         self.assertEqual(*self.doTest('xchg    eax, dword ptr [ebp+var_20]', 'XCHG(eax, *(dd*)(raddr(ss,ebp+var_20)))'))
 
-    def test_instr_590(self):
-        self.assertEqual(*self.doTest('xchg    eax, edx', 'XCHG(eax, edx)'))
-
-    def test_instr_600(self):
-        self.assertEqual(*self.doTest('xchg eax,ebx', 'XCHG(eax, ebx)'))
-
-    def test_instr_610(self):
-        self.assertEqual(*self.doTest('xlat', 'XLAT'))
-
-    def test_instr_620(self):
-        self.assertEqual(*self.doTest('xor     dl, cl', 'XOR(dl, cl)'))
-
-    def test_instr_630(self):
-        self.assertEqual(*self.doTest('xor     dx, cx', 'XOR(dx, cx)'))
-
-    def test_instr_640(self):
-        self.assertEqual(*self.doTest('bt eax,0', 'BT(eax, 0)'))
-
-    def test_instr_650(self):
-        self.assertEqual(*self.doTest('xor     edx, ecx', 'XOR(edx, ecx)'))
-
-    def test_instr_660(self):
-        self.assertEqual(*self.doTest('xor al,bl', 'XOR(al, bl)'))
-
-    def test_instr_670(self):
-        self.assertEqual(*self.doTest('xor ax,bx', 'XOR(ax, bx)'))
-
-    def test_instr_680(self):
-        self.assertEqual(*self.doTest('xor ch,bh', 'XOR(ch, bh)'))
-
-    def test_instr_690(self):
-        self.assertEqual(*self.doTest('bt eax,2', 'BT(eax, 2)'))
-
-    def test_instr_700(self):
-        self.assertEqual(*self.doTest('xor eax,ebx', 'XOR(eax, ebx)'))
-
-    def test_instr_710(self):
-        self.assertEqual(*self.doTest('xor edx,edx', 'XOR(edx, edx)'))
-
-    def test_instr_720(self):
-        self.assertEqual(*self.doTest('iret', 'IRET'))
-
-    def test_instr_730(self):
-        self.assertEqual(*self.doTest('btc     cx, dx', 'BTC(cx, dx)'))
-
-    def test_instr_740(self):
-        self.assertEqual(*self.doTest('retf', 'RETF(0)'))
-
-    def test_instr_750(self):
-        self.assertEqual(*self.doTest('retf 2', 'RETF(2)'))
 
     def test_instr_760(self):
         self.assertEqual(*self.doTest('lds     bx, offset unk_40F064', 'LDS(bx, offset(initcall,unk_40f064))'))
@@ -552,14 +649,6 @@ head db '^',10,10
     def test_instr_970(self):
         self.assertEqual(*self.doTest('btc eax,0', 'BTC(eax, 0)'))
 
-    def test_instr_980(self):
-        self.assertEqual(*self.doTest('lea     eax, ds:40h[eax*2]', 'eax = 0x40+eax*2'))
-
-    def test_instr_990(self):
-        self.assertEqual(*self.doTest('lea     eax, ds:40h[ebx*4]', 'eax = 0x40+ebx*4'))
-
-    def test_instr_1000(self):
-        self.assertEqual(*self.doTest('lea     eax, ds:40h[ecx*8]', 'eax = 0x40+ecx*8'))
 
     def test_instr_1010(self):
         self.assertEqual(*self.doTest('mov     ds:byte_41411F[eax], dl', '*((&byte_41411f)+eax) = dl;'))
@@ -1374,35 +1463,9 @@ head db '^',10,10
     def test_instr_3710(self):
         self.assertEqual(*self.doTest('idiv    s1_0', 'IDIV4(s1_0)'))
 
-    def test_instr_3720(self):
-        self.assertEqual(*self.doTest('imul    ax, cx', 'IMUL2_2(ax,cx)'))
+    def test_instr_9670(self):
+        self.assertEqual(*self.doTest('mul     s1_0', 'MUL1_4(s1_0)'))
 
-    def test_instr_3730(self):
-        self.assertEqual(*self.doTest('imul    ax, cx, 2Dh', 'IMUL3_2(ax,cx,0x2D)'))
-
-    def test_instr_3740(self):
-        self.assertEqual(*self.doTest('imul    ax, di, 8000h', 'IMUL3_2(ax,di,0x8000)'))
-
-    def test_instr_3750(self):
-        self.assertEqual(*self.doTest('imul    ax, dx, -2Dh', 'IMUL3_2(ax,dx,-0x2D)'))
-
-    def test_instr_3760(self):
-        self.assertEqual(*self.doTest('imul    ax, si, 7FFFh', 'IMUL3_2(ax,si,0x7FFF)'))
-
-    def test_instr_3770(self):
-        self.assertEqual(*self.doTest('imul    cl', 'IMUL1_1(cl)'))
-
-    def test_instr_3780(self):
-        self.assertEqual(*self.doTest('imul    cx', 'IMUL1_2(cx)'))
-
-    def test_instr_3790(self):
-        self.assertEqual(*self.doTest('imul    eax, ecx, 2Dh', 'IMUL3_4(eax,ecx,0x2D)'))
-
-    def test_instr_3800(self):
-        self.assertEqual(*self.doTest('imul    eax, edi, 8000h', 'IMUL3_4(eax,edi,0x8000)'))
-
-    def test_instr_3810(self):
-        self.assertEqual(*self.doTest('imul    eax, edx, -2Dh', 'IMUL3_4(eax,edx,-0x2D)'))
 
     def test_instr_3820(self):
         self.assertEqual(*self.doTest('imul    eax, s1_0', 'IMUL2_4(eax,s1_0)'))
@@ -1428,41 +1491,11 @@ head db '^',10,10
     def test_instr_3890(self):
         self.assertEqual(*self.doTest("cmp [doublequote+4],'d'", "CMP(*((doublequote)+4), 'd')"))
 
-    def test_instr_3900(self):
-        self.assertEqual(*self.doTest('inc byte ptr [edi+7]', 'INC(*(raddr(ds,edi+7)))'))
-
-    def test_instr_3910(self):
-        self.assertEqual(*self.doTest('inc byte ptr es:[0]', 'INC(*(raddr(es,0)))'))
-
-    def test_instr_3920(self):
-        self.assertEqual(*self.doTest('inc eax', 'INC(eax)'))
-
-    def test_instr_3930(self):
-        self.assertEqual(*self.doTest('inc ebx', 'INC(ebx)'))
-
-    def test_instr_3940(self):
-        self.assertEqual(*self.doTest('inc ecx', 'INC(ecx)'))
-
-    def test_instr_3950(self):
-        self.assertEqual(*self.doTest('inc edi              ; increase target address', 'INC(edi)'))
-
-    def test_instr_3960(self):
-        self.assertEqual(*self.doTest('inc edi', 'INC(edi)'))
-
-    def test_instr_3970(self):
-        self.assertEqual(*self.doTest('inc edx', 'INC(edx)'))
-
-    def test_instr_3980(self):
-        self.assertEqual(*self.doTest('int 10h', '_INT(0x10)'))
-
     def test_instr_3990(self):
         self.assertEqual(*self.doTest('int 21h                         ; DOS INT 21h', '_INT(0x21)'))
 
     def test_instr_4000(self):
         self.assertEqual(*self.doTest("cmp dword ptr buffer,'tseT'", 'CMP(*(dd*)((buffer)), 0x74736554)'))
-
-    def test_instr_4010(self):
-        self.assertEqual(*self.doTest('int 31h', '_INT(0x31)'))
 
     def test_instr_4020(self):
         self.assertEqual(*self.doTest('jNC OK', 'JNC(ok)'))
@@ -3135,74 +3168,9 @@ head db '^',10,10
     def test_instr_9600(self):
         self.assertEqual(*self.doTest('movsx bx,byte ptr [h]', 'MOVSX(bx, h)'))
 
-    def test_instr_9610(self):
-        self.assertEqual(*self.doTest('movsx ecx,cx', 'MOVSX(ecx, cx)'))
-
     def test_instr_9620(self):
         self.assertEqual(*self.doTest('movzx eax, DDD', 'MOVZX(eax, ddd)'))
 
-    def test_instr_9630(self):
-        self.assertEqual(*self.doTest('movzx ecx,bx', 'MOVZX(ecx, bx)'))
-
-    def test_instr_9640(self):
-        self.assertEqual(*self.doTest('bsf     eax, ebx', 'BSF(eax, ebx)'))
-
-    def test_instr_9650(self):
-        self.assertEqual(*self.doTest('mul     cl', 'MUL1_1(cl)'))
-
-    def test_instr_9660(self):
-        self.assertEqual(*self.doTest('mul     cx', 'MUL1_2(cx)'))
-
-    def test_instr_9670(self):
-        self.assertEqual(*self.doTest('mul     s1_0', 'MUL1_4(s1_0)'))
-
-    def test_instr_9680(self):
-        self.assertEqual(*self.doTest('neg     dl', 'NEG(dl)'))
-
-    def test_instr_9690(self):
-        self.assertEqual(*self.doTest('neg     dx', 'NEG(dx)'))
-
-    def test_instr_9700(self):
-        self.assertEqual(*self.doTest('neg     ebx', 'NEG(ebx)'))
-
-    def test_instr_9710(self):
-        self.assertEqual(*self.doTest('neg     edx', 'NEG(edx)'))
-
-    def test_instr_9720(self):
-        self.assertEqual(*self.doTest('neg ebx', 'NEG(ebx)'))
-
-    def test_instr_9730(self):
-        self.assertEqual(*self.doTest('neg edx', 'NEG(edx)'))
-
-    def test_instr_9740(self):
-        self.assertEqual(*self.doTest('not     dl', 'NOT(dl)'))
-
-    def test_instr_9750(self):
-        self.assertEqual(*self.doTest('bsf     eax, edi', 'BSF(eax, edi)'))
-
-    def test_instr_9760(self):
-        self.assertEqual(*self.doTest('not     dx', 'NOT(dx)'))
-
-    def test_instr_9770(self):
-        self.assertEqual(*self.doTest('not     edx', 'NOT(edx)'))
-
-    def test_instr_9780(self):
-        self.assertEqual(*self.doTest('not ax', 'NOT(ax)'))
-
-    def test_instr_9790(self):
-        self.assertEqual(*self.doTest('not eax', 'NOT(eax)'))
-
-    def test_instr_9800(self):
-        self.assertEqual(*self.doTest('or      dl, cl', 'OR(dl, cl)'))
-
-    def test_instr_9810(self):
-        self.assertEqual(*self.doTest('or      dx, cx', 'OR(dx, cx)'))
-
-    def test_instr_9820(self):
-        self.assertEqual(*self.doTest('or      ebx, 0FFFFFFFFh', 'OR(ebx, 0x0FFFFFFFF)'))
-
-    def test_instr_9830(self):
-        self.assertEqual(*self.doTest('or      edx, ecx', 'OR(edx, ecx)'))
 
     def test_instr_9840(self):
         self.assertEqual(*self.doTest('or      res, 0FFFFFFFFh', 'OR(res, 0x0FFFFFFFF)'))
