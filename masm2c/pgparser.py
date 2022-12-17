@@ -144,7 +144,7 @@ class Asm2IR(Transformer):
         seg = nodes[0]
         if isinstance(seg, list):
             seg = seg[0]
-        self.__work_segment = seg.lower()
+        #self.__work_segment = seg.lower()
         self.expression.mods.add('ptrdir')
         self.expression.segment_overriden = True
         return nodes[1:]
@@ -156,7 +156,8 @@ class Asm2IR(Transformer):
 
     def ptrdir2(self, children):  # tasm?
         self.expression.mods.add('ptrdir')
-        self.__work_segment = children[1].lower()
+        #self.__work_segment = children[1].lower()
+        self.expression.segment_overriden = True
         self.expression.ptr_size = self.context.typetosize(children[0])
         return children[3:]
 
@@ -462,12 +463,12 @@ class Asm2IR(Transformer):
     def register(self, children):
         self.expression.element_size = self.context.is_register(children[0])
         self.expression.registers.add(children[0].lower())
-        return children[0].lower()  # Token('segmentregister', nodes[0].lower())
+        return Tree(data='register', children=[children[0].lower()])  # Token('segmentregister', nodes[0].lower())
 
     def segmentregister(self, children):
         self.expression.element_size = self.context.is_register(children[0])
         self.expression.segment_register = children[0].lower()
-        return children[0].lower()  # Token('segmentregister', nodes[0].lower())
+        return Tree(data='segmentregister', children=[children[0].lower()])  # Token('segmentregister', nodes[0].lower())
 
     def sqexpr(self, nodes):
         logging.debug("/~%s~\\", nodes)
@@ -636,7 +637,7 @@ class LarkParser:
             debug = False
             with open(file_name, 'rt') as gr:
                 cls._inst.or_parser = Lark(gr, parser='lalr', propagate_positions=True, cache=True, debug=debug,
-                                           postlex=MatchTag(context=kwargs['context']), start=['start', 'insegdirlist',
+                                           postlex=MatchTag(context=kwargs['context']), start=['start', 'insegdir',
                                                                                                'instruction', 'expr'])
 
             cls._inst.parser = copy(cls._inst.or_parser)

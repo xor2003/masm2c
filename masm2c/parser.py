@@ -869,7 +869,7 @@ class Parser:
     end start
     '''
             self.test_pre_parse()
-            result = self.parse_file_content(line+"\n", start_rule='insegdirlist')
+            result = self.parse_file_content(line+"\n", start_rule='insegdir')
             #result = result.children[2]
             result = self.process_ast(line, result)
             result = tuple(IR2Cpp(self).visit(result))

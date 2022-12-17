@@ -47,7 +47,8 @@ class Gen:
 
     def calculate_size(self, expr):
         result = expr.size()
-        assert result == self.calculate_size_(expr)
+        #oldresult = self.calculate_size_(expr)
+        #assert result == oldresult
         return result
 
     def calculate_size_(self, expr):
@@ -69,7 +70,7 @@ class Gen:
         segover = Token.find_tokens(expr, 'segoverride')
         if issqexpr or segover:
             expr = Token.remove_tokens(expr, ['segmentregister', 'register', 'integer', SQEXPR, 'segoverride'])
-            return self.calculate_size(expr)
+            return self.calculate_size_(expr)
 
         if isinstance(expr, list) and all(
                 isinstance(i, str) or (isinstance(i, Token) and i.data == 'INTEGER') for i in expr):
@@ -103,7 +104,7 @@ class Gen:
                     g = self._context.get_global(name)
                     if isinstance(g, (op._equ, op._assignment)):
                         if g.value != origexpr:  # prevent loop
-                            return self.calculate_size(g.value)
+                            return self.calculate_size_(g.value)
                         else:
                             return 0
                     logging.debug('get_size res %d', g.size)
@@ -125,18 +126,18 @@ class Gen:
                             g = g.getitem(member)
                             type = g.data
                         else:
-                            return self.calculate_size(g)
+                            return self.calculate_size_(g)
                 except KeyError as ex:
                     logging.debug(f"Didn't found for {label} {ex.args} will try workaround")
                     # if members are global as with M510 or tasm try to find last member size
                     g = self._context.get_global(label[-1])
 
-                return self.calculate_size(g)
+                return self.calculate_size_(g)
 
         if isinstance(expr, list):
             if len(expr) == 0:
                 return 0
-            return max((self.calculate_size(i) for i in expr))
+            return max((self.calculate_size_(i) for i in expr))
 
         offsetdir = Token.find_tokens(expr, 'offsetdir')
         if offsetdir:
@@ -176,7 +177,7 @@ class Gen:
                             g = g.getitem(member)
                             type = g.gettype()
                         else:
-                            return self.calculate_size(g)
+                            return self.calculate_size_(g)
                 except KeyError as ex:
                     logging.debug(f"Didn't found for {label} {ex.args} will try workaround")
                     # if members are global as with M510 or tasm try to find last member size
