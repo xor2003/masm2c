@@ -405,7 +405,7 @@ class Asm2IR(Transformer):
         instruction = nodes[0]
         self.context.action_instruction(instruction, [], raw=get_raw_line(self.input_str, meta),
                                         line_number=get_line_number(meta))
-        return []
+        return Discard
 
     def mnemonic(self, name):
         self.instruction_name = name[0]
@@ -530,7 +530,8 @@ class Asm2IR(Transformer):
     def structinstance(self, nodes): #, values):
         return nodes  # Token('structinstance', values)
 
-    def memberdir(self, nodes, variable, field):
+    def memberdir(self, nodes):
+        variable, field = nodes
         result = Token('memberdir', [variable, field])
         logging.debug(result)
         return result

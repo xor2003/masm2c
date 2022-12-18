@@ -333,6 +333,7 @@ class Parser:
         if isinstance(g, (op._equ, op._assignment)):
             v = g.original_name
         elif isinstance(g, op.var):
+            size = g.size ## ?
             if g.issegment:
                 v = f"seg_offset({g.name})"
             else:

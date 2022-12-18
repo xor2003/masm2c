@@ -1644,4 +1644,5 @@ class IR2Cpp(TopDownVisitor, Cpp):
         return c, h, size
 
     def LABEL(self, token):
+        #token = self.convert_label_(token)
         return self._context.get_global_value(token, size=self.element_size)

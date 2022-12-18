@@ -2785,7 +2785,7 @@ head db '^',10,10
         self.assertEqual(*self.doTest('mov     ecx, res', 'ecx = res;'))
 
     def test_instr_8330(self):
-        self.assertEqual(*self.doTest('mov     edi, (offset str_buffer+810h)', 'edi = offset(_bss,str_buffer)+0x810;'))
+        self.assertEqual(*self.doTest('mov     edi, (offset str_buffer+810h)', 'edi = (offset(_bss,str_buffer)+0x810);'))
 
     def test_instr_8340(self):
         self.assertEqual(*self.doTest('add bl,7            ; "A" to "F"', 'ADD(bl, 7)'))
@@ -2932,7 +2932,7 @@ head db '^',10,10
         self.assertEqual(*self.doTest('mov bl,-1', 'bl = -1;'))
 
     def test_instr_8820(self):
-        self.assertEqual(*self.doTest('mov bl,[a+1]', 'bl = *((a)+1);'))
+        self.assertEqual(*self.doTest('mov bl,[a+1]', 'MOV(bl, *(raddr(ds,a+1)))'))
 
     def test_instr_8830(self):
         self.assertEqual(*self.doTest('mov bl,al', 'bl = al;'))
