@@ -45,7 +45,7 @@ class Gen:
                 l += [i]
         return l
 
-    def calculate_size(self, expr):
+    def calculate_size(self, expr) -> int:
         result = expr.size()
         #oldresult = self.calculate_size_(expr)
         #assert result == oldresult

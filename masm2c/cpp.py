@@ -109,9 +109,11 @@ class Cpp(Gen):
         self.__codeset = 'cp437'
         self._context = context
 
-        self.__indirection: IndirectionType = IndirectionType.VALUE
+        self._indirection: IndirectionType = IndirectionType.VALUE
 
-
+        self.__current_size = 0
+        self.__isjustlabel = False
+        self.__work_segment = 'ds'
         #
         self.__proc_queue = []
         self.__proc_done = []
@@ -146,24 +148,27 @@ class Cpp(Gen):
         name_original = mangle_asm_labels(token.children[0])
         token.children = name_original
         name = name_original.lower()
-        logging.debug("convert_label name = %s indirection = %s", name, self.__indirection)
+        logging.debug("convert_label name = %s indirection = %s", name, self._indirection)
 
-        if self.__indirection == IndirectionType.OFFSET:
+        if self._indirection == IndirectionType.OFFSET:
             try:
                 offset, _, _ = self._context.get_offset(name)
             except Exception:
                 pass
             else:
                 logging.debug("OFFSET = %s", offset)
-                self.__indirection = IndirectionType.VALUE
+                self._indirection = IndirectionType.VALUE
                 self.__used_data_offsets.add((name, offset))
                 return Token('label', "(dw)m2c::k" + name)
+        return self.convert_label_(name)
 
+    def convert_label_(self, name_original):
+        name = name_original
         try:
             g = self._context.get_global(name)
         except Exception:
             # logging.warning("expand_cb() global '%s' is missing" % name)
-            return token
+            return name
 
         if isinstance(g, op._equ):
             logging.debug("it is equ")
@@ -181,12 +186,12 @@ class Cpp(Gen):
             logging.debug("assignment %s = %s", name, value)
         elif isinstance(g, proc_module.Proc):
             logging.debug("it is proc")
-            if self.__indirection != IndirectionType.OFFSET:
+            if self._indirection != IndirectionType.OFFSET:
                 logging.error("Invalid proc label usage proc %s offset %s", g.name, g.offset)
                 value = "m2c::k" + g.name.lower()  # .capitalize()
             else:
                 value = str(g.offset)
-                self.__indirection = IndirectionType.VALUE
+                self._indirection = IndirectionType.VALUE
         elif isinstance(g, op.var):
             logging.debug("it is var %s", g.size)
             size = g.size
@@ -196,7 +201,7 @@ class Cpp(Gen):
                 raise Exception("invalid var '%s' size %u" % (name, size))
             if g.issegment:
                 value = "seg_offset(%s)" % (name_original.lower())
-                self.__indirection = IndirectionType.VALUE
+                self._indirection = IndirectionType.VALUE
             else:
                 self.needs_dereference = False
                 self.itispointer = False
@@ -206,9 +211,9 @@ class Cpp(Gen):
                 if g.elements == 1 and self.__isjustlabel and not self.lea and g.size == self.__current_size:
                     # traceback.print_stack(file=sys.stdout)
                     value = g.name
-                    self.__indirection = IndirectionType.VALUE
+                    self._indirection = IndirectionType.VALUE
                 else:
-                    if self.__indirection == IndirectionType.POINTER and self.isvariable:
+                    if self._indirection == IndirectionType.POINTER and self.isvariable:
                         value = g.name
                         if not self.__isjustlabel:  # if not just single label
                             self.needs_dereference = True
@@ -221,8 +226,10 @@ class Cpp(Gen):
                             else:
                                 value = "((db*)%s)" % value
                                 self.size_changed = True
-                    else:
+                    elif self._indirection == IndirectionType.OFFSET:
                         value = "offset(%s,%s)" % (g.segment, g.name)
+                    else:
+                        value = name
                     if self.__work_segment == 'cs':
                         self.body += '\tcs=seg_offset(' + g.segment + ');\n'
             # ?self.__indirection = 1
@@ -232,16 +239,16 @@ class Cpp(Gen):
             size = g.getsize()
             if size == 0:
                 raise Exception("invalid var '%s' size %u" % (name, size))
-            if self.__indirection in [IndirectionType.VALUE or IndirectionType.POINTER]:  # x0r self.indirection == 1 ??
+            if self._indirection in (IndirectionType.VALUE, IndirectionType.POINTER):  # x0r self.indirection == 1 ??
                 value = "offsetof(struct Memory,%s)" % name_original
-                if self.__indirection == IndirectionType.POINTER:
-                    self.__indirection = IndirectionType.VALUE
-            elif self.__indirection == IndirectionType.OFFSET:
+                if self._indirection == IndirectionType.POINTER:
+                    self._indirection = IndirectionType.VALUE
+            elif self._indirection == IndirectionType.OFFSET:
                 value = "%s" % g.offset
-                self.__indirection = IndirectionType.VALUE
+                self._indirection = IndirectionType.VALUE
             else:
-                raise Exception("invalid indirection %d name '%s' size %u" % (self.__indirection, name, size))
-        return Token('label', value)
+                raise Exception("invalid indirection %d name '%s' size %u" % (self._indirection, name, size))
+        return value
 
     def render_data_c(self, segments):
         """
@@ -341,12 +348,12 @@ class Cpp(Gen):
         :param token: The token to be converted
         :return: The value of the member.
         """
-        logging.debug("name = %s indirection = %s", token, self.__indirection)
+        logging.debug("name = %s indirection = %s", token, self._indirection)
         value = token
         label = [l.lower() for l in Token.find_tokens(token, LABEL)]
         self.struct_type = None
 
-        if self.__indirection == IndirectionType.OFFSET:
+        if self._indirection == IndirectionType.OFFSET:
             try:
                 g = self._context.get_global(label[0])
             except:
@@ -360,7 +367,7 @@ class Cpp(Gen):
                     value = f'({label[0]})+offsetof({g.original_type},{".".join(label[1:])})'
                 else:
                     raise Exception('Not handled type ' + str(type(g)))
-                self.__indirection = IndirectionType.VALUE
+                self._indirection = IndirectionType.VALUE
                 return Token('memberdir', value)
 
         size = self.calculate_size(token)
@@ -397,9 +404,9 @@ class Cpp(Gen):
             if g.elements == 1 and self.__isjustlabel and not self.lea and size == self.__current_size:
                 # traceback.print_stack(file=sys.stdout)
                 value = '.'.join(label)
-                self.__indirection = IndirectionType.VALUE
+                self._indirection = IndirectionType.VALUE
             else:
-                if self.__indirection == IndirectionType.POINTER and self.isvariable:
+                if self._indirection == IndirectionType.POINTER and self.isvariable:
                     value = '.'.join(label)
                     if not self.__isjustlabel:  # if not just single label
                         self.needs_dereference = True
@@ -412,7 +419,7 @@ class Cpp(Gen):
                         else:
                             value = "((db*)%s)" % value
                             self.size_changed = True
-                elif self.__indirection == IndirectionType.OFFSET and self.isvariable:
+                elif self._indirection == IndirectionType.OFFSET and self.isvariable:
                     value = "offset(%s,%s)" % (g.segment, '.'.join(label))
                 if self.__work_segment == 'cs':
                     self.body += '\tcs=seg_offset(' + g.segment + ');\n'
@@ -631,11 +638,11 @@ class Cpp(Gen):
                              or (isinstance(origexpr, Token) and origexpr.data == MEMBERDIR)
         self.__isjustmember = isinstance(origexpr, Token) and origexpr.data == MEMBERDIR
 
-        self.__indirection = indirection
+        self._indirection = indirection
 
         if memberdir:
             expr = Token.find_and_replace_tokens(expr, MEMBERDIR, self.convert_member)
-            if self.__indirection == IndirectionType.POINTER and self.needs_dereference and self.struct_type:
+            if self._indirection == IndirectionType.POINTER and self.needs_dereference and self.struct_type:
 
                 # TODO A very hacky way to
                 # put registers and numbers first since asm have byte aligned pointers
@@ -660,7 +667,7 @@ class Cpp(Gen):
             if islabel:
                 # assert(len(islabel) == 1)
                 expr = Token.find_and_replace_tokens(expr, LABEL, self.convert_label)
-        indirection = self.__indirection
+        indirection = self._indirection
         if self.__current_size != 0 and size != self.__current_size and not self.size_changed:
             size = self.__current_size
 
@@ -1622,6 +1629,10 @@ class IR2Cpp(TopDownVisitor, Cpp):
     '''
 
     def expr(self, tree):
+        if 'ptrdir' in tree.mods:
+            self._indirection = IndirectionType.POINTER
+        elif 'offset' in tree.mods:
+            self._indirection = IndirectionType.OFFSET
         self.element_size = tree.element_size
         result = "".join(self.visit(tree.children))
         if 'ptrdir' in tree.mods:
@@ -1644,5 +1655,5 @@ class IR2Cpp(TopDownVisitor, Cpp):
         return c, h, size
 
     def LABEL(self, token):
-        #token = self.convert_label_(token)
-        return self._context.get_global_value(token, size=self.element_size)
+        return [self.convert_label_(token)]
+        #return self._context.get_global_value(token, size=self.element_size)
