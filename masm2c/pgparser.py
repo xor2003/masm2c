@@ -324,7 +324,7 @@ class Asm2IR(Transformer):
         return nodes
 
     def LABEL(self, value):
-        # value = self.context.mangle_label(value)
+        value = self.context.mangle_label(value)
         self.name = value
 
         logging.debug('name = %s', self.name)
@@ -780,7 +780,7 @@ class AsmData2IR(TopDownVisitor):  # TODO HACK Remove it
 
 
 OFFSETDIR = 'offsetdir'
-LABEL = 'label'
+LABEL = 'LABEL'
 PTRDIR = 'ptrdir'
 REGISTER = 'register'
 SEGMENTREGISTER = 'segmentregister'

@@ -213,7 +213,7 @@ class Cpp(Gen):
                     value = g.name
                     self._indirection = IndirectionType.VALUE
                 else:
-                    if self._indirection == IndirectionType.POINTER and self.isvariable:
+                    if self._indirection == IndirectionType.POINTER: # and self.isvariable:
                         value = g.name
                         if not self.__isjustlabel:  # if not just single label
                             self.needs_dereference = True
@@ -461,7 +461,7 @@ class Cpp(Gen):
                     logging.error(f"~{expr}~ invalid size {size}")
                     expr = f"raddr({segment},{expr})"
             else:
-                if self.size_changed:  # or not self.__isjustlabel:
+                if self.size_changed or not self.__isjustlabel:
                     expr = Cpp.render_new_pointer_size(self.itispointer, expr, size)
                     self.size_changed = False
 
@@ -1633,9 +1633,22 @@ class IR2Cpp(TopDownVisitor, Cpp):
             self._indirection = IndirectionType.POINTER
         elif 'offset' in tree.mods:
             self._indirection = IndirectionType.OFFSET
+
+        single = len(tree.children) == 1
+        origexpr = tree.children[0]
+        if isinstance(origexpr, list):
+            origexpr = origexpr[0]
+        self.__isjustlabel = single and ((isinstance(origexpr, lark.Token) and origexpr.type == LABEL) \
+                             or (isinstance(origexpr, lark.Token) and origexpr.type == SQEXPR \
+                                 and isinstance(origexpr.children, lark.Token) and origexpr.children.type == LABEL) \
+                             or (isinstance(origexpr, lark.Token) and origexpr.type == MEMBERDIR))
+        self.__isjustmember = single and isinstance(origexpr, lark.Token) and origexpr.type == MEMBERDIR
+
         self.element_size = tree.element_size
         result = "".join(self.visit(tree.children))
-        if 'ptrdir' in tree.mods:
+        memberdir = False
+        if 'ptrdir' in tree.mods and not memberdir and (
+                    not self.__isjustlabel or self.size_changed):
             result = self.convert_sqbr_reference(tree.segment_register, result, 'destination' in tree.mods, tree.element_size, 'label' in tree.mods, lea='lea' in tree.mods)
         #if indirection == IndirectionType.POINTER and \
         if self.needs_dereference:
