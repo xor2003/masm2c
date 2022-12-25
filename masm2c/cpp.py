@@ -691,8 +691,14 @@ class Cpp(Gen):
 
         return expr
 
-    def jump_post(self, name):
+    def jump_post(self, expr):
+        name = self.render_jump_label(expr)
         name, far = self.convert_jump_label(name)
+        if 'far' in expr.mods:
+            far = True
+        elif 'near' in expr.mods:
+            far = False
+
         hasglobal = self._context.has_global(name) if isinstance(name, str) else False
         if not hasglobal or isinstance(self._context.get_global(name), op.var):
             # jumps feat purpose:
@@ -716,7 +722,7 @@ class Cpp(Gen):
 
         return name, far
 
-    def convert_jump_label(self, name):
+    def convert_jump_label(self, name):  # TODO Remove this!!!
         '''
         Convert argument tokens which for jump operations into C string
         :param name: Tokens
@@ -725,23 +731,23 @@ class Cpp(Gen):
         logging.debug("jump_to_label(%s)", name)
 
         indirection = -5
+        '''
+        #if isinstance(name, Token) and name.data == 'register':
+        #    name = name.children
+        #    indirection = IndirectionType.VALUE  # based register value
 
-        if isinstance(name, Token) and name.data == 'register':
-            name = name.children
-            indirection = IndirectionType.VALUE  # based register value
-
-        labeldir = Token.find_tokens(name, 'LABEL')
-        if labeldir:
-            from masm2c.parser import Parser
-            labeldir[0] = Parser.mangle_label(self.cpp_mangle_label(labeldir[0]))
-            if self._context.has_global(labeldir[0]):
-                g = self._context.get_global(labeldir[0])
+        #labeldir = Token.find_tokens(name, 'LABEL')
+        #if labeldir:
+        #    from masm2c.parser import Parser
+        #    labeldir[0] = Parser.mangle_label(self.cpp_mangle_label(labeldir[0]))
+        if self._context.has_global(name):
+                g = self._context.get_global(name)
                 if isinstance(g, op.var):
                     indirection = IndirectionType.POINTER  # []
-                elif isinstance(g, (op.label, proc_module.Proc)):
-                    indirection = IndirectionType.OFFSET  # direct using number
-            else:
-                name = labeldir[0]
+                #elif isinstance(g, (op.label, proc_module.Proc)):
+                #    indirection = IndirectionType.OFFSET  # direct using number
+        #    else:
+        #        name = labeldir[0]
 
         ptrdir = Token.find_tokens(name, 'ptrdir')
         if ptrdir:
@@ -761,6 +767,7 @@ class Cpp(Gen):
             name = labeldir[0]
 
         logging.debug("label %s", name)
+        '''
 
         hasglobal = False
         far = False
@@ -771,16 +778,16 @@ class Cpp(Gen):
                 far = g.far
 
 
-        if hasglobal:
-            if isinstance(g, op.label):
+            #if hasglobal:
+            elif isinstance(g, op.label):
                 far = g.far  # make far calls to far procs
-
+        '''
         if ptrdir:
             if any(isinstance(x, str) and x.lower() == 'far' for x in ptrdir):
                 far = True
             elif any(isinstance(x, str) and x.lower() == 'near' for x in ptrdir):
                 far = False
-
+        '''
         return (name, far)
 
     def _label(self, name, isproc):
@@ -791,14 +798,17 @@ class Cpp(Gen):
             self.__label = "%s:\n" % self.cpp_mangle_label(name)
         return ''
 
-    def _call(self, name):
-        logging.debug("cpp._call(%s)", name)
+    def _call(self, expr):
+        logging.debug("cpp._call(%s)", expr)
         ret = ""
-        size = self.calculate_size(name)
-        name = self.render_jump_label(name)
+        size = self.calculate_size(expr)
+        name = self.render_jump_label(expr)
         dst, far = self.convert_jump_label(name)
-        if size == 4:
+        if size == 4 or 'far' in expr.mods:
             far = True
+        elif 'near' in expr.mods:
+            far = False
+
         disp = '0'
         hasglobal = self._context.has_global(dst) if isinstance(dst, str) else None
         if hasglobal:

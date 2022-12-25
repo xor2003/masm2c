@@ -158,8 +158,8 @@ class Asm2IR(Transformer):
     def distance(self, children):
         from .gen import IndirectionType
         self.expression.mods.add(children[0].lower())
-        self.expression.indirection = IndirectionType.OFFSET  #
-        self.expression.ptr_size = self.context.typetosize(children[0])
+        #self.expression.indirection = IndirectionType.OFFSET  #
+        self.size = self.context.typetosize(children[0])
         return Discard
 
     def ptrdir(self, children):
@@ -353,6 +353,8 @@ class Asm2IR(Transformer):
             elif isinstance(g, (op.label, Proc)):
                 from masm2c.gen import IndirectionType
                 self.expression.indirection = IndirectionType.OFFSET  # direct using number
+            elif isinstance(g, op.var):
+                self.expression.indirection = IndirectionType.POINTER  # []
 
             logging.debug('get_size res %d', g.size)
             self.expression.element_size = g.size

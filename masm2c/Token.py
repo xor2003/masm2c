@@ -145,11 +145,11 @@ class Expression(lark.Tree):
 
     def size(self):
         from masm2c.gen import IndirectionType
-        if self.indirection == IndirectionType.POINTER:
+        if self.indirection in {IndirectionType.POINTER, IndirectionType.OFFSET}:
             return self.ptr_size
         else:
             result = self.element_size * self.element_number
-            return result
+            #return result
             try:
                 from masm2c.parser import Parser
                 from masm2c.cpp import IR2Cpp
