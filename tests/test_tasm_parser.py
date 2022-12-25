@@ -14,7 +14,7 @@ from random import randint
 
 
 # Random order for tests runs. (Original is: -1 if x<y, 0 if x==y, 1 if x>y).
-#unittest.TestLoader.sortTestMethodsUsing = lambda _, x, y: randint(-1, 1)
+#unittest.TestLoader.sortTestMethodsUsing = lambda _, xc, y: randint(-1, 1)
 
 class ParserTestSimple(unittest.TestCase):
     # First define a class variable that determines

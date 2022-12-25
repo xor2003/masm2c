@@ -166,6 +166,7 @@ class Asm2IR(Transformer):
         from .gen import IndirectionType
         if self.expression.indirection == IndirectionType.VALUE:  # set above
             self.expression.indirection = IndirectionType.POINTER
+        if self.size:
             self.expression.ptr_size = self.size
         self.expression.element_size = 0
         return children
