@@ -83,6 +83,7 @@ d equ 8
 _TEXT   segment use16 word public 'CODE' ;IGNORE
 assume  cs:_TEXT,ds:_DATA
 start:
+call far ptr test_bcd
 shr     dx, cl
 mov ax,'Z' - 'A' + 1 ;coment
 ;inc bx

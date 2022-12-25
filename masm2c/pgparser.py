@@ -116,15 +116,16 @@ class Asm2IR(Transformer):
     '''
 
     def expr(self, children):
+        from .gen import IndirectionType
         # self.expression = self.expression or Expression()
         # while isinstance(children, list) and len(children) == 1:
         #    children = children[0]
         self.expression.children = children  # [0]
         result:Expression = self._expression
-        if not self.expression.segment_overriden and 'ptrdir' in result.mods and \
+        if not self.expression.segment_overriden and result.indirection == IndirectionType.POINTER and \
                 any(reg in result.registers for reg in {'bp', 'ebp', 'sp', 'esp'}):
             result.segment_register = 'ss'
-        if 'ptrdir' in result.mods:
+        if result.indirection == IndirectionType.POINTER:
             self.expression.original_type = self.element_type
         self._expression = None
         return result
@@ -144,23 +145,34 @@ class Asm2IR(Transformer):
         return result  # Token('dupdir', [times, values])
 
     def segoverride(self, nodes):
+        from .gen import IndirectionType
         seg = nodes[0]
         if isinstance(seg, list):
             seg = seg[0]
         #self.__work_segment = seg.lower()
-        self.expression.mods.add('ptrdir')
+        self.expression.indirection = IndirectionType.POINTER
         self.expression.element_size = 0
         self.expression.segment_overriden = True
         return nodes[1:]
 
+    def distance(self, children):
+        from .gen import IndirectionType
+        self.expression.mods.add(children[0].lower())
+        self.expression.indirection = IndirectionType.OFFSET  #
+        self.expression.ptr_size = self.context.typetosize(children[0])
+        return Discard
+
     def ptrdir(self, children):
-        self.expression.mods.add('ptrdir')
-        self.expression.ptr_size = self.size
+        from .gen import IndirectionType
+        if self.expression.indirection == IndirectionType.VALUE:  # set above
+            self.expression.indirection = IndirectionType.POINTER
+            self.expression.ptr_size = self.size
         self.expression.element_size = 0
         return children
 
     def ptrdir2(self, children):  # tasm?
-        self.expression.mods.add('ptrdir')
+        from .gen import IndirectionType
+        self.expression.indirection = IndirectionType.POINTER
         #self.__work_segment = children[1].lower()
         self.expression.segment_overriden = True
         self.expression.ptr_size = self.context.typetosize(children[0])
@@ -331,11 +343,16 @@ class Asm2IR(Transformer):
         l = lark.Token(type='LABEL', value=value)
         try:
             g = self.context.get_global(self.name)
+            from masm2c.proc import Proc
             if isinstance(g, (op._equ, op._assignment)):
                 # if g.value != origexpr:  # prevent loop
                 self.expression.element_size = self.calculate_size(g.value)
                 # else:
                 #    return 0
+            elif isinstance(g, (op.label, Proc)):
+                from masm2c.gen import IndirectionType
+                self.expression.indirection = IndirectionType.OFFSET  # direct using number
+
             logging.debug('get_size res %d', g.size)
             self.expression.element_size = g.size
             l.size = g.size
@@ -477,20 +494,22 @@ class Asm2IR(Transformer):
         return Tree(data='segmentregister', children=[children[0].lower()])  # Token('segmentregister', nodes[0].lower())
 
     def sqexpr(self, nodes):
+        from .gen import IndirectionType
         logging.debug("/~%s~\\", nodes)
         # res = nodes[1]
         # self.expression = self.expression or Expression()
         # self.expression.indirection = IndirectionType.POINTER
-        self.expression.mods.add('ptrdir')
+        self.expression.indirection = IndirectionType.POINTER
         self.expression.element_size = 0
         return nodes  # lark.Tree(data='sqexpr', children=nodes)
 
     def sqexpr2(self, nodes):
+        from .gen import IndirectionType
         logging.debug("/~%s~\\", nodes)
         # res = nodes[1]
         # self.expression = self.expression or Expression()
         # self.expression.indirection = IndirectionType.POINTER
-        self.expression.mods.add('ptrdir')
+        self.expression.indirection = IndirectionType.POINTER
         self.expression.element_size = 0
         nodes.insert(1, lark.Token(type='PLUS', value='+'))
         nodes = [lark.Tree(data='adddir', children=nodes)]
@@ -499,8 +518,9 @@ class Asm2IR(Transformer):
     def offsetdir(self, nodes):
         logging.debug("offset /~%s~\\", nodes)
         # self.expression = self.expression or Expression()
-        # self.expression.indirection = IndirectionType.OFFSET
-        self.expression.mods.add('offset')
+        from masm2c.gen import IndirectionType
+        self.expression.indirection = IndirectionType.OFFSET
+        #self.expression.mods.add('offset')
         self.expression.element_size = 2
         return nodes  # Token('offsetdir', nodes[1])
 

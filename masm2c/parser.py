@@ -35,9 +35,10 @@ from lark import lark, Visitor
 
 from . import cpp as cpp_module
 from . import op
-from .Token import Token, Expression
 from .pgparser import LarkParser, Asm2IR, ExprRemover, AsmData2IR, TopDownVisitor, BottomUpVisitor
 from .proc import Proc
+
+from .Token import Token, Expression
 
 INTEGERCNST = 'integer'
 STRINGCNST = 'STRING'
@@ -684,6 +685,7 @@ class Parser:
         return []
 
     def action_equ(self, label="", value="", raw='', line_number=0):
+        from .gen import IndirectionType
         label = self.mangle_label(label)
         #value = Token.remove_tokens(value, ['expr'])
         #size = value.size() if isinstance(value, Expression) else 0
@@ -697,7 +699,7 @@ class Parser:
         o.filename = self._current_file
         o.raw_line = raw.rstrip()
         o.element_size = size
-        if isinstance(value, Expression) and 'ptrdir' in value.mods:
+        if isinstance(value, Expression) and value.indirection == IndirectionType.POINTER:
             o.original_type = value.original_type
         self.set_global(label, o)
         proc = self.get_global("mainproc")

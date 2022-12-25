@@ -159,7 +159,7 @@ class Cpp(Gen):
                 logging.debug("OFFSET = %s", offset)
                 self._indirection = IndirectionType.VALUE
                 self.__used_data_offsets.add((name, offset))
-                return Token('label', "(dw)m2c::k" + name)
+                return lark.Token('LABEL', "(dw)m2c::k" + name)
         return self.convert_label_(name)
 
     def convert_label_(self, name_original):
@@ -723,17 +723,8 @@ class Cpp(Gen):
         :return: C string
         '''
         logging.debug("jump_to_label(%s)", name)
-        # Token(expr, Token(LABEL, printf))
-        #
-        name = Token.remove_tokens(name, ['expr'])
-
-        # jump_proc = False
 
         indirection = -5
-
-        segoverride = Token.find_tokens(name, 'segoverride')
-        if segoverride:
-            self.__work_segment = segoverride[0].children
 
         if isinstance(name, Token) and name.data == 'register':
             name = name.children
@@ -779,8 +770,6 @@ class Cpp(Gen):
             if isinstance(g, proc_module.Proc):
                 far = g.far
 
-        # if name in self.proc.retlabels:
-        #    return "return /* (%s) */" % name, far
 
         if hasglobal:
             if isinstance(g, op.label):
@@ -806,11 +795,12 @@ class Cpp(Gen):
         logging.debug("cpp._call(%s)", name)
         ret = ""
         size = self.calculate_size(name)
+        name = self.render_jump_label(name)
         dst, far = self.convert_jump_label(name)
         if size == 4:
             far = True
         disp = '0'
-        hasglobal = self._context.has_global(dst)
+        hasglobal = self._context.has_global(dst) if isinstance(dst, str) else None
         if hasglobal:
             g = self._context.get_global(dst)
             if isinstance(g, op.label) and not g.isproc and not dst in self._procs and not dst in self.grouped:
@@ -876,12 +866,18 @@ class Cpp(Gen):
             if src_size == 0:
                 logging.debug("parse2: %s %s both sizes are 0", dst, src)
                 # raise Exception("both sizes are 0")
+            size = src_size
             dst_size = src_size
             #dst.element_size = dst_size
         if src_size == 0:
             src_size = dst_size
+            size = dst_size
             #src.element_size = src_size
 
+        if src.indirection == IndirectionType.POINTER and src.element_size == 0 and dst_size:
+            src.ptr_size = dst_size
+        if dst.indirection == IndirectionType.POINTER and dst.element_size == 0 and src_size:
+            dst.ptr_size = src_size
         dst = self.render_instruction_argument(dst, dst_size, destination=True)
         src = self.render_instruction_argument(src, src_size)
         return dst, src
@@ -1308,6 +1304,12 @@ struct Memory{
         if def_size and expr.element_size == 0:
             expr.element_size = def_size
         return "".join(IR2Cpp(self._context).visit(expr))
+
+    def render_jump_label(self, expr, def_size: int=0):
+        if def_size and expr.element_size == 0:
+            expr.element_size = def_size
+        return "".join(IR2CppJump(self._context).visit(expr))
+
     def _jump(self, cmd, label):
         result = self.isrelativejump(label)
         if result:
@@ -1629,10 +1631,7 @@ class IR2Cpp(TopDownVisitor, Cpp):
     '''
 
     def expr(self, tree):
-        if 'ptrdir' in tree.mods:
-            self._indirection = IndirectionType.POINTER
-        elif 'offset' in tree.mods:
-            self._indirection = IndirectionType.OFFSET
+        self._indirection = tree.indirection
 
         single = len(tree.children) == 1
         origexpr = tree.children[0]
@@ -1647,9 +1646,9 @@ class IR2Cpp(TopDownVisitor, Cpp):
         self.element_size = tree.element_size
         result = "".join(self.visit(tree.children))
         memberdir = False
-        if 'ptrdir' in tree.mods and not memberdir and (
+        if tree.indirection == IndirectionType.POINTER and not memberdir and (
                     not self.__isjustlabel or self.size_changed):
-            result = self.convert_sqbr_reference(tree.segment_register, result, 'destination' in tree.mods, tree.element_size, 'label' in tree.mods, lea='lea' in tree.mods)
+            result = self.convert_sqbr_reference(tree.segment_register, result, 'destination' in tree.mods, tree.ptr_size, 'label' in tree.mods, lea='lea' in tree.mods)
         #if indirection == IndirectionType.POINTER and \
         if self.needs_dereference:
             if result[0] == '(' and result[-1] == ')':
@@ -1670,3 +1669,23 @@ class IR2Cpp(TopDownVisitor, Cpp):
     def LABEL(self, token):
         return [self.convert_label_(token)]
         #return self._context.get_global_value(token, size=self.element_size)
+
+class IR2CppJump(IR2Cpp):
+
+    def __init__(self, parser):
+        super().__init__(parser)
+
+    def expr(self, tree):
+        if isinstance(tree.children, lark.Token) and tree.children.type == 'register':
+            self._indirection = IndirectionType.VALUE  # based register value
+            tree.indirection = self._indiretction
+        return super().expr(tree)
+
+    def LABEL(self, token):
+        if self._context.has_global(token):
+            g = self._context.get_global(token)
+            if isinstance(g, op.var):
+                self._indirection = IndirectionType.POINTER  # []
+            elif isinstance(g, (op.label, proc_module.Proc)):
+                self._indirection = IndirectionType.OFFSET  # direct using number
+        return token

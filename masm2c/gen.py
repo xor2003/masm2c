@@ -8,10 +8,10 @@ from enum import Enum
 import jsonpickle
 
 from masm2c import op, proc as proc_module
-from masm2c.Token import Token
 from masm2c.parser import parse_asm_number
 from masm2c.pgparser import LABEL, PTRDIR, SQEXPR, MEMBERDIR
 
+from masm2c.Token import Token
 
 class Gen:
     def __init__(self,context, outfile="", skip_output=None,

@@ -24,8 +24,6 @@ import lark
 from lark import Tree, Visitor
 
 
-#from masm2c.gen import IndirectionType
-
 SQEXPR = 'sqexpr'
 
 
@@ -131,9 +129,11 @@ class Token(lark.Tree):
 class Expression(lark.Tree):
 
     def __init__(self):
+        from masm2c.gen import IndirectionType
         super().__init__("expr", [])
         #self.data = "expr"
         #self.children = []
+        self.indirection: IndirectionType = IndirectionType.VALUE
         self.element_size = 0
         self.element_number = 1
         self.element_size_guess = 0
@@ -144,10 +144,12 @@ class Expression(lark.Tree):
         self.segment_overriden = False
 
     def size(self):
-        if 'ptrdir' in self.mods:
+        from masm2c.gen import IndirectionType
+        if self.indirection == IndirectionType.POINTER:
             return self.ptr_size
         else:
             result = self.element_size * self.element_number
+            return result
             try:
                 from masm2c.parser import Parser
                 from masm2c.cpp import IR2Cpp

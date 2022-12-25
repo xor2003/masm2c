@@ -79,7 +79,7 @@ commaparmidvararg: commaoeol  LABEL "VARARG"i
 commaparmlist: commaoeol? parmlist
 commaprotolist: commaoeol  protolist
 commatextlen: _COMMA expr
-commdecl: nearfar?   langtype?  LABEL ":" commtype eqconstexpr?
+commdecl: NEARFAR?   langtype?  LABEL ":" commtype eqconstexpr?
 commdir: "COMM"i commlist _linereminder
 //commentdir: COMMENTKW DELIMITER text text DELIMITER text _linereminder; TODO
 commentdir: COMMENTKW _linereminder
@@ -109,7 +109,7 @@ decnumber: _integer_
 digits: decnumber
 _directive: _generaldir| _segmentdef | _linereminder
 _directivelist: _directive+
-distance: nearfar| "NEAR16"i | "NEAR32"i | "FAR16"i | "FAR32"i
+!distance: "NEAR"i | "FAR"i | "NEAR16"i | "NEAR32"i | "FAR16"i | "FAR32"i
 dotdotforparmtype: ":" forparmtype
 dotdotparmtype: ":" parmtype
 dotdotqualifiedtype: ":" qualifiedtype
@@ -273,7 +273,7 @@ modeldir: ".MODEL"i memoption commamodeloptlist? _linereminder
 modelopt: langtype| stackoption | "OS_DOS"i
 modeloptlist: modelopt | modelopt _COMMA modeloptlist
 namedir: "NAME"i LABEL _linereminder
-nearfar: "NEAR"i | "FAR"i
+NEARFAR: "NEAR"i | "FAR"i
 nestedstruct: STRUCTHDR  LABEL?  _linereminder "ENDS"i _linereminder | STRUCTHDR  LABEL?  _linereminder structitem+ "ENDS"i _linereminder
 offsetdir: offsetdirtype _linereminder
 offsetdirtype: "EVEN"i | "ORG"i expr| "ALIGN"i expr?
