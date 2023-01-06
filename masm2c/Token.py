@@ -149,7 +149,7 @@ class Expression(lark.Tree):
             return self.ptr_size
         else:
             result = self.element_size * self.element_number
-            #return result
+            return result
             try:
                 from masm2c.parser import Parser
                 from masm2c.cpp import IR2Cpp

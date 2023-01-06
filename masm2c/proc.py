@@ -143,11 +143,8 @@ class Proc:
         logging.debug(label + " " + str(value))
         # value = cpp.convert_number_to_c(value)
         o = op._assignment([label, value])
-        if ptrdir := Token.find_tokens(value, PTRDIR):
-            if isinstance(ptrdir[0], Token):
-                o.original_type = ptrdir[0].children.lower()
-            elif isinstance(ptrdir[0], str):
-                o.original_type = ptrdir[0].lower()
+        if hasattr(value, 'original_type'):
+            o.original_type = value.original_type
 
         o.raw_line = str(line_number) + " " + label + " = " + str(value)
         o.line_number = line_number

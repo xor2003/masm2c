@@ -342,25 +342,21 @@ class Asm2IR(Transformer):
 
         logging.debug('name = %s', self.name)
         l = lark.Token(type='LABEL', value=value)
-        try:
+        if self.context.has_global(self.name):
             g = self.context.get_global(self.name)
             from masm2c.proc import Proc
-            if isinstance(g, (op._equ, op._assignment)):
-                # if g.value != origexpr:  # prevent loop
-                self.expression.element_size = self.calculate_size(g.value)
-                # else:
-                #    return 0
-            elif isinstance(g, (op.label, Proc)):
+            #if isinstance(g, (op._equ, op._assignment)):
+            #self.expression.element_size = self.calculate_size(g.value)
+            if isinstance(g, (op.label, Proc)):
                 from masm2c.gen import IndirectionType
                 self.expression.indirection = IndirectionType.OFFSET  # direct using number
             elif isinstance(g, op.var):
                 self.expression.indirection = IndirectionType.POINTER  # []
 
-            logging.debug('get_size res %d', g.size)
-            self.expression.element_size = g.size
-            l.size = g.size
-        except:
-            pass
+            if not isinstance(g, op.Struct):
+                logging.debug('get_size res %d', g.size)
+                self.expression.element_size = g.size
+                l.size = g.size
 
         return l
 

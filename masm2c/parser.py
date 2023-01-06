@@ -79,6 +79,7 @@ class ExprSizeCalculator(BottomUpVisitor):
         if self.element_size:
             tree.element_size = self.element_size
         '''
+        
         self.element_number += tree.element_number
         size += tree.size()
         #self.size += size
@@ -668,9 +669,12 @@ class Parser:
         self.proc.stmts.append(o)
         return o
 
-    def action_assign_test(self, label="", value="", raw='', line_number=0):
+    def action_assign_test(self, label="", value="", line_number=0):
+        raw = value
         #result = self.parse_text(value, start_rule='expr')
         #value = self.process_ast(value, result)
+        result = self.parse_text(value, start_rule='expr')
+        value = self.process_ast(value, result)
         o = self.action_assign(label, value, raw, line_number)
         o.implemented = True
 
@@ -688,9 +692,9 @@ class Parser:
         from .gen import IndirectionType
         label = self.mangle_label(label)
         #value = Token.remove_tokens(value, ['expr'])
-        #size = value.size() if isinstance(value, Expression) else 0
-        calc = ExprSizeCalculator(init=Vector(0, 0))
-        size = calc.visit(value)[0]
+        size = value.size() if isinstance(value, Expression) else 0
+        #calc = ExprSizeCalculator(init=Vector(0, 0))
+        #size = calc.visit(value)[0]
 
         #size = cpp_module.Cpp(self).calculate_size(value)
         #ptrdir = Token.find_tokens(value, 'ptrdir')

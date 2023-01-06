@@ -11,7 +11,8 @@ from masm2c import op, proc as proc_module
 from masm2c.parser import parse_asm_number
 from masm2c.pgparser import LABEL, PTRDIR, SQEXPR, MEMBERDIR
 
-from masm2c.Token import Token
+from masm2c.Token import Token, Expression
+
 
 class Gen:
     def __init__(self,context, outfile="", skip_output=None,
@@ -45,7 +46,7 @@ class Gen:
                 l += [i]
         return l
 
-    def calculate_size(self, expr) -> int:
+    def calculate_size(self, expr: Expression) -> int:
         result = expr.size()
         #oldresult = self.calculate_size_(expr)
         #assert result == oldresult

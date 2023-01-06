@@ -175,14 +175,14 @@ class Cpp(Gen):
             if not g.implemented:
                 raise InjectCode(g)
             value = g.original_name
-            # value = self.expand_equ(g.value)
+            self.element_size = g.size
             logging.debug("equ: %s -> %s", name, value)
         elif isinstance(g, op._assignment):
             logging.debug("it is assignment")
             if not g.implemented:
                 raise InjectCode(g)
             value = g.original_name
-            # value = self.expand_equ(g.value)
+            self.element_size = g.size
             logging.debug("assignment %s = %s", name, value)
         elif isinstance(g, proc_module.Proc):
             logging.debug("it is proc")
@@ -1358,10 +1358,13 @@ struct Memory{
 
     def _assignment(self, stmt):
         dst, src = stmt.args
+        o = src
+        '''
         #src = Token.remove_tokens(src, ['expr'])
         #size = self.calculate_size(src)
-        calc = ExprSizeCalculator(init=Vector(0, 0))
-        size = calc.visit(src)[0]
+        size = stmt.size()
+        #calc = ExprSizeCalculator(init=Vector(0, 0))
+        #size = calc.visit(src)[0]
 
         ptrdir = Token.find_tokens(src, 'ptrdir')
         if ptrdir:
@@ -1376,7 +1379,7 @@ struct Memory{
             o.original_type = type
         o.implemented = True
         self._context.reset_global(dst, o)
-
+        '''
         self.__label += "#undef %s\n#define %s %s\n" % (dst, dst, self.render_instruction_argument(src))
         return ''
 
