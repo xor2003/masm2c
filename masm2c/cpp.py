@@ -1327,7 +1327,7 @@ struct Memory{
             return "{;}"
         else:
             label, _ = self.jump_post(label)
-            if self._context.children.mergeprocs == 'separate' and cmd.upper() == 'JMP':
+            if self._context.args.mergeprocs == 'separate' and cmd.upper() == 'JMP':
                 if label == '__dispatch_call':
                     return "return __dispatch_call(__disp, _state);"
                 if self._context.has_global(label):
