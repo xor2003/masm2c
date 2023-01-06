@@ -689,7 +689,7 @@ class Parser:
         return []
 
     def action_equ(self, label="", value="", raw='', line_number=0):
-        from .gen import IndirectionType
+        from .enum import IndirectionType
         label = self.mangle_label(label)
         #value = Token.remove_tokens(value, ['expr'])
         size = value.size() if isinstance(value, Expression) else 0
@@ -1314,7 +1314,7 @@ class Parser:
                 args[0].children.children = "dummylabel" + str(self.__c_dummy_jump_label)
 
     def collect_labels(self, target, operation):
-        for arg in operation.args:
+        for arg in operation.children:
             labels = Token.find_tokens(arg, 'LABEL')
             #  If it is call to a proc then does not take it into account
             #  TODO: check for calls into middle of proc

@@ -129,7 +129,7 @@ class Token(lark.Tree):
 class Expression(lark.Tree):
 
     def __init__(self):
-        from masm2c.gen import IndirectionType
+        from masm2c.enum import IndirectionType
         super().__init__("expr", [])
         #self.data = "expr"
         #self.children = []
@@ -144,7 +144,7 @@ class Expression(lark.Tree):
         self.segment_overriden = False
 
     def size(self):
-        from masm2c.gen import IndirectionType
+        from masm2c.enum import IndirectionType
         if self.indirection in {IndirectionType.POINTER, IndirectionType.OFFSET}:
             return self.ptr_size
         else:

@@ -166,20 +166,20 @@ class Proc:
                                                                                             'segmentregister']
 
         def cmd_wo_args(stmt):
-            return len(stmt.args) == 0
+            return len(stmt.children) == 0
 
         def cmd_impacting_only_registers(stmt):
             return (cmd_wo_args(stmt) or \
-                stmt.cmd in ['cmp', 'test'] or \
-                (stmt.cmd != 'xchg' and len(stmt.args) >= 1 and expr_is_register(stmt.args[0]) or \
-                (stmt.cmd == 'xchg' and expr_is_register(stmt.args[0]) and expr_is_register(stmt.args[1])))) and \
+                    stmt.cmd in ['cmp', 'test'] or \
+                    (stmt.cmd != 'xchg' and len(stmt.children) >= 1 and expr_is_register(stmt.children[0]) or \
+                     (stmt.cmd == 'xchg' and expr_is_register(stmt.children[0]) and expr_is_register(stmt.children[1])))) and \
                 not stmt.cmd.startswith('push') and not stmt.cmd.startswith('pop') and not stmt.cmd.startswith('stos') and \
                 not stmt.cmd.startswith('movs')
 
         def expr_is_mov_ss(e):
             return e.cmd == 'mov' and \
-                   isinstance(e.args[0], Token) and isinstance(e.args[0].children, Token) and e.args[0].children.data == 'segmentregister' and \
-                   e.args[0].children.children == 'ss'
+                   isinstance(e.children[0], Token) and isinstance(e.children[0].children, Token) and e.children[0].children.data == 'segmentregister' and \
+                   e.children[0].children.children == 'ss'
 
         if self.is_flow_change_stmt(stmt) and not stmt.syntetic:
             trace_mode = 'J'  # check for proper jump

@@ -33,7 +33,7 @@ class Unsupported(Exception):
     pass
 
 
-class baseop:
+class baseop(lark.Tree):
     # __slots__ = ["cmd", "line", "line_number", "elements", "args"]
 
     def __init__(self):
@@ -41,7 +41,7 @@ class baseop:
         self.raw_line = ""
         self.line_number = 0
         self.elements = 1
-        self.args = []
+        self.children = []
         self.size = 0
         self.real_offset = None
         self.real_seg = None
@@ -55,6 +55,9 @@ class baseop:
     def __str__(self):
         return str(self.__class__)
 
+    @property
+    def data(self):
+        return str(self.__class__)
 
 class var:
 
@@ -401,7 +404,7 @@ SIMPLE_SEGMENTS = {
     }
 }
 
-class Segment:
+class Segment(lark.Tree):
     # __slots__ = ['name', 'offset', '__data', 'original_name', 'used']
 
     def __init__(self, name, offset, options=None, segclass=None, comment=''):
@@ -418,7 +421,8 @@ class Segment:
         self.offset = offset
         self.original_name = name
         self.used = False
-        self.__data = []
+        self.data = 'segment'
+        self.children = []
         self.options = options
         self.segclass = segclass
         # self.comment = comment
@@ -429,19 +433,19 @@ class Segment:
         return self.size
 
     def append(self, data):
-        self.__data.append(data)
+        self.children.append(data)
         self.size += data.getsize()
 
     def insert_label(self, data):
         if data.getlabel() not in self.seglabels:
-            self.__data.insert(1, data)
+            self.children.insert(1, data)
             self.seglabels.add(data.getlabel())
 
     def getdata(self):
-        return self.__data
+        return self.children
 
     def setdata(self, data):
-        self.__data = data
+        self.children = data
 
 class DataType(Enum):
     ZERO_STRING = 1
@@ -451,7 +455,7 @@ class DataType(Enum):
     OBJECT = 5
 
 
-class Data(baseop, lark.Tree):
+class Data(baseop):
     # __slots__ = ['label', 'type', 'data_internal_type', 'array', 'elements', 'size', 'members',
     #             'filename', 'line', 'line_number']
 
@@ -488,7 +492,7 @@ class Data(baseop, lark.Tree):
         self.real_seg, self.real_offset = None, None
         self.offset = offset
 
-        self.data = 'data'
+        #self.data = 'data'  # defined in base class
         self._meta = meta
 
     def __deepcopy__(self, memo):
@@ -548,25 +552,26 @@ class Struct:
         :param dtype: Structure or Union?
         '''
         self.__name = name
-        self.__fields = OrderedDict()
-        self.__size = 0
+        #self.data = 'struct'
+        self.children = OrderedDict()
+        self.size = 0
         self.__type = Struct.Type.UNION if dtype.lower() == 'union' else Struct.Type.STRUCT
 
     def append(self, data):
-        self.__fields[data.label.lower()] = data
+        self.children[data.label.lower()] = data
         if self.__type == Struct.Type.STRUCT:
-            self.__size += data.getsize()
+            self.size += data.getsize()
         else:  # Union
-            self.__size = max(self.__size, data.getsize())
+            self.size = max(self.size, data.getsize())
 
     def getdata(self):
-        return self.__fields
+        return self.children
 
     def getitem(self, key):
-        return self.__fields[key.lower()]
+        return self.children[key.lower()]
 
     def getsize(self):
-        return self.__size
+        return self.size
 
     def gettype(self):
         return self.__type
@@ -579,93 +584,93 @@ class basejmp(baseop):
 class _call(baseop):
     def __init__(self, args):
         super().__init__()
-        self.args = args
+        self.children = args
 
     def accept(self, visitor):
-        return visitor._call(*self.args)
+        return visitor._call(*self.children)
 
 
 class _rep(baseop):
     def __init__(self, args):
         super().__init__()
-        self.args = args
+        self.children = args
 
     def accept(self, visitor):
-        return visitor._rep(*self.args)
+        return visitor._rep(*self.children)
 
 
 class _add(baseop):
     def __init__(self, args):
         super().__init__()
-        self.args = args
+        self.children = args
 
     def accept(self, visitor):
-        return visitor._add(*self.args)
+        return visitor._add(*self.children)
 
 
 
 class _mul(baseop):
     def __init__(self, args):
         super().__init__()
-        self.args = args
+        self.children = args
 
     def accept(self, visitor):
-        return visitor._mul(self.args)  #
+        return visitor._mul(self.children)  #
 
 
 class _div(baseop):
     def __init__(self, args):
         super().__init__()
-        self.args = args
+        self.children = args
 
     def accept(self, visitor):
-        return visitor._div(*self.args)
+        return visitor._div(*self.children)
 
 
 
 class _jne(basejmp):
     def __init__(self, args):
         super().__init__()
-        self.args = args
+        self.children = args
 
     def accept(self, visitor):
-        return visitor._jnz(*self.args)
+        return visitor._jnz(*self.children)
 
 
 class _je(basejmp):
     def __init__(self, args):
         super().__init__()
-        self.args = args
+        self.children = args
 
     def accept(self, visitor):
-        return visitor._jz(*self.args)
+        return visitor._jz(*self.children)
 
 
 class _jb(basejmp):
     def __init__(self, args):
         super().__init__()
-        self.args = args
+        self.children = args
 
     def accept(self, visitor):
-        return visitor._jc(*self.args)
+        return visitor._jc(*self.children)
 
 
 class _jae(basejmp):
     def __init__(self, args):
         super().__init__()
-        self.args = args
+        self.children = args
 
     def accept(self, visitor):
-        return visitor._jnc(*self.args)
+        return visitor._jnc(*self.children)
 
 
 class _jnb(basejmp):
     def __init__(self, args):
         super().__init__()
-        self.args = args
+        self.children = args
 
     def accept(self, visitor):
-        return visitor._jnc(*self.args)
+        return visitor._jnc(*self.children)
 
 
 '''
@@ -723,26 +728,26 @@ class _pop(baseop):
 class _ret(baseop):
     def __init__(self, args):
         super().__init__()
-        self.args = args
+        self.children = args
 
     def accept(self, visitor):
-        return visitor._ret(self.args)
+        return visitor._ret(self.children)
 
 class _retn(baseop):
     def __init__(self, args):
         super().__init__()
-        self.args = args
+        self.children = args
 
     def accept(self, visitor):
-        return visitor._ret(self.args)
+        return visitor._ret(self.children)
 
 class _retf(baseop):
     def __init__(self, args):
         super().__init__()
-        self.args = args
+        self.children = args
 
     def accept(self, visitor):
-        return visitor._retf(self.args)
+        return visitor._retf(self.children)
 
 
 class _lodsb(baseop):
@@ -864,10 +869,10 @@ class _movsb(baseop):
 class _int(baseop):
     def __init__(self, args):
         super().__init__()
-        self.args = args
+        self.children = args
 
     def accept(self, visitor):
-        return visitor._int(*self.args)
+        return visitor._int(*self.children)
 
 '''
 class _nop(baseop):
@@ -909,82 +914,82 @@ class label(baseop):
 class _lea(baseop):
     def __init__(self, args):
         super().__init__()
-        self.args = args
+        self.children = args
 
     def accept(self, visitor):
-        return visitor._lea(*self.args)
+        return visitor._lea(*self.children)
 
 
 class _repe(baseop):
     def __init__(self, args):
         super().__init__()
-        self.args = args
+        self.children = args
 
     def accept(self, visitor):
-        return visitor._repe(*self.args)
+        return visitor._repe(*self.children)
 
 
 class _repne(baseop):
     def __init__(self, args):
         super().__init__()
-        self.args = args
+        self.children = args
 
     def accept(self, visitor):
-        return visitor._repne(*self.args)
+        return visitor._repne(*self.children)
 
 
 class _jna(basejmp):
     def __init__(self, args):
         super().__init__()
-        self.args = args
+        self.children = args
 
     def accept(self, visitor):
-        return visitor._jbe(*self.args)
+        return visitor._jbe(*self.children)
 
 
 class _jnbe(basejmp):
     def __init__(self, args):
         super().__init__()
-        self.args = args
+        self.children = args
 
     def accept(self, visitor):
-        return visitor._ja(*self.args)
+        return visitor._ja(*self.children)
 
 
 class _imul(baseop):
     def __init__(self, args):
         super().__init__()
-        self.args = args
+        self.children = args
 
     def accept(self, visitor):
-        return visitor._imul(self.args)  #
+        return visitor._imul(self.children)  #
 
 
 class _movs(baseop):
     def __init__(self, args):
         super().__init__()
-        self.args = args
+        self.children = args
 
     def accept(self, visitor):
-        return visitor._movs(*self.args)
+        return visitor._movs(*self.children)
 
 
 class _lods(baseop):
     def __init__(self, args):
         super().__init__()
-        self.args = args
+        self.children = args
 
     def accept(self, visitor):
-        return visitor._lods(*self.args)
+        return visitor._lods(*self.children)
 
 
 class _scas(baseop):
     def __init__(self, args):
         super().__init__()
-        self.args = args
+        self.children = args
 
     def accept(self, visitor):
-        return visitor._scas(*self.args)
+        return visitor._scas(*self.children)
 
 
 class _leave(baseop):
@@ -998,10 +1003,10 @@ class _leave(baseop):
 class _idiv(baseop):
     def __init__(self, args):
         super().__init__()
-        self.args = args
+        self.children = args
 
     def accept(self, visitor):
-        return visitor._idiv(*self.args)
+        return visitor._idiv(*self.children)
 
 
 class _instruction0(baseop):
@@ -1015,43 +1020,43 @@ class _instruction0(baseop):
 class _instruction1(baseop):
     def __init__(self, args):
         super().__init__()
-        self.args = args
+        self.children = args
 
     def accept(self, visitor):
-        return visitor._instruction1(self.cmd, *self.args)
+        return visitor._instruction1(self.cmd, *self.children)
 
 
 class _jump(baseop):
     def __init__(self, args):
         super().__init__()
-        self.args = args
+        self.children = args
 
     def accept(self, visitor):
-        return visitor._jump(self.cmd, *self.args)
+        return visitor._jump(self.cmd, *self.children)
 
 
 class _instruction2(baseop):
     def __init__(self, args):
         super().__init__()
-        self.args = args
+        self.children = args
 
     def accept(self, visitor):
-        return visitor._instruction2(self.cmd, *self.args)
+        return visitor._instruction2(self.cmd, *self.children)
 
 
 class _instruction3(baseop):
     def __init__(self, args):
         super().__init__()
-        self.args = args
+        self.children = args
 
     def accept(self, visitor):
-        return visitor._instruction3(self.cmd, *self.args)
+        return visitor._instruction3(self.cmd, *self.children)
 
 
 class _equ(baseop):
     def __init__(self, args):
         super().__init__()
-        self.args = args
+        self.children = args
         self.original_name = ''
         self.original_type = ''
         self.implemented = False
@@ -1063,7 +1068,7 @@ class _equ(baseop):
     def accept(self, visitor):
         if self.implemented == False:
             self.implemented = True
-            return visitor._equ(*self.args)
+            return visitor._equ(*self.children)
         else:
             from masm2c.gen import SkipCode
             raise SkipCode
@@ -1072,7 +1077,7 @@ class _equ(baseop):
 class _assignment(baseop):
     def __init__(self, args):
         super().__init__()
-        self.args = args
+        self.children = args
         self.original_name = ''
         self.original_type = ''
         self.implemented = False
@@ -1084,7 +1089,7 @@ class _assignment(baseop):
     def accept(self, visitor):
         # if self.implemented == False:
         self.implemented = True
-        return visitor._assignment(self, *self.args)
+        return visitor._assignment(self, *self.children)
         # else:
         #    from masm2c.cpp import SkipCode
         #    raise SkipCode
@@ -1092,15 +1097,15 @@ class _assignment(baseop):
 class _xlat(baseop):
     def __init__(self, args):
         super().__init__()
-        self.args = args
+        self.children = args
 
     def accept(self, visitor):
-        return visitor._xlat(self.args)
+        return visitor._xlat(self.children)
 
 class _mov(baseop):
     def __init__(self, args):
         super().__init__()
-        self.args = args
+        self.children = args
 
     def accept(self, visitor):
-        return visitor._mov(*self.args)
+        return visitor._mov(*self.children)

@@ -28,7 +28,8 @@ from lark import Tree, lark
 from . import op
 from . import proc as proc_module
 from .Token import Token
-from .gen import Gen, mangle_asm_labels, IndirectionType, InjectCode
+from .gen import Gen, mangle_asm_labels, InjectCode
+from .enum import IndirectionType
 from .parser import ExprSizeCalculator, Vector
 from .pgparser import OFFSETDIR, LABEL, PTRDIR, REGISTER, SEGMENTREGISTER, SEGOVERRIDE, SQEXPR, INTEGER, MEMBERDIR, \
     TopDownVisitor
@@ -1326,7 +1327,7 @@ struct Memory{
             return "{;}"
         else:
             label, _ = self.jump_post(label)
-            if self._context.args.mergeprocs == 'separate' and cmd.upper() == 'JMP':
+            if self._context.children.mergeprocs == 'separate' and cmd.upper() == 'JMP':
                 if label == '__dispatch_call':
                     return "return __dispatch_call(__disp, _state);"
                 if self._context.has_global(label):
@@ -1357,7 +1358,7 @@ struct Memory{
         return []
 
     def _assignment(self, stmt):
-        dst, src = stmt.args
+        dst, src = stmt.children
         o = src
         '''
         #src = Token.remove_tokens(src, ['expr'])

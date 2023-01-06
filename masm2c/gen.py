@@ -3,7 +3,6 @@ import pickle
 import re
 from collections import OrderedDict
 from copy import copy
-from enum import Enum
 
 import jsonpickle
 
@@ -209,7 +208,7 @@ class Gen:
         :return:
         '''
 
-        if self._context.args.mergeprocs == 'separate':
+        if self._context.children.mergeprocs == 'separate':
             for index, first_proc_name in enumerate(self._procs):
                 first_proc = self._context.get_global(first_proc_name)
                 if not first_proc.if_terminated_proc() and index < len(self._procs) - 1:
@@ -225,7 +224,7 @@ class Gen:
         #if self._context.args.mergeprocs == 'separate':
         #    return
 
-        if not self._context.args.mergeprocs == 'single':
+        if not self._context.children.mergeprocs == 'single':
             for index, first_proc_name in enumerate(self._procs):
                 first_proc = self._context.get_global(first_proc_name)
 
@@ -250,7 +249,7 @@ class Gen:
                     for l in missing:
                         proc_to_merge.add(self.find_related_proc(l))  # if label then merge proc implementing it
 
-                if self._context.args.mergeprocs == 'persegment':
+                if self._context.children.mergeprocs == 'persegment':
                     for pname in self._procs:
                         if pname != first_proc_name:
                             p_proc = self._context.get_global(pname)
@@ -291,7 +290,7 @@ class Gen:
         for first_proc_name in self._procs:
             if first_proc_name not in self.grouped:
                 first_proc = self._context.get_global(first_proc_name)
-                if self._context.args.mergeprocs == 'single' or first_proc.to_group_with:
+                if self._context.children.mergeprocs == 'single' or first_proc.to_group_with:
                     logging.debug(f"Merging {first_proc_name}")
                     new_group_name = f'_group{groups_id}'
                     first_label = op.label(first_proc_name, proc=new_group_name, isproc=False,
@@ -306,7 +305,7 @@ class Gen:
 
                     self.groups[first_proc_name] = new_group_name
                     # self.grouped |= first_proc.group
-                    proc_to_group = self._procs if self._context.args.mergeprocs == 'single' else first_proc.to_group_with
+                    proc_to_group = self._procs if self._context.children.mergeprocs == 'single' else first_proc.to_group_with
                     proc_to_group = self.sort_procedure_list_in_linenumber_order(proc_to_group)
 
                     for next_proc_name in proc_to_group:
@@ -628,12 +627,6 @@ class SkipCode(Exception):
 
 class CrossJump(Exception):
     pass
-
-
-class IndirectionType(Enum):
-    OFFSET = -1
-    VALUE = 0
-    POINTER = 1
 
 
 class InjectCode(Exception):
