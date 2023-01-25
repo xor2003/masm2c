@@ -74,6 +74,7 @@ class ExprSizeCalculator(BottomUpVisitor):
         #self.size = 0
         self.element_number = 0
         self.element_size = element_size
+        self.kwargs = kwargs
 
     def expr(self, tree, size):
         if self.element_size:
@@ -91,6 +92,15 @@ class ExprSizeCalculator(BottomUpVisitor):
     def dupdir(self, tree, size):
         #self.element_number += tree.repeat
         return size * tree.repeat
+
+    def LABEL(self, token):  # TODO very strange, to replace
+        context = self.kwargs['context']
+        if context.has_global(token):
+            g = context.get_global(token)
+            if isinstance(g, (op._assignment, op._equ)):
+                self.element_size = g.value.size()
+                return Vector(self.element_size, 1)
+
 
 
 def read_whole_file(file_name):
@@ -1147,13 +1157,13 @@ class Parser:
     def is_register(expr):
         expr = expr.lower()
         size = 0
-        if expr in ['al', 'bl', 'cl', 'dl', 'ah', 'bh', 'ch', 'dh']:
+        if expr in {'al', 'bl', 'cl', 'dl', 'ah', 'bh', 'ch', 'dh'}:
             logging.debug('is reg res 1')
             size = 1
-        elif expr in ['ax', 'bx', 'cx', 'dx', 'si', 'di', 'sp', 'bp', 'ds', 'cs', 'es', 'fs', 'gs', 'ss']:
+        elif expr in {'ax', 'bx', 'cx', 'dx', 'si', 'di', 'sp', 'bp', 'ds', 'cs', 'es', 'fs', 'gs', 'ss'}:
             logging.debug('is reg res 2')
             size = 2
-        elif expr in ['eax', 'ebx', 'ecx', 'edx', 'esi', 'edi', 'esp', 'ebp']:
+        elif expr in {'eax', 'ebx', 'ecx', 'edx', 'esi', 'edi', 'esp', 'ebp'}:
             logging.debug('is reg res 4')
             size = 4
         return size

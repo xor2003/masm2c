@@ -1,4 +1,5 @@
 #!/usr/bin/python3
+#from . import unused_attrs
 # -*- coding: utf-8 -*-
 # Masm2c S2S translator (initially based on SCUMMVM tasmrecover)
 #
@@ -20,8 +21,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #
-
-from __future__ import print_function
 
 import argparse
 import logging

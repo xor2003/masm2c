@@ -924,13 +924,13 @@ class Cpp(Gen):
         return "IMUL%d_%d(%s)" % (len(src), size, ",".join(res))
 
     def _div(self, src):
-        size = self.calculate_size(src)
         self.a = self.render_instruction_argument(src)
+        size = self.calculate_size(src)
         return "DIV%d(%s)" % (size, self.a)
 
     def _idiv(self, src):
-        size = self.calculate_size(src)
         self.a = self.render_instruction_argument(src)
+        size = self.calculate_size(src)
         return "IDIV%d(%s)" % (size, self.a)
 
     def _jz(self, label):
@@ -1023,8 +1023,8 @@ class Cpp(Gen):
         return "SCASD"
 
     def _scas(self, src):
-        size = self.calculate_size(src)
         self.a = self.render_instruction_argument(src)
+        size = self.calculate_size(src)
         srcr = Token.find_tokens(src, REGISTER)
         return "SCAS(%s,%s,%d)" % (self.a, srcr[0], size)
 
@@ -1289,8 +1289,8 @@ struct Memory{
         return ''
 
     def _lods(self, src):
-        size = self.calculate_size(src)
         self.a = self.render_instruction_argument(src)
+        size = self.calculate_size(src)
         srcr = Token.find_tokens(src, REGISTER)
         return "LODS(%s,%s,%d)" % (self.a, srcr[0], size)
 
@@ -1312,6 +1312,10 @@ struct Memory{
         #def_size = expr.size()
         if destination:
             expr.mods.add("destination")
+        if def_size == 0 and expr.element_size == 0:
+            calc = ExprSizeCalculator(init=Vector(0, 0), context=self._context)
+            def_size, _ = calc.visit(expr)  # , result=0)
+
         if def_size and expr.element_size == 0:
             expr.element_size = def_size
         return "".join(IR2Cpp(self._context).visit(expr))

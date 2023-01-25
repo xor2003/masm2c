@@ -729,7 +729,7 @@ class TopDownVisitor:
 
 class BottomUpVisitor:
 
-    def __init__(self, init):
+    def __init__(self, init=None, **kwargs):
         self.init = init
     def visit(self, node):
         result = copy(self.init)
