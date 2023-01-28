@@ -890,9 +890,9 @@ class Cpp(Gen):
             size = dst_size
             #src.element_size = src_size
 
-        if src.indirection == IndirectionType.POINTER and src.element_size == 0 and dst_size:
+        if src.indirection == IndirectionType.POINTER and src.element_size == 0 and dst_size and not src.ptr_size:
             src.ptr_size = dst_size
-        if dst.indirection == IndirectionType.POINTER and dst.element_size == 0 and src_size:
+        if dst.indirection == IndirectionType.POINTER and dst.element_size == 0 and src_size and not dst.ptr_size:
             dst.ptr_size = src_size
         dst = self.render_instruction_argument(dst, dst_size, destination=True)
         src = self.render_instruction_argument(src, src_size)
@@ -1658,7 +1658,7 @@ class IR2Cpp(TopDownVisitor, Cpp):
 
         single = len(tree.children) == 1
         origexpr = tree.children[0]
-        if isinstance(origexpr, list):
+        while isinstance(origexpr, list):
             origexpr = origexpr[0]
         self._isjustlabel = single and ((isinstance(origexpr, lark.Token) and origexpr.type == LABEL) \
                              or (isinstance(origexpr, lark.Token) and origexpr.type == SQEXPR \

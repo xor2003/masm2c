@@ -336,7 +336,7 @@ head db '^',10,10
 
 
     def test_instr_1010(self):
-        self.assertEqual(*self.doTest('mov     ds:byte_41411F[eax], dl', 'MOV(*(raddr(ds,(&byte_41411f)+eax)), dl)'))
+        self.assertEqual(*self.doTest('mov     ds:byte_41411F[eax], dl', '*((&byte_41411f)+eax) = dl;'))
 
     def test_instr_1020(self):
         self.assertEqual(*self.doTest('lea     eax, large ds:4000h', 'eax = 0x4000'))
