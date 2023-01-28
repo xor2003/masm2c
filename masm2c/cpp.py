@@ -112,9 +112,9 @@ class Cpp(Gen):
 
         self._indirection: IndirectionType = IndirectionType.VALUE
 
-        self.__current_size = 0
-        self.__isjustlabel = False
-        self.__work_segment = 'ds'
+        #self.__current_size = 0
+        #self._isjustlabel = False
+        #self.__work_segment = 'ds'
         #
         self.__proc_queue = []
         self.__proc_done = []
@@ -196,8 +196,8 @@ class Cpp(Gen):
         elif isinstance(g, op.var):
             logging.debug("it is var %s", g.size)
             size = g.size
-            if self.__current_size == 0:  # TODO check
-                self.__current_size = size
+            if self._current_size == 0:  # TODO check
+                self._current_size = size
             if size == 0 and not g.issegment:
                 raise Exception("invalid var '%s' size %u" % (name, size))
             if g.issegment:
@@ -209,14 +209,14 @@ class Cpp(Gen):
                 if g.elements != 1:
                     self.needs_dereference = True
                     self.itispointer = True
-                if g.elements == 1 and self.__isjustlabel and not self.lea and g.size == self.__current_size:
+                if g.elements == 1 and self._isjustlabel and not self.lea and g.size == self._current_size:
                     # traceback.print_stack(file=sys.stdout)
                     value = g.name
                     self._indirection = IndirectionType.VALUE
                 else:
                     if self._indirection == IndirectionType.POINTER: # and self.isvariable:
                         value = g.name
-                        if not self.__isjustlabel:  # if not just single label
+                        if not self._isjustlabel:  # if not just single label
                             self.needs_dereference = True
                             self.itispointer = True
                             if g.elements == 1:  # array generates pointer himself
@@ -231,7 +231,7 @@ class Cpp(Gen):
                         value = "offset(%s,%s)" % (g.segment, g.name)
                     else:
                         value = name
-                    if self.__work_segment == 'cs':
+                    if self._work_segment == 'cs':
                         self.body += '\tcs=seg_offset(' + g.segment + ');\n'
             # ?self.__indirection = 1
         elif isinstance(g, op.label):
@@ -382,7 +382,7 @@ class Cpp(Gen):
             logging.debug(str(g))
             if not g.implemented:
                 raise InjectCode(g)
-            if self.__isjustlabel:
+            if self._isjustlabel:
                 value = '.'.join(label)
             else:
                 self.struct_type = g.original_type
@@ -393,8 +393,8 @@ class Cpp(Gen):
         elif isinstance(g, op.var):
             logging.debug(f"it is var {size}")
 
-            if self.__current_size == 0:  # TODO check
-                self.__current_size = size
+            if self._current_size == 0:  # TODO check
+                self._current_size = size
             if size == 0:
                 raise Exception(f"invalid var {label} size {size}")
             self.needs_dereference = False
@@ -402,14 +402,14 @@ class Cpp(Gen):
             if g.elements != 1:
                 self.needs_dereference = True
                 self.itispointer = True
-            if g.elements == 1 and self.__isjustlabel and not self.lea and size == self.__current_size:
+            if g.elements == 1 and self._isjustlabel and not self.lea and size == self._current_size:
                 # traceback.print_stack(file=sys.stdout)
                 value = '.'.join(label)
                 self._indirection = IndirectionType.VALUE
             else:
                 if self._indirection == IndirectionType.POINTER and self.isvariable:
                     value = '.'.join(label)
-                    if not self.__isjustlabel:  # if not just single label
+                    if not self._isjustlabel:  # if not just single label
                         self.needs_dereference = True
                         self.itispointer = True
                         if g.elements == 1:  # array generates pointer himself
@@ -422,7 +422,7 @@ class Cpp(Gen):
                             self.size_changed = True
                 elif self._indirection == IndirectionType.OFFSET and self.isvariable:
                     value = "offset(%s,%s)" % (g.segment, '.'.join(label))
-                if self.__work_segment == 'cs':
+                if self._work_segment == 'cs':
                     self.body += '\tcs=seg_offset(' + g.segment + ');\n'
             # ?self.__indirection = 1
             if value == token:
@@ -462,7 +462,7 @@ class Cpp(Gen):
                     logging.error(f"~{expr}~ invalid size {size}")
                     expr = f"raddr({segment},{expr})"
             else:
-                if self.size_changed or not self.__isjustlabel:
+                if self.size_changed or not self._isjustlabel:
                     expr = Cpp.render_new_pointer_size(self.itispointer, expr, size)
                     self.size_changed = False
 
@@ -549,8 +549,8 @@ class Cpp(Gen):
 
         expr = Token.remove_tokens(expr, ['expr'])  # no need expr token any more
         origexpr = expr  # save original expression before we will change it
-        self.__work_segment = "ds"  # default work segment is ds
-        self.__current_size = 0  # current size of argument is not yet found
+        self._work_segment = "ds"  # default work segment is ds
+        self._current_size = 0  # current size of argument is not yet found
         self.size_changed = False
         self.needs_dereference = False
         self.itispointer = False
@@ -614,12 +614,12 @@ class Cpp(Gen):
         if indirection == IndirectionType.POINTER and not segoverride:
             regs = Token.find_tokens(expr, REGISTER)  # if it was registers used: bp, sp
             if regs and any((i in ['bp', 'ebp', 'sp', 'esp'] for i in regs)):  # TODO doublecheck
-                self.__work_segment = "ss"  # and segment is not overriden means base is "ss:"
+                self._work_segment = "ss"  # and segment is not overriden means base is "ss:"
                 self.isvariable = False
         if segoverride:  # if it was segment override then use provided value
-            self.__work_segment = segoverride[0][0].children[0]
+            self._work_segment = segoverride[0][0].children[0]
 
-        self.__current_size = size
+        self._current_size = size
         size_ovrr_by_ptr = size  # setting initial value
         if ptrdir:  # byte/word/struct ptr. get override type size
             value = ptrdir[0]
@@ -633,10 +633,10 @@ class Cpp(Gen):
                     origexpr = origexpr[0]
 
         # if just "label" or "[label]" or member
-        self.__isjustlabel = (isinstance(origexpr, Token) and origexpr.data == LABEL) \
-                             or (isinstance(origexpr, Token) and origexpr.data == SQEXPR \
+        self._isjustlabel = (isinstance(origexpr, Token) and origexpr.data == LABEL) \
+                            or (isinstance(origexpr, Token) and origexpr.data == SQEXPR \
                                  and isinstance(origexpr.children, Token) and origexpr.children.data == LABEL) \
-                             or (isinstance(origexpr, Token) and origexpr.data == MEMBERDIR)
+                            or (isinstance(origexpr, Token) and origexpr.data == MEMBERDIR)
         self.__isjustmember = isinstance(origexpr, Token) and origexpr.data == MEMBERDIR
 
         self._indirection = indirection
@@ -662,25 +662,25 @@ class Cpp(Gen):
                     expr = '+'.join(registers) + '+' + expr
                 expr = expr.replace('++', '+').replace('+-', '-')
 
-                expr = [f'(({self.struct_type}*)raddr({self.__work_segment},'] + [expr]
+                expr = [f'(({self.struct_type}*)raddr({self._work_segment},'] + [expr]
                 self.needs_dereference = False
         else:
             if islabel:
                 # assert(len(islabel) == 1)
                 expr = Token.find_and_replace_tokens(expr, LABEL, self.convert_label)
         indirection = self._indirection
-        if self.__current_size != 0 and size != self.__current_size and not self.size_changed:
-            size = self.__current_size
+        if self._current_size != 0 and size != self._current_size and not self.size_changed:
+            size = self._current_size
 
         if self.size_changed:
             size = size_ovrr_by_ptr
 
         expr = self.tokens_to_string(expr)
 
-        if not memberdir and indirection == IndirectionType.POINTER and (not self.__isjustlabel or self.size_changed):
-            expr = self.convert_sqbr_reference(self.__work_segment, expr, destination, size, islabel, lea=lea)
+        if not memberdir and indirection == IndirectionType.POINTER and (not self._isjustlabel or self.size_changed):
+            expr = self.convert_sqbr_reference(self._work_segment, expr, destination, size, islabel, lea=lea)
 
-        if self.size_changed:  # or not self.__isjustlabel:
+        if self.size_changed:  # or not self._isjustlabel:
             expr = Cpp.render_new_pointer_size(self.itispointer, expr, size)
             self.size_changed = False
 
@@ -908,7 +908,7 @@ class Cpp(Gen):
                 break
         res = [self.render_instruction_argument(i, size) for i in src]
         if size == 0:
-            size = self.__current_size
+            size = self._current_size
         return "MUL%d_%d(%s)" % (len(src), size, ",".join(res))
 
     def _imul(self, src):
@@ -920,7 +920,7 @@ class Cpp(Gen):
                 break
         res = [self.render_instruction_argument(i, size) for i in src]
         if size == 0:
-            size = self.__current_size
+            size = self._current_size
         return "IMUL%d_%d(%s)" % (len(src), size, ",".join(res))
 
     def _div(self, src):
@@ -1655,7 +1655,7 @@ class IR2Cpp(TopDownVisitor, Cpp):
         origexpr = tree.children[0]
         if isinstance(origexpr, list):
             origexpr = origexpr[0]
-        self.__isjustlabel = single and ((isinstance(origexpr, lark.Token) and origexpr.type == LABEL) \
+        self._isjustlabel = single and ((isinstance(origexpr, lark.Token) and origexpr.type == LABEL) \
                              or (isinstance(origexpr, lark.Token) and origexpr.type == SQEXPR \
                                  and isinstance(origexpr.children, lark.Token) and origexpr.children.type == LABEL) \
                              or (isinstance(origexpr, lark.Token) and origexpr.type == MEMBERDIR))
@@ -1665,7 +1665,7 @@ class IR2Cpp(TopDownVisitor, Cpp):
         result = "".join(self.visit(tree.children))
         memberdir = False
         if tree.indirection == IndirectionType.POINTER and not memberdir and (
-                    not self.__isjustlabel or self.size_changed):
+                    not self._isjustlabel or self.size_changed):
             result = self.convert_sqbr_reference(tree.segment_register, result, 'destination' in tree.mods, tree.ptr_size, 'label' in tree.mods, lea='lea' in tree.mods)
         #if indirection == IndirectionType.POINTER and \
         if self.needs_dereference:

@@ -17,15 +17,15 @@ class Gen:
     def __init__(self,context, outfile="", skip_output=None,
                  merge_data_segments=True):
         self.label_to_proc = {}
-        self.__isjustlabel = None
+        self._isjustlabel = None
         self.groups = OrderedDict()
         self.grouped = set()
-        self.__current_size = 0
+        self._current_size = 0
         self.merge_data_segments = merge_data_segments
         self._procs = context.proc_list
         self.body = ""
         self.lea = False
-        self.__work_segment = ""
+        self._work_segment = "ds"
         self.isvariable = False  # only address or variable
 
 
