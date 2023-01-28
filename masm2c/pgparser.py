@@ -193,6 +193,7 @@ class Asm2IR(CommonCollector):
             self.expression.indirection = IndirectionType.POINTER
         if self.size:
             self.expression.ptr_size = self.size
+            self.expression.mods.add('size_changed')
         self.expression.element_size = 0
         return children
 
@@ -201,6 +202,7 @@ class Asm2IR(CommonCollector):
         #self.__work_segment = children[1].lower()
         self.expression.segment_overriden = True
         self.expression.ptr_size = self.context.typetosize(children[0])
+        self.expression.mods.add('size_changed')
         self.element_type = children[0].lower()
         return children[3:]
 

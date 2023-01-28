@@ -467,7 +467,7 @@ class Cpp(Gen):
                     logging.error(f"~{expr}~ invalid size {size}")
                     expr = f"raddr({segment},{expr})"
             else:
-                if self.size_changed or not self._isjustlabel:
+                if self.size_changed: # or not self._isjustlabel:
                     expr = Cpp.render_new_pointer_size(self.itispointer, expr, size)
                     self.size_changed = False
 
@@ -1668,6 +1668,7 @@ class IR2Cpp(TopDownVisitor, Cpp):
 
         self.element_size = tree.element_size
         result = "".join(self.visit(tree.children))
+        self.size_changed = "size_changed" in tree.mods and self._current_size != tree.size()
         memberdir = False
         if tree.indirection == IndirectionType.POINTER and not memberdir and (
                     not self._isjustlabel or self.size_changed):
