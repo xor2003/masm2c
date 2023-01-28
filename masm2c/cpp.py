@@ -1694,6 +1694,22 @@ class IR2Cpp(TopDownVisitor, Cpp):
         return [self.convert_label_(token)]
         #return self._context.get_global_value(token, size=self.element_size)
 
+    def offsetdir(self, tree):  # TODO equ, assign support
+        name = tree.children[0]
+        try:
+            g = self._context.get_global(name)
+        except Exception:
+            # logging.warning("expand_cb() global '%s' is missing" % name)
+            return name
+        if isinstance(g, op.var):
+            logging.debug("it is var %s", g.size)
+            return "offset(%s,%s)" % (g.segment, g.name)
+        elif isinstance(g, proc_module.Proc):
+            logging.debug("it is proc")
+            return "m2c::k" + g.name.lower()  # .capitalize()
+        else:
+            raise Exception
+
 class IR2CppJump(IR2Cpp):
 
     def __init__(self, parser):

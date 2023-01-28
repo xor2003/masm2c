@@ -105,7 +105,7 @@ class EquCollector(CommonCollector):
     def equdir(self, meta, nodes):
         name, value = nodes
         logging.debug("equdir " + str(nodes) + " ~~")
-        self.context.action_equ(name.children, value, raw=get_raw(self.input_str, meta),
+        self.context.action_equ(name, value, raw=get_raw(self.input_str, meta),
                                        line_number=get_line_number(meta))
         return Discard
 
@@ -533,7 +533,7 @@ class Asm2IR(CommonCollector):
         self.expression.indirection = IndirectionType.OFFSET
         #self.expression.mods.add('offset')
         self.expression.element_size = 2
-        return nodes  # Token('offsetdir', nodes[1])
+        return lark.Tree('offsetdir', nodes)
 
     '''
     def seg(self, nodes):
