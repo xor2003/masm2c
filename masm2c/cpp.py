@@ -855,14 +855,14 @@ class Cpp(Gen):
         if src == []:
             self.a = '0'
         else:
-            self.a = self.render_instruction_argument(src)
+            self.a = self.render_instruction_argument(src[0])
         return "RETN(%s)" % self.a
 
     def _retf(self, src):
         if src == []:
             self.a = '0'
         else:
-            self.a = self.render_instruction_argument(src)
+            self.a = self.render_instruction_argument(src[0])
         return "RETF(%s)" % self.a
 
     def _xlat(self, src):
@@ -1312,7 +1312,7 @@ struct Memory{
         #def_size = expr.size()
         if destination:
             expr.mods.add("destination")
-        if def_size == 0 and expr.element_size == 0:
+        if def_size == 0 and expr.element_size == 0 and expr.indirection != IndirectionType.POINTER:
             calc = ExprSizeCalculator(init=Vector(0, 0), context=self._context)
             def_size, _ = calc.visit(expr)  # , result=0)
 

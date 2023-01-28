@@ -35,7 +35,7 @@ from lark import lark, Visitor
 
 from . import cpp as cpp_module
 from . import op
-from .pgparser import LarkParser, Asm2IR, ExprRemover, AsmData2IR, TopDownVisitor, BottomUpVisitor
+from .pgparser import LarkParser, Asm2IR, ExprRemover, AsmData2IR, TopDownVisitor, BottomUpVisitor, EquCollector
 from .proc import Proc
 
 from .Token import Token, Expression
@@ -1145,6 +1145,7 @@ class Parser:
 
     def process_ast(self, text, result):
         result = ExprRemover().transform(result)
+        result = EquCollector(self).transform(result)
         result = Asm2IR(self, text).transform(result)
         return result
 

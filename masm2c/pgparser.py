@@ -89,13 +89,42 @@ def get_raw_line(input_str, meta):
     return input_str[line_strt_pos: line_eol_pos]
 
 
-class Asm2IR(Transformer):
+class CommonCollector(Transformer):
 
     def __init__(self, context, input_str=''):
         self.context = context
-        self.input_str = input_str
-        self.radix = 10
         self._expression = None
+        self.input_str = input_str
+
+class EquCollector(CommonCollector):
+
+    def __init__(self, context, input_str=''):
+        super().__init__(context, input_str)
+
+    @v_args(meta=True)
+    def equdir(self, meta, nodes):
+        name, value = nodes
+        logging.debug("equdir " + str(nodes) + " ~~")
+        self.context.action_equ(name.children, value, raw=get_raw(self.input_str, meta),
+                                       line_number=get_line_number(meta))
+        return Discard
+
+    @v_args(meta=True)
+    def assdir(self, meta, nodes):
+        name, value = nodes
+        logging.debug("assdir " + str(nodes) + " ~~")
+        self.context.action_assign(name, value, raw=get_raw(self.input_str, meta),
+                                          line_number=get_line_number(meta))
+        return Discard
+
+class Asm2IR(CommonCollector):
+
+    def __init__(self, context, input_str=''):
+        super().__init__(context, input_str)
+        #self.context = context
+        #self.input_str = input_str
+        self.radix = 10
+        #self._expression = None
         self.element_type = None
 
         self.is_string = False
@@ -340,9 +369,12 @@ class Asm2IR(Transformer):
         if self.context.has_global(self.name):
             g = self.context.get_global(self.name)
             from masm2c.proc import Proc
-            #if isinstance(g, (op._equ, op._assignment)):
-            #self.expression.element_size = self.calculate_size(g.value)
-            if isinstance(g, (op.label, Proc)):
+            if isinstance(g, (op._equ, op._assignment)):
+                if not isinstance(g.value, Expression):
+                    g.value = Asm2IR(self.context, g.raw_line).transform(g.value)
+                if isinstance(g.value, Expression):
+                    g.size = g.value.size()
+            elif isinstance(g, (op.label, Proc)):
                 self.expression.indirection = IndirectionType.OFFSET  # direct using number
             elif isinstance(g, op.var):
                 self.expression.indirection = IndirectionType.POINTER  # []
@@ -395,19 +427,6 @@ class Asm2IR(Transformer):
         self.context.action_endp()
         return nodes
 
-    @v_args(meta=True)
-    def equdir(self, meta, nodes):
-        name, value = nodes
-        logging.debug("equdir " + str(nodes) + " ~~")
-        return self.context.action_equ(name.children, value, raw=get_raw(self.input_str, meta),
-                                       line_number=get_line_number(meta))
-
-    @v_args(meta=True)
-    def assdir(self, meta, nodes):
-        name, value = nodes
-        logging.debug("assdir " + str(nodes) + " ~~")
-        return self.context.action_assign(name, value, raw=get_raw(self.input_str, meta),
-                                          line_number=get_line_number(meta))
 
     @v_args(meta=True)
     def instrprefix(self, meta, nodes):
