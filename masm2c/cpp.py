@@ -137,6 +137,9 @@ class Cpp(Gen):
         self.prefix = ''
         self.__label = ''
 
+        self.isvariable = False
+        self.islabel = False
+
         self.__type_table = {op.DataType.NUMBER: self.produce_c_data_number,
                   op.DataType.ARRAY: self.produce_c_data_array,
                   op.DataType.ZERO_STRING: self.produce_c_data_zero_string,
@@ -170,7 +173,7 @@ class Cpp(Gen):
         except Exception:
             # logging.warning("expand_cb() global '%s' is missing" % name)
             return name
-
+        self.islabel = True
         if isinstance(g, op._equ):
             logging.debug("it is equ")
             if not g.implemented:
@@ -196,6 +199,8 @@ class Cpp(Gen):
         elif isinstance(g, op.var):
             logging.debug("it is var %s", g.size)
             size = g.size
+            if size:
+                self.isvariable = True
             if self._current_size == 0:  # TODO check
                 self._current_size = size
             if size == 0 and not g.issegment:
@@ -447,7 +452,7 @@ class Cpp(Gen):
 
     def convert_sqbr_reference(self, segment: str, expr, destination: bool, size: int, islabel: bool, lea: bool=False):
         if not lea or destination:
-            if not islabel or not self.isvariable:
+            if not self.islabel or not self.isvariable:
                 self.needs_dereference = True
                 self.itispointer = True
                 if size == 1:
@@ -1666,7 +1671,7 @@ class IR2Cpp(TopDownVisitor, Cpp):
         memberdir = False
         if tree.indirection == IndirectionType.POINTER and not memberdir and (
                     not self._isjustlabel or self.size_changed):
-            result = self.convert_sqbr_reference(tree.segment_register, result, 'destination' in tree.mods, tree.ptr_size, 'label' in tree.mods, lea='lea' in tree.mods)
+            result = self.convert_sqbr_reference(tree.segment_register, result, 'destination' in tree.mods, tree.ptr_size, False, lea='lea' in tree.mods)
         #if indirection == IndirectionType.POINTER and \
         if self.needs_dereference:
             if result[0] == '(' and result[-1] == ')':
