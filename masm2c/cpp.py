@@ -873,7 +873,7 @@ class Cpp(Gen):
     def _xlat(self, src):
         if not src:
             return "XLAT"
-        self.a = self.render_instruction_argument(src)[2:-1]
+        self.a = self.render_instruction_argument(src[0])[2:-1]
         return "XLATP(%s)" % self.a
 
     def parse2(self, dst, src):
