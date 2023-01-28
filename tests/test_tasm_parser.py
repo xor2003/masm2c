@@ -14,7 +14,7 @@ import unittest
 #unittest.TestLoader.sortTestMethodsUsing = lambda _, xc, y: randint(-1, 1)
 
 
-class ParserTest(unittest.TestCase):
+class ParserInstructionsTest(unittest.TestCase):
     # First define a class variable that determines
     # if setUp was ever run
     ClassIsSetup = False
@@ -609,7 +609,7 @@ head db '^',10,10
         self.assertEqual(*self.doTest('movs byte ptr es:[di], byte ptr cs:[si]', 'MOVS(*(raddr(es,di)), *(raddr(cs,si)), di, si, 1)'))
 
     def test_instr_1920(self):
-        self.assertEqual(*self.doTest('mov     ds:_byte_2D196_in_transition?, al', '_byte_2D196_in_transitionque = al;'))
+        self.assertEqual(*self.doTest('mov     ds:_byte_2D196_in_transition?, al', '_byte_2d196_in_transitionque = al;'))
 
     def test_instr_1930(self):
         self.assertEqual(*self.doTest('mov al, 4', 'al = 4;'))
