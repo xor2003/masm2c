@@ -17,7 +17,7 @@ class Gen:
     def __init__(self,context, outfile="", skip_output=None,
                  merge_data_segments=True):
         self.label_to_proc = {}
-        self._isjustlabel = None
+        self._isjustlabel = False
         self.groups = OrderedDict()
         self.grouped = set()
         self._current_size = 0
