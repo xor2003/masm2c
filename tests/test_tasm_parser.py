@@ -2473,7 +2473,7 @@ head db '^',10,10
         self.assertEqual(*self.doTest('mov     ecx, res', 'ecx = res;'))
 
     def test_instr_8330(self):
-        self.assertEqual(*self.doTest('mov     edi, (offset str_buffer+810h)', 'edi = (offset(_bss,str_buffer)+0x810);'))
+        self.assertEqual(*self.doTest('mov     edi, (offset str_buffer+810h)', 'edi = offset(_bss,str_buffer)+0x810;'))
 
     def test_instr_8340(self):
         self.assertEqual(*self.doTest('add bl,7            ; "A" to "F"', 'ADD(bl, 7)'))

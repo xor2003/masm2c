@@ -42,6 +42,7 @@ def flatten(s):
         return flatten(s[0]) + flatten(s[1:])
     return s[:1] + flatten(s[1:])
 
+
 class SeparateProcStrategy:
 
     def __init__(self, renderer):
@@ -89,7 +90,6 @@ bool __dispatch_call(m2c::_offsets __disp, struct m2c::_STATE* _state);
         return result
 
 
-
 class Cpp(Gen):
     ''' Visitor which can produce C++ equivalents for asm instructions '''
 
@@ -112,9 +112,9 @@ class Cpp(Gen):
 
         self._indirection: IndirectionType = IndirectionType.VALUE
 
-        #self.__current_size = 0
-        #self._isjustlabel = False
-        #self.__work_segment = 'ds'
+        # self.__current_size = 0
+        # self._isjustlabel = False
+        # self.__work_segment = 'ds'
         #
         self.__proc_queue = []
         self.__proc_done = []
@@ -141,12 +141,11 @@ class Cpp(Gen):
         self.islabel = False
 
         self.__type_table = {op.DataType.NUMBER: self.produce_c_data_number,
-                  op.DataType.ARRAY: self.produce_c_data_array,
-                  op.DataType.ZERO_STRING: self.produce_c_data_zero_string,
-                  op.DataType.ARRAY_STRING: self.produce_c_data_array_string,
-                  op.DataType.OBJECT: self.produce_c_data_object
-                  }
-
+                             op.DataType.ARRAY: self.produce_c_data_array,
+                             op.DataType.ZERO_STRING: self.produce_c_data_zero_string,
+                             op.DataType.ARRAY_STRING: self.produce_c_data_array_string,
+                             op.DataType.OBJECT: self.produce_c_data_object
+                             }
 
     def convert_label(self, token):
         name_original = mangle_asm_labels(token.children[0])
@@ -219,7 +218,7 @@ class Cpp(Gen):
                     value = g.name
                     self._indirection = IndirectionType.VALUE
                 else:
-                    if self._indirection == IndirectionType.POINTER: # and self.isvariable:
+                    if self._indirection == IndirectionType.POINTER:  # and self.isvariable:
                         value = g.name
                         if not self._isjustlabel:  # if not just single label
                             self.needs_dereference = True
@@ -233,6 +232,7 @@ class Cpp(Gen):
                                 value = "((db*)%s)" % value
                                 self.size_changed = True
                     elif self._indirection == IndirectionType.OFFSET:
+                        assert False
                         value = "offset(%s,%s)" % (g.segment, g.name)
                     else:
                         value = name
@@ -299,7 +299,6 @@ class Cpp(Gen):
                         # value = f'    {name}={value};'
                         value = f'    {{{type_and_size}={value};MYCOPY({name})}}'
 
-
                     # char (& bb)[5] = group.bb;
                     # int& caa = group.aaa;
                     # references
@@ -314,7 +313,6 @@ class Cpp(Gen):
                             type_and_name = type_and_name[:-1] + f' // {real_seg:04x}:{real_offset:04x}\n'
                         value += "\n"
                     # c += " // " + j.getlabel() + "\n"  # TODO can put original_label
-
 
                     cpp_file += value  # cpp source - assigning
                     hpp_file += _extern_in_hpp  # extern for header
@@ -450,7 +448,8 @@ class Cpp(Gen):
             raise Exception("invalid var '%s' size %u" % (str(label), size))
         return value
 
-    def convert_sqbr_reference(self, segment: str, expr, destination: bool, size: int, islabel: bool, lea: bool=False):
+    def convert_sqbr_reference(self, segment: str, expr, destination: bool, size: int, islabel: bool,
+                               lea: bool = False):
         if not lea or destination:
             if not self.islabel or not self.isvariable:
                 self.needs_dereference = True
@@ -467,7 +466,7 @@ class Cpp(Gen):
                     logging.error(f"~{expr}~ invalid size {size}")
                     expr = f"raddr({segment},{expr})"
             else:
-                if self.size_changed: # or not self._isjustlabel:
+                if self.size_changed:  # or not self._isjustlabel:
                     expr = Cpp.render_new_pointer_size(self.itispointer, expr, size)
                     self.size_changed = False
 
@@ -541,7 +540,7 @@ class Cpp(Gen):
             return self.tokens_to_string(expr.children)
         return expr
 
-    def render_instruction_argument_(self, expr, def_size: int=0, destination: bool=False, lea: bool=False):
+    def render_instruction_argument_(self, expr, def_size: int = 0, destination: bool = False, lea: bool = False):
         '''
         Convert instruction argument Tokens into C
         :param expr: argument Tokens
@@ -640,7 +639,7 @@ class Cpp(Gen):
         # if just "label" or "[label]" or member
         self._isjustlabel = (isinstance(origexpr, Token) and origexpr.data == LABEL) \
                             or (isinstance(origexpr, Token) and origexpr.data == SQEXPR \
-                                 and isinstance(origexpr.children, Token) and origexpr.children.data == LABEL) \
+                                and isinstance(origexpr.children, Token) and origexpr.children.data == LABEL) \
                             or (isinstance(origexpr, Token) and origexpr.data == MEMBERDIR)
         self.__isjustmember = isinstance(origexpr, Token) and origexpr.data == MEMBERDIR
 
@@ -724,7 +723,7 @@ class Cpp(Gen):
             # name = 'm2c::k'+name
             self.dispatch += f'__disp={name};\n'
             name = "__dispatch_call"
-            #logging.debug(f'not sure if handle it properly {name}')
+            # logging.debug(f'not sure if handle it properly {name}')
 
         return name, far
 
@@ -784,7 +783,7 @@ class Cpp(Gen):
                 far = g.far
 
 
-            #if hasglobal:
+            # if hasglobal:
             elif isinstance(g, op.label):
                 far = g.far  # make far calls to far procs
         '''
@@ -884,11 +883,11 @@ class Cpp(Gen):
                 # raise Exception("both sizes are 0")
             size = src_size
             dst_size = src_size
-            #dst.element_size = dst_size
+            # dst.element_size = dst_size
         if src_size == 0:
             src_size = dst_size
             size = dst_size
-            #src.element_size = src_size
+            # src.element_size = src_size
 
         if src.indirection == IndirectionType.POINTER and src.element_size == 0 and dst_size and not src.ptr_size:
             src.ptr_size = dst_size
@@ -1103,7 +1102,8 @@ class Cpp(Gen):
 
         self.__methods += self.__failed
         done, failed = len(self.__proc_done), len(self.__failed)
-        logging.info("%d ok, %d failed of %d, %3g%% translated", done, failed, done + failed, 100.0 * done / (done + failed))
+        logging.info("%d ok, %d failed of %d, %3g%% translated", done, failed, done + failed,
+                     100.0 * done / (done + failed))
 
         logging.info("\n".join(self.__failed))
 
@@ -1202,7 +1202,6 @@ db(& heap)[HEAP_SIZE]=m.heap;
 ''' + self.produce_structures(structures) + self.produce_data(data_h) + '''
 #endif
 ''')
-
 
     def produce_label_offsets(self):
         labeloffsets = """namespace m2c{
@@ -1313,19 +1312,22 @@ struct Memory{
         self.a = self.render_instruction_argument(dst)
         return "%s(%s)" % (cmd.upper(), self.a)
 
-    def render_instruction_argument(self, expr, def_size: int=0, destination: bool=False, lea: bool=False):
-        #def_size = expr.size()
+    def render_instruction_argument(self, expr, def_size: int = 0, destination: bool = False, lea: bool = False):
+        # def_size = expr.size()
         if destination:
             expr.mods.add("destination")
+        if lea:
+            expr.mods.add("lea")
         if def_size == 0 and expr.element_size == 0 and expr.indirection != IndirectionType.POINTER:
             calc = ExprSizeCalculator(init=Vector(0, 0), context=self._context)
             def_size, _ = calc.visit(expr)  # , result=0)
 
         if def_size and expr.element_size == 0:
             expr.element_size = def_size
-        return "".join(IR2Cpp(self._context).visit(expr))
+        result = "".join(IR2Cpp(self._context).visit(expr))
+        return result[1:-1] if result and result[0] == '(' and result[-1] == ')' else result
 
-    def render_jump_label(self, expr, def_size: int=0):
+    def render_jump_label(self, expr, def_size: int = 0):
         if def_size and expr.element_size == 0:
             expr.element_size = def_size
         return "".join(IR2CppJump(self._context).visit(expr))
@@ -1397,7 +1399,6 @@ struct Memory{
         self.__label += "#define %s %s\n" % (dst, self.render_instruction_argument(src))
         return ''
 
-
     def produce_c_data_single_(self, data):
         """
         It takes an assembler data and returns a C++ object
@@ -1416,14 +1417,12 @@ struct Memory{
         logging.debug(rh)
         return rc, rh, data.getsize()
 
-
     def produce_c_data_number(self, data: op.Data):
         label, data_ctype, _, r, elements, size = data.getdata()
         rc = ''.join(str(i) if isinstance(i, int) else ''.join(str(x) for x in self.visit(i)) for i in r)
-        #rc = ''.join([str(i) if isinstance(i, int) else self.visit(i) for i in r])
+        # rc = ''.join([str(i) if isinstance(i, int) else self.visit(i) for i in r])
         rh = f'{data_ctype} {label}'
         return rc, rh
-
 
     def produce_c_data_array(self, data: op.Data):
         label, data_ctype, _, r, elements, _ = data.getdata()
@@ -1436,12 +1435,12 @@ struct Memory{
             if isinstance(v, op.Data):
                 c = self.produce_c_data_single_(v)[0]
                 rc += c
-            #elif isinstance(v, (lark.Token, lark.Tree)):
+            # elif isinstance(v, (lark.Token, lark.Tree)):
             #    rc += "".join(flatten(self.visit(v)))
             elif isinstance(v, list):
-                #print(v)
+                # print(v)
                 l = [str(i) for i in v]
-                #print(l)
+                # print(l)
                 rc += "".join(l)
             else:
                 rc += str(v)
@@ -1449,7 +1448,6 @@ struct Memory{
         # assert(len(r)==elements)
         rh = f'{data_ctype} {label}[{elements}]'
         return rc, rh
-
 
     def produce_c_data_zero_string(self, data: op.Data):
         label, data_ctype, _, r, elements, size = data.getdata()
@@ -1459,14 +1457,12 @@ struct Memory{
         rh = f'char {label}[{size}]'
         return rc, rh
 
-
     def produce_c_data_array_string(self, data: op.Data):
         label, data_ctype, _, r, elements, size = data.getdata()
         r = flatten(r)
         rc = '{' + ",".join([self.convert_char(i) for i in r]) + '}'
         rh = f'char {label}[{size}]'
         return rc, rh
-
 
     def produce_c_data_object(self, data: op.Data):
         label, data_ctype, _, r, elements, size = data.getdata()
@@ -1479,12 +1475,10 @@ struct Memory{
         rh = f'{data_ctype} {label}'
         return rc, rh
 
-
     def convert_char(self, c):
         if isinstance(c, int) and c not in [10, 13]:
             return str(c)
         return "'" + self.convert_str(c) + "'"
-
 
     def convert_str(self, c):
         vvv = ""
@@ -1502,8 +1496,8 @@ struct Memory{
         elif isinstance(c, str):
             # logging.debug "~~ " + r[i] + str(ord(r[i]))
             res = ''
-            #string = c
-            #for c in string:
+            # string = c
+            # for c in string:
 
             if c in ["\'", '\"', '\\']:
                 vvv = "\\" + c
@@ -1515,8 +1509,8 @@ struct Memory{
                 vvv = '\\0'
             else:
                 vvv = c
-            #res += vvv
-            #vvv = res
+            # res += vvv
+            # vvv = res
         return vvv
 
     def produce_global_jump_table(self, globals, itislst):
@@ -1623,15 +1617,15 @@ class IR2Cpp(TopDownVisitor, Cpp):
         self.element_size = -1
 
     def INTEGER(self, t):
-        #s = {2: hex(token.value), 8: oct(token.value), 10: str(token.value), 16: hex(token.value)}[token.column]
-        return [self.produce_number_c('',t.start_pos, t.line, t.column)]
+        # s = {2: hex(token.value), 8: oct(token.value), 10: str(token.value), 16: hex(token.value)}[token.column]
+        return [self.produce_number_c('', t.start_pos, t.line, t.column)]
 
     def STRING(self, token):
         result = token.value
-        #m = re.match(r'^[\'\"](....)[\'\"]$', token.value)  # char constants 'abcd'
-        if len(token.value) == 4: #m:
+        # m = re.match(r'^[\'\"](....)[\'\"]$', token.value)  # char constants 'abcd'
+        if len(token.value) == 4:  # m:
             ex = token
-            #ex = m.group(1)
+            # ex = m.group(1)
             result = '0x'
             for i in range(0, 4):
                 # logging.debug("constant %s %d" %(ex,i))
@@ -1642,7 +1636,6 @@ class IR2Cpp(TopDownVisitor, Cpp):
             result = result.replace('\\', '\\\\')  # escape c \ symbol
             result = "'" + result + "'"
         return [result]
-
 
     '''
     def list_visitor(self, l):
@@ -1661,9 +1654,10 @@ class IR2Cpp(TopDownVisitor, Cpp):
         while isinstance(origexpr, list):
             origexpr = origexpr[0]
         self._isjustlabel = single and ((isinstance(origexpr, lark.Token) and origexpr.type == LABEL) \
-                             or (isinstance(origexpr, lark.Token) and origexpr.type == SQEXPR \
-                                 and isinstance(origexpr.children, lark.Token) and origexpr.children.type == LABEL) \
-                             or (isinstance(origexpr, lark.Token) and origexpr.type == MEMBERDIR))
+                                        or (isinstance(origexpr, lark.Token) and origexpr.type == SQEXPR \
+                                            and isinstance(origexpr.children,
+                                                           lark.Token) and origexpr.children.type == LABEL) \
+                                        or (isinstance(origexpr, lark.Token) and origexpr.type == MEMBERDIR))
         self.__isjustmember = single and isinstance(origexpr, lark.Token) and origexpr.type == MEMBERDIR
 
         self.element_size = tree.element_size
@@ -1671,9 +1665,10 @@ class IR2Cpp(TopDownVisitor, Cpp):
         self.size_changed = "size_changed" in tree.mods and self._current_size != tree.size()
         memberdir = False
         if tree.indirection == IndirectionType.POINTER and not memberdir and (
-                    not self._isjustlabel or self.size_changed):
-            result = self.convert_sqbr_reference(tree.segment_register, result, 'destination' in tree.mods, tree.ptr_size, False, lea='lea' in tree.mods)
-        #if indirection == IndirectionType.POINTER and \
+                not self._isjustlabel or self.size_changed):
+            result = self.convert_sqbr_reference(tree.segment_register, result, 'destination' in tree.mods,
+                                                 tree.ptr_size, False, lea='lea' in tree.mods)
+        # if indirection == IndirectionType.POINTER and \
         if self.needs_dereference:
             if result[0] == '(' and result[-1] == ')':
                 result = "*%s" % result
@@ -1692,7 +1687,7 @@ class IR2Cpp(TopDownVisitor, Cpp):
 
     def LABEL(self, token):
         return [self.convert_label_(token)]
-        #return self._context.get_global_value(token, size=self.element_size)
+        # return self._context.get_global_value(token, size=self.element_size)
 
     def offsetdir(self, tree):  # TODO equ, assign support
         name = tree.children[0]
@@ -1714,13 +1709,13 @@ class IR2Cpp(TopDownVisitor, Cpp):
         return ['~'] + tree.children
 
     def ordir(self, tree):
-        return [tree.children[0]," | ",tree.children[1]]
+        return [tree.children[0], " | ", tree.children[1]]
 
     def xordir(self, tree):
-        return [tree.children[0]," ^ ",tree.children[1]]
+        return [tree.children[0], " ^ ", tree.children[1]]
 
     def anddir(self, tree):
-        return [tree.children[0]," & ",tree.children[1]]
+        return [tree.children[0], " & ", tree.children[1]]
 
 
 class IR2CppJump(IR2Cpp):
