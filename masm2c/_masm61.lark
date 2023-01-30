@@ -147,7 +147,7 @@ RELOP: ("EQ"i|"NE"i|"LT"i|"LE"i|"GT"i|"GE"i)
 OROP: ("OR"i|"XOR"i)
 SHOP: ("SHR"i | "SHL"i)
 WORDOP: ("HIGH"i|"LOW"i|"HIGHWORD"i|"LOWWORD"i)
-!ptrdir2: ("LARGE"i|"SMALL"i|"SHORT"i) segmentregister ":" e10
+!ptrdir2: "LARGE"i segmentregister ":" e10 // ("LARGE"i|"SMALL"i|"SHORT"i)
 
 ?e01: e02 | e01 OROP e02 -> ordir
 ?e02: e03 | e02 "AND"i e03 -> anddir
@@ -165,8 +165,9 @@ WORDOP: ("HIGH"i|"LOW"i|"HIGHWORD"i|"LOWWORD"i)
 | "LROFFSET"i e10
 | "TYPE"i e10
 | "THIS"i e10
-| e09 "PTR"i e10 -> ptrdir
+| e09 "PTR"i e10 -> ptrdir // | "NEAR"i "PTR"i e10 | "FAR"i "PTR"i e10
 | ptrdir2
+| "SHORT"i LABEL -> ptrdir3
 | e09 ":" e10 -> segoverride
 | e10
 ?e10: e10 fieldlist -> memberdir
