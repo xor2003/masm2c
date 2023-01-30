@@ -1710,6 +1710,19 @@ class IR2Cpp(TopDownVisitor, Cpp):
         else:
             raise Exception
 
+    def notdir(self, tree):
+        return ['~'] + tree.children
+
+    def ordir(self, tree):
+        return [tree.children[0]," | ",tree.children[1]]
+
+    def xordir(self, tree):
+        return [tree.children[0]," ^ ",tree.children[1]]
+
+    def anddir(self, tree):
+        return [tree.children[0]," & ",tree.children[1]]
+
+
 class IR2CppJump(IR2Cpp):
 
     def __init__(self, parser):

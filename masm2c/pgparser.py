@@ -476,21 +476,6 @@ class Asm2IR(CommonCollector):
         self.context.action_end(children[0].children[0].children[0])
         return children
 
-    def notdir(self, nodes):
-        nodes[0] = '~'  # should be in Cpp module
-        return nodes
-
-    def ordir(self, nodes):
-        nodes[1] = '|'
-        return nodes
-
-    def xordir(self, nodes):
-        nodes[1] = '^'
-        return nodes
-
-    def anddir(self, nodes):
-        nodes[1] = ' & '
-        return nodes
 
     @property
     def expression(self):

@@ -144,12 +144,13 @@ fieldlist: field+
 SIGN: ("+"|"-")
 MULOP: ("*"| "/" | "MOD"i)
 RELOP: ("EQ"i|"NE"i|"LT"i|"LE"i|"GT"i|"GE"i)
-OROP: ("OR"i|"XOR"i)
+//OROP: ("OR"i|"XOR"i)
 SHOP: ("SHR"i | "SHL"i)
 WORDOP: ("HIGH"i|"LOW"i|"HIGHWORD"i|"LOWWORD"i)
 !ptrdir2: "LARGE"i segmentregister ":" e10 // ("LARGE"i|"SMALL"i|"SHORT"i)
 
-?e01: e02 | e01 OROP e02 -> ordir
+?e01: e02 | e01 "OR"i e02 -> ordir
+| e01 "XOR"i e02 -> xordir
 ?e02: e03 | e02 "AND"i e03 -> anddir
 ?e03: e04 | "NOT"i e04 -> notdir
 ?e04: e05 | e04 RELOP e05 -> reldir

@@ -325,6 +325,9 @@ head db '^',10,10
     def test_instr_940(self):
         self.assertEqual(*self.doTest('mov ax,  not 1', 'ax = ~1;'))
 
+    def test_instr_941(self):
+        self.assertEqual(*self.doTest('mov ax, 2 or 1', 'ax = 2 | 1;'))
+
     def test_instr_950(self):
         self.assertEqual(*self.doTest('mov     [esp+8], eax', 'MOV(*(dd*)(raddr(ss,esp+8)), eax)'))
 
