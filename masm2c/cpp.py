@@ -465,8 +465,7 @@ class Cpp(Gen):
                 else:
                     logging.error(f"~{expr}~ invalid size {size}")
                     expr = f"raddr({segment},{expr})"
-            else:
-                if self.size_changed:  # or not self._isjustlabel:
+            elif self.size_changed:  # or not self._isjustlabel:
                     expr = Cpp.render_new_pointer_size(self.itispointer, expr, size)
                     self.size_changed = False
 
