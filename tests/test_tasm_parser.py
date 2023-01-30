@@ -846,7 +846,7 @@ head db '^',10,10
         self.assertEqual(*self.doTest('INC [singlebyte2]', 'INC(singlebyte2)'))
 
     def test_instr_2700(self):
-        self.assertEqual(*self.doTest('cmp dword ptr bytearray,11', 'CMP(*(dd*)((bytearray)), 11)'))
+        self.assertEqual(*self.doTest('cmp dword ptr bytearray,11', 'CMP(*(dd*)(bytearray), 11)'))
 
     def test_instr_2710(self):
         self.assertEqual(*self.doTest('cmp dx,-1', 'CMP(dx, -1)'))
@@ -1183,7 +1183,7 @@ head db '^',10,10
         self.assertEqual(*self.doTest('int 21h                         ; DOS INT 21h', '_INT(0x21)'))
 
     def test_instr_4000(self):
-        self.assertEqual(*self.doTest("cmp dword ptr buffer,'tseT'", 'CMP(*(dd*)((buffer)), 0x74736554)'))
+        self.assertEqual(*self.doTest("cmp dword ptr buffer,'tseT'", 'CMP(*(dd*)(buffer), 0x74736554)'))
 
     def test_instr_4020(self):
         self.assertEqual(*self.doTest('jNC OK', 'JNC(ok)'))

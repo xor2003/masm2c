@@ -1270,8 +1270,12 @@ struct Memory{
 
     def _lea(self, dst, src):
         self.lea = True
-        self.a = self.render_instruction_argument(dst, destination=True, lea=True)
-        self.b = self.render_instruction_argument(src, lea=True)
+        src.indirection = IndirectionType.VALUE
+        src.mods.add('lea')
+        dst.mods.add('lea')
+        self.a, self.b = self.parse2(dst, src)
+        #self.a = self.render_instruction_argument(dst, destination=True, lea=True)
+        #self.b = self.render_instruction_argument(src, lea=True)
         r = "%s = %s" % (self.a, self.b)
         self.lea = False
         return r
@@ -1701,6 +1705,8 @@ class IR2Cpp(TopDownVisitor, Cpp):
             return "offset(%s,%s)" % (g.segment, g.name)
         elif isinstance(g, proc_module.Proc):
             logging.debug("it is proc")
+            return "m2c::k" + g.name.lower()  # .capitalize()
+        elif isinstance(g, op.label):
             return "m2c::k" + g.name.lower()  # .capitalize()
         else:
             raise Exception
