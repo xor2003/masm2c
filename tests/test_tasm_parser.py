@@ -713,7 +713,7 @@ head db '^',10,10
     def test_instr_2250(self):
         self.assertEqual(*self.doTest('CMP [singlebyte],35', 'CMP(singlebyte, 35)'))
 
-    def test_instr_2260(self):
+    def test_instr_2260(self):  # array of 3 words
         self.assertEqual(*self.doTest('cmp [wordarray+2],6', 'CMP(*(dw*)(((db*)wordarray)+2), 6)'))
 
     def test_instr_2270(self):
@@ -1050,7 +1050,7 @@ head db '^',10,10
         self.assertEqual(*self.doTest('cmp word ptr [singlequad+2],50', 'CMP(*(dw*)(((db*)&singlequad)+2), 50)'))
 
     def test_instr_3380(self):
-        self.assertEqual(*self.doTest('cmp word ptr singlequad,0', 'CMP(*(dw*)((db*)&singlequad), 0)'))
+        self.assertEqual(*self.doTest('cmp word ptr singlequad,0', 'CMP(*(dw*)(&singlequad), 0)'))
 
     def test_instr_3390(self):
         self.assertEqual(*self.doTest('cmpsb', 'CMPSB'))
@@ -2620,7 +2620,7 @@ head db '^',10,10
         self.assertEqual(*self.doTest('mov bl,-1', 'bl = -1;'))
 
     def test_instr_8820(self):  # a is an array of bytes
-        self.assertEqual(*self.doTest('mov bl,[a+1]', 'MOV(bl, *(raddr(ds,a+1)))'))
+        self.assertEqual(*self.doTest('mov bl,[a+1]', 'bl = *((a)+1);'))
 
     def test_instr_8830(self):
         self.assertEqual(*self.doTest('mov bl,al', 'bl = al;'))
