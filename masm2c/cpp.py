@@ -232,8 +232,9 @@ class Cpp(Gen):
                                 value = "((db*)%s)" % value
                                 self.size_changed = True
                     elif self._indirection == IndirectionType.OFFSET:
-                        assert False
                         value = "offset(%s,%s)" % (g.segment, g.name)
+                        self.needs_dereference = False
+                        self.itispointer = False
                     else:
                         value = name
                     if self._work_segment == 'cs':
@@ -1269,7 +1270,7 @@ struct Memory{
 
     def _lea(self, dst, src):
         self.lea = True
-        src.indirection = IndirectionType.VALUE
+        src.indirection = IndirectionType.OFFSET
         src.mods.add('lea')
         dst.mods.add('lea')
         self.a, self.b = self.parse2(dst, src)
@@ -1327,7 +1328,10 @@ struct Memory{
 
         if def_size and expr.element_size == 0:
             expr.element_size = def_size
-        result = "".join(IR2Cpp(self._context).visit(expr))
+        ir2cpp = IR2Cpp(self._context)
+        ir2cpp.lea = self.lea
+        ir2cpp._indirection = expr.indirection
+        result = "".join(ir2cpp.visit(expr))
         return result[1:-1] if result and result[0] == '(' and result[-1] == ')' else result
 
     def render_jump_label(self, expr, def_size: int = 0):
