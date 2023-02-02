@@ -1050,7 +1050,7 @@ head db '^',10,10
         self.assertEqual(*self.doTest('cmp word ptr [singlequad+2],50', 'CMP(*(dw*)(((db*)&singlequad)+2), 50)'))
 
     def test_instr_3380(self):
-        self.assertEqual(*self.doTest('cmp word ptr singlequad,0', 'CMP(*(dw*)(((db*)&singlequad)), 0)'))
+        self.assertEqual(*self.doTest('cmp word ptr singlequad,0', 'CMP(*(dw*)((db*)&singlequad), 0)'))
 
     def test_instr_3390(self):
         self.assertEqual(*self.doTest('cmpsb', 'CMPSB'))
@@ -2644,10 +2644,10 @@ head db '^',10,10
         self.assertEqual(*self.doTest('mov bx,fs', 'bx = fs;'))
 
     def test_instr_8900(self):
-        self.assertEqual(*self.doTest('mov bx,word ptr [d]', 'bx = *(dw*)((&d));'))
+        self.assertEqual(*self.doTest('mov bx,word ptr [d]', 'bx = *(dw*)(&d);'))
 
     def test_instr_8910(self):
-        self.assertEqual(*self.doTest('mov bx,word ptr [e]', 'bx = *(dw*)((&e));'))
+        self.assertEqual(*self.doTest('mov bx,word ptr [e]', 'bx = *(dw*)(&e);'))
 
     def test_instr_8920(self):
         self.assertEqual(*self.doTest('mov byte ptr [a],5', '*(a) = 5;'))

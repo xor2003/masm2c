@@ -213,7 +213,7 @@ class Cpp(Gen):
                 if g.elements != 1:
                     self.needs_dereference = True
                     self.itispointer = True
-                if g.elements == 1 and self._isjustlabel and not self.lea and g.size == self._current_size:
+                if g.elements == 1 and self._isjustlabel and not self.lea and g.size == self.element_size:
                     # traceback.print_stack(file=sys.stdout)
                     value = g.name
                     self._indirection = IndirectionType.VALUE
@@ -492,13 +492,13 @@ class Cpp(Gen):
                 logging.error(f"~{expr}~ unknown size {size}")
         else:
             if size == 1:
-                expr = f"TODB({expr})"
+                expr = f"*(db*)(&{expr})"
             elif size == 2:
-                expr = f"TODW({expr})"
+                expr = f"*(dw*)(&{expr})"
             elif size == 4:
-                expr = f"TODD({expr})"
+                expr = f"*(dd*)(&{expr})"
             elif size == 8:
-                expr = f"TODQ({expr})"
+                expr = f"*(dq*)(&{expr})"
             else:
                 logging.error(f"~{expr}~ unknown size {size}")
 
