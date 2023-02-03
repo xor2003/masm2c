@@ -210,7 +210,7 @@ class Cpp(Gen):
             else:
                 self.needs_dereference = False
                 self.itispointer = False
-                if g.elements != 1:
+                if g.elements != 1:  # array
                     self.needs_dereference = True
                     self.itispointer = True
                 if g.elements == 1 and self._isjustlabel and not self.lea and g.size == self.element_size:
@@ -220,16 +220,16 @@ class Cpp(Gen):
                 else:
                     if self._indirection == IndirectionType.POINTER:  # and self.isvariable:
                         value = g.name
-                        if not self._isjustlabel:  # if not just single label
+                        if not self._isjustlabel:  # if not just single label: [a+3] address arithmetics
                             self.needs_dereference = True
                             self.itispointer = True
                             if g.elements == 1:  # array generates pointer himself
-                                value = "&" + value
+                                value = "&" + value  # get address of a scalar
 
                             if g.getsize() == 1:  # it is already a byte
                                 value = "(%s)" % value
                             else:
-                                value = "((db*)%s)" % value
+                                value = "((db*)%s)" % value # cast to byte for address arihm
                                 self.size_changed = True
                                 self._current_size = 1
                     elif self._indirection == IndirectionType.OFFSET:
