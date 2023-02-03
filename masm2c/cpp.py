@@ -197,13 +197,13 @@ class Cpp(Gen):
                 self._indirection = IndirectionType.VALUE
         elif isinstance(g, op.var):
             logging.debug("it is var %s", g.size)
-            size = g.size
-            if size:
+            self.variable_size = var_size = g.size
+            if var_size:
                 self.isvariable = True
             if self._current_size == 0:  # TODO check
-                self._current_size = size
-            if size == 0 and not g.issegment:
-                raise Exception("invalid var '%s' size %u" % (name, size))
+                self._current_size = var_size
+            if var_size == 0 and not g.issegment:
+                raise Exception("invalid var '%s' size %u" % (name, var_size))
             if g.issegment:
                 value = "seg_offset(%s)" % (name_original.lower())
                 self._indirection = IndirectionType.VALUE
@@ -231,6 +231,7 @@ class Cpp(Gen):
                             else:
                                 value = "((db*)%s)" % value
                                 self.size_changed = True
+                                self._current_size = 1
                     elif self._indirection == IndirectionType.OFFSET:
                         value = "offset(%s,%s)" % (g.segment, g.name)
                         self.needs_dereference = False
@@ -243,9 +244,9 @@ class Cpp(Gen):
         elif isinstance(g, op.label):
             value = "m2c::k" + g.name.lower()  # .capitalize()
         else:
-            size = g.getsize()
-            if size == 0:
-                raise Exception("invalid var '%s' size %u" % (name, size))
+            var_size = g.getsize()
+            if var_size == 0:
+                raise Exception("invalid var '%s' size %u" % (name, var_size))
             if self._indirection in (IndirectionType.VALUE, IndirectionType.POINTER):  # x0r self.indirection == 1 ??
                 value = "offsetof(struct Memory,%s)" % name_original
                 if self._indirection == IndirectionType.POINTER:
@@ -254,7 +255,7 @@ class Cpp(Gen):
                 value = "%s" % g.offset
                 self._indirection = IndirectionType.VALUE
             else:
-                raise Exception("invalid indirection %d name '%s' size %u" % (self._indirection, name, size))
+                raise Exception("invalid indirection %d name '%s' size %u" % (self._indirection, name, var_size))
         return value
 
     def render_data_c(self, segments):
@@ -1332,6 +1333,7 @@ struct Memory{
         ir2cpp.lea = self.lea
         ir2cpp._indirection = expr.indirection
         result = "".join(ir2cpp.visit(expr))
+        self.size_changed = ir2cpp.size_changed
         return result[1:-1] if result and result[0] == '(' and result[-1] == ')' else result
 
     def render_jump_label(self, expr, def_size: int = 0):
@@ -1669,7 +1671,9 @@ class IR2Cpp(TopDownVisitor, Cpp):
 
         self.element_size = tree.element_size
         result = "".join(self.visit(tree.children))
-        self.size_changed = "size_changed" in tree.mods and self._current_size != tree.size()
+        if tree.indirection == IndirectionType.POINTER and tree.ptr_size == 0 and hasattr(self,"variable_size"):  # [ var ]
+            tree.ptr_size = self.variable_size  # Set destination size based on variable size
+        self.size_changed = self.size_changed or "size_changed" in tree.mods and self._current_size != tree.size()
         memberdir = False
         if tree.indirection == IndirectionType.POINTER and not memberdir and (
                 not self._isjustlabel or self.size_changed):
