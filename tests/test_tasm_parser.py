@@ -110,11 +110,11 @@ class ParserInstructionsTest(unittest.TestCase):
         self.__class__.parser.set_global('h2', op.var(name=u'h2', offset=1, segment=u'_data', size=1))
         self.__class__.parser.set_global('load_handle', op.var(name=u'load_handle', offset=1, segment=u'_data', size=4))
         self.__class__.parser.set_global('pal_jeu', op.var(elements=16, name=u'pal_jeu', offset=1, segment=u'_data', size=1))
-        self.__class__.parser.set_global('str1', op.var(elements=0, name=u'str1', offset=1, segment=u'_data', size=1))
-        self.__class__.parser.set_global('str2', op.var(elements=0, name=u'str2', offset=1, segment=u'_data', size=1))
-        self.__class__.parser.set_global('str3', op.var(elements=0, name=u'str3', offset=1, segment=u'_data', size=1))
+        self.__class__.parser.set_global('str1', op.var(elements=10, name=u'str1', offset=1, segment=u'_data', size=1))
+        self.__class__.parser.set_global('str2', op.var(elements=10, name=u'str2', offset=1, segment=u'_data', size=1))
+        self.__class__.parser.set_global('str3', op.var(elements=10, name=u'str3', offset=1, segment=u'_data', size=1))
         self.__class__.parser.set_global('str_buffer', op.var(elements=4096, name=u'str_buffer', offset=1, segment=u'_bss', size=1))
-        self.__class__.parser.set_global('table', op.var(name=u'table', offset=1, segment=u'_text', size=2))
+        self.__class__.parser.set_global('wordtable', op.var(name=u'wordtable', elements=10, offset=1, segment=u'_text', size=2))
         self.__class__.parser.set_global('testoverlap', op.var(elements=14, name=u'testOVerlap', offset=1, segment=u'_data', size=1))
         self.__class__.parser.set_global('unk_40e008', op.var(name=u'unk_40E008', offset=1, segment=u'_data', size=1))
         self.__class__.parser.set_global('unk_40f064', op.var(name=u'unk_40F064', offset=1, segment=u'initcall', size=1))
@@ -124,28 +124,28 @@ class ParserInstructionsTest(unittest.TestCase):
         self.__class__.parser.set_global('singlebyte', op.var(elements=1, name=u'singlebyte', offset=1, segment=u'_data', size=1))
         self.__class__.parser.set_global('bytearray', op.var(elements=100, name=u'bytearray', offset=1, segment=u'_data', size=1))
         self.__class__.parser.set_global('singlequad', op.var(elements=1, name=u'singlequad', offset=1, segment=u'_data', size=4))
-        #self.__class__.parser.set_global('gameconfig', op.var(elements=1, name=u'gameconfig', offset=1, segment=u'_data', size=1))
-        self.__class__.parser.action_data(line='''GAMEINFO struc
+        #self.__class__.parser.set_global('extrn_struc_inst', op.var(elements=1, name=u'extrn_struc_inst', offset=1, segment=u'_data', size=1))
+        self.__class__.parser.action_data(line='''GAMEINFOSTRUC struc
 game_opponenttype dw ?
 game_opponentmaterial dd ?
-game_opponentcarid db 4 dup (?)
-GAMEINFO ends
-extrn gameconfig:GAMEINFO
-head db '^',10,10
+struc_member_dup db 4 dup (?)
+GAMEINFOSTRUC ends
+extrn extrn_struc_inst:GAMEINFOSTRUC
+h_array db '^',10,10
 
- VECTOR struc
+ VECTORSTRUC struc
     vx dw ?
- VECTOR ends
- TRANSFORMEDSHAPE struc
+ VECTORSTRUC ends
+ TRANSSHAPESTRUC struc
     ts_shapeptr dw ?
     ts_rectptr dw ?
-    ts_rOTvec VECTOR <>
-    ts_vec VECTOR 3 dup (<>)
- TRANSFORMEDSHAPE ends
- var_transshape = TRANSFORMEDSHAPE ptr -50
+    ts_rOTvec VECTORSTRUC <>
+    struc_mmbr_dup_othr_struc VECTORSTRUC 3 dup (<>)
+ TRANSSHAPESTRUC ends
+ asgn_aptr_in_struc = TRANSSHAPESTRUC ptr -50
 ''')
-        self.__class__.parser.get_global('var_transshape').implemented = True
-        #?self.__class__.cpp._assignment('var_transshape',self.__class__.parser.get_global('var_transshape'))
+        self.__class__.parser.get_global('asgn_aptr_in_struc').implemented = True
+        #?self.__class__.cpp._assignment('asgn_aptr_in_struc',self.__class__.parser.get_global('asgn_aptr_in_struc'))
         self.__class__.parser.action_label(far=False, name='@@saaccvaaaax', isproc=False)
         self.__class__.parser.action_label(far=False, name='@VBL1', isproc=False)
         self.__class__.parser.action_label(far=False, name='@VBL12', isproc=False)
@@ -477,7 +477,7 @@ head db '^',10,10
         self.assertEqual(*self.doTest('inc singlebyte', 'INC(singlebyte)'))
 
     def test_instr_1460(self):
-        self.assertEqual(*self.doTest('jmp [cs:table+ax]', 'return __dispatch_call(__disp, _state);'))
+        self.assertEqual(*self.doTest('jmp [cs:wordtable+ax]', 'return __dispatch_call(__disp, _state);'))
 
     def test_instr_1470(self):
         self.assertEqual(*self.doTest('mov a,5', '*(a) = 5;'))
@@ -507,10 +507,10 @@ head db '^',10,10
         self.assertEqual(*self.doTest('mov ebx,g', 'ebx = g;'))
 
     def test_instr_1560(self):
-        self.assertEqual(*self.doTest('cmp gameconfig.game_opponenttype, 0', 'CMP(gameconfig.game_opponenttype, 0)'))
+        self.assertEqual(*self.doTest('cmp extrn_struc_inst.game_opponenttype, 0', 'CMP(extrn_struc_inst.game_opponenttype, 0)'))
 
     def test_instr_1570(self):
-        self.assertEqual(*self.doTest('mov     ax, offset gameconfig.game_opponenttype+t', 'ax = offset(default_seg,gameconfig.game_opponenttype)+t;'))
+        self.assertEqual(*self.doTest('mov     ax, offset extrn_struc_inst.game_opponenttype+t', 'ax = offset(default_seg,extrn_struc_inst.game_opponenttype)+t;'))
 
     def test_instr_1580(self):
         self.assertEqual(*self.doTest('jmp loc_406B3F', 'JMP(loc_406b3f)'))
@@ -528,13 +528,13 @@ head db '^',10,10
         self.assertEqual(*self.doTest('call far ptr test_bcd', 'CALLF(test_bcd,0)'))
 
     def test_instr_1630(self):
-        self.assertEqual(*self.doTest('mov ax, (offset gameconfig.game_opponenttype+0AA8h)', 'ax = offset(default_seg,gameconfig.game_opponenttype)+0x0AA8;'))
+        self.assertEqual(*self.doTest('mov ax, (offset extrn_struc_inst.game_opponenttype+0AA8h)', 'ax = offset(default_seg,extrn_struc_inst.game_opponenttype)+0x0AA8;'))
 
     def test_instr_1640(self):
-        self.assertEqual(*self.doTest('lea     si, [bx+di+TRANSFORMEDSHAPE.ts_rotvec]', 'si = bx+di+offsetof(transformedshape,ts_rotvec)'))
+        self.assertEqual(*self.doTest('lea     si, [bx+di+TRANSSHAPESTRUC.ts_rotvec]', 'si = bx+di+offsetof(transformedshape,ts_rotvec)'))
 
     def test_instr_1650(self):
-        self.assertEqual(*self.doTest('lea     ax, [si+(size TRANSFORMEDSHAPE)]', 'ax = si+(sizeof(transformedshape))'))
+        self.assertEqual(*self.doTest('lea     ax, [si+(size TRANSSHAPESTRUC)]', 'ax = si+(sizeof(transformedshape))'))
 
     def test_instr_1660(self):
         self.assertEqual(*self.doTest('bts     ecx, edx', 'BTS(ecx, edx)'))
@@ -543,22 +543,22 @@ head db '^',10,10
         self.assertEqual(*self.doTest('mov     dx, word ptr (oppresources+2)[bx]', 'MOV(dx, *(dw*)(raddr(ds,(oppresources+2)+bx)))'))
 
     def test_instr_1680(self):
-        self.assertEqual(*self.doTest('push    [bp+var_TransshapE.ts_rotvec.vx]', 'PUSH(((transformedshape*)raddr(ss,bp+var_transshape))->ts_rotvec.vx)'))
+        self.assertEqual(*self.doTest('push    [bp+var_TransshapE.ts_rotvec.vx]', 'PUSH(((transformedshape*)raddr(ss,bp+asgn_aptr_in_struc))->ts_rotvec.vx)'))
 
     def test_instr_1690(self):
         self.assertEqual(*self.doTest('add     word ptr [bx+transformedshape.ts_rotvec], ax', 'ADD(((transformedshape*)raddr(ds,bx))->ts_rotvec, ax)'))
 
     def test_instr_1700(self):
-        self.assertEqual(*self.doTest('mov ax, (offset gameconfig.game_opponenTType+0AA8h)', 'ax = offset(default_seg,gameconfig.game_opponenttype)+0x0AA8;'))
+        self.assertEqual(*self.doTest('mov ax, (offset extrn_struc_inst.game_opponenTType+0AA8h)', 'ax = offset(default_seg,extrn_struc_inst.game_opponenttype)+0x0AA8;'))
 
     def test_instr_1710(self):
         self.assertEqual(*self.doTest('adc     word ptr [bx+(transformedshape.ts_rotvec+2)], dx', 'ADC(((transformedshape*)raddr(ds,bx+2))->ts_rotvec, dx)'))
 
     def test_instr_1720(self):
-        self.assertEqual(*self.doTest('add     gameconfig.game_opponenTType[di], 10h', 'ADD(*(dw*)(((db*)&gameconfig.game_opponenttype)+di), 0x10)'))
+        self.assertEqual(*self.doTest('add     extrn_struc_inst.game_opponenTType[di], 10h', 'ADD(*(dw*)(((db*)&extrn_struc_inst.game_opponenttype)+di), 0x10)'))
 
     def test_instr_1730(self):
-        self.assertEqual(*self.doTest('inc     gameconfig.game_opponenTType', 'INC(gameconfig.game_opponenttype)'))
+        self.assertEqual(*self.doTest('inc     extrn_struc_inst.game_opponenTType', 'INC(extrn_struc_inst.game_opponenttype)'))
 
     def test_instr_1740(self):
         self.assertEqual(*self.doTest('mov     dx, word ptr [bx+(gameinfo.game_opponenTType+2)]', 'MOV(dx, ((gameinfo*)raddr(ds,bx+2))->game_opponenttype)'))
@@ -567,7 +567,7 @@ head db '^',10,10
         self.assertEqual(*self.doTest('add     ax, gameInfo.game_opponenTType', 'ADD(ax, offsetof(gameinfo,game_opponenttype))'))
 
     def test_instr_1760(self):
-        self.assertEqual(*self.doTest('adc     dx, word ptr [bp+var_transshape.ts_rectptr+0Eh]', 'ADC(dx, ((transformedshape*)raddr(ss,bp+0x0E +var_transshape))->ts_rectptr)'))
+        self.assertEqual(*self.doTest('adc     dx, word ptr [bp+asgn_aptr_in_struc.ts_rectptr+0Eh]', 'ADC(dx, ((transformedshape*)raddr(ss,bp+0x0E +asgn_aptr_in_struc))->ts_rectptr)'))
 
     def test_instr_1770(self):
         self.assertEqual(*self.doTest('bts eax,0', 'BTS(eax, 0)'))
@@ -582,10 +582,10 @@ head db '^',10,10
         self.assertEqual(*self.doTest('mov     ds:2, si', 'MOV(*(dw*)(raddr(ds,2)), si)'))
 
     def test_instr_1810(self):
-        self.assertEqual(*self.doTest('mov     ax, word ptr cs:gameconfig.game_opponentmaterial+2', 'ax = *(dw*)(((db*)&gameconfig.game_opponentmaterial)+2);'))
+        self.assertEqual(*self.doTest('mov     ax, word ptr cs:extrn_struc_inst.game_opponentmaterial+2', 'ax = *(dw*)(((db*)&extrn_struc_inst.game_opponentmaterial)+2);'))
 
     def test_instr_1820(self):
-        self.assertEqual(*self.doTest('mov     al, byte ptr [bx+GAMEINFO.game_opponenttype]', 'MOV(al, TODB(((gameinfo*)raddr(ds,bx))->game_opponenttype))'))
+        self.assertEqual(*self.doTest('mov     al, byte ptr [bx+GAMEINFOSTRUC.game_opponenttype]', 'MOV(al, TODB(((gameinfo*)raddr(ds,bx))->game_opponenttype))'))
 
     def test_instr_1840(self):
         self.assertEqual(*self.doTest('mov     ax, fs:8', 'MOV(ax, *(dw*)(raddr(fs,8)))'))
@@ -1044,7 +1044,7 @@ head db '^',10,10
         self.assertEqual(*self.doTest('cmp word ptr [singlequad+2],25', 'CMP(*(dw*)(((db*)&singlequad)+2), 25)'))
 
     def test_instr_3360(self):
-        self.assertEqual(*self.doTest('call [cs:table+ax]', 'CALL(__dispatch_call,*(dw*)(((db*)&table)+ax))'))
+        self.assertEqual(*self.doTest('call [cs:wordtable+ax]', 'CALL(__dispatch_call,*(dw*)(((db*)&wordtable)+ax))'))
 
     def test_instr_3370(self):
         self.assertEqual(*self.doTest('cmp word ptr [singlequad+2],50', 'CMP(*(dw*)(((db*)&singlequad)+2), 50)'))
@@ -1486,7 +1486,7 @@ head db '^',10,10
         self.assertEqual(*self.doTest('lea     eax, ds:0[ecx*8]', 'eax = 0+ecx*8'))
 
     def test_instr_5020(self):
-        self.assertEqual(*self.doTest('lea     ebx, [ebp+table]', 'ebx = ebp+offset(_text,table)'))
+        self.assertEqual(*self.doTest('lea     ebx, [ebp+wordtable]', 'ebx = ebp+offset(_text,wordtable)'))
 
     def test_instr_5030(self):
         self.assertEqual(*self.doTest('lea     ebx, [esi+ecx*8+4000h]', 'ebx = esi+ecx*8+0x4000'))
@@ -2963,7 +2963,7 @@ head db '^',10,10
         self.assertEqual(*self.doTest('scasd', 'SCASD'))
 
     def test_instr_10180(self):
-        self.assertEqual(*self.doTest('mov[bp + var_transshape.ts_rotvec.vx], 3', 'MOV(((transformedshape*)raddr(ss,bp+var_transshape))->ts_rotvec.vx, 3)'))
+        self.assertEqual(*self.doTest('mov[bp + asgn_aptr_in_struc.ts_rotvec.vx], 3', 'MOV(((transformedshape*)raddr(ss,bp+asgn_aptr_in_struc))->ts_rotvec.vx, 3)'))
 
     @unittest.skip("it works but test broken. non masm")
     def test_instr_11330(self):
@@ -2975,11 +2975,11 @@ head db '^',10,10
 
     @unittest.skip("undefined behaviour")
     def test_instr_11350(self):
-        print(*self.doTest('mov     [ebp+i+table], dl',u'MOV(*(dw*)(raddr(ss,ebp+i+offset(_text,table),  dl)'))
+        print(*self.doTest('mov     [ebp+i+wordtable], dl',u'MOV(*(dw*)(raddr(ss,ebp+i+offset(_text,wordtable),  dl)'))
 
     @unittest.skip("Minor syntax")
     def test_instr_11850(self):
-        print(*self.doTest(r'mov	bl, byte ptr es:[table]', u"MOV(bl, *((db*)&table))"))
+        print(*self.doTest(r'mov	bl, byte ptr es:[wordtable]', u"MOV(bl, *((db*)&wordtable))"))
 
     @unittest.skip("Minor syntax")
     def test_instr_11860(self):
@@ -2991,12 +2991,12 @@ head db '^',10,10
 
     def test_instr_11880(self):
         self.assertEqual(self.proc.generate_full_cmd_line(self.cpp, self.parser.action_data(
-            'var_104_rc equ TRANSFORMEDSHAPE ptr -260')), u'#define var_104_rc -260\n')
+            'var_104_rc equ TRANSSHAPESTRUC ptr -260')), u'#define var_104_rc -260\n')
 
     def test_instr_10890(self):
         self.assertEqual(*self.doTest('retn 6', 'RETN(6)'))
 
     #def test_instr_12030(self):
-    #    print(*self.doTest("cmp head, 'v'",  u"CMP(*(head), 'v')"))
+    #    print(*self.doTest("cmp h_array, 'v'",  u"CMP(*(h_array), 'v')"))
 if __name__ == "__main__":
     unittest.main()
