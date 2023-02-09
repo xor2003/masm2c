@@ -27,7 +27,7 @@ class MatchTag:
 
     def process(self, stream: Iterator[lark.Token]) -> Iterator[lark.Token]:
         for t in stream:
-            if self.last_type == 'LABEL' and t.type == "LABEL" and t.value.lower() in ['struc','struct','union']:  # HACK workaround
+            if self.last_type == 'LABEL' and t.type == "LABEL" and t.value.lower() in {'struc','struct','union'}:  # HACK workaround
                 # print(1, self.last_type, self.last, t)
                 t.type = "STRUCTHDR"
             if t.type == "LABEL" and t.value.lower() in ['ends']:  # HACK workaround

@@ -85,7 +85,7 @@ class Token(lark.Tree):
             else:
                 oldindex = index
                 expr.children, index = Token.remove_squere_bracets(expr.children, index)
-                if isinstance(expr.children, str) and not (expr.data == 'integer' and expr.children[0] in ['-', '+']):
+                if isinstance(expr.children, str) and not (expr.data == 'integer' and expr.children[0] in {'-', '+'}):
                     index = oldindex
                     index += 1
                     if index != 1:

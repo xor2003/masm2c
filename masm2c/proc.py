@@ -162,15 +162,15 @@ class Proc:
         to perform comparison of instruction side effects at run-time with the emulated"""
 
         def expr_is_register(e):
-            return isinstance(e, Token) and isinstance(e.children, Token) and e.children.data in ['register',
-                                                                                            'segmentregister']
+            return isinstance(e, Token) and isinstance(e.children, Token) and e.children.data in {'register',
+                                                                                            'segmentregister'}
 
         def cmd_wo_args(stmt):
             return len(stmt.children) == 0
 
         def cmd_impacting_only_registers(stmt):
             return (cmd_wo_args(stmt) or \
-                    stmt.cmd in ['cmp', 'test'] or \
+                    stmt.cmd in {'cmp', 'test'} or \
                     (stmt.cmd != 'xchg' and len(stmt.children) >= 1 and expr_is_register(stmt.children[0]) or \
                      (stmt.cmd == 'xchg' and expr_is_register(stmt.children[0]) and expr_is_register(stmt.children[1])))) and \
                 not stmt.cmd.startswith('push') and not stmt.cmd.startswith('pop') and not stmt.cmd.startswith('stos') and \
@@ -185,7 +185,7 @@ class Proc:
             trace_mode = 'J'  # check for proper jump
         elif not itislst or stmt.syntetic:
             trace_mode = 'R'  # trace only
-        elif stmt.cmd.startswith('int') or stmt.cmd in ['out', 'in'] or expr_is_mov_ss(stmt):
+        elif stmt.cmd.startswith('int') or stmt.cmd in {'out', 'in'} or expr_is_mov_ss(stmt):
             trace_mode = 'S'  # check for self-modification
         elif cmd_impacting_only_registers(stmt):
             trace_mode = 'T'  # compare execution with dosbox. registers only impact

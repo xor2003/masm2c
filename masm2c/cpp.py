@@ -618,7 +618,7 @@ class Cpp(Gen):
 
         if indirection == IndirectionType.POINTER and not segoverride:
             regs = Token.find_tokens(expr, REGISTER)  # if it was registers used: bp, sp
-            if regs and any((i in ['bp', 'ebp', 'sp', 'esp'] for i in regs)):  # TODO doublecheck
+            if regs and any((i in {'bp', 'ebp', 'sp', 'esp'} for i in regs)):  # TODO doublecheck
                 self._work_segment = "ss"  # and segment is not overriden means base is "ss:"
                 self.isvariable = False
         if segoverride:  # if it was segment override then use provided value
