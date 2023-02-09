@@ -48,6 +48,7 @@ arbitrarytext: /[^\r\n]+/x
 !segalign: "BYTE"i|"WORD"i|"DWORD"i|"PARA"i|"PAGE"i
 !segorderdir: ".ALPHA"i|".SEQ"i|".DOSSEG"i|"DOSSEG"i
 !assumenothing: "ASSUME NOTHING"i
+!dollar: "$"
 
 !aliasdir: "ALIAS"i
 !binaryop: "=="| "!="| ">="| "<="| ">"| "<"| "&"
@@ -187,7 +188,7 @@ dir3: "WIDTH"i LABEL
 | STRING
 | _integer_
 | type
-| "$"
+| dollar
 | _anyregister
 | "ST"i
 | "ST"i "(" expr ")"
