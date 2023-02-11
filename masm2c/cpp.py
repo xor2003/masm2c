@@ -807,6 +807,8 @@ class Cpp(Gen):
     def _call(self, expr):
         logging.debug("cpp._call(%s)", expr)
         ret = ""
+        if expr.ptr_size == 0:
+            expr.ptr_size = 2
         size = self.calculate_size(expr)
         name = self.render_jump_label(expr)
         dst, far = self.convert_jump_label(name)
@@ -1337,6 +1339,8 @@ struct Memory{
         return result[1:-1] if result and result[0] == '(' and result[-1] == ')' else result
 
     def render_jump_label(self, expr, def_size: int = 0):
+        if def_size ==0 and expr.element_size == 0 and expr.indirection == IndirectionType.POINTER:
+            return self.render_instruction_argument(expr, def_size)
         if def_size and expr.element_size == 0:
             expr.element_size = def_size
         return "".join(IR2CppJump(self._context).visit(expr))
@@ -1749,4 +1753,4 @@ class IR2CppJump(IR2Cpp):
                 self._indirection = IndirectionType.POINTER  # []
             elif isinstance(g, (op.label, proc_module.Proc)):
                 self._indirection = IndirectionType.OFFSET  # direct using number
-        return token
+        return [token]
