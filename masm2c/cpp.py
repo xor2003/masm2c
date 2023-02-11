@@ -1339,8 +1339,8 @@ struct Memory{
         return result[1:-1] if result and result[0] == '(' and result[-1] == ')' else result
 
     def render_jump_label(self, expr, def_size: int = 0):
-        if def_size ==0 and expr.element_size == 0 and expr.indirection == IndirectionType.POINTER:
-            return self.render_instruction_argument(expr, def_size)
+        if expr.indirection != IndirectionType.OFFSET:
+            return self.render_instruction_argument(expr, def_size)  # TODO why need something else?
         if def_size and expr.element_size == 0:
             expr.element_size = def_size
         return "".join(IR2CppJump(self._context).visit(expr))
