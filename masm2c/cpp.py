@@ -197,13 +197,13 @@ class Cpp(Gen):
                 self._indirection = IndirectionType.VALUE
         elif isinstance(g, op.var):
             logging.debug("it is var %s", g.size)
-            self.variable_size = var_size = g.size
-            if var_size:
+            self.variable_size = source_var_size = g.size
+            if source_var_size:
                 self.isvariable = True
-            if self._current_size == 0:  # TODO check
-                self._current_size = var_size
-            if var_size == 0 and not g.issegment:
-                raise Exception("invalid var '%s' size %u" % (name, var_size))
+            if self._middle_size == 0:  # TODO check
+                self._middle_size = source_var_size
+            if source_var_size == 0 and not g.issegment:
+                raise Exception("invalid var '%s' size %u" % (name, source_var_size))
             if g.issegment:
                 value = "seg_offset(%s)" % (name_original.lower())
                 self._indirection = IndirectionType.VALUE
@@ -231,7 +231,7 @@ class Cpp(Gen):
                             else:
                                 value = "((db*)%s)" % value # cast to byte for address arihm
                                 self.size_changed = True
-                                self._current_size = 1
+                                self._middle_size = 1
                     elif self._indirection == IndirectionType.OFFSET:
                         value = "offset(%s,%s)" % (g.segment, g.name)
                         self.needs_dereference = False
@@ -244,9 +244,9 @@ class Cpp(Gen):
         elif isinstance(g, op.label):
             value = "m2c::k" + g.name.lower()  # .capitalize()
         else:
-            var_size = g.getsize()
-            if var_size == 0:
-                raise Exception("invalid var '%s' size %u" % (name, var_size))
+            source_var_size = g.getsize()
+            if source_var_size == 0:
+                raise Exception("invalid var '%s' size %u" % (name, source_var_size))
             if self._indirection in (IndirectionType.VALUE, IndirectionType.POINTER):  # x0r self.indirection == 1 ??
                 value = "offsetof(struct Memory,%s)" % name_original
                 if self._indirection == IndirectionType.POINTER:
@@ -255,7 +255,7 @@ class Cpp(Gen):
                 value = "%s" % g.offset
                 self._indirection = IndirectionType.VALUE
             else:
-                raise Exception("invalid indirection %d name '%s' size %u" % (self._indirection, name, var_size))
+                raise Exception("invalid indirection %d name '%s' size %u" % (self._indirection, name, source_var_size))
         return value
 
     def render_data_c(self, segments):
@@ -398,8 +398,8 @@ class Cpp(Gen):
         elif isinstance(g, op.var):
             logging.debug(f"it is var {size}")
 
-            if self._current_size == 0:  # TODO check
-                self._current_size = size
+            if self._middle_size == 0:  # TODO check
+                self._middle_size = size
             if size == 0:
                 raise Exception(f"invalid var {label} size {size}")
             self.needs_dereference = False
@@ -407,7 +407,7 @@ class Cpp(Gen):
             if g.elements != 1:
                 self.needs_dereference = True
                 self.itispointer = True
-            if g.elements == 1 and self._isjustlabel and not self.lea and size == self._current_size:
+            if g.elements == 1 and self._isjustlabel and not self.lea and size == self._middle_size:
                 # traceback.print_stack(file=sys.stdout)
                 value = '.'.join(label)
                 self._indirection = IndirectionType.VALUE
@@ -475,34 +475,34 @@ class Cpp(Gen):
         return expr
 
     @staticmethod
-    def render_new_pointer_size(itispointer: bool, expr, size: int):
+    def render_new_pointer_size(itispointer: bool, expr, target_size: int):
         """
         :param expr: the expression to be rendered
-        :param size: the new size of the pointer
+        :param target_size: the new size of the pointer
         :return: The expression with the new size.
         """
         if itispointer:
-            if size == 1:
+            if target_size == 1:
                 expr = f"(db*)({expr})"
-            elif size == 2:
+            elif target_size == 2:
                 expr = f"(dw*)({expr})"
-            elif size == 4:
+            elif target_size == 4:
                 expr = f"(dd*)({expr})"
-            elif size == 8:
+            elif target_size == 8:
                 expr = f"(dq*)({expr})"
             else:
-                logging.error(f"~{expr}~ unknown size {size}")
+                logging.error(f"~{expr}~ unknown size {target_size}")
         else:
-            if size == 1:
+            if target_size == 1:
                 expr = f"*(db*)(&{expr})"
-            elif size == 2:
+            elif target_size == 2:
                 expr = f"*(dw*)(&{expr})"
-            elif size == 4:
+            elif target_size == 4:
                 expr = f"*(dd*)(&{expr})"
-            elif size == 8:
+            elif target_size == 8:
                 expr = f"*(dq*)(&{expr})"
             else:
-                logging.error(f"~{expr}~ unknown size {size}")
+                logging.error(f"~{expr}~ unknown size {target_size}")
 
         return expr
 
@@ -555,7 +555,7 @@ class Cpp(Gen):
         expr = Token.remove_tokens(expr, ['expr'])  # no need expr token any more
         origexpr = expr  # save original expression before we will change it
         self._work_segment = "ds"  # default work segment is ds
-        self._current_size = 0  # current size of argument is not yet found
+        self._middle_size = 0  # current size of argument is not yet found
         self.size_changed = False
         self.needs_dereference = False
         self.itispointer = False
@@ -624,7 +624,7 @@ class Cpp(Gen):
         if segoverride:  # if it was segment override then use provided value
             self._work_segment = segoverride[0][0].children[0]
 
-        self._current_size = size
+        self._middle_size = size
         size_ovrr_by_ptr = size  # setting initial value
         if ptrdir:  # byte/word/struct ptr. get override type size
             value = ptrdir[0]
@@ -674,8 +674,8 @@ class Cpp(Gen):
                 # assert(len(islabel) == 1)
                 expr = Token.find_and_replace_tokens(expr, LABEL, self.convert_label)
         indirection = self._indirection
-        if self._current_size != 0 and size != self._current_size and not self.size_changed:
-            size = self._current_size
+        if self._middle_size != 0 and size != self._middle_size and not self.size_changed:
+            size = self._middle_size
 
         if self.size_changed:
             size = size_ovrr_by_ptr
@@ -915,7 +915,7 @@ class Cpp(Gen):
                 break
         res = [self.render_instruction_argument(i, size) for i in src]
         if size == 0:
-            size = self._current_size
+            size = self._middle_size
         return "MUL%d_%d(%s)" % (len(src), size, ",".join(res))
 
     def _imul(self, src):
@@ -927,7 +927,7 @@ class Cpp(Gen):
                 break
         res = [self.render_instruction_argument(i, size) for i in src]
         if size == 0:
-            size = self._current_size
+            size = self._middle_size
         return "IMUL%d_%d(%s)" % (len(src), size, ",".join(res))
 
     def _div(self, src):
@@ -1677,7 +1677,7 @@ class IR2Cpp(TopDownVisitor, Cpp):
         result = "".join(self.visit(tree.children))
         if tree.indirection == IndirectionType.POINTER and tree.ptr_size == 0 and hasattr(self,"variable_size"):  # [ var ]
             tree.ptr_size = self.variable_size  # Set destination size based on variable size
-        self.size_changed = self.size_changed or "size_changed" in tree.mods and self._current_size != tree.size()
+        self.size_changed = self.size_changed or "size_changed" in tree.mods and self._middle_size != tree.size()
         memberdir = False
         if tree.indirection == IndirectionType.POINTER and not memberdir and (
                 not self._isjustlabel or self.size_changed):

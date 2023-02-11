@@ -20,7 +20,7 @@ class Gen:
         self._isjustlabel = False
         self.groups = OrderedDict()
         self.grouped = set()
-        self._current_size = 0
+        self._middle_size = 0
         self.merge_data_segments = merge_data_segments
         self._procs = context.proc_list
         self.body = ""
