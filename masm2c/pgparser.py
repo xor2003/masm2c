@@ -547,10 +547,7 @@ class Asm2IR(CommonCollector):
         return nodes  # Token('structinstance', values)
 
     def memberdir(self, nodes):
-        variable, field = nodes
-        result = Token('memberdir', [variable, field])
-        logging.debug(result)
-        return result
+        return lark.Tree('memberdir', [self.context.mangle_label(str(node)) for node in nodes])
 
     def radixdir(self, children):
         self.radix = int(children[0])
@@ -729,6 +726,7 @@ class TopDownVisitor:
         except:
             import traceback, logging
             i = traceback.format_exc()
+            print(i)
             raise
         return result
 

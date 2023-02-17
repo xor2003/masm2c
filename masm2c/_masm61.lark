@@ -124,8 +124,8 @@ cxzexpr: "!" expr| expr  "==" expr| expr  "!=" expr | expr
 
 !braces: "(" expr ")"
 
-field: "." e11
-fieldlist: field+
+//field: "." e11
+//fieldlist: field+
 
 // Precedence Operators
 // 1 ( ), [ ]
@@ -172,7 +172,7 @@ WORDOP: ("HIGH"i|"LOW"i|"HIGHWORD"i|"LOWWORD"i)
 | "SHORT"i LABEL -> ptrdir3
 | e09 ":" e10 -> segoverride
 | e10
-?e10: e10 fieldlist -> memberdir
+?e10: e10 ("." e11)+ -> memberdir
 | e10 "[" expr "]" -> sqexpr2
 | e11
 dir3: "WIDTH"i LABEL

@@ -561,10 +561,10 @@ h_array db '^',10,10
         self.assertEqual(*self.doTest('inc     extrn_struc_inst.game_opponenTType', 'INC(extrn_struc_inst.game_opponenttype)'))
 
     def test_instr_1740(self):
-        self.assertEqual(*self.doTest('mov     dx, word ptr [bx+(gameinfo.game_opponenTType+2)]', 'MOV(dx, ((gameinfo*)raddr(ds,bx+2))->game_opponenttype)'))
+        self.assertEqual(*self.doTest('mov     dx, word ptr [bx+(gameinfostruc.game_opponenTType+2)]', 'MOV(dx, ((gameinfostruc*)raddr(ds,bx+2))->game_opponenttype)'))
 
     def test_instr_1750(self):
-        self.assertEqual(*self.doTest('add     ax, gameInfo.game_opponenTType', 'ADD(ax, offsetof(gameinfo,game_opponenttype))'))
+        self.assertEqual(*self.doTest('add     ax, gameInfoStruc.game_opponenTType', 'ADD(ax, offsetof(gameinfostruc,game_opponenttype))'))
 
     def test_instr_1760(self):
         self.assertEqual(*self.doTest('adc     dx, word ptr [bp+asgn_aptr_in_struc.ts_rectptr+0Eh]', 'ADC(dx, ((transshapestruc*)raddr(ss,bp+0x0E +asgn_aptr_in_struc))->ts_rectptr)'))
@@ -585,7 +585,7 @@ h_array db '^',10,10
         self.assertEqual(*self.doTest('mov     ax, word ptr cs:extrn_struc_inst.game_opponentmaterial+2', 'ax = *(dw*)(((db*)&extrn_struc_inst.game_opponentmaterial)+2);'))
 
     def test_instr_1820(self):
-        self.assertEqual(*self.doTest('mov     al, byte ptr [bx+GAMEINFOSTRUC.game_opponenttype]', 'MOV(al, TODB(((gameinfo*)raddr(ds,bx))->game_opponenttype))'))
+        self.assertEqual(*self.doTest('mov     al, byte ptr [bx+GAMEINFOSTRUC.game_opponenttype]', 'MOV(al, TODB(((gameinfostruc*)raddr(ds,bx))->game_opponenttype))'))
 
     def test_instr_1840(self):
         self.assertEqual(*self.doTest('mov     ax, fs:8', 'MOV(ax, *(dw*)(raddr(fs,8)))'))

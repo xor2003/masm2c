@@ -347,6 +347,9 @@ class Cpp(Gen):
         _reference = re.sub(r'^(\w+)\s+([\w\[\]]+);', r'\g<1>& \g<2> = m2c::m.\g<2>;', _reference)
         return _reference
 
+    def memberdir(self, tree):
+        return self.convert_member_(tree.children)
+
     def convert_member(self, token):
         """
         It converts Token with access to assembler structure member and converts to similar in C++
@@ -357,7 +360,11 @@ class Cpp(Gen):
         logging.debug("name = %s indirection = %s", token, self._indirection)
         value = token
         label = [l.lower() for l in Token.find_tokens(token, LABEL)]
+        return self.convert_member_(label)
+
+    def convert_member_(self, label):
         self.struct_type = None
+        value = ".".join(label)
 
         if self._indirection == IndirectionType.OFFSET:
             try:
@@ -376,12 +383,12 @@ class Cpp(Gen):
                 self._indirection = IndirectionType.VALUE
                 return Token('memberdir', value)
 
-        size = self.calculate_size(token)
+        size = self.calculate_member_size(label)
         try:
             g = self._context.get_global(label[0])
         except:
             # logging.warning("expand_cb() global '%s' is missing" % name)
-            return token
+            return lark.Token('memberdir', label)
 
         if isinstance(g, (op._equ, op._assignment)):
             logging.debug(str(g))
@@ -400,6 +407,10 @@ class Cpp(Gen):
 
             if self._middle_size == 0:  # TODO check
                 self._middle_size = size
+
+            self.isvariable = True
+            self.islabel = True
+
             if size == 0:
                 raise Exception(f"invalid var {label} size {size}")
             self.needs_dereference = False
@@ -412,7 +423,7 @@ class Cpp(Gen):
                 value = '.'.join(label)
                 self._indirection = IndirectionType.VALUE
             else:
-                if self._indirection == IndirectionType.POINTER and self.isvariable:
+                if self._indirection == IndirectionType.POINTER: # ? and self.isvariable:
                     value = '.'.join(label)
                     if not self._isjustlabel:  # if not just single label
                         self.needs_dereference = True
@@ -430,15 +441,15 @@ class Cpp(Gen):
                 if self._work_segment == 'cs':
                     self.body += '\tcs=seg_offset(' + g.segment + ');\n'
             # ?self.__indirection = 1
-            if value == token:
-                logging.error('value not yet assigned')
+            #if value == token:
+            #    logging.error('value not yet assigned')
         elif isinstance(g, op.Struct):
-            if self.__isjustmember:
+            if self._isjustmember:
                 value = f'offsetof({label[0]},{".".join(label[1:])})'
             else:
-                register = Token.remove_tokens(token, [MEMBERDIR, 'LABEL'])
-                register = self.remove_dots(register)
-                register = self.tokens_to_string(register)
+                #register = Token.remove_tokens(token, [MEMBERDIR, 'LABEL'])
+                #register = self.remove_dots(register)
+                register = self.tokens_to_string("".join(label))
                 register = register.replace('(+', '(')
 
                 self.struct_type = label[0]
@@ -642,7 +653,7 @@ class Cpp(Gen):
                             or (isinstance(origexpr, Token) and origexpr.data == SQEXPR \
                                 and isinstance(origexpr.children, Token) and origexpr.children.data == LABEL) \
                             or (isinstance(origexpr, Token) and origexpr.data == MEMBERDIR)
-        self.__isjustmember = isinstance(origexpr, Token) and origexpr.data == MEMBERDIR
+        self._isjustmember = isinstance(origexpr, Token) and origexpr.data == MEMBERDIR
 
         self._indirection = indirection
 
@@ -1671,7 +1682,7 @@ class IR2Cpp(TopDownVisitor, Cpp):
                                             and isinstance(origexpr.children,
                                                            lark.Token) and origexpr.children.type == LABEL) \
                                         or (isinstance(origexpr, lark.Token) and origexpr.type == MEMBERDIR))
-        self.__isjustmember = single and isinstance(origexpr, lark.Token) and origexpr.type == MEMBERDIR
+        self._isjustmember = single and isinstance(origexpr, lark.Token) and origexpr.type == MEMBERDIR
 
         self.element_size = tree.element_size
         result = "".join(self.visit(tree.children))
@@ -1706,6 +1717,25 @@ class IR2Cpp(TopDownVisitor, Cpp):
 
     def offsetdir(self, tree):  # TODO equ, assign support
         name = tree.children[0]
+
+        if isinstance(name, lark.Tree) and name.data=='memberdir':
+            label = name.children
+            try:
+                g = self._context.get_global(label[0])
+            except Exception:
+                return label
+
+            if isinstance(g, op.var):
+                value = f'offset({g.segment},{".".join(label)})'
+            elif isinstance(g, op.Struct):
+                value = f'offsetof({label[0]},{".".join(label[1:])})'
+            elif isinstance(g, (op._equ, op._assignment)):
+                value = f'({label[0]})+offsetof({g.original_type},{".".join(label[1:])})'
+            else:
+                raise Exception('Not handled type ' + str(type(g)))
+            self._indirection = IndirectionType.VALUE
+            return [lark.Token('memberdir', value)]
+
         try:
             g = self._context.get_global(name)
         except Exception:
