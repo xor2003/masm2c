@@ -403,7 +403,7 @@ class Cpp(Gen):
                 value = f"{label[0]}))->{'.'.join(label[1:])}"
             logging.debug(f"equ: {label[0]} -> {value}")
         elif isinstance(g, op.var):
-            logging.debug(f"it is var {size}")
+            logging.debug("it is var %s", size)
 
             if self._middle_size == 0:  # TODO check
                 self._middle_size = size
@@ -444,8 +444,9 @@ class Cpp(Gen):
             #if value == token:
             #    logging.error('value not yet assigned')
         elif isinstance(g, op.Struct):
-            if self._isjustmember:
-                value = f'offsetof({label[0]},{".".join(label[1:])})'
+            #if self._isjustmember:
+            value = f'offsetof({label[0]},{".".join(label[1:])})'
+            '''
             else:
                 #register = Token.remove_tokens(token, [MEMBERDIR, 'LABEL'])
                 #register = self.remove_dots(register)
@@ -456,6 +457,7 @@ class Cpp(Gen):
                 self.needs_dereference = True
                 self.itispointer = False
                 value = f"{register}))->{'.'.join(label[1:])}"
+            '''
 
         if size == 0:
             raise Exception("invalid var '%s' size %u" % (str(label), size))
@@ -1681,8 +1683,8 @@ class IR2Cpp(TopDownVisitor, Cpp):
                                         or (isinstance(origexpr, lark.Token) and origexpr.type == SQEXPR \
                                             and isinstance(origexpr.children,
                                                            lark.Token) and origexpr.children.type == LABEL) \
-                                        or (isinstance(origexpr, lark.Token) and origexpr.type == MEMBERDIR))
-        self._isjustmember = single and isinstance(origexpr, lark.Token) and origexpr.type == MEMBERDIR
+                                        or (isinstance(origexpr, lark.Tree) and origexpr.data == MEMBERDIR))
+        self._isjustmember = single and isinstance(origexpr, lark.Tree) and origexpr.data == MEMBERDIR
 
         self.element_size = tree.element_size
         result = "".join(self.visit(tree.children))

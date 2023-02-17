@@ -34,6 +34,7 @@ class Token(lark.Tree):
         self.data = type
         self.children = value
 
+
     # def __str__(self):
     #    return f"Token({self.data}, {self.children})"
 

@@ -126,7 +126,7 @@ class ParserInstructionsTest(unittest.TestCase):
         self.__class__.parser.set_global('singlequad', op.var(elements=1, name=u'singlequad', offset=1, segment=u'_data', size=4))
         #self.__class__.parser.set_global('extrn_struc_inst', op.var(elements=1, name=u'extrn_struc_inst', offset=1, segment=u'_data', size=1))
         self.__class__.parser.action_data(line='''GAMEINFOSTRUC struc
-game_opponenttype dw ?
+game_oppttypedw dw ?
 game_opponentmaterial dd ?
 struc_member_dup db 4 dup (?)
 GAMEINFOSTRUC ends
@@ -139,7 +139,7 @@ h_array db '^',10,10
  TRANSSHAPESTRUC struc
     ts_shapeptr dw ?
     ts_rectptr dw ?
-    ts_rOTvec VECTORSTRUC <>
+    ts_rOTv_membr_strinst VECTORSTRUC <>
     struc_mmbr_dup_othr_struc VECTORSTRUC 3 dup (<>)
  TRANSSHAPESTRUC ends
  asgn_aptr_in_struc = TRANSSHAPESTRUC ptr -50
@@ -507,10 +507,10 @@ h_array db '^',10,10
         self.assertEqual(*self.doTest('mov ebx,g', 'ebx = g;'))
 
     def test_instr_1560(self):
-        self.assertEqual(*self.doTest('cmp extrn_struc_inst.game_opponenttype, 0', 'CMP(extrn_struc_inst.game_opponenttype, 0)'))
+        self.assertEqual(*self.doTest('cmp extrn_struc_inst.game_oppttypedw, 0', 'CMP(extrn_struc_inst.game_oppttypedw, 0)'))
 
     def test_instr_1570(self):
-        self.assertEqual(*self.doTest('mov     ax, offset extrn_struc_inst.game_opponenttype+t', 'ax = offset(default_seg,extrn_struc_inst.game_opponenttype)+t;'))
+        self.assertEqual(*self.doTest('mov     ax, offset extrn_struc_inst.game_oppttypedw+t', 'ax = offset(default_seg,extrn_struc_inst.game_oppttypedw)+t;'))
 
     def test_instr_1580(self):
         self.assertEqual(*self.doTest('jmp loc_406B3F', 'JMP(loc_406b3f)'))
@@ -528,10 +528,10 @@ h_array db '^',10,10
         self.assertEqual(*self.doTest('call far ptr test_bcd', 'CALLF(test_bcd,0)'))
 
     def test_instr_1630(self):
-        self.assertEqual(*self.doTest('mov ax, (offset extrn_struc_inst.game_opponenttype+0AA8h)', 'ax = offset(default_seg,extrn_struc_inst.game_opponenttype)+0x0AA8;'))
+        self.assertEqual(*self.doTest('mov ax, (offset extrn_struc_inst.game_oppttypedw+0AA8h)', 'ax = offset(default_seg,extrn_struc_inst.game_oppttypedw)+0x0AA8;'))
 
     def test_instr_1640(self):
-        self.assertEqual(*self.doTest('lea     si, [bx+di+TRANSSHAPESTRUC.ts_rotvec]', 'si = bx+di+offsetof(transshapestruc,ts_rotvec)'))
+        self.assertEqual(*self.doTest('lea     si, [bx+di+TRANSSHAPESTRUC.ts_rotv_membr_strinst]', 'si = bx+di+offsetof(transshapestruc,ts_rotv_membr_strinst)'))
 
     def test_instr_1650(self):
         self.assertEqual(*self.doTest('lea     ax, [si+(size TRANSSHAPESTRUC)]', 'ax = si+(sizeof(transshapestruc))'))
@@ -543,28 +543,28 @@ h_array db '^',10,10
         self.assertEqual(*self.doTest('mov     dx, word ptr (oppresources+2)[bx]', 'MOV(dx, *(dw*)(raddr(ds,(oppresources+2)+bx)))'))
 
     def test_instr_1680(self):
-        self.assertEqual(*self.doTest('push    [bp+var_TransshapE.ts_rotvec.vx]', 'PUSH(((transshapestruc*)raddr(ss,bp+asgn_aptr_in_struc))->ts_rotvec.vx)'))
+        self.assertEqual(*self.doTest('push    [bp+var_TransshapE.ts_rotv_membr_strinst.vx]', 'PUSH(((transshapestruc*)raddr(ss,bp+asgn_aptr_in_struc))->ts_rotv_membr_strinst.vx)'))
 
     def test_instr_1690(self):
-        self.assertEqual(*self.doTest('add     word ptr [bx+transshapestruc.ts_rotvec], ax', 'ADD(((transshapestruc*)raddr(ds,bx))->ts_rotvec, ax)'))
+        self.assertEqual(*self.doTest('add     word ptr [bx+transshapestruc.ts_rotv_membr_strinst], ax', 'ADD(*(dw*)(raddr(ds,bx+offsetof(transshapestruc,ts_rotv_membr_strinst))), ax)'))
 
     def test_instr_1700(self):
-        self.assertEqual(*self.doTest('mov ax, (offset extrn_struc_inst.game_opponenTType+0AA8h)', 'ax = offset(default_seg,extrn_struc_inst.game_opponenttype)+0x0AA8;'))
+        self.assertEqual(*self.doTest('mov ax, (offset extrn_struc_inst.game_oppTTypeDW+0AA8h)', 'ax = offset(default_seg,extrn_struc_inst.game_oppttypedw)+0x0AA8;'))
 
     def test_instr_1710(self):
-        self.assertEqual(*self.doTest('adc     word ptr [bx+(transshapestruc.ts_rotvec+2)], dx', 'ADC(((transshapestruc*)raddr(ds,bx+2))->ts_rotvec, dx)'))
+        self.assertEqual(*self.doTest('adc     word ptr [bx+(transshapestruc.ts_rotv_membr_strinst+2)], dx', 'ADC(*(dw*)(raddr(ds,bx+(offsetof(transshapestruc,ts_rotv_membr_strinst)+2))), dx)'))
 
     def test_instr_1720(self):
-        self.assertEqual(*self.doTest('add     extrn_struc_inst.game_opponenTType[di], 10h', 'ADD(*(dw*)(((db*)&extrn_struc_inst.game_opponenttype)+di), 0x10)'))
+        self.assertEqual(*self.doTest('add     extrn_struc_inst.game_oppTTypeDW[di], 10h', 'ADD(*(dw*)(((db*)&extrn_struc_inst.game_oppttypedw)+di), 0x10)'))
 
     def test_instr_1730(self):
-        self.assertEqual(*self.doTest('inc     extrn_struc_inst.game_opponenTType', 'INC(extrn_struc_inst.game_opponenttype)'))
+        self.assertEqual(*self.doTest('inc     extrn_struc_inst.game_oppTTypeDW', 'INC(extrn_struc_inst.game_oppttypedw)'))
 
     def test_instr_1740(self):
-        self.assertEqual(*self.doTest('mov     dx, word ptr [bx+(gameinfostruc.game_opponenTType+2)]', 'MOV(dx, ((gameinfostruc*)raddr(ds,bx+2))->game_opponenttype)'))
+        self.assertEqual(*self.doTest('mov     dx, word ptr [bx+(gameinfostruc.game_oppTTypeDW+2)]', 'MOV(dx, *(dw*)(raddr(ds,bx+(offsetof(gameinfostruc,game_oppttypedw)+2))))'))
 
     def test_instr_1750(self):
-        self.assertEqual(*self.doTest('add     ax, gameInfoStruc.game_opponenTType', 'ADD(ax, offsetof(gameinfostruc,game_opponenttype))'))
+        self.assertEqual(*self.doTest('add     ax, gameInfoStruc.game_oppTTypeDW', 'ADD(ax, offsetof(gameinfostruc,game_oppttypedw))'))
 
     def test_instr_1760(self):
         self.assertEqual(*self.doTest('adc     dx, word ptr [bp+asgn_aptr_in_struc.ts_rectptr+0Eh]', 'ADC(dx, ((transshapestruc*)raddr(ss,bp+0x0E +asgn_aptr_in_struc))->ts_rectptr)'))
@@ -573,7 +573,7 @@ h_array db '^',10,10
         self.assertEqual(*self.doTest('bts eax,0', 'BTS(eax, 0)'))
 
     def test_instr_1780(self):
-        self.assertEqual(*self.doTest('sub     ax, es:[bx+di+(transshapestruc.ts_rotvec+24h)]', 'SUB(ax, ((transshapestruc*)raddr(es,bx+di+0x24))->ts_rotvec)'))
+        self.assertEqual(*self.doTest('sub     ax, es:[bx+di+(transshapestruc.ts_rotv_membr_strinst+24h)]', 'SUB(ax, *(dw*)(raddr(es,bx+di+(offsetof(transshapestruc,ts_rotv_membr_strinst)+0x24))))'))
 
     def test_instr_1790(self):
         self.assertEqual(*self.doTest("cmp al, '\\'", "CMP(al, '\\\\')"))
@@ -585,7 +585,7 @@ h_array db '^',10,10
         self.assertEqual(*self.doTest('mov     ax, word ptr cs:extrn_struc_inst.game_opponentmaterial+2', 'ax = *(dw*)(((db*)&extrn_struc_inst.game_opponentmaterial)+2);'))
 
     def test_instr_1820(self):
-        self.assertEqual(*self.doTest('mov     al, byte ptr [bx+GAMEINFOSTRUC.game_opponenttype]', 'MOV(al, TODB(((gameinfostruc*)raddr(ds,bx))->game_opponenttype))'))
+        self.assertEqual(*self.doTest('mov     al, byte ptr [bx+GAMEINFOSTRUC.game_oppttypedw]', 'MOV(al, *(raddr(ds,bx+offsetof(gameinfostruc,game_oppttypedw))))'))
 
     def test_instr_1840(self):
         self.assertEqual(*self.doTest('mov     ax, fs:8', 'MOV(ax, *(dw*)(raddr(fs,8)))'))
@@ -2963,7 +2963,7 @@ h_array db '^',10,10
         self.assertEqual(*self.doTest('scasd', 'SCASD'))
 
     def test_instr_10180(self):
-        self.assertEqual(*self.doTest('mov[bp + asgn_aptr_in_struc.ts_rotvec.vx], 3', 'MOV(((transshapestruc*)raddr(ss,bp+asgn_aptr_in_struc))->ts_rotvec.vx, 3)'))
+        self.assertEqual(*self.doTest('mov[bp + asgn_aptr_in_struc.ts_rotv_membr_strinst.vx], 3', 'MOV(((transshapestruc*)raddr(ss,bp+asgn_aptr_in_struc))->ts_rotv_membr_strinst.vx, 3)'))
 
     @unittest.skip("it works but test broken. non masm")
     def test_instr_11330(self):
