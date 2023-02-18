@@ -57,7 +57,7 @@ class baseop(lark.Tree):
 
     @property
     def data(self):
-        return str(self.__class__)
+        return self.__class__.__name__.lower()
 
 class var:
 

@@ -991,7 +991,7 @@ class Parser:
         #for ex in args:
         #    ex.element_size = binary_width
 
-        calc = ExprSizeCalculator(element_size=binary_width, init=Vector(0, 0))
+        calc = ExprSizeCalculator(element_size=binary_width, init=Vector(0, 0), context=self)
         size, elements = calc.visit(args) #, result=0)
         #size = calc.size
         ##size = sum(map(Expression.size, args))  #self.calculate_data_size_new(binary_width, args)

@@ -177,7 +177,7 @@ WORDOP: ("HIGH"i|"LOW"i|"HIGHWORD"i|"LOWWORD"i)
 | e11
 dir3: "WIDTH"i LABEL
 | "MASK"i LABEL
-| "SIZE"i sizearg
+| "SIZE"i sizearg -> size
 | "SIZEOF"i sizearg
 | "LENGTH"i LABEL
 | "LENGTHOF"i LABEL
