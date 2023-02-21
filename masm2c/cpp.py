@@ -348,7 +348,7 @@ class Cpp(Gen):
         return _reference
 
     def memberdir(self, tree):
-        return self.convert_member_(tree.children)
+        return [self.convert_member_(tree.children)]
 
     def convert_member(self, token):
         """
@@ -381,14 +381,14 @@ class Cpp(Gen):
                 else:
                     raise Exception('Not handled type ' + str(type(g)))
                 self._indirection = IndirectionType.VALUE
-                return Token('memberdir', value)
+                return value # Token('memberdir', value)
 
         size = self.calculate_member_size(label)
         try:
             g = self._context.get_global(label[0])
         except:
             # logging.warning("expand_cb() global '%s' is missing" % name)
-            return lark.Token('memberdir', label)
+            return label # lark.Token('memberdir', label)
 
         if isinstance(g, (op._equ, op._assignment)):
             logging.debug(str(g))

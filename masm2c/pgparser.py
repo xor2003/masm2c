@@ -1,6 +1,7 @@
 import logging
 import os
 import re
+import sys
 from collections import OrderedDict
 from copy import deepcopy, copy
 from typing import Iterator
@@ -723,11 +724,11 @@ class TopDownVisitor:
                 import logging
                 logging.error(f"Error unknown type {node}")
                 raise ValueError(f"Error unknown type {node}")
-        except:
+        except Exception as ex:
             import traceback, logging
             i = traceback.format_exc()
-            print(i)
-            raise
+            print(node, i, ex)
+            sys.exit(1)
         return result
 
 
@@ -766,8 +767,8 @@ class AsmData2IR(TopDownVisitor):  # TODO HACK Remove it
     def expr(self, tree):
         self.element_size = tree.element_size
         result = self.visit(tree.children)
-        #if len(result) > 1:
-        #    result = [result]
+        if len(result) > 1:
+            result = [result]
         return result
 
     def dupdir(self, tree):
