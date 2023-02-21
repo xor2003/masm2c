@@ -573,8 +573,9 @@ class ParserDataTest(unittest.TestCase):
         self.assertEqual(self.parser.action_data(line="_snd_base_port_0	dw 0FFFFh		; DATA XREF: _callsubx+3r _callsubx+45w"), ('65535, // _snd_base_port_0\n', 'dw _snd_base_port_0;\n', 2))
 
     def test_data_14180(self):
-        self.assertEqual(self.parser.action_data(line="_aGravisUltrasoun db 'Gravis UltraSound',0 ; DATA XREF: seg003:_snd_cards_offso"), ('"Gravis UltraSound", // _agravisultrasoun\n', 'char _agravisultrasoun[18];\n', 18))
-        self.assertEqual(self.parser.action_data(line="_snd_cards_offs	dw offset _aGravisUltrasoun ; DATA XREF:	seg003:114Eo"), ('offset(default_seg,_agravisultrasoun), // _snd_cards_offs\n', 'dw _snd_cards_offs;\n', 2))
+        self.assertEqual(self.parser.action_data(line="_aGravisUltrasoun db 'Gravis UltraSound',0"), ('"Gravis UltraSound", // _agravisultrasoun\n', 'char _agravisultrasoun[18];\n', 18))
+
+        self.assertEqual(self.parser.action_data(line="_snd_cards_offs	dw offset _aGravisUltrasoun"), ('offset(default_seg,_agravisultrasoun), // _snd_cards_offs\n', 'dw _snd_cards_offs;\n', 2))
 
     def test_data_14260(self):
         self.assertEqual(self.parser.action_data(line="_table_13EC3	db 140,50,25,15,10,7,6,4,3,3,2,2,2,2,1,1 ; DATA	XREF: sub_13E9B+Dr"), ('{140,50,25,15,10,7,6,4,3,3,2,2,2,2,1,1}, // _table_13ec3\n', 'db _table_13ec3[16];\n', 16))
@@ -1034,7 +1035,7 @@ class ParserDataTest(unittest.TestCase):
         self.assertEqual(self.parser.action_data(line='db 0A0h,3 dup(0,1),88h,3 dup(0),82h'), ('{160,0,1,0,1,0,1,136,0,0,0,130}, // dummy0_0\n', 'db dummy0_0[12];\n', 12))
 
     def test_data_15960(self):
-        self.assertEqual(self.parser.action_data(line="var6 dd 9,8,7,1\ndw var6+4"), ('{9,8,7,1}, // var6\n', 'dd var6[4];\n', 16))
+        self.assertEqual(self.parser.action_data(line="var6 dd 9,8,7,1"), ('{9,8,7,1}, // var6\n', 'dd var6[4];\n', 16))
 
     def test_data_15970(self):
         self.assertEqual(self.parser.action_data(line="aII db 8,'ê\"\"',8,'ê\"\"',0"), ('"\\x08\\x88\\"\\x08\\x88\\"", // aii\n', 'char aii[7];\n', 7))

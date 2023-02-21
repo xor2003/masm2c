@@ -759,7 +759,7 @@ class BottomUpVisitor:
             raise
         return result
 
-class AsmData2IR(TopDownVisitor):  # TODO HACK Remove it
+class AsmData2IR(TopDownVisitor):  # TODO HACK Remove it. !For missing funcitons deletes details!
 
     def seg(self, tree):
         return [f'seg_offset({tree.children[0]})']
@@ -786,12 +786,13 @@ class AsmData2IR(TopDownVisitor):  # TODO HACK Remove it
         #result = result.replace('\\', '\\\\')  # escape c \ symbol
         return list(result)
 
+    def LABEL(self, tree):
+        return [lark.Token(type='LABEL', value=tree.lower())]  # TODO HACK
+
     def bypass(self, tree):
         return [tree]
 
-    def LABEL(self, tree):
-        return [lark.Token(type='LABEL', value=tree.lower())]  # TODO HACK
-    #LABEL = bypass
+    offsetdir = bypass
 
 
 OFFSETDIR = 'offsetdir'
