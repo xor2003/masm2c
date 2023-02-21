@@ -345,7 +345,7 @@ class Parser:
         if isinstance(g, (op._equ, op._assignment)):
             v = g.original_name
         elif isinstance(g, op.var):
-            size = g.size ## ?
+            #size = g.size ## ?
             if g.issegment:
                 v = f"seg_offset({g.name})"
             else:
@@ -993,6 +993,8 @@ class Parser:
 
         calc = ExprSizeCalculator(element_size=binary_width, init=Vector(0, 0), context=self)
         size, elements = calc.visit(args) #, result=0)
+        if size == 0:
+            size = binary_width * elements
         #size = calc.size
         ##size = sum(map(Expression.size, args))  #self.calculate_data_size_new(binary_width, args)
         ##elements = sum(arg.element_number for arg in args)

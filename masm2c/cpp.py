@@ -140,6 +140,8 @@ class Cpp(Gen):
         self.isvariable = False
         self.islabel = False
 
+        self.is_data = False
+
         self.__type_table = {op.DataType.NUMBER: self.produce_c_data_number,
                              op.DataType.ARRAY: self.produce_c_data_array,
                              op.DataType.ZERO_STRING: self.produce_c_data_zero_string,
@@ -1705,15 +1707,20 @@ class IR2Cpp(TopDownVisitor, Cpp):
         return result
 
     def data(self, data):
+        binary_width = self._context.typetosize(data.data_type)  # TODO pervertion
+        self.is_data = binary_width
         # For unit test
         from masm2c.parser import Parser
         Parser.c_dummy_label = 0
         c, h, size = self.produce_c_data_single_(data)
         c += ", // " + data.getlabel() + "\n"  # TODO can put original_label
         h += ";\n"
+        self.is_data = False
         return c, h, size
 
     def LABEL(self, token):
+        if self.is_data:
+            return [self._context.get_global_value(token, size=self.is_data)]
         return [self.convert_label_(token)]
         # return self._context.get_global_value(token, size=self.element_size)
 
@@ -1765,7 +1772,6 @@ class IR2Cpp(TopDownVisitor, Cpp):
 
     def anddir(self, tree):
         return [tree.children[0], " & ", tree.children[1]]
-
 
 class IR2CppJump(IR2Cpp):
 
