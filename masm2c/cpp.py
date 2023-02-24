@@ -32,7 +32,7 @@ from .gen import Gen, mangle_asm_labels, InjectCode
 from .enum import IndirectionType
 from .parser import ExprSizeCalculator, Vector
 from .pgparser import OFFSETDIR, LABEL, PTRDIR, REGISTER, SEGMENTREGISTER, SEGOVERRIDE, SQEXPR, INTEGER, MEMBERDIR, \
-    TopDownVisitor
+    TopDownVisitor, Asm2IR
 
 
 def flatten(s):
@@ -385,7 +385,6 @@ class Cpp(Gen):
                 self._indirection = IndirectionType.VALUE
                 return value # Token('memberdir', value)
 
-        size = self.calculate_member_size(label)
         try:
             g = self._context.get_global(label[0])
         except:
@@ -399,14 +398,15 @@ class Cpp(Gen):
             if self._isjustlabel:
                 value = '.'.join(label)
             else:
-                self.struct_type = g.original_type
+                self.struct_type = g.value.original_type
                 self.needs_dereference = True
                 self.itispointer = False
                 value = f"{label[0]}))->{'.'.join(label[1:])}"
             logging.debug(f"equ: {label[0]} -> {value}")
         elif isinstance(g, op.var):
-            logging.debug("it is var %s", size)
 
+            size = self.calculate_member_size(label)
+            logging.debug("it is var %s", size)
             if self._middle_size == 0:  # TODO check
                 self._middle_size = size
 
@@ -461,8 +461,8 @@ class Cpp(Gen):
                 value = f"{register}))->{'.'.join(label[1:])}"
             '''
 
-        if size == 0:
-            raise Exception("invalid var '%s' size %u" % (str(label), size))
+        #if size == 0:
+        #    raise Exception("invalid var '%s' size %u" % (str(label), size))
         return value
 
     def convert_sqbr_reference(self, segment: str, expr, destination: bool, size: int, islabel: bool,

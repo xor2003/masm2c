@@ -192,9 +192,11 @@ class Asm2IR(CommonCollector):
     def ptrdir(self, children):
         if self.expression.indirection == IndirectionType.VALUE:  # set above
             self.expression.indirection = IndirectionType.POINTER
-        if self.size:
+        if self.size: # TODO why need another variable?
             self.expression.ptr_size = self.size
             self.expression.mods.add('size_changed')
+            if self.element_type is None:
+                self.element_type = children[0].lower()
         self.expression.element_size = 0
         return children
 
@@ -375,14 +377,17 @@ class Asm2IR(CommonCollector):
             if isinstance(g, (op._equ, op._assignment)):
                 if not isinstance(g.value, Expression):
                     g.value = Asm2IR(self.context, g.raw_line).transform(g.value)
+                    self.context.reset_global(self.name, g) #??
                 if isinstance(g.value, Expression):
-                    g.size = g.value.size()
+                    self.expression.element_size = g.size = g.value.size()
             elif isinstance(g, (op.label, Proc)):
                 self.expression.indirection = IndirectionType.OFFSET  # direct using number
             elif isinstance(g, op.var):
                 self.expression.indirection = IndirectionType.POINTER  # []
-
-            if not isinstance(g, op.Struct):
+            elif isinstance(g, op.Struct):
+                logging.debug('get_size res %d', g.size)
+                self.size = l.size = self.expression.element_size = g.size  # TODO too much?
+            else:
                 logging.debug('get_size res %d', g.size)
                 self.expression.element_size = g.size
                 l.size = g.size

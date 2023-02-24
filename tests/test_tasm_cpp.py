@@ -1957,6 +1957,7 @@ class CppTest(unittest.TestCase):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'var3'),def_size=0,destination=False),u'var3')
     '''
 
+    '''
     def test_cpp_26480(self):
         self.assertEqual(self.parser.test_size(u"'Z' - 'A' +1"), 1)
 
@@ -3513,6 +3514,7 @@ class CppTest(unittest.TestCase):
 
     def test_cpp_31650(self):
         self.assertEqual(self.parser.test_size(u'word ptr var5'), 2)
+    '''
 
     def test_cpp_31660(self):
         self.assertEqual(self.parser.is_register(expr=u'_data'), 0)

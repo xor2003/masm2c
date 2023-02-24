@@ -135,26 +135,26 @@ class Gen:
         return 0
 
     def calculate_member_size(self, label):
-                g = self._context.get_global(label[0])
+        g = self._context.get_global(label[0])
+        if isinstance(g, op.Struct):
+            type = label[0]
+        else:
+            type = g.original_type
+
+        try:
+            for member in label[1:]:
+                g = self._context.get_global(type)
                 if isinstance(g, op.Struct):
-                    type = label[0]
+                    g = g.getitem(member)
+                    type = g.data
                 else:
-                    type = g.original_type
+                    return g.size
+        except KeyError as ex:
+            logging.debug(f"Didn't found for {label} {ex.args} will try workaround")
+            # if members are global as with M510 or tasm try to find last member size
+            g = self._context.get_global(label[-1])
 
-                try:
-                    for member in label[1:]:
-                        g = self._context.get_global(type)
-                        if isinstance(g, op.Struct):
-                            g = g.getitem(member)
-                            type = g.data
-                        else:
-                            return g.size
-                except KeyError as ex:
-                    logging.debug(f"Didn't found for {label} {ex.args} will try workaround")
-                    # if members are global as with M510 or tasm try to find last member size
-                    g = self._context.get_global(label[-1])
-
-                return g.size
+        return g.size
 
 
     def calculate_member_size_(self, expr):

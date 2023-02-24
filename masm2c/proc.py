@@ -143,7 +143,7 @@ class Proc:
         logging.debug(label + " " + str(value))
         # value = cpp.convert_number_to_c(value)
         o = op._assignment([label, value])
-        if hasattr(value, 'original_type'):
+        if hasattr(value, 'original_type'):  # TODO cannot get original type anymore. not required here
             o.original_type = value.original_type
 
         o.raw_line = str(line_number) + " " + label + " = " + str(value)

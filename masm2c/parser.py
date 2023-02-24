@@ -143,7 +143,7 @@ class Parser:
         Assembler parser
         '''
         self.test_mode = False
-        self.__globals = OrderedDict()
+        self.__globals = {}
         # self.__offsets = OrderedDict()
         self.pass_number = 0
 
