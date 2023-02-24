@@ -839,12 +839,6 @@ class Parser:
         self.need_label = False
         self.segments = OrderedDict()
         try:
-            text = f'''.model tiny
-    default_seg segment
-        {line}
-    default_seg ends
-        end start
-            '''
             self.test_pre_parse()
             result = self.parse_text(line + "\n", start_rule='instruction')
             #result = result.children[2].children[1].children[1]
@@ -1076,7 +1070,7 @@ class Parser:
                 self.__segment.getdata()[-size].children = array
                 self.__segment.getdata()[-size].elements = size
                 self.__segment.getdata()[-size].data_internal_type = op.DataType.ARRAY
-                self.__segment.getdata()[-size].size = size
+                self.__segment.getdata()[-size]._size = size
                 self.__segment.setdata(self.__segment.getdata()[:-(size - 1)])
                 self.data_merge_candidats = 0
 

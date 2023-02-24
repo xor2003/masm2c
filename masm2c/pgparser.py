@@ -124,11 +124,13 @@ class Asm2IR(CommonCollector):
         super().__init__(context, input_str)
         #self.context = context
         #self.input_str = input_str
-        self.radix = 10
+        self._radix = 10
         #self._expression = None
-        self.element_type = None
+        self._element_type = None
 
-        self.is_string = False
+        self._is_string = False
+        self._size = 0
+
 
     '''
     def build_ast(self, nodes, type=''):
@@ -155,7 +157,7 @@ class Asm2IR(CommonCollector):
                 any(reg in result.registers for reg in {'bp', 'ebp', 'sp', 'esp'}):
             result.segment_register = 'ss'
         if result.indirection == IndirectionType.POINTER:
-            self.expression.original_type = self.element_type
+            self.expression.original_type = self._element_type
         self._expression = None
         return result
 
@@ -186,17 +188,17 @@ class Asm2IR(CommonCollector):
     def distance(self, children):
         self.expression.mods.add(children[0].lower())
         #self.expression.indirection = IndirectionType.OFFSET  #
-        self.size = self.context.typetosize(children[0])
+        self._size = self.context.typetosize(children[0])
         return Discard
 
     def ptrdir(self, children):
         if self.expression.indirection == IndirectionType.VALUE:  # set above
             self.expression.indirection = IndirectionType.POINTER
-        if self.size: # TODO why need another variable?
-            self.expression.ptr_size = self.size
+        if self._size: # TODO why need another variable?
+            self.expression.ptr_size = self._size
             self.expression.mods.add('size_changed')
-            if self.element_type is None:
-                self.element_type = children[0].lower()
+            if self._element_type is None:
+                self._element_type = children[0].lower()
         self.expression.element_size = 0
         return children
 
@@ -206,13 +208,13 @@ class Asm2IR(CommonCollector):
         self.expression.segment_overriden = True
         self.expression.ptr_size = self.context.typetosize(children[0])
         self.expression.mods.add('size_changed')
-        self.element_type = children[0].lower()
+        self._element_type = children[0].lower()
         return children[3:]
 
     def datadecl(self, children):
         # self.expression = self.expression or Expression()
-        self.size = self.context.typetosize(children[0])
-        self.element_type = children[0].lower()
+        self._size = self.context.typetosize(children[0])
+        self._element_type = children[0].lower()
         return Discard
 
     def ANYTHING(self, value):
@@ -222,7 +224,7 @@ class Asm2IR(CommonCollector):
         from .parser import parse_asm_number
         from .gen import guess_int_size
 
-        radix, sign, value = parse_asm_number(value, self.radix)
+        radix, sign, value = parse_asm_number(value, self._radix)
 
         val = int(value, radix)
         if sign == '-':
@@ -342,13 +344,13 @@ class Asm2IR(CommonCollector):
             label = ''
         if isinstance(children[0], (lark.Token, lark.Tree)):  # Data
             values = lark.Tree(data='data', children=children[0].children)
-            type = self.element_type
+            type = self._element_type
         else:
             type = children[0][1].lower()  # Structs
             values = children[0][2:3][0]
 
-        is_string = self.is_string
-        self.is_string = False
+        is_string = self._is_string
+        self._is_string = False
 
         return self.context.datadir_action(label, type, values, is_string=is_string, raw=get_raw(self.input_str, meta),
                                            line_number=get_line_number(meta))
@@ -386,11 +388,11 @@ class Asm2IR(CommonCollector):
                 self.expression.indirection = IndirectionType.POINTER  # []
             elif isinstance(g, op.Struct):
                 logging.debug('get_size res %d', g.size)
-                self.size = l.size = self.expression.element_size = g.size  # TODO too much?
+                self._size = l.size = self.expression.element_size = g.size  # TODO too much?
             else:
-                logging.debug('get_size res %d', g.size)
-                self.expression.element_size = g.size
-                l.size = g.size
+                logging.debug('get_size res %d', g._size)
+                self.expression.element_size = g._size
+                l.size = g._size
 
         return l
 
@@ -545,7 +547,7 @@ class Asm2IR(CommonCollector):
                 string = string.replace("\'\'", "'").replace('\"\"', '"')  # masm behaviour
             self.expression.element_number = len(string)
             self.expression.element_size = 1
-            self.is_string = True
+            self._is_string = True
             nodes = lark.Token(type='STRING', value=string)
         return nodes  # Token('STRING', nodes)
 
@@ -556,7 +558,7 @@ class Asm2IR(CommonCollector):
         return lark.Tree('memberdir', [self.context.mangle_label(str(node)) for node in nodes])
 
     def radixdir(self, children):
-        self.radix = int(children[0])
+        self._radix = int(children[0])
         return children
 
     def externdef(self, nodes):

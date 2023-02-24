@@ -107,8 +107,8 @@ class Gen:
                             return self.calculate_size_(g.value)
                         else:
                             return 0
-                    logging.debug('get_size res %d', g.size)
-                    return g.size
+                    logging.debug('get_size res %d', g._size)
+                    return g._size
                 except:
                     pass
             elif expr.data == MEMBERDIR:
@@ -148,7 +148,7 @@ class Gen:
                     g = g.getitem(member)
                     type = g.data
                 else:
-                    return g.size
+                    return g._size
         except KeyError as ex:
             logging.debug(f"Didn't found for {label} {ex.args} will try workaround")
             # if members are global as with M510 or tasm try to find last member size

@@ -129,10 +129,13 @@ class Token(lark.Tree):
 
 class Expression(lark.Tree):
 
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
+        if len(args) == 0:
+            args = "expr", []
+        super().__init__(*args, **kwargs)
         from masm2c.enum import IndirectionType
-        super().__init__("expr", [])
-        #self.data = "expr"
+        #kwargs['children'] = kwargs.get('children', [])
+        self.data = "expr"
         #self.children = []
         self.indirection: IndirectionType = IndirectionType.VALUE
         self.element_size = 0

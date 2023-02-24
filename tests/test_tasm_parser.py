@@ -124,7 +124,6 @@ class ParserInstructionsTest(unittest.TestCase):
         self.__class__.parser.set_global('singlebyte', op.var(elements=1, name=u'singlebyte', offset=1, segment=u'_data', size=1))
         self.__class__.parser.set_global('bytearray', op.var(elements=100, name=u'bytearray', offset=1, segment=u'_data', size=1))
         self.__class__.parser.set_global('singlequad', op.var(elements=1, name=u'singlequad', offset=1, segment=u'_data', size=4))
-        #self.__class__.parser.set_global('extrn_struc_inst', op.var(elements=1, name=u'extrn_struc_inst', offset=1, segment=u'_data', size=1))
         self.__class__.parser.action_data(line='''GAMEINFOSTRUC struc
 game_oppttypedw dw ?
 game_opponentmaterial dd ?
@@ -144,6 +143,7 @@ h_array db '^',10,10
  TRANSSHAPESTRUC ends
  asgn_aptr_in_struc = TRANSSHAPESTRUC ptr -50
 ''')
+        #var_transshape TRANSSHAPESTRUC <>
         self.__class__.parser.get_global('asgn_aptr_in_struc').implemented = True
         #?self.__class__.cpp._assignment('asgn_aptr_in_struc',self.__class__.parser.get_global('asgn_aptr_in_struc'))
         self.__class__.parser.action_label(far=False, name='@@saaccvaaaax', isproc=False)
@@ -543,7 +543,7 @@ h_array db '^',10,10
         self.assertEqual(*self.doTest('mov     dx, word ptr (oppresources+2)[bx]', 'MOV(dx, *(dw*)(raddr(ds,(oppresources+2)+bx)))'))
 
     def test_instr_1680(self):
-        self.assertEqual(*self.doTest('push    [bp+var_TransshapE.ts_rotv_membr_strinst.vx]', 'PUSH(((transshapestruc*)raddr(ss,bp+asgn_aptr_in_struc))->ts_rotv_membr_strinst.vx)'))
+        self.assertEqual(*self.doTest('push    [bp+asgN_Aptr_in_struc.ts_rotv_membr_strinst.vx]', 'PUSH(((transshapestruc*)raddr(ss,bp+asgn_aptr_in_struc))->ts_rotv_membr_strinst.vx)'))
 
     def test_instr_1690(self):
         self.assertEqual(*self.doTest('add     word ptr [bx+transshapestruc.ts_rotv_membr_strinst], ax', 'ADD(*(dw*)(raddr(ds,bx+offsetof(transshapestruc,ts_rotv_membr_strinst))), ax)'))

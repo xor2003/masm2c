@@ -254,7 +254,7 @@ class Cpp(Gen):
                 if self._indirection == IndirectionType.POINTER:
                     self._indirection = IndirectionType.VALUE
             elif self._indirection == IndirectionType.OFFSET:
-                value = "%s" % g.offset
+                value = str(g.offset)
                 self._indirection = IndirectionType.VALUE
             else:
                 raise Exception("invalid indirection %d name '%s' size %u" % (self._indirection, name, source_var_size))
@@ -387,9 +387,9 @@ class Cpp(Gen):
 
         try:
             g = self._context.get_global(label[0])
-        except:
-            # logging.warning("expand_cb() global '%s' is missing" % name)
-            return label # lark.Token('memberdir', label)
+        except KeyError:
+            logging.error("global '%s' is missing", label)
+            return ".".join(label)
 
         if isinstance(g, (op._equ, op._assignment)):
             logging.debug(str(g))
@@ -1772,6 +1772,9 @@ class IR2Cpp(TopDownVisitor, Cpp):
 
     def anddir(self, tree):
         return [tree.children[0], " & ", tree.children[1]]
+
+    def sizearg(self, tree):
+        return [f"sizeof({tree.children[0]})"]
 
 class IR2CppJump(IR2Cpp):
 
