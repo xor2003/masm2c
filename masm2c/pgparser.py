@@ -167,8 +167,10 @@ class Asm2IR(CommonCollector):
     def dupdir(self, children):
         from masm2c.cpp import IR2Cpp
         from masm2c.parser import Parser
-        repeat = children[0]
-        repeat = eval("".join(IR2Cpp(Parser()).visit(repeat)))
+        repeat = copy(children[0])
+        repeat.indirection = IndirectionType.VALUE
+        repeat = "".join(IR2Cpp(Parser()).visit(repeat))
+        repeat = eval(repeat)
         value = children[1]
         #self.expression.element_number *= repeat
         result = lark.Tree(data='dupdir', children=value)
