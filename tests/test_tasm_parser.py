@@ -567,7 +567,7 @@ h_array db '^',10,10
         self.assertEqual(*self.doTest('add     ax, gameInfoStruc.game_oppTTypeDW', 'ADD(ax, offsetof(gameinfostruc,game_oppttypedw))'))
 
     def test_instr_1760(self):
-        self.assertEqual(*self.doTest('adc     dx, word ptr [bp+asgn_aptr_in_struc.ts_rectptr+0Eh]', 'ADC(dx, ((transshapestruc*)raddr(ss,bp+0x0E +asgn_aptr_in_struc))->ts_rectptr)'))
+        self.assertEqual(*self.doTest('adc     dx, word ptr [bp+asgn_aptr_in_struc.ts_rectptr+0Eh]', 'ADC(dx, ((transshapestruc*)raddr(ss,bp+0x0E+asgn_aptr_in_struc))->ts_rectptr)'))
 
     def test_instr_1770(self):
         self.assertEqual(*self.doTest('bts eax,0', 'BTS(eax, 0)'))

@@ -401,7 +401,9 @@ class Cpp(Gen):
                 self.struct_type = g.value.original_type
                 self.needs_dereference = True
                 self.itispointer = False
-                value = f"{label[0]}))->{'.'.join(label[1:])}"
+                self._need_pointer_to_member = label
+                value = ''
+                #value = f"{label[0]}))->{'.'.join(label[1:])}"
             logging.debug(f"equ: {label[0]} -> {value}")
         elif isinstance(g, op.var):
 
@@ -1700,6 +1702,7 @@ class IR2Cpp(TopDownVisitor, Cpp):
 
         self.element_size = tree.element_size
         self._ismember = False
+        self._need_pointer_to_member = False
         result = "".join(self.visit(tree.children))
         if tree.indirection == IndirectionType.POINTER and tree.ptr_size == 0 and hasattr(self,"variable_size"):  # [ var ]
             tree.ptr_size = self.variable_size  # Set destination size based on variable size
@@ -1707,6 +1710,11 @@ class IR2Cpp(TopDownVisitor, Cpp):
 
         if tree.indirection == IndirectionType.POINTER and any(i in {'bp', 'ebp', 'sp', 'esp'} for i in tree.registers):
             self._work_segment = "ss"  # and segment is not overriden means base is "ss:"
+
+        if self._need_pointer_to_member:
+            result = result[:-1] if result[-1] == '+' else result
+            result = result.replace('++', '+').replace('+-', '-')
+            result = f"{result}+{self._need_pointer_to_member[0]}))->{'.'.join(self._need_pointer_to_member[1:])}"
 
         if tree.indirection == IndirectionType.POINTER and not self._ismember and (
                 not self._isjustlabel or self.size_changed):
