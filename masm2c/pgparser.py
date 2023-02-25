@@ -1,3 +1,4 @@
+from ast import literal_eval
 import logging
 import os
 import re
@@ -128,7 +129,6 @@ class Asm2IR(CommonCollector):
         #self._expression = None
         self._element_type = None
 
-        self._is_string = False
         self._size = 0
 
 
@@ -354,8 +354,7 @@ class Asm2IR(CommonCollector):
             #type = children[0][1].lower()  # Structs
             values = children[0][2:3][0]
 
-        is_string = self._is_string
-        self._is_string = False
+        is_string = any('string' in expr.mods for expr in values.children if isinstance(expr, lark.Tree) and expr.data == 'expr')
 
         return self.context.datadir_action(label, type, values, is_string=is_string, raw=get_raw(self.input_str, meta),
                                            line_number=get_line_number(meta))
@@ -370,6 +369,7 @@ class Asm2IR(CommonCollector):
     def segdir(self, nodes, type):
         logging.debug("segdir " + str(nodes) + " ~~")
         self.context.action_simplesegment(type, '')  # TODO
+        self._expression = None
         return nodes
 
     def LABEL(self, value):
@@ -428,6 +428,7 @@ class Asm2IR(CommonCollector):
     def endsdir(self, nodes):
         logging.debug("ends " + str(nodes) + " ~~")
         self.context.action_ends()
+        self._expression = None
         return nodes
 
     @v_args(meta=True)
@@ -482,12 +483,13 @@ class Asm2IR(CommonCollector):
         '''
         # indirection: IndirectionType = IndirectionType.VALUE
         #return Tree(instruction, args, meta)
+        self._expression = None
         return self.context.action_instruction(instruction, args, raw=get_raw_line(self.input_str, meta),
                                                line_number=get_line_number(meta)) or Discard
 
     def enddir(self, children):
         logging.debug("end %s ~~", children)
-        self.context.action_end(children[0].children[0].children[0])
+        self.context.action_end(children[0].children[0])
         return children
 
 
@@ -553,7 +555,7 @@ class Asm2IR(CommonCollector):
                 string = string.replace("\'\'", "'").replace('\"\"', '"')  # masm behaviour
             self.expression.element_number = len(string)
             self.expression.element_size = 1
-            self._is_string = True
+            self.expression.mods.add('string')
             nodes = lark.Token(type='STRING', value=string)
         return nodes  # Token('STRING', nodes)
 

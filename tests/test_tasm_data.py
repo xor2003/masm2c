@@ -491,7 +491,7 @@ class ParserDataTest(unittest.TestCase):
         self.assertEqual(self.convert_data(line="_byte_280E7	db ?			; DATA XREF: _s3m_module+1F3w"), ('0, // _byte_280e7\n', 'db _byte_280e7;\n', 1))
 
     def test_data_13100(self):
-        self.assertEqual(self.convert_data(line="_byte_282E8	db 20h dup( ?)		; DATA XREF: _clean_11C43+AEo"), ('{0}, // _byte_282e8\n', 'db _byte_282e8[32];\n', 32))
+        self.assertEqual(self.convert_data(line="_byte_282E8	db 20h dup(?)		; DATA XREF: _clean_11C43+AEo"), ('{0}, // _byte_282e8\n', 'db _byte_282e8[32];\n', 32))
 
     def test_data_13140(self):
         self.assertEqual(self.convert_data(line="_byte_3150A	db ?			; DATA XREF: _psm_module+139r"), ('0, // _byte_3150a\n', 'db _byte_3150a;\n', 1))

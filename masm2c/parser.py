@@ -1,3 +1,5 @@
+from ast import literal_eval
+from ast import literal_eval
 ''' Module to parse assembler source '''
 # Masm2c S2S translator (initially based on SCUMMVM tasmrecover)
 #
@@ -367,6 +369,7 @@ class Parser:
     def identify_data_internal_type(self, data, elements, is_string) -> op.DataType:
         args = data.children
         if is_string:
+
             if elements >= 2 and isinstance(args[-1].children[-1], lark.Token) \
                     and args[-1].children[-1].type == 'INTEGER' and args[-1].children[-1].value == '0':
                 cur_data_type = op.DataType.ZERO_STRING  # 0 terminated string
@@ -610,7 +613,7 @@ class Parser:
             content = self.extract_addresses_from_lst(file_name, content)
         result = self.parse_text(content, file_name=file_name)
         result = self.process_ast(content, result)
-        result = "".join(IR2Cpp().visit(result))
+        result = "".join(IR2Cpp(self).visit(result))
 
     def extract_addresses_from_lst(self, file_name, content):
         self.itislst = True
@@ -1208,7 +1211,7 @@ class Parser:
         number = 1
         if isinstance(args, list) and len(args) > 2 and isinstance(args[1], str) and args[1] == 'dup':
             cpp = cpp_module.Cpp(self)
-            number = eval(cpp.render_instruction_argument(Token.find_tokens(args[0], 'expr')))
+            number = literal_eval(cpp.render_instruction_argument(Token.find_tokens(args[0],'expr')))
             args = args[3]
         args = Token.remove_tokens(args, ['structinstance'])
 
