@@ -105,18 +105,18 @@ class EquCollector(CommonCollector):
     @v_args(meta=True)
     def equdir(self, meta, nodes):
         name, value = nodes
-        logging.debug("equdir " + str(nodes) + " ~~")
-        self.context.action_equ(name, value, raw=get_raw(self.input_str, meta),
+        logging.debug("equdir %s ~~", nodes)
+        return self.context.action_equ(name, value, raw=get_raw(self.input_str, meta),
                                        line_number=get_line_number(meta))
-        return Discard
+        #return Discard
 
     @v_args(meta=True)
     def assdir(self, meta, nodes):
         name, value = nodes
-        logging.debug("assdir " + str(nodes) + " ~~")
-        self.context.action_assign(name, value, raw=get_raw(self.input_str, meta),
+        logging.debug("assdir %s ~~", nodes)
+        return self.context.action_assign(name, value, raw=get_raw(self.input_str, meta),
                                           line_number=get_line_number(meta))
-        return Discard
+        #return Discard
 
 class Asm2IR(CommonCollector):
 
@@ -197,8 +197,8 @@ class Asm2IR(CommonCollector):
         if self._size: # TODO why need another variable?
             self.expression.ptr_size = self._size
             self.expression.mods.add('size_changed')
-            if self._element_type is None:
-                self._element_type = children[0].lower()
+        self._element_type = children[0].lower()
+        children = children[1:]
         self.expression.element_size = 0
         return children
 
@@ -215,7 +215,7 @@ class Asm2IR(CommonCollector):
         # self.expression = self.expression or Expression()
         self._size = self.context.typetosize(children[0])
         self._element_type = children[0].lower()
-        return Discard
+        return str(children[0]).lower()
 
     def ANYTHING(self, value):
         return self.INTEGER('0')
@@ -338,15 +338,18 @@ class Asm2IR(CommonCollector):
     @v_args(meta=True)
     def datadir(self, meta, children: list):
         logging.debug("datadir %s ~~", children)
+        if len(children)==1: # TODO why?
+            children = children[0]
         if isinstance(children[0], lark.Token) and children[0].type == 'LABEL':
             label = self.context.mangle_label(children.pop(0))
         else:
             label = ''
+        type = children.pop(0).lower()
         if isinstance(children[0], (lark.Token, lark.Tree)):  # Data
             values = lark.Tree(data='data', children=children[0].children)
-            type = self._element_type
+            #type = self._element_type
         else:
-            type = children[0][1].lower()  # Structs
+            #type = children[0][1].lower()  # Structs
             values = children[0][2:3][0]
 
         is_string = self._is_string
@@ -388,6 +391,7 @@ class Asm2IR(CommonCollector):
                 self.expression.indirection = IndirectionType.POINTER  # []
             elif isinstance(g, op.Struct):
                 logging.debug('get_size res %d', g.size)
+                l = lark.Token(type='LABEL', value=value)
                 self._size = l.size = self.expression.element_size = g.size  # TODO too much?
             else:
                 logging.debug('get_size res %d', g._size)
@@ -594,61 +598,6 @@ class Asm2IR(CommonCollector):
 
 
 '''
-actions = {
-    "offsetdirtype": offsetdirtype,
-    "modeldir": modeldir,
-    "dir3": maked,
-    "externdef": externdef,
-    "macrocall": macrocall,
-    "repeatbegin": repeatbegin,
-    "ENDM": endm,
-    "radixdir": radixdir,
-    "field": make_token,
-    "memberdir": memberdir,
-    "structinstdir": structinstdir,
-    "dupdir": dupdir,
-    "structinstance": structinstance,
-    "structdirhdr": structdirhdr,
-    "includedir": includedir,
-    "instrprefix": instrprefix,
-    "INTEGER": integertok,
-    "LABEL": labeltok,
-    "STRING": STRING,
-    "anddir": anddir,
-    "asminstruction": asminstruction,
-    "assdir": assdir,
-    "datadir": datadir,
-    "enddir": enddir,
-    "endpdir": endpdir,
-    "endsdir": endsdir,
-    "equdir": equdir,
-    "labeldef": labeldef,
-    "macrodirhead": macrodirhead,
-    "notdir": notdir,
-    "offsetdir": offsetdir,
-    "ordir": ordir,
-    "procdir": procdir,
-    "ptrdir": ptrdir,
-    "register": register,
-    "segdir": segdir,
-    "segmdir": segmdir,
-    "segmentdir": segmentdir,
-    "segmentregister": segmentregister,
-    "segoverride": segoverride,
-    "sqexpr": sqexpr,
-    "xordir": xordir,
-    "expr": expr,
-    "aexpr": make_token,
-    "cexpr": make_token,
-    "cxzexpr": make_token,
-    "flagname": make_token,
-    "primary": make_token,
-    "recordconst": make_token,
-    "simpleexpr": make_token,
-    "sizearg": make_token,
-    "term": make_token
-}
-
 recognizers = {
     'macroname': macroname,
     "structname": structname,

@@ -37,11 +37,12 @@ class baseop(lark.Tree):
     # __slots__ = ["cmd", "line", "line_number", "elements", "args"]
 
     def __init__(self):
+        super().__init__(self.__class__.__name__.lower(), [])
         self.cmd = ""
         self.raw_line = ""
         self.line_number = 0
         self.elements = 1
-        self.children = []
+        #self.children = []
         self.size = 0
         self.real_offset = None
         self.real_seg = None
@@ -55,9 +56,9 @@ class baseop(lark.Tree):
     def __str__(self):
         return str(self.__class__)
 
-    @property
-    def data(self):
-        return self.__class__.__name__.lower()
+    #@property
+    #def data(self):
+    #    return self.__class__.__name__.lower()
 
 class var:
 

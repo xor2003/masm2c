@@ -1399,6 +1399,7 @@ struct Memory{
 
     def _assignment(self, stmt):
         dst, src = stmt.children
+        src.indirection = IndirectionType.VALUE
         o = src
         '''
         #src = Token.remove_tokens(src, ['expr'])
@@ -1424,7 +1425,9 @@ struct Memory{
         self.__label += "#undef %s\n#define %s %s\n" % (dst, dst, self.render_instruction_argument(src))
         return ''
 
-    def _equ(self, dst, src):
+    def _equ(self, stmt):
+        dst, src = stmt.children
+        src.indirection = IndirectionType.VALUE
         self.__label += "#define %s %s\n" % (dst, self.render_instruction_argument(src))
         return ''
 
@@ -1680,7 +1683,7 @@ class IR2Cpp(TopDownVisitor, Cpp):
 
         single = len(tree.children) == 1
         origexpr = tree.children[0]
-        while isinstance(origexpr, list):
+        while isinstance(origexpr, list) and origexpr:
             origexpr = origexpr[0]
         self._isjustlabel = single and ((isinstance(origexpr, lark.Token) and origexpr.type == LABEL) \
                                         or (isinstance(origexpr, lark.Token) and origexpr.type == SQEXPR \
