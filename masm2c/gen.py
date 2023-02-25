@@ -27,6 +27,8 @@ class Gen:
         self.lea = False
         self._work_segment = "ds"
         self.isvariable = False  # only address or variable
+        context.cpp = self
+
 
 
     def remove_dots(self, tokens):

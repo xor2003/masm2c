@@ -225,10 +225,13 @@ class Proc:
 
     def generate_full_cmd_line(self, visitor, stmt):
         prefix = visitor.prefix
-        visitor.__label = ''
+        visitor._cmdlabel = ''
         visitor.dispatch = ''
         visitor.prefix = ''
-        command = stmt.accept(visitor)
+        if stmt:= tuple(visitor.visit(stmt)):
+            command = stmt.accept(visitor)
+        else:
+            command = ''
         if command and stmt.real_seg:  # and (self.is_flow_change_stmt(stmt) or 'cs' in command or 'cs' in visitor.before):
             visitor.body += f'cs={stmt.real_seg:#04x};eip={stmt.real_offset:#08x}; '
 
@@ -237,7 +240,7 @@ class Proc:
         if full_command:
             full_command = self.set_instruction_compare_subclass(stmt, full_command, visitor._context.itislst)
 
-        full_line = visitor.__label + visitor.dispatch + full_command
+        full_line = visitor._cmdlabel + visitor.dispatch + full_command
         return full_line
 
     def generate_c_cmd(self, visitor, stmt):

@@ -880,7 +880,7 @@ class Parser:
             self.test_pre_parse()
             result = self.parse_text(line + "\n", start_rule='insegdirlist')
             result = self.process_ast(line, result)
-            result = tuple(IR2Cpp(self).visit(result))
+            #result = tuple(self.cpp.visit(result))
         except Exception as e:
             print(e)
             logging.error("Error3")

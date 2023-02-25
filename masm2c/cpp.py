@@ -90,7 +90,7 @@ bool __dispatch_call(m2c::_offsets __disp, struct m2c::_STATE* _state);
         return result
 
 
-class Cpp(Gen):
+class Cpp(Gen, TopDownVisitor):
     ''' Visitor which can produce C++ equivalents for asm instructions '''
 
     def __init__(self, context=None, outfile="", skip_output=None,
@@ -135,7 +135,7 @@ class Cpp(Gen):
 
         self.dispatch = ''
         self.prefix = ''
-        self.__label = ''
+        self._cmdlabel = ''
 
         self.isvariable = False
         self.islabel = False
@@ -148,6 +148,9 @@ class Cpp(Gen):
                              op.DataType.ARRAY_STRING: self.produce_c_data_array_string,
                              op.DataType.OBJECT: self.produce_c_data_object
                              }
+
+        self.element_size = -1
+
 
     def convert_label(self, token):
         name_original = mangle_asm_labels(token.children[0])
@@ -815,9 +818,9 @@ class Cpp(Gen):
     def _label(self, name, isproc):
         if isproc:
             raise RuntimeError('Should not happen anymore probably')
-            self.__label = self.proc_strategy.produce_proc_start(name)
+            self._cmdlabel = self.proc_strategy.produce_proc_start(name)
         else:
-            self.__label = "%s:\n" % self.cpp_mangle_label(name)
+            self._cmdlabel = "%s:\n" % self.cpp_mangle_label(name)
         return ''
 
     def _call(self, expr):
@@ -1422,13 +1425,13 @@ struct Memory{
         o.implemented = True
         self._context.reset_global(dst, o)
         '''
-        self.__label += "#undef %s\n#define %s %s\n" % (dst, dst, self.render_instruction_argument(src))
+        self._cmdlabel += "#undef %s\n#define %s %s\n" % (dst, dst, self.render_instruction_argument(src))
         return ''
 
     def _equ(self, stmt):
         dst, src = stmt.children
         src.indirection = IndirectionType.VALUE
-        self.__label += "#define %s %s\n" % (dst, self.render_instruction_argument(src))
+        self._cmdlabel += "#define %s %s\n" % (dst, self.render_instruction_argument(src))
         return ''
 
     def produce_c_data_single_(self, data):
@@ -1642,11 +1645,6 @@ struct Memory{
         return result
 
 
-class IR2Cpp(TopDownVisitor, Cpp):
-
-    def __init__(self, parser):
-        super(IR2Cpp, self).__init__(context=parser)
-        self.element_size = -1
 
     def INTEGER(self, t):
         # s = {2: hex(token.value), 8: oct(token.value), 10: str(token.value), 16: hex(token.value)}[token.column]
@@ -1669,14 +1667,6 @@ class IR2Cpp(TopDownVisitor, Cpp):
             result = "'" + result + "'"
         return [result]
 
-    '''
-    def list_visitor(self, l):
-        result = ""
-        for child in l:
-            res = self.visit(child)
-            result += res
-        return result
-    '''
 
     def expr(self, tree):
         self._indirection = tree.indirection
@@ -1792,6 +1782,15 @@ class IR2Cpp(TopDownVisitor, Cpp):
     def sizearg(self, tree):
         return [f"sizeof({tree.children[0]})"]
 
+
+IR2Cpp = Cpp
+'''
+class IR2Cpp(TopDownVisitor, Cpp):
+
+    def __init__(self, parser):
+        super(IR2Cpp, self).__init__(context=parser)
+'''
+
 class IR2CppJump(IR2Cpp):
 
     def __init__(self, parser):
@@ -1811,3 +1810,5 @@ class IR2CppJump(IR2Cpp):
             elif isinstance(g, (op.label, proc_module.Proc)):
                 self._indirection = IndirectionType.OFFSET  # direct using number
         return [token]
+
+
