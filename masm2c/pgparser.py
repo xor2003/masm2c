@@ -104,6 +104,14 @@ class EquCollector(CommonCollector):
         super().__init__(context, input_str)
 
     @v_args(meta=True)
+    def labeldef(self, meta, children):
+        logging.debug("labeldef %s ~~", children)
+        name, colon = children  # TODO
+        return self.context.action_label(name, isproc=False, raw=get_raw_line(self.input_str, meta),
+                                         line_number=get_line_number(meta),
+                                         globl=(colon == '::'))
+
+    @v_args(meta=True)
     def equdir(self, meta, nodes):
         name, value = nodes
         logging.debug("equdir %s ~~", nodes)
@@ -637,22 +645,10 @@ class ExprRemover(Transformer):
         return Tree('expr', children, meta)
 
 
-class LabelsCollector(Visitor):
-
-    def __init__(self, context, input_str):
-        self.context = context
-        self.input_str = input_str
-
-    @v_args(meta=True)
-    def labeldef(self, meta, children):
-        logging.debug("labeldef %s ~~", children)
-        colon = children  # TODO
-        return self.context.action_label(children[0], isproc=False, raw=get_raw_line(self.input_str, meta),
-                                         line_number=get_line_number(meta),
-                                         globl=(colon == '::'))
 
 
 class TopDownVisitor:
+
     def visit(self, node, result=None):
         try:
             if result is None:

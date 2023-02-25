@@ -1350,11 +1350,11 @@ struct Memory{
 
         if def_size and expr.element_size == 0:
             expr.element_size = def_size
-        ir2cpp = IR2Cpp(self._context)
-        ir2cpp.lea = self.lea
-        ir2cpp._indirection = expr.indirection
-        result = "".join(ir2cpp.visit(expr))
-        self.size_changed = ir2cpp.size_changed
+        #ir2cpp = IR2Cpp(self._context)
+        #ir2cpp.lea = self.lea
+        #ir2cpp._indirection = expr.indirection
+        result = "".join(self.visit(expr))
+        #self.size_changed = ir2cpp.size_changed
         return result[1:-1] if result and result[0] == '(' and result[-1] == ')' else result
 
     def render_jump_label(self, expr, def_size: int = 0):

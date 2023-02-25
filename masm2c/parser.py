@@ -613,7 +613,7 @@ class Parser:
             content = self.extract_addresses_from_lst(file_name, content)
         result = self.parse_text(content, file_name=file_name)
         result = self.process_ast(content, result)
-        result = "".join(IR2Cpp(self).visit(result))
+        #result = "".join(IR2Cpp(self).visit(result))
 
     def extract_addresses_from_lst(self, file_name, content):
         self.itislst = True
@@ -1264,7 +1264,10 @@ class Parser:
         """
         # if self.__separate_proc:
         proc = self.get_global('mainproc')
-        o = proc.create_instruction_object('call', [self.entry_point])
+        result = self.parse_text(self.entry_point, start_rule='expr')
+        expr = self.process_ast('', result)
+
+        o = proc.create_instruction_object('call', [expr])
         o.filename = self._current_file
         o.raw_line = ''
         o.line_number = 0

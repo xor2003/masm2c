@@ -247,7 +247,7 @@ instruction: _asminstruction _linereminder
 invokearg: _anyregister "::" register| "ADDR"i expr | expr
 invokedir: "INVOKE"i expr commainvokelist? _linereminder
 invokelist: invokearg | invokearg commaoeol invokelist
-labeldef: LABEL ":" | LABEL "::"
+!labeldef: LABEL ":" | LABEL "::"
 labeldir: LABEL "LABEL"i qualifiedtype _linereminder
 _linereminder: _ENDOFLINE | comment _ENDOFLINE
 listdir: listoption _linereminder
