@@ -1704,6 +1704,10 @@ class IR2Cpp(TopDownVisitor, Cpp):
         if tree.indirection == IndirectionType.POINTER and tree.ptr_size == 0 and hasattr(self,"variable_size"):  # [ var ]
             tree.ptr_size = self.variable_size  # Set destination size based on variable size
         self.size_changed = self.size_changed or "size_changed" in tree.mods and self._middle_size != tree.size()
+
+        if tree.indirection == IndirectionType.POINTER and any(i in {'bp', 'ebp', 'sp', 'esp'} for i in tree.registers):
+            self._work_segment = "ss"  # and segment is not overriden means base is "ss:"
+
         if tree.indirection == IndirectionType.POINTER and not self._ismember and (
                 not self._isjustlabel or self.size_changed):
             result = self.convert_sqbr_reference(tree.segment_register, result, 'destination' in tree.mods,
