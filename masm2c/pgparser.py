@@ -189,7 +189,7 @@ class Asm2IR(CommonCollector):
         self.expression.mods.add(children[0].lower())
         #self.expression.indirection = IndirectionType.OFFSET  #
         self._size = self.context.typetosize(children[0])
-        return Discard
+        return str(children[0]).lower()
 
     def ptrdir(self, children):
         if self.expression.indirection == IndirectionType.VALUE:  # set above
