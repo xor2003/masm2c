@@ -133,7 +133,7 @@ extrn extrn_struc_inst:GAMEINFOSTRUC
 h_array db '^',10,10
 
  VECTORSTRUC struc
-    vx dw ?
+    vxdw dw ?
  VECTORSTRUC ends
  TRANSSHAPESTRUC struc
     ts_shapeptr dw ?
@@ -543,7 +543,7 @@ h_array db '^',10,10
         self.assertEqual(*self.doTest('mov     dx, word ptr (oppresources+2)[bx]', 'MOV(dx, *(dw*)(raddr(ds,(oppresources+2)+bx)))'))
 
     def test_instr_1680(self):
-        self.assertEqual(*self.doTest('push    [bp+asgN_Aptr_in_struc.ts_rotv_membr_strinst.vx]', 'PUSH(((transshapestruc*)raddr(ss,bp+asgn_aptr_in_struc))->ts_rotv_membr_strinst.vx)'))
+        self.assertEqual(*self.doTest('push    [bp+asgN_Aptr_in_struc.ts_rotv_membr_strinst.vxdw]', 'PUSH(((transshapestruc*)raddr(ss,bp+asgn_aptr_in_struc))->ts_rotv_membr_strinst.vxdw)'))
 
     def test_instr_1690(self):
         self.assertEqual(*self.doTest('add     word ptr [bx+transshapestruc.ts_rotv_membr_strinst], ax', 'ADD(*(dw*)(raddr(ds,bx+offsetof(transshapestruc,ts_rotv_membr_strinst))), ax)'))
@@ -2963,7 +2963,7 @@ h_array db '^',10,10
         self.assertEqual(*self.doTest('scasd', 'SCASD'))
 
     def test_instr_10180(self):
-        self.assertEqual(*self.doTest('mov[bp + asgn_aptr_in_struc.ts_rotv_membr_strinst.vx], 3', 'MOV(((transshapestruc*)raddr(ss,bp+asgn_aptr_in_struc))->ts_rotv_membr_strinst.vx, 3)'))
+        self.assertEqual(*self.doTest('mov[bp + asgn_aptr_in_struc.ts_rotv_membr_strinst.vxdw], 3', 'MOV(((transshapestruc*)raddr(ss,bp+asgn_aptr_in_struc))->ts_rotv_membr_strinst.vxdw, 3)'))
 
     @unittest.skip("it works but test broken. non masm")
     def test_instr_11330(self):

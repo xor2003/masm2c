@@ -461,6 +461,16 @@ class Cpp(Gen):
                 value = f"{register}))->{'.'.join(label[1:])}"
             '''
 
+        if self._indirection == IndirectionType.POINTER and self.needs_dereference and self.struct_type:
+
+            # TODO A very hacky way to
+            # put registers and numbers first since asm have byte aligned pointers
+            # in comparison to C's type aligned
+            self._ismember = True
+
+            #value = f'(({self.struct_type}*)raddr({self._work_segment},{value}'
+            self.needs_dereference = False
+
         #if size == 0:
         #    raise Exception("invalid var '%s' size %u" % (str(label), size))
         return value
@@ -1689,15 +1699,17 @@ class IR2Cpp(TopDownVisitor, Cpp):
         self._isjustmember = single and isinstance(origexpr, lark.Tree) and origexpr.data == MEMBERDIR
 
         self.element_size = tree.element_size
+        self._ismember = False
         result = "".join(self.visit(tree.children))
         if tree.indirection == IndirectionType.POINTER and tree.ptr_size == 0 and hasattr(self,"variable_size"):  # [ var ]
             tree.ptr_size = self.variable_size  # Set destination size based on variable size
         self.size_changed = self.size_changed or "size_changed" in tree.mods and self._middle_size != tree.size()
-        memberdir = False
-        if tree.indirection == IndirectionType.POINTER and not memberdir and (
+        if tree.indirection == IndirectionType.POINTER and not self._ismember and (
                 not self._isjustlabel or self.size_changed):
             result = self.convert_sqbr_reference(tree.segment_register, result, 'destination' in tree.mods,
                                                  tree.ptr_size, False, lea='lea' in tree.mods)
+        if self._ismember:
+            result = f'(({self.struct_type}*)raddr({self._work_segment},{result}'
         # if indirection == IndirectionType.POINTER and \
         if self.needs_dereference:
             if result[0] == '(' and result[-1] == ')':
