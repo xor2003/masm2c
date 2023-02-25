@@ -404,25 +404,29 @@ class Cpp(Gen):
                 self._need_pointer_to_member = label
                 value = ''
                 #value = f"{label[0]}))->{'.'.join(label[1:])}"
-            logging.debug(f"equ: {label[0]} -> {value}")
+            logging.debug("equ: %s -> %s", label[0], value)
         elif isinstance(g, op.var):
 
-            size = self.calculate_member_size(label)
-            logging.debug("it is var %s", size)
-            if self._middle_size == 0:  # TODO check
-                self._middle_size = size
+            source_var_size = self.calculate_member_size(label)
+            self.variable_size = source_var_size
+            if source_var_size:
+                self.isvariable = True
+
+            logging.debug("it is var %s", source_var_size)
+            if self._middle_size == 0:
+                self._middle_size = source_var_size
 
             self.isvariable = True
             self.islabel = True
 
-            if size == 0:
-                raise Exception(f"invalid var {label} size {size}")
+            if source_var_size == 0:
+                raise Exception(f"invalid var {label} size {source_var_size}")
             self.needs_dereference = False
             self.itispointer = False
             if g.elements != 1:
                 self.needs_dereference = True
                 self.itispointer = True
-            if g.elements == 1 and self._isjustlabel and not self.lea and size == self._middle_size:
+            if g.elements == 1 and self._isjustlabel and not self.lea and source_var_size == self._middle_size:
                 # traceback.print_stack(file=sys.stdout)
                 value = '.'.join(label)
                 self._indirection = IndirectionType.VALUE
@@ -450,24 +454,9 @@ class Cpp(Gen):
         elif isinstance(g, op.Struct):
             #if self._isjustmember:
             value = f'offsetof({label[0]},{".".join(label[1:])})'
-            '''
-            else:
-                #register = Token.remove_tokens(token, [MEMBERDIR, 'LABEL'])
-                #register = self.remove_dots(register)
-                register = self.tokens_to_string("".join(label))
-                register = register.replace('(+', '(')
-
-                self.struct_type = label[0]
-                self.needs_dereference = True
-                self.itispointer = False
-                value = f"{register}))->{'.'.join(label[1:])}"
-            '''
 
         if self._indirection == IndirectionType.POINTER and self.needs_dereference and self.struct_type:
 
-            # TODO A very hacky way to
-            # put registers and numbers first since asm have byte aligned pointers
-            # in comparison to C's type aligned
             self._ismember = True
 
             #value = f'(({self.struct_type}*)raddr({self._work_segment},{value}'
