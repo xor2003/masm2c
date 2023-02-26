@@ -837,7 +837,7 @@ class Parser:
     '''
 
     def action_code(self, line):
-        from .cpp import IR2Cpp
+        #from .cpp import IR2Cpp
         self.test_mode = True
         self.need_label = False
         self.segments = OrderedDict()

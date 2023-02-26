@@ -709,6 +709,7 @@ class Cpp(Gen, TopDownVisitor):
             self.size_changed = False
 
         if indirection == IndirectionType.POINTER and self.needs_dereference:
+            self.needs_dereference = False
             if expr[0] == '(' and expr[-1] == ')':
                 expr = "*%s" % expr
             else:
@@ -1350,11 +1351,13 @@ struct Memory{
 
         if def_size and expr.element_size == 0:
             expr.element_size = def_size
-        #ir2cpp = IR2Cpp(self._context)
-        #ir2cpp.lea = self.lea
-        #ir2cpp._indirection = expr.indirection
-        result = "".join(self.visit(expr))
-        #self.size_changed = ir2cpp.size_changed
+        ir2cpp = IR2Cpp(self._context)
+        ir2cpp.lea = self.lea
+        ir2cpp._indirection = expr.indirection
+        result = "".join(ir2cpp.visit(expr))
+        self.size_changed = ir2cpp.size_changed
+        #self.islabel=False
+        #self.isvaraible=False
         return result[1:-1] if result and result[0] == '(' and result[-1] == ')' else result
 
     def render_jump_label(self, expr, def_size: int = 0):
@@ -1690,7 +1693,7 @@ struct Memory{
             tree.ptr_size = self.variable_size  # Set destination size based on variable size
         self.size_changed = self.size_changed or "size_changed" in tree.mods and self._middle_size != tree.size()
 
-        if tree.indirection == IndirectionType.POINTER and any(i in {'bp', 'ebp', 'sp', 'esp'} for i in tree.registers):
+        if tree.indirection == IndirectionType.POINTER and tree.registers.intersection({'bp', 'ebp', 'sp', 'esp'}):
             self._work_segment = "ss"  # and segment is not overriden means base is "ss:"
 
         if self._need_pointer_to_member:
@@ -1706,6 +1709,7 @@ struct Memory{
             result = f'(({self.struct_type}*)raddr({self._work_segment},{result}'
         # if indirection == IndirectionType.POINTER and \
         if self.needs_dereference:
+            self.needs_dereference = False
             if result[0] == '(' and result[-1] == ')':
                 result = "*%s" % result
             else:

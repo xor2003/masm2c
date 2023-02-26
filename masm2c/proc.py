@@ -228,10 +228,10 @@ class Proc:
         visitor._cmdlabel = ''
         visitor.dispatch = ''
         visitor.prefix = ''
-        if stmt:= tuple(visitor.visit(stmt)):
-            command = stmt.accept(visitor)
-        else:
-            command = ''
+        #if stmt:= tuple(visitor.visit(stmt)):
+        command = stmt.accept(visitor)
+        #else:
+        #    command = ''
         if command and stmt.real_seg:  # and (self.is_flow_change_stmt(stmt) or 'cs' in command or 'cs' in visitor.before):
             visitor.body += f'cs={stmt.real_seg:#04x};eip={stmt.real_offset:#08x}; '
 
