@@ -146,6 +146,8 @@ class Expression(lark.Tree):
         self.registers = set()
         self.segment_register = "ds"
         self.segment_overriden = False
+        #import traceback
+        #self.source = traceback.format_stack()
 
     def size(self):
         from masm2c.enum import IndirectionType

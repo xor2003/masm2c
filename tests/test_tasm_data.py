@@ -1059,6 +1059,7 @@ class ParserDataTest(unittest.TestCase):
     def test_data_15910(self):
         self.assertEqual(self.convert_data(line="var6 dd 9,8,7,1"), ('{9,8,7,1}, // var6\n', 'dd var6[4];\n', 16))
 
+
     #def test_data_16010(self):
     #    self.convert_data(line='loc_11990:')
     #    self.assertEqual(self.convert_data(line="var4 dw offset loc_11990+2-offset loc_11990"), ('m2c::kloc_11990+2-m2c::kloc_11990, // var4\n', 'dw var4;\n', 2))

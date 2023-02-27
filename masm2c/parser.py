@@ -103,6 +103,30 @@ class ExprSizeCalculator(BottomUpVisitor):
                 self.element_size = g.value.size()
                 return Vector(self.element_size, 1)
 
+    def memberdir(self, tree, size):
+        label = tree.children
+        context = self.kwargs['context']
+        g = context.get_global(label[0])
+        if isinstance(g, op.Struct):
+            type = label[0]
+        else:
+            type = g.original_type
+
+        try:
+            for member in label[1:]:
+                g = context.get_global(type)
+                if isinstance(g, op.Struct):
+                    g = g.getitem(member)
+                    type = g.data
+                else:
+                    return g._size
+        except KeyError as ex:
+            logging.debug(f"Didn't found for {label} {ex.args} will try workaround")
+            # if members are global as with M510 or tasm try to find last member size
+            g = context.get_global(label[-1])
+
+        self.element_size = g.size
+        return Vector(self.element_size, 1)
 
 
 def read_whole_file(file_name):
@@ -1175,7 +1199,7 @@ class Parser:
             logging.error("Type is not a string TODO " + str(value))
             return 0
         value = value.lower()
-        if value in self.structures.keys():
+        if value in self.structures.keys() and self.structures[value] != True:
             return self.structures[value].getsize()
         try:
             size = {'db': 1, 'byte': 1, 'sbyte': 1,
@@ -1240,7 +1264,7 @@ class Parser:
             self.__binary_data_size += number * s.getsize()
 
     def add_extern(self, label, type):
-        strtype = type
+        strtype = self.mangle_label(type)
         if isinstance(type, Token):
             strtype = type.children
         label = self.mangle_label(label)

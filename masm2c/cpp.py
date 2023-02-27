@@ -247,7 +247,10 @@ class Cpp(Gen, TopDownVisitor):
                         self.body += '\tcs=seg_offset(' + g.segment + ');\n'
             # ?self.__indirection = 1
         elif isinstance(g, op.label):
-            value = "m2c::k" + g.name.lower()  # .capitalize()
+            if self.is_data:
+                value = "m2c::k" + g.name.lower()  # .capitalize()
+            else:
+                value = g.name
         else:
             source_var_size = g.getsize()
             if source_var_size == 0:
@@ -1368,28 +1371,26 @@ struct Memory{
         return "".join(IR2CppJump(self._context).visit(expr))
 
     def _jump(self, cmd, label):
-        result = self.isrelativejump(label)
-        if result:
+        if self.isrelativejump(label):
             return "{;}"
-        else:
-            label, _ = self.jump_post(label)
-            if self._context.args.mergeprocs == 'separate' and cmd.upper() == 'JMP':
-                if label == '__dispatch_call':
-                    return "return __dispatch_call(__disp, _state);"
-                if self._context.has_global(label):
-                    g = self._context.get_global(label)
-                    target_proc_name = None
-                    if isinstance(g, op.label) and g.name in self.label_to_proc:
-                        target_proc_name = self.label_to_proc[g.name]
-                    elif isinstance(g, proc_module.Proc):
-                        target_proc_name = g.name
-                    if target_proc_name and self.proc.name != target_proc_name:
-                        if g.name == target_proc_name:
-                            return f"return {g.name}(0, _state);"
-                        else:
-                            return f"return {target_proc_name}(m2c::k{label}, _state);"
 
-            return "%s(%s)" % (cmd.upper(), label)
+        label, _ = self.jump_post(label)
+        if self._context.args.mergeprocs == 'separate' and cmd.upper() == 'JMP':
+            if label == '__dispatch_call':
+                return "return __dispatch_call(__disp, _state);"
+            if self._context.has_global(label):
+                g = self._context.get_global(label)
+                target_proc_name = None
+                if isinstance(g, op.label) and g.name in self.label_to_proc:
+                    target_proc_name = self.label_to_proc[g.name]
+                elif isinstance(g, proc_module.Proc):
+                    target_proc_name = g.name
+                if target_proc_name and self.proc.name != target_proc_name:
+                    if g.name == target_proc_name:
+                        return f"return {g.name}(0, _state);"
+                    return f"return {target_proc_name}(m2c::k{label}, _state);"
+
+        return "%s(%s)" % (cmd.upper(), label)
 
     def _instruction2(self, cmd, dst, src):
         self.a, self.b = self.parse2(dst, src)

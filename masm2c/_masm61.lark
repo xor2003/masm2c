@@ -234,7 +234,7 @@ ifdir: ifstatement _linereminder insegdir+ elseifblock? elsedirectivelist? "ENDI
 ifstatement: "IF"i expr| "IFE"i expr| "IFB"i textitem| "IFNB"i textitem| "IFDEF"i LABEL| "IFNDEF"i LABEL| "IFDIF"i textitem _COMMA textitem| "IFDIFI"i textitem _COMMA textitem| "IFIDN"i textitem _COMMA textitem| "IFIDNI"i textitem _COMMA textitem| "IF1"i | "IF2"i
 includedir: "INCLUDE"i filespec _linereminder
 includelibdir: "INCLUDELIB"i filespec _linereminder
-?insegdir: labeldef _insegmentdir | _insegmentdir
+insegdir: labeldef _insegmentdir | _insegmentdir
 insegdirlist: insegdir+
 _insegmentdir: instruction| datadir| controldir| startupdir| exitdir| offsetdir| labeldir| procdir  localdirlist? endpdir| procdir  localdirlist? insegdir+ endpdir| invokedir| _generaldir | _linereminder
 

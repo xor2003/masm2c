@@ -111,6 +111,13 @@ class EquCollector(CommonCollector):
                                          line_number=get_line_number(meta),
                                          globl=(colon == '::'))
 
+    def externdef(self, nodes):
+        label, type = nodes
+        type = type.children[0].children[0]
+        logging.debug('externdef %s', nodes)
+        self.context.add_extern(label, type)
+        return nodes
+
     @v_args(meta=True)
     def equdir(self, meta, nodes):
         name, value = nodes
@@ -177,7 +184,7 @@ class Asm2IR(CommonCollector):
         from masm2c.parser import Parser
         repeat = copy(children[0])
         repeat.indirection = IndirectionType.VALUE
-        repeat = "".join(IR2Cpp(Parser()).visit(repeat))
+        repeat = "".join(IR2Cpp(self.context).visit(repeat))
         repeat = eval(repeat)
         value = children[1]
         #self.expression.element_number *= repeat
@@ -204,10 +211,12 @@ class Asm2IR(CommonCollector):
     def ptrdir(self, children):
         if self.expression.indirection == IndirectionType.VALUE:  # set above
             self.expression.indirection = IndirectionType.POINTER
-        if self._size: # TODO why need another variable?
-            self.expression.ptr_size = self._size
+        type = children[0].lower()
+        #if self._size: # TODO why need another variable?
+        self.expression.ptr_size = self.context.typetosize(type)
+        if type not in {'far', 'near'}:
             self.expression.mods.add('size_changed')
-        self._element_type = children[0].lower()
+        self._element_type = type
         children = children[1:]
         self.expression.element_size = 0
         return children
@@ -345,6 +354,12 @@ class Asm2IR(CommonCollector):
         self.context.add_structinstance(name, type.lower(), args, raw=get_raw(self.input_str, meta))
         return nodes
 
+    def insegdir(self, children: list):
+        self._expression = None
+        self._element_type = None
+        self._size = 0
+        return children
+
     @v_args(meta=True)
     def datadir(self, meta, children: list):
         logging.debug("datadir %s ~~", children)
@@ -364,6 +379,7 @@ class Asm2IR(CommonCollector):
 
         is_string = any('string' in expr.mods for expr in values.children if isinstance(expr, lark.Tree) and expr.data == 'expr')
 
+        self._expression = None
         return self.context.datadir_action(label, type, values, is_string=is_string, raw=get_raw(self.input_str, meta),
                                            line_number=get_line_number(meta))
 
@@ -379,6 +395,7 @@ class Asm2IR(CommonCollector):
         self.context.action_simplesegment(type, '')  # TODO
         self._expression = None
         return nodes
+
 
     def LABEL(self, value):
         value = self.context.mangle_label(value)
@@ -396,9 +413,11 @@ class Asm2IR(CommonCollector):
                 if isinstance(g.value, Expression):
                     self.expression.element_size = g.size = g.value.size()
             elif isinstance(g, (op.label, Proc)):
-                self.expression.indirection = IndirectionType.OFFSET  # direct using number
+                pass
+                #self.expression.indirection = IndirectionType.OFFSET  # direct using number
             elif isinstance(g, op.var):
-                self.expression.indirection = IndirectionType.POINTER  # []
+                pass
+                #self.expression.indirection = IndirectionType.POINTER  # []
             elif isinstance(g, op.Struct):
                 logging.debug('get_size res %d', g.size)
                 l = lark.Token(type='LABEL', value=value)
@@ -410,11 +429,12 @@ class Asm2IR(CommonCollector):
 
         return l
 
+
     @v_args(meta=True)
     def segmentdir(self, meta, nodes):
         logging.debug("segmentdir " + str(nodes) + " ~~")
 
-        name = self.name
+        name = self.name = self.context.mangle_label(nodes[0])
         options = nodes
         opts = set()
         segclass = None
@@ -431,6 +451,7 @@ class Asm2IR(CommonCollector):
                     logging.warning('Unknown segment option')
         '''
         self.context.create_segment(name, options=opts, segclass=segclass, raw=get_raw(self.input_str, meta))
+        self._expression = None
         return nodes
 
     def endsdir(self, nodes):
@@ -577,12 +598,6 @@ class Asm2IR(CommonCollector):
         self._radix = int(children[0])
         return children
 
-    def externdef(self, nodes):
-        label, type = nodes
-        type = type.children[0].children[0]
-        logging.debug('externdef %s', nodes)
-        self.context.add_extern(label, type)
-        return nodes
 
     def maked(self, nodes):
         # return nodes #Token(nodes[0].upper(), nodes[1].value)
@@ -708,6 +723,7 @@ class BottomUpVisitor:
             else:
                 import logging
                 logging.error(f"Error unknown type {node}")
+                return self.init
                 raise ValueError(f"Error unknown type {node}")
         except:
             import traceback, logging
