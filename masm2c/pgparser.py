@@ -103,13 +103,6 @@ class EquCollector(CommonCollector):
     def __init__(self, context, input_str=''):
         super().__init__(context, input_str)
 
-    @v_args(meta=True)
-    def labeldef(self, meta, children):
-        logging.debug("labeldef %s ~~", children)
-        name, colon = children  # TODO
-        return self.context.action_label(name, isproc=False, raw=get_raw_line(self.input_str, meta),
-                                         line_number=get_line_number(meta),
-                                         globl=(colon == '::'))
 
     def externdef(self, nodes):
         label, type = nodes
@@ -146,6 +139,14 @@ class Asm2IR(CommonCollector):
 
         self._size = 0
         self._poptions = []
+
+    @v_args(meta=True)
+    def labeldef(self, meta, children):
+        logging.debug("labeldef %s ~~", children)
+        name, colon = children  # TODO
+        return self.context.action_label(name, isproc=False, raw=get_raw_line(self.input_str, meta),
+                                         line_number=get_line_number(meta),
+                                         globl=(colon == '::'))
 
 
     '''
