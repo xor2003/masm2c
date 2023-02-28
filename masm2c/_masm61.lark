@@ -335,7 +335,7 @@ commaoeol: _COMMA  _linereminder?
 !segattrib: "PUBLIC"i | "STACK"i | "COMMON"i | "MEMORY"i | "AT"i expr| "PRIVATE"i
 segdir: ".CODE"i LABEL? | ".DATA"i | ".DATA_"i| ".CONST"i | ".FARDATA"i LABEL? | ".FARDATA_"i LABEL? | ".STACK"i expr?
 segidlist : LABEL  _COMMA segidlist | LABEL
-_segmentdef: segmentdir  insegdir+  endsdir| simplesegdir | simplesegdir  insegdir+   endsdir?
+_segmentdef: segmentdir  insegdir*  endsdir| simplesegdir | simplesegdir  insegdir+   endsdir?
 segmentdir: LABEL "SEGMENT"i segoptionlist?  _linereminder
 _segoption: segalign| segro| segattrib| segsize| classname
 segoptionlist: _segoption+

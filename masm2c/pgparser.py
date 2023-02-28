@@ -145,6 +145,7 @@ class Asm2IR(CommonCollector):
         self._element_type = None
 
         self._size = 0
+        self._poptions = []
 
 
     '''
@@ -460,15 +461,21 @@ class Asm2IR(CommonCollector):
         self._expression = None
         return nodes
 
+    def poptions(self, options):
+        self._poptions = options
+        return Discard
+
     @v_args(meta=True)
     def procdir(self, meta, nodes):
-        name, type = nodes
+        name, type = nodes[0], self._poptions
+        self._poptions = []
         logging.debug("procdir " + str(nodes) + " ~~")
         self.context.action_proc(name, type, line_number=get_line_number(meta),
                                  raw=get_raw_line(self.input_str, meta))
         return nodes
 
-    def endpdir(self, nodes, name):
+    def endpdir(self, nodes):
+        name = nodes[0]
         logging.debug("endp " + str(name) + " ~~")
         self.context.action_endp()
         return nodes
@@ -518,7 +525,7 @@ class Asm2IR(CommonCollector):
 
     def enddir(self, children):
         logging.debug("end %s ~~", children)
-        self.context.action_end(children[0].children[0])
+        self.context.action_end(children[0].children[0] if children else "")
         return children
 
 
@@ -640,7 +647,7 @@ class LarkParser:
             logging.debug("Allocated LarkParser instance")
 
             file_name = os.path.dirname(os.path.realpath(__file__)) + "/_masm61.lark"
-            debug = False
+            debug = True
             with open(file_name, 'rt') as gr:
                 cls._inst.or_parser = Lark(gr, parser='lalr', propagate_positions=True, cache=True, debug=debug,
                                            postlex=MatchTag(context=kwargs['context']), start=['start', 'insegdirlist',

@@ -75,6 +75,23 @@ failure:
 exitLabel:
 mov ah,4ch                    ; AH=4Ch - Exit To DOS
 int 21h                       ; DOS INT 21h
+
+; OPTION NOOLDSTRUCTS (the MASM 6.1 default)
+structname STRUCT
+a BYTE ?
+b WORD ?
+structname ENDS
+structinstance structname <>
+mov ax, [bx].structname.b ; Add qualifying type
+mov al, structinstance.a ; No change needed
+mov ax, [bx]+4 ; Change dot to plus
+; Alternative methods in MASM 6.1
+; Either this:
+ASSUME bx:PTR structname
+mov ax, [bx]
+; or this:
+mov ax, (structname PTR[bx]).b
+
 start endp
 
 _TEXT   ends ;IGNORE

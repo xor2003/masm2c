@@ -124,7 +124,7 @@ class Proc:
     @staticmethod
     def create_equ_op(label, value, line_number):  # TODO Move it to parser
         logging.debug(label + " " + str(value))
-        o = op._equ([label, value])
+        o = op._equ(label)
         # value = cpp.convert_number_to_c(value)
         if ptrdir := Token.find_tokens(value, PTRDIR):
             if isinstance(ptrdir[0], Token):

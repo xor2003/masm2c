@@ -1055,9 +1055,10 @@ class _instruction3(baseop):
 
 
 class _equ(baseop):
-    def __init__(self, args):
+    def __init__(self, name):
         super().__init__()
-        self.children = args
+        self.name = name
+        #self.children = args
         self.original_name = ''
         self.original_type = ''
         self.implemented = False
@@ -1069,7 +1070,7 @@ class _equ(baseop):
     def accept(self, visitor):
         if self.implemented == False:
             self.implemented = True
-            return visitor._equ(*self.children)
+            return visitor._equ(self.name)
         else:
             from masm2c.gen import SkipCode
             raise SkipCode

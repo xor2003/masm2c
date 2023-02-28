@@ -778,9 +778,9 @@ class Parser:
         return self.__segment
 
     def action_proc(self, name, type, line_number=0, raw=''):
-        logging.info("      Found proc %s", name.children)
+        logging.info("      Found proc %s", name)
         self.action_endp()
-        name = self.mangle_label(name.children)
+        name = self.mangle_label(name)
         far = False
         for i in type:
             if i and i.lower() == 'far':

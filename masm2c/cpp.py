@@ -1432,8 +1432,8 @@ struct Memory{
         self._cmdlabel += "#undef %s\n#define %s %s\n" % (dst, dst, self.render_instruction_argument(src))
         return ''
 
-    def _equ(self, stmt):
-        dst, src = stmt.children
+    def _equ(self, dst):
+        src = self._context.get_global(dst).value
         src.indirection = IndirectionType.VALUE
         self._cmdlabel += "#define %s %s\n" % (dst, self.render_instruction_argument(src))
         return ''
