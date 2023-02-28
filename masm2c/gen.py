@@ -217,7 +217,9 @@ class Gen:
             for index, first_proc_name in enumerate(self._procs):
                 first_proc = self._context.get_global(first_proc_name)
                 if not first_proc.if_terminated_proc() and index < len(self._procs) - 1:
-                    o = first_proc.create_instruction_object('jmp', [Token(LABEL, self._procs[index + 1])])
+                    result = self._context.parse_text(self._procs[index + 1], start_rule='expr')
+                    expr = self._context.process_ast('', result)
+                    o = first_proc.create_instruction_object('jmp', [expr])
                     o.filename = ''
                     o.line_number = 0
                     o.raw_line = ''
