@@ -194,12 +194,15 @@ class Cpp(Gen, TopDownVisitor):
             logging.debug("assignment %s = %s", name, value)
         elif isinstance(g, proc_module.Proc):
             logging.debug("it is proc")
+            value = g.name  # For jump/call   TODO below check if it was needed
+            '''
             if self._indirection != IndirectionType.OFFSET:
                 logging.error("Invalid proc label usage proc %s offset %s", g.name, g.offset)
                 value = "m2c::k" + g.name.lower()  # .capitalize()
             else:
                 value = str(g.offset)
                 self._indirection = IndirectionType.VALUE
+            '''
         elif isinstance(g, op.var):
             logging.debug("it is var %s", g.size)
             self.variable_size = source_var_size = g.size
