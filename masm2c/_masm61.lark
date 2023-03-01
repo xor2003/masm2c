@@ -279,7 +279,7 @@ namedir: "NAME"i LABEL _linereminder
 NEARFAR: "NEAR"i | "FAR"i
 nestedstruct: STRUCTHDR  LABEL?  _linereminder "ENDS"i _linereminder | STRUCTHDR  LABEL?  _linereminder structitem+ "ENDS"i _linereminder
 offsetdir: offsetdirtype _linereminder
-offsetdirtype: "EVEN"i | "ORG"i expr| "ALIGN"i expr?
+!offsetdirtype: "EVEN"i | "ORG"i expr| "ALIGN"i expr?
 offsettype: "GROUP"i | "SEGMENT"i | "FLAT"i
 optiondir: "OPTION"i optionlist _linereminder
 optionitem: "CASEMAP"i ":" maptype| "DOTNAME"i | "NODOTNAME"i | "EMULATOR"i | "NOEMULATOR"i | "EPILOGUE"i ":" LABEL| "EXPR16"i | "EXPR32"i | "LANGUAGE"i ":" langtype| "LJMP"i | "NOLJMP"i | "M510"i | "NOM510"i | "NOSIGNEXTEND"i | "OFFSET"i ":" offsettype| "OLDMACROS"i | "NOOLDMACROS"i | "OLDSTRUCTS"i | "NOOLDSTRUCTS"i | "PROC"i ":" ovisibility| "PROLOGUE"i ":" LABEL| "READONLY"i | "NOREADONLY"i | "SCOPED"i | "NOSCOPED"i | "SEGMENT"i ":" segsize| "SETIF2"i ":" bool

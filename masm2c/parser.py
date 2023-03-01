@@ -245,6 +245,8 @@ class Parser:
 
         self.data_merge_candidats = 0
 
+        self.equs = set()
+
     '''
     def visible(self):
         for i in self.__stack:
@@ -523,7 +525,7 @@ class Parser:
         logging.debug("label name: %s", name)
         if name == 'arbarb': # @@
             name = self.get_dummy_jumplabel()
-        #name = self.mangle_label(name)
+        name = self.mangle_label(name)  # for tests only
 
         # logging.debug("offset %s -> %s" % (name, "&m." + name.lower() + " - &m." + self.__segment_name))
 
@@ -743,6 +745,7 @@ class Parser:
         if isinstance(value, Expression) and value.indirection == IndirectionType.POINTER:
             o.original_type = value.original_type
         self.set_global(label, o)
+        self.equs.add(label)
         proc = self.get_global("mainproc")
         proc.stmts.append(o)
         return o
@@ -1169,7 +1172,11 @@ class Parser:
     def process_ast(self, text, result):
         result = ExprRemover().transform(result)
         result = EquCollector(self).transform(result)
-        result = Asm2IR(self, text).transform(result)
+        asm2ir = Asm2IR(self, text)
+        for e in self.equs:
+            g = self.get_global(e)
+            g.value = asm2ir.transform(g.value)
+        result = asm2ir.transform(result)
         return result
 
     @staticmethod

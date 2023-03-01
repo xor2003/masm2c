@@ -254,7 +254,7 @@ class Cpp(Gen, TopDownVisitor):
             if self.is_data:
                 value = "m2c::k" + g.name.lower()  # .capitalize()
             else:
-                value = g.name
+                value = name
         else:
             source_var_size = g.getsize()
             if source_var_size == 0:
@@ -278,6 +278,8 @@ class Cpp(Gen, TopDownVisitor):
         :param segments: a dictionary of segments, where the key is the segment name and the value is the segment object
         :return: cpp_file, data_hpp_file, data_cpp_file, hpp_file
         """
+        self.is_data = True
+
         cpp_file = ""
         data_hpp_file = ""
         data_cpp_file = ""
@@ -334,6 +336,7 @@ class Cpp(Gen, TopDownVisitor):
                     data_cpp_file += _reference_in_data_cpp  # reference in _data.cpp
                 data_hpp_file += type_and_name  # headers in _data.h
 
+        self.is_data = False
         return cpp_file, data_hpp_file, data_cpp_file, hpp_file
 
     def _generate_extern_from_declaration_c(self, _hpp):

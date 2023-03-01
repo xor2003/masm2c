@@ -113,15 +113,16 @@ class EquCollector(CommonCollector):
 
     @v_args(meta=True)
     def equdir(self, meta, nodes):
-        name, value = nodes
+        name, value = nodes[0], nodes[1]
         logging.debug("equdir %s ~~", nodes)
+
         return self.context.action_equ(name, value, raw=get_raw(self.input_str, meta),
                                        line_number=get_line_number(meta))
         #return Discard
 
     @v_args(meta=True)
     def assdir(self, meta, nodes):
-        name, value = nodes
+        name, value = nodes[0], nodes[1]
         logging.debug("assdir %s ~~", nodes)
         return self.context.action_assign(name, value, raw=get_raw(self.input_str, meta),
                                           line_number=get_line_number(meta))
@@ -409,9 +410,9 @@ class Asm2IR(CommonCollector):
             g = self.context.get_global(self.name)
             from masm2c.proc import Proc
             if isinstance(g, (op._equ, op._assignment)):
-                if not isinstance(g.value, Expression):
-                    g.value = Asm2IR(self.context, g.raw_line).transform(g.value)
-                    self.context.reset_global(self.name, g) #??
+                #if not isinstance(g.value, Expression):
+                #    g.value = Asm2IR(self.context, g.raw_line).transform(g.value)
+                #    self.context.reset_global(self.name, g) #??
                 if isinstance(g.value, Expression):
                     self.expression.element_size = g.size = g.value.size()
             elif isinstance(g, (op.label, Proc)):
@@ -615,11 +616,11 @@ class Asm2IR(CommonCollector):
         else:
             return nodes
 
-    def offsetdirtype(self, nodes, directive, value):
+    def offsetdirtype(self, nodes):
+        directive = nodes[0].lower()
         from .parser import Parser
-        logging.debug(f'offsetdirtype {directive} {str(value)}')
-        directive = directive.lower()
-        value = value.children.children if value else 2
+        logging.debug('offsetdirtype %s', nodes)
+        value = nodes[1].children[0] if len(nodes)==2 else 2
         if directive == 'align':
             self.context.align(Parser.parse_int(value))
         elif directive == 'even':
