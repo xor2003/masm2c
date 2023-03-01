@@ -22,6 +22,7 @@ import logging
 import os
 import re
 from builtins import hex, range, str
+from collections import OrderedDict
 
 from lark import Tree, lark
 
@@ -1570,7 +1571,7 @@ struct Memory{
  bool __dispatch_call(m2c::_offsets __disp, struct m2c::_STATE* _state){
     switch (__disp) {
 """
-        entries = {}
+        entries = OrderedDict()
         for k, v in globals:
             if isinstance(v, proc_module.Proc) and v.used:
                 k = re.sub(r'[^A-Za-z0-9_]', '_', k)  # need to do it during mangling

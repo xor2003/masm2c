@@ -55,6 +55,9 @@ class Token(lark.Tree):
                 result = Token.find_tokens(expr.children, lookfor)
             if result:
                 l += result
+        elif isinstance(expr, lark.Token):
+            if expr.type == lookfor:
+                l.append(expr.value)
         elif isinstance(expr, list):
             for i in range(len(expr)):
                 if result := Token.find_tokens(expr[i], lookfor):

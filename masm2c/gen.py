@@ -200,7 +200,7 @@ class Gen:
         """
         if not self._context.itislst:
             return labels
-        uniq_labels = {}
+        uniq_labels = OrderedDict()
         for label in labels:
             g = self._context.get_global(label)
             uniq_labels[f'{g.real_seg}_{g.real_offset}'] = label

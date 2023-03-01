@@ -1,4 +1,4 @@
-parglare
+lark
 jsonpickle
 pytest
 mock
