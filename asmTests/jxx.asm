@@ -1,4 +1,4 @@
-.286
+.386
 
 _TEXT   segment use16 public 'CODE' ;IGNORE
 assume  cs:_TEXT,ds:_DATA
@@ -23,7 +23,7 @@ mov bp, 34
 jmp failure
 start proc near
 
-mov ax,_DATA
+mov ax,seg _DATA
 mov ds,ax
 
 jmp mylabel1
@@ -332,7 +332,7 @@ mytarget40 dw 0
            dw offset test40_lbl
 test40 proc
 mov bx,offset mytarget40
-jmp word ptr [cs:bx+2]
+jmp word ptr cs:[bx+2]
 jmp failure
 test40 endp
 

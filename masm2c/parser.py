@@ -521,9 +521,9 @@ class Parser:
 
     def action_label(self, name, far=False, isproc=False, raw='', globl=True, line_number=0):
         logging.debug("label name: %s", name)
-        if name == '@@':
+        if name == 'arbarb': # @@
             name = self.get_dummy_jumplabel()
-        name = self.mangle_label(name)
+        #name = self.mangle_label(name)
 
         # logging.debug("offset %s -> %s" % (name, "&m." + name.lower() + " - &m." + self.__segment_name))
 
@@ -1343,12 +1343,13 @@ class Parser:
 
     def handle_local_asm_jumps(self, instruction, args):
         if (instruction[0].lower() == 'j' or instruction[0].lower() == 'loop') and \
-                len(args) == 1 and isinstance(args[0], Token) and \
-                isinstance(args[0].children, Token) and args[0].children.data == 'LABEL':
-            if args[0].children.children.lower() == '@f':
-                args[0].children.children = "dummylabel" + str(self.__c_dummy_jump_label + 1)
-            elif args[0].children.children.lower() == '@b':
-                args[0].children.children = "dummylabel" + str(self.__c_dummy_jump_label)
+                len(args) == 1 and isinstance(args[0], lark.Tree) and \
+                isinstance(args[0].children, list) and isinstance(args[0].children[0], lark.Token) and \
+                args[0].children[0].type == 'LABEL':
+            if args[0].children[0].lower() == 'arbf':  # @f
+                args[0].children[0] = "dummylabel" + str(self.__c_dummy_jump_label + 1)
+            elif args[0].children[0].lower() == 'arbb':  # @b
+                args[0].children[0] = "dummylabel" + str(self.__c_dummy_jump_label)
 
     def collect_labels(self, target, operation):
         for arg in operation.children:
