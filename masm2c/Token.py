@@ -156,8 +156,8 @@ class Expression(lark.Tree):
         from masm2c.enum import IndirectionType
         if self.indirection == IndirectionType.POINTER:
             return self.ptr_size
-        elif self.indirection == IndirectionType.OFFSET:
-            return 2
+        #elif self.indirection == IndirectionType.OFFSET:
+        #    return 2
         else:
             result = self.element_size * self.element_number
             return result

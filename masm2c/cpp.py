@@ -1368,7 +1368,24 @@ struct Memory{
         self.size_changed = ir2cpp.size_changed
         #self.islabel=False
         #self.isvaraible=False
-        return result[1:-1] if result and result[0] == '(' and result[-1] == ')' else result
+        return result[1:-1] if self.check_parentesis(result) else result
+
+    def check_parentesis(self, string):
+        """Check if first ( matches the last one
+
+        >>> self.check_parentesis('(())')
+        True
+        >>> self.check_parentesis('()()')
+        False
+        """
+        if not string or string[0] != '(' or string[-1] != ')': return False
+        res = 0
+        for c in string[1:-1]:
+            if c == '(': res += 1
+            elif c == ')': res -= 1
+            if res < 0: return False
+        return True
+
 
     def render_jump_label(self, expr, def_size: int = 0):
         if expr.indirection != IndirectionType.OFFSET:
@@ -1770,14 +1787,19 @@ struct Memory{
             return name
         if isinstance(g, op.var):
             logging.debug("it is var %s", g.size)
-            return "offset(%s,%s)" % (g.segment, g.name)
+            if self.element_size == 2:
+                return "offset(%s,%s)" % (g.segment, g.name)
+            elif self.element_size == 4:
+                return "far_offset(%s,%s)" % (g.segment, g.name)
+            else:
+                raise ValueError("Unknown offset size %s", self.element_size)
         elif isinstance(g, proc_module.Proc):
             logging.debug("it is proc")
             return "m2c::k" + g.name.lower()  # .capitalize()
         elif isinstance(g, op.label):
             return "m2c::k" + g.name.lower()  # .capitalize()
         else:
-            raise Exception
+            raise ValueError("Unknown type for offsetdir %s", type(g))
 
     def notdir(self, tree):
         return ['~'] + tree.children
@@ -1824,3 +1846,6 @@ class IR2CppJump(IR2Cpp):
         return [token]
 
 
+if __name__ == "__main__":
+    import doctest
+    doctest.testmod()

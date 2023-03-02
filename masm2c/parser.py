@@ -706,6 +706,7 @@ class Parser:
         o.raw_line = raw.rstrip()
         self.reset_global(label, o)
         self.proc.stmts.append(o)
+        self.equs.add(label)
         return o
 
     def action_assign_test(self, label="", value="", line_number=0):
@@ -1175,7 +1176,8 @@ class Parser:
         asm2ir = Asm2IR(self, text)
         for e in self.equs:
             g = self.get_global(e)
-            g.value = asm2ir.transform(g.value)
+            if not isinstance(g.value, Expression):
+                g.value = asm2ir.transform(g.value)
         result = asm2ir.transform(result)
         return result
 
@@ -1410,8 +1412,10 @@ def parse_asm_number(expr, radix):
             radix = 10
         elif m := re.match(r'^(?P<sign>[+-]?)(?P<value>[0-1]+)[Bb]$', expr):
             radix = 2
-        elif m := re.match(r'^(?P<sign>[+-]?)(?P<value>[0-9][0-9A-Fa-f]*)$', expr):
+        elif m := re.match(r'^(?P<sign>[+-]?)(?P<value>[0-9]+)$', expr):
             pass
+        elif m := re.match(r'^(?P<sign>[+-]?)(?P<value>[0-9][0-9A-Fa-f]*)$', expr):
+            radix = 16
         else:
             raise ValueError(expr)
         sign = m['sign'] if m['sign'] else ''

@@ -172,10 +172,10 @@ class Asm2IR(CommonCollector):
         self.expression.children = children  # [0]
         result:Expression = self._expression
         if not self.expression.segment_overriden and result.indirection == IndirectionType.POINTER and \
-                any(reg in result.registers for reg in {'bp', 'ebp', 'sp', 'esp'}):
+                result.registers.intersection({'bp', 'ebp', 'sp', 'esp'}):
             result.segment_register = 'ss'
-        if result.indirection == IndirectionType.POINTER:
-            self.expression.original_type = self._element_type
+        #if result.indirection == IndirectionType.POINTER:
+        #    self.expression.original_type = self._element_type
         self._expression = None
         return result
 
@@ -219,7 +219,7 @@ class Asm2IR(CommonCollector):
         self.expression.ptr_size = self.context.typetosize(type)
         if type not in {'far', 'near'}:
             self.expression.mods.add('size_changed')
-        self._element_type = type
+        self._element_type = self.expression.original_type = type
         children = children[1:]
         self.expression.element_size = 0
         return children
@@ -230,7 +230,7 @@ class Asm2IR(CommonCollector):
         self.expression.segment_overriden = True
         self.expression.ptr_size = self.context.typetosize(children[0])
         self.expression.mods.add('size_changed')
-        self._element_type = children[0].lower()
+        self._element_type = self.expression.original_type = children[0].lower()
         return children[3:]
 
     def datadecl(self, children):
