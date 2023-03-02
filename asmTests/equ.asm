@@ -1,9 +1,7 @@
 .386p
 
 _DATA   segment use16 word public 'DATA' ;IGNORE
-var1 db 6
-     db 12
-     db 12
+var1 dw 4
      db 12
 _DATA   ends ;IGNORE
 
@@ -19,9 +17,24 @@ start proc near
 
 F equ bx
 G = byte ptr -2
-H equ word ptr -3
-;I = word -5
-J equ word -5
+H equ word ptr 1+2
+I = word -5
+J equ word -5 ; word here means 2
+JJ equ dw -5 ; word here means 2
+;error JJ = dw -5 ; word here means 2
+
+push seg _DATA
+pop ds
+
+mov eax, I
+cmp eax, -3
+mov al,7
+jne failure
+
+mov eax, J
+cmp eax, -3
+mov al,6
+jne failure
 
 BBB = 2
 mov eax, BBB
@@ -39,15 +52,15 @@ call incebx
 jne failure
 
 DDD = var1 ; actually it is address of var1
-movzx eax, DDD
-cmp eax,6
+mov ax, DDD
+cmp ax, var1
 mov al,4
 jne failure
 
 MOV al,0
 JMP exitLabel
 failure::
-;mov al,1
+
 exitLabel:
 mov ah,4ch                    ; AH=4Ch - Exit To DOS
 int 21h
