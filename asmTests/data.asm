@@ -21,7 +21,7 @@ db 4 dup (5)
 db 'OKOKOKOK'
 db 'ABC',0
 dd offset var5
-align 4
+align 2
 ASCII DB '00000000',0Dh,0Ah,'$' ; buffer for ASCII string
 doublequote db 'ab''cd',"e"
 var7 db 5*5 dup (0,testEqu*2,2*2,3)
