@@ -29,7 +29,11 @@ pop ds
 ;mov ax, word ptr +5 ; result to just 5
 ;mov ax, word ptr [5] ; [5]
 ;mov ax, word ptr ds:[5] ; [5]
-;mov ax, word ptr [byte]
+;mov ax, word [byte]
+;mov ax,2
+;mov ax,[2]
+;mov ax,word [2]
+;mov ax,word ptr ds:[2]
 
 ;mov eax, I
 cmp eax, 7

@@ -181,17 +181,17 @@ class Cpp(Gen, TopDownVisitor):
         self.islabel = True
         if isinstance(g, op._equ):
             logging.debug("it is equ")
-            if not g.implemented:
-                raise InjectCode(g)
+            #if not g.implemented:
+            #    raise InjectCode(g)
             value = g.original_name
-            self.element_size = g.size
+            #self.element_size = g.size
             logging.debug("equ: %s -> %s", name, value)
         elif isinstance(g, op._assignment):
             logging.debug("it is assignment")
-            if not g.implemented:
-                raise InjectCode(g)
+            #if not g.implemented:
+            #    raise InjectCode(g)
             value = g.original_name
-            self.element_size = g.size
+            #self.element_size = g.size
             logging.debug("assignment %s = %s", name, value)
         elif isinstance(g, proc_module.Proc):
             logging.debug("it is proc")

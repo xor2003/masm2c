@@ -98,11 +98,27 @@ class CommonCollector(Transformer):
         self._expression = None
         self.input_str = input_str
 
+'''
 class EquCollector(CommonCollector):
 
     def __init__(self, context, input_str=''):
         super().__init__(context, input_str)
 
+
+'''
+
+class Asm2IR(CommonCollector):
+
+    def __init__(self, context, input_str=''):
+        super().__init__(context, input_str)
+        #self.context = context
+        #self.input_str = input_str
+        self._radix = 10
+        #self._expression = None
+        self._element_type = None
+
+        self._size = 0
+        self._poptions = []
 
     def externdef(self, nodes):
         label, type = nodes
@@ -118,7 +134,6 @@ class EquCollector(CommonCollector):
 
         return self.context.action_equ(name, value, raw=get_raw(self.input_str, meta),
                                        line_number=get_line_number(meta))
-        #return Discard
 
     @v_args(meta=True)
     def assdir(self, meta, nodes):
@@ -126,20 +141,6 @@ class EquCollector(CommonCollector):
         logging.debug("assdir %s ~~", nodes)
         return self.context.action_assign(name, value, raw=get_raw(self.input_str, meta),
                                           line_number=get_line_number(meta))
-        #return Discard
-
-class Asm2IR(CommonCollector):
-
-    def __init__(self, context, input_str=''):
-        super().__init__(context, input_str)
-        #self.context = context
-        #self.input_str = input_str
-        self._radix = 10
-        #self._expression = None
-        self._element_type = None
-
-        self._size = 0
-        self._poptions = []
 
     @v_args(meta=True)
     def labeldef(self, meta, children):
