@@ -8,13 +8,11 @@ assume  cs:_TEXT,ds:_DATA
 start proc near
 
 
-mov eax,-1
+mov eax,1
 
      include  included.inc    ; OKOK
 
-jmp failure
 failure:
-mov al,1
 exitLabel:
 mov ah,4ch                    ; AH=4Ch - Exit To DOS
 int 21h

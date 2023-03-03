@@ -386,12 +386,6 @@ class Asm2IR(CommonCollector):
         return self.context.datadir_action(label, type, values, is_string=is_string, raw=get_raw(self.input_str, meta),
                                            line_number=get_line_number(meta))
 
-    def includedir(self, name):
-        # context.parser.input_str = context.input_str[:context.end_position] + '\n' + read_asm_file(name) \
-        # + '\n' + context.input_str[context.end_position:]
-        fullpath = os.path.join(os.path.dirname(os.path.realpath(self.context._current_file)), name)
-        result = self.context.parse_include_file_lines(fullpath)
-        return result
 
     def segdir(self, nodes, type):
         logging.debug("segdir " + str(nodes) + " ~~")
@@ -654,7 +648,7 @@ class LarkParser:
                 cls._inst.or_parser = Lark(gr, parser='lalr', propagate_positions=True, cache=True, debug=debug,
                                            postlex=MatchTag(context=kwargs['context']), start=['start', 'insegdirlist',
                                                                                                'instruction', 'expr',
-                                                                                               'equtype'])
+                                                                                               'equtype', '_directivelist'])
 
             cls._inst.parser = copy(cls._inst.or_parser)
 
@@ -667,6 +661,19 @@ class ExprRemover(Transformer):
         children = Token.remove_tokens(children, 'expr')
 
         return Tree('expr', children, meta)
+
+class IncludeLoader(Transformer):
+
+    def __init__(self, context):
+        self.context = context
+
+    def includedir(self, nodes):
+        name = nodes[0].children[0].children[0][1:-1]
+        # context.parser.input_str = context.input_str[:context.end_position] + '\n' + read_asm_file(name) \
+        # + '\n' + context.input_str[context.end_position:]
+        fullpath = os.path.join(os.path.dirname(os.path.realpath(self.context._current_file)), name)
+        result = self.context.parse_include_file_lines(fullpath)
+        return result
 
 
 

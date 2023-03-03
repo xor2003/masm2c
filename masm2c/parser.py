@@ -37,7 +37,8 @@ from lark import lark, Visitor
 
 from . import cpp as cpp_module
 from . import op
-from .pgparser import LarkParser, Asm2IR, ExprRemover, AsmData2IR, TopDownVisitor, BottomUpVisitor, EquCollector
+from .pgparser import LarkParser, Asm2IR, ExprRemover, AsmData2IR, TopDownVisitor, BottomUpVisitor, EquCollector, \
+    IncludeLoader
 from .proc import Proc
 
 from .Token import Token, Expression
@@ -948,25 +949,7 @@ class Parser:
         return result
 
     def parse_include(self, line, file_name=None):
-        # parser = PGParser(self.__lex.grammar,
-        #                            actions=actions)
-        grammar = self.__lex.or_grammar
-        parser = copy(self.__lex.or_parser)
-        parser.grammar = grammar
-        try:
-            result = parser.parse('''.model tiny
-            ''' + line + '''
-            end
-            ''', file_name=file_name, extra=self)  # context = self.__pgcontext)
-        except parglare.exceptions.ParseError:
-            result = parser.parse(f'''.model tiny
-            {self.__segment.name} segment
-            {line}
-            {self.__segment.name} ends
-            end
-            ''', file_name=file_name, extra=self)  # context = self.__pgcontext)
-            # del self.__globals['some_seg']
-
+        result = self.parse_text(line, file_name=file_name, start_rule='insegdirlist')
         return result
 
     def escape(self, s):
@@ -1171,6 +1154,7 @@ class Parser:
         return result
 
     def process_ast(self, text, result):
+        result = IncludeLoader(self).transform(result)
         result = ExprRemover().transform(result)
         result = EquCollector(self).transform(result)
         asm2ir = Asm2IR(self, text)

@@ -218,7 +218,7 @@ externlist: externdef | externdef commaoeol externlist
 externtype: "ABS"i | qualifiedtype
 fieldinit: initvalue? | structinstance
 fieldinitlist: fieldinit (commaoeol fieldinit)*
-filespec: charlist| textliteral
+!filespec: charlist| textliteral
 flagname: "ZERO?"i | "CARRY?"i | "OVERFLOW?"i | "SIGN?"i | "PARITY?"i
 floatnumber : SIGNED_FLOAT | digits "R"| digits "r"
 forcdir: "FORC"i | "IRPC"i
