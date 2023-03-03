@@ -1091,7 +1091,7 @@ class _assignment(baseop):
     def accept(self, visitor):
         # if self.implemented == False:
         self.implemented = True
-        return visitor._assignment(self, *self.children)
+        return visitor._assignment(self.children)
         # else:
         #    from masm2c.cpp import SkipCode
         #    raise SkipCode

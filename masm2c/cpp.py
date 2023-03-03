@@ -28,7 +28,7 @@ from lark import Tree, lark
 
 from . import op
 from . import proc as proc_module
-from .Token import Token
+from .Token import Token, Expression
 from .gen import Gen, mangle_asm_labels, InjectCode
 from .enum import IndirectionType
 from .parser import ExprSizeCalculator, Vector
@@ -1429,7 +1429,11 @@ struct Memory{
         return []
 
     def _assignment(self, stmt):
-        dst, src = stmt.children
+        dst, src = stmt
+        asm2ir = Asm2IR(self._context, '')
+        if not isinstance(src, Expression):
+            src = asm2ir.transform(src)
+
         src.indirection = IndirectionType.VALUE
         o = src
         '''

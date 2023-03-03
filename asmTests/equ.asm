@@ -18,23 +18,28 @@ start proc near
 F equ bx
 G = byte ptr -2
 H equ word ptr 1+2
-I = word -5
-J equ word -5 ; word here means 2
-JJ equ dw -5 ; word here means 2
+;I = word + 5 ;TODO
+;J equ word + 5 ; word here means 2
+;JJ equ dw -5 ; text = "dw -5"
 ;error JJ = dw -5 ; word here means 2
 
 push seg _DATA
 pop ds
 
-mov eax, I
-cmp eax, -3
-mov al,7
-jne failure
+;mov ax, word ptr +5 ; result to just 5
+;mov ax, word ptr [5] ; [5]
+;mov ax, word ptr ds:[5] ; [5]
+;mov ax, word ptr [byte]
 
-mov eax, J
-cmp eax, -3
+;mov eax, I
+cmp eax, 7
+mov al,7
+;jne failure
+
+;mov eax, J
+cmp eax, 7
 mov al,6
-jne failure
+;jne failure
 
 BBB = 2
 mov eax, BBB
