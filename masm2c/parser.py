@@ -1210,11 +1210,16 @@ class Parser:
 
     def convert_members(self, data, values):
         if data.isobject():
+            if isinstance(values, lark.Tree):
+                values = values.children
             return [self.convert_members(m, v) for m, v in zip(data.getmembers(), values)]
         else:
+            '''
             type = data.gettype()
             binary_width = self.typetosize(type)
             _, _, array = self.process_data_tokens(values, binary_width)
+            '''
+            array = AsmData2IR().visit(values)
             return array
 
     def add_structinstance(self, label, type, args, raw=''):

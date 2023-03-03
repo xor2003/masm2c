@@ -1263,7 +1263,7 @@ static const dd kbegin = 0x1001;
 {type} {name} {{
 """
             for member in v.getdata().values():
-                structures += f"  {member.data} {member.__label};\n"
+                structures += f"  {member.data} {member.label};\n"
             structures += """};
 """
         if len(strucs):

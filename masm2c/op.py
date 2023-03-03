@@ -517,7 +517,7 @@ class Data(baseop):
             for m, v in zip(self.__members, value):
                 m.setvalue(v)
         else:
-            self.children = value
+            self.children = [value]
 
     def getlabel(self):
         return self.label

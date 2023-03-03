@@ -217,7 +217,7 @@ externkey: "EXTRN"i | "EXTERN"i | "EXTERNDEF"i
 externlist: externdef | externdef _commaoeol externlist
 externtype: "ABS"i | qualifiedtype
 fieldinit: initvalue? | structinstance
-fieldinitlist: fieldinit (_commaoeol fieldinit)*
+_fieldinitlist: fieldinit (_commaoeol fieldinit)*
 !filespec: charlist| textliteral
 flagname: "ZERO?"i | "CARRY?"i | "OVERFLOW?"i | "SIGN?"i | "PARITY?"i
 floatnumber : SIGNED_FLOAT | digits "R"| digits "r"
@@ -348,7 +348,7 @@ structdirhdr: LABEL STRUCTHDR expr?  commanonuniq?
 STRUCTHDR: "STRUC"i | "STRUCT"i | "UNION"i
 structdir: structdirhdr _linereminder endsdir | structdirhdr _linereminder structitem+ endsdir
 structbody: structitem+
-structinstance: "<"  fieldinitlist?  ">"| "{" _linereminder?   fieldinitlist?   _linereminder?  "}"| structdup
+structinstance: "<"  _fieldinitlist?  ">"| "{" _linereminder?   _fieldinitlist?   _linereminder?  "}"| structdup
 structdup: expr "DUP"i "(" structinstlist ")"
 structinstlist: structinstance (_commaoeol structinstance)*
 structitem: datadir| _generaldir| offsetdir| nestedstruct| _linereminder
