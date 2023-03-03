@@ -356,7 +356,7 @@ class Asm2IR(CommonCollector):
         else:
             name = ''
         self.context.add_structinstance(name, type.lower(), args, raw=get_raw(self.input_str, meta))
-        return nodes
+        return Discard
 
     def insegdir(self, children: list):
         self._expression = None
@@ -367,6 +367,8 @@ class Asm2IR(CommonCollector):
     @v_args(meta=True)
     def datadir(self, meta, children: list):
         logging.debug("datadir %s ~~", children)
+        if not children: return Discard
+
         if len(children)==1: # TODO why?
             children = children[0]
         if isinstance(children[0], lark.Token) and children[0].type == 'LABEL':
