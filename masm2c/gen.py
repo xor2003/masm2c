@@ -7,10 +7,9 @@ from copy import copy
 import jsonpickle
 
 from masm2c import op, proc as proc_module
+from masm2c.Token import Token, Expression
 from masm2c.parser import parse_asm_number
 from masm2c.pgparser import LABEL, PTRDIR, SQEXPR, MEMBERDIR
-
-from masm2c.Token import Token, Expression
 
 
 class Gen:

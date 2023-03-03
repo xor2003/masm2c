@@ -21,8 +21,7 @@
 from typing import Callable
 
 import lark
-from lark import Tree, Visitor
-
+from lark import Tree
 
 SQEXPR = 'sqexpr'
 

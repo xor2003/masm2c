@@ -29,8 +29,8 @@ from lark import Tree, lark
 from . import op
 from . import proc as proc_module
 from .Token import Token, Expression
-from .gen import Gen, mangle_asm_labels, InjectCode
 from .enum import IndirectionType
+from .gen import Gen, mangle_asm_labels, InjectCode
 from .parser import ExprSizeCalculator, Vector
 from .pgparser import OFFSETDIR, LABEL, PTRDIR, REGISTER, SEGMENTREGISTER, SEGOVERRIDE, SQEXPR, INTEGER, MEMBERDIR, \
     TopDownVisitor, Asm2IR

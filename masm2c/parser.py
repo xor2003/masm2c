@@ -1,5 +1,4 @@
 from ast import literal_eval
-from ast import literal_eval
 ''' Module to parse assembler source '''
 # Masm2c S2S translator (initially based on SCUMMVM tasmrecover)
 #
@@ -28,16 +27,15 @@ import re
 import sys
 from builtins import range, str
 from collections import OrderedDict
-from copy import copy, deepcopy
+from copy import deepcopy
 
 
 import jsonpickle
-import parglare
-from lark import lark, Visitor
+from lark import lark
 
 from . import cpp as cpp_module
 from . import op
-from .pgparser import LarkParser, Asm2IR, ExprRemover, AsmData2IR, TopDownVisitor, BottomUpVisitor, \
+from .pgparser import LarkParser, Asm2IR, ExprRemover, AsmData2IR, BottomUpVisitor, \
     IncludeLoader
 from .proc import Proc
 
@@ -631,7 +629,6 @@ class Parser:
         return self
 
     def parse_file_lines(self, file_name):
-        from .cpp import IR2Cpp
         self._current_file = file_name
         self.__current_file_hash = hashlib.blake2s(self._current_file.encode('utf8')).hexdigest()
         content = read_whole_file(file_name)
@@ -885,7 +882,6 @@ class Parser:
         return result
 
     def test_size(self, line):
-        from .cpp import IR2Cpp
         self.test_mode = True
         self.segments = OrderedDict()
         try:
@@ -905,7 +901,6 @@ class Parser:
 
     def action_data(self, line):
         ''' For tests only '''
-        from .cpp import IR2Cpp
         self.test_mode = True
         self.segments = OrderedDict()
         try:

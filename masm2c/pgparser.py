@@ -1,4 +1,4 @@
-from ast import literal_eval
+import logging
 import logging
 import os
 import re
@@ -7,12 +7,11 @@ from collections import OrderedDict
 from copy import deepcopy, copy
 from typing import Iterator
 
-from lark import Transformer, Lark, v_args, Discard, Tree, Visitor, lark
+from lark import Transformer, Lark, v_args, Discard, Tree, lark
 
 from . import op
 from .Macro import Macro
 from .Token import Token, Expression
-
 from .enum import IndirectionType
 
 macroses = OrderedDict()
@@ -185,7 +184,6 @@ class Asm2IR(CommonCollector):
 
     def dupdir(self, children):
         from masm2c.cpp import IR2Cpp
-        from masm2c.parser import Parser
         repeat = copy(children[0])
         repeat.indirection = IndirectionType.VALUE
         repeat = "".join(IR2Cpp(self.context).visit(repeat))
