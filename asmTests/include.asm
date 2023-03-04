@@ -10,7 +10,7 @@ start proc near
 
 mov eax,1
 
-     include  included.inc    ; OKOK
+     include  <included.inc>    ; OKOK
 
 failure:
 exitLabel:
