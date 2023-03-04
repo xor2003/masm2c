@@ -21,11 +21,11 @@ result=0
 
 for name in $(ls *.asm *.lst|xargs)
 do 
-  n=$(echo $name| perl -pe 's!\.asm!!');
+  n="$(echo $name| perl -pe 's!\.asm!!')"
   export n
 #  (
 echo "Testing $n:"
-./_singletest.sh $n 2>&1 | tee -a _result.log
+./_singletest.sh "$n" 2>&1 | tee -a _result.log
 res=${PIPESTATUS[0]}
 if [ $res -ne 0 ];then
   echo "$n failed with code $res" | tee -a _result.log
