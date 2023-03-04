@@ -419,7 +419,7 @@ class Asm2IR(CommonCollector):
             elif isinstance(g, op.Struct):
                 logging.debug('get_size res %d', g.size)
                 l = lark.Token(type='LABEL', value=value)
-                self._size = l.size = self.expression.element_size = g.size  # TODO too much?
+                self._size =  self.expression.element_size = g.size  # TODO too much?
             else:
                 logging.debug('get_size res %d', g._size)
                 self.expression.element_size = g._size
