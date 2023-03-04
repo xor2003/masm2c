@@ -222,6 +222,8 @@ class Cpp(Gen, TopDownVisitor):
                 if g.elements != 1:  # array
                     self.needs_dereference = True
                     self.itispointer = True
+                    if not self.lea:
+                        self._indirection = IndirectionType.POINTER
                 if g.elements == 1 and self._isjustlabel and not self.lea and g.size == self.element_size:
                     # traceback.print_stack(file=sys.stdout)
                     value = g.name
@@ -1718,6 +1720,8 @@ struct Memory{
         self._ismember = False
         self._need_pointer_to_member = False
         result = "".join(self.visit(tree.children))
+        tree.indirection = self._indirection
+
         if tree.indirection == IndirectionType.POINTER and tree.ptr_size == 0 and hasattr(self,"variable_size"):  # [ var ]
             tree.ptr_size = self.variable_size  # Set destination size based on variable size
         self.size_changed = self.size_changed or "size_changed" in tree.mods and self._middle_size != tree.size()

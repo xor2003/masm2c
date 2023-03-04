@@ -2996,6 +2996,9 @@ h_array db '^',10,10
     def test_instr_10890(self):
         self.assertEqual(*self.doTest('retn 6', 'RETN(6)'))
 
+    def test_instr_10900(self):
+        self.assertEqual(*self.doTest('cmp wordarray+3*4,4000000', 'CMP(*(dw*)(((db*)wordarray)+3*4), 4000000)'))
+
     #def test_instr_12030(self):
     #    print(*self.doTest("cmp h_array, 'v'",  u"CMP(*(h_array), 'v')"))
 if __name__ == "__main__":

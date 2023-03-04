@@ -993,13 +993,13 @@ class CppTest(unittest.TestCase):
         self.assertEqual(self.parser.parse_arg(u'AL', def_size=1, destination=True), u'al')
 
     def test_args_23270(self):
-        self.assertEqual(self.parser.parse_arg(u'B', def_size=4, destination=False), u'B')
+        self.assertEqual(self.parser.parse_arg(u'B', def_size=4, destination=False), u'b')
 
     def test_args_23280(self):
-        self.assertEqual(self.parser.parse_arg(u'CC', def_size=4, destination=False), u'CC')
+        self.assertEqual(self.parser.parse_arg(u'CC', def_size=4, destination=False), u'cc')
 
     def test_args_23290(self):
-        self.assertEqual(self.parser.parse_arg(u'DDD', def_size=0, destination=False), u'DDD')
+        self.assertEqual(self.parser.parse_arg(u'DDD', def_size=0, destination=False), u'ddd')
 
     def test_args_23300(self):
         self.assertEqual(self.parser.parse_arg(u'DX', def_size=2, destination=True), u'dx')
@@ -1011,7 +1011,7 @@ class CppTest(unittest.TestCase):
         # self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'OFFSET AsCii'),def_size=4,destination=False),u'offset(_data,ASCII)')
 
     def test_args_23330(self):
-        self.assertEqual(self.parser.parse_arg(u'TWO', def_size=4, destination=False), u'TWO')
+        self.assertEqual(self.parser.parse_arg(u'TWO', def_size=4, destination=False), u'two')
 
     def test_args_23340(self):
         self.assertEqual(self.parser.parse_arg(u'ah', def_size=1, destination=False), u'ah')
