@@ -15,6 +15,11 @@ elif [ -z "$1" ];then
   exit 2
 fi
 ../masm2c.py -m separate $name 2>&1 | tee $1.txt
+res=${PIPESTATUS[0]}
+if [ "${res}" -ne 0 ];then
+   exit "${res}"
+fi  
+
 echo "Converting result $?"
 ./build.sh $1 2>&1
 rm asm.log || true

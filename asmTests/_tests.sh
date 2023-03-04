@@ -26,7 +26,7 @@ do
 #  (
 echo "Testing $n:"
 ./_singletest.sh $n 2>&1 | tee -a _result.log
-res=$?
+res=${PIPESTATUS[0]}
 if [ $res -ne 0 ];then
   echo "$n failed with code $res" | tee -a _result.log
   result=$(( $result + 1 ))
