@@ -7,7 +7,7 @@ on:
 jobs:
   build:
 
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
 
     steps:
     - uses: actions/checkout@v3
@@ -15,7 +15,7 @@ jobs:
       run: |
            sudo dpkg --add-architecture i386
            sudo apt-get update -y
-           sudo apt-get install -y git make gcc gcc-multilib g++-multilib libncurses5-dev:i386 libncurses5:i386
+           sudo apt-get install -y git make gcc gcc-multilib g++-multilib libncurses6-dev:i386 libncurses6:i386
            
     - name: build
       run: |

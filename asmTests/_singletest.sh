@@ -1,5 +1,5 @@
 #!/bin/sh
-set -x
+#set -x
 if [ -z "$CXX" ];then
   export CXX=g++
 fi
