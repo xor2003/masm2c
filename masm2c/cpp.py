@@ -154,24 +154,6 @@ class Cpp(Gen, TopDownVisitor):
         self.element_size = -1
 
 
-    def convert_label(self, token):
-        name_original = mangle_asm_labels(token.children[0])
-        token.children = name_original
-        name = name_original.lower()
-        logging.debug("convert_label name = %s indirection = %s", name, self._indirection)
-
-        if self._indirection == IndirectionType.OFFSET:
-            try:
-                offset, _, _ = self._context.get_offset(name)
-            except Exception:
-                pass
-            else:
-                logging.debug("OFFSET = %s", offset)
-                self._indirection = IndirectionType.VALUE
-                self.__used_data_offsets.add((name, offset))
-                return lark.Token('LABEL', "(dw)m2c::k" + name)
-        return self.convert_label_(name)
-
     def convert_label_(self, name_original):
         name = name_original
         try:
@@ -259,6 +241,7 @@ class Cpp(Gen, TopDownVisitor):
             else:
                 value = name
         else:
+            raise Exception("Dead code?")
             source_var_size = g.getsize()
             if source_var_size == 0:
                 raise Exception("invalid var '%s' size %u" % (name, source_var_size))
@@ -368,17 +351,6 @@ class Cpp(Gen, TopDownVisitor):
     def memberdir(self, tree):
         return [self.convert_member_(tree.children)]
 
-    def convert_member(self, token):
-        """
-        It converts Token with access to assembler structure member and converts to similar in C++
-
-        :param token: The token to be converted
-        :return: The value of the member.
-        """
-        logging.debug("name = %s indirection = %s", token, self._indirection)
-        value = token
-        label = [l.lower() for l in Token.find_tokens(token, LABEL)]
-        return self.convert_member_(label)
 
     def convert_member_(self, label):
         self.struct_type = None
@@ -538,197 +510,7 @@ class Cpp(Gen, TopDownVisitor):
 
         return expr
 
-    def tokens_to_string(self, expr):
-        '''
-        Convert remaining tokens to make it simple string
-        :param expr: tokens
-        :return: string
-        '''
-        if isinstance(expr, list):
-            result = ''
-            for i in expr:
-                # TODO hack to handle ')register'
-                if len(result) and result[-1] == ')' and isinstance(i, Token) and i.data == 'register':
-                    result += '+'
-                res = self.tokens_to_string(i)
-                res = re.sub(r'([Ee])\+', r'\g<1> +',
-                             res)  # prevent "error: unable to find numeric literal operator 'operator""+" 0x0E+vecl_1c0
-                res = res.replace('+)', ')')  # TODO hack
-                result += res
-            return result
-        elif isinstance(expr, Tree):
 
-            if expr.data == 'STRING':
-                m = re.match(r'^[\'\"](....)[\'\"]$', expr.children)  # char constants 'abcd'
-                if m:
-                    ex = m.group(1)
-                    expr.children = '0x'
-                    for i in range(0, 4):
-                        # logging.debug("constant %s %d" %(ex,i))
-                        ss = str(hex(ord(ex[i])))
-                        # logging.debug("constant %s" %ss)
-                        expr.children += ss[2:]
-                expr.children = expr.children.replace('\\', '\\\\')  # escape c \ symbol
-
-            return self.tokens_to_string(expr.children)
-        return expr
-
-    def render_instruction_argument_(self, expr, def_size: int = 0, destination: bool = False, lea: bool = False):
-        '''
-        Convert instruction argument Tokens into C
-        :param expr: argument Tokens
-        :param def_size: Preliminary calculate size in bytes
-        :param destination: if it is destination argument
-        :param lea: if it is lea operation
-        :return: Argument in C format as string
-        '''
-        logging.debug("%s", expr)
-
-        expr = Token.remove_tokens(expr, ['expr'])  # no need expr token any more
-        origexpr = expr  # save original expression before we will change it
-        self._work_segment = "ds"  # default work segment is ds
-        self._middle_size = 0  # current size of argument is not yet found
-        self.size_changed = False
-        self.needs_dereference = False
-        self.itispointer = False
-        indirection: IndirectionType = IndirectionType.VALUE
-        size = self.calculate_size(expr) if def_size == 0 else def_size  # calculate size if it not provided
-
-        # calculate the segment register
-        segoverride = Token.find_tokens(expr, SEGOVERRIDE)
-        sqexpr = Token.find_tokens(expr, SQEXPR)
-        if sqexpr:  # if [] then we want to get data using memory pointer
-            indirection = IndirectionType.POINTER
-        if segoverride:  # check if there is segment override
-            expr = Token.remove_tokens(expr, [SEGMENTREGISTER])
-
-        offsetdir = Token.find_tokens(expr, OFFSETDIR)
-        if offsetdir:  # if 'offset' then we want just address of data
-            indirection = IndirectionType.OFFSET
-            expr = offsetdir
-
-        ptrdir = Token.find_tokens(expr, PTRDIR)
-        if ptrdir:  # word/byte ptr means we want to get data using memory pointer
-            indirection = IndirectionType.POINTER
-
-        if ptrdir or offsetdir or segoverride:  # no need it anymore. simplify
-            expr = Token.remove_tokens(expr, [PTRDIR, OFFSETDIR, SEGOVERRIDE])
-
-        # if it is a destination argument and there is only number then we want to put data using memory pointer
-        # represented by integer
-        if isinstance(expr, list) and len(expr) == 1 and isinstance(expr[0], Token) and expr[
-            0].data == INTEGER and segoverride:
-            indirection = IndirectionType.POINTER
-            self.needs_dereference = True
-
-        # Simplify by removing square brackets
-        if sqexpr:
-            expr, _ = Token.remove_squere_bracets(expr)
-
-        # check if we pointing some member of structure
-        memberdir = Token.find_tokens(expr, MEMBERDIR)
-        # get struct name or instance name and member names
-        islabel = Token.find_tokens(expr, LABEL)
-        self.isvariable = False  # only address or variable
-        if (islabel or memberdir) and not offsetdir:
-            if memberdir:
-                member_size = self.calculate_member_size(Token(MEMBERDIR, memberdir))
-                if member_size:
-                    self.isvariable = True
-                    size = member_size
-                    indirection = IndirectionType.POINTER
-            elif islabel:
-                for i in islabel:  # Strange !?
-                    label_size = self.calculate_size(Token(LABEL, i))
-                    if label_size:
-                        self.isvariable = True
-                        size = label_size
-                        indirection = IndirectionType.POINTER
-                        break
-        if lea:  # If lea operation it is the same as getting offset
-            indirection = IndirectionType.OFFSET
-
-        if indirection == IndirectionType.POINTER and not segoverride:
-            regs = Token.find_tokens(expr, REGISTER)  # if it was registers used: bp, sp
-            if regs and any((i in {'bp', 'ebp', 'sp', 'esp'} for i in regs)):  # TODO doublecheck
-                self._work_segment = "ss"  # and segment is not overriden means base is "ss:"
-                self.isvariable = False
-        if segoverride:  # if it was segment override then use provided value
-            self._work_segment = segoverride[0][0].children[0]
-
-        self._middle_size = size
-        size_ovrr_by_ptr = size  # setting initial value
-        if ptrdir:  # byte/word/struct ptr. get override type size
-            value = ptrdir[0]
-            # logging.debug('get_size res 1')
-            size_ovrr_by_ptr = self._context.typetosize(value)  # size overriden by ptr
-            if size_ovrr_by_ptr != size:
-                self.size_changed = True
-            else:
-                origexpr = Token.remove_tokens(origexpr, [PTRDIR, SQEXPR])
-                if isinstance(origexpr, list) and len(origexpr) == 1:
-                    origexpr = origexpr[0]
-
-        # if just "label" or "[label]" or member
-        self._isjustlabel = (isinstance(origexpr, Token) and origexpr.data == LABEL) \
-                            or (isinstance(origexpr, Token) and origexpr.data == SQEXPR \
-                                and isinstance(origexpr.children, Token) and origexpr.children.data == LABEL) \
-                            or (isinstance(origexpr, Token) and origexpr.data == MEMBERDIR)
-        self._isjustmember = isinstance(origexpr, Token) and origexpr.data == MEMBERDIR
-
-        self._indirection = indirection
-
-        if memberdir:
-            expr = Token.find_and_replace_tokens(expr, MEMBERDIR, self.convert_member)
-            if self._indirection == IndirectionType.POINTER and self.needs_dereference and self.struct_type:
-
-                # TODO A very hacky way to
-                # put registers and numbers first since asm have byte aligned pointers
-                # in comparison to C's type aligned
-                registers = Token.find_tokens(expr, 'register')
-                integers = Token.find_tokens(expr, 'integer')
-                expr = Token.remove_tokens(expr, ['register', 'integer'])
-                expr = self.tokens_to_string(expr)
-                while len(expr) and expr[0] == '+':
-                    expr = expr[1:]
-                while len(expr) > 2 and expr[0] == '(' and expr[-1] == ')':
-                    expr = expr[1:-1]
-                if integers:
-                    expr = '+'.join(integers) + '+' + expr
-                if registers:
-                    expr = '+'.join(registers) + '+' + expr
-                expr = expr.replace('++', '+').replace('+-', '-')
-
-                expr = [f'(({self.struct_type}*)raddr({self._work_segment},'] + [expr]
-                self.needs_dereference = False
-        else:
-            if islabel:
-                # assert(len(islabel) == 1)
-                expr = Token.find_and_replace_tokens(expr, LABEL, self.convert_label)
-        indirection = self._indirection
-        if self._middle_size != 0 and size != self._middle_size and not self.size_changed:
-            size = self._middle_size
-
-        if self.size_changed:
-            size = size_ovrr_by_ptr
-
-        expr = self.tokens_to_string(expr)
-
-        if not memberdir and indirection == IndirectionType.POINTER and (not self._isjustlabel or self.size_changed):
-            expr = self.convert_sqbr_reference(self._work_segment, expr, destination, size, islabel, lea=lea)
-
-        if self.size_changed:  # or not self._isjustlabel:
-            expr = Cpp.render_new_pointer_size(self.itispointer, expr, size)
-            self.size_changed = False
-
-        if indirection == IndirectionType.POINTER and self.needs_dereference:
-            self.needs_dereference = False
-            if expr[0] == '(' and expr[-1] == ')':
-                expr = "*%s" % expr
-            else:
-                expr = "*(%s)" % expr
-
-        return expr
 
     def jump_post(self, expr):
         name = self.render_jump_label(expr)
@@ -770,43 +552,6 @@ class Cpp(Gen, TopDownVisitor):
         logging.debug("jump_to_label(%s)", name)
 
         indirection = -5
-        '''
-        #if isinstance(name, Token) and name.data == 'register':
-        #    name = name.children
-        #    indirection = IndirectionType.VALUE  # based register value
-
-        #labeldir = Token.find_tokens(name, 'LABEL')
-        #if labeldir:
-        #    from masm2c.parser import Parser
-        #    labeldir[0] = Parser.mangle_label(self.cpp_mangle_label(labeldir[0]))
-        if self._context.has_global(name):
-                g = self._context.get_global(name)
-                if isinstance(g, op.var):
-                    indirection = IndirectionType.POINTER  # []
-                #elif isinstance(g, (op.label, proc_module.Proc)):
-                #    indirection = IndirectionType.OFFSET  # direct using number
-        #    else:
-        #        name = labeldir[0]
-
-        ptrdir = Token.find_tokens(name, 'ptrdir')
-        if ptrdir:
-            if any(isinstance(x, str) and x.lower() in ['near', 'far', 'short'] for x in ptrdir):
-                indirection = IndirectionType.OFFSET  #
-            else:
-                indirection = IndirectionType.POINTER
-
-        sqexpr = Token.find_tokens(name, 'sqexpr')
-        if sqexpr:
-            indirection = IndirectionType.POINTER
-
-        if indirection == IndirectionType.POINTER:
-            name = self.render_instruction_argument(name)
-
-        if indirection == IndirectionType.OFFSET and labeldir:
-            name = labeldir[0]
-
-        logging.debug("label %s", name)
-        '''
 
         hasglobal = False
         far = False
@@ -1397,6 +1142,7 @@ struct Memory{
             result = self.render_instruction_argument(expr, def_size)  # TODO why need something else?
             self.itisjump = False
             return result
+        raise Exception("Dead code?")
         if def_size and expr.element_size == 0:
             expr.element_size = def_size
         result = "".join(IR2CppJump(self._context).visit(expr))
@@ -1445,27 +1191,6 @@ struct Memory{
 
         src.indirection = IndirectionType.VALUE
         o = src
-        '''
-        #src = Token.remove_tokens(src, ['expr'])
-        #size = self.calculate_size(src)
-        size = stmt.size()
-        #calc = ExprSizeCalculator(init=Vector(0, 0))
-        #size = calc.visit(src)[0]
-
-        ptrdir = Token.find_tokens(src, 'ptrdir')
-        if ptrdir:
-            type = ptrdir[0]
-            if isinstance(type, Token):
-                type = type.children
-            type = type.lower()
-            src = Token.find_and_replace_tokens(src, 'ptrdir', self.return_empty)
-        o = stmt  # self._context.get_global(dst)
-        o.element_size = size
-        if ptrdir:
-            o.original_type = type
-        o.implemented = True
-        self._context.reset_global(dst, o)
-        '''
         self._cmdlabel += "#undef %s\n#define %s %s\n" % (dst, dst, self.render_instruction_argument(src))
         return ''
 
@@ -1541,6 +1266,7 @@ struct Memory{
         return rc, rh
 
     def produce_c_data_object(self, data: op.Data):
+        raise Exception("Dead code?")
         label, data_ctype, _, r, elements, size = data.getdata()
         # rc = '{' + ",".join([str(i) for i in r]) + '}'
         rc = []
@@ -1844,6 +1570,7 @@ class IR2Cpp(TopDownVisitor, Cpp):
 class IR2CppJump(IR2Cpp):
 
     def __init__(self, parser):
+        raise Exception("Dead code?")
         super().__init__(parser)
 
     def expr(self, tree):

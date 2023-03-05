@@ -438,6 +438,7 @@ class Segment(lark.Tree):
         self.size += data.getsize()
 
     def insert_label(self, data):
+        raise Exception("Dead code?")
         if data.getlabel() not in self.seglabels:
             self.children.insert(1, data)
             self.seglabels.add(data.getlabel())

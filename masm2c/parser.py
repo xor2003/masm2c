@@ -328,6 +328,7 @@ class Parser:
     def parse_int(v):
         # logging.debug "~1~ %s" %v
         if isinstance(v, list):
+            raise Exception("Dead code?")
             vv = ""
             for i in v:
                 try:
@@ -358,6 +359,7 @@ class Parser:
         return int(v)
 
     def calculate_STRING_size(self, v):
+        raise Exception("Dead code?")
         if not self.itislst:
             v = v.replace("\'\'", "'").replace('\"\"', '"')
         return len(v) - 2
@@ -407,119 +409,7 @@ class Parser:
                 cur_data_type = op.DataType.ARRAY  # array
         return cur_data_type
 
-    def process_data_tokens(self, value, width):
-        elements = 0
-        reslist = []
-        is_string = False
-        base = 1 << (8 * width)
 
-        if isinstance(value, list):
-            for subvalue in value:
-                ele, is_string2, rr2 = self.process_data_tokens(subvalue, width)
-                elements += ele
-                is_string |= is_string2
-                reslist += rr2
-        elif isinstance(value, Token):
-            if value.data in ['offsetdir', 'segmdir']:
-                if isinstance(value.children, list):  # hack when '+' is glued to integer
-                    value.children = Token.remove_tokens(value.children, ['expr'])
-                    lst = [value.children[0]]
-                    for val in value.children[1:]:
-                        if isinstance(val, Token) and val.data == 'INTEGER':
-                            lst += ['+']
-                        lst += [val]
-                    value.children = lst
-                elements, is_string, reslist = self.process_data_tokens(value.children, width)
-            elif value.data == 'expr':
-                el, is_string, res = self.process_data_tokens(value.children, width)
-                if not is_string and len(res) != 1:
-                    reslist = ["".join(str(x) for x in res)]
-                    elements = 1
-                else:
-                    reslist = res
-                    elements = el
-            elif value.data == 'STRING':
-                value = value.children
-                assert isinstance(value, str)
-                if not self.itislst:  # not for IDA .lst
-                    value = value.replace("\'\'", "'").replace('\"\"', '"')  # masm behaviour
-                reslist = list(value[1:-1])
-                elements = len(reslist)
-                is_string = True
-
-            # check if dup
-            elif value.data == 'dupdir':
-                # we should parse that
-                repeat = Parser.parse_int(self.escape(value.children[0]))
-                values = self.process_data_tokens(value.children[1], width)[2]
-                elements, reslist = self.action_dup(repeat, values)
-
-            elif value.data == 'INTEGER':
-                elements += 1
-                try:  # just number or many
-                    value = value.children
-                    # if v == '?':
-                    #    v = '0'
-                    value = Parser.parse_int(value)
-
-                    if value < 0:  # negative values
-                        value += base
-
-                except Exception:
-                    # global name
-                    # traceback.print_stack(file=sys.stdout)
-                    # logging.debug "global/expr: ~%s~" %v
-                    try:
-                        value = self.get_global_value(value, width)
-                    except KeyError:
-                        value = 0
-                reslist = [value]
-
-            # logging.debug("global/expr: ~%s~" % v)
-            elif value.data == 'LABEL':
-                elements = 1
-                try:
-                    value = value.children
-                    # width = 2  # TODO for 16 bit only
-                    value = self.mangle_label(value)
-                    value = self.get_global_value(value, width)
-                except KeyError:
-                    if self.pass_number != 1:
-                        logging.error("unknown address %s", value)
-                    # logging.warning(self.c_data)
-                    # logging.warning(r)
-                    # logging.warning(len(self.c_data) + len(r))
-                    # self.__link_later.append((len(self.c_data) + len(r), v))
-                    # v = 0
-                reslist = [value]
-        elif value == '?':
-            elements = 1
-            reslist = [0]
-        else:
-            elements = 1
-            reslist = [value]
-        return elements, is_string, reslist
-
-    def action_dup(self, n, values):
-        res = []
-        for i in range(0, n):
-            for value in values:
-                if value == '?':
-                    value = 0
-                else:
-                    if isinstance(value, list):
-                        val = ""
-                        for v in value:
-                            try:
-                                v = Parser.parse_int(v)
-                            except ValueError:
-                                pass
-                            val += str(v)
-                        value = val
-                # logging.debug "n = %d value = %d" %(n, value)
-
-                res.append(value)
-        return n * len(values), res
 
     def action_label(self, name, far=False, isproc=False, raw='', globl=True, line_number=0):
         logging.debug("label name: %s", name)
@@ -948,40 +838,7 @@ class Parser:
         result = self.parse_text(line, file_name=file_name, start_rule='insegdirlist')
         return result
 
-    def escape(self, s):
-        if isinstance(s, list):
-            return [self.escape(i) for i in s]
-        elif isinstance(s, Token):
-            return self.escape(s.children)
-        else:
-            s = s.translate(s.maketrans({"\\": r"\\"}))
-            # if not self.itislst:
-            s = s.replace("''", "'").replace('""', '"')
-            return s
 
-    def calculate_data_size_new(self, size, values):
-        if isinstance(values, list):
-            return sum(self.calculate_data_size_new(size, x) for x in values)
-        elif isinstance(values, Token):
-            if values.data == 'expr':
-                if isinstance(values.children, Token) and values.children.data == STRINGCNST:
-                    return self.calculate_data_size_new(size, values.children)
-                else:
-                    return size
-            elif values.data == STRINGCNST:
-                return self.calculate_STRING_size(values.children)
-            elif values.data == 'dupdir':
-                return Parser.parse_int(self.escape(values.children[0])) * self.calculate_data_size_new(size,
-                                                                                                        values.children[
-                                                                                                            1])
-            else:
-                return size
-        elif isinstance(values, str):
-            if values == '?':
-                return size
-            return len(values)
-        else:
-            raise NotImplementedError('Unknown Token: ' + str(values))
 
     def datadir_action(self, label, type, args, is_string=False, raw='', line_number=0):
         if self.__cur_seg_offset > 0xffff:
@@ -1114,26 +971,6 @@ class Parser:
                 absolute_offset = real_seg * 0x10 + real_offset
         return absolute_offset, real_offset, real_seg
 
-    '''
-    def link(self):
-        logging.debug("link()")
-        # logging.debug self.c_data
-        for addr, expr in self.__link_later:
-            logging.debug("addr %s expr %s" % (addr, expr))
-            try:
-                # v = self.eval_expr(expr)
-                v = expr
-                # if self.has_global('k' + v):
-                #               v = 'k' + v
-                v = self.get_global_value(v, 0x10000)
-
-                logging.debug("link: patching %04x -> %s" % (addr, v))
-            except:
-                logging.warning("link: Exception %s" % expr)
-                continue
-            logging.debug("link: addr %s v %s" % (addr, v))
-            self.c_data[addr] = str(v)
-    '''
 
     def test_pre_parse(self):
         self.__binary_data_size = 0

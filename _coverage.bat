@@ -10,4 +10,4 @@ coverage run -a masm2c.py -FL -d asmTests/snake.lst
 coverage run -a -m pytest tests
 coverage html
 cd htmlcov
-iexplore.exe index.html
+chrome index.html

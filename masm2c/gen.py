@@ -30,110 +30,11 @@ class Gen:
 
 
 
-    def remove_dots(self, tokens):
-        """
-        It takes a list of tokens, and if any of the tokens are a period, it removes them
-
-        :param tokens: a list of tokens
-        :return: A list of tokens with the dots removed.
-        """
-        if not isinstance(tokens, list):
-            return tokens
-        l = []
-        for i in tokens:
-            i = self.remove_dots(i)
-            if i != '.':
-                l += [i]
-        return l
 
     def calculate_size(self, expr: Expression) -> int:
         result = expr.size()
-        #oldresult = self.calculate_size_(expr)
-        #assert result == oldresult
         return result
 
-    def calculate_size_(self, expr):
-        '''
-        Calculate inmemory size for token
-        :param expr: Tokens
-        :return: byte size
-        '''
-        logging.debug('calculate_size("%s")', expr)
-        origexpr = expr
-
-        expr = Token.remove_tokens(expr, ['expr'])
-
-        if ptrdir := Token.find_tokens(expr, PTRDIR):
-            value = ptrdir[0]
-            return self._context.typetosize(value)
-
-        issqexpr = Token.find_tokens(expr, SQEXPR)
-        segover = Token.find_tokens(expr, 'segoverride')
-        if issqexpr or segover:
-            expr = Token.remove_tokens(expr, ['segmentregister', 'register', 'integer', SQEXPR, 'segoverride'])
-            return self.calculate_size_(expr)
-
-        if isinstance(expr, list) and all(
-                isinstance(i, str) or (isinstance(i, Token) and i.data == 'INTEGER') for i in expr):
-            s = "".join([x.children if isinstance(x, Token) else x for x in expr])
-            s = re.sub(r'^0+(?=\d)', '', s)  # TODO put it to parser
-            try:
-                s = eval(s)
-                expr = Token('INTEGER', str(s))
-            except:
-                pass
-
-        if isinstance(expr, Token):
-            if expr.data in ('register', 'segmentregister'):
-                return self._context.is_register(expr.children)
-            elif expr.data == 'integer':
-                try:
-                    # v = self._context.parse_int(expr.value)
-                    v = eval(re.sub(r'^0+(?=\d)', '', expr.children))
-                    size = guess_int_size(v)
-                    return size
-                except:
-                    pass
-            elif expr.data == 'STRING':
-                m = re.match(r'\'(.+)\'$', expr.children)  # char constants
-                if m:
-                    return len(m.group(1))
-            elif expr.data == 'label':
-                name = expr.children
-                logging.debug('name = %s', name)
-                try:
-                    g = self._context.get_global(name)
-                    if isinstance(g, (op._equ, op._assignment)):
-                        if g.value != origexpr:  # prevent loop
-                            return self.calculate_size_(g.value)
-                        else:
-                            return 0
-                    logging.debug('get_size res %d', g._size)
-                    return g._size
-                except:
-                    pass
-            elif expr.data == MEMBERDIR:
-                label = Token.find_tokens(expr.children, LABEL)
-                return self.calculate_member_size(label)
-        if isinstance(expr, list):
-            if len(expr) == 0:
-                return 0
-            return max((self.calculate_size_(i) for i in expr))
-
-        offsetdir = Token.find_tokens(expr, 'offsetdir')
-        if offsetdir:
-            return 2  # TODO 16 bit word size
-
-        # if isinstance(expr, str):  # in ('+','-','*','(',')','/'):
-        #    return 0
-        if isinstance(expr, str):
-            from masm2c.parser import Parser
-            return Parser.is_register(expr)
-        elif isinstance(expr, (op.Data, op.var, op._assignment, op._equ)):
-            return expr.getsize()
-        else:
-            logging.debug(f"Could not identify type for {expr} to get size")
-        return 0
 
     def calculate_member_size(self, label):
         g = self._context.get_global(label[0])
@@ -158,37 +59,6 @@ class Gen:
         return g.size
 
 
-    def calculate_member_size_(self, expr):
-        '''
-        Get (structure/object).member size in bytes
-        :param expr: Tokens
-        :return: size in bytes
-        '''
-        logging.debug(' calculate_member_size("%s")', expr)
-
-        if isinstance(expr, Token) and expr.data == MEMBERDIR:
-                label = Token.find_tokens(expr.children, LABEL)
-                g = self._context.get_global(label[0])
-                if isinstance(g, op.Struct):
-                    type = label[0]
-                else:
-                    type = g.gettype()
-
-                try:
-                    for member in label[1:]:
-                        g = self._context.get_global(type)
-                        if isinstance(g, op.Struct):
-                            g = g.getitem(member)
-                            type = g.gettype()
-                        else:
-                            return self.calculate_size_(g)
-                except KeyError as ex:
-                    logging.debug(f"Didn't found for {label} {ex.args} will try workaround")
-                    # if members are global as with M510 or tasm try to find last member size
-                    g = self._context.get_global(label[-1])
-
-                return self._context.typetosize(Token(LABEL, g.gettype()))
-        return 0
 
     def leave_unique_labels(self, labels):
         """

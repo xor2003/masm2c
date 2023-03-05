@@ -30,6 +30,7 @@ class Token(lark.Tree):
     __slots__ = ('data', 'children')
 
     def __init__(self, type, value):
+        raise Exception("Dead code?")
         self.data = type
         self.children = value
 
@@ -65,41 +66,6 @@ class Token(lark.Tree):
             l = None
         return l
 
-    @staticmethod
-    def find_and_replace_tokens(expr, lookfor: str, call: Callable):
-        if isinstance(expr, Tree):
-            if expr.data == lookfor:
-                if call:
-                    expr = call(expr)
-            elif not isinstance(expr.children, str):
-                expr.children = Token.find_and_replace_tokens(expr.children, lookfor, call)
-        elif isinstance(expr, list):
-            expr = [Token.find_and_replace_tokens(i, lookfor, call) for i in expr]
-        return expr
-
-    @staticmethod
-    def remove_squere_bracets(expr, index=None):
-        if index is None:
-            index = 0
-        if isinstance(expr, Tree):
-            if expr.data == SQEXPR:
-                expr = expr.children
-                expr, index = Token.remove_squere_bracets(expr, index)
-            else:
-                oldindex = index
-                expr.children, index = Token.remove_squere_bracets(expr.children, index)
-                if isinstance(expr.children, str) and not (expr.data == 'integer' and expr.children[0] in {'-', '+'}):
-                    index = oldindex
-                    index += 1
-                    if index != 1:
-                        expr = ['+', expr]
-            return expr, index
-        elif isinstance(expr, list):
-            for i in range(len(expr)):
-                expr[i], index = Token.remove_squere_bracets(expr[i], index)
-        else:
-            index = 0
-        return expr, index
 
     @staticmethod
     def remove_tokens(expr, lookfor: list):
