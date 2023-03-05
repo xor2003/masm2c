@@ -15,7 +15,7 @@ jobs:
       run: |
            sudo dpkg --add-architecture i386
            sudo apt-get update -y
-           sudo apt-get install -y git make gcc gcc-multilib g++-multilib libncurses6-dev:i386 libncurses6:i386
+           sudo apt-get install -y git make gcc gcc-multilib g++-multilib libncurses-dev:i386 libncurses:i386
            
     - name: build
       run: |
