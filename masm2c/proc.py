@@ -22,6 +22,8 @@ import logging
 import re
 from builtins import range, str
 
+from lark import lark
+
 from . import op
 from .Token import Token
 
@@ -162,8 +164,8 @@ class Proc:
         to perform comparison of instruction side effects at run-time with the emulated"""
 
         def expr_is_register(e):
-            return isinstance(e, Token) and isinstance(e.children, Token) and e.children.data in {'register',
-                                                                                            'segmentregister'}
+            return isinstance(e, lark.Tree) and isinstance(e.children, list) and len(e.children) == 1 and \
+                isinstance(e.children[0], lark.Tree) and e.children[0].data in {'register', 'segmentregister'}
 
         def cmd_wo_args(stmt):
             return len(stmt.children) == 0

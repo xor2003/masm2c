@@ -1184,7 +1184,7 @@ class Cpp(Gen, TopDownVisitor):
                  bool {self._context.entry_point}(m2c::_offsets, struct m2c::_STATE* _state){{return {self.label_to_proc[g.name]}(m2c::k{self._context.entry_point}, _state);}}
                 """
 
-            entry_point_text += f"""namespace m2c{{ m2cf* _ENTRY_POINT_ = &{self._context.entry_point};}}
+            entry_point_text += f"""namespace m2c{{ m2cf* _ENTRY_POINT_ = &{self.cpp_mangle_label(self._context.entry_point)};}}
         """
         return entry_point_text
 
@@ -1622,7 +1622,7 @@ struct Memory{
         #    entries[name] = (cpp_mangle_label(name), '0')
 
         names = self.leave_unique_labels(entries.keys())
-        for name in names:
+        for name in sorted(names):
             result += "        case m2c::k%s: \t%s(%s, _state); break;\n" % (name, *entries[name])
 
         result += "        default: m2c::log_error(\"Don't know how to call to 0x%x. See \" __FILE__ \" line %d\\n\", __disp, __LINE__);m2c::stackDump(); abort();\n"

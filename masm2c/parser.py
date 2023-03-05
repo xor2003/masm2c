@@ -631,7 +631,7 @@ class Parser:
 
     def parse_file_lines(self, file_name):
         self._current_file = file_name
-        self.__current_file_hash = hashlib.blake2s(self._current_file.encode('utf8')).hexdigest()
+        self.__current_file_hash = hashlib.blake2s(os.path.basename(self._current_file).encode('utf8')).hexdigest()
         content = read_whole_file(file_name)
         if file_name.lower().endswith('.lst'):  # for .lst provided by IDA move address to comments after ;~
             # we want exact placement so program could work
