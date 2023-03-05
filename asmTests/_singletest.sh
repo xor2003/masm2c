@@ -7,14 +7,14 @@ rm $1.cpp $1.h $1.err $1.log $1.txt $1.asm.log $1.o $1 2>/dev/null || true
 ##./ml /c /Fl $1.asm
 #uasm /c /Fl $1.asm
 if [ -r "$1.asm" ];then
-  name=$1.asm
+  name="$1.asm"
 elif [ -r "$1.lst" ];then
-  name=$1.lst
+  name="$1.lst"
 elif [ -z "$1" ];then
   echo "No such file $1"
   exit 2
 fi
-../masm2c.py -m separate $name 2>&1 | tee $1.txt
+../masm2c.py -m separate "$name" 2>&1 | tee $1.txt
 res=${PIPESTATUS[0]}
 if [ "${res}" -ne 0 ];then
    exit "${res}"
