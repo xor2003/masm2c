@@ -13,9 +13,8 @@ jobs:
     - uses: actions/checkout@v3
     - name: configure
       run: |
-           sudo dpkg --add-architecture i386
            sudo apt-get update -y
-           sudo apt-get install -y git make gcc gcc-multilib g++-multilib libncurses-dev:i386 libncurses:i386
+           sudo apt-get install -y git make gcc gcc-multilib g++-multilib libncurses-dev libncurses
            
     - name: build
       run: |
