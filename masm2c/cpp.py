@@ -1266,7 +1266,6 @@ struct Memory{
         return rc, rh
 
     def produce_c_data_object(self, data: op.Data):
-        raise Exception("Dead code?")
         label, data_ctype, _, r, elements, size = data.getdata()
         # rc = '{' + ",".join([str(i) for i in r]) + '}'
         rc = []
