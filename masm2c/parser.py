@@ -362,8 +362,9 @@ class Parser:
             v = v.replace("\'\'", "'").replace('\"\"', '"')
         return len(v) - 2
 
-    def get_global_value(self, v, size=2):  # TODO it is C++ specific. see convert_label()
+    def get_global_value(self, v, size=0):  # TODO it is C++ specific. see convert_label()
         logging.debug("get_global_value(%s)", v)
+        size = size or 2
         v = self.mangle_label(v)
         if not self.has_global(v):
             return v

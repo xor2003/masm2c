@@ -141,6 +141,7 @@ class Cpp(Gen, TopDownVisitor):
         self.isvariable = False
         self.islabel = False
 
+        self.itisjump = False
         self.is_data = False
 
         self.__type_table = {op.DataType.NUMBER: self.produce_c_data_number,
@@ -253,7 +254,7 @@ class Cpp(Gen, TopDownVisitor):
                         self.body += '\tcs=seg_offset(' + g.segment + ');\n'
             # ?self.__indirection = 1
         elif isinstance(g, op.label):
-            if self.is_data:
+            if self.is_data or not self.itisjump:
                 value = "m2c::k" + g.name.lower()  # .capitalize()
             else:
                 value = name
@@ -1366,6 +1367,7 @@ struct Memory{
         ir2cpp = IR2Cpp(self._context)
         ir2cpp.lea = self.lea
         ir2cpp._indirection = expr.indirection
+        ir2cpp.itisjump = self.itisjump
         result = "".join(ir2cpp.visit(expr))
         self.size_changed = ir2cpp.size_changed
         #self.islabel=False
@@ -1390,11 +1392,16 @@ struct Memory{
 
 
     def render_jump_label(self, expr, def_size: int = 0):
+        self.itisjump = True
         if expr.indirection != IndirectionType.OFFSET:
-            return self.render_instruction_argument(expr, def_size)  # TODO why need something else?
+            result = self.render_instruction_argument(expr, def_size)  # TODO why need something else?
+            self.itisjump = False
+            return result
         if def_size and expr.element_size == 0:
             expr.element_size = def_size
-        return "".join(IR2CppJump(self._context).visit(expr))
+        result = "".join(IR2CppJump(self._context).visit(expr))
+        self.itisjump = False
+        return result
 
     def _jump(self, cmd, label):
         if self.isrelativejump(label):
@@ -1763,7 +1770,8 @@ struct Memory{
 
     def LABEL(self, token):
         if self.is_data:
-            return [self._context.get_global_value(token, size=self.is_data)]
+            size = self.is_data if type(self.is_data) == int else 0
+            return [self._context.get_global_value(token, size=size)]
         return [self.convert_label_(token)]
         # return self._context.get_global_value(token, size=self.element_size)
 
