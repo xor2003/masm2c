@@ -1068,11 +1068,11 @@ class Parser:
         if self.data_merge_candidats == size:
             if self.__segment.getdata()[-size].offset + size - 1 != self.__segment.getdata()[-1].offset:
                 logging.debug(
-                    f'Cannot merge {self.__segment.getdata()[-size].__label} - {self.__segment.getdata()[-1].__label}')
+                    f'Cannot merge {self.__segment.getdata()[-size].label} - {self.__segment.getdata()[-1].label}')
                 self.data_merge_candidats = 0
             else:
                 logging.debug(
-                    f'Merging data at {self.__segment.getdata()[-size].__label} - {self.__segment.getdata()[-1].__label}')
+                    f'Merging data at {self.__segment.getdata()[-size].label} - {self.__segment.getdata()[-1].label}')
                 array = [x.children[0] for x in self.__segment.getdata()[-size:]]
                 if not any(array):  # all zeros
                     array = [0]
