@@ -14,7 +14,7 @@ jobs:
     - name: configure
       run: |
            sudo apt-get update -y
-           sudo apt-get install -y git make gcc gcc-multilib g++-multilib libncurses-dev libncurses
+           sudo apt-get install -y git make gcc gcc-multilib g++-multilib libncurses-dev
            
     - name: build
       run: |
