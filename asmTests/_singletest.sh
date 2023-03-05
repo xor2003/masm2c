@@ -1,5 +1,5 @@
-#!/bin/bash
-set -ex
+#!/bin/sh
+set -x
 if [ -z "$CXX" ];then
   export CXX=g++
 fi
@@ -11,18 +11,32 @@ if [ -r "$1.asm" ];then
 elif [ -r "$1.lst" ];then
   name="$1.lst"
 elif [ -z "$1" ];then
+  exit 0
+else
   echo "No such file $1"
   exit 2
 fi
-../masm2c.py -m separate "$name" 2>&1 | tee $1.txt
-res=${PIPESTATUS[0]}
+
+../masm2c.py -m separate "$name" > "$1.txt" 2>&1
+res=$?
 if [ "${res}" -ne 0 ];then
+   cat "$1.txt"
    exit "${res}"
 fi  
 
-echo "Converting result $?"
-./build.sh $1 2>&1
+./build.sh $1 > "$1.txt" 2>&1
+res=$?
+if [ "${res}" -ne 0 ];then
+   cat "$1.txt" asm.log
+   exit "${res}"
+fi  
 rm asm.log || true
-./$1 2>&1
+
+./$1 > "$1.txt" 2>&1
+res=$?
+if [ "${res}" -ne 0 ];then
+   cat "$1.txt"
+   exit "${res}"
+fi  
 #python ../_masm61.py  $1.asm
 
