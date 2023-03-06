@@ -405,11 +405,14 @@ class Gen:
     @staticmethod
     def isrelativejump(label):
         #result = '$' in str(label)  # skip j* $+2
-        result = isinstance(label, lark.Tree) and \
+        result = (isinstance(label, lark.Tree) and \
         isinstance(label.children[0], lark.Tree) and label.children[0].data == 'adddir' and \
         isinstance(label.children[0].children[0], lark.Tree) and label.children[0].children[0].data == 'ptrdir3' and \
         isinstance(label.children[0].children[0].children[0], lark.Token) and label.children[0].children[0].children[0].type == 'LABEL' and \
-        label.children[0].children[0].children[0].value=='dol'
+        label.children[0].children[0].children[0].value=='dol') or \
+        (isinstance(label, lark.Tree) and \
+         isinstance(label.children[0], lark.Tree) and label.children[0].data == 'adddir' and \
+        isinstance(label.children[0].children[0], lark.Tree) and label.children[0].children[0].data == 'dollar')
         return result
 
     def dump_globals(self):
