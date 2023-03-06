@@ -317,3 +317,6 @@ class ParserTestSimple(unittest.TestCase):
 
     def test_instr_750(self):
         self.assertEqual(*self.doTest('retf 2', 'RETF(2)'))
+
+    def test_instr_755(self):
+        self.assertEqual(*self.doTest('jmp     short $+2', 'R({;})'))

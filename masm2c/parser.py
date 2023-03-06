@@ -1192,6 +1192,8 @@ class Parser:
             if labels and not operation.cmd.startswith('call') and not (
                     self.args.mergeprocs == 'separate' and operation.cmd == 'jmp'):
                 label = labels[0]
+                if label == "dol":
+                    continue
                 target.add(self.mangle_label(label))
 
     def action_ends(self):

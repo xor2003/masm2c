@@ -5,6 +5,7 @@ from collections import OrderedDict
 from copy import copy
 
 import jsonpickle
+from lark import lark
 
 from masm2c import op, proc as proc_module
 from masm2c.Token import Token, Expression
@@ -403,7 +404,12 @@ class Gen:
 
     @staticmethod
     def isrelativejump(label):
-        result = '$' in str(label)  # skip j* $+2
+        #result = '$' in str(label)  # skip j* $+2
+        result = isinstance(label, lark.Tree) and \
+        isinstance(label.children[0], lark.Tree) and label.children[0].data == 'adddir' and \
+        isinstance(label.children[0].children[0], lark.Tree) and label.children[0].children[0].data == 'ptrdir3' and \
+        isinstance(label.children[0].children[0].children[0], lark.Token) and label.children[0].children[0].children[0].type == 'LABEL' and \
+        label.children[0].children[0].children[0].value=='dol'
         return result
 
     def dump_globals(self):
