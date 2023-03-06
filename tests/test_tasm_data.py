@@ -17,6 +17,9 @@ class ParserDataTest(unittest.TestCase):
     def setUp(self):
         self.parser = Parser()
         self.cpp = Cpp(self.parser)
+        self.parser.action_label(far=False, name='noerror', isproc=False)
+        self.parser.action_label(far=False, name=u'exec_adc', isproc=True)
+
 
     def convert_data(self, line=''):
         ir = self.parser.action_data(line=line)
@@ -923,9 +926,14 @@ class ParserDataTest(unittest.TestCase):
     def test_data_15490(self):
         self.assertEqual(self.convert_data(line="dw offset __2stm_module	; 2STM"), ('k__2stm_module, // dummy0_0\n', 'dw dummy0_0;\n', 2))
 
-    @unittest.skip("to check")
     def test_data_15500(self):
-        self.assertEqual(self.convert_data(line="dw offset loc_17BEB"), ('kloc_17beb, // dummy0_0\n', 'dw dummy0_0;\n', 2))
+        self.assertEqual(self.convert_data(line="dw offset noerror"), ('m2c::knoerror, // dummy0_0\n', 'dw dummy0_0;\n', 2))
+
+    def test_data_15501(self):
+        self.assertEqual(self.convert_data(line="dw offset exec_adc"), ('m2c::kexec_adc, // dummy0_0\n', 'dw dummy0_0;\n', 2))
+
+    def test_data_15502(self):
+        self.assertEqual(self.convert_data(line="dw offset exec_adc, offset noerror"), ('{m2c::kexec_adc,m2c::knoerror}, // dummy0_0\n', 'dw dummy0_0[2];\n', 4))
 
     def test_data_15510(self):
         self.assertEqual(self.convert_data(line="e db 5"), ('5, // e\n', 'db e;\n', 1))

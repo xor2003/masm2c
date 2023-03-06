@@ -388,9 +388,10 @@ class Asm2IR(CommonCollector):
                                            line_number=get_line_number(meta))
 
 
-    def segdir(self, nodes, type):
-        logging.debug("segdir " + str(nodes) + " ~~")
-        self.context.action_simplesegment(type, '')  # TODO
+    def segdir(self, nodes: list):
+        segtype = nodes[-1] if nodes else ''
+        logging.debug("segdir %s ~~", nodes)
+        self.context.action_simplesegment(segtype.lower(), None)  # TODO
         self._expression = None
         return nodes
 
@@ -567,6 +568,8 @@ class Asm2IR(CommonCollector):
         self.expression.indirection = IndirectionType.OFFSET
         #self.expression.mods.add('offset')
         self.expression.element_size = 2
+        if isinstance(nodes[0], lark.Token):  # for labels, not for memberdir
+            nodes = [str(nodes[0])]
         return lark.Tree('offsetdir', nodes)
 
     '''

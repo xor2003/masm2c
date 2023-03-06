@@ -686,12 +686,12 @@ class Cpp(Gen, TopDownVisitor):
 
     def _mul(self, src):
         size = 0
+        res = [self.render_instruction_argument(i, size) for i in src]
         for i in src:
             if size == 0:
                 size = self.calculate_size(i)
             else:
                 break
-        res = [self.render_instruction_argument(i, size) for i in src]
         if size == 0:
             size = self._middle_size
         return "MUL%d_%d(%s)" % (len(src), size, ",".join(res))
@@ -1236,8 +1236,8 @@ struct Memory{
             if isinstance(v, op.Data):
                 c = self.produce_c_data_single_(v)[0]
                 rc += c
-            # elif isinstance(v, (lark.Token, lark.Tree)):
-            #    rc += "".join(flatten(self.visit(v)))
+            elif isinstance(v, lark.Tree):
+                rc += "".join(self.visit(v))
             elif isinstance(v, list):
                 # print(v)
                 l = [str(i) for i in v]
@@ -1525,20 +1525,18 @@ struct Memory{
             g = self._context.get_global(name)
         except Exception:
             # logging.warning("expand_cb() global '%s' is missing" % name)
-            return name
+            return [name]
         if isinstance(g, op.var):
             logging.debug("it is var %s", g.size)
             if self.element_size == 2:
-                return "offset(%s,%s)" % (g.segment, g.name)
+                return ["offset(%s,%s)" % (g.segment, g.name)]
             elif self.element_size == 4:
-                return "far_offset(%s,%s)" % (g.segment, g.name)
+                return ["far_offset(%s,%s)" % (g.segment, g.name)]
             else:
                 raise ValueError("Unknown offset size %s", self.element_size)
-        elif isinstance(g, proc_module.Proc):
+        elif isinstance(g, (proc_module.Proc, op.label)):
             logging.debug("it is proc")
-            return "m2c::k" + g.name.lower()  # .capitalize()
-        elif isinstance(g, op.label):
-            return "m2c::k" + g.name.lower()  # .capitalize()
+            return ["m2c::k" + g.name]  # .capitalize()
         else:
             raise ValueError("Unknown type for offsetdir %s", type(g))
 

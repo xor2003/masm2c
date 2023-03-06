@@ -98,7 +98,11 @@ class ExprSizeCalculator(BottomUpVisitor):
         context = self.kwargs['context']
         if context.has_global(token):
             g = context.get_global(token)
-            if isinstance(g, (op._assignment, op._equ)):
+            if isinstance(g, op.var):
+                if self.element_size < 1:
+                    self.element_size = g.size
+                return Vector(self.element_size, 1)
+            elif isinstance(g, (op._assignment, op._equ)):
                 self.element_size = g.value.size()
                 return Vector(self.element_size, 1)
 
@@ -702,7 +706,7 @@ class Parser:
         if name is None:
             name = ""
         else:
-            type = type + "_"
+            type += "_"
         type = type[1:] + name
         self.create_segment(type)
 
