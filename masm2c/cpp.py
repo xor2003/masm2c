@@ -162,32 +162,7 @@ class Cpp(Gen, TopDownVisitor):
             # logging.warning("expand_cb() global '%s' is missing" % name)
             return name
         self.islabel = True
-        if isinstance(g, op._equ):
-            logging.debug("it is equ")
-            #if not g.implemented:
-            #    raise InjectCode(g)
-            value = g.original_name
-            #self.element_size = g.size
-            logging.debug("equ: %s -> %s", name, value)
-        elif isinstance(g, op._assignment):
-            logging.debug("it is assignment")
-            #if not g.implemented:
-            #    raise InjectCode(g)
-            value = g.original_name
-            #self.element_size = g.size
-            logging.debug("assignment %s = %s", name, value)
-        elif isinstance(g, proc_module.Proc):
-            logging.debug("it is proc")
-            value = g.name  # For jump/call   TODO below check if it was needed
-            '''
-            if self._indirection != IndirectionType.OFFSET:
-                logging.error("Invalid proc label usage proc %s offset %s", g.name, g.offset)
-                value = "m2c::k" + g.name.lower()  # .capitalize()
-            else:
-                value = str(g.offset)
-                self._indirection = IndirectionType.VALUE
-            '''
-        elif isinstance(g, op.var):
+        if isinstance(g, op.var):
             logging.debug("it is var %s", g.size)
             self.variable_size = source_var_size = g.size
             if source_var_size:
@@ -212,6 +187,8 @@ class Cpp(Gen, TopDownVisitor):
                     value = g.name
                     self._indirection = IndirectionType.VALUE
                 else:
+                    if not self._isjustlabel and not self.lea and self._indirection == IndirectionType.VALUE:
+                        self._indirection = IndirectionType.POINTER
                     if self._indirection == IndirectionType.POINTER:  # and self.isvariable:
                         value = g.name
                         if not self._isjustlabel:  # if not just single label: [a+3] address arithmetics
@@ -235,6 +212,23 @@ class Cpp(Gen, TopDownVisitor):
                     if self._work_segment == 'cs':
                         self.body += '\tcs=seg_offset(' + g.segment + ');\n'
             # ?self.__indirection = 1
+        elif isinstance(g, op._equ):
+            logging.debug("it is equ")
+            #if not g.implemented:
+            #    raise InjectCode(g)
+            value = g.original_name
+            #self.element_size = g.size
+            logging.debug("equ: %s -> %s", name, value)
+        elif isinstance(g, op._assignment):
+            logging.debug("it is assignment")
+            #if not g.implemented:
+            #    raise InjectCode(g)
+            value = g.original_name
+            #self.element_size = g.size
+            logging.debug("assignment %s = %s", name, value)
+        elif isinstance(g, proc_module.Proc):
+            logging.debug("it is proc")
+            value = g.name  # For jump/call   TODO below check if it was needed
         elif isinstance(g, op.label):
             if self.is_data or not self.itisjump:
                 value = "m2c::k" + g.name.lower()  # .capitalize()

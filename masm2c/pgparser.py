@@ -470,6 +470,7 @@ class Asm2IR(CommonCollector):
         logging.debug("procdir " + str(nodes) + " ~~")
         self.context.action_proc(name, type, line_number=get_line_number(meta),
                                  raw=get_raw_line(self.input_str, meta))
+        self._expression = None
         return nodes
 
     def endpdir(self, nodes):

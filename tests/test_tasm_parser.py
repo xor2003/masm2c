@@ -2950,6 +2950,9 @@ h_array db '^',10,10
     def test_instr_10155(self):
         self.assertEqual(*self.doTest('mul     test_bcd_ofs', 'MUL1_2(test_bcd_ofs)'))
 
+    def test_instr_10157(self):
+        self.assertEqual(*self.doTest('mov     bx, test_bcd_ofs+1', 'bx = *(dw*)(((db*)&test_bcd_ofs)+1);'))
+
     def test_instr_10160(self):
         self.assertEqual(*self.doTest('scasb', 'SCASB'))
 

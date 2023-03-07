@@ -256,8 +256,7 @@ class Proc:
         return True
 
     def is_flow_terminating_stmt(self, stmt):
-        from masm2c.cpp import Cpp
-        return (stmt.cmd.startswith('jmp') and not Cpp.isrelativejump(stmt.raw_line)) \
+        return (stmt.cmd.startswith('jmp') and "$" not in stmt.raw_line) \
                or stmt.cmd.startswith('ret') or stmt.cmd == 'iret'
 
     def is_return_point(self, stmt):
