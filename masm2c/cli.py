@@ -64,7 +64,7 @@ def parse_args(args):
         "-v",
         "--version",
         action="version",
-        version="{ver}".format(ver=__version__),
+        version=f"{__version__}",
     )
     aparser.add_argument(
         "-d",

@@ -25,7 +25,6 @@ import logging
 import os
 import re
 import sys
-from builtins import str
 from collections import OrderedDict
 from copy import deepcopy
 
@@ -140,7 +139,7 @@ def read_whole_file(file_name):
     :return: The content of the file.
     """
     logging.info("     Reading file %s...", file_name)
-    with open(file_name, 'rt', encoding="cp437") as file:
+    with open(file_name, encoding="cp437") as file:
         content = file.read()
     return content
 

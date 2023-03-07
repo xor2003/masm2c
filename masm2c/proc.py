@@ -20,7 +20,6 @@
 #
 import logging
 import re
-from builtins import range, str
 
 from lark import lark
 
@@ -157,7 +156,7 @@ class Proc:
         return o
 
     def __str__(self):
-        return "\n".join((i.__str__() for i in self.stmts))
+        return "\n".join(i.__str__() for i in self.stmts)
 
     def set_instruction_compare_subclass(self, stmt, full_command, itislst):
         """Sets libdosbox's emulator the instruction subclass

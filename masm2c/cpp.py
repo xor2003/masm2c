@@ -21,7 +21,6 @@
 import logging
 import os
 import re
-from builtins import hex, range, str
 from collections import OrderedDict
 
 from lark import lark
@@ -822,8 +821,8 @@ class Cpp(Gen, TopDownVisitor):
 
         logging.info(f' *** Generating output files in C++ {cpp_fname} {header_fname}')
 
-        cpp_file = open(cpp_fname, "wt", encoding=self.__codeset)
-        hpp_file = open(header_fname, "wt", encoding=self.__codeset)
+        cpp_file = open(cpp_fname, "w", encoding=self.__codeset)
+        hpp_file = open(header_fname, "w", encoding=self.__codeset)
 
         cpp_file.write(f"""{banner}
         #include \"{header_fname}\"
@@ -897,7 +896,7 @@ class Cpp(Gen, TopDownVisitor):
 
                 cpp_segment_fname = f"{self._namespace.lower()}_{segment}.cpp"
                 logging.info(f' *** Generating output file in C++ {cpp_segment_fname}')
-                cpp_segment_file = open(cpp_segment_fname, "wt", encoding=self.__codeset)
+                cpp_segment_file = open(cpp_segment_fname, "w", encoding=self.__codeset)
                 cpp_segment_file.write(f'''{banner}
 #include "{header_fname}"
 
@@ -954,7 +953,7 @@ class Cpp(Gen, TopDownVisitor):
         _, data_h, data_cpp_reference, _ = self.render_data_c(segments)
         fname = "_data.cpp"
         header = "_data.h"
-        with open(fname, "wt", encoding=self.__codeset) as fd:
+        with open(fname, "w", encoding=self.__codeset) as fd:
             fd.write(f'''#include "_data.h"
 namespace m2c{{
 
@@ -969,7 +968,7 @@ db(& heap)[HEAP_SIZE]=m.heap;
 
 ''')
 
-        with open(header, "wt", encoding=self.__codeset) as hd:
+        with open(header, "w", encoding=self.__codeset) as hd:
             hd.write('''
 #ifndef ___DATA_H__
 #define ___DATA_H__
@@ -1285,7 +1284,7 @@ struct Memory{
             elif c == 0:
                 vvv = r"\0"
             elif c < 32:
-                vvv = "\\x{:02x}".format(c)
+                vvv = f"\\x{c:02x}"
             else:
                 vvv = chr(c)
         elif isinstance(c, str):

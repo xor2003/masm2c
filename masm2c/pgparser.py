@@ -4,7 +4,7 @@ import re
 import sys
 from collections import OrderedDict
 from copy import deepcopy, copy
-from typing import Iterator
+from collections.abc import Iterator
 
 from lark import Transformer, Lark, v_args, Discard, Tree, lark
 
@@ -648,7 +648,7 @@ class LarkParser:
 
             file_name = os.path.dirname(os.path.realpath(__file__)) + "/_masm61.lark"
             debug = True
-            with open(file_name, 'rt') as gr:
+            with open(file_name) as gr:
                 cls._inst.or_parser = Lark(gr, parser='lalr', propagate_positions=True, cache=True, debug=debug,
                                            postlex=MatchTag(context=kwargs['context']), start=['start', 'insegdirlist',
                                                                                                'instruction', 'expr',
