@@ -24,15 +24,15 @@ import re
 from builtins import hex, range, str
 from collections import OrderedDict
 
-from lark import Tree, lark
+from lark import lark
 
 from . import op
 from . import proc as proc_module
 from .Token import Token, Expression
-from .enum import IndirectionType
+from .enumeration import IndirectionType
 from .gen import Gen, mangle_asm_labels, InjectCode
 from .parser import ExprSizeCalculator, Vector
-from .pgparser import OFFSETDIR, LABEL, PTRDIR, REGISTER, SEGMENTREGISTER, SEGOVERRIDE, SQEXPR, INTEGER, MEMBERDIR, \
+from .pgparser import LABEL, REGISTER, SQEXPR, MEMBERDIR, \
     TopDownVisitor, Asm2IR
 
 

@@ -18,7 +18,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #
-from typing import Callable
 
 import lark
 from lark import Tree
@@ -101,7 +100,7 @@ class Expression(lark.Tree):
         if len(args) == 0:
             args = "expr", []
         super().__init__(*args, **kwargs)
-        from masm2c.enum import IndirectionType
+        from masm2c.enumeration import IndirectionType
         #kwargs['children'] = kwargs.get('children', [])
         self.data = "expr"
         #self.children = []
@@ -118,7 +117,7 @@ class Expression(lark.Tree):
         #self.source = traceback.format_stack()
 
     def size(self):
-        from masm2c.enum import IndirectionType
+        from masm2c.enumeration import IndirectionType
         if self.indirection == IndirectionType.POINTER:
             return self.ptr_size
         #elif self.indirection == IndirectionType.OFFSET:

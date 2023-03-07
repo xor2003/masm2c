@@ -1,5 +1,4 @@
 import logging
-import logging
 import os
 import re
 import sys
@@ -12,7 +11,7 @@ from lark import Transformer, Lark, v_args, Discard, Tree, lark
 from . import op
 from .Macro import Macro
 from .Token import Token, Expression
-from .enum import IndirectionType
+from .enumeration import IndirectionType
 
 macroses = OrderedDict()
 macronamere = re.compile(r'([A-Za-z_@$?][A-Za-z0-9_@$?]*)')

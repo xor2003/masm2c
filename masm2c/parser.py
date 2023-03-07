@@ -25,7 +25,7 @@ import logging
 import os
 import re
 import sys
-from builtins import range, str
+from builtins import str
 from collections import OrderedDict
 from copy import deepcopy
 
@@ -622,7 +622,7 @@ class Parser:
         return []
 
     def action_equ(self, label="", value="", raw='', line_number=0):
-        from .enum import IndirectionType
+        from .enumeration import IndirectionType
         label = self.mangle_label(label)
         #value = Token.remove_tokens(value, ['expr'])
         size = value.size() if isinstance(value, Expression) else 0
