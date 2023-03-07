@@ -33,7 +33,7 @@ PTRDIR = 'ptrdir'
 
 class Proc:
     last_addr = 0xc000
-    elements = 1  # how many
+    #elements = 1  # how many
 
     def __init__(self, name: str, far: bool = False, line_number: int = 0, extern: bool = False, offset=0,
                  real_offset=0,

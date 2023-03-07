@@ -217,7 +217,7 @@ class Parser:
 
         # self.__label_to_skip = skip_binary_data
         self.__offset_id = 0x1111
-        self.__stack = []
+        #self.__stack = []
         self.entry_point = "mainproc_begin"
         self.main_file = False
         self.__proc_stack = []
