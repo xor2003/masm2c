@@ -80,7 +80,7 @@ class SeparateProcStrategy:
             result += "bool %s(m2c::_offsets, struct m2c::_STATE*);\n" % self.renderer.cpp_mangle_label(p)
 
         for i in sorted(context.externals_procs):
-            v = context.get_globals()[i]
+            v = context.get_global(i)
             if v.used:
                 result += f"extern bool {v.name}(m2c::_offsets, struct m2c::_STATE*);\n"
 
@@ -91,18 +91,17 @@ bool __dispatch_call(m2c::_offsets __disp, struct m2c::_STATE* _state);
 
 
 class Cpp(Gen, TopDownVisitor):
-    ''' Visitor which can produce C++ equivalents for asm instructions '''
+    """Visitor which can produce C++ equivalents for asm instructions"""
 
     def __init__(self, context=None, outfile="", skip_output=None,
                  merge_data_segments=True):
         # proc_strategy = SingleProcStrategy()):
-        '''
+        """
 
         :param context: pointer to Parser data
         :param outfile: Output filename
         :param skip_output: List of functions to skip at output
-        :param proc_strategy: Strategy to Single/Separate functions
-        '''
+        """
         super().__init__(context, outfile=outfile, skip_output=skip_output, merge_data_segments=merge_data_segments)
         self.proc_strategy = SeparateProcStrategy(self)
         self.renderer = self
@@ -155,9 +154,7 @@ class Cpp(Gen, TopDownVisitor):
 
     def convert_label_(self, name_original):
         name = name_original
-        try:
-            g = self._context.get_global(name)
-        except Exception:
+        if (g := self._context.get_global(name)) is None:
             # logging.warning("expand_cb() global '%s' is missing" % name)
             return name
         self.islabel = True
@@ -350,11 +347,7 @@ class Cpp(Gen, TopDownVisitor):
         value = ".".join(label)
 
         if self._indirection == IndirectionType.OFFSET:
-            try:
-                g = self._context.get_global(label[0])
-            except:
-                pass
-            else:
+            if g := self._context.get_global(label[0]):
                 if isinstance(g, op.var):
                     value = f'offset({g.segment},{".".join(label)})'
                 elif isinstance(g, op.Struct):
@@ -366,9 +359,7 @@ class Cpp(Gen, TopDownVisitor):
                 self._indirection = IndirectionType.VALUE
                 return value # Token('memberdir', value)
 
-        try:
-            g = self._context.get_global(label[0])
-        except KeyError:
+        if (g := self._context.get_global(label[0])) is None:
             logging.error("global '%s' is missing", label)
             return ".".join(label)
 
@@ -513,8 +504,7 @@ class Cpp(Gen, TopDownVisitor):
         elif 'near' in expr.mods:
             far = False
 
-        hasglobal = self._context.has_global(name) if isinstance(name, str) else False
-        if not hasglobal or isinstance(self._context.get_global(name), op.var):
+        if isinstance(name, str) and ((g := self._context.get_global(name)) is None or isinstance(g, op.var)):
             # jumps feat purpose:
             # * in sub __dispatch_call - for address based jumps or grouped subs
             # * direct jumps
@@ -544,13 +534,8 @@ class Cpp(Gen, TopDownVisitor):
         '''
         logging.debug("jump_to_label(%s)", name)
 
-        indirection = -5
-
-        hasglobal = False
         far = False
-        if isinstance(name, str) and self._context.has_global(name):
-            hasglobal = True
-            g = self._context.get_global(name)
+        if isinstance(name, str) and (g := self._context.get_global(name)):
             if isinstance(g, proc_module.Proc):
                 far = g.far
 
@@ -589,10 +574,8 @@ class Cpp(Gen, TopDownVisitor):
             far = False
 
         disp = '0'
-        hasglobal = self._context.has_global(dst) if isinstance(dst, str) else None
-        if hasglobal:
-            g = self._context.get_global(dst)
-            if isinstance(g, op.label) and not g.isproc and not dst in self._procs and not dst in self.grouped:
+        if isinstance(dst, str) and (g := self._context.get_global(dst)):
+            if isinstance(g, op.label) and not g.isproc and dst not in self._procs and dst not in self.grouped:
                 # far = g.far  # make far calls to far procs
                 disp = f"m2c::k{dst}"
                 dst = self.label_to_proc[g.name]
@@ -655,12 +638,10 @@ class Cpp(Gen, TopDownVisitor):
             if src_size == 0:
                 logging.debug("parse2: %s %s both sizes are 0", dst, src)
                 # raise Exception("both sizes are 0")
-            size = src_size
             dst_size = src_size
             # dst.element_size = dst_size
         if src_size == 0:
             src_size = dst_size
-            size = dst_size
             # src.element_size = src_size
 
         if src.indirection == IndirectionType.POINTER and src.element_size == 0 and dst_size and not src.ptr_size:
@@ -997,7 +978,7 @@ static const dd kbegin = 0x1001;
     def produce_structures(self, strucs):
         structures = "\n"
         if len(strucs):
-            structures += f"""#pragma pack(push, 1)"""
+            structures += """#pragma pack(push, 1)"""
         for name, v in strucs.items():
             type = 'struct' if v.gettype() == op.Struct.Type.STRUCT else 'union'
             structures += f"""
@@ -1008,7 +989,7 @@ static const dd kbegin = 0x1001;
             structures += """};
 """
         if len(strucs):
-            structures += f"""
+            structures += """
 #pragma pack(pop)
 
 """
@@ -1037,7 +1018,7 @@ struct Memory{
     def produce_externals(self, context):
         data = '\n'
         for i in context.externals_vars:
-            v = context.get_globals()[i]
+            v = context.get_global(i)
             if v.used:
                 data += f"extern {v.original_type} {v.name};\n"
         return data
@@ -1150,8 +1131,7 @@ struct Memory{
         if self._context.args.mergeprocs == 'separate' and cmd.upper() == 'JMP':
             if label == '__dispatch_call':
                 return "return __dispatch_call(__disp, _state);"
-            if self._context.has_global(label):
-                g = self._context.get_global(label)
+            if g := self._context.get_global(label):
                 target_proc_name = None
                 if isinstance(g, op.label) and g.name in self.label_to_proc:
                     target_proc_name = self.label_to_proc[g.name]
@@ -1183,7 +1163,6 @@ struct Memory{
             src = asm2ir.transform(src)
 
         src.indirection = IndirectionType.VALUE
-        o = src
         self._cmdlabel += "#undef %s\n#define %s %s\n" % (dst, dst, self.render_instruction_argument(src))
         return ''
 
@@ -1289,7 +1268,6 @@ struct Memory{
                 vvv = chr(c)
         elif isinstance(c, str):
             # logging.debug "~~ " + r[i] + str(ord(r[i]))
-            res = ''
             # string = c
             # for c in string:
 
@@ -1365,7 +1343,7 @@ struct Memory{
         """
         It takes a list of labels and produces a C++ switch statement that jumps to the corresponding label
 
-        :param labels: a list of labels that we want to jump to
+        :param offsets: a list of labels that we want to jump to
         :return: The result of the function.
         """
         # Produce jump table
@@ -1434,10 +1412,10 @@ struct Memory{
         origexpr = tree.children[0]
         while isinstance(origexpr, list) and origexpr:
             origexpr = origexpr[0]
-        self._isjustlabel = single and ((isinstance(origexpr, lark.Token) and origexpr.type == LABEL) \
-                                        or (isinstance(origexpr, lark.Token) and origexpr.type == SQEXPR \
+        self._isjustlabel = single and ((isinstance(origexpr, lark.Token) and origexpr.type == LABEL)
+                                        or (isinstance(origexpr, lark.Token) and origexpr.type == SQEXPR
                                             and isinstance(origexpr.children,
-                                                           lark.Token) and origexpr.children.type == LABEL) \
+                                                           lark.Token) and origexpr.children.type == LABEL)
                                         or (isinstance(origexpr, lark.Tree) and origexpr.data == MEMBERDIR))
         self._isjustmember = single and isinstance(origexpr, lark.Tree) and origexpr.data == MEMBERDIR
 
@@ -1498,9 +1476,7 @@ struct Memory{
 
         if isinstance(name, lark.Tree) and name.data=='memberdir':
             label = name.children
-            try:
-                g = self._context.get_global(label[0])
-            except Exception:
+            if (g := self._context.get_global(label[0])) is None:
                 return label
 
             if isinstance(g, op.var):
@@ -1514,9 +1490,7 @@ struct Memory{
             self._indirection = IndirectionType.VALUE
             return [lark.Token('memberdir', value)]
 
-        try:
-            g = self._context.get_global(name)
-        except Exception:
+        if (g := self._context.get_global(name)) is None:
             # logging.warning("expand_cb() global '%s' is missing" % name)
             return [name]
         if isinstance(g, op.var):
@@ -1570,8 +1544,7 @@ class IR2CppJump(IR2Cpp):
         return super().expr(tree)
 
     def LABEL(self, token):
-        if self._context.has_global(token):
-            g = self._context.get_global(token)
+        if g := self._context.get_global(token):
             if isinstance(g, op.var):
                 self._indirection = IndirectionType.POINTER  # []
             elif isinstance(g, (op.label, proc_module.Proc)):

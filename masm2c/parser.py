@@ -95,8 +95,7 @@ class ExprSizeCalculator(BottomUpVisitor):
 
     def LABEL(self, token):  # TODO very strange, to replace
         context = self.kwargs['context']
-        if context.has_global(token):
-            g = context.get_global(token)
+        if g := context.get_global(token):
             if isinstance(g, op.var):
                 if self.element_size < 1:
                     self.element_size = g.size
@@ -116,7 +115,8 @@ class ExprSizeCalculator(BottomUpVisitor):
 
         try:
             for member in label[1:]:
-                g = context.get_global(type)
+                if (g := context.get_global(type)) is None:
+                    raise KeyError(type)
                 if isinstance(g, op.Struct):
                     g = g.getitem(member)
                     type = g.data
@@ -292,13 +292,12 @@ class Parser:
 
     def get_global(self, name):
         name = name.lower()
-        logging.debug(f"get_global({name})")
-        try:
-            g = self.__globals[name]
-            logging.debug(type(g))
-        except KeyError:
-            logging.debug(f"get_global KeyError {name}")
-            raise
+        logging.debug("get_global(%s)",name)
+        g = self.__globals.get(name)
+        logging.debug("%s", type(g))
+        if g is None:
+            logging.debug("get_global KeyError %s", name)
+            return None
         g.used = True
         # assert self.__globals[name].used
         return g
@@ -306,11 +305,12 @@ class Parser:
     def get_globals(self):
         return self.__globals
 
+    '''
     def has_global(self, name):
         name = name.lower()
         return name in self.__globals
 
-    '''
+    
     def set_offset(self, name, value):
         if len(name) == 0:
             raise NameError("empty name is not allowed")
@@ -371,9 +371,8 @@ class Parser:
         logging.debug("get_global_value(%s)", v)
         size = size or 2
         v = self.mangle_label(v)
-        if not self.has_global(v):
+        if (g := self.get_global(v)) is None:
             return v
-        g = self.get_global(v)
         #logging.debug(g)
         if isinstance(g, (op._equ, op._assignment)):
             v = g.original_name
@@ -1030,7 +1029,7 @@ class Parser:
             logging.error("Type is not a string TODO " + str(value))
             return 0
         value = value.lower()
-        if value in self.structures.keys() and self.structures[value] != True:
+        if value in self.structures.keys() and self.structures[value] is not True:
             return self.structures[value].getsize()
         try:
             size = {'db': 1, 'byte': 1, 'sbyte': 1,

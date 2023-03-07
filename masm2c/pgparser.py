@@ -401,8 +401,7 @@ class Asm2IR(CommonCollector):
 
         logging.debug('name = %s', self.name)
         l = lark.Token(type='LABEL', value=value)
-        if self.context.has_global(self.name):
-            g = self.context.get_global(self.name)
+        if g := self.context.get_global(self.name):
             from masm2c.proc import Proc
             if isinstance(g, (op._equ, op._assignment)):
                 #if not isinstance(g.value, Expression):
@@ -433,7 +432,6 @@ class Asm2IR(CommonCollector):
         logging.debug("segmentdir " + str(nodes) + " ~~")
 
         name = self.name = self.context.mangle_label(nodes[0])
-        options = nodes
         opts = set()
         segclass = None
         '''

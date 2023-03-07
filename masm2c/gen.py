@@ -45,7 +45,8 @@ class Gen:
 
         try:
             for member in label[1:]:
-                g = self._context.get_global(type)
+                if (g := self._context.get_global(type)) is None:
+                    raise KeyError(type)
                 if isinstance(g, op.Struct):
                     g = g.getitem(member)
                     type = g.data
@@ -356,8 +357,8 @@ class Gen:
             skip = def_skip
             self.__pushpop_count = 0
             self.temps_max = 0
-            if self._context.has_global(name):
-                self.proc = self._context.get_global(name)
+            if g := self._context.get_global(name):
+                self.proc = g
             else:
                 logging.debug("No procedure named %s, trying label", name)
                 off, src_proc, skip = self._context.get_offset(name)
@@ -371,11 +372,7 @@ class Gen:
             self.body = ""
 
             entry_point = ''
-            try:
-                g = self._context.get_global(self._context.entry_point)
-            except:
-                g = None
-            if g and isinstance(g, op.label) and self.label_to_proc[g.name] == self.proc:
+            if g := self._context.get_global(self._context.entry_point) and isinstance(g, op.label) and self.label_to_proc[g.name] == self.proc:
                 entry_point = self._context.entry_point
             self.body += self.proc_strategy.function_header(name, entry_point)
 
@@ -420,21 +417,21 @@ class Gen:
 
         jsonpickle.set_encoder_options('json', indent=2)
         with open(name, 'w') as lst:
-            lst.write(f'Segment:\n')
+            lst.write('Segment:\n')
             for v in self._context.segments:
                 lst.write(f'{v}\n')
 
-            lst.write(f'\nLabels:\n')
+            lst.write('\nLabels:\n')
             for k, v in self._context.get_globals().items():
                 if isinstance(v, op.label):
                     lst.write(f'{v.name}\n')
 
-            lst.write(f'\nProcs:\n')
+            lst.write('\nProcs:\n')
             for k, v in self._context.get_globals().items():
                 if isinstance(v, proc_module.Proc):
                     lst.write(f'{v.name} {v.offset}\n')
 
-            lst.write(f'\nVars:\n')
+            lst.write('\nVars:\n')
             for k, v in self._context.get_globals().items():
                 if isinstance(v, op.var):
                     lst.write(f'{v.name} {v.offset}\n')
