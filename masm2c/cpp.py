@@ -115,10 +115,10 @@ class Cpp(Gen, TopDownVisitor):
         # self._isjustlabel = False
         # self.__work_segment = 'ds'
         #
-        self.__proc_queue = []
+        #self.__proc_queue = []
         self.__proc_done = []
         self.__failed = []
-        self.__skip_output = skip_output
+        #self.__skip_output = skip_output
         # self.__translated = []
         self._proc_addr = []
         self.__used_data_offsets = set()
@@ -980,9 +980,9 @@ static const dd kbegin = 0x1001;
         if len(strucs):
             structures += """#pragma pack(push, 1)"""
         for name, v in strucs.items():
-            type = 'struct' if v.gettype() == op.Struct.Type.STRUCT else 'union'
+            struc_type = 'struct' if v.gettype() == op.Struct.Type.STRUCT else 'union'
             structures += f"""
-{type} {name} {{
+{struc_type} {name} {{
 """
             for member in v.getdata().values():
                 structures += f"  {member.data_type} {member.label};\n"
@@ -1408,10 +1408,10 @@ struct Memory{
     def expr(self, tree):
         self._indirection = tree.indirection
 
-        single = len(tree.children) == 1
         origexpr = tree.children[0]
         while isinstance(origexpr, list) and origexpr:
             origexpr = origexpr[0]
+        single = len(tree.children) == 1
         self._isjustlabel = single and ((isinstance(origexpr, lark.Token) and origexpr.type == LABEL)
                                         or (isinstance(origexpr, lark.Token) and origexpr.type == SQEXPR
                                             and isinstance(origexpr.children,
