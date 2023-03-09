@@ -1483,7 +1483,7 @@ struct Memory{
         #    entries[name] = (cpp_mangle_label(name), '0')
 
         names = self.leave_unique_labels(entries.keys())
-        for name in names:
+        for name in sorted(names):
             result += "        case m2c::k%s: \t%s(%s, _state); break;\n" % (name, *entries[name])
 
         result += "        default: m2c::log_error(\"Don't know how to call to 0x%x. See \" __FILE__ \" line %d\\n\", __disp, __LINE__);m2c::stackDump(); abort();\n"

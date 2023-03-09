@@ -558,7 +558,7 @@ class Gen:
         for k in labels:
             k = re.sub(r'\W', '_', k)
             offsets.append((k.lower(), self.renderer.cpp_mangle_label(k)))
-        offsets = sorted(offsets, key=lambda t: t[1])
+        offsets = sorted(offsets, key=lambda t: t[1:])
         return offsets
 
     def convert_asm_number_into_c(self, expr, radix=10):
