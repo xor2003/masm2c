@@ -39,6 +39,8 @@ class ParserInstructionsTest(unittest.TestCase):
 
         self.__class__.parser.action_assign_test(label='B', value=u'word ptr ds:1')
         self.__class__.parser.action_assign_test(label='DDD', value=u'singlebyte2')
+        self.__class__.parser.action_assign_test(label='arg_2', value=u'word ptr 6')
+        self.__class__.parser.action_assign_test(label='arg_4', value=u'dword ptr 6')
         self.__class__.parser.action_assign_test(label='argc', value=u'8')
         self.__class__.parser.action_assign_test(label='argv', value=u'0Ch')
         self.__class__.parser.action_assign_test(label='eax_0', value=u'eax')
@@ -3009,6 +3011,19 @@ h_array db '^',10,10
     def test_instr_11880(self):
         self.assertEqual(self.proc.generate_full_cmd_line(self.cpp, self.parser.action_data(
             'var_104_rc equ TRANSSHAPESTRUC ptr -260')), u'#define var_104_rc -260\n')
+
+    def test_instr_10910(self):
+        self.assertEqual(
+            *self.doTest('call    near ptr loc_40458f+1', 'CALL(sub_1c61b,m2c::kloc_404590)'))
+
+    def test_instr_10920(self):
+        self.assertEqual(
+            *self.doTest('push    [bp+arg_2]', 'PUSH(*(dw*)(raddr(ss,bp+arg_2)))'))
+
+    def test_instr_10930(self):
+        self.assertEqual(
+            *self.doTest('les     di, [bp+arg_4]', 'LES(di, *(dd*)(raddr(ss,bp+arg_4)))'))
+
 
     #def test_instr_12030(self):
     #    print(*self.doTest("cmp h_array, 'v'",  u"CMP(*(h_array), 'v')"))
