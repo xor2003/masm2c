@@ -3017,13 +3017,13 @@ h_array db '^',10,10
             *self.doTest('call    near ptr loc_40458f+1', 'CALL(sub_1c61b,m2c::kloc_404590)'))
 
     def test_instr_10920(self):
-        self.assertEqual(
-            *self.doTest('push    [bp+arg_2]', 'PUSH(*(dw*)(raddr(ss,bp+arg_2)))'))
+        self.assertEqual(*self.doTest('push    [bp+arg_2]', 'PUSH(*(dw*)(raddr(ss,bp+arg_2)))'))
 
     def test_instr_10930(self):
-        self.assertEqual(
-            *self.doTest('les     di, [bp+arg_4]', 'LES(di, *(dd*)(raddr(ss,bp+arg_4)))'))
+        self.assertEqual(*self.doTest('les     di, [bp+arg_4]', 'LES(di, *(dd*)(raddr(ss,bp+arg_4)))'))
 
+    def test_instr_10940(self):
+        self.assertEqual(self.proc.generate_full_cmd_line(self.cpp, self.parser.action_code('mov ss,ax')),'S(ss = ax;);')
 
     #def test_instr_12030(self):
     #    print(*self.doTest("cmp h_array, 'v'",  u"CMP(*(h_array), 'v')"))

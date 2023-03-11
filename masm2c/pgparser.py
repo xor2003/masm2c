@@ -408,7 +408,11 @@ class Asm2IR(CommonCollector):
                 #    g.value = Asm2IR(self.context, g.raw_line).transform(g.value)
                 #    self.context.reset_global(self.name, g) #??
                 if isinstance(g.value, Expression):
-                    self.expression.element_size = g.size = g.value.size()
+                    g.size = g.value.size()
+                    if len(g.children) == 2 and g.children[1].indirection == IndirectionType.POINTER:
+                        self.expression.ptr_size = g.size 
+                    else:
+                        self.expression.element_size = g.size
             elif isinstance(g, (op.label, Proc)):
                 pass
                 #self.expression.indirection = IndirectionType.OFFSET  # direct using number
