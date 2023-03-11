@@ -179,8 +179,9 @@ class Proc:
 
         def expr_is_mov_ss(e):
             return e.cmd == 'mov' and \
-                   isinstance(e.children[0], Token) and isinstance(e.children[0].children, Token) and e.children[0].children.data == 'segmentregister' and \
-                   e.children[0].children.children == 'ss'
+                   isinstance(e.children[0], lark.Tree) and isinstance(e.children[0].children[0], lark.Tree) and \
+                e.children[0].children[0].data == 'segmentregister' and \
+                   e.children[0].children[0].children[0] == 'ss'
 
         if self.is_flow_change_stmt(stmt) and not stmt.syntetic:
             trace_mode = 'J'  # check for proper jump

@@ -3023,7 +3023,9 @@ h_array db '^',10,10
         self.assertEqual(*self.doTest('les     di, [bp+arg_4]', 'LES(di, *(dd*)(raddr(ss,bp+arg_4)))'))
 
     def test_instr_10940(self):
-        self.assertEqual(self.proc.generate_full_cmd_line(self.cpp, self.parser.action_code('mov ss,ax')),'S(ss = ax;);')
+        self.cpp._context.itislst = True
+        self.assertEqual(self.proc.generate_full_cmd_line(self.cpp, self.parser.action_code('mov ss,ax')),'\tS(ss = ax;);')
+        self.cpp._context.itislst = False
 
     #def test_instr_12030(self):
     #    print(*self.doTest("cmp h_array, 'v'",  u"CMP(*(h_array), 'v')"))
