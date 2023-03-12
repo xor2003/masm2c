@@ -436,11 +436,11 @@ class Segment(lark.Tree):
         self.children.append(data)
         self.size += data.getsize()
 
-    def insert_label(self, data):
-        raise Exception("Dead code?")
-        if data.getlabel() not in self.seglabels:
-            self.children.insert(1, data)
-            self.seglabels.add(data.getlabel())
+    #def insert_label(self, data):
+    #    raise Exception("Dead code?")
+    #    if data.getlabel() not in self.seglabels:
+    #        self.children.insert(1, data)
+    #        self.seglabels.add(data.getlabel())
 
     def getdata(self):
         return self.children
@@ -1068,7 +1068,7 @@ class _equ(baseop):
         return self.original_type
 
     def accept(self, visitor):
-        if self.implemented == False:
+        if self.implemented is False:
             self.implemented = True
             return visitor._equ(self.name)
         else:

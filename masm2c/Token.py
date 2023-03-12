@@ -29,7 +29,7 @@ class Token(lark.Tree):
     __slots__ = ('data', 'children')
 
     def __init__(self, type, value):
-        raise Exception("Dead code?")
+        raise Exception("Dead code")
         self.data = type
         self.children = value
 
@@ -82,7 +82,7 @@ class Token(lark.Tree):
             l = []
             for i in range(len(expr)):
                 result = Token.remove_tokens(expr[i], lookfor)
-                if result != None:
+                if result is not None:
                     if isinstance(result, list):
                         l.extend(result)
                     else:

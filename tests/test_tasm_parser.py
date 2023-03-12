@@ -171,6 +171,7 @@ h_array db '^',10,10
         self.__class__.parser.action_label(far=False, name='failure', isproc=False)
         self.__class__.parser.action_label(far=False, name='finTest', isproc=False)
         self.__class__.parser.action_label(far=False, name='loc_40458F', isproc=False)
+        self.__class__.cpp.label_to_proc['loc_40458f'] = 'mainproc'
         self.__class__.parser.action_label(far=False, name='loc_4046D6', isproc=False)
         self.__class__.parser.action_label(far=False, name='loc_406B3F', isproc=False)
         self.__class__.parser.action_label(far=False, name='loc_406CF8', isproc=False)
@@ -3012,9 +3013,11 @@ h_array db '^',10,10
         self.assertEqual(self.proc.generate_full_cmd_line(self.cpp, self.parser.action_data(
             'var_104_rc equ TRANSSHAPESTRUC ptr -260')), u'#define var_104_rc -260\n')
 
+    def test_instr_10905(self):
+        self.assertEqual(*self.doTest('call    near ptr loc_40458f', 'CALL(mainproc,m2c::kloc_40458f)'))
+
     def test_instr_10910(self):
-        self.assertEqual(
-            *self.doTest('call    near ptr loc_40458f+1', 'CALL(sub_1c61b,m2c::kloc_404590)'))
+        self.assertEqual(*self.doTest('call    far ptr loc_40458f+1', 'CALLF(mainproc,m2c::kloc_404590)'))
 
     def test_instr_10920(self):
         self.assertEqual(*self.doTest('push    [bp+arg_2]', 'PUSH(*(dw*)(raddr(ss,bp+arg_2)))'))

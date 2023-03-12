@@ -25,7 +25,7 @@ from collections import OrderedDict
 
 from lark import lark
 
-from . import op
+from . import op, proc
 from . import proc as proc_module
 from .Token import Token, Expression
 from .enumeration import IndirectionType
@@ -140,6 +140,7 @@ class Cpp(Gen, TopDownVisitor):
         self.islabel = False
 
         self.itisjump = False
+        self.itiscall = False
         self.is_data = False
 
         self.__type_table = {op.DataType.NUMBER: self.produce_c_data_number,
@@ -153,7 +154,7 @@ class Cpp(Gen, TopDownVisitor):
 
 
     def convert_label_(self, name_original):
-        name = name_original
+        name = str(name_original)
         if (g := self._context.get_global(name)) is None:
             # logging.warning("expand_cb() global '%s' is missing" % name)
             return name
@@ -208,42 +209,14 @@ class Cpp(Gen, TopDownVisitor):
                     if self._work_segment == 'cs':
                         self.body += '\tcs=seg_offset(' + g.segment + ');\n'
             # ?self.__indirection = 1
-        elif isinstance(g, op._equ):
-            logging.debug("it is equ")
-            #if not g.implemented:
-            #    raise InjectCode(g)
-            value = g.original_name
-            #self.element_size = g.size
-            logging.debug("equ: %s -> %s", name, value)
-        elif isinstance(g, op._assignment):
-            logging.debug("it is assignment")
-            #if not g.implemented:
-            #    raise InjectCode(g)
-            value = g.original_name
-            #self.element_size = g.size
-            logging.debug("assignment %s = %s", name, value)
-        elif isinstance(g, proc_module.Proc):
-            logging.debug("it is proc")
-            value = g.name  # For jump/call   TODO below check if it was needed
         elif isinstance(g, op.label):
             if self.is_data or not self.itisjump:
-                value = "m2c::k" + g.name.lower()  # .capitalize()
+                value = "m2c::k" + name
             else:
                 value = name
         else:
-            raise Exception("Dead code?")
-            source_var_size = g.getsize()
-            if source_var_size == 0:
-                raise Exception("invalid var '%s' size %u" % (name, source_var_size))
-            if self._indirection in (IndirectionType.VALUE, IndirectionType.POINTER):  # x0r self.indirection == 1 ??
-                value = "offsetof(struct Memory,%s)" % name_original
-                if self._indirection == IndirectionType.POINTER:
-                    self._indirection = IndirectionType.VALUE
-            elif self._indirection == IndirectionType.OFFSET:
-                value = str(g.offset)
-                self._indirection = IndirectionType.VALUE
-            else:
-                raise Exception("invalid indirection %d name '%s' size %u" % (self._indirection, name, source_var_size))
+            #elif isinstance(g, (op._equ, op._assignment, proc_module.Proc)):
+            value = name
         return value
 
     def render_data_c(self, segments):
@@ -497,8 +470,11 @@ class Cpp(Gen, TopDownVisitor):
 
 
     def jump_post(self, expr):
-        name = self.render_jump_label(expr)
-        name, far = self.convert_jump_label(name)
+        self.itisjump = True
+        result = self.render_instruction_argument(expr, 0)  # TODO why need something else?
+        self.itisjump = False
+        name = result
+        far = self.get_global_far(name)
         if 'far' in expr.mods:
             far = True
         elif 'near' in expr.mods:
@@ -526,36 +502,23 @@ class Cpp(Gen, TopDownVisitor):
 
         return name, far
 
-    def convert_jump_label(self, name):  # TODO Remove this!!!
+    def get_global_far(self, name):  # TODO Remove this!!!
         '''
         Convert argument tokens which for jump operations into C string
         :param name: Tokens
         :return: C string
         '''
         logging.debug("jump_to_label(%s)", name)
-
         far = False
         if isinstance(name, str) and (g := self._context.get_global(name)):
-            if isinstance(g, proc_module.Proc):
-                far = g.far
-
-
-            # if hasglobal:
-            elif isinstance(g, op.label):
+            if isinstance(g, (proc_module.Proc,op.label)):
                 far = g.far  # make far calls to far procs
-        '''
-        if ptrdir:
-            if any(isinstance(x, str) and x.lower() == 'far' for x in ptrdir):
-                far = True
-            elif any(isinstance(x, str) and x.lower() == 'near' for x in ptrdir):
-                far = False
-        '''
-        return (name, far)
+        return far
 
     def _label(self, name, isproc):
         if isproc:
-            raise RuntimeError('Should not happen anymore probably')
-            self._cmdlabel = self.proc_strategy.produce_proc_start(name)
+            raise RuntimeError('Dead code?')
+            #self._cmdlabel = self.proc_strategy.produce_proc_start(name)
         else:
             self._cmdlabel = "%s:\n" % self.cpp_mangle_label(name)
         return ''
@@ -566,8 +529,13 @@ class Cpp(Gen, TopDownVisitor):
         if expr.ptr_size == 0:
             expr.ptr_size = 2
         size = self.calculate_size(expr)
-        name = self.render_jump_label(expr)
-        dst, far = self.convert_jump_label(name)
+        self.itisjump = True
+        self.itiscall = True
+        result1 = self.render_instruction_argument(expr, 0)  # TODO why need something else?
+        self.itiscall = False
+        self.itisjump = False
+        name = result1
+        dst, far = name, self.get_global_far(name)
         if size == 4 or 'far' in expr.mods:
             far = True
         elif 'near' in expr.mods:
@@ -602,7 +570,6 @@ class Cpp(Gen, TopDownVisitor):
         else:
             result = dst, "__dispatch_call"
             disp, dst = result
-            # self.body += addtobody
 
         dst = self.cpp_mangle_label(dst)
 
@@ -1109,20 +1076,6 @@ struct Memory{
             if res < 0: return False
         return True
 
-
-    def render_jump_label(self, expr, def_size: int = 0):
-        self.itisjump = True
-        if expr.indirection != IndirectionType.OFFSET:
-            result = self.render_instruction_argument(expr, def_size)  # TODO why need something else?
-            self.itisjump = False
-            return result
-        raise Exception("Dead code?")
-        if def_size and expr.element_size == 0:
-            expr.element_size = def_size
-        result = "".join(IR2CppJump(self._context).visit(expr))
-        self.itisjump = False
-        return result
-
     def _jump(self, cmd, label):
         if self.isrelativejump(label):
             return "{;}"
@@ -1419,6 +1372,9 @@ struct Memory{
                                         or (isinstance(origexpr, lark.Tree) and origexpr.data == MEMBERDIR))
         self._isjustmember = single and isinstance(origexpr, lark.Tree) and origexpr.data == MEMBERDIR
 
+        if self.itiscall and self._isjustlabel:
+            self._indirection = IndirectionType.VALUE
+            
         self.element_size = tree.element_size
         self._ismember = False
         self._need_pointer_to_member = False
@@ -1467,9 +1423,36 @@ struct Memory{
     def LABEL(self, token):
         if self.is_data:
             size = self.is_data if type(self.is_data) == int else 0
-            return [self._context.get_global_value(token, size=size)]
+            return [self.convert_label_data(token, size=size)]
         return [self.convert_label_(token)]
-        # return self._context.get_global_value(token, size=self.element_size)
+
+    def convert_label_data(self, v, size=0):
+        logging.debug("convert_label_data(%s)", v)
+        size = size or 2
+        if (g := self._context.get_global(v)) is None:
+            return v
+        #logging.debug(g)
+        if isinstance(g, op.var):
+            #size = g.size ## ?
+            if g.issegment:
+                v = f"seg_offset({g.name})"
+            else:
+                if size == 2:
+                    v = f"offset({g.segment},{g.name})"
+                elif size == 4:
+                    v = f"far_offset({g.segment},{g.name})"
+                else:
+                    logging.error(f'Some unknown data size {size} for {g.name}')
+        elif isinstance(g, (op._equ, op._assignment)):
+            v = g.original_name
+        elif isinstance(g, (op.label, proc.Proc)):
+            v = f"m2c::k{g.name.lower()}"
+        elif isinstance(g, op.Struct):
+            pass
+        else:
+            v = g.offset
+        logging.debug(v)
+        return v
 
     def offsetdir(self, tree):  # TODO equ, assign support
         name = tree.children[0]
@@ -1530,26 +1513,6 @@ class IR2Cpp(TopDownVisitor, Cpp):
     def __init__(self, parser):
         super(IR2Cpp, self).__init__(context=parser)
 '''
-
-class IR2CppJump(IR2Cpp):
-
-    def __init__(self, parser):
-        raise Exception("Dead code?")
-        super().__init__(parser)
-
-    def expr(self, tree):
-        if isinstance(tree.children, lark.Token) and tree.children.type == 'register':
-            self._indirection = IndirectionType.VALUE  # based register value
-            tree.indirection = self._indiretction
-        return super().expr(tree)
-
-    def LABEL(self, token):
-        if g := self._context.get_global(token):
-            if isinstance(g, op.var):
-                self._indirection = IndirectionType.POINTER  # []
-            elif isinstance(g, (op.label, proc_module.Proc)):
-                self._indirection = IndirectionType.OFFSET  # direct using number
-        return [token]
 
 
 if __name__ == "__main__":

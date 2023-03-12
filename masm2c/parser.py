@@ -331,15 +331,7 @@ class Parser:
     def parse_int(v):
         # logging.debug "~1~ %s" %v
         if isinstance(v, list):
-            raise Exception("Dead code?")
-            vv = ""
-            for i in v:
-                try:
-                    i = Parser.parse_int(i)
-                except Exception:
-                    pass
-                vv += str(i)
-            v = vv
+            raise Exception("Code deleted")
         v = v.strip()
         # logging.debug "~2~ %s" %v
         if re.match(r'^[+-]?[0-8]+[OoQq]$', v):
@@ -361,40 +353,6 @@ class Parser:
         # logging.debug "~4~ %s" %v
         return int(v)
 
-    def calculate_STRING_size(self, v):
-        raise Exception("Dead code?")
-        if not self.itislst:
-            v = v.replace("\'\'", "'").replace('\"\"', '"')
-        return len(v) - 2
-
-    def get_global_value(self, v, size=0):  # TODO it is C++ specific. see convert_label()
-        logging.debug("get_global_value(%s)", v)
-        size = size or 2
-        v = self.mangle_label(v)
-        if (g := self.get_global(v)) is None:
-            return v
-        #logging.debug(g)
-        if isinstance(g, (op._equ, op._assignment)):
-            v = g.original_name
-        elif isinstance(g, op.var):
-            #size = g.size ## ?
-            if g.issegment:
-                v = f"seg_offset({g.name})"
-            else:
-                if size == 2:
-                    v = f"offset({g.segment},{g.name})"
-                elif size == 4:
-                    v = f"far_offset({g.segment},{g.name})"
-                else:
-                    logging.error(f'Some unknown data size {size} for {g.name}')
-        elif isinstance(g, (op.label, Proc)):
-            v = f"m2c::k{g.name.lower()}"
-        elif isinstance(g, op.Struct):
-            pass
-        else:
-            v = g.offset
-        logging.debug(v)
-        return v
 
     def identify_data_internal_type(self, data, elements, is_string) -> op.DataType:
         args = data.children
