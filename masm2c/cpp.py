@@ -531,25 +531,24 @@ class Cpp(Gen, TopDownVisitor):
         size = self.calculate_size(expr)
         self.itisjump = True
         self.itiscall = True
-        result1 = self.render_instruction_argument(expr, 0)  # TODO why need something else?
+        proc_name = self.render_instruction_argument(expr, 0)  # TODO why need something else?
         self.itiscall = False
         self.itisjump = False
-        name = result1
-        dst, far = name, self.get_global_far(name)
+        far = self.get_global_far(proc_name)
         if size == 4 or 'far' in expr.mods:
             far = True
         elif 'near' in expr.mods:
             far = False
 
-        disp = '0'
-        if isinstance(dst, str) and (g := self._context.get_global(dst)):
-            if isinstance(g, op.label) and not g.isproc and dst not in self._procs and dst not in self.grouped:
+        label_ip = '0'
+        if isinstance(proc_name, str) and (g := self._context.get_global(proc_name)):
+            if isinstance(g, op.label) and not g.isproc and proc_name not in self._procs and proc_name not in self.grouped:
                 # far = g.far  # make far calls to far procs
-                disp = f"m2c::k{dst}"
-                dst = self.label_to_proc[g.name]
+                label_ip = f"m2c::k{proc_name}"
+                proc_name = self.label_to_proc[g.name]
             elif isinstance(g, op.var):
-                disp = dst
-                dst = "__dispatch_call"
+                label_ip = proc_name
+                proc_name = "__dispatch_call"
 
             # calls feat purpose:
         # * grouped sub wrapper, exact subs  - direct name for external references
@@ -568,15 +567,14 @@ class Cpp(Gen, TopDownVisitor):
         # elif isinstance(g, proc_module.Proc) or dst in self.__procs or dst in self.grouped:
         #    self.body += f"__disp=0;\n"
         else:
-            result = dst, "__dispatch_call"
-            disp, dst = result
+            proc_name, label_ip = "__dispatch_call", proc_name
 
-        dst = self.cpp_mangle_label(dst)
+        proc_name = self.cpp_mangle_label(proc_name)
 
         if far:
-            ret += f"CALLF({dst},{disp})"
+            ret += f"CALLF({proc_name},{label_ip})"
         else:
-            ret += f"CALL({dst},{disp})"
+            ret += f"CALL({proc_name},{label_ip})"
         return ret
 
     def _ret(self, src):
@@ -1054,6 +1052,7 @@ struct Memory{
         ir2cpp.lea = self.lea
         ir2cpp._indirection = expr.indirection
         ir2cpp.itisjump = self.itisjump
+        ir2cpp.itiscall = self.itiscall
         result = "".join(ir2cpp.visit(expr))
         self.size_changed = ir2cpp.size_changed
         #self.islabel=False
@@ -1372,8 +1371,8 @@ struct Memory{
                                         or (isinstance(origexpr, lark.Tree) and origexpr.data == MEMBERDIR))
         self._isjustmember = single and isinstance(origexpr, lark.Tree) and origexpr.data == MEMBERDIR
 
-        if self.itiscall and self._isjustlabel:
-            self._indirection = IndirectionType.VALUE
+        if self.itiscall and tree.mods & {'near', 'far'}: # and self._isjustlabel:
+            tree.indirection = self._indirection = IndirectionType.VALUE
             
         self.element_size = tree.element_size
         self._ismember = False

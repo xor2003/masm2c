@@ -3017,7 +3017,7 @@ h_array db '^',10,10
         self.assertEqual(*self.doTest('call    near ptr loc_40458f', 'CALL(mainproc,m2c::kloc_40458f)'))
 
     def test_instr_10910(self):
-        self.assertEqual(*self.doTest('call    far ptr loc_40458f+1', 'CALLF(mainproc,m2c::kloc_404590)'))
+        self.assertEqual(*self.doTest('call    far ptr loc_40458f+1', 'CALLF(mainproc,m2c::kloc_40458f)'))
 
     def test_instr_10920(self):
         self.assertEqual(*self.doTest('push    [bp+arg_2]', 'PUSH(*(dw*)(raddr(ss,bp+arg_2)))'))
