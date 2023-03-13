@@ -109,32 +109,32 @@ class Gen:
                 logging.debug(f"Proc {first_proc_name} used labels {first_proc.used_labels}")
                 logging.debug(f"                   provided labels {first_proc.provided_labels}")
 
-                missing = first_proc.used_labels - first_proc.provided_labels
-                logging.debug(f"                    missing labels {missing}")
-                proc_to_merge = set()
+                missing_labels = first_proc.used_labels - first_proc.provided_labels
+                logging.debug(f"                    missing labels {missing_labels}")
+                procs_to_merge = set()
                 if not first_proc.if_terminated_proc():
                     '''If execution does not terminated in the procedure range when merge it with next proc'''
                     if index + 1 < len(self._procs):
                         logging.info(
                             f"Execution does not terminated need to merge {first_proc_name} with {self._procs[index + 1]}")
-                        proc_to_merge.add(self._procs[index + 1])
+                        procs_to_merge.add(self._procs[index + 1])
                     else:
                         logging.info(f"Execution does not terminated could not find proc after {first_proc_name}")
 
-                if missing:
-                    proc_to_merge.add(first_proc_name)
-                    for l in missing:
-                        proc_to_merge.add(self.find_related_proc(l))  # if label then merge proc implementing it
+                if missing_labels:
+                    procs_to_merge.add(first_proc_name)  # TODO Why?
+                    for missing_label in missing_labels:
+                        procs_to_merge.add(self.find_related_proc(missing_label))  # if label then merge proc implementing it
 
                 if self._context.args.mergeprocs == 'persegment':
                     for pname in self._procs:
                         if pname != first_proc_name:
                             p_proc = self._context.get_global(pname)
                             if first_proc.segment == p_proc.segment:
-                                proc_to_merge.add(pname)
+                                procs_to_merge.add(pname)
 
-                first_proc.to_group_with = proc_to_merge
-                logging.debug(f" will merge {proc_to_merge}")
+                first_proc.to_group_with = procs_to_merge
+                logging.debug(f" will merge {procs_to_merge}")
             changed = True
             iteration = 0
             while changed:
@@ -151,8 +151,7 @@ class Gen:
                             if not next_proc.to_group_with:
                                 next_proc.to_group_with = set()
                             if first_proc.to_group_with != next_proc.to_group_with:
-                                next_proc.to_group_with = set.union(next_proc.to_group_with, first_proc.to_group_with)
-                                first_proc.to_group_with = next_proc.to_group_with
+                                first_proc.to_group_with = next_proc.to_group_with = set.union(next_proc.to_group_with, first_proc.to_group_with)
                                 changed = True
                     logging.debug(f"  will group with {first_proc.to_group_with}")
 
@@ -197,8 +196,8 @@ class Gen:
                                 first_proc.add_label(next_proc_name, next_label)
                                 logging.debug(f"     with {next_proc_name}")
                                 first_proc.merge_two_procs(new_group_name, next_proc)
-                                for l in first_proc.provided_labels:
-                                    self.label_to_proc[l] = new_group_name
+                                for missing_label in first_proc.provided_labels:
+                                    self.label_to_proc[missing_label] = new_group_name
                                 self._context.reset_global(next_proc_name, next_label)
                                 self.grouped.add(next_proc_name)
                     groups += [new_group_name]
