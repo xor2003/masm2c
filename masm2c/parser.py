@@ -1146,7 +1146,10 @@ class Parser:
 
     def collect_labels(self, target, operation):
         for arg in operation.children:
-            labels = Token.find_tokens(arg, 'LABEL')  # TODO replace with AST traversing
+            offset = Token.find_tokens(arg, 'offsetdir') or []
+            if offset and not isinstance(offset[0], str): offset = []
+            labels = (Token.find_tokens(arg, 'LABEL') or []) + offset
+            # TODO replace with AST traversing
             #  If it is call to a proc then does not take it into account
             #  TODO: check for calls into middle of proc
             if labels and not operation.cmd.startswith('call') and not (
