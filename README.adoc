@@ -11,25 +11,7 @@ translator] may be used to port your DOS x86 (MASM) assembler code to
 C++ and SDL (Since there is no working decompiler for 16 bit DOS code
 yet. Because of DOS segmentation model, etc)
 
-[plantuml]
-----
-@startuml
-component "Original 16 bit .exe" as orig_exe
-component "IDA Pro" as ida
-component masm2c
-component libdosbox
-note bottom: native code/emulated drivers
-component exe as "32/64 bit .exe"
-
-orig_exe -> ida : 1. loading
-ida -> masm2c : 2. .asm
-masm2c -r-> libdosbox : 3. .cpp
-masm2c -d-> exe : 5. .cpp
-libdosbox -l--> masm2c: 4. rt_info.json
-libdosbox -l---> ida: 4. dissassembly fixes
-@enduml
-----
-
+http://www.plantuml.com/plantuml/png/NSwnRiCW40RWdQSuUJTHd3I3XogLkdHgto02SuceWBCuND6txpb97IiR-hyV-8zSJ2vJ36gWE5B2LA3vpFxYamcmFO3r1JHMRC0maC09AwxB7-zly9NfwjwP5KN3iHjMGV3M4LkgAb51i5GAnHwIAVu7OI276unJC0KTk2nPvjLjh3Z_qUowpM7_sANK_ofeN-S5qCDMGo3ZVBgeEP3yjaMeqw3bhEv1cmMNNU8xyM4S5tVYM57avIwFTXlQvUaUzXfoEVbq9ltDb9vwjstNblFCXXcZ3RzmzXLP7J6vAOO_[image:http://www.plantuml.com/plantuml/png/NSwnRiCW40RWdQSuUJTHd3I3XogLkdHgto02SuceWBCuND6txpb97IiR-hyV-8zSJ2vJ36gWE5B2LA3vpFxYamcmFO3r1JHMRC0maC09AwxB7-zly9NfwjwP5KN3iHjMGV3M4LkgAb51i5GAnHwIAVu7OI276unJC0KTk2nPvjLjh3Z_qUowpM7_sANK_ofeN-S5qCDMGo3ZVBgeEP3yjaMeqw3bhEv1cmMNNU8xyM4S5tVYM57avIwFTXlQvUaUzXfoEVbq9ltDb9vwjstNblFCXXcZ3RzmzXLP7J6vAOO_[Diagram]]
 Also It can make IDA Pro output assembler listing to be recompilable
 (and also portable) with help of instrumented emulator
 https://github.com/xor2003/libdosbox[libdosbox].
