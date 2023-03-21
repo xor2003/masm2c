@@ -99,7 +99,6 @@ class Gen:
         self.generate_label_to_proc_map()
 
         #if self._context.args.mergeprocs == 'separate':
-        #    return
 
         if not self._context.args.mergeprocs == 'single':
             for index, first_proc_name in enumerate(self._procs):
@@ -180,7 +179,6 @@ class Gen:
                     self.grouped.add(first_proc_name)
 
                     self.groups[first_proc_name] = new_group_name
-                    # self.grouped |= first_proc.group
                     proc_to_group = self._procs if self._context.args.mergeprocs == 'single' else first_proc.to_group_with
                     proc_to_group = self.sort_procedure_list_in_linenumber_order(proc_to_group)
 
@@ -321,7 +319,6 @@ class Gen:
                     allsegments[segclass] = v
                 else:
                     data = v.getdata()
-                    # allsegments[segclass].insert_label(data[0])
                     for d in data:
                         allsegments[segclass].append(d)
             else:
@@ -351,7 +348,6 @@ class Gen:
         :return: The body of the procedure and the segment it is in.
         """
         logging.info("     Generating proc %s", name)
-        # traceback.print_stack(file=sys.stdout)
         try:
             skip = def_skip
             self.__pushpop_count = 0
@@ -365,7 +361,6 @@ class Gen:
                 self.proc = proc_module.Proc(name)
                 self.proc.stmts = copy(src_proc.stmts)
                 self.proc.provided_labels = copy(src_proc.provided_labels)
-                # self.proc.retlabels = copy(src_proc.retlabels)
 
             self._proc_addr.append((name, self.proc.offset))
             self.body = ""

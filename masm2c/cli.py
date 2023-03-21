@@ -30,7 +30,6 @@ import sys
 from .cpp import Cpp
 from .parser import Parser
 
-#from masm2c.__init__ import __version__
 __version__ = '0.9.8'
 
 __author__ = "x0r"
@@ -79,7 +78,6 @@ def parse_args(args):
         "-FL",
         "--list",
         dest="list",
-        #nargs="?",
         help="Generate all globals to .list file",
         action="store_const",
         const=True,
@@ -130,10 +128,8 @@ def setup_logging(name, loglevel):
     err_handler.setLevel(logging.ERROR)
     formatter = logging.Formatter("[%(filename)s:%(lineno)s - %(funcName)20s()] %(message)s")
     err_handler.setFormatter(formatter)
-    # root.addHandler(err_handler)
 
     out_handler = logging.StreamHandler(sys.stdout)
-    # out_handler.setFormatter(logging.Formatter("%(message)s"))
     out_handler.setLevel(loglevel)
 
     if len(name):

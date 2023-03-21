@@ -109,10 +109,7 @@ class Asm2IR(CommonCollector):
 
     def __init__(self, context, input_str=''):
         super().__init__(context, input_str)
-        #self.context = context
-        #self.input_str = input_str
         self._radix = 10
-        #self._expression = None
         self._element_type = None
 
         self._size = 0
@@ -165,16 +162,13 @@ class Asm2IR(CommonCollector):
     '''
 
     def expr(self, children):
-        # self.expression = self.expression or Expression()
         # while isinstance(children, list) and len(children) == 1:
-        #    children = children[0]
         self.expression.children = children  # [0]
         result:Expression = self._expression
         if not self.expression.segment_overriden and result.indirection == IndirectionType.POINTER and \
                 result.registers.intersection({'bp', 'ebp', 'sp', 'esp'}):
             result.segment_register = 'ss'
         #if result.indirection == IndirectionType.POINTER:
-        #    self.expression.original_type = self._element_type
         self._expression = None
         return result
 
@@ -188,7 +182,6 @@ class Asm2IR(CommonCollector):
         repeat = "".join(IR2Cpp(self.context).visit(repeat))
         repeat = eval(repeat)
         value = children[1]
-        #self.expression.element_number *= repeat
         result = lark.Tree(data='dupdir', children=value)
         result.repeat = repeat
         return result  # Token('dupdir', [times, values])
@@ -197,7 +190,6 @@ class Asm2IR(CommonCollector):
         seg = nodes[0]
         if isinstance(seg, list):
             seg = seg[0]
-        #self.__work_segment = seg.lower()
         self.expression.indirection = IndirectionType.POINTER
         self.expression.element_size = 0
         self.expression.segment_overriden = True
@@ -205,7 +197,6 @@ class Asm2IR(CommonCollector):
 
     def distance(self, children):
         self.expression.mods.add(children[0].lower())
-        #self.expression.indirection = IndirectionType.OFFSET  #
         self._size = self.context.typetosize(children[0])
         return str(children[0]).lower()
 
@@ -224,7 +215,6 @@ class Asm2IR(CommonCollector):
 
     def ptrdir2(self, children):  # tasm?
         self.expression.indirection = IndirectionType.POINTER
-        #self.__work_segment = children[1].lower()
         self.expression.segment_overriden = True
         self.expression.ptr_size = self.context.typetosize(children[0])
         self.expression.mods.add('size_changed')
@@ -232,7 +222,6 @@ class Asm2IR(CommonCollector):
         return children[3:]
 
     def datadecl(self, children):
-        # self.expression = self.expression or Expression()
         self._size = self.context.typetosize(children[0])
         self._element_type = children[0].lower()
         return str(children[0]).lower()
@@ -250,7 +239,6 @@ class Asm2IR(CommonCollector):
         if sign == '-':
             val *= -1
         self.expression.element_size_guess = guess_int_size(val)
-        # self.expression.element_size = max(guess_int_size(val), self.expression.element_size)
 
         t = lark.Token(type='INTEGER', value=sign + value)
         t.start_pos, t.line, t.column = radix, sign, value
@@ -342,12 +330,9 @@ class Asm2IR(CommonCollector):
     def structinstdir(self, meta, nodes):
         label, type, values = nodes
         logging.debug(f"structinstdir {label} {type} {values}")
-        # args = remove_str(Token.remove_tokens(remove_str(values), 'expr'))
         args = values.children[0]
-        # args = Token.remove_tokens(remove_str(values), 'expr')
         if args is None:
             args = []
-        # args = Token.remove(args, 'INTEGER')
         if label:
             name = label.lower()
         else:
@@ -375,9 +360,7 @@ class Asm2IR(CommonCollector):
         type = children.pop(0).lower()
         if isinstance(children[0], (lark.Token, lark.Tree)):  # Data
             values = lark.Tree(data='data', children=children[0].children)
-            #type = self._element_type
         else:
-            #type = children[0][1].lower()  # Structs
             values = children[0][2:3][0]
 
         is_string = any('string' in expr.mods for expr in values.children if isinstance(expr, lark.Tree) and expr.data == 'expr')
@@ -405,8 +388,6 @@ class Asm2IR(CommonCollector):
             from masm2c.proc import Proc
             if isinstance(g, (op._equ, op._assignment)):
                 #if not isinstance(g.value, Expression):
-                #    g.value = Asm2IR(self.context, g.raw_line).transform(g.value)
-                #    self.context.reset_global(self.name, g) #??
                 if isinstance(g.value, Expression):
                     g.size = g.value.size()
                     if len(g.children) == 2 and g.children[1].indirection == IndirectionType.POINTER:
@@ -415,10 +396,8 @@ class Asm2IR(CommonCollector):
                         self.expression.element_size = g.size
             elif isinstance(g, (op.label, Proc)):
                 pass
-                #self.expression.indirection = IndirectionType.OFFSET  # direct using number
             elif isinstance(g, op.var):
                 pass
-                #self.expression.indirection = IndirectionType.POINTER  # []
             elif isinstance(g, op.Struct):
                 logging.debug('get_size res %d', g.size)
                 l = lark.Token(type='LABEL', value=value)
@@ -500,15 +479,12 @@ class Asm2IR(CommonCollector):
     @v_args(meta=True)
     def instruction(self, meta, nodes):
         logging.debug("asminstruction %s ~~", nodes)
-        # args = build_ast(args)
 
-        # self.expression = self.expression or Expression()
         instruction = self.instruction_name
         args = nodes[0].children if len(nodes) else []
         if len(args) >= 2:
             args[0].mods.add('destination')
         if instruction == 'lea':
-            # self.expression.indirection = IndirectionType.OFFSET
             for arg in args:
                 arg.mods.add('lea')
         '''
@@ -517,8 +493,6 @@ class Asm2IR(CommonCollector):
         if args is None:
             args = []
         '''
-        # indirection: IndirectionType = IndirectionType.VALUE
-        #return Tree(instruction, args, meta)
         self._expression = None
         return self.context.action_instruction(instruction, args, raw=get_raw_line(self.input_str, meta),
                                                line_number=get_line_number(meta)) or Discard
@@ -546,18 +520,12 @@ class Asm2IR(CommonCollector):
 
     def sqexpr(self, nodes):
         logging.debug("/~%s~\\", nodes)
-        # res = nodes[1]
-        # self.expression = self.expression or Expression()
-        # self.expression.indirection = IndirectionType.POINTER
         self.expression.indirection = IndirectionType.POINTER
         self.expression.element_size = 0
         return nodes  # lark.Tree(data='sqexpr', children=nodes)
 
     def sqexpr2(self, nodes):
         logging.debug("/~%s~\\", nodes)
-        # res = nodes[1]
-        # self.expression = self.expression or Expression()
-        # self.expression.indirection = IndirectionType.POINTER
         self.expression.indirection = IndirectionType.POINTER
         self.expression.element_size = 0
         nodes.insert(1, lark.Token(type='PLUS', value='+'))
@@ -566,9 +534,7 @@ class Asm2IR(CommonCollector):
 
     def offsetdir(self, nodes):
         logging.debug("offset /~%s~\\", nodes)
-        # self.expression = self.expression or Expression()
         self.expression.indirection = IndirectionType.OFFSET
-        #self.expression.mods.add('offset')
         self.expression.element_size = 2
         if isinstance(nodes[0], lark.Token):  # for labels, not for memberdir
             nodes = [str(nodes[0])]
@@ -609,7 +575,6 @@ class Asm2IR(CommonCollector):
 
 
     def maked(self, nodes):
-        # return nodes #Token(nodes[0].upper(), nodes[1].value)
         # TODO dirty workaround for now
         if nodes[0].lower() == 'size':
             return [f'sizeof({nodes[1].children.lower()})']
@@ -630,7 +595,6 @@ class Asm2IR(CommonCollector):
         return nodes
 
     # def STRING(self, token):
-    #    return token
 
 
 '''
@@ -675,8 +639,6 @@ class IncludeLoader(Transformer):
 
     def includedir(self, nodes):
         name = nodes[0].children[0].children[0][1:-1]
-        # context.parser.input_str = context.input_str[:context.end_position] + '\n' + read_asm_file(name) \
-        # + '\n' + context.input_str[context.end_position:]
         fullpath = os.path.join(os.path.dirname(os.path.realpath(self.context._current_file)), name)
         result = self.context.parse_include_file_lines(fullpath)
         return result
@@ -709,7 +671,6 @@ class TopDownVisitor:
                     for i in node:
                         result = self.visit(i, result)
             elif isinstance(node, (str, int)):
-                #print(f"{node} is a str")
                 result += [f'{node}']
             elif hasattr(self, type(node).__name__):
                 result = getattr(self, type(node).__name__)(node)
@@ -777,7 +738,6 @@ class AsmData2IR(TopDownVisitor):  # TODO HACK Remove it. !For missing funcitons
 
     def STRING(self, token):
         result = token.value
-        #result = result.replace('\\', '\\\\')  # escape c \ symbol
         return list(result)
 
     def LABEL(self, tree):

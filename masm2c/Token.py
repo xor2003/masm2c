@@ -30,15 +30,11 @@ class Token(lark.Tree):
 
     def __init__(self, type, value):
         raise Exception("Dead code")
-        self.data = type
-        self.children = value
 
 
     # def __str__(self):
-    #    return f"Token({self.data}, {self.children})"
 
     # def __repr__(self):
-    #    return f"Token({self.data}, {self.children})"
 
     @staticmethod
     def find_tokens(expr, lookfor: str):
@@ -71,8 +67,6 @@ class Token(lark.Tree):
         if isinstance(expr, Tree):
             if expr.data in lookfor:
                 #if len(expr.children) == 1 and isinstance(expr.children[0], str):
-                #    expr = None
-                #else:
                 expr = expr.children
                 expr = Token.remove_tokens(expr, lookfor)
             else:
@@ -88,7 +82,6 @@ class Token(lark.Tree):
                     else:
                         l.append(result)
             # if not l:
-            #    l = None
             return l
         return expr
 
@@ -101,9 +94,7 @@ class Expression(lark.Tree):
             args = "expr", []
         super().__init__(*args, **kwargs)
         from masm2c.enumeration import IndirectionType
-        #kwargs['children'] = kwargs.get('children', [])
         self.data = "expr"
-        #self.children = []
         self.indirection: IndirectionType = IndirectionType.VALUE
         self.element_size = 0
         self.element_number = 1
@@ -113,15 +104,11 @@ class Expression(lark.Tree):
         self.registers = set()
         self.segment_register = "ds"
         self.segment_overriden = False
-        #import traceback
-        #self.source = traceback.format_stack()
 
     def size(self):
         from masm2c.enumeration import IndirectionType
         if self.indirection == IndirectionType.POINTER:
             return self.ptr_size
-        #elif self.indirection == IndirectionType.OFFSET:
-        #    return 2
         else:
             result = self.element_size * self.element_number
             return result

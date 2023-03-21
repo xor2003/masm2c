@@ -59,7 +59,6 @@ class Vector:
 
     #@property
     #def value(self):
-    #    return self.__value
 
     def __getitem__(self, item):
         return self.__value[item]
@@ -71,7 +70,6 @@ class ExprSizeCalculator(BottomUpVisitor):
 
     def __init__(self, element_size=0, **kwargs):
         super().__init__(**kwargs)
-        #self.size = 0
         self.element_number = 0
         self.element_size = element_size
         self.kwargs = kwargs
@@ -85,12 +83,9 @@ class ExprSizeCalculator(BottomUpVisitor):
         size += tree.size()
         #self.size += size
         '''
-        ##return size + (tree.size(), tree.element_number)
-        #return size + (self.element_size, tree.element_number)
         return Vector(tree.size(), tree.element_number)
 
     def dupdir(self, tree, size):
-        #self.element_number += tree.repeat
         return size * tree.repeat
 
     def LABEL(self, token):  # TODO very strange, to replace
@@ -172,12 +167,10 @@ class Parser:
         '''
         self.test_mode = False
         self.__globals = OrderedDict()
-        # self.__offsets = OrderedDict()
         self.pass_number = 0
 
         self.__lex = LarkParser(context=self)
 
-        # self.segments = OrderedDict()
         self.externals_vars = set()
         self.externals_procs = set()
         self.__files = set()
@@ -215,9 +208,7 @@ class Parser:
         self.proc_list = []
         self.proc = None
 
-        # self.__label_to_skip = skip_binary_data
         self.__offset_id = 0x1111
-        #self.__stack = []
         self.entry_point = "mainproc_begin"
         self.main_file = False
         self.__proc_stack = []
@@ -299,7 +290,6 @@ class Parser:
             logging.debug("get_global KeyError %s", name)
             return None
         g.used = True
-        # assert self.__globals[name].used
         return g
 
     def get_globals(self):
@@ -336,13 +326,10 @@ class Parser:
         # logging.debug "~2~ %s" %v
         if re.match(r'^[+-]?[0-8]+[OoQq]$', v):
             v = int(v[:-1], 8)
-        # elif re.match(r'^[+-]?[0-9]+[Dd]?$', v):
-        #    v = int(v[:-1], 10)
         elif re.match(r'^[+-]?[0-9][0-9A-Fa-f]*[Hh]$', v):
             v = int(v[:-1], 16)
         elif re.match(r'^[01]+[Bb]$', v):
             v = int(v[:-1], 2)
-        # v = int(cpp.convert_number_to_c(v))
 
         try:
             vv = eval(v)
@@ -377,7 +364,6 @@ class Parser:
             name = self.get_dummy_jumplabel()
         name = self.mangle_label(name)  # for tests only
 
-        # logging.debug("offset %s -> %s" % (name, "&m." + name.lower() + " - &m." + self.__segment_name))
 
         self.need_label = False
         self.make_sure_proc_exists(line_number, raw)
@@ -393,8 +379,6 @@ class Parser:
         #                ("&m." + name.lower() + " - &m." + self.__segment_name, self.proc, self.__offset_id))
         self.set_global(name, l)
         self.__offset_id += 1
-        # else:
-        #    logging.error("!!! Label %s is outside the procedure" % name)
 
     def make_sure_proc_exists(self, line_number, raw):
         if not self.proc:
@@ -404,7 +388,6 @@ class Parser:
             else:
                 offset = self.__cur_seg_offset
             pname = f'{self.__segment.name}_{offset:x}_proc'  # automatically generated proc name
-            # pname = f'{self.__segment.name}_proc'
             if pname in self.proc_list:
                 self.proc = self.get_global(pname)
             else:
@@ -445,7 +428,6 @@ class Parser:
             logging.warning(f'Maybe wrong offset current:{self.__binary_data_size:x} should be:{pointer:x} ~{raw}~')
 
     def get_dummy_label(self):
-        # Parser.c_dummy_label += 1
         label = "dummy" + self.__current_file_hash[0] + '_' + str(hex(self.__binary_data_size))[2:]
         return label
 
@@ -488,7 +470,6 @@ class Parser:
             content = self.extract_addresses_from_lst(file_name, content)
         result = self.parse_text(content, file_name=file_name)
         result = self.process_ast(content, result)
-        #result = "".join(IR2Cpp(self).visit(result))
 
     def extract_addresses_from_lst(self, file_name, content):
         self.itislst = True
@@ -518,12 +499,10 @@ class Parser:
                 break
             else:
                 if line.strip():
-                    # print(line)
                     m = re.match(
                         r'^\s+(?P<start>[0-9A-F]{5,10})H [0-9A-F]{5,10}H [0-9A-F]{5,10}H (?P<segment>[_0-9A-Za-z]+)\s+[A-Z]+',
                         line)
                     segs[m.group('segment')] = f"{(int(m.group('start'), 16) // 16 + DOSBOX_START_SEG):04X}"
-                    # print(segs)
         logging.debug(f'Results of loading .map file: {segs}')
         return segs
 
@@ -549,7 +528,6 @@ class Parser:
         label = self.mangle_label(label)
 
         # if self.has_global(label):
-        #    label = self.get_global(label).original_name
         o = self.proc.create_assignment_op(label, value, line_number=line_number)
         o.filename = self._current_file
         o.raw_line = raw.rstrip()
@@ -560,8 +538,6 @@ class Parser:
 
     def action_assign_test(self, label="", value="", line_number=0):
         raw = value
-        #result = self.parse_text(value, start_rule='expr')
-        #value = self.process_ast(value, result)
         result = self.parse_text(value, start_rule='expr')
         value = self.process_ast(value, result)
         o = self.action_assign(label, value, raw, line_number)
@@ -580,14 +556,8 @@ class Parser:
     def action_equ(self, label="", value="", raw='', line_number=0):
         from .enumeration import IndirectionType
         label = self.mangle_label(label)
-        #value = Token.remove_tokens(value, ['expr'])
         size = value.size() if isinstance(value, Expression) else 0
-        #calc = ExprSizeCalculator(init=Vector(0, 0))
-        #size = calc.visit(value)[0]
 
-        #size = cpp_module.Cpp(self).calculate_size(value)
-        #ptrdir = Token.find_tokens(value, 'ptrdir')
-            #value = Token.find_and_replace_tokens(value, 'ptrdir', self.return_empty)
         o = Proc.create_equ_op(label, value, line_number=line_number)
         o.filename = self._current_file
         o.raw_line = raw.rstrip()
@@ -625,7 +595,6 @@ class Parser:
 
             self.__segment = op.Segment(name, offset, options=options, segclass=segclass)
             self.segments[name] = self.__segment
-            # self.__segment.append(op.Data(name, 'db', DataType.ARRAY, [], 0, 0, comment='segment start zero label'))
 
             self.set_global(name, op.var(binary_width, offset, name, issegment=True))
         return self.__segment
@@ -640,8 +609,6 @@ class Parser:
                 far = True
 
         self.proc = self.add_proc(name, raw, line_number, far)
-        # else:
-        #    self.action_label(name, far=far, isproc=True)
 
     def add_proc(self, name, raw, line_number, far):
         if self.args.mergeprocs == 'separate':
@@ -714,22 +681,18 @@ class Parser:
     '''
 
     def action_code(self, line):
-        #from .cpp import IR2Cpp
         self.test_mode = True
         self.need_label = False
         self.segments = OrderedDict()
         try:
             self.test_pre_parse()
             result = self.parse_text(line + "\n", start_rule='instruction')
-            #result = result.children[2].children[1].children[1]
             result = self.process_ast(line, result)
-            #result = "".join(IR2Cpp(self).visit(result))
         except Exception as e:
             print(e)
             logging.error("Error1")
             result = [str(e)]
             raise
-        #del self.__globals['default_seg']
         return result
 
     def test_size(self, line):
@@ -738,7 +701,6 @@ class Parser:
         try:
             self.test_pre_parse()
             result = self.parse_text(line, start_rule='expr')
-            #result = result.children[2].children[1].children[1]
             expr = self.process_ast(line, result)
             result = expr.size()
         except Exception as e:
@@ -747,7 +709,6 @@ class Parser:
             logging.error(traceback.format_exc())
             result = [str(e)]
             raise
-        #del self.__globals['default_seg']
         return result
 
     def action_data(self, line):
@@ -758,13 +719,11 @@ class Parser:
             self.test_pre_parse()
             result = self.parse_text(line + "\n", start_rule='insegdirlist')
             result = self.process_ast(line, result)
-            #result = tuple(self.cpp.visit(result))
         except Exception as e:
             print(e)
             logging.error("Error3")
             result = [str(e)]
             raise
-        #del self.__globals['default_seg']
         return result
 
     def parse_arg(self, line, def_size=0, destination=False):
@@ -774,13 +733,9 @@ class Parser:
         try:
             self.test_pre_parse()
             expr = self.parse_text(line, start_rule='expr')
-            #expr = result.children[2].children[1].children[1]
             expr = self.process_ast(line, expr)
             #if destination:
-            #    expr.mods.add("destination")
             #if def_size and expr.element_size == 0:
-            #    expr.element_size = def_size
-            #result = "".join(IR2Cpp(self).visit(expr))
             result = Cpp(self).render_instruction_argument(expr, def_size=def_size, destination=destination)
         except Exception as e:
             exc_type, exc_obj, exc_tb = sys.exc_info()
@@ -789,9 +744,7 @@ class Parser:
             import traceback, logging
 
             logging.error(traceback.format_exc())
-            # result = [f'{e} {exc_type} {fname} {exc_tb.tb_lineno}']
             raise
-        ### del self.__globals['default_seg']
         return result
 
     def parse_include(self, line, file_name=None):
@@ -807,19 +760,13 @@ class Parser:
             logging.info(f"      Current offset {self.__cur_seg_offset:x} line={line_number}")
         isstruct = len(self.struct_names_stack) != 0
 
-        #label = self.mangle_label(label)
         binary_width = self.typetosize(type)
         #for ex in args:
-        #    ex.element_size = binary_width
 
         calc = ExprSizeCalculator(element_size=binary_width, init=Vector(0, 0), context=self)
         size, elements = calc.visit(args) #, result=0)
         if size == 0:
             size = binary_width * elements
-        #size = calc.size
-        ##size = sum(map(Expression.size, args))  #self.calculate_data_size_new(binary_width, args)
-        ##elements = sum(arg.element_number for arg in args)
-        #elements = calc.element_number
 
         offset = self.__cur_seg_offset
         if not isstruct:
@@ -833,10 +780,8 @@ class Parser:
             logging.debug("args %s offset %d", args, offset)
 
         logging.debug("convert_data %s %d %s", label, binary_width, args)
-        # original_label = label
 
         data_internal_type = self.identify_data_internal_type(args, elements, is_string)
-        #elements, is_string, array = self.process_data_tokens(args, binary_width)
         array = AsmData2IR().visit(args)
         if data_internal_type == op.DataType.ARRAY and not any(array) and not isstruct:  # all zeros
             array = [0]
@@ -871,11 +816,7 @@ class Parser:
             else:
                 self.data_merge_candidats = 0
 
-        # c, h, size = cpp.Cpp.produce_c_data(data) # TO REMOVE
-        # self.c_data += c
-        # self.h_data += h
 
-        # logging.debug("~~        self.assertEqual(parser_instance.parse_data_line_whole(line='"+str(line)+"'),"+str(("".join(c), "".join(h), offset2 - offset))+")")
         self.flow_terminated = True
         return data  # c, h, size
 
@@ -1072,8 +1013,6 @@ class Parser:
             proc = Proc(label, extern=True)
             logging.debug("procedure %s, extern", label)
             self.reset_global(label, proc)
-            # else:
-            #    self.reset_global(label, op.label(label, proc=self.proc.name, isproc=True))
 
     def add_call_to_entrypoint(self):
         """
@@ -1177,8 +1116,6 @@ class Parser:
             self.add_call_to_entrypoint()
 
     def parse_rt_info(self, name):
-        # dbx_img_offset = int(self.args.loadsegment, 0)  # para
-        # ida_load = 0x1000
 
         try:
             with open(name + ".json") as infile:
@@ -1209,7 +1146,5 @@ def parse_asm_number(expr, radix):
             raise ValueError(expr)
         sign = m['sign'] if m['sign'] else ''
         value = m['value']
-        #value = int(value, radix)
         #if sign == '-':
-        #    value *= -1
     return radix, sign, value

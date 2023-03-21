@@ -25,7 +25,6 @@ from enum import Enum
 from lark import lark
 
 
-# import traceback
 
 
 class Unsupported(Exception):
@@ -41,7 +40,6 @@ class baseop(lark.Tree):
         self.raw_line = ""
         self.line_number = 0
         self.elements = 1
-        #self.children = []
         self.size = 0
         self.real_offset = None
         self.real_seg = None
@@ -50,14 +48,12 @@ class baseop(lark.Tree):
         return self.size
 
     # def __str__(self):
-    #        return self.cmd+" "+self.command+" "+str(self.line_number)
 
     def __str__(self):
         return str(self.__class__)
 
     #@property
     #def data(self):
-    #    return self.__class__.__name__.lower()
 
 class var:
 
@@ -78,7 +74,6 @@ class var:
         :param raw:
         :param line_number:
         '''
-        # logging.debug("op.var(%d, %d, %s, %s, %s, %d)" %(size, offset, name, segment, issegment, elements))
         self.size = size
         self.offset = offset
         self.original_name = name
@@ -92,7 +87,6 @@ class var:
         self.filename = filename
         self.line = raw
         self.line_number = line_number
-        # logging.debug("op.var(%s)" %(str(self.__dict__).replace('\n',' ')))
 
     def getsize(self):
         return self.size
@@ -425,7 +419,6 @@ class Segment(lark.Tree):
         self.children = []
         self.options = options
         self.segclass = segclass
-        # self.comment = comment
         self.seglabels = {self.name,}
         self.size = 0  # Check if needed
 
@@ -437,10 +430,7 @@ class Segment(lark.Tree):
         self.size += data.getsize()
 
     #def insert_label(self, data):
-    #    raise Exception("Dead code?")
     #    if data.getlabel() not in self.seglabels:
-    #        self.children.insert(1, data)
-    #        self.seglabels.add(data.getlabel())
 
     def getdata(self):
         return self.children
@@ -489,11 +479,9 @@ class Data(baseop):
         self.raw_line = raw_line
         self.line_number = line_number
         self.align = align
-        # self.comment = comment
         self.real_seg, self.real_offset = None, None
         self.offset = offset
 
-        #self.data = 'data'  # defined in base class
         self._meta = meta
 
     def __deepcopy__(self, memo):
@@ -553,7 +541,6 @@ class Struct:
         :param dtype: Structure or Union?
         '''
         self.__name = name
-        #self.data = 'struct'
         self.children = OrderedDict()
         self.size = 0
         self.__type = Struct.Type.UNION if dtype.lower() == 'union' else Struct.Type.STRUCT
@@ -903,7 +890,6 @@ class label(baseop):
         self.original_name = name
         self.line_number = line_number
         self.far = far
-        #self.proc:str = proc
         self.isproc = isproc
         self.used = False
         self.globl = globl
@@ -1058,7 +1044,6 @@ class _equ(baseop):
     def __init__(self, name):
         super().__init__()
         self.name = name
-        #self.children = args
         self.original_name = ''
         self.original_type = ''
         self.implemented = False
@@ -1092,8 +1077,6 @@ class _assignment(baseop):
         # if self.implemented == False:
         self.implemented = True
         return visitor._assignment(self.children)
-        # else:
-        #    from masm2c.cpp import SkipCode
         #    raise SkipCode
 
 class _xlat(baseop):

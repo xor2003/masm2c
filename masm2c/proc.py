@@ -26,14 +26,12 @@ from lark import lark
 from . import op
 from .Token import Token
 
-# label_re = re.compile(r'^([\S@]+)::?(.*)$')  # speed
 
 PTRDIR = 'ptrdir'
 
 
 class Proc:
     last_addr = 0xc000
-    #elements = 1  # how many
 
     def __init__(self, name: str, far: bool = False, line_number: int = 0, extern: bool = False, offset=0,
                  real_offset=0,
@@ -65,7 +63,6 @@ class Proc:
             self.offset = Proc.last_addr
         Proc.last_addr += 4
         self.real_offset, self.real_seg = real_offset, real_seg
-        # self.retlabels = set()
 
     def merge_two_procs(self, newname, other):
         self.name, self.original_name = newname, newname
@@ -73,7 +70,6 @@ class Proc:
         self.provided_labels |= other.provided_labels
         self.used_labels |= other.used_labels
         self.extern = other.extern
-        # self.group = None
         del other
 
     def add_label(self, name, label):
@@ -126,7 +122,6 @@ class Proc:
     def create_equ_op(label, value, line_number):  # TODO Move it to parser
         logging.debug(label + " " + str(value))
         o = op._equ(label)
-        # value = cpp.convert_number_to_c(value)
         if ptrdir := Token.find_tokens(value, PTRDIR):
             if isinstance(ptrdir[0], Token):
                 o.original_type = ptrdir[0].children.lower()
@@ -142,7 +137,6 @@ class Proc:
 
     def create_assignment_op(self, label, value, line_number=0):
         logging.debug(label + " " + str(value))
-        # value = cpp.convert_number_to_c(value)
         o = op._assignment([label, value])
         if hasattr(value, 'original_type'):  # TODO cannot get original type anymore. not required here
             o.original_type = value.original_type
@@ -232,8 +226,6 @@ class Proc:
         visitor.prefix = ''
         #if stmt:= tuple(visitor.visit(stmt)):
         command = stmt.accept(visitor)
-        #else:
-        #    command = ''
         if command and stmt.real_seg:  # and (self.is_flow_change_stmt(stmt) or 'cs' in command or 'cs' in visitor.before):
             visitor.body += f'cs={stmt.real_seg:#04x};eip={stmt.real_offset:#08x}; '
 

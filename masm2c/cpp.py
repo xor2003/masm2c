@@ -111,15 +111,9 @@ class Cpp(Gen, TopDownVisitor):
 
         self._indirection: IndirectionType = IndirectionType.VALUE
 
-        # self.__current_size = 0
-        # self._isjustlabel = False
-        # self.__work_segment = 'ds'
         #
-        #self.__proc_queue = []
         self.__proc_done = []
         self.__failed = []
-        #self.__skip_output = skip_output
-        # self.__translated = []
         self._proc_addr = []
         self.__used_data_offsets = set()
         self.__methods = []
@@ -156,7 +150,6 @@ class Cpp(Gen, TopDownVisitor):
     def convert_label_(self, name_original):
         name = str(name_original)
         if (g := self._context.get_global(name)) is None:
-            # logging.warning("expand_cb() global '%s' is missing" % name)
             return name
         self.islabel = True
         if isinstance(g, op.var):
@@ -180,7 +173,6 @@ class Cpp(Gen, TopDownVisitor):
                     if not self.lea:
                         self._indirection = IndirectionType.POINTER
                 if g.elements == 1 and self._isjustlabel and not self.lea and g.size == self.element_size:
-                    # traceback.print_stack(file=sys.stdout)
                     value = g.name
                     self._indirection = IndirectionType.VALUE
                 else:
@@ -215,7 +207,6 @@ class Cpp(Gen, TopDownVisitor):
             else:
                 value = name
         else:
-            #elif isinstance(g, (op._equ, op._assignment, proc_module.Proc)):
             value = name
         return value
 
@@ -348,7 +339,6 @@ class Cpp(Gen, TopDownVisitor):
                 self.itispointer = False
                 self._need_pointer_to_member = label
                 value = ''
-                #value = f"{label[0]}))->{'.'.join(label[1:])}"
             logging.debug("equ: %s -> %s", label[0], value)
         elif isinstance(g, op.var):
 
@@ -372,7 +362,6 @@ class Cpp(Gen, TopDownVisitor):
                 self.needs_dereference = True
                 self.itispointer = True
             if g.elements == 1 and self._isjustlabel and not self.lea and source_var_size == self._middle_size:
-                # traceback.print_stack(file=sys.stdout)
                 value = '.'.join(label)
                 self._indirection = IndirectionType.VALUE
             else:
@@ -395,7 +384,6 @@ class Cpp(Gen, TopDownVisitor):
                     self.body += '\tcs=seg_offset(' + g.segment + ');\n'
             # ?self.__indirection = 1
             #if value == token:
-            #    logging.error('value not yet assigned')
         elif isinstance(g, op.Struct):
             #if self._isjustmember:
             value = f'offsetof({label[0]},{".".join(label[1:])})'
@@ -404,11 +392,9 @@ class Cpp(Gen, TopDownVisitor):
 
             self._ismember = True
 
-            #value = f'(({self.struct_type}*)raddr({self._work_segment},{value}'
             self.needs_dereference = False
 
         #if size == 0:
-        #    raise Exception("invalid var '%s' size %u" % (str(label), size))
         return value
 
     def convert_sqbr_reference(self, segment: str, expr, destination: bool, size: int, islabel: bool,
@@ -492,13 +478,9 @@ class Cpp(Gen, TopDownVisitor):
             #   register
             #   exact value
             # seg:offset - in sub __dispatch_call disp= seg:offset ?
-            # ret += f"__disp={dst};\n"
-            # dst = "__dispatch_call"
             # if self._context.has_global(name):
-            # name = 'm2c::k'+name
             self.dispatch += f'__disp={name};\n'
             name = "__dispatch_call"
-            # logging.debug(f'not sure if handle it properly {name}')
 
         return name, far
 
@@ -518,7 +500,6 @@ class Cpp(Gen, TopDownVisitor):
     def _label(self, name, isproc):
         if isproc:
             raise RuntimeError('Dead code?')
-            #self._cmdlabel = self.proc_strategy.produce_proc_start(name)
         else:
             self._cmdlabel = "%s:\n" % self.cpp_mangle_label(name)
         return ''
@@ -543,7 +524,6 @@ class Cpp(Gen, TopDownVisitor):
         label_ip = '0'
         if isinstance(proc_name, str) and (g := self._context.get_global(proc_name)):
             if isinstance(g, op.label) and not g.isproc and proc_name not in self._procs and proc_name not in self.grouped:
-                # far = g.far  # make far calls to far procs
                 label_ip = f"m2c::k{proc_name}"
                 proc_name = self.label_to_proc[g.name]
             elif isinstance(g, op.var):
@@ -564,8 +544,6 @@ class Cpp(Gen, TopDownVisitor):
         #   register
         #   memory reference
         # seg:offset  - __dispatch_call disp= seg:offset
-        # elif isinstance(g, proc_module.Proc) or dst in self.__procs or dst in self.grouped:
-        #    self.body += f"__disp=0;\n"
         else:
             proc_name, label_ip = "__dispatch_call", proc_name
 
@@ -602,12 +580,9 @@ class Cpp(Gen, TopDownVisitor):
         if dst_size == 0:
             if src_size == 0:
                 logging.debug("parse2: %s %s both sizes are 0", dst, src)
-                # raise Exception("both sizes are 0")
             dst_size = src_size
-            # dst.element_size = dst_size
         if src_size == 0:
             src_size = dst_size
-            # src.element_size = src_size
 
         if src.indirection == IndirectionType.POINTER and src.element_size == 0 and dst_size and not src.ptr_size:
             src.ptr_size = dst_size
@@ -620,7 +595,6 @@ class Cpp(Gen, TopDownVisitor):
     def _add(self, dst, src):
         self.a, self.b = self.parse2(dst, src)
         # if self.d in ['sp', 'esp'] and check_int(self.s):
-        #    self.__pushpop_count -= int(self.s)
         return "ADD(%s, %s)" % (self.a, self.b)
 
     def _mul(self, src):
@@ -703,7 +677,6 @@ class Cpp(Gen, TopDownVisitor):
     '''
 
     def _rep(self):
-        # return "\tREP\n"
         self.prefix = '\tREP '
         return ''
 
@@ -994,8 +967,6 @@ struct Memory{
         src.mods.add('lea')
         dst.mods.add('lea')
         self.a, self.b = self.parse2(dst, src)
-        #self.a = self.render_instruction_argument(dst, destination=True, lea=True)
-        #self.b = self.render_instruction_argument(src, lea=True)
         r = "%s = %s" % (self.a, self.b)
         self.lea = False
         return r
@@ -1007,12 +978,10 @@ struct Memory{
         return "MOVS(%s, %s, %s, %s, %d)" % (self.a, self.b, dstr[0], srcr[0], size)
 
     def _repe(self):
-        # return "\tREPE\n"
         self.prefix = '\tREPE '
         return ''
 
     def _repne(self):
-        # return "\tREPNE\n"
         self.prefix = '\tREPNE '
         return ''
 
@@ -1037,7 +1006,6 @@ struct Memory{
         return "%s(%s)" % (cmd.upper(), self.a)
 
     def render_instruction_argument(self, expr, def_size: int = 0, destination: bool = False, lea: bool = False):
-        # def_size = expr.size()
         if destination:
             expr.mods.add("destination")
         if lea:
@@ -1055,8 +1023,6 @@ struct Memory{
         ir2cpp.itiscall = self.itiscall
         result = "".join(ir2cpp.visit(expr))
         self.size_changed = ir2cpp.size_changed
-        #self.islabel=False
-        #self.isvaraible=False
         return result[1:-1] if self.check_parentesis(result) else result
 
     def check_parentesis(self, string):
@@ -1145,7 +1111,6 @@ struct Memory{
     def produce_c_data_number(self, data: op.Data):
         label, data_ctype, _, r, elements, size = data.getdata()
         rc = ''.join(str(i) if isinstance(i, int) else ''.join(str(x) for x in self.visit(i)) for i in r)
-        # rc = ''.join([str(i) if isinstance(i, int) else self.visit(i) for i in r])
         rh = f'{data_ctype} {label}'
         return rc, rh
 
@@ -1163,14 +1128,11 @@ struct Memory{
             elif isinstance(v, lark.Tree):
                 rc += "".join(self.visit(v))
             elif isinstance(v, list):
-                # print(v)
                 l = [str(i) for i in v]
-                # print(l)
                 rc += "".join(l)
             else:
                 rc += str(v)
         rc += '}'
-        # assert(len(r)==elements)
         rh = f'{data_ctype} {label}[{elements}]'
         return rc, rh
 
@@ -1191,7 +1153,6 @@ struct Memory{
 
     def produce_c_data_object(self, data: op.Data):
         label, data_ctype, _, r, elements, size = data.getdata()
-        # rc = '{' + ",".join([str(i) for i in r]) + '}'
         rc = []
         for i in data.getmembers():
             c, _, _ = self.produce_c_data_single_(i)
@@ -1220,7 +1181,6 @@ struct Memory{
                 vvv = chr(c)
         elif isinstance(c, str):
             # logging.debug "~~ " + r[i] + str(ord(r[i]))
-            # string = c
             # for c in string:
 
             if c in ["\'", '\"', '\\']:
@@ -1228,13 +1188,10 @@ struct Memory{
             elif ord(c) > 127:
                 t = c.encode('cp437', 'backslashreplace')
                 vvv = '\\' + hex(ord(t))[1:]
-                # vvv = c
             elif c == '\0':
                 vvv = '\\0'
             else:
                 vvv = c
-            # res += vvv
-            # vvv = res
         return vvv
 
     def produce_global_jump_table(self, globals, itislst):
@@ -1256,18 +1213,13 @@ struct Memory{
         for k, v in globals:
             if isinstance(v, proc_module.Proc) and v.used:
                 k = re.sub(r'[^A-Za-z0-9_]', '_', k)  # need to do it during mangling
-                # procs.append(k)
                 entries[k] = (self.cpp_mangle_label(k), '0')
-                # labels = self.leave_unique_labels(v.provided_labels)
                 labels = v.provided_labels
 
                 entries.update({label: (v.name, '__disp') for label in set(labels) if label != v.name})
 
-        # procs = self.leave_unique_labels(procs)
         # for name in procs:
         #    if not name.startswith('_group'):  # TODO remove dirty hack. properly check for group
-        #    result += "        case m2c::k%s: \t%s(0, _state); break;\n" % (name, cpp_mangle_label(name))
-        #    entries[name] = (cpp_mangle_label(name), '0')
 
         names = self.leave_unique_labels(entries.keys())
         for name in sorted(names):
@@ -1282,7 +1234,6 @@ struct Memory{
 
         self.a, self.b = self.parse2(dst, src)
         # if self.d in ['sp', 'esp'] and check_int(self.s):
-        #    self.__pushpop_count -= int(self.s)
         if 'raddr' in self.a or 'raddr' in self.b:
             mapped_memory_access = True
 
@@ -1336,20 +1287,15 @@ struct Memory{
 
 
     def INTEGER(self, t):
-        # s = {2: hex(token.value), 8: oct(token.value), 10: str(token.value), 16: hex(token.value)}[token.column]
         return [self.produce_number_c('', t.start_pos, t.line, t.column)]
 
     def STRING(self, token):
         result = token.value
-        # m = re.match(r'^[\'\"](....)[\'\"]$', token.value)  # char constants 'abcd'
         if len(token.value) == 4:  # m:
             ex = token
-            # ex = m.group(1)
             result = '0x'
             for i in range(0, 4):
-                # logging.debug("constant %s %d" %(ex,i))
                 ss = str(hex(ord(ex[i])))
-                # logging.debug("constant %s" %ss)
                 result += ss[2:]
         else:
             result = result.replace('\\', '\\\\')  # escape c \ symbol
@@ -1398,7 +1344,6 @@ struct Memory{
                                                  tree.ptr_size, False, lea='lea' in tree.mods)
         if self._ismember:
             result = f'(({self.struct_type}*)raddr({self._work_segment},{result}'
-        # if indirection == IndirectionType.POINTER and \
         if self.needs_dereference:
             self.needs_dereference = False
             if result[0] == '(' and result[-1] == ')':
@@ -1430,9 +1375,7 @@ struct Memory{
         size = size or 2
         if (g := self._context.get_global(v)) is None:
             return v
-        #logging.debug(g)
         if isinstance(g, op.var):
-            #size = g.size ## ?
             if g.issegment:
                 v = f"seg_offset({g.name})"
             else:
@@ -1473,7 +1416,6 @@ struct Memory{
             return [lark.Token('memberdir', value)]
 
         if (g := self._context.get_global(name)) is None:
-            # logging.warning("expand_cb() global '%s' is missing" % name)
             return [name]
         if isinstance(g, op.var):
             logging.debug("it is var %s", g.size)
