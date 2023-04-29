@@ -1,12 +1,6 @@
 # -*- coding: utf-8 -*-
 from pkg_resources import DistributionNotFound, get_distribution
 
-import masm2c
-import masm2c.cpp
-import masm2c.op
-import masm2c.parser
-import masm2c.proc
-import masm2c.Token
 
 try:
     # Change here if project is renamed and does not equal the package name
