@@ -22,13 +22,13 @@
 import lark
 from lark import Tree
 
-SQEXPR = 'sqexpr'
+SQEXPR = "sqexpr"
 
 
 class Token(lark.Tree):
-    __slots__ = ('data', 'children')
+    __slots__ = ("data", "children")
 
-    def __init__(self, type, value):
+    def __init__(self, type, value) -> None:
         raise Exception("Dead code")
 
 
@@ -89,7 +89,7 @@ class Token(lark.Tree):
 
 class Expression(lark.Tree):
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         if len(args) == 0:
             args = "expr", []
         super().__init__(*args, **kwargs)

@@ -1,6 +1,4 @@
-# -*- coding: utf-8 -*-
 from pkg_resources import DistributionNotFound, get_distribution
-
 
 try:
     # Change here if project is renamed and does not equal the package name

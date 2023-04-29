@@ -27,12 +27,11 @@ from lark import lark
 
 from . import op, proc
 from . import proc as proc_module
-from .Token import Token, Expression
 from .enumeration import IndirectionType
-from .gen import Gen, mangle_asm_labels, InjectCode
+from .gen import Gen, InjectCode, mangle_asm_labels
 from .parser import ExprSizeCalculator, Vector
-from .pgparser import LABEL, REGISTER, SQEXPR, MEMBERDIR, \
-    TopDownVisitor, Asm2IR
+from .pgparser import LABEL, MEMBERDIR, REGISTER, SQEXPR, Asm2IR, TopDownVisitor
+from .Token import Expression, Token
 
 
 def flatten(s):
@@ -45,13 +44,13 @@ def flatten(s):
 
 class SeparateProcStrategy:
 
-    def __init__(self, renderer):
+    def __init__(self, renderer) -> None:
         self.renderer = renderer
 
     def produce_proc_start(self, name):
-        return " // Procedure %s() start\n%s()\n{\n" % (name, self.renderer.cpp_mangle_label(name))
+        return f" // Procedure {name}() start\n{self.renderer.cpp_mangle_label(name)}()\n{{\n"
 
-    def function_header(self, name, entry_point=''):
+    def function_header(self, name, entry_point=""):
         header = """
 
  bool %s(m2c::_offsets _i, struct m2c::_STATE* _state){
@@ -59,7 +58,7 @@ class SeparateProcStrategy:
     __disp = _i;
 """ % self.renderer.cpp_mangle_label(name)
 
-        if entry_point != '':
+        if entry_point != "":
             header += """
     if (__disp == kbegin) goto %s;
 """ % entry_point
@@ -75,8 +74,8 @@ class SeparateProcStrategy:
     def write_declarations(self, procs, context):
         result = ""
         for p in sorted(procs):  # TODO only if used or public
-            if p == 'mainproc' and not context.itislst:  # and not context.main_file:
-                result += 'static '
+            if p == "mainproc" and not context.itislst:  # and not context.main_file:
+                result += "static "
             result += "bool %s(m2c::_offsets, struct m2c::_STATE*);\n" % self.renderer.cpp_mangle_label(p)
 
         for i in sorted(context.externals_procs):
@@ -91,14 +90,12 @@ bool __dispatch_call(m2c::_offsets __disp, struct m2c::_STATE* _state);
 
 
 class Cpp(Gen, TopDownVisitor):
-    """Visitor which can produce C++ equivalents for asm instructions"""
+    """Visitor which can produce C++ equivalents for asm instructions."""
 
     def __init__(self, context=None, outfile="", skip_output=None,
-                 merge_data_segments=True):
+                 merge_data_segments=True) -> None:
         # proc_strategy = SingleProcStrategy()):
-        """
-
-        :param context: pointer to Parser data
+        """:param context: pointer to Parser data
         :param outfile: Output filename
         :param skip_output: List of functions to skip at output
         """
@@ -106,7 +103,7 @@ class Cpp(Gen, TopDownVisitor):
         self.proc_strategy = SeparateProcStrategy(self)
         self.renderer = self
         self._namespace = os.path.basename(outfile)
-        self.__codeset = 'cp437'
+        self.__codeset = "cp437"
         self._context = context
 
         self._indirection: IndirectionType = IndirectionType.VALUE
@@ -126,9 +123,9 @@ class Cpp(Gen, TopDownVisitor):
 
         self.struct_type = None
 
-        self.dispatch = ''
-        self.prefix = ''
-        self._cmdlabel = ''
+        self.dispatch = ""
+        self.prefix = ""
+        self._cmdlabel = ""
 
         self.isvariable = False
         self.islabel = False
@@ -141,7 +138,7 @@ class Cpp(Gen, TopDownVisitor):
                              op.DataType.ARRAY: self.produce_c_data_array,
                              op.DataType.ZERO_STRING: self.produce_c_data_zero_string,
                              op.DataType.ARRAY_STRING: self.produce_c_data_array_string,
-                             op.DataType.OBJECT: self.produce_c_data_object
+                             op.DataType.OBJECT: self.produce_c_data_object,
                              }
 
         self.element_size = -1
@@ -193,27 +190,23 @@ class Cpp(Gen, TopDownVisitor):
                                 self.size_changed = True
                                 self._middle_size = 1
                     elif self._indirection == IndirectionType.OFFSET:
-                        value = "offset(%s,%s)" % (g.segment, g.name)
+                        value = f"offset({g.segment},{g.name})"
                         self.needs_dereference = False
                         self.itispointer = False
                     else:
                         value = name
-                    if self._work_segment == 'cs':
-                        self.body += '\tcs=seg_offset(' + g.segment + ');\n'
+                    if self._work_segment == "cs":
+                        self.body += "\tcs=seg_offset(" + g.segment + ");\n"
             # ?self.__indirection = 1
         elif isinstance(g, op.label):
-            if self.is_data or not self.itisjump:
-                value = "m2c::k" + name
-            else:
-                value = name
+            value = "m2c::k" + name if self.is_data or not self.itisjump else name
         else:
             value = name
         return value
 
     def render_data_c(self, segments):
-        """
-        It takes a list of DOS segments, and for each segment, it takes a list of data items, and for each data item, it
-        produces a C++ assignment statement, a C++ extern statement, and a C++ reference statement
+        """It takes a list of DOS segments, and for each segment, it takes a list of data items, and for each data item, it
+        produces a C++ assignment statement, a C++ extern statement, and a C++ reference statement.
 
         :param segments: a dictionary of segments, where the key is the segment name and the value is the segment object
         :return: cpp_file, data_hpp_file, data_cpp_file, hpp_file
@@ -235,28 +228,24 @@ class Cpp(Gen, TopDownVisitor):
                 type_and_name += ";\n"
 
                 if not j.is_align():  # if align do not assign it
-                    #  mycopy(bb, {'1','2','3','4','5'});
-                    #  caa=3;
-                    m = re.match(r'^(\w+)\s+(\w+)(\[\d+\])?;\n', type_and_name)
+                    m = re.match(r"^(\w+)\s+(\w+)(\[\d+\])?;\n", type_and_name)
                     if not m:
-                        logging.error(f'Failed to parse {value} {type_and_name}')
+                        logging.error(f"Failed to parse {value} {type_and_name}")
                     name = m.group(2)
 
-                    type_and_size = re.sub(r'^(?P<type>\w+)\s+\w+(\[\d+\])?;\n', r'\g<type> tmp999\g<2>', type_and_name)
+                    type_and_size = re.sub(r"^(?P<type>\w+)\s+\w+(\[\d+\])?;\n", r"\g<type> tmp999\g<2>", type_and_name)
 
-                    if name.startswith('dummy') and value == '0':
-                        value = ''
+                    if name.startswith("dummy") and value == "0":
+                        value = ""
                     elif m.group(2):  # if array
-                        if value == '{}':
-                            value = ''
+                        if value == "{}":
+                            value = ""
                         else:
-                            value = f'    {{{type_and_size}={value};MYCOPY({name})}}'
+                            value = f"    {{{type_and_size}={value};MYCOPY({name})}}"
                     else:
-                        # value = f'    {name}={value};'
-                        value = f'    {{{type_and_size}={value};MYCOPY({name})}}'
+                        value = f"    {{{type_and_size}={value};MYCOPY({name})}}"
 
                     # char (& bb)[5] = group.bb;
-                    # int& caa = group.aaa;
                     # references
                     _reference_in_data_cpp = self._generate_dataref_from_declaration_c(type_and_name)
                     # externs
@@ -265,10 +254,9 @@ class Cpp(Gen, TopDownVisitor):
                     if value:
                         real_seg, real_offset = j.getrealaddr()
                         if real_seg:
-                            value += f' // {real_seg:04x}:{real_offset:04x}'
-                            type_and_name = type_and_name[:-1] + f' // {real_seg:04x}:{real_offset:04x}\n'
+                            value += f" // {real_seg:04x}:{real_offset:04x}"
+                            type_and_name = type_and_name[:-1] + f" // {real_seg:04x}:{real_offset:04x}\n"
                         value += "\n"
-                    # c += " // " + j.getlabel() + "\n"  # TODO can put original_label
 
                     cpp_file += value  # cpp source - assigning
                     hpp_file += _extern_in_hpp  # extern for header
@@ -280,26 +268,24 @@ class Cpp(Gen, TopDownVisitor):
         return cpp_file, data_hpp_file, data_cpp_file, hpp_file
 
     def _generate_extern_from_declaration_c(self, _hpp):
-        """
-        It takes a C++ declaration and returns a extern declaration to the same
+        """It takes a C++ declaration and returns a extern declaration to the same.
 
         :param _hpp: The C++ header file
         :return: The extern declaration of the function or variable.
         """
-        _extern = re.sub(r'^(\w+)\s+([\w\[\]]+)(\[\d+\]);', r'extern \g<1> (& \g<2>)\g<3>;', _hpp)
-        _extern = re.sub(r'^(\w+)\s+([\w\[\]]+);', r'extern \g<1>& \g<2>;', _extern)
+        _extern = re.sub(r"^(\w+)\s+([\w\[\]]+)(\[\d+\]);", r"extern \g<1> (& \g<2>)\g<3>;", _hpp)
+        _extern = re.sub(r"^(\w+)\s+([\w\[\]]+);", r"extern \g<1>& \g<2>;", _extern)
         return _extern
 
     def _generate_dataref_from_declaration_c(self, _hpp):
-        """
-        It takes a C++ declaration and returns a reference to the same variable
+        """It takes a C++ declaration and returns a reference to the same variable.
 
         :param _hpp: declaration string
         :return: The reference to the same data
         """
-        _reference = re.sub(r'^(\w+)\s+([\w\[\]]+)(\[\d+\]);',
-                            r'\g<1> (& \g<2>)\g<3> = m2c::m.\g<2>;', _hpp)
-        _reference = re.sub(r'^(\w+)\s+([\w\[\]]+);', r'\g<1>& \g<2> = m2c::m.\g<2>;', _reference)
+        _reference = re.sub(r"^(\w+)\s+([\w\[\]]+)(\[\d+\]);",
+                            r"\g<1> (& \g<2>)\g<3> = m2c::m.\g<2>;", _hpp)
+        _reference = re.sub(r"^(\w+)\s+([\w\[\]]+);", r"\g<1>& \g<2> = m2c::m.\g<2>;", _reference)
         return _reference
 
     def memberdir(self, tree):
@@ -316,10 +302,10 @@ class Cpp(Gen, TopDownVisitor):
                     value = f'offset({g.segment},{".".join(label)})'
                 elif isinstance(g, op.Struct):
                     value = f'offsetof({label[0]},{".".join(label[1:])})'
-                elif isinstance(g, (op._equ, op._assignment)):
+                elif isinstance(g, op._equ | op._assignment):
                     value = f'({label[0]})+offsetof({g.original_type},{".".join(label[1:])})'
                 else:
-                    raise Exception('Not handled type ' + str(type(g)))
+                    raise Exception("Not handled type " + str(type(g)))
                 self._indirection = IndirectionType.VALUE
                 return value # Token('memberdir', value)
 
@@ -327,18 +313,18 @@ class Cpp(Gen, TopDownVisitor):
             logging.error("global '%s' is missing", label)
             return ".".join(label)
 
-        if isinstance(g, (op._equ, op._assignment)):
+        if isinstance(g, op._equ | op._assignment):
             logging.debug(str(g))
             if not g.implemented:
                 raise InjectCode(g)
             if self._isjustlabel:
-                value = '.'.join(label)
+                value = ".".join(label)
             else:
                 self.struct_type = g.value.original_type
                 self.needs_dereference = True
                 self.itispointer = False
                 self._need_pointer_to_member = label
-                value = ''
+                value = ""
             logging.debug("equ: %s -> %s", label[0], value)
         elif isinstance(g, op.var):
 
@@ -362,11 +348,11 @@ class Cpp(Gen, TopDownVisitor):
                 self.needs_dereference = True
                 self.itispointer = True
             if g.elements == 1 and self._isjustlabel and not self.lea and source_var_size == self._middle_size:
-                value = '.'.join(label)
+                value = ".".join(label)
                 self._indirection = IndirectionType.VALUE
             else:
                 if self._indirection == IndirectionType.POINTER: # ? and self.isvariable:
-                    value = '.'.join(label)
+                    value = ".".join(label)
                     if not self._isjustlabel:  # if not just single label
                         self.needs_dereference = True
                         self.itispointer = True
@@ -379,9 +365,9 @@ class Cpp(Gen, TopDownVisitor):
                             value = "((db*)%s)" % value
                             self.size_changed = True
                 elif self._indirection == IndirectionType.OFFSET and self.isvariable:
-                    value = "offset(%s,%s)" % (g.segment, '.'.join(label))
-                if self._work_segment == 'cs':
-                    self.body += '\tcs=seg_offset(' + g.segment + ');\n'
+                    value = "offset({},{})".format(g.segment, ".".join(label))
+                if self._work_segment == "cs":
+                    self.body += "\tcs=seg_offset(" + g.segment + ");\n"
             # ?self.__indirection = 1
             #if value == token:
         elif isinstance(g, op.Struct):
@@ -423,8 +409,7 @@ class Cpp(Gen, TopDownVisitor):
 
     @staticmethod
     def render_new_pointer_size(itispointer: bool, expr, target_size: int):
-        """
-        :param expr: the expression to be rendered
+        """:param expr: the expression to be rendered
         :param target_size: the new size of the pointer
         :return: The expression with the new size.
         """
@@ -461,9 +446,9 @@ class Cpp(Gen, TopDownVisitor):
         self.itisjump = False
         name = result
         far = self.get_global_far(name)
-        if 'far' in expr.mods:
+        if "far" in expr.mods:
             far = True
-        elif 'near' in expr.mods:
+        elif "near" in expr.mods:
             far = False
 
         if isinstance(name, str) and ((g := self._context.get_global(name)) is None or isinstance(g, op.var)):
@@ -479,30 +464,29 @@ class Cpp(Gen, TopDownVisitor):
             #   exact value
             # seg:offset - in sub __dispatch_call disp= seg:offset ?
             # if self._context.has_global(name):
-            self.dispatch += f'__disp={name};\n'
+            self.dispatch += f"__disp={name};\n"
             name = "__dispatch_call"
 
         return name, far
 
     def get_global_far(self, name):  # TODO Remove this!!!
-        '''
-        Convert argument tokens which for jump operations into C string
+        """Convert argument tokens which for jump operations into C string
         :param name: Tokens
-        :return: C string
-        '''
+        :return: C string.
+        """
         logging.debug("jump_to_label(%s)", name)
         far = False
         if isinstance(name, str) and (g := self._context.get_global(name)):
-            if isinstance(g, (proc_module.Proc,op.label)):
+            if isinstance(g, proc_module.Proc | op.label):
                 far = g.far  # make far calls to far procs
         return far
 
     def _label(self, name, isproc):
         if isproc:
-            raise RuntimeError('Dead code?')
+            raise RuntimeError("Dead code?")
         else:
             self._cmdlabel = "%s:\n" % self.cpp_mangle_label(name)
-        return ''
+        return ""
 
     def _call(self, expr):
         logging.debug("cpp._call(%s)", expr)
@@ -516,12 +500,12 @@ class Cpp(Gen, TopDownVisitor):
         self.itiscall = False
         self.itisjump = False
         far = self.get_global_far(proc_name)
-        if size == 4 or 'far' in expr.mods:
+        if size == 4 or "far" in expr.mods:
             far = True
-        elif 'near' in expr.mods:
+        elif "near" in expr.mods:
             far = False
 
-        label_ip = '0'
+        label_ip = "0"
         if isinstance(proc_name, str) and (g := self._context.get_global(proc_name)):
             if isinstance(g, op.label) and not g.isproc and proc_name not in self._procs and proc_name not in self.grouped:
                 label_ip = f"m2c::k{proc_name}"
@@ -557,14 +541,14 @@ class Cpp(Gen, TopDownVisitor):
 
     def _ret(self, src):
         if src == []:
-            self.a = '0'
+            self.a = "0"
         else:
             self.a = self.render_instruction_argument(src[0])
         return "RETN(%s)" % self.a
 
     def _retf(self, src):
         if src == []:
-            self.a = '0'
+            self.a = "0"
         else:
             self.a = self.render_instruction_argument(src[0])
         return "RETF(%s)" % self.a
@@ -595,7 +579,7 @@ class Cpp(Gen, TopDownVisitor):
     def _add(self, dst, src):
         self.a, self.b = self.parse2(dst, src)
         # if self.d in ['sp', 'esp'] and check_int(self.s):
-        return "ADD(%s, %s)" % (self.a, self.b)
+        return f"ADD({self.a}, {self.b})"
 
     def _mul(self, src):
         size = 0
@@ -657,7 +641,7 @@ class Cpp(Gen, TopDownVisitor):
         label, far = self.jump_post(label)
         return "JNC(%s)" % label
 
-    '''
+    """
     def _push(self, regs):
         p = ""
         for r in regs:
@@ -674,11 +658,11 @@ class Cpp(Gen, TopDownVisitor):
             r = self.expand(r)
             p += "POP(%s)" % r
         return p
-    '''
+    """
 
     def _rep(self):
-        self.prefix = '\tREP '
-        return ''
+        self.prefix = "\tREP "
+        return ""
 
     def _cmpsb(self):
         return "CMPSB"
@@ -738,7 +722,7 @@ class Cpp(Gen, TopDownVisitor):
         cpp_fname = f"{self._namespace.lower()}.cpp"
         header_fname = f"{self._namespace.lower()}.h"
 
-        logging.info(f' *** Generating output files in C++ {cpp_fname} {header_fname}')
+        logging.info(f" *** Generating output files in C++ {cpp_fname} {header_fname}")
 
         cpp_file = open(cpp_fname, "w", encoding=self.__codeset)
         hpp_file = open(header_fname, "w", encoding=self.__codeset)
@@ -803,7 +787,7 @@ class Cpp(Gen, TopDownVisitor):
         self.write_segment_file(self._context.segments, self._context.structures, fname)
 
     def write_procedures(self, banner, header_fname):
-        cpp_file_text = ''
+        cpp_file_text = ""
         last_segment = None
         cpp_segment_file = None
         for name in self._procs:
@@ -814,12 +798,12 @@ class Cpp(Gen, TopDownVisitor):
                     cpp_segment_file.close()
 
                 cpp_segment_fname = f"{self._namespace.lower()}_{segment}.cpp"
-                logging.info(f' *** Generating output file in C++ {cpp_segment_fname}')
+                logging.info(f" *** Generating output file in C++ {cpp_segment_fname}")
                 cpp_segment_file = open(cpp_segment_fname, "w", encoding=self.__codeset)
-                cpp_segment_file.write(f'''{banner}
+                cpp_segment_file.write(f"""{banner}
 #include "{header_fname}"
 
-                ''')
+                """)
 
             if cpp_segment_file:
                 cpp_segment_file.write(f"{proc_text}\n")
@@ -833,7 +817,7 @@ class Cpp(Gen, TopDownVisitor):
         return cpp_file_text
 
     def render_entrypoint_c(self):
-        entry_point_text = ''
+        entry_point_text = ""
         if self._context.main_file:
             g = self._context.get_global(self._context.entry_point)
             if isinstance(g, op.label) and self._context.entry_point not in self.grouped:
@@ -854,16 +838,14 @@ class Cpp(Gen, TopDownVisitor):
         return wrappers
 
     def convert_segment_files_into_datacpp(self, asm_files):
-        """
-        It reads .seg files, and writes the data segments to _data.cpp/h file
+        """It reads .seg files, and writes the data segments to _data.cpp/h file.
 
         :param asm_files: A list of the assembly files
         """
         self.write_data_segments_cpp(*self.read_segment_files(asm_files))
 
     def write_data_segments_cpp(self, segments, structures):
-        """
-        It writes the _data.cpp and _data.h files
+        """It writes the _data.cpp and _data.h files.
 
         :param segments: a list of segments, each segment is a list of data items
         :param structures: a list of structures that are defined in the program
@@ -873,7 +855,7 @@ class Cpp(Gen, TopDownVisitor):
         fname = "_data.cpp"
         header = "_data.h"
         with open(fname, "w", encoding=self.__codeset) as fd:
-            fd.write(f'''#include "_data.h"
+            fd.write(f"""#include "_data.h"
 namespace m2c{{
 
 struct Memory m;
@@ -885,16 +867,16 @@ db(& heap)[HEAP_SIZE]=m.heap;
 }}
 {data_cpp_reference}
 
-''')
+""")
 
         with open(header, "w", encoding=self.__codeset) as hd:
-            hd.write('''
+            hd.write("""
 #ifndef ___DATA_H__
 #define ___DATA_H__
 #include "asm.h"
-''' + self.produce_structures(structures) + self.produce_data(data_h) + '''
+""" + self.produce_structures(structures) + self.produce_data(data_h) + """
 #endif
-''')
+""")
 
     def produce_label_offsets(self):
         labeloffsets = """namespace m2c{
@@ -904,12 +886,12 @@ static const dd kbegin = 0x1001;
         i = 0x1001
         for k, v in list(self._context.get_globals().items()):
             # if isinstance(v, (op.label, proc_module.Proc)) and v.used:
-            if isinstance(v, (op.label, proc_module.Proc)):
-                k = re.sub(r'[^A-Za-z0-9_]', '_', k).lower()
+            if isinstance(v, op.label | proc_module.Proc):
+                k = re.sub(r"[^A-Za-z0-9_]", "_", k).lower()
                 i += 1
                 if v.real_offset or v.real_seg:
                     i = v.real_seg * 0x10000 + v.real_offset
-                labeloffsets += "static const dd k%s = 0x%x;\n" % (k, i)
+                labeloffsets += f"static const dd k{k} = 0x{i:x};\n"
         labeloffsets += "}\n"
         return labeloffsets
 
@@ -918,7 +900,7 @@ static const dd kbegin = 0x1001;
         if len(strucs):
             structures += """#pragma pack(push, 1)"""
         for name, v in strucs.items():
-            struc_type = 'struct' if v.gettype() == op.Struct.Type.STRUCT else 'union'
+            struc_type = "struct" if v.gettype() == op.Struct.Type.STRUCT else "union"
             structures += f"""
 {struc_type} {name} {{
 """
@@ -940,13 +922,13 @@ namespace m2c{
 struct Memory{
 """
         data_head += "".join(hdata_bin)
-        data_head += '''
+        data_head += """
 #ifdef DOSBOX_CUSTOM
     db filll[1024*1024*16];
 #endif
                         db stack[STACK_SIZE];
                         db heap[HEAP_SIZE];
-                '''
+                """
         data_head += """};
 }
 #pragma pack(pop)
@@ -954,7 +936,7 @@ struct Memory{
         return data_head
 
     def produce_externals(self, context):
-        data = '\n'
+        data = "\n"
         for i in context.externals_vars:
             v = context.get_global(i)
             if v.used:
@@ -964,10 +946,10 @@ struct Memory{
     def _lea(self, dst, src):
         self.lea = True
         src.indirection = IndirectionType.OFFSET
-        src.mods.add('lea')
-        dst.mods.add('lea')
+        src.mods.add("lea")
+        dst.mods.add("lea")
         self.a, self.b = self.parse2(dst, src)
-        r = "%s = %s" % (self.a, self.b)
+        r = f"{self.a} = {self.b}"
         self.lea = False
         return r
 
@@ -978,12 +960,12 @@ struct Memory{
         return "MOVS(%s, %s, %s, %s, %d)" % (self.a, self.b, dstr[0], srcr[0], size)
 
     def _repe(self):
-        self.prefix = '\tREPE '
-        return ''
+        self.prefix = "\tREPE "
+        return ""
 
     def _repne(self):
-        self.prefix = '\tREPNE '
-        return ''
+        self.prefix = "\tREPNE "
+        return ""
 
     def _lods(self, src):
         self.a = self.render_instruction_argument(src)
@@ -1003,7 +985,7 @@ struct Memory{
 
     def _instruction1(self, cmd, dst) -> str:
         self.a = self.render_instruction_argument(dst)
-        return "%s(%s)" % (cmd.upper(), self.a)
+        return f"{cmd.upper()}({self.a})"
 
     def render_instruction_argument(self, expr, def_size: int = 0, destination: bool = False, lea: bool = False):
         if destination:
@@ -1026,18 +1008,18 @@ struct Memory{
         return result[1:-1] if self.check_parentesis(result) else result
 
     def check_parentesis(self, string):
-        """Check if first ( matches the last one
+        """Check if first ( matches the last one.
 
         >>> self.check_parentesis('(())')
         True
         >>> self.check_parentesis('()()')
         False
         """
-        if not string or string[0] != '(' or string[-1] != ')': return False
+        if not string or string[0] != "(" or string[-1] != ")": return False
         res = 0
         for c in string[1:-1]:
-            if c == '(': res += 1
-            elif c == ')': res -= 1
+            if c == "(": res += 1
+            elif c == ")": res -= 1
             if res < 0: return False
         return True
 
@@ -1046,8 +1028,8 @@ struct Memory{
             return "{;}"
 
         label, _ = self.jump_post(label)
-        if self._context.args.mergeprocs == 'separate' and cmd.upper() == 'JMP':
-            if label == '__dispatch_call':
+        if self._context.args.mergeprocs == "separate" and cmd.upper() == "JMP":
+            if label == "__dispatch_call":
                 return "return __dispatch_call(__disp, _state);"
             if g := self._context.get_global(label):
                 target_proc_name = None
@@ -1060,39 +1042,38 @@ struct Memory{
                         return f"return {g.name}(0, _state);"
                     return f"return {target_proc_name}(m2c::k{label}, _state);"
 
-        return "%s(%s)" % (cmd.upper(), label)
+        return f"{cmd.upper()}({label})"
 
     def _instruction2(self, cmd, dst, src):
         self.a, self.b = self.parse2(dst, src)
-        return "%s(%s, %s)" % (cmd.upper(), self.a, self.b)
+        return f"{cmd.upper()}({self.a}, {self.b})"
 
     def _instruction3(self, cmd, dst, src, c):
         self.a, self.b = self.parse2(dst, src)
         self.c = self.render_instruction_argument(c)
-        return "%s(%s, %s, %s)" % (cmd.upper(), self.a, self.b, self.c)
+        return f"{cmd.upper()}({self.a}, {self.b}, {self.c})"
 
     def return_empty(self, _):
         return []
 
     def _assignment(self, stmt):
         dst, src = stmt
-        asm2ir = Asm2IR(self._context, '')
+        asm2ir = Asm2IR(self._context, "")
         if not isinstance(src, Expression):
             src = asm2ir.transform(src)
 
         src.indirection = IndirectionType.VALUE
-        self._cmdlabel += "#undef %s\n#define %s %s\n" % (dst, dst, self.render_instruction_argument(src))
-        return ''
+        self._cmdlabel += f"#undef {dst}\n#define {dst} {self.render_instruction_argument(src)}\n"
+        return ""
 
     def _equ(self, dst):
         src = self._context.get_global(dst).value
         src.indirection = IndirectionType.VALUE
-        self._cmdlabel += "#define %s %s\n" % (dst, self.render_instruction_argument(src))
-        return ''
+        self._cmdlabel += f"#define {dst} {self.render_instruction_argument(src)}\n"
+        return ""
 
     def produce_c_data_single_(self, data):
-        """
-        It takes an assembler data and returns a C++ object
+        """It takes an assembler data and returns a C++ object.
 
         :param data: The data to be converted
         :return: data value, declaration, size
@@ -1110,18 +1091,18 @@ struct Memory{
 
     def produce_c_data_number(self, data: op.Data):
         label, data_ctype, _, r, elements, size = data.getdata()
-        rc = ''.join(str(i) if isinstance(i, int) else ''.join(str(x) for x in self.visit(i)) for i in r)
-        rh = f'{data_ctype} {label}'
+        rc = "".join(str(i) if isinstance(i, int) else "".join(str(x) for x in self.visit(i)) for i in r)
+        rh = f"{data_ctype} {label}"
         return rc, rh
 
     def produce_c_data_array(self, data: op.Data):
         label, data_ctype, _, r, elements, _ = data.getdata()
         if not any(r):  # all zeros
             r = [0]
-        rc = '{'
+        rc = "{"
         for i, v in enumerate(r):
             if i != 0:
-                rc += ','
+                rc += ","
             if isinstance(v, op.Data):
                 c = self.produce_c_data_single_(v)[0]
                 rc += c
@@ -1132,23 +1113,23 @@ struct Memory{
                 rc += "".join(l)
             else:
                 rc += str(v)
-        rc += '}'
-        rh = f'{data_ctype} {label}[{elements}]'
+        rc += "}"
+        rh = f"{data_ctype} {label}[{elements}]"
         return rc, rh
 
     def produce_c_data_zero_string(self, data: op.Data):
         label, data_ctype, _, r, elements, size = data.getdata()
         r = flatten(r)
-        rc = '"' + ''.join(self.convert_str(i) for i in r[:-1]) + '"'
-        rc = re.sub(r'(\\x[0-9a-f][0-9a-f])([0-9a-fA-F])', r'\g<1>" "\g<2>', rc)  # fix for stupid C hex escapes: \xaef
-        rh = f'char {label}[{size}]'
+        rc = '"' + "".join(self.convert_str(i) for i in r[:-1]) + '"'
+        rc = re.sub(r"(\\x[0-9a-f][0-9a-f])([0-9a-fA-F])", r'\g<1>" "\g<2>', rc)  # fix for stupid C hex escapes: \xaef
+        rh = f"char {label}[{size}]"
         return rc, rh
 
     def produce_c_data_array_string(self, data: op.Data):
         label, data_ctype, _, r, elements, size = data.getdata()
         r = flatten(r)
-        rc = '{' + ",".join([self.convert_char(i) for i in r]) + '}'
-        rh = f'char {label}[{size}]'
+        rc = "{" + ",".join([self.convert_char(i) for i in r]) + "}"
+        rh = f"char {label}[{size}]"
         return rc, rh
 
     def produce_c_data_object(self, data: op.Data):
@@ -1157,8 +1138,8 @@ struct Memory{
         for i in data.getmembers():
             c, _, _ = self.produce_c_data_single_(i)
             rc += [c]
-        rc = '{' + ','.join(rc) + '}'
-        rh = f'{data_ctype} {label}'
+        rc = "{" + ",".join(rc) + "}"
+        rh = f"{data_ctype} {label}"
         return rc, rh
 
     def convert_char(self, c):
@@ -1183,13 +1164,13 @@ struct Memory{
             # logging.debug "~~ " + r[i] + str(ord(r[i]))
             # for c in string:
 
-            if c in ["\'", '\"', '\\']:
+            if c in ["\'", '\"', "\\"]:
                 vvv = "\\" + c
             elif ord(c) > 127:
-                t = c.encode('cp437', 'backslashreplace')
-                vvv = '\\' + hex(ord(t))[1:]
-            elif c == '\0':
-                vvv = '\\0'
+                t = c.encode("cp437", "backslashreplace")
+                vvv = "\\" + hex(ord(t))[1:]
+            elif c == "\0":
+                vvv = "\\0"
             else:
                 vvv = c
         return vvv
@@ -1212,18 +1193,18 @@ struct Memory{
         entries = OrderedDict()
         for k, v in globals:
             if isinstance(v, proc_module.Proc) and v.used:
-                k = re.sub(r'[^A-Za-z0-9_]', '_', k)  # need to do it during mangling
-                entries[k] = (self.cpp_mangle_label(k), '0')
+                k = re.sub(r"[^A-Za-z0-9_]", "_", k)  # need to do it during mangling
+                entries[k] = (self.cpp_mangle_label(k), "0")
                 labels = v.provided_labels
 
-                entries.update({label: (v.name, '__disp') for label in set(labels) if label != v.name})
+                entries.update({label: (v.name, "__disp") for label in set(labels) if label != v.name})
 
         # for name in procs:
         #    if not name.startswith('_group'):  # TODO remove dirty hack. properly check for group
 
         names = self.leave_unique_labels(entries.keys())
         for name in sorted(names):
-            result += "        case m2c::k%s: \t%s(%s, _state); break;\n" % (name, *entries[name])
+            result += "        case m2c::k{}: \t{}({}, _state); break;\n".format(name, *entries[name])
 
         result += "        default: m2c::log_error(\"Don't know how to call to 0x%x. See \" __FILE__ \" line %d\\n\", __disp, __LINE__);m2c::stackDump(); abort();\n"
         result += "     };\n     return true;\n}\n"
@@ -1234,17 +1215,16 @@ struct Memory{
 
         self.a, self.b = self.parse2(dst, src)
         # if self.d in ['sp', 'esp'] and check_int(self.s):
-        if 'raddr' in self.a or 'raddr' in self.b:
+        if "raddr" in self.a or "raddr" in self.b:
             mapped_memory_access = True
 
         if mapped_memory_access:
-            return "MOV(%s, %s)" % (self.a, self.b)
+            return f"MOV({self.a}, {self.b})"
         else:
-            return "%s = %s;" % (self.a, self.b)
+            return f"{self.a} = {self.b};"
 
     def produce_jump_table_c(self, offsets):
-        """
-        It takes a list of labels and produces a C++ switch statement that jumps to the corresponding label
+        """It takes a list of labels and produces a C++ switch statement that jumps to the corresponding label.
 
         :param offsets: a list of labels that we want to jump to
         :return: The result of the function.
@@ -1261,8 +1241,8 @@ struct Memory{
             switch (__disp) {
         """
         for name, label in offsets:
-            logging.debug('%s, %s', name, label)
-            result += "        case m2c::k%s: \tgoto %s;\n" % (name, label)
+            logging.debug("%s, %s", name, label)
+            result += f"        case m2c::k{name}: \tgoto {label};\n"
         result += "        default: m2c::log_error(\"Don't know how to jump to 0x%x. See \" __FILE__ \" line %d\\n\", __disp, __LINE__);m2c::stackDump(); abort();\n"
         result += "    };\n}\n"
         return result
@@ -1273,13 +1253,13 @@ struct Memory{
 
     def produce_number_c(self, expr, radix, sign, value):
         if radix == 8:
-            result = f'{sign}0{value}'
+            result = f"{sign}0{value}"
         elif radix == 16:
-            result = f'{sign}0x{value}'
+            result = f"{sign}0x{value}"
         elif radix == 10:
-            result = f'{sign}{value}'
+            result = f"{sign}{value}"
         elif radix == 2:
-            result = f'{sign}{hex(int(value, 2))}'  # convert binary
+            result = f"{sign}{hex(int(value, 2))}"  # convert binary
         else:
             result = str(int(expr, radix))
         return result
@@ -1287,18 +1267,18 @@ struct Memory{
 
 
     def INTEGER(self, t):
-        return [self.produce_number_c('', t.start_pos, t.line, t.column)]
+        return [self.produce_number_c("", t.start_pos, t.line, t.column)]
 
     def STRING(self, token):
         result = token.value
         if len(token.value) == 4:  # m:
             ex = token
-            result = '0x'
+            result = "0x"
             for i in range(0, 4):
                 ss = str(hex(ord(ex[i])))
                 result += ss[2:]
         else:
-            result = result.replace('\\', '\\\\')  # escape c \ symbol
+            result = result.replace("\\", "\\\\")  # escape c \ symbol
             result = "'" + result + "'"
         return [result]
 
@@ -1317,9 +1297,9 @@ struct Memory{
                                         or (isinstance(origexpr, lark.Tree) and origexpr.data == MEMBERDIR))
         self._isjustmember = single and isinstance(origexpr, lark.Tree) and origexpr.data == MEMBERDIR
 
-        if self.itiscall and tree.mods & {'near', 'far'}: # and self._isjustlabel:
+        if self.itiscall and tree.mods & {"near", "far"}: # and self._isjustlabel:
             tree.indirection = self._indirection = IndirectionType.VALUE
-            
+
         self.element_size = tree.element_size
         self._ismember = False
         self._need_pointer_to_member = False
@@ -1330,23 +1310,23 @@ struct Memory{
             tree.ptr_size = self.variable_size  # Set destination size based on variable size
         self.size_changed = self.size_changed or "size_changed" in tree.mods and self._middle_size != tree.size()
 
-        if tree.indirection == IndirectionType.POINTER and tree.registers.intersection({'bp', 'ebp', 'sp', 'esp'}):
+        if tree.indirection == IndirectionType.POINTER and tree.registers.intersection({"bp", "ebp", "sp", "esp"}):
             self._work_segment = "ss"  # and segment is not overriden means base is "ss:"
 
         if self._need_pointer_to_member:
-            result = result[:-1] if result[-1] == '+' else result
-            result = result.replace('++', '+').replace('+-', '-')
+            result = result[:-1] if result[-1] == "+" else result
+            result = result.replace("++", "+").replace("+-", "-")
             result = f"{result}+{self._need_pointer_to_member[0]}))->{'.'.join(self._need_pointer_to_member[1:])}"
 
         if tree.indirection == IndirectionType.POINTER and not self._ismember and (
                 not self._isjustlabel or self.size_changed):
-            result = self.convert_sqbr_reference(tree.segment_register, result, 'destination' in tree.mods,
-                                                 tree.ptr_size, False, lea='lea' in tree.mods)
+            result = self.convert_sqbr_reference(tree.segment_register, result, "destination" in tree.mods,
+                                                 tree.ptr_size, False, lea="lea" in tree.mods)
         if self._ismember:
-            result = f'(({self.struct_type}*)raddr({self._work_segment},{result}'
+            result = f"(({self.struct_type}*)raddr({self._work_segment},{result}"
         if self.needs_dereference:
             self.needs_dereference = False
-            if result[0] == '(' and result[-1] == ')':
+            if result[0] == "(" and result[-1] == ")":
                 result = "*%s" % result
             else:
                 result = "*(%s)" % result
@@ -1384,10 +1364,10 @@ struct Memory{
                 elif size == 4:
                     v = f"far_offset({g.segment},{g.name})"
                 else:
-                    logging.error(f'Some unknown data size {size} for {g.name}')
-        elif isinstance(g, (op._equ, op._assignment)):
+                    logging.error(f"Some unknown data size {size} for {g.name}")
+        elif isinstance(g, op._equ | op._assignment):
             v = g.original_name
-        elif isinstance(g, (op.label, proc.Proc)):
+        elif isinstance(g, op.label | proc.Proc):
             v = f"m2c::k{g.name.lower()}"
         elif isinstance(g, op.Struct):
             pass
@@ -1399,7 +1379,7 @@ struct Memory{
     def offsetdir(self, tree):  # TODO equ, assign support
         name = tree.children[0]
 
-        if isinstance(name, lark.Tree) and name.data=='memberdir':
+        if isinstance(name, lark.Tree) and name.data=="memberdir":
             label = name.children
             if (g := self._context.get_global(label[0])) is None:
                 return label
@@ -1408,31 +1388,31 @@ struct Memory{
                 value = f'offset({g.segment},{".".join(label)})'
             elif isinstance(g, op.Struct):
                 value = f'offsetof({label[0]},{".".join(label[1:])})'
-            elif isinstance(g, (op._equ, op._assignment)):
+            elif isinstance(g, op._equ | op._assignment):
                 value = f'({label[0]})+offsetof({g.original_type},{".".join(label[1:])})'
             else:
-                raise Exception('Not handled type ' + str(type(g)))
+                raise Exception("Not handled type " + str(type(g)))
             self._indirection = IndirectionType.VALUE
-            return [lark.Token('memberdir', value)]
+            return [lark.Token("memberdir", value)]
 
         if (g := self._context.get_global(name)) is None:
             return [name]
         if isinstance(g, op.var):
             logging.debug("it is var %s", g.size)
             if self.element_size == 2:
-                return ["offset(%s,%s)" % (g.segment, g.name)]
+                return [f"offset({g.segment},{g.name})"]
             elif self.element_size == 4:
-                return ["far_offset(%s,%s)" % (g.segment, g.name)]
+                return [f"far_offset({g.segment},{g.name})"]
             else:
                 raise ValueError("Unknown offset size %s", self.element_size)
-        elif isinstance(g, (proc_module.Proc, op.label)):
+        elif isinstance(g, proc_module.Proc | op.label):
             logging.debug("it is proc")
             return ["m2c::k" + g.name]  # .capitalize()
         else:
             raise ValueError("Unknown type for offsetdir %s", type(g))
 
     def notdir(self, tree):
-        return ['~'] + tree.children
+        return ["~", *tree.children]
 
     def ordir(self, tree):
         return [tree.children[0], " | ", tree.children[1]]
@@ -1448,12 +1428,12 @@ struct Memory{
 
 
 IR2Cpp = Cpp
-'''
+"""
 class IR2Cpp(TopDownVisitor, Cpp):
 
     def __init__(self, parser):
         super(IR2Cpp, self).__init__(context=parser)
-'''
+"""
 
 
 if __name__ == "__main__":

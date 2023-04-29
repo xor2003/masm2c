@@ -1,5 +1,6 @@
 from ast import literal_eval
-''' Module to parse assembler source '''
+
+""" Module to parse assembler source """
 # Masm2c S2S translator (initially based on SCUMMVM tasmrecover)
 #
 # Masm2c is the legal property of its developers, whose names
@@ -28,24 +29,29 @@ import sys
 from collections import OrderedDict
 from copy import deepcopy
 
-
 import jsonpickle
+
 from lark import lark
 
 from . import cpp as cpp_module
 from . import op
-from .pgparser import LarkParser, Asm2IR, ExprRemover, AsmData2IR, BottomUpVisitor, \
-    IncludeLoader
+from .pgparser import (
+    Asm2IR,
+    AsmData2IR,
+    BottomUpVisitor,
+    ExprRemover,
+    IncludeLoader,
+    LarkParser,
+)
 from .proc import Proc
+from .Token import Expression, Token
 
-from .Token import Token, Expression
-
-INTEGERCNST = 'integer'
-STRINGCNST = 'STRING'
+INTEGERCNST = "integer"
+STRINGCNST = "STRING"
 
 class Vector:
 
-    def __init__(self, *args):
+    def __init__(self, *args) -> None:
         self.__value = args
 
     def __add__(self, vec):
@@ -54,7 +60,7 @@ class Vector:
         return self
 
     def __mul__(self, other):
-        self.__value = list(a * other for a in self)
+        self.__value = [a * other for a in self]
         return self
 
     #@property
@@ -63,12 +69,12 @@ class Vector:
     def __getitem__(self, item):
         return self.__value[item]
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"{self.__value}"
 
 class ExprSizeCalculator(BottomUpVisitor):
 
-    def __init__(self, element_size=0, **kwargs):
+    def __init__(self, element_size=0, **kwargs) -> None:
         super().__init__(**kwargs)
         self.element_number = 0
         self.element_size = element_size
@@ -77,36 +83,35 @@ class ExprSizeCalculator(BottomUpVisitor):
     def expr(self, tree, size):
         if self.element_size:
             tree.element_size = self.element_size
-        '''
-        
+        """
+
         self.element_number += tree.element_number
         size += tree.size()
         #self.size += size
-        '''
+        """
         return Vector(tree.size(), tree.element_number)
 
     def dupdir(self, tree, size):
         return size * tree.repeat
 
     def LABEL(self, token):  # TODO very strange, to replace
-        context = self.kwargs['context']
+        context = self.kwargs["context"]
         if g := context.get_global(token):
             if isinstance(g, op.var):
                 if self.element_size < 1:
                     self.element_size = g.size
                 return Vector(self.element_size, 1)
-            elif isinstance(g, (op._assignment, op._equ)):
+            elif isinstance(g, op._assignment | op._equ):
                 self.element_size = g.value.size()
                 return Vector(self.element_size, 1)
+            return None
+        return None
 
     def memberdir(self, tree, size):
         label = tree.children
-        context = self.kwargs['context']
+        context = self.kwargs["context"]
         g = context.get_global(label[0])
-        if isinstance(g, op.Struct):
-            type = label[0]
-        else:
-            type = g.original_type
+        type = label[0] if isinstance(g, op.Struct) else g.original_type
 
         try:
             for member in label[1:]:
@@ -127,8 +132,7 @@ class ExprSizeCalculator(BottomUpVisitor):
 
 
 def read_whole_file(file_name):
-    """
-    It reads the whole file and returns it as a string
+    """It reads the whole file and returns it as a string.
 
     :param file_name: The name of the file to read
     :return: The content of the file.
@@ -140,17 +144,16 @@ def read_whole_file(file_name):
 
 
 def dump_object(value):
-    """
-    Represents object as string
+    """Represents object as string.
 
     :param value: The object to dump
     :return: A string representation of the object.
     """
     stuff = str(value.__dict__)
     replacements = (
-        (r'\n', ' '),
-        (r'[{}]', ''),
-        (r"'([A-Za-z_0-9]+)'\s*:\s*", r'\g<1>=')
+        (r"\n", " "),
+        (r"[{}]", ""),
+        (r"'([A-Za-z_0-9]+)'\s*:\s*", r"\g<1>="),
     )
     for old, new in replacements:
         stuff = re.sub(old, new, stuff)
@@ -161,10 +164,8 @@ def dump_object(value):
 class Parser:
     c_dummy_label = 0
 
-    def __init__(self, args=None, skip_binary_data: list = None):
-        '''
-        Assembler parser
-        '''
+    def __init__(self, args=None, skip_binary_data: list = None) -> None:
+        """Assembler parser."""
         self.test_mode = False
         self.__globals = OrderedDict()
         self.pass_number = 0
@@ -182,18 +183,17 @@ class Parser:
             class MyDummyObj: pass
 
             args = MyDummyObj()
-            args.mergeprocs = 'separate'
+            args.mergeprocs = "separate"
         self.args = args
 
         self.next_pass(Parser.c_dummy_label)
 
     def next_pass(self, counter):
-        '''
-        Initializer for each pass
+        """Initializer for each pass.
 
         :param counter: Labels id counter
         :return:
-        '''
+        """
         self.pass_number += 1
         logging.info(f"     Pass number {self.pass_number}")
         Parser.c_dummy_label = counter
@@ -222,7 +222,7 @@ class Parser:
         self.__segment = op.Segment(self.__segment_name, 0, comment="Artificial initial segment")
         self.segments[self.__segment_name] = self.__segment
 
-        self.proc = self.add_proc("mainproc", '', 0, False)
+        self.proc = self.add_proc("mainproc", "", 0, False)
 
         self.used = False
 
@@ -231,16 +231,16 @@ class Parser:
         self.current_macro = None
         self.current_struct = None
 
-        self.struct_names_stack = list()
+        self.struct_names_stack = []
 
-        self._current_file = ''
-        self.__current_file_hash = '0'
+        self._current_file = ""
+        self.__current_file_hash = "0"
 
         self.data_merge_candidats = 0
 
         self.equs = set()
 
-    '''
+    """
     def visible(self):
         for i in self.__stack:
             if not i or i == 0:
@@ -259,7 +259,7 @@ class Parser:
     def pop_if(self):
         # logging.debug "endif"
         return self.__stack.pop()
-    '''
+    """
 
     def set_global(self, name, value):
         if len(name) == 0:
@@ -295,12 +295,12 @@ class Parser:
     def get_globals(self):
         return self.__globals
 
-    '''
+    """
     def has_global(self, name):
         name = name.lower()
         return name in self.__globals
 
-    
+
     def set_offset(self, name, value):
         if len(name) == 0:
             raise NameError("empty name is not allowed")
@@ -311,11 +311,11 @@ class Parser:
 
     def get_offset(self, name):
         return self.__offsets[name.lower()]
-    '''
+    """
 
     def replace_dollar_w_segoffst(self, v):
         logging.debug("$ = %d", self.__cur_seg_offset)
-        return v.replace('$', str(self.__cur_seg_offset))
+        return v.replace("$", str(self.__cur_seg_offset))
 
     @staticmethod
     def parse_int(v):
@@ -324,11 +324,11 @@ class Parser:
             raise Exception("Code deleted")
         v = v.strip()
         # logging.debug "~2~ %s" %v
-        if re.match(r'^[+-]?[0-8]+[OoQq]$', v):
+        if re.match(r"^[+-]?[0-8]+[OoQq]$", v):
             v = int(v[:-1], 8)
-        elif re.match(r'^[+-]?[0-9][0-9A-Fa-f]*[Hh]$', v):
+        elif re.match(r"^[+-]?[0-9][0-9A-Fa-f]*[Hh]$", v):
             v = int(v[:-1], 16)
-        elif re.match(r'^[01]+[Bb]$', v):
+        elif re.match(r"^[01]+[Bb]$", v):
             v = int(v[:-1], 2)
 
         try:
@@ -346,7 +346,7 @@ class Parser:
         if is_string:
 
             if elements >= 2 and isinstance(args[-1].children[-1], lark.Token) \
-                    and args[-1].children[-1].type == 'INTEGER' and args[-1].children[-1].value == '0':
+                    and args[-1].children[-1].type == "INTEGER" and args[-1].children[-1].value == "0":
                 cur_data_type = op.DataType.ZERO_STRING  # 0 terminated string
             else:
                 cur_data_type = op.DataType.ARRAY_STRING  # array string
@@ -358,9 +358,9 @@ class Parser:
 
 
 
-    def action_label(self, name, far=False, isproc=False, raw='', globl=True, line_number=0):
+    def action_label(self, name, far=False, isproc=False, raw="", globl=True, line_number=0):
         logging.debug("label name: %s", name)
-        if name == 'arbarb': # @@
+        if name == "arbarb": # @@
             name = self.get_dummy_jumplabel()
         name = self.mangle_label(name)  # for tests only
 
@@ -383,11 +383,8 @@ class Parser:
     def make_sure_proc_exists(self, line_number, raw):
         if not self.proc:
             _, real_offset, real_seg = self.get_lst_offsets(raw)
-            if real_seg:
-                offset = real_offset
-            else:
-                offset = self.__cur_seg_offset
-            pname = f'{self.__segment.name}_{offset:x}_proc'  # automatically generated proc name
+            offset = real_offset if real_seg else self.__cur_seg_offset
+            pname = f"{self.__segment.name}_{offset:x}_proc"  # automatically generated proc name
             if pname in self.proc_list:
                 self.proc = self.get_global(pname)
             else:
@@ -408,7 +405,7 @@ class Parser:
             self.data_merge_candidats = 0
 
             self.__segment.append(
-                op.Data(label, 'db', op.DataType.ARRAY, [0], num, num, comment='for alignment', align=True,
+                op.Data(label, "db", op.DataType.ARRAY, [0], num, num, comment="for alignment", align=True,
                         offset=offset))
 
     def move_offset(self, pointer, raw):
@@ -421,14 +418,14 @@ class Parser:
             self.__binary_data_size += num
 
             self.__segment.append(
-                op.Data(label, 'db', op.DataType.ARRAY, [0], num, num, comment='move_offset', align=True,
+                op.Data(label, "db", op.DataType.ARRAY, [0], num, num, comment="move_offset", align=True,
                         offset=offset))
         elif pointer < self.__binary_data_size and not self.itislst:
             self.data_merge_candidats = 0
-            logging.warning(f'Maybe wrong offset current:{self.__binary_data_size:x} should be:{pointer:x} ~{raw}~')
+            logging.warning(f"Maybe wrong offset current:{self.__binary_data_size:x} should be:{pointer:x} ~{raw}~")
 
     def get_dummy_label(self):
-        label = "dummy" + self.__current_file_hash[0] + '_' + str(hex(self.__binary_data_size))[2:]
+        label = "dummy" + self.__current_file_hash[0] + "_" + str(hex(self.__binary_data_size))[2:]
         return label
 
     def get_dummy_jumplabel(self):
@@ -442,8 +439,8 @@ class Parser:
         return label
 
     def parse_file(self, fname):
-        logging.info(f' *** Parsing {fname} file')
-        '''
+        logging.info(f" *** Parsing {fname} file")
+        """
         num = 0x1000
         if num:
             self.__binary_data_size += num
@@ -453,7 +450,7 @@ class Parser:
 
             self.c_data.append("{0}, // padding\n")
             self.h_data.append(" db " + label + "[" + str(num) + "]; // protective\n")
-        '''
+        """
 
         self.parse_file_lines(fname)
 
@@ -463,9 +460,9 @@ class Parser:
 
     def parse_file_lines(self, file_name):
         self._current_file = file_name
-        self.__current_file_hash = hashlib.blake2s(os.path.basename(self._current_file).encode('utf8')).hexdigest()
+        self.__current_file_hash = hashlib.blake2s(os.path.basename(self._current_file).encode("utf8")).hexdigest()
         content = read_whole_file(file_name)
-        if file_name.lower().endswith('.lst'):  # for .lst provided by IDA move address to comments after ;~
+        if file_name.lower().endswith(".lst"):  # for .lst provided by IDA move address to comments after ;~
             # we want exact placement so program could work
             content = self.extract_addresses_from_lst(file_name, content)
         result = self.parse_text(content, file_name=file_name)
@@ -474,36 +471,35 @@ class Parser:
     def extract_addresses_from_lst(self, file_name, content):
         self.itislst = True
         segmap = self.read_segments_map(file_name)
-        content = re.sub(r'^(?P<segment>[_0-9A-Za-z]+):(?P<offset>[0-9A-Fa-f]{4,8})(?P<remain>.*)',
+        content = re.sub(r"^(?P<segment>[_0-9A-Za-z]+):(?P<offset>[0-9A-Fa-f]{4,8})(?P<remain>.*)",
                          lambda m: f'{m.group("remain")} ;~ {segmap.get(m.group("segment"))}:{m.group("offset")}',
                          content, flags=re.MULTILINE)
         return content
 
     def read_segments_map(self, file_name):
-        """
-        It reads a .map file and returns a dictionary of segments
+        """It reads a .map file and returns a dictionary of segments.
 
         :param file_name: The name of the .map file
         :return: A dictionary of segments and their values.
         """
-        content = read_whole_file(re.sub(r'\.lst$', '.map', file_name, flags=re.I)).splitlines()
+        content = read_whole_file(re.sub(r"\.lst$", ".map", file_name, flags=re.I)).splitlines()
         DOSBOX_START_SEG = int(self.args.loadsegment, 0)
         strgenerator = (x for x in content)
         segs = OrderedDict()
         for line in strgenerator:
-            if line.strip() == 'Start  Stop   Length Name               Class':  # IDA Pro .lst magic
+            if line.strip() == "Start  Stop   Length Name               Class":  # IDA Pro .lst magic
                 break
         # Reads text until the end of the block:
         for line in strgenerator:  # This keeps reading the file
-            if line.strip() == 'Address         Publics by Value':
+            if line.strip() == "Address         Publics by Value":
                 break
             else:
                 if line.strip():
                     m = re.match(
-                        r'^\s+(?P<start>[0-9A-F]{5,10})H [0-9A-F]{5,10}H [0-9A-F]{5,10}H (?P<segment>[_0-9A-Za-z]+)\s+[A-Z]+',
+                        r"^\s+(?P<start>[0-9A-F]{5,10})H [0-9A-F]{5,10}H [0-9A-F]{5,10}H (?P<segment>[_0-9A-Za-z]+)\s+[A-Z]+",
                         line)
-                    segs[m.group('segment')] = f"{(int(m.group('start'), 16) // 16 + DOSBOX_START_SEG):04X}"
-        logging.debug(f'Results of loading .map file: {segs}')
+                    segs[m.group("segment")] = f"{(int(m.group('start'), 16) // 16 + DOSBOX_START_SEG):04X}"
+        logging.debug(f"Results of loading .map file: {segs}")
         return segs
 
     def parse_include_file_lines(self, file_name):
@@ -514,10 +510,9 @@ class Parser:
         self._current_file = self.__files.pop()
         return result
 
-    def action_assign(self, label, value, raw='', line_number=0):
-        """
-        This function is called when the parser encounters an assignment statement
-        It creates an assignment operation, and then appends it to the list of statements
+    def action_assign(self, label, value, raw="", line_number=0):
+        """This function is called when the parser encounters an assignment statement
+        It creates an assignment operation, and then appends it to the list of statements.
 
         :param label: the name of the variable
         :param value: The value to assign to the label
@@ -538,13 +533,13 @@ class Parser:
 
     def action_assign_test(self, label="", value="", line_number=0):
         raw = value
-        result = self.parse_text(value, start_rule='expr')
+        result = self.parse_text(value, start_rule="expr")
         value = self.process_ast(value, result)
         o = self.action_assign(label, value, raw, line_number)
         o.implemented = True
 
-    def action_equ_test(self, label="", value="", raw='', line_number=0):
-        result = self.parse_text(value, start_rule='equtype')
+    def action_equ_test(self, label="", value="", raw="", line_number=0):
+        result = self.parse_text(value, start_rule="equtype")
         value = self.process_ast(value, result)
 
         o = self.action_equ(label, value, raw, line_number)
@@ -553,7 +548,7 @@ class Parser:
     def return_empty(self, _):
         return []
 
-    def action_equ(self, label="", value="", raw='', line_number=0):
+    def action_equ(self, label="", value="", raw="", line_number=0):
         from .enumeration import IndirectionType
         label = self.mangle_label(label)
         size = value.size() if isinstance(value, Expression) else 0
@@ -570,7 +565,7 @@ class Parser:
         proc.stmts.append(o)
         return o
 
-    def create_segment(self, name, options=None, segclass=None, raw=''):
+    def create_segment(self, name, options=None, segclass=None, raw=""):
         logging.info("     Found segment %s", name)
         name = name.lower()
         self.data_merge_candidats = 0
@@ -586,10 +581,7 @@ class Parser:
             if real_offset:
                 self.__cur_seg_offset = real_offset
 
-            if real_seg:
-                offset = real_seg * 0x10
-            else:
-                offset = self.__binary_data_size
+            offset = real_seg * 16 if real_seg else self.__binary_data_size
             logging.debug("segment %s %x", name, offset)
             binary_width = 0
 
@@ -599,19 +591,19 @@ class Parser:
             self.set_global(name, op.var(binary_width, offset, name, issegment=True))
         return self.__segment
 
-    def action_proc(self, name, type, line_number=0, raw=''):
+    def action_proc(self, name, type, line_number=0, raw=""):
         logging.info("      Found proc %s", name)
         self.action_endp()
         name = self.mangle_label(name)
         far = False
         for i in type:
-            if i and i.lower() == 'far':
+            if i and i.lower() == "far":
                 far = True
 
         self.proc = self.add_proc(name, raw, line_number, far)
 
     def add_proc(self, name, raw, line_number, far):
-        if self.args.mergeprocs == 'separate':
+        if self.args.mergeprocs == "separate":
             self.need_label = False
         # if self.__separate_proc:
         offset, real_offset, real_seg = self.get_lst_offsets(raw)
@@ -633,7 +625,7 @@ class Parser:
         type = type[1:] + name
         self.create_segment(type)
 
-    '''
+    """
     def action_prefix(self, line):
         cmd = line.split()
         cmd0 = str(cmd[0])
@@ -648,7 +640,7 @@ class Parser:
         o.line = " ".join(cmd[1:])
         o.line_number = self.line_number
         self.proc.stmts.append(o)
-    '''
+    """
 
     def action_endseg(self):
         logging.debug("segment %s ends", self.__segment_name)
@@ -663,7 +655,7 @@ class Parser:
             if self.__proc_stack:
                 self.__proc_stack.pop()
             self.proc = None
-        ''' Support code outside procs
+        """ Support code outside procs
         if self.__proc_stack:
             self.proc = self.__proc_stack[-1]
         else:
@@ -678,7 +670,7 @@ class Parser:
     def action_if(self, line):
         cmd = line.split()
         self.push_if(cmd[1])
-    '''
+    """
 
     def action_code(self, line):
         self.test_mode = True
@@ -686,7 +678,7 @@ class Parser:
         self.segments = OrderedDict()
         try:
             self.test_pre_parse()
-            result = self.parse_text(line + "\n", start_rule='instruction')
+            result = self.parse_text(line + "\n", start_rule="instruction")
             result = self.process_ast(line, result)
         except Exception as e:
             print(e)
@@ -700,7 +692,7 @@ class Parser:
         self.segments = OrderedDict()
         try:
             self.test_pre_parse()
-            result = self.parse_text(line, start_rule='expr')
+            result = self.parse_text(line, start_rule="expr")
             expr = self.process_ast(line, result)
             result = expr.size()
         except Exception as e:
@@ -712,12 +704,12 @@ class Parser:
         return result
 
     def action_data(self, line):
-        ''' For tests only '''
+        """For tests only."""
         self.test_mode = True
         self.segments = OrderedDict()
         try:
             self.test_pre_parse()
-            result = self.parse_text(line + "\n", start_rule='insegdirlist')
+            result = self.parse_text(line + "\n", start_rule="insegdirlist")
             result = self.process_ast(line, result)
         except Exception as e:
             print(e)
@@ -732,7 +724,7 @@ class Parser:
         self.segments = OrderedDict()
         try:
             self.test_pre_parse()
-            expr = self.parse_text(line, start_rule='expr')
+            expr = self.parse_text(line, start_rule="expr")
             expr = self.process_ast(line, expr)
             #if destination:
             #if def_size and expr.element_size == 0:
@@ -741,19 +733,20 @@ class Parser:
             exc_type, exc_obj, exc_tb = sys.exc_info()
             fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
             print(e, exc_type, fname, exc_tb.tb_lineno)
-            import traceback, logging
+            import logging
+            import traceback
 
             logging.error(traceback.format_exc())
             raise
         return result
 
     def parse_include(self, line, file_name=None):
-        result = self.parse_text(line, file_name=file_name, start_rule='insegdirlist')
+        result = self.parse_text(line, file_name=file_name, start_rule="insegdirlist")
         return result
 
 
 
-    def datadir_action(self, label, type, args, is_string=False, raw='', line_number=0):
+    def datadir_action(self, label, type, args, is_string=False, raw="", line_number=0):
         if self.__cur_seg_offset > 0xffff:
             return []
         if self.__cur_seg_offset & 0xff == 0:
@@ -798,11 +791,11 @@ class Parser:
             label = self.get_dummy_label()
 
         if isstruct:
-            data_type = 'struct data'
+            data_type = "struct data"
         else:
             self.__binary_data_size += size
             self.__cur_seg_offset += size
-            data_type = 'usual data'
+            data_type = "usual data"
         data = op.Data(label, type, data_internal_type, array, elements, size, filename=self._current_file,
                        raw_line=raw,
                        line_number=line_number, comment=data_type, offset=offset)
@@ -826,11 +819,11 @@ class Parser:
         if self.data_merge_candidats == size:
             if self.__segment.getdata()[-size].offset + size - 1 != self.__segment.getdata()[-1].offset:
                 logging.debug(
-                    f'Cannot merge {self.__segment.getdata()[-size].label} - {self.__segment.getdata()[-1].label}')
+                    f"Cannot merge {self.__segment.getdata()[-size].label} - {self.__segment.getdata()[-1].label}")
                 self.data_merge_candidats = 0
             else:
                 logging.debug(
-                    f'Merging data at {self.__segment.getdata()[-size].label} - {self.__segment.getdata()[-1].label}')
+                    f"Merging data at {self.__segment.getdata()[-size].label} - {self.__segment.getdata()[-1].label}")
                 array = [x.children[0] for x in self.__segment.getdata()[-size:]]
                 if not any(array):  # all zeros
                     array = [0]
@@ -850,25 +843,24 @@ class Parser:
             self.move_offset(absolute_offset, raw)
             if self.__cur_seg_offset > real_offset:
                 if not self.itislst:
-                    logging.warning(f'Current offset does not equal to required for {label}')
+                    logging.warning(f"Current offset does not equal to required for {label}")
             if self.__cur_seg_offset != real_offset:
                 self.data_merge_candidats = 0
             self.__cur_seg_offset = real_offset
 
     def get_lst_offsets(self, raw):
-        '''
-        Get required offsets from .LST file
+        """Get required offsets from .LST file
         :param raw: raw string
-        :return: offset from memory begging, offset starting from segment, segment in para
-        '''
+        :return: offset from memory begging, offset starting from segment, segment in para.
+        """
         real_offset = None
         absolute_offset = None
         real_seg = None
         if self.itislst:
-            m = re.match(r'.* ;~ (?P<segment>[0-9A-Fa-f]{4}):(?P<offset>[0-9A-Fa-f]{4})', raw)
+            m = re.match(r".* ;~ (?P<segment>[0-9A-Fa-f]{4}):(?P<offset>[0-9A-Fa-f]{4})", raw)
             if m:
-                real_offset = int(m.group('offset'), 16)
-                real_seg = int(m.group('segment'), 16)
+                real_offset = int(m.group("offset"), 16)
+                real_seg = int(m.group("segment"), 16)
                 absolute_offset = real_seg * 0x10 + real_offset
         return absolute_offset, real_offset, real_seg
 
@@ -881,7 +873,7 @@ class Parser:
     def parse_file_inside(self, text, file_name=None):
         return self.parse_include(text, file_name)
 
-    def parse_text(self, text, file_name=None, start_rule='start'):
+    def parse_text(self, text, file_name=None, start_rule="start"):
         logging.debug("parsing: [%s]", text)
 
         result = self.__lex.parser.parse(text, start=start_rule)  # , file_name=file_name, extra=self)
@@ -890,34 +882,33 @@ class Parser:
     def process_ast(self, text, result):
         result = IncludeLoader(self).transform(result)
         result = ExprRemover().transform(result)
-        #result = EquCollector(self).transform(result)
         asm2ir = Asm2IR(self, text)
-        '''
+        """
         for e in self.equs:
             g = self.get_global(e)
             if not isinstance(g.value, Expression):
                 g.value = asm2ir.transform(g.value)
-        '''
+        """
         result = asm2ir.transform(result)
         return result
 
     @staticmethod
     def mangle_label(name):
         name = name.lower()  # ([A-Za-z@_\$\?][A-Za-z0-9@_\$\?]*)
-        return name.replace('@', "arb").replace('?', "que").replace('$', "dol")
+        return name.replace("@", "arb").replace("?", "que").replace("$", "dol")
 
     @staticmethod
     def is_register(expr):
         expr = expr.lower()
         size = 0
-        if expr in {'al', 'bl', 'cl', 'dl', 'ah', 'bh', 'ch', 'dh'}:
-            logging.debug('is reg res 1')
+        if expr in {"al", "bl", "cl", "dl", "ah", "bh", "ch", "dh"}:
+            logging.debug("is reg res 1")
             size = 1
-        elif expr in {'ax', 'bx', 'cx', 'dx', 'si', 'di', 'sp', 'bp', 'ds', 'cs', 'es', 'fs', 'gs', 'ss'}:
-            logging.debug('is reg res 2')
+        elif expr in {"ax", "bx", "cx", "dx", "si", "di", "sp", "bp", "ds", "cs", "es", "fs", "gs", "ss"}:
+            logging.debug("is reg res 2")
             size = 2
-        elif expr in {'eax', 'ebx', 'ecx', 'edx', 'esi', 'edi', 'esp', 'ebp'}:
-            logging.debug('is reg res 4')
+        elif expr in {"eax", "ebx", "ecx", "edx", "esi", "edi", "esp", "ebp"}:
+            logging.debug("is reg res 4")
             size = 4
         return size
 
@@ -928,15 +919,15 @@ class Parser:
             logging.error("Type is not a string TODO " + str(value))
             return 0
         value = value.lower()
-        if value in self.structures.keys() and self.structures[value] is not True:
+        if value in self.structures and self.structures[value] is not True:
             return self.structures[value].getsize()
         try:
-            size = {'db': 1, 'byte': 1, 'sbyte': 1,
-                    'dw': 2, 'word': 2, 'sword': 2, 'small': 2, 'near': 2,
-                    'dd': 4, 'dword': 4, 'sdword': 4, 'large': 4, 'far': 4, 'real4': 4,
-                    'df': 6, 'fword': 6,
-                    'dq': 8, 'qword': 8, 'real8': 8,
-                    'dt': 10, 'tbyte': 10, 'real10': 10}[value]
+            size = {"db": 1, "byte": 1, "sbyte": 1,
+                    "dw": 2, "word": 2, "sword": 2, "small": 2, "near": 2,
+                    "dd": 4, "dword": 4, "sdword": 4, "large": 4, "far": 4, "real4": 4,
+                    "df": 6, "fword": 6,
+                    "dq": 8, "qword": 8, "real8": 8,
+                    "dt": 10, "tbyte": 10, "real10": 10}[value]
         except KeyError:
             logging.error("Cannot find size for %s", value)
             size = 0
@@ -948,15 +939,15 @@ class Parser:
                 values = values.children
             return [self.convert_members(m, v) for m, v in zip(data.getmembers(), values)]
         else:
-            '''
+            """
             type = data.gettype()
             binary_width = self.typetosize(type)
             _, _, array = self.process_data_tokens(values, binary_width)
-            '''
+            """
             array = AsmData2IR().visit(values)
             return array
 
-    def add_structinstance(self, label, type, args, raw=''):
+    def add_structinstance(self, label, type, args, raw=""):
 
         if not label:
             label = self.get_dummy_label()
@@ -967,13 +958,13 @@ class Parser:
 
         s = self.structures[type]
         number = 1
-        if isinstance(args, list) and len(args) > 2 and isinstance(args[1], str) and args[1] == 'dup':
+        if isinstance(args, list) and len(args) > 2 and isinstance(args[1], str) and args[1] == "dup":
             cpp = cpp_module.Cpp(self)
-            number = literal_eval(cpp.render_instruction_argument(Token.find_tokens(args[0],'expr')))
+            number = literal_eval(cpp.render_instruction_argument(Token.find_tokens(args[0],"expr")))
             args = args[3]
-        args = Token.remove_tokens(args, ['structinstance'])
+        args = Token.remove_tokens(args, ["structinstance"])
 
-        d = op.Data(label, type, op.DataType.OBJECT, args, 1, s.getsize(), comment='struct instance', offset=offset)
+        d = op.Data(label, type, op.DataType.OBJECT, args, 1, s.getsize(), comment="struct instance", offset=offset)
         members = [deepcopy(i) for i in s.getdata().values()]
         d.setmembers(members)
         args = self.convert_members(d, args)
@@ -981,7 +972,7 @@ class Parser:
 
         if number > 1:
             d = op.Data(label, type, op.DataType.ARRAY, number * [d], number, number * s.getsize(),
-                        comment='object array',
+                        comment="object array",
                         offset=offset)
 
         isstruct = len(self.struct_names_stack) != 0
@@ -1002,7 +993,7 @@ class Parser:
         if isinstance(type, Token):
             strtype = type.children
         label = self.mangle_label(label)
-        if strtype not in ['proc']:
+        if strtype not in ["proc"]:
             binary_width = self.typetosize(type)
             self.reset_global(label, op.var(binary_width, 0, name=label, segment=self.__segment_name,
                                             elements=1, external=True, original_type=strtype))
@@ -1015,26 +1006,24 @@ class Parser:
             self.reset_global(label, proc)
 
     def add_call_to_entrypoint(self):
-        """
-        It adds a call to the entry point of the program to the service mainproc
-        """
+        """It adds a call to the entry point of the program to the service mainproc."""
         # if self.__separate_proc:
-        proc = self.get_global('mainproc')
-        result = self.parse_text(self.entry_point, start_rule='expr')
-        expr = self.process_ast('', result)
+        proc = self.get_global("mainproc")
+        result = self.parse_text(self.entry_point, start_rule="expr")
+        expr = self.process_ast("", result)
 
-        o = proc.create_instruction_object('call', [expr])
+        o = proc.create_instruction_object("call", [expr])
         o.filename = self._current_file
-        o.raw_line = ''
+        o.raw_line = ""
         o.line_number = 0
         proc.stmts.append(o)
-        o = proc.create_instruction_object('ret')
+        o = proc.create_instruction_object("ret")
         o.filename = self._current_file
-        o.raw_line = ''
+        o.raw_line = ""
         o.line_number = 0
         proc.stmts.append(o)
 
-    def action_instruction(self, instruction, args, raw='', line_number=0):
+    def action_instruction(self, instruction, args, raw="", line_number=0):
         self.handle_local_asm_jumps(instruction, args)
 
         self.make_sure_proc_exists(line_number, raw)
@@ -1056,13 +1045,13 @@ class Parser:
                     logging.warning(f"at {o.real_seg:x}:{o.real_offset:x}")
             if self.need_label and self.proc.stmts:  # skip first instruction
                 if o.real_seg:
-                    label_name = f'ret_{o.real_seg:x}_{o.real_offset:x}'
+                    label_name = f"ret_{o.real_seg:x}_{o.real_offset:x}"
                 else:
                     label_name = self.get_extra_dummy_jumplabel()
                 logging.warning(f"Adding helping label {label_name}")
                 self.action_label(label_name, raw=raw)
             self.proc.stmts.append(o)
-            if self.args.mergeprocs == 'single':
+            if self.args.mergeprocs == "single":
                 self.need_label |= self.proc.is_return_point(o)
             self.flow_terminated = self.proc.is_flow_terminating_stmt(o)
             self.need_label |= self.flow_terminated
@@ -1074,25 +1063,25 @@ class Parser:
             return None
 
     def handle_local_asm_jumps(self, instruction, args):
-        if (instruction[0].lower() == 'j' or instruction[0].lower() == 'loop') and \
+        if (instruction[0].lower() == "j" or instruction[0].lower() == "loop") and \
                 len(args) == 1 and isinstance(args[0], lark.Tree) and \
                 isinstance(args[0].children, list) and isinstance(args[0].children[0], lark.Token) and \
-                args[0].children[0].type == 'LABEL':
-            if args[0].children[0].lower() == 'arbf':  # @f
+                args[0].children[0].type == "LABEL":
+            if args[0].children[0].lower() == "arbf":  # @f
                 args[0].children[0] = "dummylabel" + str(self.__c_dummy_jump_label + 1)
-            elif args[0].children[0].lower() == 'arbb':  # @b
+            elif args[0].children[0].lower() == "arbb":  # @b
                 args[0].children[0] = "dummylabel" + str(self.__c_dummy_jump_label)
 
     def collect_labels(self, target, operation):
         for arg in operation.children:
-            offset = Token.find_tokens(arg, 'offsetdir') or []
+            offset = Token.find_tokens(arg, "offsetdir") or []
             if offset and not isinstance(offset[0], str): offset = []
-            labels = (Token.find_tokens(arg, 'LABEL') or []) + offset
+            labels = (Token.find_tokens(arg, "LABEL") or []) + offset
             # TODO replace with AST traversing
             #  If it is call to a proc then does not take it into account
             #  TODO: check for calls into middle of proc
-            if labels and not operation.cmd.startswith('call') and not (
-                    self.args.mergeprocs == 'separate' and operation.cmd == 'jmp'):
+            if labels and not operation.cmd.startswith("call") and not (
+                    self.args.mergeprocs == "separate" and operation.cmd == "jmp"):
                 label = labels[0]
                 if label == "dol":
                     continue
@@ -1119,32 +1108,32 @@ class Parser:
 
         try:
             with open(name + ".json") as infile:
-                logging.info(f' *** Loading {name}.json')
+                logging.info(f" *** Loading {name}.json")
                 j = jsonpickle.decode(infile.read())
-                self.initial_procs_start = self.procs_start = set(j['Jumps'])
+                self.initial_procs_start = self.procs_start = set(j["Jumps"])
         except FileNotFoundError:
             pass
 
 
 def parse_asm_number(expr, radix):
-    if expr == '?':
-        radix, sign, value = 10, '', '0'
+    if expr == "?":
+        radix, sign, value = 10, "", "0"
     else:
-        if m := re.match(r'^(?P<sign>[+-]?)(?P<value>[0-8]+)[OoQq]$', expr):
+        if m := re.match(r"^(?P<sign>[+-]?)(?P<value>[0-8]+)[OoQq]$", expr):
             radix = 8
-        elif m := re.match(r'^(?P<sign>[+-]?)(?P<value>[0-9][0-9A-Fa-f]*)[Hh]$', expr):
+        elif m := re.match(r"^(?P<sign>[+-]?)(?P<value>[0-9][0-9A-Fa-f]*)[Hh]$", expr):
             radix = 16
-        elif m := re.match(r'^(?P<sign>[+-]?)(?P<value>[0-9]+)[Dd]$', expr):
+        elif m := re.match(r"^(?P<sign>[+-]?)(?P<value>[0-9]+)[Dd]$", expr):
             radix = 10
-        elif m := re.match(r'^(?P<sign>[+-]?)(?P<value>[0-1]+)[Bb]$', expr):
+        elif m := re.match(r"^(?P<sign>[+-]?)(?P<value>[0-1]+)[Bb]$", expr):
             radix = 2
-        elif m := re.match(r'^(?P<sign>[+-]?)(?P<value>[0-9]+)$', expr):
+        elif m := re.match(r"^(?P<sign>[+-]?)(?P<value>[0-9]+)$", expr):
             pass
-        elif m := re.match(r'^(?P<sign>[+-]?)(?P<value>[0-9][0-9A-Fa-f]*)$', expr):
+        elif m := re.match(r"^(?P<sign>[+-]?)(?P<value>[0-9][0-9A-Fa-f]*)$", expr):
             radix = 16
         else:
             raise ValueError(expr)
-        sign = m['sign'] if m['sign'] else ''
-        value = m['value']
+        sign = m["sign"] if m["sign"] else ""
+        value = m["value"]
         #if sign == '-':
     return radix, sign, value

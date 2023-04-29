@@ -3,58 +3,51 @@ import os
 import re
 import sys
 from collections import OrderedDict
-from copy import deepcopy, copy
 from collections.abc import Iterator
+from copy import copy, deepcopy
 
-from lark import Transformer, Lark, v_args, Discard, Tree, lark
+from lark import Discard, Lark, Transformer, Tree, lark, v_args
 
 from . import op
-from .Macro import Macro
-from .Token import Token, Expression
 from .enumeration import IndirectionType
+from .Macro import Macro
+from .Token import Expression, Token
 
 macroses = OrderedDict()
-macronamere = re.compile(r'([A-Za-z_@$?][A-Za-z0-9_@$?]*)')
-commentid = re.compile(r'COMMENT\s+([^ ]).*?\1[^\r\n]*', flags=re.DOTALL)
+macronamere = re.compile(r"([A-Za-z_@$?][A-Za-z0-9_@$?]*)")
+commentid = re.compile(r"COMMENT\s+([^ ]).*?\1[^\r\n]*", flags=re.DOTALL)
 
 class MatchTag:
     always_accept = "LABEL", "structinstdir", "STRUCTNAME"
 
-    def __init__(self, context):
+    def __init__(self, context) -> None:
         self.context = context
         self.last_type = None
         self.last = None
 
     def process(self, stream: Iterator[lark.Token]) -> Iterator[lark.Token]:
         for t in stream:
-            if self.last_type == 'LABEL' and t.type == "LABEL" and t.value.lower() in {'struc','struct','union'}:  # HACK workaround
-                # print(1, self.last_type, self.last, t)
+            if self.last_type == "LABEL" and t.type == "LABEL" and t.value.lower() in {"struc","struct","union"}:  # HACK workaround
                 t.type = "STRUCTHDR"
-            if t.type == "LABEL" and t.value.lower() in ['ends']:  # HACK workaround
+            if t.type == "LABEL" and t.value.lower() in ["ends"]:  # HACK workaround
                 print(self.last_type, self.last)
                 t.type = "endsdir"
 
             #if t.type == "LABEL" and t.value == 'VECTOR':
-            #    print(t)
 
-            if self.last_type == 'LABEL' and t.type == "STRUCTHDR":
+            if self.last_type == "LABEL" and t.type == "STRUCTHDR":
                 self.context.structures[self.last.lower()] = True
-                # print(1, self.last_type, self.last, t)
 
             # if t.type == "STRUCTHDR":
-            #    print(2, t)
-            #    print(self.last)
-            if self.context.structures and self.last_type == 'LABEL' \
+            if self.context.structures and self.last_type == "LABEL" \
                     and t.type == "LABEL" and t.value.lower() in self.context.structures:
-                # print(3, t)
                 t.type = "STRUCTNAME"
             self.last_type = t.type
             self.last = t.value
             yield t
 
 def get_line_number(meta):
-    """
-    It returns the line number of the current position in the input string
+    """It returns the line number of the current position in the input string.
 
     :param context: the context object that is passed to the action function
     :return: The line number of the current position in the input string.
@@ -63,8 +56,7 @@ def get_line_number(meta):
 
 
 def get_raw(input_str, meta):
-    """
-    It returns the raw text that was provided to parser
+    """It returns the raw text that was provided to parser.
 
     :param context:
     :return: The raw string from the input string.
@@ -73,15 +65,14 @@ def get_raw(input_str, meta):
 
 
 def get_raw_line(input_str, meta):
-    """
-    It returns the raw line of text that the cursor is currently on
+    """It returns the raw line of text that the cursor is currently on.
 
     :return: The line of text from the input string.
     """
     try:
-        line_strt_pos = input_str.rfind('\n', 0, meta.start_pos) + 1
+        line_strt_pos = input_str.rfind("\n", 0, meta.start_pos) + 1
 
-        line_eol_pos = input_str.find('\n', meta.start_pos)
+        line_eol_pos = input_str.find("\n", meta.start_pos)
         if line_eol_pos == -1:
             line_eol_pos = len(input_str)
     except Exception as ex:
@@ -91,23 +82,23 @@ def get_raw_line(input_str, meta):
 
 class CommonCollector(Transformer):
 
-    def __init__(self, context, input_str=''):
+    def __init__(self, context, input_str="") -> None:
         self.context = context
         self._expression = None
         self.input_str = input_str
 
-'''
+"""
 class EquCollector(CommonCollector):
 
     def __init__(self, context, input_str=''):
         super().__init__(context, input_str)
 
 
-'''
+"""
 
 class Asm2IR(CommonCollector):
 
-    def __init__(self, context, input_str=''):
+    def __init__(self, context, input_str="") -> None:
         super().__init__(context, input_str)
         self._radix = 10
         self._element_type = None
@@ -118,7 +109,7 @@ class Asm2IR(CommonCollector):
     def externdef(self, nodes):
         label, type = nodes
         type = type.children[0].children[0]
-        logging.debug('externdef %s', nodes)
+        logging.debug("externdef %s", nodes)
         self.context.add_extern(label, type)
         return nodes
 
@@ -143,10 +134,10 @@ class Asm2IR(CommonCollector):
         name, colon = children  # TODO
         return self.context.action_label(name, isproc=False, raw=get_raw_line(self.input_str, meta),
                                          line_number=get_line_number(meta),
-                                         globl=(colon == '::'))
+                                         globl=(colon == "::"))
 
 
-    '''
+    """
     def build_ast(self, nodes, type=''):
         if isinstance(nodes, parglare.parser.NodeNonTerm) and nodes.children:
             if len(nodes.children) == 1:
@@ -159,21 +150,21 @@ class Asm2IR(CommonCollector):
                 return l
         else:
             return Node(name=nodes.symbol.name, type=type, keyword=nodes.symbol.keyword, value=nodes.value)
-    '''
+    """
 
     def expr(self, children):
         # while isinstance(children, list) and len(children) == 1:
         self.expression.children = children  # [0]
         result:Expression = self._expression
         if not self.expression.segment_overriden and result.indirection == IndirectionType.POINTER and \
-                result.registers.intersection({'bp', 'ebp', 'sp', 'esp'}):
-            result.segment_register = 'ss'
+                result.registers.intersection({"bp", "ebp", "sp", "esp"}):
+            result.segment_register = "ss"
         #if result.indirection == IndirectionType.POINTER:
         self._expression = None
         return result
 
     def initvalue(self, expr):
-        return lark.Tree(data='exprlist', children=[self.expr(expr)])
+        return lark.Tree(data="exprlist", children=[self.expr(expr)])
 
     def dupdir(self, children):
         from masm2c.cpp import IR2Cpp
@@ -182,7 +173,7 @@ class Asm2IR(CommonCollector):
         repeat = "".join(IR2Cpp(self.context).visit(repeat))
         repeat = eval(repeat)
         value = children[1]
-        result = lark.Tree(data='dupdir', children=value)
+        result = lark.Tree(data="dupdir", children=value)
         result.repeat = repeat
         return result  # Token('dupdir', [times, values])
 
@@ -206,8 +197,8 @@ class Asm2IR(CommonCollector):
         type = children[0].lower()
         #if self._size: # TODO why need another variable?
         self.expression.ptr_size = self.context.typetosize(type)
-        if type not in {'far', 'near'}:
-            self.expression.mods.add('size_changed')
+        if type not in {"far", "near"}:
+            self.expression.mods.add("size_changed")
         self._element_type = self.expression.original_type = type
         children = children[1:]
         self.expression.element_size = 0
@@ -217,7 +208,7 @@ class Asm2IR(CommonCollector):
         self.expression.indirection = IndirectionType.POINTER
         self.expression.segment_overriden = True
         self.expression.ptr_size = self.context.typetosize(children[0])
-        self.expression.mods.add('size_changed')
+        self.expression.mods.add("size_changed")
         self._element_type = self.expression.original_type = children[0].lower()
         return children[3:]
 
@@ -227,28 +218,27 @@ class Asm2IR(CommonCollector):
         return str(children[0]).lower()
 
     def ANYTHING(self, value):
-        return self.INTEGER('0')
+        return self.INTEGER("0")
 
     def INTEGER(self, value):
-        from .parser import parse_asm_number
         from .gen import guess_int_size
+        from .parser import parse_asm_number
 
         radix, sign, value = parse_asm_number(value, self._radix)
 
         val = int(value, radix)
-        if sign == '-':
+        if sign == "-":
             val *= -1
         self.expression.element_size_guess = guess_int_size(val)
 
-        t = lark.Token(type='INTEGER', value=sign + value)
+        t = lark.Token(type="INTEGER", value=sign + value)
         t.start_pos, t.line, t.column = radix, sign, value
         return t  # Token('INTEGER', Cpp(self.context.convert_asm_number_into_c(nodes, self.context.radix))  # TODO remove this
 
     def commentkw(self, head, s, pos):
         # multiline comment
-        if s[pos:pos + 7] == 'COMMENT':
-            if mtch := commentid.match(s[pos:]):
-                return mtch.group(0)
+        if s[pos:pos + 7] == "COMMENT" and (mtch := commentid.match(s[pos:])):
+            return mtch.group(0)
         return None
 
     def macroname(self, s, pos):
@@ -257,8 +247,7 @@ class Asm2IR(CommonCollector):
             mtch = macronamere.match(s[pos:])
             if mtch:
                 result = mtch.group().lower()
-                # logging.debug ("matched ~^~" + result+"~^~")
-                if result in macroses.keys():
+                if result in macroses:
                     logging.debug(" ~^~" + result + "~^~ in macronames")
                     return result
         return None
@@ -267,7 +256,7 @@ class Asm2IR(CommonCollector):
         # macro definition header
         param_names = []
         if parms:
-            param_names = [i.lower() for i in Token.find_tokens(parms, 'LABEL')]
+            param_names = [i.lower() for i in Token.find_tokens(parms, "LABEL")]
         self.context.current_macro = Macro(name.children.lower(), param_names)
         self.context.macro_names_stack.add(name.children.lower())
         logging.debug("macroname added ~~%s~~", name.children)
@@ -276,7 +265,7 @@ class Asm2IR(CommonCollector):
     def repeatbegin(self, nodes, value):
         # start of repeat macro
         self.context.current_macro = Macro("", [], value)
-        self.context.macro_names_stack.add('')  # TODO
+        self.context.macro_names_stack.add("")  # TODO
         logging.debug("repeatbegin")
         return nodes
 
@@ -290,7 +279,7 @@ class Asm2IR(CommonCollector):
 
     class Getmacroargval:
 
-        def __init__(self, params, args):
+        def __init__(self, params, args) -> None:
             self.argvaluedict = OrderedDict(zip(params, args))
 
         def __call__(self, token):
@@ -303,7 +292,7 @@ class Asm2IR(CommonCollector):
         instructions = deepcopy(macros.instructions)
         param_assigner = self.Getmacroargval(macros.getparameters(), args)
         for instruction in instructions:
-            instruction.children = Token.find_and_replace_tokens(instruction.children, 'LABEL', param_assigner)
+            instruction.children = Token.find_and_replace_tokens(instruction.children, "LABEL", param_assigner)
         self.context.proc.stmts += instructions
         return nodes
 
@@ -312,8 +301,7 @@ class Asm2IR(CommonCollector):
             mtch = macronamere.match(s[pos:])
             if mtch:
                 result = mtch.group().lower()
-                # logging.debug ("matched ~^~" + result+"~^~")
-                if result in self.context.structures.keys():
+                if result in self.context.structures:
                     logging.debug(" ~^~" + result + "~^~ in structures")
                     return result
         return None
@@ -333,10 +321,7 @@ class Asm2IR(CommonCollector):
         args = values.children[0]
         if args is None:
             args = []
-        if label:
-            name = label.lower()
-        else:
-            name = ''
+        name = label.lower() if label else ""
         self.context.add_structinstance(name, type.lower(), args, raw=get_raw(self.input_str, meta))
         return Discard
 
@@ -353,17 +338,17 @@ class Asm2IR(CommonCollector):
 
         if len(children)==1: # TODO why?
             children = children[0]
-        if isinstance(children[0], lark.Token) and children[0].type == 'LABEL':
+        if isinstance(children[0], lark.Token) and children[0].type == "LABEL":
             label = self.context.mangle_label(children.pop(0))
         else:
-            label = ''
+            label = ""
         type = children.pop(0).lower()
-        if isinstance(children[0], (lark.Token, lark.Tree)):  # Data
-            values = lark.Tree(data='data', children=children[0].children)
+        if isinstance(children[0], lark.Token | lark.Tree):  # Data
+            values = lark.Tree(data="data", children=children[0].children)
         else:
             values = children[0][2:3][0]
 
-        is_string = any('string' in expr.mods for expr in values.children if isinstance(expr, lark.Tree) and expr.data == 'expr')
+        is_string = any("string" in expr.mods for expr in values.children if isinstance(expr, lark.Tree) and expr.data == "expr")
 
         self._expression = None
         return self.context.datadir_action(label, type, values, is_string=is_string, raw=get_raw(self.input_str, meta),
@@ -371,7 +356,7 @@ class Asm2IR(CommonCollector):
 
 
     def segdir(self, nodes: list):
-        segtype = nodes[-1] if nodes else ''
+        segtype = nodes[-1] if nodes else ""
         logging.debug("segdir %s ~~", nodes)
         self.context.action_simplesegment(segtype.lower(), None)  # TODO
         self._expression = None
@@ -382,28 +367,28 @@ class Asm2IR(CommonCollector):
         value = self.context.mangle_label(value)
         self.name = value
 
-        logging.debug('name = %s', self.name)
-        l = lark.Token(type='LABEL', value=value)
+        logging.debug("name = %s", self.name)
+        l = lark.Token(type="LABEL", value=value)
         if g := self.context.get_global(self.name):
             from masm2c.proc import Proc
-            if isinstance(g, (op._equ, op._assignment)):
+            if isinstance(g, op._equ | op._assignment):
                 #if not isinstance(g.value, Expression):
                 if isinstance(g.value, Expression):
                     g.size = g.value.size()
                     if len(g.children) == 2 and g.children[1].indirection == IndirectionType.POINTER:
-                        self.expression.ptr_size = g.size 
+                        self.expression.ptr_size = g.size
                     else:
                         self.expression.element_size = g.size
-            elif isinstance(g, (op.label, Proc)):
+            elif isinstance(g, op.label | Proc):
                 pass
             elif isinstance(g, op.var):
                 pass
             elif isinstance(g, op.Struct):
-                logging.debug('get_size res %d', g.size)
-                l = lark.Token(type='LABEL', value=value)
+                logging.debug("get_size res %d", g.size)
+                l = lark.Token(type="LABEL", value=value)
                 self._size =  self.expression.element_size = g.size  # TODO too much?
             else:
-                logging.debug('get_size res %d', g._size)
+                logging.debug("get_size res %d", g._size)
                 self.expression.element_size = g._size
                 l.size = g._size
 
@@ -417,7 +402,7 @@ class Asm2IR(CommonCollector):
         name = self.name = self.context.mangle_label(nodes[0])
         opts = set()
         segclass = None
-        '''
+        """
         if options:
             for o in options:
                 if isinstance(o, str):
@@ -428,7 +413,7 @@ class Asm2IR(CommonCollector):
                         segclass = segclass[1:-1]
                 else:
                     logging.warning('Unknown segment option')
-        '''
+        """
         self.context.create_segment(name, options=opts, segclass=segclass, raw=get_raw(self.input_str, meta))
         self._expression = None
         return nodes
@@ -483,16 +468,16 @@ class Asm2IR(CommonCollector):
         instruction = self.instruction_name
         args = nodes[0].children if len(nodes) else []
         if len(args) >= 2:
-            args[0].mods.add('destination')
-        if instruction == 'lea':
+            args[0].mods.add("destination")
+        if instruction == "lea":
             for arg in args:
-                arg.mods.add('lea')
-        '''
+                arg.mods.add("lea")
+        """
         if not instruction:
             return nodes
         if args is None:
             args = []
-        '''
+        """
         self._expression = None
         return self.context.action_instruction(instruction, args, raw=get_raw_line(self.input_str, meta),
                                                line_number=get_line_number(meta)) or Discard
@@ -511,12 +496,12 @@ class Asm2IR(CommonCollector):
     def register(self, children):
         self.expression.element_size = self.context.is_register(children[0])
         self.expression.registers.add(children[0].lower())
-        return Tree(data='register', children=[children[0].lower()])  # Token('segmentregister', nodes[0].lower())
+        return Tree(data="register", children=[children[0].lower()])  # Token('segmentregister', nodes[0].lower())
 
     def segmentregister(self, children):
         self.expression.element_size = self.context.is_register(children[0])
         self.expression.segment_register = children[0].lower()
-        return Tree(data='segmentregister', children=[children[0].lower()])  # Token('segmentregister', nodes[0].lower())
+        return Tree(data="segmentregister", children=[children[0].lower()])  # Token('segmentregister', nodes[0].lower())
 
     def sqexpr(self, nodes):
         logging.debug("/~%s~\\", nodes)
@@ -528,8 +513,8 @@ class Asm2IR(CommonCollector):
         logging.debug("/~%s~\\", nodes)
         self.expression.indirection = IndirectionType.POINTER
         self.expression.element_size = 0
-        nodes.insert(1, lark.Token(type='PLUS', value='+'))
-        nodes = [lark.Tree(data='adddir', children=nodes)]
+        nodes.insert(1, lark.Token(type="PLUS", value="+"))
+        nodes = [lark.Tree(data="adddir", children=nodes)]
         return nodes  # lark.Tree(data='sqexpr', children=nodes)
 
     def offsetdir(self, nodes):
@@ -538,15 +523,15 @@ class Asm2IR(CommonCollector):
         self.expression.element_size = 2
         if isinstance(nodes[0], lark.Token):  # for labels, not for memberdir
             nodes = [str(nodes[0])]
-        return lark.Tree('offsetdir', nodes)
+        return lark.Tree("offsetdir", nodes)
 
-    '''
+    """
     def seg(self, nodes):
         logging.debug("segmdir /~" + str(nodes) + "~\\")
         # global indirection
         # indirection = -1
         return nodes  # Token('segmdir', nodes[1])
-    '''
+    """
 
     def labeltok(self, nodes):
         return nodes  # Token('LABEL', nodes)
@@ -559,15 +544,15 @@ class Asm2IR(CommonCollector):
                 string = string.replace("\'\'", "'").replace('\"\"', '"')  # masm behaviour
             self.expression.element_number = len(string)
             self.expression.element_size = 1
-            self.expression.mods.add('string')
-            nodes = lark.Token(type='STRING', value=string)
+            self.expression.mods.add("string")
+            nodes = lark.Token(type="STRING", value=string)
         return nodes  # Token('STRING', nodes)
 
     def structinstance(self, nodes): #, values):
         return nodes  # Token('structinstance', values)
 
     def memberdir(self, nodes):
-        return lark.Tree('memberdir', [self.context.mangle_label(str(node)) for node in nodes])
+        return lark.Tree("memberdir", [self.context.mangle_label(str(node)) for node in nodes])
 
     def radixdir(self, children):
         self._radix = int(children[0])
@@ -576,49 +561,49 @@ class Asm2IR(CommonCollector):
 
     def maked(self, nodes):
         # TODO dirty workaround for now
-        if nodes[0].lower() == 'size':
-            return [f'sizeof({nodes[1].children.lower()})']
+        if nodes[0].lower() == "size":
+            return [f"sizeof({nodes[1].children.lower()})"]
         else:
             return nodes
 
     def offsetdirtype(self, nodes):
         directive = nodes[0].lower()
         from .parser import Parser
-        logging.debug('offsetdirtype %s', nodes)
+        logging.debug("offsetdirtype %s", nodes)
         value = nodes[1].children[0] if len(nodes)==2 else 2
-        if directive == 'align':
+        if directive == "align":
             self.context.align(Parser.parse_int(value))
-        elif directive == 'even':
+        elif directive == "even":
             self.context.align(2)
-        elif directive == 'org':
+        elif directive == "org":
             self.context.org(Parser.parse_int(value))
         return nodes
 
     # def STRING(self, token):
 
 
-'''
+"""
 recognizers = {
     'macroname': macroname,
     "structname": structname,
     "COMMENTKW": commentkw
 }
-'''
+"""
 
 
 class LarkParser:
     def __new__(cls, *args, **kwargs):
-        if not hasattr(cls, '_inst'):
-            cls._inst = super(LarkParser, cls).__new__(cls)
+        if not hasattr(cls, "_inst"):
+            cls._inst = super().__new__(cls)
             logging.debug("Allocated LarkParser instance")
 
             file_name = os.path.dirname(os.path.realpath(__file__)) + "/_masm61.lark"
             debug = True
             with open(file_name) as gr:
-                cls._inst.or_parser = Lark(gr, parser='lalr', propagate_positions=True, cache=True, debug=debug,
-                                           postlex=MatchTag(context=kwargs['context']), start=['start', 'insegdirlist',
-                                                                                               'instruction', 'expr',
-                                                                                               'equtype', '_directivelist'])
+                cls._inst.or_parser = Lark(gr, parser="lalr", propagate_positions=True, cache=True, debug=debug,
+                                           postlex=MatchTag(context=kwargs["context"]), start=["start", "insegdirlist",
+                                                                                               "instruction", "expr",
+                                                                                               "equtype", "_directivelist"])
 
             cls._inst.parser = copy(cls._inst.or_parser)
 
@@ -628,13 +613,13 @@ class LarkParser:
 class ExprRemover(Transformer):
     @v_args(meta=True)
     def expr(self, meta, children):
-        children = Token.remove_tokens(children, 'expr')
+        children = Token.remove_tokens(children, "expr")
 
-        return Tree('expr', children, meta)
+        return Tree("expr", children, meta)
 
 class IncludeLoader(Transformer):
 
-    def __init__(self, context):
+    def __init__(self, context) -> None:
         self.context = context
 
     def includedir(self, nodes):
@@ -665,13 +650,13 @@ class TopDownVisitor:
             elif isinstance(node, op.Data):
                 result = self.visit(node.children)
             elif isinstance(node, list):
-                if hasattr(self, 'list_visitor'):
+                if hasattr(self, "list_visitor"):
                     result = self.list_visitor(node, result)
                 else:
                     for i in node:
                         result = self.visit(i, result)
-            elif isinstance(node, (str, int)):
-                result += [f'{node}']
+            elif isinstance(node, str | int):
+                result += [f"{node}"]
             elif hasattr(self, type(node).__name__):
                 result = getattr(self, type(node).__name__)(node)
             else:
@@ -679,7 +664,8 @@ class TopDownVisitor:
                 logging.error(f"Error unknown type {node}")
                 raise ValueError(f"Error unknown type {node}")
         except Exception as ex:
-            import traceback, logging
+            import logging
+            import traceback
             i = traceback.format_exc()
             print(node, i, ex)
             sys.exit(1)
@@ -688,7 +674,7 @@ class TopDownVisitor:
 
 class BottomUpVisitor:
 
-    def __init__(self, init=None, **kwargs):
+    def __init__(self, init=None, **kwargs) -> None:
         self.init = init
     def visit(self, node):
         result = copy(self.init)
@@ -709,7 +695,8 @@ class BottomUpVisitor:
                 return self.init
                 raise ValueError(f"Error unknown type {node}")
         except:
-            import traceback, logging
+            import logging
+            import traceback
             i = traceback.format_exc()
             raise
         return result
@@ -717,7 +704,7 @@ class BottomUpVisitor:
 class AsmData2IR(TopDownVisitor):  # TODO HACK Remove it. !For missing funcitons deletes details!
 
     def seg(self, tree):
-        return [f'seg_offset({tree.children[0]})']
+        return [f"seg_offset({tree.children[0]})"]
 
     def expr(self, tree):
         self.element_size = tree.element_size
@@ -732,7 +719,7 @@ class AsmData2IR(TopDownVisitor):  # TODO HACK Remove it. !For missing funcitons
     def INTEGER(self, token):
         radix, sign, value = token.start_pos, token.line, token.column
         val = int(value, radix)
-        if sign == '-':
+        if sign == "-":
             val = 2 ** (8 * self.element_size) - val
         return [val]
 
@@ -741,7 +728,7 @@ class AsmData2IR(TopDownVisitor):  # TODO HACK Remove it. !For missing funcitons
         return list(result)
 
     def LABEL(self, tree):
-        return [lark.Token(type='LABEL', value=tree.lower())]  # TODO HACK
+        return [lark.Token(type="LABEL", value=tree.lower())]  # TODO HACK
 
     def bypass(self, tree):
         return [tree]
@@ -749,12 +736,12 @@ class AsmData2IR(TopDownVisitor):  # TODO HACK Remove it. !For missing funcitons
     offsetdir = bypass
 
 
-OFFSETDIR = 'offsetdir'
-LABEL = 'LABEL'
-PTRDIR = 'ptrdir'
-REGISTER = 'register'
-SEGMENTREGISTER = 'segmentregister'
-SEGOVERRIDE = 'segoverride'
-SQEXPR = 'sqexpr'
-INTEGER = 'integer'
-MEMBERDIR = 'memberdir'
+OFFSETDIR = "offsetdir"
+LABEL = "LABEL"
+PTRDIR = "ptrdir"
+REGISTER = "register"
+SEGMENTREGISTER = "segmentregister"
+SEGOVERRIDE = "segoverride"
+SQEXPR = "sqexpr"
+INTEGER = "integer"
+MEMBERDIR = "memberdir"

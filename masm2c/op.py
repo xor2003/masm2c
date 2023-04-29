@@ -25,16 +25,13 @@ from enum import Enum
 from lark import lark
 
 
-
-
 class Unsupported(Exception):
     pass
 
 
 class baseop(lark.Tree):
-    # __slots__ = ["cmd", "line", "line_number", "elements", "args"]
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(self.__class__.__name__.lower(), [])
         self.cmd = ""
         self.raw_line = ""
@@ -49,7 +46,7 @@ class baseop(lark.Tree):
 
     # def __str__(self):
 
-    def __str__(self):
+    def __str__(self) -> str:
         return str(self.__class__)
 
     #@property
@@ -58,9 +55,8 @@ class baseop(lark.Tree):
 class var:
 
     def __init__(self, size, offset, name="", segment="", issegment=False, elements=1,
-                 external=False, original_type="", filename='', raw='', line_number=0):
-        '''
-        Global variable with name representing data
+                 external=False, original_type="", filename="", raw="", line_number=0) -> None:
+        """Global variable with name representing data.
 
         :param size:
         :param offset:
@@ -73,7 +69,7 @@ class var:
         :param filename:
         :param raw:
         :param line_number:
-        '''
+        """
         self.size = size
         self.offset = offset
         self.original_name = name
@@ -102,43 +98,43 @@ SIMPLE_SEGMENTS = {
             "Align": 2,
             "Combine": "public",
             "Class": "CODE",
-            "Group": "DGROUP"
+            "Group": "DGROUP",
         },
         ".FARDATA": {
             "Name": "FAR_DATA",
             "Align": 0x10,
             "Combine": "private",
             "Class": "FAR_DATA",
-            "Group": ""
+            "Group": "",
         },
         ".FARDATA?": {
             "Name": "FAR_BSS",
             "Align": 0x10,
             "Combine": "private",
             "Class": "FAR_BSS",
-            "Group": ""
+            "Group": "",
         },
         ".DATA": {
             "Name": "_DATA",
             "Align": 2,
             "Combine": "public",
             "Class": "DATA",
-            "Group": "DGROUP"
+            "Group": "DGROUP",
         },
         ".CONST": {
             "Name": "CONST",
             "Align": 2,
             "Combine": "public",
             "Class": "CONST",
-            "Group": "DGROUP"
+            "Group": "DGROUP",
         },
         ".DATA?": {
             "Name": "_BSS",
             "Align": 2,
             "Combine": "public",
             "Class": "BSS",
-            "Group": "DGROUP"
-        }
+            "Group": "DGROUP",
+        },
     },
     "small": {
         ".CODE": {
@@ -146,50 +142,50 @@ SIMPLE_SEGMENTS = {
             "Align": 2,
             "Combine": "public",
             "Class": "CODE",
-            "Group": ""
+            "Group": "",
         },
         ".FARDATA": {
             "Name": "FAR_DATA",
             "Align": 0x10,
             "Combine": "private",
             "Class": "FAR_DATA",
-            "Group": ""
+            "Group": "",
         },
         ".FARDATA?": {
             "Name": "FAR_BSS",
             "Align": 0x10,
             "Combine": "private",
             "Class": "FAR_BSS",
-            "Group": ""
+            "Group": "",
         },
         ".DATA": {
             "Name": "_DATA",
             "Align": 2,
             "Combine": "public",
             "Class": "DATA",
-            "Group": "DGROUP"
+            "Group": "DGROUP",
         },
         ".CONST": {
             "Name": "CONST",
             "Align": 2,
             "Combine": "public",
             "Class": "CONST",
-            "Group": "DGROUP"
+            "Group": "DGROUP",
         },
         ".DATA?": {
             "Name": "_BSS",
             "Align": 2,
             "Combine": "public",
             "Class": "BSS",
-            "Group": "DGROUP"
+            "Group": "DGROUP",
         },
         ".STACK": {
             "Name": "STACK",
             "Align": 0x10,
             "Combine": "STACK",
             "Class": "STACK",
-            "Group": "DGROUP*"
-        }
+            "Group": "DGROUP*",
+        },
     },
     "medium": {
         ".CODE": {
@@ -197,7 +193,7 @@ SIMPLE_SEGMENTS = {
             "Align": 2,
             "Combine": "public",
             "Class": "CODE",
-            "Group": ""
+            "Group": "",
         },
 
         ".FARDATA": {
@@ -205,43 +201,43 @@ SIMPLE_SEGMENTS = {
             "Align": 0x10,
             "Combine": "private",
             "Class": "FAR_DATA",
-            "Group": ""
+            "Group": "",
         },
         ".FARDATA?": {
             "Name": "FAR_BSS",
             "Align": 0x10,
             "Combine": "private",
             "Class": "FAR_BSS",
-            "Group": ""
+            "Group": "",
         },
         ".DATA": {
             "Name": "_DATA",
             "Align": 2,
             "Combine": "public",
             "Class": "DATA",
-            "Group": "DGROUP"
+            "Group": "DGROUP",
         },
         ".CONST": {
             "Name": "CONST",
             "Align": 2,
             "Combine": "public",
             "Class": "CONST",
-            "Group": "DGROUP"
+            "Group": "DGROUP",
         },
         ".DATA?": {
             "Name": "_BSS",
             "Align": 2,
             "Combine": "public",
             "Class": "BSS",
-            "Group": "DGROUP"
+            "Group": "DGROUP",
         },
         ".STACK": {
             "Name": "STACK",
             "Align": 0x10,
             "Combine": "STACK",
             "Class": "STACK",
-            "Group": "DGROUP*"
-        }
+            "Group": "DGROUP*",
+        },
     },
     "compact": {
         ".CODE": {
@@ -249,50 +245,50 @@ SIMPLE_SEGMENTS = {
             "Align": 2,
             "Combine": "public",
             "Class": "CODE",
-            "Group": ""
+            "Group": "",
         },
         ".FARDATA": {
             "Name": "FAR_DATA",
             "Align": 0x10,
             "Combine": "private",
             "Class": "FAR_DATA",
-            "Group": ""
+            "Group": "",
         },
         ".FARDATA?": {
             "Name": "FAR_BSS",
             "Align": 0x10,
             "Combine": "private",
             "Class": "FAR_BSS",
-            "Group": ""
+            "Group": "",
         },
         ".DATA": {
             "Name": "_DATA",
             "Align": 2,
             "Combine": "public",
             "Class": "DATA",
-            "Group": "DGROUP"
+            "Group": "DGROUP",
         },
         ".CONST": {
             "Name": "CONST",
             "Align": 2,
             "Combine": "public",
             "Class": "CONST",
-            "Group": "DGROUP"
+            "Group": "DGROUP",
         },
         ".DATA?": {
             "Name": "_BSS",
             "Align": 2,
             "Combine": "public",
             "Class": "BSS",
-            "Group": "DGROUP"
+            "Group": "DGROUP",
         },
         ".STACK": {
             "Name": "STACK",
             "Align": 0x10,
             "Combine": "STACK",
             "Class": "STACK",
-            "Group": "DGROUP*"
-        }
+            "Group": "DGROUP*",
+        },
     },
     "large": {  # or huge
         ".CODE": {
@@ -300,50 +296,50 @@ SIMPLE_SEGMENTS = {
             "Align": 2,
             "Combine": "public",
             "Class": "CODE",
-            "Group": ""
+            "Group": "",
         },
         ".FARDATA": {
             "Name": "FAR_DATA",
             "Align": 0x10,
             "Combine": "private",
             "Class": "FAR_DATA",
-            "Group": ""
+            "Group": "",
         },
         ".FARDATA?": {
             "Name": "FAR_BSS",
             "Align": 0x10,
             "Combine": "private",
             "Class": "FAR_BSS",
-            "Group": ""
+            "Group": "",
         },
         ".DATA": {
             "Name": "_DATA",
             "Align": 2,
             "Combine": "public",
             "Class": "DATA",
-            "Group": "DGROUP"
+            "Group": "DGROUP",
         },
         ".CONST": {
             "Name": "CONST",
             "Align": 2,
             "Combine": "public",
             "Class": "CONST",
-            "Group": "DGROUP"
+            "Group": "DGROUP",
         },
         ".DATA?": {
             "Name": "_BSS",
             "Align": 2,
             "Combine": "public",
             "Class": "BSS",
-            "Group": "DGROUP"
+            "Group": "DGROUP",
         },
         ".STACK": {
             "Name": "STACK",
             "Align": 0x10,
             "Combine": "STACK",
             "Class": "STACK",
-            "Group": "DGROUP*"
-        }
+            "Group": "DGROUP*",
+        },
     },
     "flat": {
         ".CODE": {
@@ -351,75 +347,73 @@ SIMPLE_SEGMENTS = {
             "Align": 4,
             "Combine": "public",
             "Class": "CODE",
-            "Group": ""
+            "Group": "",
         },
         ".FARDATA": {
             "Name": "_DATA",
             "Align": 4,
             "Combine": "public",
             "Class": "DATA",
-            "Group": ""
+            "Group": "",
         },
         ".FARDATA?": {
             "Name": "_BSS",
             "Align": 4,
             "Combine": "public",
             "Class": "BSS",
-            "Group": ""
+            "Group": "",
         },
         ".DATA": {
             "Name": "_DATA",
             "Align": 4,
             "Combine": "public",
             "Class": "DATA",
-            "Group": ""
+            "Group": "",
         },
         ".CONST": {
             "Name": "CONST",
             "Align": 4,
             "Combine": "public",
             "Class": "CONST",
-            "Group": ""
+            "Group": "",
         },
         ".DATA?": {
             "Name": "_BSS",
             "Align": 4,
             "Combine": "public",
             "Class": "BSS",
-            "Group": ""
+            "Group": "",
         },
         ".STACK": {
             "Name": "STACK",
             "Align": 4,
             "Combine": "public",
             "Class": "STACK",
-            "Group": ""
-        }
-    }
+            "Group": "",
+        },
+    },
 }
 
 class Segment(lark.Tree):
-    # __slots__ = ['name', 'offset', '__data', 'original_name', 'used']
 
-    def __init__(self, name, offset, options=None, segclass=None, comment=''):
-        '''
-        Represents MASM Segment
+    def __init__(self, name, offset, options=None, segclass=None, comment="") -> None:
+        """Represents MASM Segment.
 
         :param name: Segment name
         :param offset: In-memory segment offset in paragraphs. TODO: Used?
         :param options: Segment options
         :param segclass: Segment class name
         :param comment: Source of element
-        '''
+        """
         self.name = name.lower()
         self.offset = offset
         self.original_name = name
         self.used = False
-        self.data = 'segment'
+        self.data = "segment"
         self.children = []
         self.options = options
         self.segclass = segclass
-        self.seglabels = {self.name,}
+        self.seglabels = {self.name}
         self.size = 0  # Check if needed
 
     def getsize(self):
@@ -450,10 +444,9 @@ class Data(baseop):
     # __slots__ = ['label', 'type', 'data_internal_type', 'array', 'elements', 'size', 'members',
     #             'filename', 'line', 'line_number']
 
-    def __init__(self, label, type, data_internal_type: DataType, array, elements, size, filename='', raw_line='',
-                 line_number=0, comment='', align=False, offset=0, meta=None):
-        '''
-        One element of data
+    def __init__(self, label, type, data_internal_type: DataType, array, elements, size, filename="", raw_line="",
+                 line_number=0, comment="", align=False, offset=0, meta=None) -> None:
+        """One element of data.
 
         :param label: Data label
         :param type: Input data type
@@ -466,7 +459,7 @@ class Data(baseop):
         :param line_number: Source linenumber
         :param comment: Source of element
         :param offset: offset from begging of the memory inside Memory structure
-        '''
+        """
         super().__init__()
         self.label = label
         self.data_type = type
@@ -533,17 +526,16 @@ class Struct:
         STRUCT = 1
         UNION = 2
 
-    def __init__(self, name, dtype):
-        '''
-        Represent structure
+    def __init__(self, name, dtype) -> None:
+        """Represent structure.
 
         :param name: Name
         :param dtype: Structure or Union?
-        '''
+        """
         self.__name = name
         self.children = OrderedDict()
         self.size = 0
-        self.__type = Struct.Type.UNION if dtype.lower() == 'union' else Struct.Type.STRUCT
+        self.__type = Struct.Type.UNION if dtype.lower() == "union" else Struct.Type.STRUCT
 
     def append(self, data):
         self.children[data.label.lower()] = data
@@ -570,7 +562,7 @@ class basejmp(baseop):
 
 
 class _call(baseop):
-    def __init__(self, args):
+    def __init__(self, args) -> None:
         super().__init__()
         self.children = args
 
@@ -579,7 +571,7 @@ class _call(baseop):
 
 
 class _rep(baseop):
-    def __init__(self, args):
+    def __init__(self, args) -> None:
         super().__init__()
         self.children = args
 
@@ -588,7 +580,7 @@ class _rep(baseop):
 
 
 class _add(baseop):
-    def __init__(self, args):
+    def __init__(self, args) -> None:
         super().__init__()
         self.children = args
 
@@ -598,7 +590,7 @@ class _add(baseop):
 
 
 class _mul(baseop):
-    def __init__(self, args):
+    def __init__(self, args) -> None:
         super().__init__()
         self.children = args
 
@@ -607,7 +599,7 @@ class _mul(baseop):
 
 
 class _div(baseop):
-    def __init__(self, args):
+    def __init__(self, args) -> None:
         super().__init__()
         self.children = args
 
@@ -617,7 +609,7 @@ class _div(baseop):
 
 
 class _jne(basejmp):
-    def __init__(self, args):
+    def __init__(self, args) -> None:
         super().__init__()
         self.children = args
 
@@ -626,7 +618,7 @@ class _jne(basejmp):
 
 
 class _je(basejmp):
-    def __init__(self, args):
+    def __init__(self, args) -> None:
         super().__init__()
         self.children = args
 
@@ -635,7 +627,7 @@ class _je(basejmp):
 
 
 class _jb(basejmp):
-    def __init__(self, args):
+    def __init__(self, args) -> None:
         super().__init__()
         self.children = args
 
@@ -644,7 +636,7 @@ class _jb(basejmp):
 
 
 class _jae(basejmp):
-    def __init__(self, args):
+    def __init__(self, args) -> None:
         super().__init__()
         self.children = args
 
@@ -653,7 +645,7 @@ class _jae(basejmp):
 
 
 class _jnb(basejmp):
-    def __init__(self, args):
+    def __init__(self, args) -> None:
         super().__init__()
         self.children = args
 
@@ -661,7 +653,7 @@ class _jnb(basejmp):
         return visitor._jnc(*self.children)
 
 
-'''
+"""
 def flatten(s):
     if not s:
         return s
@@ -682,9 +674,9 @@ def flattenpush(s):  # TODO will work most of the time
     if ressec:
         res.append(ressec)
     return res
-'''
+"""
 
-'''
+"""
 class _push(baseop):
     def __init__(self, arg):
         super().__init__()
@@ -710,11 +702,11 @@ class _pop(baseop):
 
     def accept(self, visitor):
         return visitor._pop(self.args)
-'''
+"""
 
 
 class _ret(baseop):
-    def __init__(self, args):
+    def __init__(self, args) -> None:
         super().__init__()
         self.children = args
 
@@ -722,7 +714,7 @@ class _ret(baseop):
         return visitor._ret(self.children)
 
 class _retn(baseop):
-    def __init__(self, args):
+    def __init__(self, args) -> None:
         super().__init__()
         self.children = args
 
@@ -730,7 +722,7 @@ class _retn(baseop):
         return visitor._ret(self.children)
 
 class _retf(baseop):
-    def __init__(self, args):
+    def __init__(self, args) -> None:
         super().__init__()
         self.children = args
 
@@ -739,7 +731,7 @@ class _retf(baseop):
 
 
 class _lodsb(baseop):
-    def __init__(self, arg):
+    def __init__(self, arg) -> None:
         super().__init__()
 
     def accept(self, visitor):
@@ -747,7 +739,7 @@ class _lodsb(baseop):
 
 
 class _scasb(baseop):
-    def __init__(self, arg):
+    def __init__(self, arg) -> None:
         super().__init__()
 
     def accept(self, visitor):
@@ -755,7 +747,7 @@ class _scasb(baseop):
 
 
 class _scasw(baseop):
-    def __init__(self, arg):
+    def __init__(self, arg) -> None:
         super().__init__()
 
     def accept(self, visitor):
@@ -763,7 +755,7 @@ class _scasw(baseop):
 
 
 class _scasd(baseop):
-    def __init__(self, arg):
+    def __init__(self, arg) -> None:
         super().__init__()
 
     def accept(self, visitor):
@@ -771,7 +763,7 @@ class _scasd(baseop):
 
 
 class _cmpsb(baseop):
-    def __init__(self, arg):
+    def __init__(self, arg) -> None:
         super().__init__()
 
     def accept(self, visitor):
@@ -779,7 +771,7 @@ class _cmpsb(baseop):
 
 
 class _lodsw(baseop):
-    def __init__(self, arg):
+    def __init__(self, arg) -> None:
         super().__init__()
 
     def accept(self, visitor):
@@ -787,7 +779,7 @@ class _lodsw(baseop):
 
 
 class _lodsd(baseop):
-    def __init__(self, arg):
+    def __init__(self, arg) -> None:
         super().__init__()
 
     def accept(self, visitor):
@@ -795,7 +787,7 @@ class _lodsd(baseop):
 
 
 class _stosd(baseop):
-    def __init__(self, arg):
+    def __init__(self, arg) -> None:
         super().__init__()
         self.repeat = 1
         self.clear_cx = False
@@ -805,7 +797,7 @@ class _stosd(baseop):
 
 
 class _stosw(baseop):
-    def __init__(self, arg):
+    def __init__(self, arg) -> None:
         super().__init__()
         self.repeat = 1
         self.clear_cx = False
@@ -815,7 +807,7 @@ class _stosw(baseop):
 
 
 class _stosb(baseop):
-    def __init__(self, arg):
+    def __init__(self, arg) -> None:
         super().__init__()
         self.repeat = 1
         self.clear_cx = False
@@ -825,7 +817,7 @@ class _stosb(baseop):
 
 
 class _movsw(baseop):
-    def __init__(self, arg):
+    def __init__(self, arg) -> None:
         super().__init__()
         self.repeat = 1
         self.clear_cx = False
@@ -835,7 +827,7 @@ class _movsw(baseop):
 
 
 class _movsd(baseop):
-    def __init__(self, arg):
+    def __init__(self, arg) -> None:
         super().__init__()
         self.repeat = 1
         self.clear_cx = False
@@ -845,7 +837,7 @@ class _movsd(baseop):
 
 
 class _movsb(baseop):
-    def __init__(self, arg):
+    def __init__(self, arg) -> None:
         super().__init__()
         self.repeat = 1
         self.clear_cx = False
@@ -855,14 +847,14 @@ class _movsb(baseop):
 
 
 class _int(baseop):
-    def __init__(self, args):
+    def __init__(self, args) -> None:
         super().__init__()
         self.children = args
 
     def accept(self, visitor):
         return visitor._int(*self.children)
 
-'''
+"""
 class _nop(baseop):
     def __init__(self, arg):
         super().__init__()
@@ -870,13 +862,12 @@ class _nop(baseop):
 
     def accept(self, visitor):
         return ""
-'''
+"""
 
 class label(baseop):
 
-    def __init__(self, name, proc:str=None, isproc=False, line_number=0, far=False, globl=True):
-        '''
-        Label
+    def __init__(self, name, proc:str=None, isproc=False, line_number=0, far=False, globl=True) -> None:
+        """Label.
 
         :param name:
         :param proc:
@@ -884,7 +875,7 @@ class label(baseop):
         :param line_number:
         :param far:
         :param globl:
-        '''
+        """
         super().__init__()
         self.name = name
         self.original_name = name
@@ -899,7 +890,7 @@ class label(baseop):
 
 
 class _lea(baseop):
-    def __init__(self, args):
+    def __init__(self, args) -> None:
         super().__init__()
         self.children = args
 
@@ -908,7 +899,7 @@ class _lea(baseop):
 
 
 class _repe(baseop):
-    def __init__(self, args):
+    def __init__(self, args) -> None:
         super().__init__()
         self.children = args
 
@@ -917,7 +908,7 @@ class _repe(baseop):
 
 
 class _repne(baseop):
-    def __init__(self, args):
+    def __init__(self, args) -> None:
         super().__init__()
         self.children = args
 
@@ -926,7 +917,7 @@ class _repne(baseop):
 
 
 class _jna(basejmp):
-    def __init__(self, args):
+    def __init__(self, args) -> None:
         super().__init__()
         self.children = args
 
@@ -935,7 +926,7 @@ class _jna(basejmp):
 
 
 class _jnbe(basejmp):
-    def __init__(self, args):
+    def __init__(self, args) -> None:
         super().__init__()
         self.children = args
 
@@ -944,7 +935,7 @@ class _jnbe(basejmp):
 
 
 class _imul(baseop):
-    def __init__(self, args):
+    def __init__(self, args) -> None:
         super().__init__()
         self.children = args
 
@@ -953,7 +944,7 @@ class _imul(baseop):
 
 
 class _movs(baseop):
-    def __init__(self, args):
+    def __init__(self, args) -> None:
         super().__init__()
         self.children = args
 
@@ -962,7 +953,7 @@ class _movs(baseop):
 
 
 class _lods(baseop):
-    def __init__(self, args):
+    def __init__(self, args) -> None:
         super().__init__()
         self.children = args
 
@@ -971,7 +962,7 @@ class _lods(baseop):
 
 
 class _scas(baseop):
-    def __init__(self, args):
+    def __init__(self, args) -> None:
         super().__init__()
         self.children = args
 
@@ -980,7 +971,7 @@ class _scas(baseop):
 
 
 class _leave(baseop):
-    def __init__(self, arg):
+    def __init__(self, arg) -> None:
         super().__init__()
 
     def accept(self, visitor):
@@ -988,7 +979,7 @@ class _leave(baseop):
 
 
 class _idiv(baseop):
-    def __init__(self, args):
+    def __init__(self, args) -> None:
         super().__init__()
         self.children = args
 
@@ -997,7 +988,7 @@ class _idiv(baseop):
 
 
 class _instruction0(baseop):
-    def __init__(self, arg):
+    def __init__(self, arg) -> None:
         super().__init__()
 
     def accept(self, visitor):
@@ -1005,7 +996,7 @@ class _instruction0(baseop):
 
 
 class _instruction1(baseop):
-    def __init__(self, args):
+    def __init__(self, args) -> None:
         super().__init__()
         self.children = args
 
@@ -1014,7 +1005,7 @@ class _instruction1(baseop):
 
 
 class _jump(baseop):
-    def __init__(self, args):
+    def __init__(self, args) -> None:
         super().__init__()
         self.children = args
 
@@ -1023,7 +1014,7 @@ class _jump(baseop):
 
 
 class _instruction2(baseop):
-    def __init__(self, args):
+    def __init__(self, args) -> None:
         super().__init__()
         self.children = args
 
@@ -1032,7 +1023,7 @@ class _instruction2(baseop):
 
 
 class _instruction3(baseop):
-    def __init__(self, args):
+    def __init__(self, args) -> None:
         super().__init__()
         self.children = args
 
@@ -1041,11 +1032,11 @@ class _instruction3(baseop):
 
 
 class _equ(baseop):
-    def __init__(self, name):
+    def __init__(self, name) -> None:
         super().__init__()
         self.name = name
-        self.original_name = ''
-        self.original_type = ''
+        self.original_name = ""
+        self.original_type = ""
         self.implemented = False
         self.size = 0
 
@@ -1062,11 +1053,11 @@ class _equ(baseop):
 
 
 class _assignment(baseop):
-    def __init__(self, args):
+    def __init__(self, args) -> None:
         super().__init__()
         self.children = args
-        self.original_name = ''
-        self.original_type = ''
+        self.original_name = ""
+        self.original_type = ""
         self.implemented = False
         self.size = 0
 
@@ -1080,7 +1071,7 @@ class _assignment(baseop):
         #    raise SkipCode
 
 class _xlat(baseop):
-    def __init__(self, args):
+    def __init__(self, args) -> None:
         super().__init__()
         self.children = args
 
@@ -1088,7 +1079,7 @@ class _xlat(baseop):
         return visitor._xlat(self.children)
 
 class _mov(baseop):
-    def __init__(self, args):
+    def __init__(self, args) -> None:
         super().__init__()
         self.children = args
 

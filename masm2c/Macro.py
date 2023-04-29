@@ -20,7 +20,7 @@
 #
 
 class Macro:
-    def __init__(self, name, parameters, repeat=1):
+    def __init__(self, name, parameters, repeat=1) -> None:
         self.__name = name
         self.__parameters = parameters
         self.instructions = []

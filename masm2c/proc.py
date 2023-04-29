@@ -26,8 +26,7 @@ from lark import lark
 from . import op
 from .Token import Token
 
-
-PTRDIR = 'ptrdir'
+PTRDIR = "ptrdir"
 
 
 class Proc:
@@ -35,20 +34,19 @@ class Proc:
 
     def __init__(self, name: str, far: bool = False, line_number: int = 0, extern: bool = False, offset=0,
                  real_offset=0,
-                 real_seg=0, segment=''):
-        '''
-        Represent asm procedure
+                 real_seg=0, segment="") -> None:
+        """Represent asm procedure.
 
         :param name: Name
         :param far: is Far proc?
         :param line_number: Original line number
         :param extern: is Extern proc?
-        '''
+        """
         self.name = name
         self.original_name = name
 
         self.stmts = []
-        self.provided_labels = {name,}
+        self.provided_labels = {name}
         self.line_number = line_number
         self.far = far
         self.used = False
@@ -83,8 +81,7 @@ class Proc:
 
 
     def create_instruction_object(self, instruction, args=None):
-        """
-        :param instruction: the instruction name
+        """:param instruction: the instruction name
         :param args: a list of strings, each string is an argument to the instruction
         :return: An object of type cl, which is a subclass of Instruction.
         """
@@ -98,7 +95,7 @@ class Proc:
 
     def find_op_class(self, cmd, args):
         try:
-            cl = getattr(op, '_' + cmd.lower())
+            cl = getattr(op, "_" + cmd.lower())
         except AttributeError:
             cl = self.find_op_common_class(cmd, args)
         return cl
@@ -107,9 +104,9 @@ class Proc:
         logging.debug(cmd)
         try:
             if re.match(r"^(j[a-z]+|loop[a-z]*)$", cmd.lower()):
-                cl = getattr(op, '_jump')
+                cl = op._jump
             else:
-                cl = getattr(op, '_instruction' + str(len(args)))
+                cl = getattr(op, "_instruction" + str(len(args)))
         except AttributeError:
             raise Exception("Unknown instruction: " + cmd.lower())
         return cl
@@ -138,7 +135,7 @@ class Proc:
     def create_assignment_op(self, label, value, line_number=0):
         logging.debug(label + " " + str(value))
         o = op._assignment([label, value])
-        if hasattr(value, 'original_type'):  # TODO cannot get original type anymore. not required here
+        if hasattr(value, "original_type"):  # TODO cannot get original type anymore. not required here
             o.original_type = value.original_type
 
         o.raw_line = str(line_number) + " " + label + " = " + str(value)
@@ -149,44 +146,45 @@ class Proc:
         #               logging.info "~~~" + o.command + o.comments
         return o
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "\n".join(i.__str__() for i in self.stmts)
 
     def set_instruction_compare_subclass(self, stmt, full_command, itislst):
         """Sets libdosbox's emulator the instruction subclass
-        to perform comparison of instruction side effects at run-time with the emulated"""
+        to perform comparison of instruction side effects at run-time with the emulated.
+        """
 
         def expr_is_register(e):
             return isinstance(e, lark.Tree) and isinstance(e.children, list) and len(e.children) == 1 and \
-                isinstance(e.children[0], lark.Tree) and e.children[0].data in {'register', 'segmentregister'}
+                isinstance(e.children[0], lark.Tree) and e.children[0].data in {"register", "segmentregister"}
 
         def cmd_wo_args(stmt):
             return len(stmt.children) == 0
 
         def cmd_impacting_only_registers(stmt):
             return (cmd_wo_args(stmt) or \
-                    stmt.cmd in {'cmp', 'test'} or \
-                    (stmt.cmd != 'xchg' and len(stmt.children) >= 1 and expr_is_register(stmt.children[0]) or \
-                     (stmt.cmd == 'xchg' and expr_is_register(stmt.children[0]) and expr_is_register(stmt.children[1])))) and \
-                not stmt.cmd.startswith('push') and not stmt.cmd.startswith('pop') and not stmt.cmd.startswith('stos') and \
-                not stmt.cmd.startswith('movs')
+                    stmt.cmd in {"cmp", "test"} or \
+                    (stmt.cmd != "xchg" and len(stmt.children) >= 1 and expr_is_register(stmt.children[0]) or \
+                     (stmt.cmd == "xchg" and expr_is_register(stmt.children[0]) and expr_is_register(stmt.children[1])))) and \
+                not stmt.cmd.startswith("push") and not stmt.cmd.startswith("pop") and not stmt.cmd.startswith("stos") and \
+                not stmt.cmd.startswith("movs")
 
         def expr_is_mov_ss(e):
-            return e.cmd == 'mov' and \
+            return e.cmd == "mov" and \
                    isinstance(e.children[0], lark.Tree) and isinstance(e.children[0].children[0], lark.Tree) and \
-                e.children[0].children[0].data == 'segmentregister' and \
-                   e.children[0].children[0].children[0] == 'ss'
+                e.children[0].children[0].data == "segmentregister" and \
+                   e.children[0].children[0].children[0] == "ss"
 
         if self.is_flow_change_stmt(stmt) and not stmt.syntetic:
-            trace_mode = 'J'  # check for proper jump
+            trace_mode = "J"  # check for proper jump
         elif not itislst or stmt.syntetic:
-            trace_mode = 'R'  # trace only
-        elif stmt.cmd.startswith('int') or stmt.cmd in {'out', 'in'} or expr_is_mov_ss(stmt):
-            trace_mode = 'S'  # check for self-modification
+            trace_mode = "R"  # trace only
+        elif stmt.cmd.startswith("int") or stmt.cmd in {"out", "in"} or expr_is_mov_ss(stmt):
+            trace_mode = "S"  # check for self-modification
         elif cmd_impacting_only_registers(stmt):
-            trace_mode = 'T'  # compare execution with dosbox. registers only impact
+            trace_mode = "T"  # compare execution with dosbox. registers only impact
         else:
-            trace_mode = 'X'  # compare execution with dosbox. memory impact
+            trace_mode = "X"  # compare execution with dosbox. memory impact
 
         result = "\t" + trace_mode + "(" + full_command + ");"
         return result
@@ -194,22 +192,21 @@ class Proc:
     def visit(self, visitor, skip=0):
         for i in range(skip, len(self.stmts)):
             stmt = self.stmts[i]
-            from .gen import InjectCode
-            from .gen import SkipCode
+            from .gen import InjectCode, SkipCode
             try:
                 full_line = self.generate_full_cmd_line(visitor, stmt)
                 visitor.body += full_line
             except InjectCode as ex:
-                logging.debug(f'Injecting code {ex.cmd} before {stmt}')
+                logging.debug(f"Injecting code {ex.cmd} before {stmt}")
                 s = self.generate_full_cmd_line(visitor, ex.cmd)
                 visitor.body += s
                 s = self.generate_full_cmd_line(visitor, stmt)
                 visitor.body += s
             except SkipCode:
-                logging.debug(f'Skipping code {stmt}')
+                logging.debug(f"Skipping code {stmt}")
             except Exception as ex:
-                logging.error(f'Exception {ex.args}')
-                logging.error(f' in {stmt.filename}:{stmt.line_number} {stmt.raw_line}')
+                logging.error(f"Exception {ex.args}")
+                logging.error(f" in {stmt.filename}:{stmt.line_number} {stmt.raw_line}")
                 raise
 
             try:  # trying to add command and comment
@@ -221,13 +218,13 @@ class Proc:
 
     def generate_full_cmd_line(self, visitor, stmt):
         prefix = visitor.prefix
-        visitor._cmdlabel = ''
-        visitor.dispatch = ''
-        visitor.prefix = ''
+        visitor._cmdlabel = ""
+        visitor.dispatch = ""
+        visitor.prefix = ""
         #if stmt:= tuple(visitor.visit(stmt)):
         command = stmt.accept(visitor)
         if command and stmt.real_seg:  # and (self.is_flow_change_stmt(stmt) or 'cs' in command or 'cs' in visitor.before):
-            visitor.body += f'cs={stmt.real_seg:#04x};eip={stmt.real_offset:#08x}; '
+            visitor.body += f"cs={stmt.real_seg:#04x};eip={stmt.real_offset:#08x}; "
 
         full_command = prefix + command
 
@@ -241,19 +238,19 @@ class Proc:
         return stmt.accept(visitor)
 
     def if_terminated_proc(self):
-        '''Check if proc was terminated with jump or ret to know if execution flow continues across function end'''
+        """Check if proc was terminated with jump or ret to know if execution flow continues across function end."""
         if self.stmts:
             last_stmt = self.stmts[-1]
             return self.is_flow_terminating_stmt(last_stmt)
         return True
 
     def is_flow_terminating_stmt(self, stmt):
-        return (stmt.cmd.startswith('jmp') and "$" not in stmt.raw_line) \
-               or stmt.cmd.startswith('ret') or stmt.cmd == 'iret'
+        return (stmt.cmd.startswith("jmp") and "$" not in stmt.raw_line) \
+               or stmt.cmd.startswith("ret") or stmt.cmd == "iret"
 
     def is_return_point(self, stmt):
-        return stmt.cmd.startswith('call')
+        return stmt.cmd.startswith("call")
 
     def is_flow_change_stmt(self, stmt):
-        return stmt.cmd.startswith('j') or self.is_flow_terminating_stmt(stmt) \
-               or stmt.cmd.startswith('call') or stmt.cmd.startswith('loop')
+        return stmt.cmd.startswith("j") or self.is_flow_terminating_stmt(stmt) \
+               or stmt.cmd.startswith("call") or stmt.cmd.startswith("loop")

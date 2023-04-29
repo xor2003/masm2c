@@ -1,6 +1,4 @@
 #!/usr/bin/python3
-#from . import unused_attrs
-# -*- coding: utf-8 -*-
 # Masm2c S2S translator (initially based on SCUMMVM tasmrecover)
 #
 # Masm2c is the legal property of its developers, whose names
@@ -30,7 +28,7 @@ import sys
 from .cpp import Cpp
 from .parser import Parser
 
-__version__ = '0.9.8'
+__version__ = "0.9.8"
 
 __author__ = "x0r"
 __copyright__ = "x0r"
@@ -50,15 +48,17 @@ def tracefunc(frame, event, arg, indent=[0]):
 
 
 def parse_args(args):
-    """Parse command line parameters
+    """Parse command line parameters.
 
     Args:
+    ----
       args ([str]): command line parameters as list of strings
 
     Returns:
+    -------
       :obj:`argparse.Namespace`: command line parameters namespace
     """
-    aparser = argparse.ArgumentParser(description=f"Masm source to C++ translator V{__version__} {__license__}", prefix_chars='-')
+    aparser = argparse.ArgumentParser(description=f"Masm source to C++ translator V{__version__} {__license__}", prefix_chars="-")
     aparser.add_argument(
         "-v",
         "--version",
@@ -99,27 +99,28 @@ def parse_args(args):
         dest="loadsegment",
         help="Dosbox 0.74.3 loads .exe from 0x1a2 para (w/o debugger), 0x1ed (with debugger), .com from 0x192 (w/o debugger)",
         action="store",
-        default='0x1a2',
+        default="0x1a2",
     )
     aparser.add_argument(
-        "-AT", 
+        "-AT",
         dest="loadsegment",
         help="Dosbox 0.74.3 loads .com from 0x192 (w/o debugger)",
         action="store_const",
-        const='0x192',
+        const="0x192",
     )
     aparser.add_argument(
-        '-m', '--mergeprocs', type=str, default='separate', choices=["separate", "persegment", "single"],
-        help='How to merge procs (default: persegment)', )
-    aparser.add_argument('filenames', nargs='+', help='Assembler source .asm Masm 6 or .lst from IDA Pro or .seg Segment dump to merge')
+        "-m", "--mergeprocs", type=str, default="separate", choices=["separate", "persegment", "single"],
+        help="How to merge procs (default: persegment)" )
+    aparser.add_argument("filenames", nargs="+", help="Assembler source .asm Masm 6 or .lst from IDA Pro or .seg Segment dump to merge")
     return aparser.parse_args(args)
 
 
 def setup_logging(name, loglevel):
-    """Setup basic logging
+    """Setup basic logging.
 
-      Args:
-        loglevel (int): minimum loglevel for emitting messages
+    Args:
+    ----
+    loglevel (int): minimum loglevel for emitting messages
     """
     root = logging.getLogger()
     root.setLevel(loglevel)
@@ -133,7 +134,7 @@ def setup_logging(name, loglevel):
     out_handler.setLevel(loglevel)
 
     if len(name):
-        file_handler = logging.FileHandler(name + '.log', 'w', 'utf-8')
+        file_handler = logging.FileHandler(name + ".log", "w", "utf-8")
         file_handler.setLevel(loglevel)
         formatter = logging.Formatter("[%(filename)s:%(lineno)s - %(funcName)20s()] %(message)s")
         file_handler.setFormatter(formatter)
@@ -141,18 +142,18 @@ def setup_logging(name, loglevel):
         logging.basicConfig(
             handlers=[err_handler, out_handler, file_handler],
             level=loglevel,
-            force=True
+            force=True,
         )
     else:
         logging.basicConfig(
             handlers=[err_handler, out_handler],
             level=loglevel,
-            force=True
+            force=True,
         )
 
 
 def process(name, args):
-    m = re.match(r'(.+)\.(?:asm|lst)', name.lower())
+    m = re.match(r"(.+)\.(?:asm|lst)", name.lower())
     outname = ""
     if m:
         outname = m.group(1).strip()
@@ -176,25 +177,26 @@ def process(name, args):
 
 
 def main():
-    """Main entry point allowing external calls
+    """Main entry point allowing external calls.
 
     Args:
+    ----
       args ([str]): command line parameter list
     """
     args = sys.argv[1:]
-    setup_logging('', logging.INFO)
+    setup_logging("", logging.INFO)
     if sys.version_info[0] >= 3:
-        sys.stdout.reconfigure(encoding='utf-8')
-        sys.stderr.reconfigure(encoding='utf-8')
+        sys.stdout.reconfigure(encoding="utf-8")
+        sys.stderr.reconfigure(encoding="utf-8")
 
     args = parse_args(args)
     logging.info(f"Masm source to C++ translator V{__version__} {__license__}")
     # Process .asm
     merge_data_segments = True
     for i in args.filenames:
-        if i.lower().endswith('.lst'):
+        if i.lower().endswith(".lst"):
             merge_data_segments = False
-        if i.lower().endswith('.asm') or i.lower().endswith('.lst'):
+        if i.lower().endswith(".asm") or i.lower().endswith(".lst"):
             setup_logging(i, args.loglevel)
             process(i, args)
 
@@ -206,14 +208,14 @@ def main():
 
 
 
-'''
+"""
 import auger
 import re
 
 if __name__ == "__main__":
   with auger.magic([parser, lex, op, cpp, proc]):   # this is the new line and invokes Auger
     main()
-'''
+"""
 
 if __name__ == "__main__":
     main()
