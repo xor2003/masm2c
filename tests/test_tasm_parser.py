@@ -1,17 +1,12 @@
-from __future__ import absolute_import
-from __future__ import print_function
 
 import os
-
-from masm2c import cpp
-from masm2c import op
-from masm2c.parser import Parser
-from masm2c.proc import Proc
 import unittest
 
+from masm2c import cpp, op
+from masm2c.parser import Parser
+from masm2c.proc import Proc
 
 # Random order for tests runs. (Original is: -1 if x<y, 0 if x==y, 1 if x>y).
-#unittest.TestLoader.sortTestMethodsUsing = lambda _, xc, y: randint(-1, 1)
 
 
 class ParserInstructionsTest(unittest.TestCase):
@@ -37,96 +32,95 @@ class ParserInstructionsTest(unittest.TestCase):
         self.__class__.proc = Proc('mainproc')
         self.__class__.cpp.proc = self.__class__.proc
 
-        self.__class__.parser.action_assign_test(label='B', value=u'word ptr ds:1')
-        self.__class__.parser.action_assign_test(label='DDD', value=u'singlebyte2')
-        self.__class__.parser.action_assign_test(label='arg_2', value=u'word ptr 6')
-        self.__class__.parser.action_assign_test(label='arg_4', value=u'dword ptr 6')
-        self.__class__.parser.action_assign_test(label='argc', value=u'8')
-        self.__class__.parser.action_assign_test(label='argv', value=u'0Ch')
-        self.__class__.parser.action_assign_test(label='eax_0', value=u'eax')
-        self.__class__.parser.action_assign_test(label='ecx_0', value=u'-2Ch')
-        self.__class__.parser.action_assign_test(label='ecx_0_0', value=u'ecx')
-        self.__class__.parser.action_assign_test(label='ecx_vals', value=u'-28h')
-        self.__class__.parser.action_assign_test(label='edi_0', value=u'edi')
-        self.__class__.parser.action_assign_test(label='edx_0', value=u'-2Ch')
-        self.__class__.parser.action_assign_test(label='edx_0_0', value=u'edx')
-        self.__class__.parser.action_assign_test(label='eflags', value=u'eax')
-        self.__class__.parser.action_assign_test(label='esi_0', value=u'ebx')
-        self.__class__.parser.action_assign_test(label='esi_0', value=u'esi')
-        self.__class__.parser.action_assign_test(label='flags', value=u'eax')
-        self.__class__.parser.action_assign_test(label='i', value=u'eax')
-        self.__class__.parser.action_assign_test(label='iflags', value=u'10H')
-        self.__class__.parser.action_assign_test(label='iflags', value=u'14h')
-        self.__class__.parser.action_assign_test(label='op0', value=u'0Ch')
-        self.__class__.parser.action_assign_test(label='op0h', value=u'8')
-        self.__class__.parser.action_assign_test(label='op1', value=u'eax')
-        self.__class__.parser.action_assign_test(label='r', value=u'eax')
-        self.__class__.parser.action_assign_test(label='res', value=u'eax')
-        self.__class__.parser.action_assign_test(label='resh', value=u'ebx')
-        self.__class__.parser.action_assign_test(label='resz', value=u'ecx')
-        self.__class__.parser.action_assign_test(label='rh', value=u'edx')
-        self.__class__.parser.action_assign_test(label='s0', value=u'0Ch')
-        self.__class__.parser.action_assign_test(label='s0_0', value=u'ebx')
-        self.__class__.parser.action_assign_test(label='s1', value=u'0Ch')
-        self.__class__.parser.action_assign_test(label='s1_0', value=u'ecx')
-        self.__class__.parser.action_assign_test(label='s2', value=u'8')
-        self.__class__.parser.action_assign_test(label='val', value=u'-1Ch')
-        self.__class__.parser.action_assign_test(label='var_1C', value=u'-1Ch')
-        self.__class__.parser.action_assign_test(label='var_20', value=u'-20h')
-        self.__class__.parser.action_assign_test(label='var_2C', value=u'-2Ch')
-        self.__class__.parser.action_assign_test(label='var_4', value=u'-4')
-        self.__class__.parser.action_equ_test(line_number=0, label='CC', value=u'4')
-        self.__class__.parser.action_equ_test(line_number=0, label='T', value=u'4')
-        self.__class__.parser.action_equ_test(line_number=0, label='TEST2', value=u'-13')
-        self.__class__.parser.action_equ_test(line_number=0, label='dubsize', value=u'13')
-        self.__class__.parser.action_equ_test(line_number=0, label='tWO', value=u'2')
-        self.__class__.parser.action_equ_test(line_number=0, label='taille_moire', value=u'((((2030080+64000*26)/4096)+1)*4096)-1')
-        self.__class__.parser.action_equ_test(line_number=0, label='test1', value=u'(00+38*3)*320+1/2+33*(3-1)')
-        self.__class__.parser.action_equ_test(line_number=0, label='test3', value=u'1500')
-        self.__class__.parser.action_equ_test(line_number=0, label='testEqu', value=u'1')
+        self.__class__.parser.action_assign_test(label='B', value='word ptr ds:1')
+        self.__class__.parser.action_assign_test(label='DDD', value='singlebyte2')
+        self.__class__.parser.action_assign_test(label='arg_2', value='word ptr 6')
+        self.__class__.parser.action_assign_test(label='arg_4', value='dword ptr 6')
+        self.__class__.parser.action_assign_test(label='argc', value='8')
+        self.__class__.parser.action_assign_test(label='argv', value='0Ch')
+        self.__class__.parser.action_assign_test(label='eax_0', value='eax')
+        self.__class__.parser.action_assign_test(label='ecx_0', value='-2Ch')
+        self.__class__.parser.action_assign_test(label='ecx_0_0', value='ecx')
+        self.__class__.parser.action_assign_test(label='ecx_vals', value='-28h')
+        self.__class__.parser.action_assign_test(label='edi_0', value='edi')
+        self.__class__.parser.action_assign_test(label='edx_0', value='-2Ch')
+        self.__class__.parser.action_assign_test(label='edx_0_0', value='edx')
+        self.__class__.parser.action_assign_test(label='eflags', value='eax')
+        self.__class__.parser.action_assign_test(label='esi_0', value='ebx')
+        self.__class__.parser.action_assign_test(label='esi_0', value='esi')
+        self.__class__.parser.action_assign_test(label='flags', value='eax')
+        self.__class__.parser.action_assign_test(label='i', value='eax')
+        self.__class__.parser.action_assign_test(label='iflags', value='10H')
+        self.__class__.parser.action_assign_test(label='iflags', value='14h')
+        self.__class__.parser.action_assign_test(label='op0', value='0Ch')
+        self.__class__.parser.action_assign_test(label='op0h', value='8')
+        self.__class__.parser.action_assign_test(label='op1', value='eax')
+        self.__class__.parser.action_assign_test(label='r', value='eax')
+        self.__class__.parser.action_assign_test(label='res', value='eax')
+        self.__class__.parser.action_assign_test(label='resh', value='ebx')
+        self.__class__.parser.action_assign_test(label='resz', value='ecx')
+        self.__class__.parser.action_assign_test(label='rh', value='edx')
+        self.__class__.parser.action_assign_test(label='s0', value='0Ch')
+        self.__class__.parser.action_assign_test(label='s0_0', value='ebx')
+        self.__class__.parser.action_assign_test(label='s1', value='0Ch')
+        self.__class__.parser.action_assign_test(label='s1_0', value='ecx')
+        self.__class__.parser.action_assign_test(label='s2', value='8')
+        self.__class__.parser.action_assign_test(label='val', value='-1Ch')
+        self.__class__.parser.action_assign_test(label='var_1C', value='-1Ch')
+        self.__class__.parser.action_assign_test(label='var_20', value='-20h')
+        self.__class__.parser.action_assign_test(label='var_2C', value='-2Ch')
+        self.__class__.parser.action_assign_test(label='var_4', value='-4')
+        self.__class__.parser.action_equ_test(line_number=0, label='CC', value='4')
+        self.__class__.parser.action_equ_test(line_number=0, label='T', value='4')
+        self.__class__.parser.action_equ_test(line_number=0, label='TEST2', value='-13')
+        self.__class__.parser.action_equ_test(line_number=0, label='dubsize', value='13')
+        self.__class__.parser.action_equ_test(line_number=0, label='tWO', value='2')
+        self.__class__.parser.action_equ_test(line_number=0, label='taille_moire', value='((((2030080+64000*26)/4096)+1)*4096)-1')
+        self.__class__.parser.action_equ_test(line_number=0, label='test1', value='(00+38*3)*320+1/2+33*(3-1)')
+        self.__class__.parser.action_equ_test(line_number=0, label='test3', value='1500')
+        self.__class__.parser.action_equ_test(line_number=0, label='testEqu', value='1')
 
 
         self.__class__.parser.set_global("_data", op.var(1, 0, issegment=True))
         self.__class__.parser.set_global("singlebyte2", op.var(size=1, offset=1, name="singlebyte2", segment="_data", elements=1))
-        self.__class__.parser.set_global('_msg', op.var(elements=2, name=u'_msg', offset=1, segment=u'_data', size=1))
-        # p.set_global('_msg', op.var(name=u'_msg', offset=1, segment=u'dseg', size=1))
-        self.__class__.parser.set_global('_test_btc', op.var(name=u'_test_btc', offset=1, segment=u'initcall', size=4))
-        self.__class__.parser.set_global('a', op.var(elements=3, name=u'a', offset=1, segment=u'_data', size=1))
-        self.__class__.parser.set_global('a10sa08lxb08lx', op.var(elements=2, name=u'a10sA08lxB08lx', offset=1, segment=u'_rdata', size=1))
-        self.__class__.parser.set_global('a10sah08lxal08l', op.var(elements=2, name=u'a10sAh08lxAl08l', offset=1, segment=u'_rdata', size=1))
-        self.__class__.parser.set_global('a10sd', op.var(elements=2, name=u'a10sD', offset=1, segment=u'_rdata', size=1))
-        self.__class__.parser.set_global('a10seax08lxa08l', op.var(elements=2, name=u'a10sEax08lxA08l', offset=1, segment=u'_rdata', size=1))
-        self.__class__.parser.set_global('ascii', op.var(elements=2, name=u'ASCII', offset=1, segment=u'_data', size=1))
-        self.__class__.parser.set_global('axorw', op.var(name=u'aXorw', offset=1, segment=u'_rdata', size=1))
-        self.__class__.parser.set_global('beginningdata', op.var(name=u'beginningdata', offset=1, segment=u'_data', size=1))
-        self.__class__.parser.set_global('buffer', op.var(elements=64000, name=u'buffer', offset=1, segment=u'_data', size=1))
-        self.__class__.parser.set_global('byte_41411f', op.var(name=u'byte_41411F', offset=1, segment=u'_bss', size=1))
-        self.__class__.parser.set_global('d', op.var(name=u'd', offset=1, segment=u'_data', size=1))
-        self.__class__.parser.set_global('doublequote', op.var(elements=0, name=u'doublequote', offset=1, segment=u'_data', size=1))
-        self.__class__.parser.set_global('e', op.var(name=u'e', offset=1, segment=u'_data', size=1))
-        self.__class__.parser.set_global('enddata', op.var(name=u'enddata', offset=1, segment=u'_data', size=1))
-        self.__class__.parser.set_global('f', op.var(name=u'f', offset=1, segment=u'_data', size=1))
-        self.__class__.parser.set_global('filename', op.var(name=u'fileName', offset=1, segment=u'_data', size=1))
-        self.__class__.parser.set_global('g', op.var(name=u'g', offset=1, segment=u'_data', size=4))
-        self.__class__.parser.set_global('h', op.var(name=u'h', offset=1, segment=u'_data', size=1))
-        self.__class__.parser.set_global('h2', op.var(name=u'h2', offset=1, segment=u'_data', size=1))
-        self.__class__.parser.set_global('load_handle', op.var(name=u'load_handle', offset=1, segment=u'_data', size=4))
-        self.__class__.parser.set_global('pal_jeu', op.var(elements=16, name=u'pal_jeu', offset=1, segment=u'_data', size=1))
-        self.__class__.parser.set_global('str1', op.var(elements=10, name=u'str1', offset=1, segment=u'_data', size=1))
-        self.__class__.parser.set_global('str2', op.var(elements=10, name=u'str2', offset=1, segment=u'_data', size=1))
-        self.__class__.parser.set_global('str3', op.var(elements=10, name=u'str3', offset=1, segment=u'_data', size=1))
-        self.__class__.parser.set_global('str_buffer', op.var(elements=4096, name=u'str_buffer', offset=1, segment=u'_bss', size=1))
-        self.__class__.parser.set_global('wordtable', op.var(name=u'wordtable', elements=1, offset=1, segment=u'_text', size=2))
-        self.__class__.parser.set_global('testoverlap', op.var(elements=14, name=u'testOVerlap', offset=1, segment=u'_data', size=1))
-        self.__class__.parser.set_global('unk_40e008', op.var(name=u'unk_40E008', offset=1, segment=u'_data', size=1))
-        self.__class__.parser.set_global('unk_40f064', op.var(name=u'unk_40F064', offset=1, segment=u'initcall', size=1))
-        self.__class__.parser.set_global('var', op.var(elements=4, name=u'var', offset=1, segment=u'_data', size=1))
-        self.__class__.parser.set_global('bytearray2', op.var(elements=10, name=u'bytearray2', offset=1, segment=u'_data', size=1))
-        self.__class__.parser.set_global('wordarray', op.var(elements=3, name=u'wordarray', offset=1, segment=u'_data', size=2))
-        self.__class__.parser.set_global('singlebyte', op.var(elements=1, name=u'singlebyte', offset=1, segment=u'_data', size=1))
-        self.__class__.parser.set_global('bytearray', op.var(elements=100, name=u'bytearray', offset=1, segment=u'_data', size=1))
-        self.__class__.parser.set_global('singlequad', op.var(elements=1, name=u'singlequad', offset=1, segment=u'_data', size=4))
-        self.__class__.parser.action_data(line='''GAMEINFOSTRUC struc
+        self.__class__.parser.set_global('_msg', op.var(elements=2, name='_msg', offset=1, segment='_data', size=1))
+        self.__class__.parser.set_global('_test_btc', op.var(name='_test_btc', offset=1, segment='initcall', size=4))
+        self.__class__.parser.set_global('a', op.var(elements=3, name='a', offset=1, segment='_data', size=1))
+        self.__class__.parser.set_global('a10sa08lxb08lx', op.var(elements=2, name='a10sA08lxB08lx', offset=1, segment='_rdata', size=1))
+        self.__class__.parser.set_global('a10sah08lxal08l', op.var(elements=2, name='a10sAh08lxAl08l', offset=1, segment='_rdata', size=1))
+        self.__class__.parser.set_global('a10sd', op.var(elements=2, name='a10sD', offset=1, segment='_rdata', size=1))
+        self.__class__.parser.set_global('a10seax08lxa08l', op.var(elements=2, name='a10sEax08lxA08l', offset=1, segment='_rdata', size=1))
+        self.__class__.parser.set_global('ascii', op.var(elements=2, name='ASCII', offset=1, segment='_data', size=1))
+        self.__class__.parser.set_global('axorw', op.var(name='aXorw', offset=1, segment='_rdata', size=1))
+        self.__class__.parser.set_global('beginningdata', op.var(name='beginningdata', offset=1, segment='_data', size=1))
+        self.__class__.parser.set_global('buffer', op.var(elements=64000, name='buffer', offset=1, segment='_data', size=1))
+        self.__class__.parser.set_global('byte_41411f', op.var(name='byte_41411F', offset=1, segment='_bss', size=1))
+        self.__class__.parser.set_global('d', op.var(name='d', offset=1, segment='_data', size=1))
+        self.__class__.parser.set_global('doublequote', op.var(elements=0, name='doublequote', offset=1, segment='_data', size=1))
+        self.__class__.parser.set_global('e', op.var(name='e', offset=1, segment='_data', size=1))
+        self.__class__.parser.set_global('enddata', op.var(name='enddata', offset=1, segment='_data', size=1))
+        self.__class__.parser.set_global('f', op.var(name='f', offset=1, segment='_data', size=1))
+        self.__class__.parser.set_global('filename', op.var(name='fileName', offset=1, segment='_data', size=1))
+        self.__class__.parser.set_global('g', op.var(name='g', offset=1, segment='_data', size=4))
+        self.__class__.parser.set_global('h', op.var(name='h', offset=1, segment='_data', size=1))
+        self.__class__.parser.set_global('h2', op.var(name='h2', offset=1, segment='_data', size=1))
+        self.__class__.parser.set_global('load_handle', op.var(name='load_handle', offset=1, segment='_data', size=4))
+        self.__class__.parser.set_global('pal_jeu', op.var(elements=16, name='pal_jeu', offset=1, segment='_data', size=1))
+        self.__class__.parser.set_global('str1', op.var(elements=10, name='str1', offset=1, segment='_data', size=1))
+        self.__class__.parser.set_global('str2', op.var(elements=10, name='str2', offset=1, segment='_data', size=1))
+        self.__class__.parser.set_global('str3', op.var(elements=10, name='str3', offset=1, segment='_data', size=1))
+        self.__class__.parser.set_global('str_buffer', op.var(elements=4096, name='str_buffer', offset=1, segment='_bss', size=1))
+        self.__class__.parser.set_global('wordtable', op.var(name='wordtable', elements=1, offset=1, segment='_text', size=2))
+        self.__class__.parser.set_global('testoverlap', op.var(elements=14, name='testOVerlap', offset=1, segment='_data', size=1))
+        self.__class__.parser.set_global('unk_40e008', op.var(name='unk_40E008', offset=1, segment='_data', size=1))
+        self.__class__.parser.set_global('unk_40f064', op.var(name='unk_40F064', offset=1, segment='initcall', size=1))
+        self.__class__.parser.set_global('var', op.var(elements=4, name='var', offset=1, segment='_data', size=1))
+        self.__class__.parser.set_global('bytearray2', op.var(elements=10, name='bytearray2', offset=1, segment='_data', size=1))
+        self.__class__.parser.set_global('wordarray', op.var(elements=3, name='wordarray', offset=1, segment='_data', size=2))
+        self.__class__.parser.set_global('singlebyte', op.var(elements=1, name='singlebyte', offset=1, segment='_data', size=1))
+        self.__class__.parser.set_global('bytearray', op.var(elements=100, name='bytearray', offset=1, segment='_data', size=1))
+        self.__class__.parser.set_global('singlequad', op.var(elements=1, name='singlequad', offset=1, segment='_data', size=4))
+        self.__class__.parser.action_data(line="""GAMEINFOSTRUC struc
 game_oppttypedw dw ?
 game_opponentmaterial dd ?
 struc_member_dup db 4 dup (?)
@@ -144,7 +138,7 @@ h_array db '^',10,10
     struc_mmbr_dup_othr_struc VECTORSTRUC 3 dup (<>)
  TRANSSHAPESTRUC ends
  asgn_aptr_in_struc = TRANSSHAPESTRUC ptr -50
-''')
+""")
         #var_transshape TRANSSHAPESTRUC <>
         self.__class__.parser.get_global('asgn_aptr_in_struc').implemented = True
         #?self.__class__.cpp._assignment('asgn_aptr_in_struc',self.__class__.parser.get_global('asgn_aptr_in_struc'))
@@ -198,29 +192,27 @@ h_array db '^',10,10
         self.__class__.parser.action_label(far=False, name='next', isproc=False)
         self.__class__.parser.action_label(far=False, name='noerror', isproc=False)
         self.__class__.parser.action_label(far=False, name='toto1', isproc=False)
-        self.__class__.parser.action_label(far=False, name=u'exec_adc', isproc=True)
-        self.__class__.parser.action_label(far=False, name=u'exec_rclb', isproc=True)
-        self.__class__.parser.action_label(far=False, name=u'printeax', isproc=True)
-        self.__class__.parser.action_label(far=True, name=u'test_bcd', isproc=True)
-        self.__class__.parser.set_global('test_bcd_ofs', op.var(elements=1, name=u'test_bcd_ofs', offset=1, segment=u'_data', size=2))
+        self.__class__.parser.action_label(far=False, name='exec_adc', isproc=True)
+        self.__class__.parser.action_label(far=False, name='exec_rclb', isproc=True)
+        self.__class__.parser.action_label(far=False, name='printeax', isproc=True)
+        self.__class__.parser.action_label(far=True, name='test_bcd', isproc=True)
+        self.__class__.parser.set_global('test_bcd_ofs', op.var(elements=1, name='test_bcd_ofs', offset=1, segment='_data', size=2))
         self.__class__.results = {}
 
     def doTest(self, input, second):
         result = self.proc.generate_c_cmd(self.cpp, self.parser.action_code(input))
-        #self.__class__.results[input] = result
         return (result, second)
 
     def disable__del__(self):
-        #print(self.__class__.results)
         id = 10
         if os.path.exists('result.txt'):
                 os.remove('result.txt')
         with open('result.txt','a') as f:
             for k, v in self.__class__.results.items():
-                f.write(f'''    def test_instr_{id}(self):
-        self.assertEqual(*self.doTest('''+repr(k)+', '+repr(v)+'''))
+                f.write(f"""    def test_instr_{id}(self):
+        self.assertEqual(*self.doTest("""+repr(k)+', '+repr(v)+"""))
 
-''')
+""")
                 id += 10
 
     def test_instr_10(self):
@@ -2967,27 +2959,27 @@ h_array db '^',10,10
 
     @unittest.skip("it works but test broken. non masm")
     def test_instr_11330(self):
-        print(*self.doTest(u'rep',  '\tREP\n'))
+        print(*self.doTest('rep',  '\tREP\n'))
 
     @unittest.skip("it works but test broken. non masm")
     def test_instr_11340(self):
-        print(*self.doTest(u'repe',  '\tREPE\n'))
+        print(*self.doTest('repe',  '\tREPE\n'))
 
     @unittest.skip("undefined behaviour")
     def test_instr_11350(self):
-        print(*self.doTest('mov     [ebp+i+wordtable], dl',u'MOV(*(dw*)(raddr(ss,ebp+i+offset(_text,wordtable),  dl)'))
+        print(*self.doTest('mov     [ebp+i+wordtable], dl','MOV(*(dw*)(raddr(ss,ebp+i+offset(_text,wordtable),  dl)'))
 
     @unittest.skip("Minor syntax")
     def test_instr_11850(self):
-        print(*self.doTest(r'mov	bl, byte ptr es:[wordtable]', u"MOV(bl, *((db*)&wordtable))"))
+        print(*self.doTest(r'mov	bl, byte ptr es:[wordtable]', "MOV(bl, *((db*)&wordtable))"))
 
     @unittest.skip("Minor syntax")
     def test_instr_11860(self):
-        print(*self.doTest(r'mov	ch, es:[singlebyte]', u"MOV(ch, singlebyte)"))
+        print(*self.doTest(r'mov	ch, es:[singlebyte]', "MOV(ch, singlebyte)"))
 
     @unittest.skip("Minor syntax")
     def test_instr_11870(self):
-        print(*self.doTest(r'mov	eax, es:[g]', u"MOV(eax, g)"))
+        print(*self.doTest(r'mov	eax, es:[g]', "MOV(eax, g)"))
 
 
     def test_instr_10890(self):
@@ -3010,8 +3002,7 @@ h_array db '^',10,10
 
     @unittest.skip("Don't know how to test properly yet")
     def test_instr_11880(self):
-        self.assertEqual(self.proc.generate_full_cmd_line(self.cpp, self.parser.action_data(
-            'var_104_rc equ TRANSSHAPESTRUC ptr -260')), u'#define var_104_rc -260\n')
+        assert self.proc.generate_full_cmd_line(self.cpp, self.parser.action_data("var_104_rc equ TRANSSHAPESTRUC ptr -260")) == "#define var_104_rc -260\n"
 
     def test_instr_10905(self):
         self.assertEqual(*self.doTest('call    near ptr loc_40458f', 'CALL(mainproc,m2c::kloc_40458f)'))
@@ -3027,7 +3018,7 @@ h_array db '^',10,10
 
     def test_instr_10940(self):
         self.cpp._context.itislst = True
-        self.assertEqual(self.proc.generate_full_cmd_line(self.cpp, self.parser.action_code('mov ss,ax')),'\tS(ss = ax;);')
+        assert self.proc.generate_full_cmd_line(self.cpp, self.parser.action_code("mov ss,ax")) == "\tS(ss = ax;);"
         self.cpp._context.itislst = False
 
     #def test_instr_12030(self):

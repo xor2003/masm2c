@@ -1,10 +1,8 @@
 #!/usr/bin/python3
-# -*- coding: utf-8 -*-
 import os
 import re
 import sys
 
-import parglare
 from parglare import Grammar
 
 macronames = []
@@ -33,15 +31,12 @@ def macroname(head, input, pos):
 
 
 class Token:
-    # __slots__ = ('name', 'type', 'keyword', 'value')
 
-    def __init__(self, type, value):
-        # self.name = name
+    def __init__(self, type, value) -> None:
         self.type = type
-        # self.keyword = keyword
         self.value = value
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         from pprint import pformat
         return pformat(vars(self))
 
@@ -50,7 +45,7 @@ def get_raw(context):
     return context.input_str[context.start_position: context.end_position]
 
 
-'''
+"""
 def build_ast(nodes, type=''):
     if isinstance(nodes, parglare.parser.NodeNonTerm) and nodes.children:
         if len(nodes.children) == 1:
@@ -63,7 +58,7 @@ def build_ast(nodes, type=''):
             return l
     else:
         return Node(name=nodes.symbol.name, type=type, keyword=nodes.symbol.keyword, value=nodes.value)
-'''
+"""
 
 
 def make_token(context, nodes):
@@ -74,7 +69,6 @@ def make_token(context, nodes):
     if context.production.rhs[0].name in (
             'type', 'e01', 'e02', 'e03', 'e04', 'e05', 'e06', 'e07', 'e08', 'e09', 'e10', 'e11'):
         nodes = nodes[0]
-    # print("~"+str(nodes)+"~")
     return nodes
 
 
@@ -109,8 +103,6 @@ def asminstruction(context, nodes, instruction, args):
     print("instruction " + get_raw(context) + " " + str(nodes) + " ~~ " + str(cur_segment) + " " + str(indirection))
     cur_segment = 'ds'  # !
     indirection = 0  # !
-    # args = build_ast(args)
-    # print(instruction.children[0].value, str(args))
     return nodes
 
 
@@ -145,30 +137,19 @@ def segmentregister(context, nodes):
 def sqexpr(context, nodes):
     global indirection
     indirection = 1
-    # print("/~"+str(nodes)+"~\\")
-    # print("/~"+str(nodes[1][1])+"~\\")
     res = nodes[1]
-    # res = [i[1] for i in nodes[1]]
 
     # if isinstance(res, list):
-    #   res = res[0]
-    # else:
-    #   res = sum([[i, '+'] for i in res.value], [])[:-1]
-    # print("~"+str(res)+"~")
     return Token('sqexpr', res)
 
 
 def offsetdir(context, nodes):
-    # print("offset /~"+str(nodes)+"~\\")
     # global indirection
-    # indirection = -1
     return Token('offsetdir', nodes[1])
 
 
 def segmdir(context, nodes):
-    # print("offset /~"+str(nodes)+"~\\")
     # global indirection
-    # indirection = -1
     return Token('segmdir', nodes[1])
 
 
@@ -196,7 +177,6 @@ def structname(head, s, pos):
     mtch = macronamere.match(s[pos:])
     if mtch:
         result = mtch.group().lower()
-        # logging.debug ("matched ~^~" + result+"~^~")
         if result in structnames:
             logging.debug(" ~^~" + result + "~^~ in structnames")
             return result
@@ -232,7 +212,7 @@ def commentkw(head, s, pos):
 recognizers = {
     'macroname': macroname,
     "structname": structname,
-    'COMMENTKW': commentkw
+    'COMMENTKW': commentkw,
 }
 
 actions = {
@@ -268,7 +248,7 @@ actions = {
     "notdir": notdir,
     "ordir": ordir,
     "xordir": xordir,
-    "anddir": anddir
+    "anddir": anddir,
 }
 
 file_name = os.path.dirname(os.path.realpath(__file__)) + "/masm2c/_masm61.pg"
@@ -276,10 +256,7 @@ grammar = Grammar.from_file(file_name, ignore_case=True, recognizers=recognizers
 
 from parglare import Parser
 
-# parser = Parser(grammar, debug=True, debug_trace=True, actions={"macrodir": macro_action})
-# parser = Parser(grammar, debug=True, actions={"macrodir": macro_action})
 parser = Parser(grammar, debug=True, actions=actions, debug_colors=True)
-#parser = Parser(grammar, actions=actions)  # , build_tree=True, call_actions_during_tree_build=True)
 
 codeset = 'cp437'
 
@@ -288,10 +265,7 @@ if sys.version_info[0] >= 3:
 
 for i in sys.argv[1:]:
 
-    if sys.version_info >= (3, 0):
-        f = open(i, "rt", encoding=codeset)
-    else:
-        f = open(i, "rt")
+    f = open(i, encoding=codeset)
 
     input_str = f.read()
 

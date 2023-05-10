@@ -338,10 +338,7 @@ class Asm2IR(CommonCollector):
 
         if len(children)==1: # TODO why?
             children = children[0]
-        if isinstance(children[0], lark.Token) and children[0].type == "LABEL":
-            label = self.context.mangle_label(children.pop(0))
-        else:
-            label = ""
+        label = self.context.mangle_label(children.pop(0)) if isinstance(children[0], lark.Token) and children[0].type == "LABEL" else ""
         type = children.pop(0).lower()
         if isinstance(children[0], lark.Token | lark.Tree):  # Data
             values = lark.Tree(data="data", children=children[0].children)

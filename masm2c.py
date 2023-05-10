@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 # MASM x86 to C translator
 #
 # MASM2C is the legal property of its developers, whose names

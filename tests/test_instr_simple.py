@@ -1,4 +1,3 @@
-from __future__ import absolute_import, print_function
 
 import unittest
 
@@ -33,7 +32,6 @@ class ParserTestSimple(unittest.TestCase):
 
     def doTest(self, input, second):
         result = self.proc.generate_c_cmd(self.cpp, self.parser.action_code(input))
-        #self.__class__.results[input] = result
         return (result, second)
 
     def test_instr_3720(self):

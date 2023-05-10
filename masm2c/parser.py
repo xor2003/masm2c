@@ -841,9 +841,8 @@ class Parser:
             return
         if absolute_offset:
             self.move_offset(absolute_offset, raw)
-            if self.__cur_seg_offset > real_offset:
-                if not self.itislst:
-                    logging.warning(f"Current offset does not equal to required for {label}")
+            if self.__cur_seg_offset > real_offset and not self.itislst:
+                logging.warning(f"Current offset does not equal to required for {label}")
             if self.__cur_seg_offset != real_offset:
                 self.data_merge_candidats = 0
             self.__cur_seg_offset = real_offset
@@ -1044,10 +1043,7 @@ class Parser:
                 if o.real_seg:
                     logging.warning(f"at {o.real_seg:x}:{o.real_offset:x}")
             if self.need_label and self.proc.stmts:  # skip first instruction
-                if o.real_seg:
-                    label_name = f"ret_{o.real_seg:x}_{o.real_offset:x}"
-                else:
-                    label_name = self.get_extra_dummy_jumplabel()
+                label_name = f"ret_{o.real_seg:x}_{o.real_offset:x}" if o.real_seg else self.get_extra_dummy_jumplabel()
                 logging.warning(f"Adding helping label {label_name}")
                 self.action_label(label_name, raw=raw)
             self.proc.stmts.append(o)

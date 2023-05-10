@@ -103,10 +103,7 @@ class Proc:
     def find_op_common_class(self, cmd, args):
         logging.debug(cmd)
         try:
-            if re.match(r"^(j[a-z]+|loop[a-z]*)$", cmd.lower()):
-                cl = op._jump
-            else:
-                cl = getattr(op, "_instruction" + str(len(args)))
+            cl = op._jump if re.match("^(j[a-z]+|loop[a-z]*)$", cmd.lower()) else getattr(op, "_instruction" + str(len(args)))
         except AttributeError:
             raise Exception("Unknown instruction: " + cmd.lower())
         return cl
