@@ -20,8 +20,12 @@
 #
 import logging
 import re
+from typing import Any
 
 from lark import lark
+from lark.lexer import Token
+from masm2c.op import _assignment, _equ, _mov, baseop, label
+from masm2c.Token import Expression
 
 from . import op
 from .Token import Token
@@ -32,9 +36,9 @@ PTRDIR = "ptrdir"
 class Proc:
     last_addr = 0xc000
 
-    def __init__(self, name: str, far: bool = False, line_number: int = 0, extern: bool = False, offset=0,
-                 real_offset=0,
-                 real_seg=0, segment="") -> None:
+    def __init__(self, name: str, far: bool = False, line_number: int = 0, extern: bool = False, offset: int | None=0,
+                 real_offset: int | None=0,
+                 real_seg: int | None=0, segment: str="") -> None:
         """Represent asm procedure.
 
         :param name: Name
@@ -70,7 +74,7 @@ class Proc:
         self.extern = other.extern
         del other
 
-    def add_label(self, name, label):
+    def add_label(self, name: str, label: label) -> None:
         logging.debug(f"Label {name} is provided by {self.name} proc")
         self.stmts.append(label)
         self.provided_labels.add(name)
@@ -80,7 +84,7 @@ class Proc:
         # trivial simplifications
 
 
-    def create_instruction_object(self, instruction, args=None):
+    def create_instruction_object(self, instruction: Token, args: list[Any | Expression] | None=None) -> baseop:
         """:param instruction: the instruction name
         :param args: a list of strings, each string is an argument to the instruction
         :return: An object of type cl, which is a subclass of Instruction.
@@ -93,14 +97,14 @@ class Proc:
         o.syntetic = False
         return o
 
-    def find_op_class(self, cmd, args):
+    def find_op_class(self, cmd: Token, args: list[Any | Expression]) -> Any:
         try:
             cl = getattr(op, "_" + cmd.lower())
         except AttributeError:
             cl = self.find_op_common_class(cmd, args)
         return cl
 
-    def find_op_common_class(self, cmd, args):
+    def find_op_common_class(self, cmd: str, args: list[Any | Expression]) -> type["_instruction3"] | type["_instruction2"] | type["_instruction0"] | type["_jump"] | type["_instruction1"]:
         logging.debug(cmd)
         try:
             cl = op._jump if re.match("^(j[a-z]+|loop[a-z]*)$", cmd.lower()) else getattr(op, "_instruction" + str(len(args)))
@@ -113,7 +117,7 @@ class Proc:
         self.stmts.append(o)
 
     @staticmethod
-    def create_equ_op(label, value, line_number):  # TODO Move it to parser
+    def create_equ_op(label: str, value: Expression, line_number: int) -> _equ:  # TODO Move it to parser
         logging.debug(label + " " + str(value))
         o = op._equ(label)
         if ptrdir := Token.find_tokens(value, PTRDIR):
@@ -129,7 +133,7 @@ class Proc:
         #               logging.info "~~~" + o.command + o.comments
         return o
 
-    def create_assignment_op(self, label, value, line_number=0):
+    def create_assignment_op(self, label: str, value: Expression, line_number: int=0) -> _assignment:
         logging.debug(label + " " + str(value))
         o = op._assignment([label, value])
         if hasattr(value, "original_type"):  # TODO cannot get original type anymore. not required here
@@ -146,7 +150,7 @@ class Proc:
     def __str__(self) -> str:
         return "\n".join(i.__str__() for i in self.stmts)
 
-    def set_instruction_compare_subclass(self, stmt, full_command, itislst):
+    def set_instruction_compare_subclass(self, stmt: _mov, full_command: str, itislst: bool) -> str:
         """Sets libdosbox's emulator the instruction subclass
         to perform comparison of instruction side effects at run-time with the emulated.
         """
@@ -213,7 +217,7 @@ class Proc:
             except AttributeError:
                 logging.warning(f"Some attributes missing while setting comment for {stmt}")
 
-    def generate_full_cmd_line(self, visitor, stmt):
+    def generate_full_cmd_line(self, visitor: "Cpp", stmt: _mov) -> str:
         prefix = visitor.prefix
         visitor._cmdlabel = ""
         visitor.dispatch = ""
@@ -231,7 +235,7 @@ class Proc:
         full_line = visitor._cmdlabel + visitor.dispatch + full_command
         return full_line
 
-    def generate_c_cmd(self, visitor, stmt):
+    def generate_c_cmd(self, visitor: "Cpp", stmt: baseop) -> str:
         return stmt.accept(visitor)
 
     def if_terminated_proc(self):
@@ -241,13 +245,13 @@ class Proc:
             return self.is_flow_terminating_stmt(last_stmt)
         return True
 
-    def is_flow_terminating_stmt(self, stmt):
+    def is_flow_terminating_stmt(self, stmt: baseop) -> bool:
         return (stmt.cmd.startswith("jmp") and "$" not in stmt.raw_line) \
                or stmt.cmd.startswith("ret") or stmt.cmd == "iret"
 
     def is_return_point(self, stmt):
         return stmt.cmd.startswith("call")
 
-    def is_flow_change_stmt(self, stmt):
+    def is_flow_change_stmt(self, stmt: _mov) -> bool:
         return stmt.cmd.startswith("j") or self.is_flow_terminating_stmt(stmt) \
                or stmt.cmd.startswith("call") or stmt.cmd.startswith("loop")

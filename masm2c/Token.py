@@ -21,6 +21,8 @@
 
 import lark
 from lark import Tree
+import lark.tree
+from typing import Any, List, Optional, Union
 
 SQEXPR = "sqexpr"
 
@@ -37,7 +39,7 @@ class Token(lark.Tree):
     # def __repr__(self):
 
     @staticmethod
-    def find_tokens(expr, lookfor: str):
+    def find_tokens(expr: Any, lookfor: str) -> Optional[Union[List[str], List[    lark.tree.Tree]]]:
         l = []
         if isinstance(expr, Tree):
             if expr.data == lookfor:
@@ -63,7 +65,7 @@ class Token(lark.Tree):
 
 
     @staticmethod
-    def remove_tokens(expr, lookfor: list):
+    def remove_tokens(expr: Any, lookfor: list) -> Any:
         if isinstance(expr, Tree):
             if expr.data in lookfor:
                 #if len(expr.children) == 1 and isinstance(expr.children[0], str):
@@ -105,7 +107,7 @@ class Expression(lark.Tree):
         self.segment_register = "ds"
         self.segment_overriden = False
 
-    def size(self):
+    def size(self) -> int:
         from masm2c.enumeration import IndirectionType
         if self.indirection == IndirectionType.POINTER:
             return self.ptr_size

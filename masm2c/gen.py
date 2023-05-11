@@ -3,19 +3,22 @@ import pickle
 import re
 from collections import OrderedDict
 from copy import copy
+from typing import TYPE_CHECKING
 
 import jsonpickle
 
 from lark import lark
 from masm2c import op
 from masm2c import proc as proc_module
-from masm2c.parser import parse_asm_number
 from masm2c.Token import Expression
+
+if TYPE_CHECKING:
+    from masm2c.parser import Parser
 
 
 class Gen:
-    def __init__(self,context, outfile="", skip_output=None,
-                 merge_data_segments=True) -> None:
+    def __init__(self,context: "Parser", outfile: str="", skip_output: None=None,
+                 merge_data_segments: bool=True) -> None:
         self.label_to_proc = {}
         self._isjustlabel = False
         self.groups = OrderedDict()
@@ -37,7 +40,7 @@ class Gen:
         return result
 
 
-    def calculate_member_size(self, label):
+    def calculate_member_size(self, label: list[str]) -> int:
         g = self._context.get_global(label[0])
         type = label[0] if isinstance(g, op.Struct) else g.original_type
 
@@ -380,7 +383,7 @@ class Gen:
         return None, None
 
     @staticmethod
-    def isrelativejump(label):
+    def isrelativejump(label: Expression) -> bool:
         result = (isinstance(label, lark.Tree) and \
         isinstance(label.children[0], lark.Tree) and label.children[0].data == "adddir" and \
         isinstance(label.children[0].children[0], lark.Tree) and label.children[0].children[0].data == "ptrdir3" and \
@@ -428,7 +431,7 @@ class Gen:
         offsets = sorted(offsets, key=lambda t: t[1])
         return offsets
 
-    def convert_asm_number_into_c(self, expr, radix=10):
+    def convert_asm_number_into_c(self, expr: str, radix: int=10) -> str:
         """It tryes to convert assembler number in any base to a C number string with the same base.
 
         :param result: The expression to convert
@@ -436,6 +439,7 @@ class Gen:
         :return: The number in the specified radix.
         """
         try:
+            from masm2c.parser import parse_asm_number
             radix, sign, value = parse_asm_number(expr, radix)
 
             result = self.renderer.produce_number_c(expr, radix, sign, value)
@@ -446,7 +450,7 @@ class Gen:
         return result
 
 
-def guess_int_size(v: int):
+def guess_int_size(v: int) -> int:
     """It returns the number of bytes needed to store the given integer.
 
     :param v: integer
@@ -468,7 +472,7 @@ def guess_int_size(v: int):
     return size
 
 
-def mangle_asm_labels(name):
+def mangle_asm_labels(name: str) -> str:
     """Modifies assembler functions to be acceptable for other languages.
 
     :param name: the name of assembler the function

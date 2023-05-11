@@ -19,6 +19,16 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #
 import logging
+from typing import TYPE_CHECKING, Any, Optional
+
+from lark.lexer import Token
+from lark.tree import Tree
+from masm2c.op import Data
+from masm2c.Token import Expression
+
+if TYPE_CHECKING:
+    from masm2c.parser import Parser
+
 import os
 import re
 from collections import OrderedDict
@@ -29,12 +39,11 @@ from . import op, proc
 from . import proc as proc_module
 from .enumeration import IndirectionType
 from .gen import Gen, InjectCode, mangle_asm_labels
-from .parser import ExprSizeCalculator, Vector
 from .pgparser import LABEL, MEMBERDIR, REGISTER, SQEXPR, Asm2IR, TopDownVisitor
 from .Token import Expression, Token
 
 
-def flatten(s):
+def flatten(s: list[str | int | list[str] | Any]) -> list[str | int | Any]:
     if not s:
         return s
     if isinstance(s[0], list):
@@ -44,7 +53,7 @@ def flatten(s):
 
 class SeparateProcStrategy:
 
-    def __init__(self, renderer) -> None:
+    def __init__(self, renderer: "Cpp") -> None:
         self.renderer = renderer
 
     def produce_proc_start(self, name):
@@ -92,8 +101,8 @@ bool __dispatch_call(m2c::_offsets __disp, struct m2c::_STATE* _state);
 class Cpp(Gen, TopDownVisitor):
     """Visitor which can produce C++ equivalents for asm instructions."""
 
-    def __init__(self, context=None, outfile="", skip_output=None,
-                 merge_data_segments=True) -> None:
+    def __init__(self, context: Optional["Parser"]=None, outfile: str="", skip_output: None=None,
+                 merge_data_segments: bool=True) -> None:
         # proc_strategy = SingleProcStrategy()):
         """:param context: pointer to Parser data
         :param outfile: Output filename
@@ -144,7 +153,7 @@ class Cpp(Gen, TopDownVisitor):
         self.element_size = -1
 
 
-    def convert_label_(self, name_original):
+    def convert_label_(self, name_original: Token) -> str:
         name = str(name_original)
         if (g := self._context.get_global(name)) is None:
             return name
@@ -285,11 +294,11 @@ class Cpp(Gen, TopDownVisitor):
         _reference = re.sub(r"^(\w+)\s+([\w\[\]]+);", r"\g<1>& \g<2> = m2c::m.\g<2>;", _reference)
         return _reference
 
-    def memberdir(self, tree):
+    def memberdir(self, tree: Tree) -> list[str]:
         return [self.convert_member_(tree.children)]
 
 
-    def convert_member_(self, label):
+    def convert_member_(self, label: list[str]) -> str:
         self.struct_type = None
         value = ".".join(label)
 
@@ -379,8 +388,8 @@ class Cpp(Gen, TopDownVisitor):
         #if size == 0:
         return value
 
-    def convert_sqbr_reference(self, segment: str, expr, destination: bool, size: int, islabel: bool,
-                               lea: bool = False):
+    def convert_sqbr_reference(self, segment: str, expr: str, destination: bool, size: int, islabel: bool,
+                               lea: bool = False) -> str:
         if not lea or destination:
             if not self.islabel or not self.isvariable:
                 self.needs_dereference = True
@@ -404,7 +413,7 @@ class Cpp(Gen, TopDownVisitor):
         return expr
 
     @staticmethod
-    def render_new_pointer_size(itispointer: bool, expr, target_size: int):
+    def render_new_pointer_size(itispointer: bool, expr: str, target_size: int) -> str:
         """:param expr: the expression to be rendered
         :param target_size: the new size of the pointer
         :return: The expression with the new size.
@@ -436,7 +445,7 @@ class Cpp(Gen, TopDownVisitor):
 
 
 
-    def jump_post(self, expr):
+    def jump_post(self, expr: Expression) -> tuple[str, bool]:
         self.itisjump = True
         result = self.render_instruction_argument(expr, 0)  # TODO why need something else?
         self.itisjump = False
@@ -465,7 +474,7 @@ class Cpp(Gen, TopDownVisitor):
 
         return name, far
 
-    def get_global_far(self, name):  # TODO Remove this!!!
+    def get_global_far(self, name: str) -> bool:  # TODO Remove this!!!
         """Convert argument tokens which for jump operations into C string
         :param name: Tokens
         :return: C string.
@@ -483,7 +492,7 @@ class Cpp(Gen, TopDownVisitor):
             self._cmdlabel = "%s:\n" % self.cpp_mangle_label(name)
         return ""
 
-    def _call(self, expr):
+    def _call(self, expr: Expression) -> str:
         logging.debug("cpp._call(%s)", expr)
         ret = ""
         if expr.ptr_size == 0:
@@ -534,27 +543,27 @@ class Cpp(Gen, TopDownVisitor):
             ret += f"CALL({proc_name},{label_ip})"
         return ret
 
-    def _ret(self, src):
+    def _ret(self, src: list[Expression | Any]) -> str:
         if src == []:
             self.a = "0"
         else:
             self.a = self.render_instruction_argument(src[0])
         return "RETN(%s)" % self.a
 
-    def _retf(self, src):
+    def _retf(self, src: list[Expression | Any]) -> str:
         if src == []:
             self.a = "0"
         else:
             self.a = self.render_instruction_argument(src[0])
         return "RETF(%s)" % self.a
 
-    def _xlat(self, src):
+    def _xlat(self, src: list[Expression | Any]) -> str:
         if not src:
             return "XLAT"
         self.a = self.render_instruction_argument(src[0])[2:-1]
         return "XLATP(%s)" % self.a
 
-    def parse2(self, dst, src):
+    def parse2(self, dst: Expression, src: Expression) -> tuple[str, str]:
         dst_size, src_size = self.calculate_size(dst), self.calculate_size(src)
         if dst_size == 0:
             if src_size == 0:
@@ -571,12 +580,12 @@ class Cpp(Gen, TopDownVisitor):
         src = self.render_instruction_argument(src, src_size)
         return dst, src
 
-    def _add(self, dst, src):
+    def _add(self, dst: Expression, src: Expression) -> str:
         self.a, self.b = self.parse2(dst, src)
         # if self.d in ['sp', 'esp'] and check_int(self.s):
         return f"ADD({self.a}, {self.b})"
 
-    def _mul(self, src):
+    def _mul(self, src: list[Expression]) -> str:
         size = 0
         res = [self.render_instruction_argument(i, size) for i in src]
         for i in src:
@@ -588,7 +597,7 @@ class Cpp(Gen, TopDownVisitor):
             size = self._middle_size
         return "MUL%d_%d(%s)" % (len(src), size, ",".join(res))
 
-    def _imul(self, src):
+    def _imul(self, src: list[Expression]) -> str:
         size = 0
         for i in src:
             if size == 0:
@@ -600,39 +609,39 @@ class Cpp(Gen, TopDownVisitor):
             size = self._middle_size
         return "IMUL%d_%d(%s)" % (len(src), size, ",".join(res))
 
-    def _div(self, src):
+    def _div(self, src: Expression) -> str:
         self.a = self.render_instruction_argument(src)
         size = self.calculate_size(src)
         return "DIV%d(%s)" % (size, self.a)
 
-    def _idiv(self, src):
+    def _idiv(self, src: Expression) -> str:
         self.a = self.render_instruction_argument(src)
         size = self.calculate_size(src)
         return "IDIV%d(%s)" % (size, self.a)
 
-    def _jz(self, label):
+    def _jz(self, label: Expression) -> str:
         if self.isrelativejump(label):
             return "{;}"
         label, _ = self.jump_post(label)  # TODO
         return "JZ(%s)" % label
 
-    def _jnz(self, label):
+    def _jnz(self, label: Expression) -> str:
         label, _ = self.jump_post(label)
         return "JNZ(%s)" % label
 
-    def _jbe(self, label):
+    def _jbe(self, label: Expression) -> str:
         label, _ = self.jump_post(label)
         return "JBE(%s)" % label
 
-    def _ja(self, label):
+    def _ja(self, label: Expression) -> str:
         label, far = self.jump_post(label)
         return "JA(%s)" % label
 
-    def _jc(self, label):
+    def _jc(self, label: Expression) -> str:
         label, far = self.jump_post(label)
         return "JC(%s)" % label
 
-    def _jnc(self, label):
+    def _jnc(self, label: Expression) -> str:
         label, far = self.jump_post(label)
         return "JNC(%s)" % label
 
@@ -659,46 +668,46 @@ class Cpp(Gen, TopDownVisitor):
         self.prefix = "\tREP "
         return ""
 
-    def _cmpsb(self):
+    def _cmpsb(self) -> str:
         return "CMPSB"
 
-    def _lodsb(self):
+    def _lodsb(self) -> str:
         return "LODSB"
 
-    def _lodsw(self):
+    def _lodsw(self) -> str:
         return "LODSW"
 
-    def _lodsd(self):
+    def _lodsd(self) -> str:
         return "LODSD"
 
-    def _stosb(self):
+    def _stosb(self) -> str:
         return "STOSB"
 
-    def _stosw(self):
+    def _stosw(self) -> str:
         return "STOSW"
 
-    def _stosd(self):
+    def _stosd(self) -> str:
         return "STOSD"
 
-    def _movsb(self):
+    def _movsb(self) -> str:
         return "MOVSB"
 
-    def _movsw(self):
+    def _movsw(self) -> str:
         return "MOVSW"
 
-    def _movsd(self):
+    def _movsd(self) -> str:
         return "MOVSD"
 
-    def _scasb(self):
+    def _scasb(self) -> str:
         return "SCASB"
 
-    def _scasw(self):
+    def _scasw(self) -> str:
         return "SCASW"
 
-    def _scasd(self):
+    def _scasd(self) -> str:
         return "SCASD"
 
-    def _scas(self, src):
+    def _scas(self, src: Expression) -> str:
         self.a = self.render_instruction_argument(src)
         size = self.calculate_size(src)
         srcr = Token.find_tokens(src, REGISTER)
@@ -938,7 +947,7 @@ struct Memory{
                 data += f"extern {v.original_type} {v.name};\n"
         return data
 
-    def _lea(self, dst, src):
+    def _lea(self, dst: Expression, src: Expression) -> str:
         self.lea = True
         src.indirection = IndirectionType.OFFSET
         src.mods.add("lea")
@@ -948,7 +957,7 @@ struct Memory{
         self.lea = False
         return r
 
-    def _movs(self, dst, src):
+    def _movs(self, dst: Expression, src: Expression) -> str:
         size = self.calculate_size(dst)
         dstr, srcr = Token.find_tokens(dst, REGISTER), Token.find_tokens(src, REGISTER)
         self.a, self.b = self.parse2(dst, src)
@@ -962,32 +971,33 @@ struct Memory{
         self.prefix = "\tREPNE "
         return ""
 
-    def _lods(self, src):
+    def _lods(self, src: Expression) -> str:
         self.a = self.render_instruction_argument(src)
         size = self.calculate_size(src)
         srcr = Token.find_tokens(src, REGISTER)
         return "LODS(%s,%s,%d)" % (self.a, srcr[0], size)
 
-    def _leave(self):
+    def _leave(self) -> str:
         return "LEAVE"  # MOV(esp, ebp) POP(ebp)
 
-    def _int(self, dst):
+    def _int(self, dst: Expression) -> str:
         self.a = self.render_instruction_argument(dst)
         return "_INT(%s)" % self.a
 
-    def _instruction0(self, cmd):
+    def _instruction0(self, cmd: str) -> str:
         return "%s" % (cmd.upper())
 
-    def _instruction1(self, cmd, dst) -> str:
+    def _instruction1(self, cmd: str, dst: Expression) -> str:
         self.a = self.render_instruction_argument(dst)
         return f"{cmd.upper()}({self.a})"
 
-    def render_instruction_argument(self, expr, def_size: int = 0, destination: bool = False, lea: bool = False):
+    def render_instruction_argument(self, expr: Expression, def_size: int = 0, destination: bool = False, lea: bool = False) -> str:
         if destination:
             expr.mods.add("destination")
         if lea:
             expr.mods.add("lea")
         if def_size == 0 and expr.element_size == 0 and expr.indirection != IndirectionType.POINTER:
+            from .parser import ExprSizeCalculator, Vector
             calc = ExprSizeCalculator(init=Vector(0, 0), context=self._context)
             def_size, _ = calc.visit(expr)  # , result=0)
 
@@ -1002,7 +1012,7 @@ struct Memory{
         self.size_changed = ir2cpp.size_changed
         return result[1:-1] if self.check_parentesis(result) else result
 
-    def check_parentesis(self, string):
+    def check_parentesis(self, string: str) -> bool:
         """Check if first ( matches the last one.
 
         >>> self.check_parentesis('(())')
@@ -1018,7 +1028,7 @@ struct Memory{
             if res < 0: return False
         return True
 
-    def _jump(self, cmd, label):
+    def _jump(self, cmd: str, label: Expression) -> str:
         if self.isrelativejump(label):
             return "{;}"
 
@@ -1039,11 +1049,11 @@ struct Memory{
 
         return f"{cmd.upper()}({label})"
 
-    def _instruction2(self, cmd, dst, src):
+    def _instruction2(self, cmd: str, dst: Expression, src: Expression) -> str:
         self.a, self.b = self.parse2(dst, src)
         return f"{cmd.upper()}({self.a}, {self.b})"
 
-    def _instruction3(self, cmd, dst, src, c):
+    def _instruction3(self, cmd: str, dst: Expression, src: Expression, c: Expression) -> str:
         self.a, self.b = self.parse2(dst, src)
         self.c = self.render_instruction_argument(c)
         return f"{cmd.upper()}({self.a}, {self.b}, {self.c})"
@@ -1067,7 +1077,7 @@ struct Memory{
         self._cmdlabel += f"#define {dst} {self.render_instruction_argument(src)}\n"
         return ""
 
-    def produce_c_data_single_(self, data):
+    def produce_c_data_single_(self, data: Data) -> tuple[str, str, int]:
         """It takes an assembler data and returns a C++ object.
 
         :param data: The data to be converted
@@ -1084,13 +1094,13 @@ struct Memory{
         logging.debug(rh)
         return rc, rh, data.getsize()
 
-    def produce_c_data_number(self, data: op.Data):
+    def produce_c_data_number(self, data: op.Data) -> tuple[str, str]:
         label, data_ctype, _, r, elements, size = data.getdata()
         rc = "".join(str(i) if isinstance(i, int) else "".join(str(x) for x in self.visit(i)) for i in r)
         rh = f"{data_ctype} {label}"
         return rc, rh
 
-    def produce_c_data_array(self, data: op.Data):
+    def produce_c_data_array(self, data: op.Data) -> tuple[str, str]:
         label, data_ctype, _, r, elements, _ = data.getdata()
         if not any(r):  # all zeros
             r = [0]
@@ -1112,7 +1122,7 @@ struct Memory{
         rh = f"{data_ctype} {label}[{elements}]"
         return rc, rh
 
-    def produce_c_data_zero_string(self, data: op.Data):
+    def produce_c_data_zero_string(self, data: op.Data) -> tuple[str, str]:
         label, data_ctype, _, r, elements, size = data.getdata()
         r = flatten(r)
         rc = '"' + "".join(self.convert_str(i) for i in r[:-1]) + '"'
@@ -1120,7 +1130,7 @@ struct Memory{
         rh = f"char {label}[{size}]"
         return rc, rh
 
-    def produce_c_data_array_string(self, data: op.Data):
+    def produce_c_data_array_string(self, data: op.Data) -> tuple[str, str]:
         label, data_ctype, _, r, elements, size = data.getdata()
         r = flatten(r)
         rc = "{" + ",".join([self.convert_char(i) for i in r]) + "}"
@@ -1137,12 +1147,12 @@ struct Memory{
         rh = f"{data_ctype} {label}"
         return rc, rh
 
-    def convert_char(self, c):
+    def convert_char(self, c: int | str) -> str:
         if isinstance(c, int) and c not in [10, 13]:
             return str(c)
         return "'" + self.convert_str(c) + "'"
 
-    def convert_str(self, c):
+    def convert_str(self, c: int | str) -> str:
         vvv = ""
         if isinstance(c, int):
             if c == 13:
@@ -1205,7 +1215,7 @@ struct Memory{
         result += "     };\n     return true;\n}\n"
         return result
 
-    def _mov(self, dst, src):
+    def _mov(self, dst: Expression, src: Expression) -> str:
         mapped_memory_access = False
 
         self.a, self.b = self.parse2(dst, src)
@@ -1242,11 +1252,11 @@ struct Memory{
         result += "    };\n}\n"
         return result
 
-    def cpp_mangle_label(self, name):
+    def cpp_mangle_label(self, name: str) -> str:
         name = mangle_asm_labels(name)
         return name.lower()
 
-    def produce_number_c(self, expr, radix, sign, value):
+    def produce_number_c(self, expr: str, radix: int, sign: str, value: str) -> str:
         if radix == 8:
             result = f"{sign}0{value}"
         elif radix == 16:
@@ -1261,10 +1271,10 @@ struct Memory{
 
 
 
-    def INTEGER(self, t):
+    def INTEGER(self, t: Token) -> list[str]:
         return [self.produce_number_c("", t.start_pos, t.line, t.column)]
 
-    def STRING(self, token):
+    def STRING(self, token: Token) -> list[str]:
         result = token.value
         if len(token.value) == 4:  # m:
             ex = token
@@ -1278,7 +1288,7 @@ struct Memory{
         return [result]
 
 
-    def expr(self, tree):
+    def expr(self, tree: Expression) -> str:
         self._indirection = tree.indirection
 
         origexpr = tree.children[0]
@@ -1324,7 +1334,7 @@ struct Memory{
             result = "*%s" % result if result[0] == "(" and result[-1] == ")" else "*(%s)" % result
         return result
 
-    def data(self, data):
+    def data(self, data: Data) -> tuple[str, str, int]:
         binary_width = self._context.typetosize(data.data_type)  # TODO pervertion
         self.is_data = binary_width
         # For unit test
@@ -1336,13 +1346,13 @@ struct Memory{
         self.is_data = False
         return c, h, size
 
-    def LABEL(self, token):
+    def LABEL(self, token: Token) -> list[str | Token]:
         if self.is_data:
             size = self.is_data if type(self.is_data) == int else 0
             return [self.convert_label_data(token, size=size)]
         return [self.convert_label_(token)]
 
-    def convert_label_data(self, v, size=0):
+    def convert_label_data(self, v: Token, size: int=0) -> Token | str:
         logging.debug("convert_label_data(%s)", v)
         size = size or 2
         if (g := self._context.get_global(v)) is None:
@@ -1368,7 +1378,7 @@ struct Memory{
         logging.debug(v)
         return v
 
-    def offsetdir(self, tree):  # TODO equ, assign support
+    def offsetdir(self, tree: Tree) -> list[str | Token]:  # TODO equ, assign support
         name = tree.children[0]
 
         if isinstance(name, lark.Tree) and name.data=="memberdir":
@@ -1403,10 +1413,10 @@ struct Memory{
         else:
             raise ValueError("Unknown type for offsetdir %s", type(g))
 
-    def notdir(self, tree):
+    def notdir(self, tree: Tree) -> list[str | Token]:
         return ["~", *tree.children]
 
-    def ordir(self, tree):
+    def ordir(self, tree: Tree) -> list[str | Token]:
         return [tree.children[0], " | ", tree.children[1]]
 
     def xordir(self, tree):
@@ -1415,7 +1425,7 @@ struct Memory{
     def anddir(self, tree):
         return [tree.children[0], " & ", tree.children[1]]
 
-    def sizearg(self, tree):
+    def sizearg(self, tree: Tree) -> list[str]:
         return [f"sizeof({tree.children[0]})"]
 
 
