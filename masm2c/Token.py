@@ -19,10 +19,11 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #
 
+from typing import Any
+
 import lark
-from lark import Tree
 import lark.tree
-from typing import Any, List, Optional, Union
+from lark import Tree
 
 SQEXPR = "sqexpr"
 
@@ -39,7 +40,7 @@ class Token(lark.Tree):
     # def __repr__(self):
 
     @staticmethod
-    def find_tokens(expr: Any, lookfor: str) -> Optional[Union[List[str], List[    lark.tree.Tree]]]:
+    def find_tokens(expr: Any, lookfor: str) -> list[str] | list[lark.tree.Tree] | None:
         l = []
         if isinstance(expr, Tree):
             if expr.data == lookfor:

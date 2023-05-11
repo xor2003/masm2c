@@ -118,7 +118,7 @@ class Proc:
 
     @staticmethod
     def create_equ_op(label: str, value: Expression, line_number: int) -> _equ:  # TODO Move it to parser
-        logging.debug(label + " " + str(value))
+        logging.debug("%s %s", label, value)
         o = op._equ(label)
         if ptrdir := Token.find_tokens(value, PTRDIR):
             if isinstance(ptrdir[0], Token):
