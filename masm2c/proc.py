@@ -23,7 +23,6 @@ import re
 from typing import Any
 
 from lark import lark
-from lark.lexer import Token
 from masm2c.op import _assignment, _equ, _mov, baseop, label
 from masm2c.Token import Expression
 
