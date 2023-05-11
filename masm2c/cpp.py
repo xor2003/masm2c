@@ -153,22 +153,35 @@ class Cpp(Gen, TopDownVisitor):
         self.element_size = -1
 
 
-    def convert_label_(self, name_original: Token) -> str:
-        name = str(name_original)
+    def convert_label_(self, original_name: Token) -> str:
+        """
+        Converts a label to its corresponding value.
+
+        :param original_name: The original label name.
+        :type original_name: Token
+        :return: The corresponding value of the label.
+        :rtype: str
+        """
+        name = str(original_name)
         if (g := self._context.get_global(name)) is None:
             return name
+
         self.islabel = True
+
         if isinstance(g, op.var):
-            logging.debug("it is var %s", g.size)
+            logging.debug("Variable detected. Size: %s", g.size)
             self.variable_size = source_var_size = g.size
+
             if source_var_size:
                 self.isvariable = True
             if self._middle_size == 0:  # TODO check
                 self._middle_size = source_var_size
+
             if source_var_size == 0 and not g.issegment:
-                raise Exception("invalid var '%s' size %u" % (name, source_var_size))
+                raise Exception("Invalid variable '%s' size %u" % (name, source_var_size))
+
             if g.issegment:
-                value = "seg_offset(%s)" % (name_original.lower())
+                value = "seg_offset(%s)" % (original_name.lower())
                 self._indirection = IndirectionType.VALUE
             else:
                 self.needs_dereference = False
@@ -176,8 +189,10 @@ class Cpp(Gen, TopDownVisitor):
                 if g.elements != 1:  # array
                     self.needs_dereference = True
                     self.itispointer = True
+
                     if not self.lea:
                         self._indirection = IndirectionType.POINTER
+
                 if g.elements == 1 and self._isjustlabel and not self.lea and g.size == self.element_size:
                     value = g.name
                     self._indirection = IndirectionType.VALUE
@@ -204,9 +219,10 @@ class Cpp(Gen, TopDownVisitor):
                         self.itispointer = False
                     else:
                         value = name
+
                     if self._work_segment == "cs":
                         self.body += "\tcs=seg_offset(" + g.segment + ");\n"
-            # ?self.__indirection = 1
+
         elif isinstance(g, op.label):
             value = "m2c::k" + name if self.is_data or not self.itisjump else name
         else:
