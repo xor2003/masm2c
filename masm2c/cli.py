@@ -21,6 +21,7 @@
 #
 
 import argparse
+import glob
 import logging
 import re
 import sys
@@ -135,7 +136,9 @@ def setup_logging(name, loglevel):
     out_handler = logging.StreamHandler(sys.stdout)
     out_handler.setLevel(loglevel)
 
-    if len(name):
+    if name:
+        if "*" in name:
+            name = "masm2c"
         file_handler = logging.FileHandler(f"{name}.log", "w", "utf-8")
         file_handler.setLevel(loglevel)
         formatter = logging.Formatter("[%(filename)s:%(lineno)s - %(funcName)20s()] %(message)s")
@@ -194,7 +197,11 @@ def main():
     logging.info(f"Masm source to C++ translator V{__version__} {__license__}")
     # Process .asm
     merge_data_segments = True
-    for i in args.filenames:
+    files = []
+    for pattern in args.filenames:
+        files.extend(glob.glob(pattern))
+
+    for i in files:
         if i.lower().endswith(".lst"):
             merge_data_segments = False
         if i.lower().endswith(".asm") or i.lower().endswith(".lst"):
@@ -203,7 +210,7 @@ def main():
 
     # Process .seg files
     generator = Cpp(Parser(args), merge_data_segments=merge_data_segments)
-    generator.convert_segment_files_into_datacpp(args.filenames)
+    generator.convert_segment_files_into_datacpp(files)
 
     logging.info(" *** Finished")
 

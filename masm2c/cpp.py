@@ -169,68 +169,68 @@ class Cpp(Gen, TopDownVisitor):
         self.islabel = True
 
         if isinstance(g, op.var):
-            return self._extracted_from_convert_label__17(g, name, original_name)
+            return self.convert_label_var(g, name, original_name)
         elif isinstance(g, op.label):
             return f"m2c::k{name}" if self.is_data or not self.itisjump else name
         else:
             return name
 
-    # TODO Rename this here and in `convert_label_`
-    def _extracted_from_convert_label__17(self, g, name, original_name) -> str:
+    def convert_label_var(self, g, name, original_name) -> str:
         logging.debug("Variable detected. Size: %s", g.size)
         self.variable_size = source_var_size = g.size
+
+        if source_var_size == 0 and not g.issegment:
+            raise Exception("Invalid variable '%s' size %u" % (name, source_var_size))
 
         if source_var_size:
             self.isvariable = True
         if self._middle_size == 0:  # TODO check
             self._middle_size = source_var_size
 
-        if source_var_size == 0 and not g.issegment:
-            raise Exception("Invalid variable '%s' size %u" % (name, source_var_size))
-
         if g.issegment:
-            result = f"seg_offset({original_name.lower()})"
+            self._indirection = IndirectionType.VALUE
+            return f"seg_offset({original_name.lower()})"
+        return self.convert_label_var_non_segment(g, name)
+
+    def convert_label_var_non_segment(self, g, name):
+        self.needs_dereference = False
+        self.itispointer = False
+        if g.elements != 1:  # array
+            self.needs_dereference = True
+            self.itispointer = True
+
+            if not self.lea:
+                self._indirection = IndirectionType.POINTER
+
+        if g.elements == 1 and self._isjustlabel and not self.lea and g.size == self.element_size:
+            result = g.name
             self._indirection = IndirectionType.VALUE
         else:
-            self.needs_dereference = False
-            self.itispointer = False
-            if g.elements != 1:  # array
-                self.needs_dereference = True
-                self.itispointer = True
-
-                if not self.lea:
-                    self._indirection = IndirectionType.POINTER
-
-            if g.elements == 1 and self._isjustlabel and not self.lea and g.size == self.element_size:
+            if not self._isjustlabel and not self.lea and self._indirection == IndirectionType.VALUE:
+                self._indirection = IndirectionType.POINTER
+            if self._indirection == IndirectionType.POINTER:  # and self.isvariable:
                 result = g.name
-                self._indirection = IndirectionType.VALUE
+                if not self._isjustlabel:  # if not just single label: [a+3] address arithmetics
+                    self.needs_dereference = True
+                    self.itispointer = True
+                    if g.elements == 1:  # array generates pointer himself
+                        result = f"&{result}"
+
+                    if g.getsize() == 1:  # it is already a byte
+                        result = f"({result})"
+                    else:
+                        result = f"((db*){result})"
+                        self.size_changed = True
+                        self._middle_size = 1
+            elif self._indirection == IndirectionType.OFFSET:
+                result = f"offset({g.segment},{g.name})"
+                self.needs_dereference = False
+                self.itispointer = False
             else:
-                if not self._isjustlabel and not self.lea and self._indirection == IndirectionType.VALUE:
-                    self._indirection = IndirectionType.POINTER
-                if self._indirection == IndirectionType.POINTER:  # and self.isvariable:
-                    result = g.name
-                    if not self._isjustlabel:  # if not just single label: [a+3] address arithmetics
-                        self.needs_dereference = True
-                        self.itispointer = True
-                        if g.elements == 1:  # array generates pointer himself
-                            result = f"&{result}"
+                result = name
 
-                        if g.getsize() == 1:  # it is already a byte
-                            result = f"({result})"
-                        else:
-                            result = f"((db*){result})"
-                            self.size_changed = True
-                            self._middle_size = 1
-                elif self._indirection == IndirectionType.OFFSET:
-                    result = f"offset({g.segment},{g.name})"
-                    self.needs_dereference = False
-                    self.itispointer = False
-                else:
-                    result = name
-
-                if self._work_segment == "cs":
-                    self.body += "\tcs=seg_offset(" + g.segment + ");\n"
-
+            if self._work_segment == "cs":
+                self.body += "\tcs=seg_offset(" + g.segment + ");\n"
         return result
 
     def render_data_c(self, segments):
@@ -323,16 +323,7 @@ class Cpp(Gen, TopDownVisitor):
         value = ".".join(label)
 
         if self._indirection == IndirectionType.OFFSET and (g := self._context.get_global(label[0])):
-            if isinstance(g, op.var):
-                value = f'offset({g.segment},{".".join(label)})'
-            elif isinstance(g, op.Struct):
-                value = f'offsetof({label[0]},{".".join(label[1:])})'
-            elif isinstance(g, op._equ | op._assignment):
-                value = f'({label[0]})+offsetof({g.original_type},{".".join(label[1:])})'
-            else:
-                raise Exception(f"Not handled type {str(type(g))}")
-            self._indirection = IndirectionType.VALUE
-            return value # Token('memberdir', value)
+            return self.convert_member_offset(g, label)
 
         if (g := self._context.get_global(label[0])) is None:
             logging.error("global '%s' is missing", label)
@@ -406,6 +397,18 @@ class Cpp(Gen, TopDownVisitor):
             self.needs_dereference = False
 
         #if size == 0:
+        return value
+
+    def convert_member_offset(self, g, label):
+        if isinstance(g, op.var):
+            value = f'offset({g.segment},{".".join(label)})'
+        elif isinstance(g, op.Struct):
+            value = f'offsetof({label[0]},{".".join(label[1:])})'
+        elif isinstance(g, op._equ | op._assignment):
+            value = f'({label[0]})+offsetof({g.original_type},{".".join(label[1:])})'
+        else:
+            raise Exception(f"Not handled type {str(type(g))}")
+        self._indirection = IndirectionType.VALUE
         return value
 
     def convert_sqbr_reference(self, segment: str, expr: str, destination: bool, size: int, islabel: bool,
@@ -1291,12 +1294,9 @@ struct Memory{
         origexpr = tree.children[0]
         while isinstance(origexpr, list) and origexpr:
             origexpr = origexpr[0]
+
         single = len(tree.children) == 1
-        self._isjustlabel = single and ((isinstance(origexpr, lark.Token) and origexpr.type == LABEL)
-                                        or (isinstance(origexpr, lark.Token) and origexpr.type == SQEXPR
-                                            and isinstance(origexpr.children,
-                                                           lark.Token) and origexpr.children.type == LABEL)
-                                        or (isinstance(origexpr, lark.Tree) and origexpr.data == MEMBERDIR))
+        self._isjustlabel = self._check_for_just_label(origexpr, single)
         self._isjustmember = single and isinstance(origexpr, lark.Tree) and origexpr.data == MEMBERDIR
 
         if self.itiscall and tree.mods & {"near", "far"}: # and self._isjustlabel:
@@ -1334,6 +1334,13 @@ struct Memory{
                 else f"*({result})"
             )
         return result
+
+    def _check_for_just_label(self, origexpr, single):
+        return single and ((isinstance(origexpr, lark.Token) and origexpr.type == LABEL)
+                           or (isinstance(origexpr, lark.Token) and origexpr.type == SQEXPR
+                               and isinstance(origexpr.children,
+                                              lark.Token) and origexpr.children.type == LABEL)
+                           or (isinstance(origexpr, lark.Tree) and origexpr.data == MEMBERDIR))
 
     def data(self, data: Data) -> tuple[str, str, int]:
         binary_width = self._context.typetosize(data.data_type)  # TODO pervertion
@@ -1384,15 +1391,7 @@ struct Memory{
             if (g := self._context.get_global(label[0])) is None:
                 return label
 
-            if isinstance(g, op.var):
-                value = f'offset({g.segment},{".".join(label)})'
-            elif isinstance(g, op.Struct):
-                value = f'offsetof({label[0]},{".".join(label[1:])})'
-            elif isinstance(g, op._equ | op._assignment):
-                value = f'({label[0]})+offsetof({g.original_type},{".".join(label[1:])})'
-            else:
-                raise Exception(f"Not handled type {str(type(g))}")
-            self._indirection = IndirectionType.VALUE
+            value = self.convert_member_offset(g, label)
             return [lark.Token("memberdir", value)]
 
         if (g := self._context.get_global(name)) is None:
