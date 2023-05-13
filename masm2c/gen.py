@@ -81,81 +81,16 @@ class Gen:
         :return:
         """
         if self._context.args.mergeprocs == "separate":
-            for index, first_proc_name in enumerate(self._procs):
-                first_proc = self._context.get_global(first_proc_name)
-                if not first_proc.if_terminated_proc() and index < len(self._procs) - 1:
-                    result = self._context.parse_text(self._procs[index + 1], start_rule="expr")
-                    expr = self._context.process_ast("", result)
-                    o = first_proc.create_instruction_object("jmp", [expr])
-                    o.filename = ""
-                    o.line_number = 0
-                    o.raw_line = ""
-                    o.syntetic = True
-                    first_proc.stmts.append(o)
+            self._link_consecutive_non_terminated_procs()
 
         self.generate_label_to_proc_map()
 
         #if self._context.args.mergeprocs == 'separate':
 
         if self._context.args.mergeprocs != "single":
-            for index, first_proc_name in enumerate(self._procs):
-                first_proc = self._context.get_global(first_proc_name)
+            self._prepare_non_single_proc_data()
 
-                first_proc.used_labels = self.leave_only_procs_and_labels(first_proc.used_labels)
-                logging.debug(f"Proc {first_proc_name} used labels {first_proc.used_labels}")
-                logging.debug(f"                   provided labels {first_proc.provided_labels}")
-
-                missing_labels = first_proc.used_labels - first_proc.provided_labels
-                logging.debug(f"                    missing labels {missing_labels}")
-                procs_to_merge = set()
-                if not first_proc.if_terminated_proc():
-                    """If execution does not terminated in the procedure range when merge it with next proc"""
-                    if index + 1 < len(self._procs):
-                        logging.info(
-                            f"Execution does not terminated need to merge {first_proc_name} with {self._procs[index + 1]}")
-                        procs_to_merge.add(self._procs[index + 1])
-                    else:
-                        logging.info(f"Execution does not terminated could not find proc after {first_proc_name}")
-
-                if missing_labels:
-                    procs_to_merge.add(first_proc_name)  # TODO Why?
-                    for missing_label in missing_labels:
-                        procs_to_merge.add(self.find_related_proc(missing_label))  # if label then merge proc implementing it
-
-                if self._context.args.mergeprocs == "persegment":
-                    for pname in self._procs:
-                        if pname != first_proc_name:
-                            p_proc = self._context.get_global(pname)
-                            if first_proc.segment == p_proc.segment:
-                                procs_to_merge.add(pname)
-
-                first_proc.to_group_with = procs_to_merge
-                logging.debug(f" will merge {procs_to_merge}")
-            changed = True
-            iteration = 0
-            while changed:
-                iteration += 1
-                logging.info(f"     Identifing proc to merge #{iteration}")
-                changed = False
-                for first_proc_name in self._procs:
-                    logging.debug(f"Proc {first_proc_name}")
-                    first_proc = self._context.get_global(first_proc_name)
-                    for next_proc_name in first_proc.to_group_with:
-                        if first_proc_name != next_proc_name:
-                            logging.debug(f"  will group with {next_proc_name}")
-                            next_proc = self._context.get_global(next_proc_name)
-                            if not next_proc.to_group_with:
-                                next_proc.to_group_with = set()
-                            if first_proc.to_group_with != next_proc.to_group_with:
-                                first_proc.to_group_with = next_proc.to_group_with = set.union(next_proc.to_group_with, first_proc.to_group_with)
-                                changed = True
-                    logging.debug(f"  will group with {first_proc.to_group_with}")
-
-            for first_proc_name in self._procs:
-                logging.debug(f"Proc {first_proc_name}")
-                self.leave_only_same_segment_procs(first_proc_name)
-
-            self.print_how_procs_merged()
+            self._prepare_merging_procs()
 
         groups = []
         groups_id = 1
@@ -201,6 +136,81 @@ class Gen:
         self._procs = [x for x in self._procs if x not in self.grouped]
         self._procs += groups
         self._procs = self.sort_procedure_list_in_linenumber_order(self._procs)
+
+    def _prepare_merging_procs(self):
+        changed = True
+        iteration = 0
+        while changed:
+            iteration += 1
+            logging.info(f"     Identifing proc to merge #{iteration}")
+            changed = False
+            for first_proc_name in self._procs:
+                logging.debug(f"Proc {first_proc_name}")
+                first_proc = self._context.get_global(first_proc_name)
+                for next_proc_name in first_proc.to_group_with:
+                    if first_proc_name != next_proc_name:
+                        logging.debug(f"  will group with {next_proc_name}")
+                        next_proc = self._context.get_global(next_proc_name)
+                        if not next_proc.to_group_with:
+                            next_proc.to_group_with = set()
+                        if first_proc.to_group_with != next_proc.to_group_with:
+                            first_proc.to_group_with = next_proc.to_group_with = set.union(next_proc.to_group_with,
+                                                                                           first_proc.to_group_with)
+                            changed = True
+                logging.debug(f"  will group with {first_proc.to_group_with}")
+        for first_proc_name in self._procs:
+            logging.debug(f"Proc {first_proc_name}")
+            self.leave_only_same_segment_procs(first_proc_name)
+        self.print_how_procs_merged()
+
+    def _prepare_non_single_proc_data(self):
+        for index, first_proc_name in enumerate(self._procs):
+            first_proc = self._context.get_global(first_proc_name)
+
+            first_proc.used_labels = self.leave_only_procs_and_labels(first_proc.used_labels)
+            logging.debug(f"Proc {first_proc_name} used labels {first_proc.used_labels}")
+            logging.debug(f"                   provided labels {first_proc.provided_labels}")
+
+            missing_labels = first_proc.used_labels - first_proc.provided_labels
+            logging.debug(f"                    missing labels {missing_labels}")
+            procs_to_merge = set()
+            if not first_proc.if_terminated_proc():
+                """If execution does not terminated in the procedure range when merge it with next proc"""
+                if index + 1 < len(self._procs):
+                    logging.info(
+                        f"Execution does not terminated need to merge {first_proc_name} with {self._procs[index + 1]}")
+                    procs_to_merge.add(self._procs[index + 1])
+                else:
+                    logging.info(f"Execution does not terminated could not find proc after {first_proc_name}")
+
+            if missing_labels:
+                procs_to_merge.add(first_proc_name)  # TODO Why?
+                for missing_label in missing_labels:
+                    procs_to_merge.add(
+                        self.find_related_proc(missing_label))  # if label then merge proc implementing it
+
+            if self._context.args.mergeprocs == "persegment":
+                for pname in self._procs:
+                    if pname != first_proc_name:
+                        p_proc = self._context.get_global(pname)
+                        if first_proc.segment == p_proc.segment:
+                            procs_to_merge.add(pname)
+
+            first_proc.to_group_with = procs_to_merge
+            logging.debug(f" will merge {procs_to_merge}")
+
+    def _link_consecutive_non_terminated_procs(self):
+        for index, first_proc_name in enumerate(self._procs):
+            first_proc = self._context.get_global(first_proc_name)
+            if not first_proc.if_terminated_proc() and index < len(self._procs) - 1:
+                result = self._context.parse_text(self._procs[index + 1], start_rule="expr")
+                expr = self._context.process_ast("", result)
+                o = first_proc.create_instruction_object("jmp", [expr])
+                o.filename = ""
+                o.line_number = 0
+                o.raw_line = ""
+                o.syntetic = True
+                first_proc.stmts.append(o)
 
     def generate_label_to_proc_map(self):
         for proc_name in self._procs:

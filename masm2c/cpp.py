@@ -336,48 +336,7 @@ class Cpp(Gen, TopDownVisitor):
             value = self._convert_member_equ(g, label)
         elif isinstance(g, op.var):
 
-            source_var_size = self.calculate_member_size(label)
-            self.variable_size = source_var_size
-            if source_var_size:
-                self.isvariable = True
-
-            logging.debug("it is var %s", source_var_size)
-            if self._middle_size == 0:
-                self._middle_size = source_var_size
-
-            self.isvariable = True
-            self.islabel = True
-
-            if source_var_size == 0:
-                raise Exception(f"invalid var {label} size {source_var_size}")
-            self.needs_dereference = False
-            self.itispointer = False
-            if g.elements != 1:
-                self.needs_dereference = True
-                self.itispointer = True
-            if g.elements == 1 and self._isjustlabel and not self.lea and source_var_size == self._middle_size:
-                value = ".".join(label)
-                self._indirection = IndirectionType.VALUE
-            else:
-                if self._indirection == IndirectionType.POINTER: # ? and self.isvariable:
-                    value = ".".join(label)
-                    if not self._isjustlabel:  # if not just single label
-                        self.needs_dereference = True
-                        self.itispointer = True
-                        if g.elements == 1:  # array generates pointer himself
-                            value = f"&{value}"
-
-                        if g.getsize() == 1:  # it is already a byte
-                            value = f"({value})"
-                        else:
-                            value = f"((db*){value})"
-                            self.size_changed = True
-                elif self._indirection == IndirectionType.OFFSET and self.isvariable:
-                    value = f'offset({g.segment},{".".join(label)})'
-                if self._work_segment == "cs":
-                    self.body += "\tcs=seg_offset(" + g.segment + ");\n"
-                # ?self.__indirection = 1
-                #if value == token:
+            value = self._convert_member_var(g, label)
         elif isinstance(g, op.Struct):
             #if self._isjustmember:
             value = f'offsetof({label[0]},{".".join(label[1:])})'
@@ -389,6 +348,49 @@ class Cpp(Gen, TopDownVisitor):
             self.needs_dereference = False
 
         #if size == 0:
+        return value
+
+    def _convert_member_var(self, g, label):
+        source_var_size = self.calculate_member_size(label)
+        if source_var_size == 0:
+            raise Exception(f"invalid var {label} size {source_var_size}")
+
+        self.variable_size = source_var_size
+        if source_var_size:
+            self.isvariable = True
+        logging.debug("it is var %s", source_var_size)
+        if self._middle_size == 0:
+            self._middle_size = source_var_size
+        self.isvariable = True
+        self.islabel = True
+        self.needs_dereference = False
+        self.itispointer = False
+        if g.elements != 1:
+            self.needs_dereference = True
+            self.itispointer = True
+        if g.elements == 1 and self._isjustlabel and not self.lea and source_var_size == self._middle_size:
+            value = ".".join(label)
+            self._indirection = IndirectionType.VALUE
+        else:
+            if self._indirection == IndirectionType.POINTER:  # ? and self.isvariable:
+                value = ".".join(label)
+                if not self._isjustlabel:  # if not just single label
+                    self.needs_dereference = True
+                    self.itispointer = True
+                    if g.elements == 1:  # array generates pointer himself
+                        value = f"&{value}"
+
+                    if g.getsize() == 1:  # it is already a byte
+                        value = f"({value})"
+                    else:
+                        value = f"((db*){value})"
+                        self.size_changed = True
+            elif self._indirection == IndirectionType.OFFSET and self.isvariable:
+                value = f'offset({g.segment},{".".join(label)})'
+            if self._work_segment == "cs":
+                self.body += "\tcs=seg_offset(" + g.segment + ");\n"
+            # ?self.__indirection = 1
+            # if value == token:
         return value
 
     def _convert_member_equ(self, g, label):
