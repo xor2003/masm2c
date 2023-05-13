@@ -190,9 +190,9 @@ class Cpp(Gen, TopDownVisitor):
         if g.issegment:
             self._indirection = IndirectionType.VALUE
             return f"seg_offset({original_name.lower()})"
-        return self.convert_label_var_non_segment(g, name)
+        return self._convert_label_var_non_segment(g, name)
 
-    def convert_label_var_non_segment(self, g, name):
+    def _convert_label_var_non_segment(self, g, name):
         self.needs_dereference = False
         self.itispointer = False
         if g.elements != 1:  # array
@@ -206,31 +206,34 @@ class Cpp(Gen, TopDownVisitor):
             result = g.name
             self._indirection = IndirectionType.VALUE
         else:
-            if not self._isjustlabel and not self.lea and self._indirection == IndirectionType.VALUE:
-                self._indirection = IndirectionType.POINTER
-            if self._indirection == IndirectionType.POINTER:  # and self.isvariable:
-                result = g.name
-                if not self._isjustlabel:  # if not just single label: [a+3] address arithmetics
-                    self.needs_dereference = True
-                    self.itispointer = True
-                    if g.elements == 1:  # array generates pointer himself
-                        result = f"&{result}"
+            result = self._convert_label_var_non_segment_complex(g, name)
+        return result
 
-                    if g.getsize() == 1:  # it is already a byte
-                        result = f"({result})"
-                    else:
-                        result = f"((db*){result})"
-                        self.size_changed = True
-                        self._middle_size = 1
-            elif self._indirection == IndirectionType.OFFSET:
-                result = f"offset({g.segment},{g.name})"
-                self.needs_dereference = False
-                self.itispointer = False
-            else:
-                result = name
+    def _convert_label_var_non_segment_complex(self, g, name):
+        if not self._isjustlabel and not self.lea and self._indirection == IndirectionType.VALUE:
+            self._indirection = IndirectionType.POINTER
+        if self._indirection == IndirectionType.POINTER:  # and self.isvariable:
+            result = g.name
+            if not self._isjustlabel:  # if not just single label: [a+3] address arithmetics
+                self.needs_dereference = True
+                self.itispointer = True
+                if g.elements == 1:  # array generates pointer himself
+                    result = f"&{result}"
 
-            if self._work_segment == "cs":
-                self.body += "\tcs=seg_offset(" + g.segment + ");\n"
+                if g.getsize() == 1:  # it is already a byte
+                    result = f"({result})"
+                else:
+                    result = f"((db*){result})"
+                    self.size_changed = True
+                    self._middle_size = 1
+        elif self._indirection == IndirectionType.OFFSET:
+            result = f"offset({g.segment},{g.name})"
+            self.needs_dereference = False
+            self.itispointer = False
+        else:
+            result = name
+        if self._work_segment == "cs":
+            self.body += "\tcs=seg_offset(" + g.segment + ");\n"
         return result
 
     def render_data_c(self, segments):
@@ -246,17 +249,17 @@ class Cpp(Gen, TopDownVisitor):
         data_hpp_file = ""
         data_cpp_file = ""
         hpp_file = ""
-        for i in segments.values():
+        for segment in segments.values():
             #  Add segment address
-            data_cpp_file += f"db& {i.name}=*((db*)&m2c::m+0x{i.offset:x});\n"
-            hpp_file += f"extern db& {i.name};\n"
+            data_cpp_file += f"db& {segment.name}=*((db*)&m2c::m+0x{segment.offset:x});\n"
+            hpp_file += f"extern db& {segment.name};\n"
 
-            for j in i.getdata():
-                value, type_and_name, _ = self.produce_c_data_single_(j)
+            for data in segment.getdata():
+                value, type_and_name, _ = self.produce_c_data_single_(data)
 
                 type_and_name += ";\n"
 
-                if not j.is_align():  # if align do not assign it
+                if not data.is_align():  # if align do not assign it
                     m = re.match(r"^(\w+)\s+(\w+)(\[\d+\])?;\n", type_and_name)
                     if not m:
                         logging.error(f"Failed to parse {value} {type_and_name}")
@@ -278,7 +281,7 @@ class Cpp(Gen, TopDownVisitor):
                     _extern_in_hpp = self._generate_extern_from_declaration_c(type_and_name)
 
                     if value:
-                        real_seg, real_offset = j.getrealaddr()
+                        real_seg, real_offset = data.getrealaddr()
                         if real_seg:
                             value += f" // {real_seg:04x}:{real_offset:04x}"
                             type_and_name = f"{type_and_name[:-1]} // {real_seg:04x}:{real_offset:04x}\n"
@@ -330,18 +333,7 @@ class Cpp(Gen, TopDownVisitor):
             return ".".join(label)
 
         if isinstance(g, op._equ | op._assignment):
-            logging.debug(str(g))
-            if not g.implemented:
-                raise InjectCode(g)
-            if self._isjustlabel:
-                value = ".".join(label)
-            else:
-                self.struct_type = g.value.original_type
-                self.needs_dereference = True
-                self.itispointer = False
-                self._need_pointer_to_member = label
-                value = ""
-            logging.debug("equ: %s -> %s", label[0], value)
+            value = self._convert_member_equ(g, label)
         elif isinstance(g, op.var):
 
             source_var_size = self.calculate_member_size(label)
@@ -397,6 +389,21 @@ class Cpp(Gen, TopDownVisitor):
             self.needs_dereference = False
 
         #if size == 0:
+        return value
+
+    def _convert_member_equ(self, g, label):
+        logging.debug("%s", g)
+        if not g.implemented:
+            raise InjectCode(g)
+        if self._isjustlabel:
+            value = ".".join(label)
+        else:
+            self.struct_type = g.value.original_type
+            self.needs_dereference = True
+            self.itispointer = False
+            self._need_pointer_to_member = label
+            value = ""
+        logging.debug("equ: %s -> %s", label[0], value)
         return value
 
     def convert_member_offset(self, g, label):
