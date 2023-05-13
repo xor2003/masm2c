@@ -48,9 +48,11 @@ class Token(lark.Tree):
                     l.append(expr.children[0])
                 else:
                     l.append(expr.children)
-            result = None
-            if not isinstance(expr.children, str):
-                result = Token.find_tokens(expr.children, lookfor)
+            result = (
+                None
+                if isinstance(expr.children, str)
+                else Token.find_tokens(expr.children, lookfor)
+            )
             if result:
                 l += result
         elif isinstance(expr, lark.Token):
@@ -93,7 +95,7 @@ class Token(lark.Tree):
 class Expression(lark.Tree):
 
     def __init__(self, *args, **kwargs) -> None:
-        if len(args) == 0:
+        if not args:
             args = "expr", []
         super().__init__(*args, **kwargs)
         from masm2c.enumeration import IndirectionType
@@ -113,6 +115,5 @@ class Expression(lark.Tree):
         if self.indirection == IndirectionType.POINTER:
             return self.ptr_size
         else:
-            result = self.element_size * self.element_number
-            return result
+            return self.element_size * self.element_number
 

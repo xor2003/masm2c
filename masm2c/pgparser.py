@@ -253,13 +253,11 @@ class Asm2IR(CommonCollector):
         return None
 
     def macroname(self, s, pos):
-        if macroses:
-            # macro usage identifier
-            mtch = macronamere.match(s[pos:])
-            if mtch:
+        if mtch := macronamere.match(s[pos:]):
+            if macroses:
                 result = mtch.group().lower()
                 if result in macroses:
-                    logging.debug(" ~^~" + result + "~^~ in macronames")
+                    logging.debug(f" ~^~{result}~^~ in macronames")
                     return result
         return None
 
@@ -298,7 +296,7 @@ class Asm2IR(CommonCollector):
 
     def macrocall(self, nodes, name, args):
         # macro usage
-        logging.debug("macrocall " + name + "~~")
+        logging.debug(f"macrocall {name}~~")
         macros = macroses[name]
         instructions = deepcopy(macros.instructions)
         param_assigner = self.Getmacroargval(macros.getparameters(), args)
@@ -308,12 +306,11 @@ class Asm2IR(CommonCollector):
         return nodes
 
     def structname(self, s, pos):
-        if self.context.structures:
-            mtch = macronamere.match(s[pos:])
-            if mtch:
+        if mtch := macronamere.match(s[pos:]):
+            if self.context.structures:
                 result = mtch.group().lower()
                 if result in self.context.structures:
-                    logging.debug(" ~^~" + result + "~^~ in structures")
+                    logging.debug(f" ~^~{result}~^~ in structures")
                     return result
         return None
 
@@ -322,7 +319,7 @@ class Asm2IR(CommonCollector):
         # structure definition header
         self.context.current_struct = op.Struct(name.lower(), type.lower())
         self.context.struct_names_stack.append(name.lower())
-        logging.debug("structname added ~~" + name + "~~")
+        logging.debug(f"structname added ~~{name}~~")
         return nodes
 
     @v_args(meta=True)
@@ -405,7 +402,7 @@ class Asm2IR(CommonCollector):
 
     @v_args(meta=True)
     def segmentdir(self, meta, nodes):
-        logging.debug("segmentdir " + str(nodes) + " ~~")
+        logging.debug(f"segmentdir {str(nodes)} ~~")
 
         name = self.name = self.context.mangle_label(nodes[0])
         opts = set()
@@ -427,7 +424,7 @@ class Asm2IR(CommonCollector):
         return nodes
 
     def endsdir(self, nodes: list[    lark.lexer.Token]) -> list[    lark.lexer.Token]:
-        logging.debug("ends " + str(nodes) + " ~~")
+        logging.debug(f"ends {nodes} ~~")
         self.context.action_ends()
         self._expression = None
         return nodes
@@ -440,7 +437,7 @@ class Asm2IR(CommonCollector):
     def procdir(self, meta, nodes):
         name, type = nodes[0], self._poptions
         self._poptions = []
-        logging.debug("procdir " + str(nodes) + " ~~")
+        logging.debug(f"procdir {str(nodes)} ~~")
         self.context.action_proc(name, type, line_number=get_line_number(meta),
                                  raw=get_raw_line(self.input_str, meta))
         self._expression = None
@@ -448,14 +445,14 @@ class Asm2IR(CommonCollector):
 
     def endpdir(self, nodes):
         name = nodes[0]
-        logging.debug("endp " + str(name) + " ~~")
+        logging.debug(f"endp {str(name)} ~~")
         self.context.action_endp()
         return nodes
 
 
     @v_args(meta=True)
     def instrprefix(self, meta:     lark.tree.Meta, nodes: list[    lark.lexer.Token]) -> _DiscardType:
-        logging.debug("instrprefix " + str(nodes) + " ~~")
+        logging.debug(f"instrprefix {nodes} ~~")
         instruction = nodes[0]
         self.context.action_instruction(instruction, [], raw=get_raw_line(self.input_str, meta),
                                         line_number=get_line_number(meta))
@@ -544,10 +541,9 @@ class Asm2IR(CommonCollector):
     def labeltok(self, nodes):
         return nodes  # Token('LABEL', nodes)
 
-    def STRING(self, nodes:     lark.lexer.Token) ->     lark.lexer.Token:
-        m = re.match(r'[\'"](.+)[\'"]$', nodes)  # char constants
-        if m:
-            string = m.group(1)
+    def STRING(self, nodes:     lark.lexer.Token) -> lark.lexer.Token:
+        if m := re.match(r'[\'"](.+)[\'"]$', nodes):
+            string = m[1]
             if not self.context.itislst:  # not for IDA .lst
                 string = string.replace("\'\'", "'").replace('\"\"', '"')  # masm behaviour
             self.expression.element_number = len(string)
@@ -605,7 +601,7 @@ class LarkParser:
             cls._inst = super().__new__(cls)
             logging.debug("Allocated LarkParser instance")
 
-            file_name = os.path.dirname(os.path.realpath(__file__)) + "/_masm61.lark"
+            file_name = f"{os.path.dirname(os.path.realpath(__file__))}/_masm61.lark"
             debug = True
             with open(file_name) as gr:
                 cls._inst.or_parser = Lark(gr, parser="lalr", propagate_positions=True, cache=True, debug=debug,
@@ -633,8 +629,7 @@ class IncludeLoader(Transformer):
     def includedir(self, nodes):
         name = nodes[0].children[0].children[0][1:-1]
         fullpath = os.path.join(os.path.dirname(os.path.realpath(self.context._current_file)), name)
-        result = self.context.parse_include_file_lines(fullpath)
-        return result
+        return self.context.parse_include_file_lines(fullpath)
 
 
 
@@ -701,7 +696,6 @@ class BottomUpVisitor:
                 import logging
                 logging.error(f"Error unknown type {node}")
                 return self.init
-                raise ValueError(f"Error unknown type {node}")
         except:
             import logging
             import traceback
@@ -722,8 +716,7 @@ class AsmData2IR(TopDownVisitor):  # TODO HACK Remove it. !For missing funcitons
         return result
 
     def dupdir(self, tree:     lark.tree.Tree) -> list[int | list[lark.lexer.Token | str | int] | list[str | int]]:
-        result = tree.repeat * self.visit(tree.children)
-        return result
+        return tree.repeat * self.visit(tree.children)
     def INTEGER(self, token:     lark.lexer.Token) -> list[int]:
         radix, sign, value = token.start_pos, token.line, token.column
         val = int(value, radix)

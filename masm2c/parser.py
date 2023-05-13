@@ -162,7 +162,7 @@ def dump_object(value: Struct | label | Proc | var | _equ) -> str:
     )
     for old, new in replacements:
         stuff = re.sub(old, new, stuff)
-    stuff = value.__class__.__name__ + "(" + stuff + ")"
+    stuff = f"{value.__class__.__name__}({stuff})"
     return stuff
 
 
@@ -267,19 +267,19 @@ class Parser:
     """
 
     def set_global(self, name: str, value: Struct | label | Proc | var | _equ) -> None:
-        if len(name) == 0:
+        if not name:
             raise NameError("empty name is not allowed")
         value.original_name = name
         name = name.lower()
 
         logging.debug("set_global(name='%s',value=%s)", name, dump_object(value))
         if name in self.__globals and self.pass_number == 1 and not self.test_mode:
-            raise LookupError("global %s was already defined" % name)
+            raise LookupError(f"global {name} was already defined")
         value.used = False
         self.__globals[name] = value
 
     def reset_global(self, name: str, value: var | _assignment) -> None:
-        if len(name) == 0:
+        if not name:
             raise NameError("empty name is not allowed")
         value.original_name = name
         name = name.lower()
@@ -348,19 +348,17 @@ class Parser:
 
 
     def identify_data_internal_type(self, data: Tree, elements: int, is_string: bool) -> op.DataType:
+        if not is_string:
+            return op.DataType.ARRAY if elements > 1 else op.DataType.NUMBER
         args = data.children
-        if is_string:
-
-            if elements >= 2 and isinstance(args[-1].children[-1], lark.Token) \
-                    and args[-1].children[-1].type == "INTEGER" and args[-1].children[-1].value == "0":
-                cur_data_type = op.DataType.ZERO_STRING  # 0 terminated string
-            else:
-                cur_data_type = op.DataType.ARRAY_STRING  # array string
-        else:
-            cur_data_type = op.DataType.NUMBER  # number
-            if elements > 1:
-                cur_data_type = op.DataType.ARRAY  # array
-        return cur_data_type
+        return (
+            op.DataType.ZERO_STRING
+            if elements >= 2
+            and isinstance(args[-1].children[-1], lark.Token)
+            and args[-1].children[-1].type == "INTEGER"
+            and args[-1].children[-1].value == "0"
+            else op.DataType.ARRAY_STRING
+        )
 
 
 
@@ -431,18 +429,15 @@ class Parser:
             logging.warning(f"Maybe wrong offset current:{self.__binary_data_size:x} should be:{pointer:x} ~{raw}~")
 
     def get_dummy_label(self) -> str:
-        label = "dummy" + self.__current_file_hash[0] + "_" + str(hex(self.__binary_data_size))[2:]
-        return label
+        return f"dummy{self.__current_file_hash[0]}_{hex(self.__binary_data_size)[2:]}"
 
     def get_dummy_jumplabel(self):
         self.__c_dummy_jump_label += 1
-        label = "dummylabel" + str(self.__c_dummy_jump_label)
-        return label
+        return f"dummylabel{self.__c_dummy_jump_label}"
 
     def get_extra_dummy_jumplabel(self):
         self.__c_extra_dummy_jump_label += 1
-        label = "edummylabel" + str(self.__c_extra_dummy_jump_label)
-        return label
+        return f"edummylabel{self.__c_extra_dummy_jump_label}"
 
     def parse_file(self, fname):
         logging.info(f" *** Parsing {fname} file")
@@ -490,7 +485,7 @@ class Parser:
         """
         content = read_whole_file(re.sub(r"\.lst$", ".map", file_name, flags=re.I)).splitlines()
         DOSBOX_START_SEG = int(self.args.loadsegment, 0)
-        strgenerator = (x for x in content)
+        strgenerator = iter(content)
         segs = OrderedDict()
         for line in strgenerator:
             if line.strip() == "Start  Stop   Length Name               Class":  # IDA Pro .lst magic
@@ -499,12 +494,11 @@ class Parser:
         for line in strgenerator:  # This keeps reading the file
             if line.strip() == "Address         Publics by Value":
                 break
-            else:
-                if line.strip():
-                    m = re.match(
-                        r"^\s+(?P<start>[0-9A-F]{5,10})H [0-9A-F]{5,10}H [0-9A-F]{5,10}H (?P<segment>[_0-9A-Za-z]+)\s+[A-Z]+",
-                        line)
-                    segs[m.group("segment")] = f"{(int(m.group('start'), 16) // 16 + DOSBOX_START_SEG):04X}"
+            if line.strip():
+                m = re.match(
+                    r"^\s+(?P<start>[0-9A-F]{5,10})H [0-9A-F]{5,10}H [0-9A-F]{5,10}H (?P<segment>[_0-9A-Za-z]+)\s+[A-Z]+",
+                    line)
+                segs[m["segment"]] = f"{int(m['start'], 16) // 16 + DOSBOX_START_SEG:04X}"
         logging.debug(f"Results of loading .map file: {segs}")
         return segs
 
@@ -747,8 +741,7 @@ class Parser:
         return result
 
     def parse_include(self, line, file_name=None):
-        result = self.parse_text(line, file_name=file_name, start_rule="insegdirlist")
-        return result
+        return self.parse_text(line, file_name=file_name, start_rule="insegdirlist")
 
 
 
@@ -826,7 +819,6 @@ class Parser:
             if self.__segment.getdata()[-size].offset + size - 1 != self.__segment.getdata()[-1].offset:
                 logging.debug(
                     f"Cannot merge {self.__segment.getdata()[-size].label} - {self.__segment.getdata()[-1].label}")
-                self.data_merge_candidats = 0
             else:
                 logging.debug(
                     f"Merging data at {self.__segment.getdata()[-size].label} - {self.__segment.getdata()[-1].label}")
@@ -839,7 +831,8 @@ class Parser:
                 self.__segment.getdata()[-size].data_internal_type = op.DataType.ARRAY
                 self.__segment.getdata()[-size]._size = size
                 self.__segment.setdata(self.__segment.getdata()[:-(size - 1)])
-                self.data_merge_candidats = 0
+
+            self.data_merge_candidats = 0
 
     def adjust_offset_to_real(self, raw: str, label: str) -> None:
         absolute_offset, real_offset, _ = self.get_lst_offsets(raw)
@@ -861,11 +854,12 @@ class Parser:
         real_offset = None
         absolute_offset = None
         real_seg = None
-        if self.itislst:
-            m = re.match(r".* ;~ (?P<segment>[0-9A-Fa-f]{4}):(?P<offset>[0-9A-Fa-f]{4})", raw)
-            if m:
-                real_offset = int(m.group("offset"), 16)
-                real_seg = int(m.group("segment"), 16)
+        if m := re.match(
+            r".* ;~ (?P<segment>[0-9A-Fa-f]{4}):(?P<offset>[0-9A-Fa-f]{4})", raw
+        ):
+            if self.itislst:
+                real_offset = int(m["offset"], 16)
+                real_seg = int(m["segment"], 16)
                 absolute_offset = real_seg * 0x10 + real_offset
         return absolute_offset, real_offset, real_seg
 
@@ -881,8 +875,7 @@ class Parser:
     def parse_text(self, text: str, file_name: None=None, start_rule: str="start") -> Tree:
         logging.debug("parsing: [%s]", text)
 
-        result = self.__lex.parser.parse(text, start=start_rule)  # , file_name=file_name, extra=self)
-        return result
+        return self.__lex.parser.parse(text, start=start_rule)
 
     def process_ast(self, text: str, result: Tree) -> Tree:
         result = IncludeLoader(self).transform(result)
@@ -921,7 +914,7 @@ class Parser:
         if isinstance(value, Token):
             value = value.children
         if not isinstance(value, str):
-            logging.error("Type is not a string TODO " + str(value))
+            logging.error(f"Type is not a string TODO {str(value)}")
             return 0
         value = value.lower()
         if value in self.structures and self.structures[value] is not True:
@@ -949,8 +942,7 @@ class Parser:
             binary_width = self.typetosize(type)
             _, _, array = self.process_data_tokens(values, binary_width)
             """
-            array = AsmData2IR().visit(values)
-            return array
+            return AsmData2IR().visit(values)
 
     def add_structinstance(self, label: str, type: str, args: list[Any | Tree], raw: str="") -> None:
 
@@ -1065,14 +1057,18 @@ class Parser:
             return None
 
     def handle_local_asm_jumps(self, instruction: Token, args: list[Expression | Any]) -> None:
-        if (instruction[0].lower() == "j" or instruction[0].lower() == "loop") and \
-                len(args) == 1 and isinstance(args[0], lark.Tree) and \
-                isinstance(args[0].children, list) and isinstance(args[0].children[0], lark.Token) and \
-                args[0].children[0].type == "LABEL":
+        if (
+            instruction[0].lower() in ["j", "loop"]
+            and len(args) == 1
+            and isinstance(args[0], lark.Tree)
+            and isinstance(args[0].children, list)
+            and isinstance(args[0].children[0], lark.Token)
+            and args[0].children[0].type == "LABEL"
+        ):
             if args[0].children[0].lower() == "arbf":  # @f
-                args[0].children[0] = "dummylabel" + str(self.__c_dummy_jump_label + 1)
+                args[0].children[0] = f"dummylabel{str(self.__c_dummy_jump_label + 1)}"
             elif args[0].children[0].lower() == "arbb":  # @b
-                args[0].children[0] = "dummylabel" + str(self.__c_dummy_jump_label)
+                args[0].children[0] = f"dummylabel{str(self.__c_dummy_jump_label)}"
 
     def collect_labels(self, target: set[str], operation: baseop) -> None:
         for arg in operation.children:
@@ -1092,7 +1088,7 @@ class Parser:
     def action_ends(self) -> None:
         if len(self.struct_names_stack):  # if it is not a structure then it is end of segment
             name = self.struct_names_stack.pop()
-            logging.debug("endstruct " + name)
+            logging.debug(f"endstruct {name}")
             self.structures[name] = self.current_struct
             self.set_global(name, self.current_struct)
             self.current_struct = None
@@ -1109,7 +1105,7 @@ class Parser:
     def parse_rt_info(self, name):
 
         try:
-            with open(name + ".json") as infile:
+            with open(f"{name}.json") as infile:
                 logging.info(f" *** Loading {name}.json")
                 j = jsonpickle.decode(infile.read())
                 self.initial_procs_start = self.procs_start = set(j["Jumps"])
@@ -1135,7 +1131,7 @@ def parse_asm_number(expr: Token | str, radix: int) -> tuple[int, str, str]:
             radix = 16
         else:
             raise ValueError(expr)
-        sign = m["sign"] if m["sign"] else ""
+        sign = m["sign"] or ""
         value = m["value"]
         #if sign == '-':
     return radix, sign, value

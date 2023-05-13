@@ -58,10 +58,7 @@ class Proc:
         self.group = None
         self.segment = segment
 
-        if offset:
-            self.offset = offset
-        else:
-            self.offset = Proc.last_addr
+        self.offset = offset or Proc.last_addr
         Proc.last_addr += 4
         self.real_offset, self.real_seg = real_offset, real_seg
 
@@ -98,7 +95,7 @@ class Proc:
 
     def find_op_class(self, cmd: Token, args: list[Any | Expression]) -> Any:
         try:
-            cl = getattr(op, "_" + cmd.lower())
+            cl = getattr(op, f"_{cmd.lower()}")
         except AttributeError:
             cl = self.find_op_common_class(cmd, args)
         return cl
@@ -106,9 +103,13 @@ class Proc:
     def find_op_common_class(self, cmd: str, args: list[Any | Expression]) -> type["_instruction3"] | type["_instruction2"] | type["_instruction0"] | type["_jump"] | type["_instruction1"]:
         logging.debug(cmd)
         try:
-            cl = op._jump if re.match("^(j[a-z]+|loop[a-z]*)$", cmd.lower()) else getattr(op, "_instruction" + str(len(args)))
-        except AttributeError:
-            raise Exception("Unknown instruction: " + cmd.lower())
+            cl = (
+                op._jump
+                if re.match("^(j[a-z]+|loop[a-z]*)$", cmd.lower())
+                else getattr(op, f"_instruction{len(args)}")
+            )
+        except AttributeError as e:
+            raise Exception(f"Unknown instruction: {cmd.lower()}") from e
         return cl
 
     def add_equ(self, label, value, line_number=0):  # only for tests. to remove
@@ -125,7 +126,7 @@ class Proc:
             elif isinstance(ptrdir[0], str):
                 o.original_type = ptrdir[0].lower()
 
-        o.raw_line = str(line_number) + " " + label + " equ " + str(value)
+        o.raw_line = f"{line_number} {label} equ {str(value)}"
         o.line_number = line_number
         o.cmd = o.raw_line
         o.value = value
@@ -133,12 +134,12 @@ class Proc:
         return o
 
     def create_assignment_op(self, label: str, value: Expression, line_number: int=0) -> _assignment:
-        logging.debug(label + " " + str(value))
+        logging.debug(f"{label} {str(value)}")
         o = op._assignment([label, value])
         if hasattr(value, "original_type"):  # TODO cannot get original type anymore. not required here
             o.original_type = value.original_type
 
-        o.raw_line = str(line_number) + " " + label + " = " + str(value)
+        o.raw_line = f"{line_number} {label} = {str(value)}"
         o.line_number = line_number
         o.cmd = o.raw_line
         o.value = value
@@ -231,8 +232,7 @@ class Proc:
         if full_command:
             full_command = self.set_instruction_compare_subclass(stmt, full_command, visitor._context.itislst)
 
-        full_line = visitor._cmdlabel + visitor.dispatch + full_command
-        return full_line
+        return visitor._cmdlabel + visitor.dispatch + full_command
 
     def generate_c_cmd(self, visitor: "Cpp", stmt: baseop) -> str:
         return stmt.accept(visitor)

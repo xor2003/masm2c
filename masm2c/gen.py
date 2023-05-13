@@ -36,8 +36,7 @@ class Gen:
 
 
     def calculate_size(self, expr: Expression) -> int:
-        result = expr.size()
-        return result
+        return expr.size()
 
 
     def calculate_member_size(self, label: list[str]) -> int:
@@ -384,18 +383,25 @@ class Gen:
 
     @staticmethod
     def isrelativejump(label: Expression) -> bool:
-        result = (isinstance(label, lark.Tree) and \
-        isinstance(label.children[0], lark.Tree) and label.children[0].data == "adddir" and \
-        isinstance(label.children[0].children[0], lark.Tree) and label.children[0].children[0].data == "ptrdir3" and \
-        isinstance(label.children[0].children[0].children[0], lark.Token) and label.children[0].children[0].children[0].type == "LABEL" and \
-        label.children[0].children[0].children[0].value=="dol") or \
-        (isinstance(label, lark.Tree) and \
-         isinstance(label.children[0], lark.Tree) and label.children[0].data == "adddir" and \
-        isinstance(label.children[0].children[0], lark.Tree) and label.children[0].children[0].data == "dollar")
-        return result
+        return (
+            isinstance(label, lark.Tree)
+            and isinstance(label.children[0], lark.Tree)
+            and label.children[0].data == "adddir"
+            and isinstance(label.children[0].children[0], lark.Tree)
+            and label.children[0].children[0].data == "ptrdir3"
+            and isinstance(label.children[0].children[0].children[0], lark.Token)
+            and label.children[0].children[0].children[0].type == "LABEL"
+            and label.children[0].children[0].children[0].value == "dol"
+        ) or (
+            isinstance(label, lark.Tree)
+            and isinstance(label.children[0], lark.Tree)
+            and label.children[0].data == "adddir"
+            and isinstance(label.children[0].children[0], lark.Tree)
+            and label.children[0].children[0].data == "dollar"
+        )
 
     def dump_globals(self):
-        name = self._namespace.lower() + ".list"
+        name = f"{self._namespace.lower()}.list"
         logging.info(f" *** Generating globals listing {name}")
 
         jsonpickle.set_encoder_options("json", indent=2)
@@ -428,8 +434,7 @@ class Gen:
         for k in labels:
             k = re.sub(r"\W", "_", k)
             offsets.append((k.lower(), self.renderer.cpp_mangle_label(k)))
-        offsets = sorted(offsets, key=lambda t: t[1])
-        return offsets
+        return sorted(offsets, key=lambda t: t[1])
 
     def convert_asm_number_into_c(self, expr: str, radix: int=10) -> str:
         """It tryes to convert assembler number in any base to a C number string with the same base.

@@ -12,21 +12,18 @@ commentid = re.compile(r'COMMENT\s+([^ ]).*?\1[^\r\n]*', flags=re.DOTALL)
 
 def macro_action(context, nodes, name):
     macronames.insert(0, name.lower())
-    print("added ~~" + name + "~~")
+    print(f"added ~~{name}~~")
     return nodes
 
 
 def macroname(head, input, pos):
-    mtch = macronamere.match(input[pos:])
-    if mtch:
-        result = mtch.group().lower()
-        if result in macronames:
-            print("matched ~^~" + result + "~^~ in macronames")
-            return result
-        else:
-            return None
-    else:
+    if not (mtch := macronamere.match(input[pos:])):
         return None
+    result = mtch.group().lower()
+    if result not in macronames:
+        return None
+    print(f"matched ~^~{result}~^~ in macronames")
+    return result
 
 
 
@@ -65,7 +62,7 @@ def make_token(context, nodes):
     if len(nodes) == 1 and context.production.rhs[0].name not in (
             'type', 'e01', 'e02', 'e03', 'e04', 'e05', 'e06', 'e07', 'e08', 'e09', 'e10', 'e11'):
         nodes = Token(context.production.rhs[0].name, nodes[0])
-        print("mt~"+str(nodes)+"~")
+        print(f"mt~{str(nodes)}~")
     if context.production.rhs[0].name in (
             'type', 'e01', 'e02', 'e03', 'e04', 'e05', 'e06', 'e07', 'e08', 'e09', 'e10', 'e11'):
         nodes = nodes[0]
@@ -93,14 +90,16 @@ def ptrdir(context, nodes):
 
 
 def includedir(context, nodes, name):
-    print(str(name))
+    print(name)
     return nodes
 
 
 def asminstruction(context, nodes, instruction, args):
     global cur_segment
     global indirection
-    print("instruction " + get_raw(context) + " " + str(nodes) + " ~~ " + str(cur_segment) + " " + str(indirection))
+    print(
+        f"instruction {get_raw(context)} {str(nodes)} ~~ {str(cur_segment)} {str(indirection)}"
+    )
     cur_segment = 'ds'  # !
     indirection = 0  # !
     return nodes
@@ -154,7 +153,7 @@ def segmdir(context, nodes):
 
 
 def instrprefix(context, nodes):
-    print("instrprefix /~" + str(nodes) + "~\\")
+    print(f"instrprefix /~{str(nodes)}" + "~\\")
     return nodes
 
 
@@ -174,25 +173,22 @@ def expr(context, nodes):
     return Token('expr', make_token(context, nodes))
 
 def structname(head, s, pos):
-    mtch = macronamere.match(s[pos:])
-    if mtch:
-        result = mtch.group().lower()
-        if result in structnames:
-            logging.debug(" ~^~" + result + "~^~ in structnames")
-            return result
-        else:
-            return None
-    else:
+    if not (mtch := macronamere.match(s[pos:])):
         return None
+    result = mtch.group().lower()
+    if result not in structnames:
+        return None
+    logging.debug(f" ~^~{result}~^~ in structnames")
+    return result
 
 def structdir(context, nodes, name, item):
-    print("structdir", str(nodes))
+    print("structdir", nodes)
     structnames.insert(0, name.children.lower())
-    print("structname added ~~" + name.children + "~~")
+    print(f"structname added ~~{name.children}~~")
     return []  # Token('structdir', nodes) TODO ignore by now
 
 def structinstdir(context, nodes, label, type, values):
-    print("structinstdir" + str(label) + str(type) + str(values))
+    print(f"structinstdir{str(label)}{str(type)}{str(values)}")
     return nodes  # Token('structdir', nodes) TODO ignore by now
 
 
@@ -202,12 +198,7 @@ def memberdir(context, nodes, variable, field):
     return result
 
 def commentkw(head, s, pos):
-    # multiline comment
-    mtch = commentid.match(s[pos:])
-    if mtch:
-        return mtch.group(0)
-    else:
-        return None
+    return mtch.group(0) if (mtch := commentid.match(s[pos:])) else None
 
 recognizers = {
     'macroname': macroname,
@@ -251,7 +242,7 @@ actions = {
     "anddir": anddir,
 }
 
-file_name = os.path.dirname(os.path.realpath(__file__)) + "/masm2c/_masm61.pg"
+file_name = f"{os.path.dirname(os.path.realpath(__file__))}/masm2c/_masm61.pg"
 grammar = Grammar.from_file(file_name, ignore_case=True, recognizers=recognizers)
 
 from parglare import Parser
@@ -265,13 +256,10 @@ if sys.version_info[0] >= 3:
 
 for i in sys.argv[1:]:
 
-    f = open(i, encoding=codeset)
+    with open(i, encoding=codeset) as f:
+        input_str = f.read()
 
-    input_str = f.read()
-
-    result = parser.parse(input_str, file_name=file_name)
-    f.close()
-
+        result = parser.parse(input_str, file_name=file_name)
     from pprint import pprint
 
     pprint(result)

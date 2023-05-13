@@ -15,10 +15,11 @@ class MatchTag:
 
     def process(self, stream: Iterator[lark.Token]) -> Iterator[lark.Token]:
         for t in stream:
-            if t.type == "LABEL" and t.value == 'struc':
-                t.type = "STRUCTHDR"
-            elif t.type == "LABEL" and t.value == 'ends':
-                t.type = "endsdir"
+            if t.type == "LABEL":
+                if t.value == 'struc':
+                    t.type = "STRUCTHDR"
+                elif t.value == 'ends':
+                    t.type = "endsdir"
             #if t.type == "STRUCTHDR":
             if self.last_type == 'LABEL' and t.type == "LABEL" and t.value == 'VECTOR':
                 t.type = "STRUCTNAME"

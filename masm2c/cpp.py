@@ -1226,13 +1226,8 @@ struct Memory{
         return result
 
     def _mov(self, dst: Expression, src: Expression) -> str:
-        mapped_memory_access = False
-
         self.a, self.b = self.parse2(dst, src)
-        # if self.d in ['sp', 'esp'] and check_int(self.s):
-        if "raddr" in self.a or "raddr" in self.b:
-            mapped_memory_access = True
-
+        mapped_memory_access = "raddr" in self.a or "raddr" in self.b
         if mapped_memory_access:
             return f"MOV({self.a}, {self.b})"
         return f"{self.a} = {self.b};"
@@ -1266,17 +1261,16 @@ struct Memory{
         return name.lower()
 
     def produce_number_c(self, expr: str, radix: int, sign: str, value: str) -> str:
-        if radix == 8:
-            result = f"{sign}0{value}"
+        if radix == 10:
+            return f"{sign}{value}"
         elif radix == 16:
-            result = f"{sign}0x{value}"
-        elif radix == 10:
-            result = f"{sign}{value}"
+            return f"{sign}0x{value}"
         elif radix == 2:
-            result = f"{sign}{hex(int(value, 2))}"  # convert binary
+            return f"{sign}{hex(int(value, 2))}"
+        elif radix == 8:
+            return f"{sign}0{value}"
         else:
-            result = str(int(expr, radix))
-        return result
+            return str(int(expr, radix))
 
 
 
@@ -1403,7 +1397,7 @@ struct Memory{
             elif isinstance(g, op._equ | op._assignment):
                 value = f'({label[0]})+offsetof({g.original_type},{".".join(label[1:])})'
             else:
-                raise Exception("Not handled type " + str(type(g)))
+                raise Exception(f"Not handled type {str(type(g))}")
             self._indirection = IndirectionType.VALUE
             return [lark.Token("memberdir", value)]
 

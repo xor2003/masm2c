@@ -37,7 +37,9 @@ __license__ = "GPL2+"
 _logger = logging.getLogger(__name__)
 
 
-def tracefunc(frame, event, arg, indent=[0]):
+def tracefunc(frame, event, arg, indent=None):
+    if indent is None:
+        indent = [0]
     if event == "call":
         indent[0] += 2
         print("-" * indent[0] + "> call function", frame.f_code.co_filename, frame.f_code.co_name)
@@ -134,7 +136,7 @@ def setup_logging(name, loglevel):
     out_handler.setLevel(loglevel)
 
     if len(name):
-        file_handler = logging.FileHandler(name + ".log", "w", "utf-8")
+        file_handler = logging.FileHandler(f"{name}.log", "w", "utf-8")
         file_handler.setLevel(loglevel)
         formatter = logging.Formatter("[%(filename)s:%(lineno)s - %(funcName)20s()] %(message)s")
         file_handler.setFormatter(formatter)
@@ -153,11 +155,10 @@ def setup_logging(name, loglevel):
 
 
 def process(name, args):
-    m = re.match(r"(.+)\.(?:asm|lst)", name.lower())
-    outname = ""
-    if m:
-        outname = m.group(1).strip()
-
+    if m := re.match(r"(.+)\.(?:asm|lst)", name.lower()):
+        outname = m[1].strip()
+    else:
+        outname = ""
     p = Parser(args)
 
     counter = Parser.c_dummy_label
