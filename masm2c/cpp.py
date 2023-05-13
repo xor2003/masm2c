@@ -176,7 +176,7 @@ class Cpp(Gen, TopDownVisitor):
             return name
 
     # TODO Rename this here and in `convert_label_`
-    def _extracted_from_convert_label__17(self, g, name, original_name):
+    def _extracted_from_convert_label__17(self, g, name, original_name) -> str:
         logging.debug("Variable detected. Size: %s", g.size)
         self.variable_size = source_var_size = g.size
 
@@ -438,28 +438,22 @@ class Cpp(Gen, TopDownVisitor):
         :param target_size: the new size of the pointer
         :return: The expression with the new size.
         """
-        if itispointer:
-            if target_size == 1:
-                expr = f"(db*)({expr})"
-            elif target_size == 2:
-                expr = f"(dw*)({expr})"
-            elif target_size == 4:
-                expr = f"(dd*)({expr})"
-            elif target_size == 8:
-                expr = f"(dq*)({expr})"
-            else:
-                logging.error(f"~{expr}~ unknown size {target_size}")
-        elif target_size == 1:
-            expr = f"*(db*)(&{expr})"
+        if not itispointer:
+            expr = f"&{expr}"
+
+        if target_size == 1:
+            expr = f"(db*)({expr})"
         elif target_size == 2:
-            expr = f"*(dw*)(&{expr})"
+            expr = f"(dw*)({expr})"
         elif target_size == 4:
-            expr = f"*(dd*)(&{expr})"
+            expr = f"(dd*)({expr})"
         elif target_size == 8:
-            expr = f"*(dq*)(&{expr})"
+            expr = f"(dq*)({expr})"
         else:
             logging.error(f"~{expr}~ unknown size {target_size}")
 
+        if not itispointer:
+            expr = f"*{expr}"
         return expr
 
 
