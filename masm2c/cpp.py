@@ -169,65 +169,69 @@ class Cpp(Gen, TopDownVisitor):
         self.islabel = True
 
         if isinstance(g, op.var):
-            logging.debug("Variable detected. Size: %s", g.size)
-            self.variable_size = source_var_size = g.size
+            return self._extracted_from_convert_label__17(g, name, original_name)
+        elif isinstance(g, op.label):
+            return f"m2c::k{name}" if self.is_data or not self.itisjump else name
+        else:
+            return name
 
-            if source_var_size:
-                self.isvariable = True
-            if self._middle_size == 0:  # TODO check
-                self._middle_size = source_var_size
+    # TODO Rename this here and in `convert_label_`
+    def _extracted_from_convert_label__17(self, g, name, original_name):
+        logging.debug("Variable detected. Size: %s", g.size)
+        self.variable_size = source_var_size = g.size
 
-            if source_var_size == 0 and not g.issegment:
-                raise Exception("Invalid variable '%s' size %u" % (name, source_var_size))
+        if source_var_size:
+            self.isvariable = True
+        if self._middle_size == 0:  # TODO check
+            self._middle_size = source_var_size
 
-            if g.issegment:
-                value = "seg_offset(%s)" % (original_name.lower())
+        if source_var_size == 0 and not g.issegment:
+            raise Exception("Invalid variable '%s' size %u" % (name, source_var_size))
+
+        if g.issegment:
+            result = f"seg_offset({original_name.lower()})"
+            self._indirection = IndirectionType.VALUE
+        else:
+            self.needs_dereference = False
+            self.itispointer = False
+            if g.elements != 1:  # array
+                self.needs_dereference = True
+                self.itispointer = True
+
+                if not self.lea:
+                    self._indirection = IndirectionType.POINTER
+
+            if g.elements == 1 and self._isjustlabel and not self.lea and g.size == self.element_size:
+                result = g.name
                 self._indirection = IndirectionType.VALUE
             else:
-                self.needs_dereference = False
-                self.itispointer = False
-                if g.elements != 1:  # array
-                    self.needs_dereference = True
-                    self.itispointer = True
+                if not self._isjustlabel and not self.lea and self._indirection == IndirectionType.VALUE:
+                    self._indirection = IndirectionType.POINTER
+                if self._indirection == IndirectionType.POINTER:  # and self.isvariable:
+                    result = g.name
+                    if not self._isjustlabel:  # if not just single label: [a+3] address arithmetics
+                        self.needs_dereference = True
+                        self.itispointer = True
+                        if g.elements == 1:  # array generates pointer himself
+                            result = f"&{result}"
 
-                    if not self.lea:
-                        self._indirection = IndirectionType.POINTER
-
-                if g.elements == 1 and self._isjustlabel and not self.lea and g.size == self.element_size:
-                    value = g.name
-                    self._indirection = IndirectionType.VALUE
+                        if g.getsize() == 1:  # it is already a byte
+                            result = f"({result})"
+                        else:
+                            result = f"((db*){result})"
+                            self.size_changed = True
+                            self._middle_size = 1
+                elif self._indirection == IndirectionType.OFFSET:
+                    result = f"offset({g.segment},{g.name})"
+                    self.needs_dereference = False
+                    self.itispointer = False
                 else:
-                    if not self._isjustlabel and not self.lea and self._indirection == IndirectionType.VALUE:
-                        self._indirection = IndirectionType.POINTER
-                    if self._indirection == IndirectionType.POINTER:  # and self.isvariable:
-                        value = g.name
-                        if not self._isjustlabel:  # if not just single label: [a+3] address arithmetics
-                            self.needs_dereference = True
-                            self.itispointer = True
-                            if g.elements == 1:  # array generates pointer himself
-                                value = "&" + value  # get address of a scalar
+                    result = name
 
-                            if g.getsize() == 1:  # it is already a byte
-                                value = "(%s)" % value
-                            else:
-                                value = "((db*)%s)" % value # cast to byte for address arihm
-                                self.size_changed = True
-                                self._middle_size = 1
-                    elif self._indirection == IndirectionType.OFFSET:
-                        value = f"offset({g.segment},{g.name})"
-                        self.needs_dereference = False
-                        self.itispointer = False
-                    else:
-                        value = name
+                if self._work_segment == "cs":
+                    self.body += "\tcs=seg_offset(" + g.segment + ");\n"
 
-                    if self._work_segment == "cs":
-                        self.body += "\tcs=seg_offset(" + g.segment + ");\n"
-
-        elif isinstance(g, op.label):
-            value = "m2c::k" + name if self.is_data or not self.itisjump else name
-        else:
-            value = name
-        return value
+        return result
 
     def render_data_c(self, segments):
         """It takes a list of DOS segments, and for each segment, it takes a list of data items, and for each data item, it
@@ -256,13 +260,13 @@ class Cpp(Gen, TopDownVisitor):
                     m = re.match(r"^(\w+)\s+(\w+)(\[\d+\])?;\n", type_and_name)
                     if not m:
                         logging.error(f"Failed to parse {value} {type_and_name}")
-                    name = m.group(2)
+                    name = m[2]
 
                     type_and_size = re.sub(r"^(?P<type>\w+)\s+\w+(\[\d+\])?;\n", r"\g<type> tmp999\g<2>", type_and_name)
 
                     if name.startswith("dummy") and value == "0":
                         value = ""
-                    elif m.group(2):  # if array
+                    elif m[2]:  # if array
                         value = "" if value == "{}" else f"    {{{type_and_size}={value};MYCOPY({name})}}"
                     else:
                         value = f"    {{{type_and_size}={value};MYCOPY({name})}}"
@@ -277,7 +281,7 @@ class Cpp(Gen, TopDownVisitor):
                         real_seg, real_offset = j.getrealaddr()
                         if real_seg:
                             value += f" // {real_seg:04x}:{real_offset:04x}"
-                            type_and_name = type_and_name[:-1] + f" // {real_seg:04x}:{real_offset:04x}\n"
+                            type_and_name = f"{type_and_name[:-1]} // {real_seg:04x}:{real_offset:04x}\n"
                         value += "\n"
 
                     cpp_file += value  # cpp source - assigning
@@ -326,7 +330,7 @@ class Cpp(Gen, TopDownVisitor):
             elif isinstance(g, op._equ | op._assignment):
                 value = f'({label[0]})+offsetof({g.original_type},{".".join(label[1:])})'
             else:
-                raise Exception("Not handled type " + str(type(g)))
+                raise Exception(f"Not handled type {str(type(g))}")
             self._indirection = IndirectionType.VALUE
             return value # Token('memberdir', value)
 
@@ -378,19 +382,19 @@ class Cpp(Gen, TopDownVisitor):
                         self.needs_dereference = True
                         self.itispointer = True
                         if g.elements == 1:  # array generates pointer himself
-                            value = "&" + value
+                            value = f"&{value}"
 
                         if g.getsize() == 1:  # it is already a byte
-                            value = "(%s)" % value
+                            value = f"({value})"
                         else:
-                            value = "((db*)%s)" % value
+                            value = f"((db*){value})"
                             self.size_changed = True
                 elif self._indirection == IndirectionType.OFFSET and self.isvariable:
-                    value = "offset({},{})".format(g.segment, ".".join(label))
+                    value = f'offset({g.segment},{".".join(label)})'
                 if self._work_segment == "cs":
                     self.body += "\tcs=seg_offset(" + g.segment + ");\n"
-            # ?self.__indirection = 1
-            #if value == token:
+                # ?self.__indirection = 1
+                #if value == token:
         elif isinstance(g, op.Struct):
             #if self._isjustmember:
             value = f'offsetof({label[0]},{".".join(label[1:])})'
@@ -445,17 +449,16 @@ class Cpp(Gen, TopDownVisitor):
                 expr = f"(dq*)({expr})"
             else:
                 logging.error(f"~{expr}~ unknown size {target_size}")
+        elif target_size == 1:
+            expr = f"*(db*)(&{expr})"
+        elif target_size == 2:
+            expr = f"*(dw*)(&{expr})"
+        elif target_size == 4:
+            expr = f"*(dd*)(&{expr})"
+        elif target_size == 8:
+            expr = f"*(dq*)(&{expr})"
         else:
-            if target_size == 1:
-                expr = f"*(db*)(&{expr})"
-            elif target_size == 2:
-                expr = f"*(dw*)(&{expr})"
-            elif target_size == 4:
-                expr = f"*(dd*)(&{expr})"
-            elif target_size == 8:
-                expr = f"*(dq*)(&{expr})"
-            else:
-                logging.error(f"~{expr}~ unknown size {target_size}")
+            logging.error(f"~{expr}~ unknown size {target_size}")
 
         return expr
 
@@ -560,24 +563,18 @@ class Cpp(Gen, TopDownVisitor):
         return ret
 
     def _ret(self, src: list[Expression | Any]) -> str:
-        if src == []:
-            self.a = "0"
-        else:
-            self.a = self.render_instruction_argument(src[0])
-        return "RETN(%s)" % self.a
+        self.a = self.render_instruction_argument(src[0]) if src else "0"
+        return f"RETN({self.a})"
 
     def _retf(self, src: list[Expression | Any]) -> str:
-        if src == []:
-            self.a = "0"
-        else:
-            self.a = self.render_instruction_argument(src[0])
-        return "RETF(%s)" % self.a
+        self.a = self.render_instruction_argument(src[0]) if src else "0"
+        return f"RETF({self.a})"
 
     def _xlat(self, src: list[Expression | Any]) -> str:
         if not src:
             return "XLAT"
         self.a = self.render_instruction_argument(src[0])[2:-1]
-        return "XLATP(%s)" % self.a
+        return f"XLATP({self.a})"
 
     def parse2(self, dst: Expression, src: Expression) -> tuple[str, str]:
         dst_size, src_size = self.calculate_size(dst), self.calculate_size(src)
@@ -639,27 +636,27 @@ class Cpp(Gen, TopDownVisitor):
         if self.isrelativejump(label):
             return "{;}"
         label, _ = self.jump_post(label)  # TODO
-        return "JZ(%s)" % label
+        return f"JZ({label})"
 
     def _jnz(self, label: Expression) -> str:
         label, _ = self.jump_post(label)
-        return "JNZ(%s)" % label
+        return f"JNZ({label})"
 
     def _jbe(self, label: Expression) -> str:
         label, _ = self.jump_post(label)
-        return "JBE(%s)" % label
+        return f"JBE({label})"
 
     def _ja(self, label: Expression) -> str:
         label, far = self.jump_post(label)
-        return "JA(%s)" % label
+        return f"JA({label})"
 
     def _jc(self, label: Expression) -> str:
         label, far = self.jump_post(label)
-        return "JC(%s)" % label
+        return f"JC({label})"
 
     def _jnc(self, label: Expression) -> str:
         label, far = self.jump_post(label)
-        return "JNC(%s)" % label
+        return f"JNC({label})"
 
     """
     def _push(self, regs):
@@ -744,10 +741,10 @@ class Cpp(Gen, TopDownVisitor):
 
         logging.info(f" *** Generating output files in C++ {cpp_fname} {header_fname}")
 
-        cpp_file = open(cpp_fname, "w", encoding=self.__codeset)
-        hpp_file = open(header_fname, "w", encoding=self.__codeset)
+        with open(cpp_fname, "w", encoding=self.__codeset) as cpp_file:
+            hpp_file = open(header_fname, "w", encoding=self.__codeset)
 
-        cpp_file.write(f"""{banner}
+            cpp_file.write(f"""{banner}
         #include \"{header_fname}\"
 
 {self.render_function_wrappers_c()}
@@ -779,8 +776,6 @@ class Cpp(Gen, TopDownVisitor):
         #endif
         }}
         """)
-        cpp_file.close()
-
         hpp_file.write(f"""{banner}
 #ifndef {header_id}
 #define {header_id}
@@ -850,12 +845,12 @@ class Cpp(Gen, TopDownVisitor):
         return entry_point_text
 
     def render_function_wrappers_c(self):
-        wrappers = ""
-        for p in sorted(self.grouped):
-            wrappers += f"""
+        return "".join(
+            f"""
  bool {p}(m2c::_offsets, struct m2c::_STATE* _state){{return {self.groups[p]}(m2c::k{p}, _state);}}
 """
-        return wrappers
+            for p in sorted(self.grouped)
+        )
 
     def convert_segment_files_into_datacpp(self, asm_files):
         """It reads .seg files, and writes the data segments to _data.cpp/h file.
@@ -964,14 +959,13 @@ struct Memory{
         return data
 
     def _lea(self, dst: Expression, src: Expression) -> str:
-        self.lea = True
         src.indirection = IndirectionType.OFFSET
         src.mods.add("lea")
         dst.mods.add("lea")
+        self.lea = True
         self.a, self.b = self.parse2(dst, src)
-        r = f"{self.a} = {self.b}"
         self.lea = False
-        return r
+        return f"{self.a} = {self.b}"
 
     def _movs(self, dst: Expression, src: Expression) -> str:
         size = self.calculate_size(dst)
@@ -998,10 +992,10 @@ struct Memory{
 
     def _int(self, dst: Expression) -> str:
         self.a = self.render_instruction_argument(dst)
-        return "_INT(%s)" % self.a
+        return f"_INT({self.a})"
 
     def _instruction0(self, cmd: str) -> str:
-        return "%s" % (cmd.upper())
+        return cmd.upper()
 
     def _instruction1(self, cmd: str, dst: Expression) -> str:
         self.a = self.render_instruction_argument(dst)
@@ -1166,7 +1160,7 @@ struct Memory{
     def convert_char(self, c: int | str) -> str:
         if isinstance(c, int) and c not in [10, 13]:
             return str(c)
-        return "'" + self.convert_str(c) + "'"
+        return f"'{self.convert_str(c)}'"
 
     def convert_str(self, c: int | str) -> str:
         vvv = ""
@@ -1241,8 +1235,7 @@ struct Memory{
 
         if mapped_memory_access:
             return f"MOV({self.a}, {self.b})"
-        else:
-            return f"{self.a} = {self.b};"
+        return f"{self.a} = {self.b};"
 
     def produce_jump_table_c(self, offsets):
         """It takes a list of labels and produces a C++ switch statement that jumps to the corresponding label.
@@ -1295,12 +1288,12 @@ struct Memory{
         if len(token.value) == 4:  # m:
             ex = token
             result = "0x"
-            for i in range(0, 4):
-                ss = str(hex(ord(ex[i])))
+            for i in range(4):
+                ss = hex(ord(ex[i]))
                 result += ss[2:]
         else:
             result = result.replace("\\", "\\\\")  # escape c \ symbol
-            result = "'" + result + "'"
+            result = f"'{result}'"
         return [result]
 
 
@@ -1347,7 +1340,11 @@ struct Memory{
             result = f"(({self.struct_type}*)raddr({self._work_segment},{result}"
         if self.needs_dereference:
             self.needs_dereference = False
-            result = "*%s" % result if result[0] == "(" and result[-1] == ")" else "*(%s)" % result
+            result = (
+                f"*{result}"
+                if result[0] == "(" and result[-1] == ")"
+                else f"*({result})"
+            )
         return result
 
     def data(self, data: Data) -> tuple[str, str, int]:
@@ -1357,7 +1354,7 @@ struct Memory{
         from masm2c.parser import Parser
         Parser.c_dummy_label = 0
         c, h, size = self.produce_c_data_single_(data)
-        c += ", // " + data.getlabel() + "\n"  # TODO can put original_label
+        c += f", // {data.getlabel()}" + "\n"
         h += ";\n"
         self.is_data = False
         return c, h, size
@@ -1376,20 +1373,17 @@ struct Memory{
         if isinstance(g, op.var):
             if g.issegment:
                 v = f"seg_offset({g.name})"
+            elif size == 2:
+                v = f"offset({g.segment},{g.name})"
+            elif size == 4:
+                v = f"far_offset({g.segment},{g.name})"
             else:
-                if size == 2:
-                    v = f"offset({g.segment},{g.name})"
-                elif size == 4:
-                    v = f"far_offset({g.segment},{g.name})"
-                else:
-                    logging.error(f"Some unknown data size {size} for {g.name}")
+                logging.error(f"Some unknown data size {size} for {g.name}")
         elif isinstance(g, op._equ | op._assignment):
             v = g.original_name
         elif isinstance(g, op.label | proc.Proc):
             v = f"m2c::k{g.name.lower()}"
-        elif isinstance(g, op.Struct):
-            pass
-        else:
+        elif not isinstance(g, op.Struct):
             v = g.offset
         logging.debug(v)
         return v
@@ -1425,7 +1419,7 @@ struct Memory{
                 raise ValueError("Unknown offset size %s", self.element_size)
         elif isinstance(g, proc_module.Proc | op.label):
             logging.debug("it is proc")
-            return ["m2c::k" + g.name]  # .capitalize()
+            return [f"m2c::k{g.name}"]
         else:
             raise ValueError("Unknown type for offsetdir %s", type(g))
 
