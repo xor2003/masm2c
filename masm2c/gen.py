@@ -90,54 +90,64 @@ class Gen:
         if self._context.args.mergeprocs != "single":
             self._prepare_non_single_proc_data()
 
-            self._prepare_merging_procs()
+            self._align_grouping_lists()
+            self._leave_only_same_segment_procs()
+            self.print_how_procs_merged()
 
+        self._merge_all_procs()
+
+    def _merge_all_procs(self):
         groups = []
         groups_id = 1
         for first_proc_name in self._procs:
             if first_proc_name not in self.grouped:
                 first_proc = self._context.get_global(first_proc_name)
                 if self._context.args.mergeprocs == "single" or first_proc.to_group_with:
-                    logging.debug(f"Merging {first_proc_name}")
-                    new_group_name = f"_group{groups_id}"
-                    first_label = op.label(first_proc_name, proc=new_group_name, isproc=False,
-                                           line_number=first_proc.line_number, far=first_proc.far)
-                    first_label.real_offset, first_label.real_seg = first_proc.real_offset, first_proc.real_seg
-
-                    first_label.used = True
-                    first_proc.stmts.insert(0, first_label)
-                    first_proc.provided_labels.add(first_proc_name)
-                    self._context.reset_global(first_proc_name, first_label)
-                    self.grouped.add(first_proc_name)
-
-                    self.groups[first_proc_name] = new_group_name
-                    proc_to_group = self._procs if self._context.args.mergeprocs == "single" else first_proc.to_group_with
-                    proc_to_group = self.sort_procedure_list_in_linenumber_order(proc_to_group)
-
-                    for next_proc_name in proc_to_group:
-                        if next_proc_name != first_proc_name and next_proc_name not in self.grouped:
-                            next_proc = self._context.get_global(next_proc_name)
-                            if isinstance(next_proc, proc_module.Proc):  # and first_proc.far == next_proc.far:
-                                self.groups[next_proc_name] = new_group_name
-                                next_label = op.label(next_proc_name, proc=first_proc_name, isproc=False,
-                                                      line_number=next_proc.line_number, far=next_proc.far)
-                                next_label.real_offset, next_label.real_seg = next_proc.real_offset, next_proc.real_seg
-                                next_label.used = True
-                                first_proc.add_label(next_proc_name, next_label)
-                                logging.debug(f"     with {next_proc_name}")
-                                first_proc.merge_two_procs(new_group_name, next_proc)
-                                for missing_label in first_proc.provided_labels:
-                                    self.label_to_proc[missing_label] = new_group_name
-                                self._context.reset_global(next_proc_name, next_label)
-                                self.grouped.add(next_proc_name)
-                    groups += [new_group_name]
-                    self._context.set_global(new_group_name, first_proc)
-                    groups_id += 1
+                    groups = self.merge_all_procs_related_to_this(first_proc_name, first_proc, groups, groups_id)
         self._procs = [x for x in self._procs if x not in self.grouped]
         self._procs += groups
         self._procs = self.sort_procedure_list_in_linenumber_order(self._procs)
 
-    def _prepare_merging_procs(self):
+    def merge_all_procs_related_to_this(self, first_proc_name, first_proc, groups, groups_id):
+        logging.debug("Merging %s", first_proc_name)
+        new_group_name = f"_group{groups_id}"
+        first_label = op.label(first_proc_name, proc=new_group_name, isproc=False,
+                               line_number=first_proc.line_number, far=first_proc.far)
+        first_label.real_offset, first_label.real_seg = first_proc.real_offset, first_proc.real_seg
+        first_label.used = True
+        first_proc.stmts.insert(0, first_label)
+        first_proc.provided_labels.add(first_proc_name)
+        self._context.reset_global(first_proc_name, first_label)
+        self.grouped.add(first_proc_name)
+        self.groups[first_proc_name] = new_group_name
+        proc_to_group = self._procs if self._context.args.mergeprocs == "single" else first_proc.to_group_with
+        proc_to_group = self.sort_procedure_list_in_linenumber_order(proc_to_group)
+        for next_proc_name in proc_to_group:
+            if next_proc_name != first_proc_name and next_proc_name not in self.grouped:
+                next_proc = self._context.get_global(next_proc_name)
+                if isinstance(next_proc, proc_module.Proc):  # and first_proc.far == next_proc.far:
+                    self.merge_two_procs_with_label(first_proc_name, first_proc, next_proc_name, next_proc,
+                                                    new_group_name)
+        groups += [new_group_name]
+        self._context.set_global(new_group_name, first_proc)
+        groups_id += 1
+        return groups
+
+    def merge_two_procs_with_label(self, first_proc_name, first_proc, next_proc_name, next_proc, new_group_name):
+        self.groups[next_proc_name] = new_group_name
+        next_label = op.label(next_proc_name, proc=first_proc_name, isproc=False,
+                              line_number=next_proc.line_number, far=next_proc.far)
+        next_label.real_offset, next_label.real_seg = next_proc.real_offset, next_proc.real_seg
+        next_label.used = True
+        first_proc.add_label(next_proc_name, next_label)
+        logging.debug(f"     with {next_proc_name}")
+        first_proc.merge_two_procs(new_group_name, next_proc)
+        for missing_label in first_proc.provided_labels:
+            self.label_to_proc[missing_label] = new_group_name
+        self._context.reset_global(next_proc_name, next_label)
+        self.grouped.add(next_proc_name)
+
+    def _align_grouping_lists(self):
         changed = True
         iteration = 0
         while changed:
@@ -158,10 +168,18 @@ class Gen:
                                                                                            first_proc.to_group_with)
                             changed = True
                 logging.debug(f"  will group with {first_proc.to_group_with}")
+
+    def _leave_only_same_segment_procs(self):
         for first_proc_name in self._procs:
             logging.debug(f"Proc {first_proc_name}")
-            self.leave_only_same_segment_procs(first_proc_name)
-        self.print_how_procs_merged()
+            proc = self._context.get_global(first_proc_name)
+            only_current_segment_procs = set()
+            for other_proc_name in proc.to_group_with:
+                if first_proc_name != other_proc_name:
+                    other_proc = self._context.get_global(other_proc_name)
+                    if proc.segment == other_proc.segment:
+                        only_current_segment_procs.add(other_proc_name)
+            proc.to_group_with = only_current_segment_procs
 
     def _prepare_non_single_proc_data(self):
         for index, first_proc_name in enumerate(self._procs):
@@ -190,14 +208,17 @@ class Gen:
                         self.find_related_proc(missing_label))  # if label then merge proc implementing it
 
             if self._context.args.mergeprocs == "persegment":
-                for pname in self._procs:
-                    if pname != first_proc_name:
-                        p_proc = self._context.get_global(pname)
-                        if first_proc.segment == p_proc.segment:
-                            procs_to_merge.add(pname)
+                self._prepare_per_segment_proc_data(first_proc_name, first_proc, procs_to_merge)
 
             first_proc.to_group_with = procs_to_merge
             logging.debug(f" will merge {procs_to_merge}")
+
+    def _prepare_per_segment_proc_data(self, first_proc_name, first_proc, procs_to_merge):
+        for pname in self._procs:
+            if pname != first_proc_name:
+                p_proc = self._context.get_global(pname)
+                if first_proc.segment == p_proc.segment:
+                    procs_to_merge.add(pname)
 
     def _link_consecutive_non_terminated_procs(self):
         for index, first_proc_name in enumerate(self._procs):
@@ -229,21 +250,6 @@ class Gen:
             self._context.get_global(first_proc_name).line_number: first_proc_name for first_proc_name in
              proc_list}
         return [line_to_proc[line_number] for line_number in sorted(line_to_proc.keys())]
-
-    def leave_only_same_segment_procs(self, proc_name):
-        """It takes a procedure name and returns a set of procedure names that are in the same segment as the given
-        procedure.
-
-        :param proc_name: The name of the procedure to leave only same segment procs for
-        """
-        proc = self._context.get_global(proc_name)
-        only_current_segment_procs = set()
-        for other_proc_name in proc.to_group_with:
-            if proc_name != other_proc_name:
-                other_proc = self._context.get_global(other_proc_name)
-                if proc.segment == other_proc.segment:
-                    only_current_segment_procs.add(other_proc_name)
-        proc.to_group_with = only_current_segment_procs
 
     def print_how_procs_merged(self):
         """It prints out the names of the procedures that were merged together."""
@@ -311,33 +317,39 @@ class Gen:
         """
         if self.merge_data_segments:
             logging.info("Will merge public data segments")
-        for k, v in newsegments.items():
-            segclass = v.segclass
-            ispublic = v.options and "public" in v.options
+        for segment_name, segment_value in newsegments.items():
+            segclass = segment_value.segclass
+            ispublic = segment_value.options and "public" in segment_value.options
             if segclass and ispublic and self.merge_data_segments:
                 if segclass not in allsegments:
-                    allsegments[segclass] = v
+                    allsegments[segclass] = segment_value
                 else:
-                    data = v.getdata()
+                    data = segment_value.getdata()
                     for d in data:
                         allsegments[segclass].append(d)
             else:
-                if k in allsegments and (v.getsize() > 0 or allsegments[k].getsize() > 0):
-                    old = jsonpickle.encode(allsegments[k], unpicklable=False)
-                    new = jsonpickle.encode(v, unpicklable=False)
-                    if old != new:
-                        logging.error("Overwritting segment %s", k)
-                allsegments[k] = v
+                self._check_for_segment_overwrite(allsegments, segment_name, segment_value)
+                allsegments[segment_name] = segment_value
 
-        if allstructs != newstructs and set(allstructs.keys()) & set(newstructs.keys()):
-            for k, v in newstructs.items():
-                if k in allstructs:
-                    old = jsonpickle.encode(allstructs[k], unpicklable=False)
-                    new = jsonpickle.encode(v, unpicklable=False)
-                    if old != new:
-                        logging.error(f"Overwriting structure {k}")
+        self._check_for_struct_overwrite(allstructs, newstructs)
         allstructs.update(newstructs)
         return allsegments, allstructs
+
+    def _check_for_segment_overwrite(self, allsegments, segment_name, segment_value):
+        if segment_name in allsegments and (segment_value.getsize() > 0 or allsegments[segment_name].getsize() > 0):
+            old = jsonpickle.encode(allsegments[segment_name], unpicklable=False)
+            new = jsonpickle.encode(segment_value, unpicklable=False)
+            if old != new:
+                logging.error("Overwritting segment %s", segment_name)
+
+    def _check_for_struct_overwrite(self, allstructs, newstructs):
+        if allstructs != newstructs and set(allstructs.keys()) & set(newstructs.keys()):
+            for struct_name, struct_value in newstructs.items():
+                if struct_name in allstructs:
+                    old1 = jsonpickle.encode(allstructs[struct_name], unpicklable=False)
+                    new1 = jsonpickle.encode(struct_value, unpicklable=False)
+                    if old1 != new1:
+                        logging.error(f"Overwriting structure {struct_name}")
 
     def _render_procedure(self, name, def_skip=0):
         """It takes a procedure name, and returns a C++ string containing for that procedure.

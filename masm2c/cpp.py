@@ -356,27 +356,22 @@ class Cpp(Gen, TopDownVisitor):
             raise Exception(f"invalid var {label} size {source_var_size}")
 
         self.variable_size = source_var_size
-        if source_var_size:
-            self.isvariable = True
         logging.debug("it is var %s", source_var_size)
         if self._middle_size == 0:
             self._middle_size = source_var_size
         self.isvariable = True
         self.islabel = True
-        self.needs_dereference = False
-        self.itispointer = False
-        if g.elements != 1:
-            self.needs_dereference = True
-            self.itispointer = True
         if g.elements == 1 and self._isjustlabel and not self.lea and source_var_size == self._middle_size:
+            self.needs_dereference = False
+            self.itispointer = False
             value = ".".join(label)
             self._indirection = IndirectionType.VALUE
         else:
-            if self._indirection == IndirectionType.POINTER:  # ? and self.isvariable:
+            self.needs_dereference = True
+            self.itispointer = True
+            if self._indirection == IndirectionType.POINTER:
                 value = ".".join(label)
                 if not self._isjustlabel:  # if not just single label
-                    self.needs_dereference = True
-                    self.itispointer = True
                     if g.elements == 1:  # array generates pointer himself
                         value = f"&{value}"
 
@@ -385,12 +380,10 @@ class Cpp(Gen, TopDownVisitor):
                     else:
                         value = f"((db*){value})"
                         self.size_changed = True
-            elif self._indirection == IndirectionType.OFFSET and self.isvariable:
+            elif self._indirection == IndirectionType.OFFSET:
                 value = f'offset({g.segment},{".".join(label)})'
             if self._work_segment == "cs":
                 self.body += "\tcs=seg_offset(" + g.segment + ");\n"
-            # ?self.__indirection = 1
-            # if value == token:
         return value
 
     def _convert_member_equ(self, g, label):
