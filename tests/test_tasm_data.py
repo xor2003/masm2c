@@ -1048,6 +1048,9 @@ class ParserDataTest(unittest.TestCase):
     def test_data_15910(self):
         assert self.convert_data(line='var6 dd 9,8,7,1') == ('{9,8,7,1}, // var6\n', 'dd var6[4];\n', 16)
 
+    def test_data_16010(self):
+        self.assertEqual(self.convert_data(line="body db '*',10,11, 3*15 DUP(0)"), ('{*,10,11,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, ''// body\n',
+            'db body[48];\n', 48))
 
     #def test_data_16010(self):
 

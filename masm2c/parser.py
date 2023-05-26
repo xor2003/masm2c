@@ -354,6 +354,7 @@ class Parser:
         return (
             op.DataType.ZERO_STRING
             if elements >= 2
+            and not (isinstance(args[-1], Tree) and args[-1].data == 'dupdir')
             and isinstance(args[-1].children[-1], lark.Token)
             and args[-1].children[-1].type == "INTEGER"
             and args[-1].children[-1].value == "0"

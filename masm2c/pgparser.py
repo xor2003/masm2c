@@ -353,11 +353,12 @@ class Asm2IR(CommonCollector):
         else:
             values = children[0][2:3][0]
 
-        is_string = any("string" in expr.mods for expr in values.children if isinstance(expr, lark.Tree) and expr.data == "expr")
+        is_string = any("string" in expr.mods for expr in values.children if isinstance(expr, lark.Tree) and expr.data == "expr") \
+                    and not any(isinstance(expr, lark.Tree) and expr.data == "dupdir" for expr in values.children)
 
         self._expression = None
         return self.context.datadir_action(label, type, values, is_string=is_string, raw=get_raw(self.input_str, meta),
-                                           line_number=get_line_number(meta))
+                        line_number=get_line_number(meta))
 
 
     def segdir(self, nodes: list):
