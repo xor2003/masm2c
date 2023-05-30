@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from ast import literal_eval
 
 """ Module to parse assembler source """
@@ -106,7 +108,7 @@ class ExprSizeCalculator(BottomUpVisitor):
                 if self.element_size < 1:
                     self.element_size = g.size
                 return Vector(self.element_size, 1)
-            elif isinstance(g, op._assignment | op._equ):
+            elif isinstance(g, (op._assignment, op._equ)):
                 self.element_size = g.value.size()
                 return Vector(self.element_size, 1)
             return None

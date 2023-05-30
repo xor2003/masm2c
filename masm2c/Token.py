@@ -18,8 +18,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #
+from __future__ import annotations
 
-from typing import Any
+from typing import Any, Union
 
 import lark
 import lark.tree
@@ -40,7 +41,7 @@ class Token(lark.Tree):
     # def __repr__(self):
 
     @staticmethod
-    def find_tokens(expr: Any, lookfor: str) -> list[str] | list[lark.tree.Tree] | None:
+    def find_tokens(expr: Any, lookfor: str) -> Union[list[str], list[lark.tree.Tree], None]:
         l = []
         if isinstance(expr, Tree):
             if expr.data == lookfor:

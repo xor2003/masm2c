@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 from typing import TYPE_CHECKING, Union
 
@@ -348,7 +350,7 @@ class Asm2IR(CommonCollector):
             children = children[0]
         label = self.context.mangle_label(children.pop(0)) if isinstance(children[0], lark.Token) and children[0].type == "LABEL" else ""
         type = children.pop(0).lower()
-        if isinstance(children[0], lark.Token | lark.Tree):  # Data
+        if isinstance(children[0], (lark.Token, lark.Tree)):  # Data
             values = lark.Tree(data="data", children=children[0].children)
         else:
             values = children[0][2:3][0]
@@ -377,7 +379,7 @@ class Asm2IR(CommonCollector):
         l = lark.Token(type="LABEL", value=value)
         if g := self.context.get_global(self.name):
             from masm2c.proc import Proc
-            if isinstance(g, op._equ | op._assignment):
+            if isinstance(g, (op._equ, op._assignment)):
                 #if not isinstance(g.value, Expression):
                 if isinstance(g.value, Expression):
                     g.size = g.value.size()
@@ -385,7 +387,7 @@ class Asm2IR(CommonCollector):
                         self.expression.ptr_size = g.size
                     else:
                         self.expression.element_size = g.size
-            elif isinstance(g, op.label | Proc):
+            elif isinstance(g, (op.label, Proc)):
                 pass
             elif isinstance(g, op.var):
                 pass

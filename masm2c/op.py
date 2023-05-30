@@ -21,7 +21,7 @@
 from collections import OrderedDict
 from copy import deepcopy
 from enum import Enum
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Union
 
 from lark import lark
 
@@ -498,7 +498,7 @@ class Data(baseop):
     def getmembers(self) -> list["Data"]:
         return self.__members
 
-    def setvalue(self, value: list[Any | int | list[int]]) -> None:
+    def setvalue(self, value: list[Union[Any, int, list[int]]]) -> None:
         if self.isobject():
             for m, v in zip(self.__members, value):
                 m.setvalue(v)
@@ -727,7 +727,7 @@ class _retn(baseop):
         return visitor._ret(self.children)
 
 class _retf(baseop):
-    def __init__(self, args: list[Expression | Any]) -> None:
+    def __init__(self, args: list[Union[Expression, Any]]) -> None:
         super().__init__()
         self.children = args
 
@@ -1058,7 +1058,7 @@ class _equ(baseop):
 
 
 class _assignment(baseop):
-    def __init__(self, args: list[str | Expression]) -> None:
+    def __init__(self, args: list[Union[str, Expression]]) -> None:
         super().__init__()
         self.children = args
         self.original_name = ""
@@ -1076,7 +1076,7 @@ class _assignment(baseop):
         #    raise SkipCode
 
 class _xlat(baseop):
-    def __init__(self, args: list[Expression | Any]) -> None:
+    def __init__(self, args: list[Union[Expression, Any]]) -> None:
         super().__init__()
         self.children = args
 

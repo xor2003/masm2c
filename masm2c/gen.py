@@ -283,7 +283,7 @@ class Gen:
         labels = set()  # leave only real labels
         for label_name in all_labels:
             first_label = self._context.get_global(label_name)
-            if isinstance(first_label, op.label | proc_module.Proc):
+            if isinstance(first_label, (op.label, proc_module.Proc)):
                 labels.add(label_name)
         return labels
 

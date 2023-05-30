@@ -19,7 +19,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #
 import logging
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 from lark.lexer import Token
 from lark.tree import Tree
@@ -43,7 +43,7 @@ from .pgparser import LABEL, MEMBERDIR, REGISTER, SQEXPR, Asm2IR, TopDownVisitor
 from .Token import Expression, Token
 
 
-def flatten(s: list[str | int | list[str] | Any]) -> list[str | int | Any]:
+def flatten(s: list) -> list:
     if not s:
         return s
     if isinstance(s[0], list):
@@ -332,7 +332,7 @@ class Cpp(Gen, TopDownVisitor):
             logging.error("global '%s' is missing", label)
             return ".".join(label)
 
-        if isinstance(g, op._equ | op._assignment):
+        if isinstance(g, (op._equ, op._assignment)):
             value = self._convert_member_equ(g, label)
         elif isinstance(g, op.var):
 
@@ -401,12 +401,12 @@ class Cpp(Gen, TopDownVisitor):
         logging.debug("equ: %s -> %s", label[0], value)
         return value
 
-    def convert_member_offset(self, g, label):
+    def convert_member_offset(self, g, label: list[str]):
         if isinstance(g, op.var):
             value = f'offset({g.segment},{".".join(label)})'
         elif isinstance(g, op.Struct):
             value = f'offsetof({label[0]},{".".join(label[1:])})'
-        elif isinstance(g, op._equ | op._assignment):
+        elif isinstance(g, (op._equ, op._assignment)):
             value = f'({label[0]})+offsetof({g.original_type},{".".join(label[1:])})'
         else:
             raise Exception(f"Not handled type {str(type(g))}")
@@ -561,15 +561,15 @@ class Cpp(Gen, TopDownVisitor):
             ret += f"CALL({proc_name},{label_ip})"
         return ret
 
-    def _ret(self, src: list[Expression | Any]) -> str:
+    def _ret(self, src: list[Union[Expression, Any]]) -> str:
         self.a = self.render_instruction_argument(src[0]) if src else "0"
         return f"RETN({self.a})"
 
-    def _retf(self, src: list[Expression | Any]) -> str:
+    def _retf(self, src: list[Union[Expression, Any]]) -> str:
         self.a = self.render_instruction_argument(src[0]) if src else "0"
         return f"RETF({self.a})"
 
-    def _xlat(self, src: list[Expression | Any]) -> str:
+    def _xlat(self, src: list[Union[Expression, Any]]) -> str:
         if not src:
             return "XLAT"
         self.a = self.render_instruction_argument(src[0])[2:-1]
@@ -900,7 +900,7 @@ static const dd kbegin = 0x1001;
         i = 0x1001
         for k, v in list(self._context.get_globals().items()):
             # if isinstance(v, (op.label, proc_module.Proc)) and v.used:
-            if isinstance(v, op.label | proc_module.Proc):
+            if isinstance(v, (op.label, proc_module.Proc)):
                 k = re.sub(r"[^A-Za-z0-9_]", "_", k).lower()
                 i += 1
                 if v.real_offset or v.real_seg:
@@ -1156,12 +1156,12 @@ struct Memory{
         rh = f"{data_ctype} {label}"
         return rc, rh
 
-    def convert_char(self, c: int | str) -> str:
+    def convert_char(self, c: Union[int, str]) -> str:
         if isinstance(c, int) and c not in [10, 13]:
             return str(c)
         return f"'{self.convert_str(c)}'"
 
-    def convert_str(self, c: int | str) -> str:
+    def convert_str(self, c: Union[int, str]) -> str:
         vvv = ""
         if isinstance(c, int):
             if c == 13:
@@ -1356,13 +1356,13 @@ struct Memory{
         self.is_data = False
         return c, h, size
 
-    def LABEL(self, token: Token) -> list[str | Token]:
+    def LABEL(self, token: Token) -> list[Union[str, Token]]:
         if self.is_data:
             size = self.is_data if type(self.is_data) == int else 0
             return [self.convert_label_data(token, size=size)]
         return [self.convert_label_(token)]
 
-    def convert_label_data(self, v: Token, size: int=0) -> Token | str:
+    def convert_label_data(self, v: Token, size: int=0) -> Union[Token, str]:
         logging.debug("convert_label_data(%s)", v)
         size = size or 2
         if (g := self._context.get_global(v)) is None:
@@ -1376,16 +1376,16 @@ struct Memory{
                 v = f"far_offset({g.segment},{g.name})"
             else:
                 logging.error(f"Some unknown data size {size} for {g.name}")
-        elif isinstance(g, op._equ | op._assignment):
+        elif isinstance(g, (op._equ, op._assignment)):
             v = g.original_name
-        elif isinstance(g, op.label | proc.Proc):
+        elif isinstance(g, (op.label, proc.Proc)):
             v = f"m2c::k{g.name.lower()}"
         elif not isinstance(g, op.Struct):
             v = g.offset
         logging.debug(v)
         return v
 
-    def offsetdir(self, tree: Tree) -> list[str | Token]:  # TODO equ, assign support
+    def offsetdir(self, tree: Tree) -> list[Union[str, Token]]:  # TODO equ, assign support
         name = tree.children[0]
 
         if isinstance(name, lark.Tree) and name.data=="memberdir":
@@ -1406,16 +1406,16 @@ struct Memory{
                 return [f"far_offset({g.segment},{g.name})"]
             else:
                 raise ValueError("Unknown offset size %s", self.element_size)
-        elif isinstance(g, proc_module.Proc | op.label):
+        elif isinstance(g, (proc_module.Proc, op.label)):
             logging.debug("it is proc")
             return [f"m2c::k{g.name}"]
         else:
             raise ValueError("Unknown type for offsetdir %s", type(g))
 
-    def notdir(self, tree: Tree) -> list[str | Token]:
+    def notdir(self, tree: Tree) -> list[Union[str, Token]]:
         return ["~", *tree.children]
 
-    def ordir(self, tree: Tree) -> list[str | Token]:
+    def ordir(self, tree: Tree) -> list[Union[str, Token]]:
         return [tree.children[0], " | ", tree.children[1]]
 
     def xordir(self, tree):

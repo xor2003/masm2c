@@ -131,8 +131,10 @@ http://bringerp.free.fr/forum/viewtopic.php?f=1&t=128
 Prerequisite: your code should be compilable with uasm(jwasm)/masm6,
 link5/tlink and work under DOS.
 
-pip install -r requirements.txt
-masm2c.py <some.asm>
+You need at least Python 3.9
+
+ pip install -r requirements.txt
+ masm2c.py <some.asm>
 
 (Small source code modification might also be required to translate)
 
