@@ -98,12 +98,12 @@ class Gen:
 
     def _merge_all_procs(self):
         groups = []
-        groups_id = 1
+        #groups_id = 1
         for first_proc_name in self._procs:
             if first_proc_name not in self.grouped:
                 first_proc = self._context.get_global(first_proc_name)
                 if self._context.args.mergeprocs == "single" or first_proc.to_group_with:
-                    groups = self.merge_all_procs_related_to_this(first_proc_name, first_proc, groups, groups_id)
+                        groups = self.merge_all_procs_related_to_this(first_proc_name, first_proc, groups, len(groups) + 1)
         self._procs = [x for x in self._procs if x not in self.grouped]
         self._procs += groups
         self._procs = self.sort_procedure_list_in_linenumber_order(self._procs)

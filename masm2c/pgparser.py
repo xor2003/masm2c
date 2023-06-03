@@ -207,7 +207,7 @@ class Asm2IR(CommonCollector):
     def ptrdir(self, children: list[str | list[lark.lexer.Token] | lark.lexer.Token | list[lark.tree.Tree] | lark.tree.Tree]) -> list[lark.tree.Tree | list[lark.lexer.Token] | lark.lexer.Token | list[lark.tree.Tree]]:
         if self.expression.indirection == IndirectionType.VALUE:  # set above
             self.expression.indirection = IndirectionType.POINTER
-        type = children[0].lower()
+        type = children[0].lower()  # TODO handle jmp short near abc
         #if self._size: # TODO why need another variable?
         self.expression.ptr_size = self.context.typetosize(type)
         if type not in {"far", "near"}:
