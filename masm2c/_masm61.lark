@@ -3,8 +3,8 @@
 
 U_DOT: "."
 _COMMA: ","
-charlist: /[^\r\n\t ]+/x
-text: /[^\r\n]+/x
+CHARLIST.1: /[^\r\n\t; ]+/x
+TEXT.1: /[^\r\n]+/x
 STRING: /((?<!')'(?!').+?(?<!')'(?!'))|((?<!")"(?!").+?(?<!")"(?!"))/
 LABEL: /[A-Za-z@_$?][A-Za-z@_$?0-9]*/
 //MONKEY: /@@|@B|@F/
@@ -82,7 +82,7 @@ commaprotolist: _commaoeol  protolist
 commatextlen: _COMMA expr
 commdecl: NEARFAR?   langtype?  LABEL ":" commtype eqconstexpr?
 commdir: "COMM"i commlist _linereminder
-//commentdir: COMMENTKW DELIMITER text text DELIMITER text _linereminder; TODO
+//commentdir: COMMENTKW DELIMITER TEXT TEXT DELIMITER TEXT _linereminder; TODO
 commentdir: COMMENTKW _linereminder
 commlist: commdecl | commdecl _COMMA commlist
 commtype: expr
@@ -218,7 +218,7 @@ externlist: externdef | externdef _commaoeol externlist
 externtype: "ABS"i | qualifiedtype
 fieldinit: initvalue? | structinstance
 _fieldinitlist: fieldinit (_commaoeol fieldinit)*
-!filespec: charlist| textliteral
+!filespec: CHARLIST | textliteral
 flagname: "ZERO?"i | "CARRY?"i | "OVERFLOW?"i | "SIGN?"i | "PARITY?"i
 floatnumber : SIGNED_FLOAT | digits "R"| digits "r"
 forcdir: "FORC"i | "IRPC"i
@@ -355,7 +355,7 @@ structitem: datadir| _generaldir| offsetdir| nestedstruct| _linereminder
 textdir: LABEL textmacrodir _linereminder
 textitem: textliteral| "%" expr //| LABEL
 textlist: textitem | textitem _commaoeol textlist
-textliteral: "<" text ">" _linereminder
+textliteral: "<" TEXT ">"
 textmacrodir: "CATSTR"i textlist? | "TEXTEQU"i textlist? | "SIZESTR"i textitem| "SUBSTR"i textitem  _COMMA expr commatextlen| "INSTR"i textstartcomma? textitem  _COMMA textitem
 textstartcomma: expr  _COMMA
 titledir: titletype arbitrarytext _linereminder

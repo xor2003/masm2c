@@ -630,7 +630,8 @@ class IncludeLoader(Transformer):
         self.context = context
 
     def includedir(self, nodes):
-        name = nodes[0].children[0].children[0][1:-1]
+        name = nodes[0].children[0]
+        name = name[1:-1] if name[0] == '<' and name[-1] == '>' else name
         fullpath = os.path.join(os.path.dirname(os.path.realpath(self.context._current_file)), name)
         return self.context.parse_include_file_lines(fullpath)
 
