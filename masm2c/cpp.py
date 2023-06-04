@@ -735,7 +735,35 @@ class Cpp(Gen, TopDownVisitor):
             i = 0
             while i < len(proc.stmts):
                 self._remove_hacks_popf(i, proc)
+                #self._remove_hacks_pushpush_retf(i, proc)
                 i += 1
+
+    def _remove_hacks_pushpush_retf(self, i, proc):
+        if len(proc.stmts) - i >= 3 and \
+                proc.stmts[i].cmd == 'push' and \
+                proc.stmts[i + 1].cmd == 'push' and \
+                proc.stmts[i + 2].cmd == 'retf':
+            o = proc.create_instruction_object("jmp", [])
+            o.children = [lark.Tree('expr',
+                                    [lark.Tree('adddir',
+                                               [lark.Tree(lark.Token('RULE', 'braces'),
+                                                          [lark.Token('LPAR', '('),
+                                                           lark.Tree('shiftdir',
+                                                                     [lark.Token('INTEGER', '1234'),
+                                                                      lark.Token('SHOP', 'SHL'),
+                                                                      lark.Token('INTEGER', '4')]),
+                                                           lark.Token('RPAR', ')')]),
+                                                lark.Token('SIGN', '+'),
+                                                lark.Token('INTEGER', '5678')])])]
+            o.children[0].children[0].children[0].children[1].children[0] = proc.stmts[i + 1].children[0].children
+            o.children[0].children[0].children[2] = proc.stmts[i].children[0].children
+            o.filename = ""
+            o.line_number = 0
+            o.raw_line = ""
+            o.syntetic = True
+            proc.stmts[i] = o
+            del proc.stmts[i + 1]
+            del proc.stmts[i + 2]
 
     def _remove_hacks_popf(self, i, proc):
         # replace popf hack: or bh, 0; push cs; call loc+1

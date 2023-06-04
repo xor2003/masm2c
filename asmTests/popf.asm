@@ -18,6 +18,14 @@ pop ax
 CMP ax, 1234h
 JNE failure
 
+;mov ax, (ax SHL 4) + dx
+;mov ax,cs
+;mov dx, offset loc_2
+;push dx ; offset
+;push ax ; segment
+;retf
+;loc_2:
+
 MOV al,0
 JMP exitLabel
 failure:

@@ -146,7 +146,7 @@ SIGN: ("+"|"-")
 MULOP: ("*"| "/" | "MOD"i)
 RELOP: ("EQ"i|"NE"i|"LT"i|"LE"i|"GT"i|"GE"i)
 //OROP: ("OR"i|"XOR"i)
-SHOP: ("SHR"i | "SHL"i)
+SHOP.1: ("SHR"i | "SHL"i)
 WORDOP: ("HIGH"i|"LOW"i|"HIGHWORD"i|"LOWWORD"i)
 !ptrdir2: "LARGE"i segmentregister ":" e10 // ("LARGE"i|"SMALL"i|"SHORT"i)
 
