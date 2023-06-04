@@ -725,8 +725,59 @@ class Cpp(Gen, TopDownVisitor):
         srcr = Token.find_tokens(src, REGISTER)
         return "SCAS(%s,%s,%d)" % (self.a, srcr[0], size)
 
-    def save_cpp_files(self, fname):
+    def process(self):
         self.merge_procs()
+        self._remove_hacks()
+
+    def _remove_hacks(self):
+        for proc_name in self._procs:
+            proc = self._context.get_global(proc_name)
+            i = 0
+            while i < len(proc.stmts):
+                self._remove_hacks_popf(i, proc)
+                i += 1
+
+    def _remove_hacks_popf(self, i, proc):
+        # replace popf hack: or bh, 0; push cs; call loc+1
+        if len(proc.stmts) - i >= 5 and \
+                proc.stmts[i].cmd == '' and proc.stmts[i].data == 'label' and \
+                proc.stmts[i + 1].cmd == 'or' and proc.stmts[i + 1].children == \
+                [lark.Tree('expr', [lark.Tree('register', ['bh'])]),
+                 lark.Tree('expr', [lark.Token('INTEGER', '0')])] and \
+                proc.stmts[i + 2].cmd == '' and proc.stmts[i + 2].data == 'label' and \
+                proc.stmts[i + 3].cmd == 'push' and proc.stmts[i + 3].children == \
+                [lark.Tree('expr', [lark.Tree('segmentregister', ['cs'])])] and \
+                proc.stmts[i + 4].cmd == 'call' and proc.stmts[i + 4].children[0].data == 'expr' and \
+                proc.stmts[i + 4].children[0].children[0].data == 'adddir':
+            logging.info("Patching popf hack")
+            del proc.stmts[i + 4]
+            del proc.stmts[i + 3]
+            o = proc.create_instruction_object("popf", [])
+            o.filename = ""
+            o.line_number = 0
+            o.raw_line = ""
+            o.syntetic = True
+            proc.stmts[i + 1] = o
+        elif len(proc.stmts) - i >= 4 and \
+                proc.stmts[i].cmd == '' and proc.stmts[i].data == 'label' and \
+                proc.stmts[i + 1].cmd == 'or' and proc.stmts[i + 1].children == \
+                [lark.Tree('expr', [lark.Tree('register', ['bh'])]),
+                 lark.Tree('expr', [lark.Token('INTEGER', '0')])] and \
+                proc.stmts[i + 2].cmd == 'push' and proc.stmts[i + 2].children == \
+                [lark.Tree('expr', [lark.Tree('segmentregister', ['cs'])])] and \
+                proc.stmts[i + 3].cmd == 'call' and proc.stmts[i + 3].children[0].data == 'expr' and \
+                proc.stmts[i + 3].children[0].children[0].data == 'adddir':
+            logging.info("Patching popf hack")
+            del proc.stmts[i + 3]
+            del proc.stmts[i + 2]
+            o = proc.create_instruction_object("popf", [])
+            o.filename = ""
+            o.line_number = 0
+            o.raw_line = ""
+            o.syntetic = True
+            proc.stmts[i + 1] = o
+
+    def save_cpp_files(self, fname):
         cpp_assigns, _, _, cpp_extern = self.render_data_c(self._context.segments)
 
         header_id = f"__M2C_{self._namespace.upper().replace('-', '_').replace('.', '_')}_STUBS_H__"

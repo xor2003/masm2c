@@ -611,7 +611,7 @@ class LarkParser:
                                            postlex=MatchTag(context=kwargs["context"]), start=["start", "insegdirlist",
                                                                                                "instruction", "expr",
                                                                                                "equtype", "_directivelist"])
-
+                #print(sorted([term.pattern.value for term in cls._inst.or_parser.terminals if term.pattern.type == 'str']))
             cls._inst.parser = copy(cls._inst.or_parser)
 
         return cls._inst

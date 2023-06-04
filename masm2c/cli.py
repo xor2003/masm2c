@@ -174,6 +174,7 @@ def process(name, args):
     context = p.parse_file(name)
 
     generator = Cpp(context, outfile=outname, skip_output=[])
+    generator.process()
     generator.save_cpp_files(name)  # start routine
     if args.list:
         generator.dump_globals()

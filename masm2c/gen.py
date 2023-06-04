@@ -80,8 +80,8 @@ class Gen:
 
         :return:
         """
-        if self._context.args.mergeprocs == "separate":
-            self._link_consecutive_non_terminated_procs()
+        #if self._context.args.mergeprocs == "separate":
+        #    self._link_consecutive_non_terminated_procs()
 
         self.generate_label_to_proc_map()
 

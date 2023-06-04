@@ -34,7 +34,7 @@ from typing import Any, Optional
 
 import jsonpickle
 
-from lark import lark
+from lark import lark, UnexpectedCharacters, UnexpectedToken
 from lark.lexer import Token
 from lark.tree import Tree
 from masm2c.op import Data, Struct, _assignment, _equ, baseop, label, var
@@ -475,6 +475,9 @@ class Parser:
     def extract_addresses_from_lst(self, file_name, content):
         self.itislst = True
         segmap = self.read_segments_map(file_name)
+        # Remove structs addresses
+        content = re.sub(r"^[0-9A-F]{8} ?", lambda m: "", content, flags=re.MULTILINE)
+        # Move current CS:IP to the end of the string
         content = re.sub(r"^(?P<segment>[_0-9A-Za-z]+):(?P<offset>[0-9A-Fa-f]{4,8})(?P<remain>.*)",
                          lambda m: f'{m.group("remain")} ;~ {segmap.get(m.group("segment"))}:{m.group("offset")}',
                          content, flags=re.MULTILINE)
@@ -877,8 +880,12 @@ class Parser:
 
     def parse_text(self, text: str, file_name: None=None, start_rule: str="start") -> Tree:
         logging.debug("parsing: [%s]", text)
-
-        return self.__lex.parser.parse(text, start=start_rule)
+        #try:
+        result = self.__lex.parser.parse(text, start=start_rule)
+        #except Exception as ex:
+        #    logging.error("Exception: [%s]", ex)
+        #    sys.exit(9)
+        return result
 
     def process_ast(self, text: str, result: Tree) -> Tree:
         result = IncludeLoader(self).transform(result)
