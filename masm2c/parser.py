@@ -880,11 +880,11 @@ class Parser:
 
     def parse_text(self, text: str, file_name: None=None, start_rule: str="start") -> Tree:
         logging.debug("parsing: [%s]", text)
-        #try:
-        result = self.__lex.parser.parse(text, start=start_rule)
-        #except Exception as ex:
-        #    logging.error("Exception: [%s]", ex)
-        #    sys.exit(9)
+        try:
+            result = self.__lex.parser.parse(text, start=start_rule)
+        except UnexpectedToken as ex:
+            logging.error("UnexpectedToken: [%s] line=%s column=%s", ex.token, ex.line, ex.column)
+            sys.exit(9)
         return result
 
     def process_ast(self, text: str, result: Tree) -> Tree:
