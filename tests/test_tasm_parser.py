@@ -3026,6 +3026,9 @@ h_array db '^',10,10
         self.assertEqual(*self.doTest('jmp far ptr 0:0', 'LES(di, *(dd*)(raddr(ss,bp+arg_4)))'))
 
     def test_instr_10960(self):
+        self.assertEqual(*self.doTest('call far ptr 0:0', 'LES(di, *(dd*)(raddr(ss,bp+arg_4)))'))
+
+    def test_instr_10970(self):
         self.assertEqual(*self.doTest('imul    word_0', 'IMUL1_2(word_0)'))
 
     #def test_instr_12030(self):
