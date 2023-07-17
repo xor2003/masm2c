@@ -83,6 +83,7 @@ class ParserInstructionsTest(unittest.TestCase):
 
         self.__class__.parser.set_global("_data", op.var(1, 0, issegment=True))
         self.__class__.parser.set_global("singlebyte2", op.var(size=1, offset=1, name="singlebyte2", segment="_data", elements=1))
+        self.__class__.parser.set_global("word_0", op.var(size=2, offset=1, name="word_0", segment="_data", elements=1))
         self.__class__.parser.set_global('_msg', op.var(elements=2, name='_msg', offset=1, segment='_data', size=1))
         self.__class__.parser.set_global('_test_btc', op.var(name='_test_btc', offset=1, segment='initcall', size=4))
         self.__class__.parser.set_global('a', op.var(elements=3, name='a', offset=1, segment='_data', size=1))
@@ -3020,6 +3021,12 @@ h_array db '^',10,10
         self.cpp._context.itislst = True
         assert self.proc.generate_full_cmd_line(self.cpp, self.parser.action_code("mov ss,ax")) == "\tS(ss = ax;);"
         self.cpp._context.itislst = False
+
+    def test_instr_10950(self):
+        self.assertEqual(*self.doTest('jmp far ptr 0:0', 'LES(di, *(dd*)(raddr(ss,bp+arg_4)))'))
+
+    def test_instr_10960(self):
+        self.assertEqual(*self.doTest('imul    word_0', 'IMUL1_2(word_0)'))
 
     #def test_instr_12030(self):
     #    print(*self.doTest("cmp h_array, 'v'",  u"CMP(*(h_array), 'v')"))
