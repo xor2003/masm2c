@@ -5,13 +5,14 @@ application]]
 
 == Masm2c
 
-Masm2c is a 16-bit assembler to C++ translator that can be used to port DOS x86 assembler code to C++ and SDL. It is a https://en.wikipedia.org/wiki/Source-to-source_compiler[Source-to-source
+Masm2c is a 16-bit assembly to C++ translator that can be used to port DOS x86 assembler code to C++ and SDL. It is a https://en.wikipedia.org/wiki/Source-to-source_compiler[Source-to-source
 translator] that generates fake-assembler instructions which can be compiled with a C++ compiler and executed. 
-To convert your masm 16-bit source to C++, you can use the masm2c.py command. 
+To convert your masm source to C++, you can use the masm2c.py command. 
 Masm2c also has scripts that can help convert DOSBOX run-time traces into IDA annotations to simplify disassembly.
 
 (Since there is no working decompiler for 16 bit DOS code
 yet. Because of DOS segmentation model, etc)
+32 bit is partially supported.
 
 http://www.plantuml.com/plantuml/png/NSwnRiCW40RWdQSuUJTHd3I3XogLkdHgto02SuceWBCuND6txpb97IiR-hyV-8zSJ2vJ36gWE5B2LA3vpFxYamcmFO3r1JHMRC0maC09AwxB7-zly9NfwjwP5KN3iHjMGV3M4LkgAb51i5GAnHwIAVu7OI276unJC0KTk2nPvjLjh3Z_qUowpM7_sANK_ofeN-S5qCDMGo3ZVBgeEP3yjaMeqw3bhEv1cmMNNU8xyM4S5tVYM57avIwFTXlQvUaUzXfoEVbq9ltDb9vwjstNblFCXXcZ3RzmzXLP7J6vAOO_[image:http://www.plantuml.com/plantuml/png/NSwnRiCW40RWdQSuUJTHd3I3XogLkdHgto02SuceWBCuND6txpb97IiR-hyV-8zSJ2vJ36gWE5B2LA3vpFxYamcmFO3r1JHMRC0maC09AwxB7-zly9NfwjwP5KN3iHjMGV3M4LkgAb51i5GAnHwIAVu7OI276unJC0KTk2nPvjLjh3Z_qUowpM7_sANK_ofeN-S5qCDMGo3ZVBgeEP3yjaMeqw3bhEv1cmMNNU8xyM4S5tVYM57avIwFTXlQvUaUzXfoEVbq9ltDb9vwjstNblFCXXcZ3RzmzXLP7J6vAOO_[Diagram]]
 

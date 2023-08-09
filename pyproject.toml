@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=61.2.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "masm2c"
+version = "0.9.8"
+description = "Masm2c is a 16-bit assembly to C++ translator"
+authors = [
+    {name = "xor2003", email = "xor2003@gmx.com"},
+]
+dependencies = ["lark","jsonpickle"]
+requires-python = ">=3.9"
+readme = "README.md"
+license = {text = "GPL"}
+keywords = ["masm", "assembly","reverse engineering"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Assembly",
+    "Programming Language :: C++",
+    "Operating System :: OS Independent"
+]
+
+[project.urls]
+Homepage = "https://github.com/xor2003/masm2c"
+
+[tool.distutils.egg_info]
+tag-build = ""
+tag-date = 0
+
+[project.scripts]
+masm2c = "masm2c.cli:main"
