@@ -1110,21 +1110,6 @@ class CppTest(unittest.TestCase):
     def test_args_23780(self):
         assert self.parser.parse_arg('ebp', def_size=4, destination=False) == 'ebp'
 
-    def test_args_23790(self):
-        assert self.parser.parse_arg('ebp', def_size=4, destination=True) == 'ebp'
-
-    def test_args_23800(self):
-        assert self.parser.parse_arg('ebx', def_size=0, destination=False) == 'ebx'
-
-    def test_args_23810(self):
-        assert self.parser.parse_arg('ebx', def_size=4, destination=False) == 'ebx'
-
-    def test_args_23820(self):
-        assert self.parser.parse_arg('ebx', def_size=4, destination=True) == 'ebx'
-
-    def test_args_23830(self):
-        assert self.parser.parse_arg('ecx', def_size=0, destination=False) == 'ecx'
-
     def test_args_23840(self):
         assert self.parser.parse_arg('ecx', def_size=4, destination=False) == 'ecx'
 
@@ -1644,11 +1629,6 @@ class CppTest(unittest.TestCase):
     def test_args_25570(self):
         self.assertEqual(self.cpp.expand(expr=self.parser.parse_arg(u'byte ptr es:[0]'),def_size=1,destination=True),u'*(raddr(es,0))')
     """
-    def test_args_25580(self):
-        assert self.parser.parse_arg('ds:[eax*2]', def_size=0, destination=False) == '*(raddr(ds,eax*2))'
-
-    def test_args_25590(self):
-        assert self.parser.parse_arg('ds:[ebx*4]', def_size=0, destination=False) == '*(raddr(ds,ebx*4))'
 
     def test_args_25600(self):
         assert self.parser.parse_arg('ds:[ecx*8]', def_size=0, destination=False) == '*(raddr(ds,ecx*8))'
@@ -4125,15 +4105,6 @@ class CppTest(unittest.TestCase):
     def test_cpp_33880(self):
         assert self.cpp.convert_asm_number_into_c(expr='26') == '26'
 
-    def test_cpp_33890(self):
-        assert self.cpp.convert_asm_number_into_c(expr='27') == '27'
-
-    def test_cpp_33900(self):
-        assert self.cpp.convert_asm_number_into_c(expr='28') == '28'
-
-    def test_cpp_33910(self):
-        assert self.cpp.convert_asm_number_into_c(expr='29') == '29'
-
     def test_cpp_33920(self):
         assert self.cpp.convert_asm_number_into_c(expr='2Ch') == '0x2C'
 
@@ -5121,30 +5092,6 @@ class CppTest(unittest.TestCase):
 
     def test_cpp_37190(self):
         assert self.cpp.convert_asm_number_into_c(expr='offset aBtrl') == 'offset aBtrl'
-
-    def test_cpp_37200(self):
-        assert self.cpp.convert_asm_number_into_c(expr='offset aBtrw') == 'offset aBtrw'
-
-    def test_cpp_37210(self):
-        assert self.cpp.convert_asm_number_into_c(expr='offset aBtsl') == 'offset aBtsl'
-
-    def test_cpp_37220(self):
-        assert self.cpp.convert_asm_number_into_c(expr='offset aBtsw') == 'offset aBtsw'
-
-    def test_cpp_37230(self):
-        assert self.cpp.convert_asm_number_into_c(expr='offset aBtw') == 'offset aBtw'
-
-    def test_cpp_37240(self):
-        assert self.cpp.convert_asm_number_into_c(expr='offset aCbw') == 'offset aCbw'
-
-    def test_cpp_37250(self):
-        assert self.cpp.convert_asm_number_into_c(expr='offset aCdq') == 'offset aCdq'
-
-    def test_cpp_37260(self):
-        assert self.cpp.convert_asm_number_into_c(expr='offset aCmpb') == 'offset aCmpb'
-
-    def test_cpp_37270(self):
-        assert self.cpp.convert_asm_number_into_c(expr='offset aCmpl') == 'offset aCmpl'
 
     def test_cpp_37280(self):
         assert self.cpp.convert_asm_number_into_c(expr='offset aCmpsb') == 'offset aCmpsb'

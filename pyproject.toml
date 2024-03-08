@@ -36,3 +36,6 @@ tag-date = 0
 
 [project.scripts]
 masm2c = "masm2c.cli:main"
+
+[tool.setuptools]
+packages = ["masm2c"]

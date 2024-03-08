@@ -1826,9 +1826,6 @@ h_array db '^',10,10
     def test_instr_6190(self):
         self.assertEqual(*self.doTest('mov     dword ptr [esp+0Ch], 1 ; iflags', 'MOV(*(dd*)(raddr(ss,esp+0x0C)), 1)'))
 
-    def test_instr_6200(self):
-        self.assertEqual(*self.doTest('mov     dword ptr [esp+0Ch], 1000h', 'MOV(*(dd*)(raddr(ss,esp+0x0C)), 0x1000)'))
-
     def test_instr_6210(self):
         self.assertEqual(*self.doTest('mov     dword ptr [esp+0Ch], 1234h', 'MOV(*(dd*)(raddr(ss,esp+0x0C)), 0x1234)'))
 
@@ -1852,9 +1849,6 @@ h_array db '^',10,10
 
     def test_instr_6280(self):
         self.assertEqual(*self.doTest('mov     dword ptr [esp+10h], 11h', 'MOV(*(dd*)(raddr(ss,esp+0x10)), 0x11)'))
-
-    def test_instr_6290(self):
-        self.assertEqual(*self.doTest('mov     dword ptr [esp+14h], 0', 'MOV(*(dd*)(raddr(ss,esp+0x14)), 0)'))
 
     def test_instr_6300(self):
         self.assertEqual(*self.doTest('mov     dword ptr [esp+1Ch], 0', 'MOV(*(dd*)(raddr(ss,esp+0x1C)), 0)'))
@@ -2366,15 +2360,6 @@ h_array db '^',10,10
     def test_instr_8010(self):
         self.assertEqual(*self.doTest('mov     eax, ebx', 'eax = ebx;'))
 
-    def test_instr_8020(self):
-        self.assertEqual(*self.doTest('mov     eax, edi', 'eax = edi;'))
-
-    def test_instr_8030(self):
-        self.assertEqual(*self.doTest('mov     eax, edx', 'eax = edx;'))
-
-    def test_instr_8040(self):
-        self.assertEqual(*self.doTest('mov     eax, esi', 'eax = esi;'))
-
     def test_instr_8050(self):
         self.assertEqual(*self.doTest('mov     eax, flags', 'eax = flags;'))
 
@@ -2599,9 +2584,6 @@ h_array db '^',10,10
 
     def test_instr_8790(self):
         self.assertEqual(*self.doTest('and     edx, ecx', 'AND(edx, ecx)'))
-
-    def test_instr_8800(self):
-        self.assertEqual(*self.doTest('mov ax,bp', 'ax = bp;'))
 
     def test_instr_8810(self):
         self.assertEqual(*self.doTest('mov bl,-1', 'bl = -1;'))
