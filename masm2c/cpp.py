@@ -23,8 +23,9 @@ from typing import TYPE_CHECKING, Any, Optional, Union
 
 from lark.lexer import Token
 from lark.tree import Tree
+
 from masm2c.op import Data
-from masm2c.Token import Expression
+from masm2c.Token import Token as Token_, Expression
 
 if TYPE_CHECKING:
     from masm2c.parser import Parser
@@ -40,7 +41,6 @@ from . import proc as proc_module
 from .enumeration import IndirectionType
 from .gen import Gen, InjectCode, mangle_asm_labels
 from .pgparser import LABEL, MEMBERDIR, REGISTER, SQEXPR, Asm2IR, TopDownVisitor
-from .Token import Expression, Token
 
 
 def flatten(s: list) -> list:
@@ -154,8 +154,7 @@ class Cpp(Gen, TopDownVisitor):
 
 
     def convert_label_(self, original_name: Token) -> str:
-        """
-        Converts a label to its corresponding value.
+        """Converts a label to its corresponding value.
 
         :param original_name: The original label name.
         :type original_name: Token
@@ -409,7 +408,7 @@ class Cpp(Gen, TopDownVisitor):
         elif isinstance(g, (op._equ, op._assignment)):
             value = f'({label[0]})+offsetof({g.original_type},{".".join(label[1:])})'
         else:
-            raise Exception(f"Not handled type {str(type(g))}")
+            raise Exception(f"Not handled type {type(g)!s}")
         self._indirection = IndirectionType.VALUE
         return value
 
@@ -722,7 +721,7 @@ class Cpp(Gen, TopDownVisitor):
     def _scas(self, src: Expression) -> str:
         self.a = self.render_instruction_argument(src)
         size = self.calculate_size(src)
-        srcr = Token.find_tokens(src, REGISTER)
+        srcr = Token_.find_tokens(src, REGISTER)
         return "SCAS(%s,%s,%d)" % (self.a, srcr[0], size)
 
     def process(self):
@@ -740,21 +739,21 @@ class Cpp(Gen, TopDownVisitor):
 
     def _remove_hacks_pushpush_retf(self, i, proc):
         if len(proc.stmts) - i >= 3 and \
-                proc.stmts[i].cmd == 'push' and \
-                proc.stmts[i + 1].cmd == 'push' and \
-                proc.stmts[i + 2].cmd == 'retf':
+                proc.stmts[i].cmd == "push" and \
+                proc.stmts[i + 1].cmd == "push" and \
+                proc.stmts[i + 2].cmd == "retf":
             o = proc.create_instruction_object("jmp", [])
-            o.children = [lark.Tree('expr',
-                                    [lark.Tree('adddir',
-                                               [lark.Tree(lark.Token('RULE', 'braces'),
-                                                          [lark.Token('LPAR', '('),
-                                                           lark.Tree('shiftdir',
-                                                                     [lark.Token('INTEGER', '1234'),
-                                                                      lark.Token('SHOP', 'SHL'),
-                                                                      lark.Token('INTEGER', '4')]),
-                                                           lark.Token('RPAR', ')')]),
-                                                lark.Token('SIGN', '+'),
-                                                lark.Token('INTEGER', '5678')])])]
+            o.children = [lark.Tree("expr",
+                                    [lark.Tree("adddir",
+                                               [lark.Tree(lark.Token("RULE", "braces"),
+                                                          [lark.Token("LPAR", "("),
+                                                           lark.Tree("shiftdir",
+                                                                     [lark.Token("INTEGER", "1234"),
+                                                                      lark.Token("SHOP", "SHL"),
+                                                                      lark.Token("INTEGER", "4")]),
+                                                           lark.Token("RPAR", ")")]),
+                                                lark.Token("SIGN", "+"),
+                                                lark.Token("INTEGER", "5678")])])]
             o.children[0].children[0].children[0].children[1].children[0] = proc.stmts[i + 1].children[0].children
             o.children[0].children[0].children[2] = proc.stmts[i].children[0].children
             o.filename = ""
@@ -768,15 +767,15 @@ class Cpp(Gen, TopDownVisitor):
     def _remove_hacks_popf(self, i, proc):
         # replace popf hack: or bh, 0; push cs; call loc+1
         if len(proc.stmts) - i >= 5 and \
-                proc.stmts[i].cmd == '' and proc.stmts[i].data == 'label' and \
-                proc.stmts[i + 1].cmd == 'or' and proc.stmts[i + 1].children == \
-                [lark.Tree('expr', [lark.Tree('register', ['bh'])]),
-                 lark.Tree('expr', [lark.Token('INTEGER', '0')])] and \
-                proc.stmts[i + 2].cmd == '' and proc.stmts[i + 2].data == 'label' and \
-                proc.stmts[i + 3].cmd == 'push' and proc.stmts[i + 3].children == \
-                [lark.Tree('expr', [lark.Tree('segmentregister', ['cs'])])] and \
-                proc.stmts[i + 4].cmd == 'call' and proc.stmts[i + 4].children[0].data == 'expr' and \
-                proc.stmts[i + 4].children[0].children[0].data == 'adddir':
+                proc.stmts[i].cmd == "" and proc.stmts[i].data == "label" and \
+                proc.stmts[i + 1].cmd == "or" and proc.stmts[i + 1].children == \
+                [lark.Tree("expr", [lark.Tree("register", ["bh"])]),
+                 lark.Tree("expr", [lark.Token("INTEGER", "0")])] and \
+                proc.stmts[i + 2].cmd == "" and proc.stmts[i + 2].data == "label" and \
+                proc.stmts[i + 3].cmd == "push" and proc.stmts[i + 3].children == \
+                [lark.Tree("expr", [lark.Tree("segmentregister", ["cs"])])] and \
+                proc.stmts[i + 4].cmd == "call" and proc.stmts[i + 4].children[0].data == "expr" and \
+                proc.stmts[i + 4].children[0].children[0].data == "adddir":
             logging.info("Patching popf hack")
             del proc.stmts[i + 4]
             del proc.stmts[i + 3]
@@ -787,14 +786,14 @@ class Cpp(Gen, TopDownVisitor):
             o.syntetic = True
             proc.stmts[i + 1] = o
         elif len(proc.stmts) - i >= 4 and \
-                proc.stmts[i].cmd == '' and proc.stmts[i].data == 'label' and \
-                proc.stmts[i + 1].cmd == 'or' and proc.stmts[i + 1].children == \
-                [lark.Tree('expr', [lark.Tree('register', ['bh'])]),
-                 lark.Tree('expr', [lark.Token('INTEGER', '0')])] and \
-                proc.stmts[i + 2].cmd == 'push' and proc.stmts[i + 2].children == \
-                [lark.Tree('expr', [lark.Tree('segmentregister', ['cs'])])] and \
-                proc.stmts[i + 3].cmd == 'call' and proc.stmts[i + 3].children[0].data == 'expr' and \
-                proc.stmts[i + 3].children[0].children[0].data == 'adddir':
+                proc.stmts[i].cmd == "" and proc.stmts[i].data == "label" and \
+                proc.stmts[i + 1].cmd == "or" and proc.stmts[i + 1].children == \
+                [lark.Tree("expr", [lark.Tree("register", ["bh"])]),
+                 lark.Tree("expr", [lark.Token("INTEGER", "0")])] and \
+                proc.stmts[i + 2].cmd == "push" and proc.stmts[i + 2].children == \
+                [lark.Tree("expr", [lark.Tree("segmentregister", ["cs"])])] and \
+                proc.stmts[i + 3].cmd == "call" and proc.stmts[i + 3].children[0].data == "expr" and \
+                proc.stmts[i + 3].children[0].children[0].data == "adddir":
             logging.info("Patching popf hack")
             del proc.stmts[i + 3]
             del proc.stmts[i + 2]
@@ -1047,7 +1046,7 @@ struct Memory{
 
     def _movs(self, dst: Expression, src: Expression) -> str:
         size = self.calculate_size(dst)
-        dstr, srcr = Token.find_tokens(dst, REGISTER), Token.find_tokens(src, REGISTER)
+        dstr, srcr = Token_.find_tokens(dst, REGISTER), Token_.find_tokens(src, REGISTER)
         self.a, self.b = self.parse2(dst, src)
         return "MOVS(%s, %s, %s, %s, %d)" % (self.a, self.b, dstr[0], srcr[0], size)
 
@@ -1062,7 +1061,7 @@ struct Memory{
     def _lods(self, src: Expression) -> str:
         self.a = self.render_instruction_argument(src)
         size = self.calculate_size(src)
-        srcr = Token.find_tokens(src, REGISTER)
+        srcr = Token_.find_tokens(src, REGISTER)
         return "LODS(%s,%s,%d)" % (self.a, srcr[0], size)
 
     def _leave(self) -> str:
@@ -1257,7 +1256,7 @@ struct Memory{
             # logging.debug "~~ " + r[i] + str(ord(r[i]))
             # for c in string:
 
-            if c in ["\'", '\"', "\\"]:
+            if c in ["'", '"', "\\"]:
                 vvv = "\\" + c
             elif ord(c) > 127:
                 t = c.encode("cp437", "backslashreplace")

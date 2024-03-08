@@ -33,13 +33,13 @@ from copy import deepcopy
 from typing import Any, Optional
 
 import jsonpickle
-
-from lark import lark, UnexpectedCharacters, UnexpectedToken
+from lark import UnexpectedToken, lark
 from lark.lexer import Token
 from lark.tree import Tree
+
 from masm2c.op import Data, Struct, _assignment, _equ, baseop, label, var
 from masm2c.proc import Proc
-from masm2c.Token import Expression
+from masm2c.Token import Token as Token_, Expression
 
 from . import cpp as cpp_module
 from . import op
@@ -51,7 +51,6 @@ from .pgparser import (
     IncludeLoader,
     LarkParser,
 )
-from .Token import Token
 
 INTEGERCNST = "integer"
 STRINGCNST = "STRING"
@@ -61,12 +60,12 @@ class Vector:
     def __init__(self, *args) -> None:
         self.__value = args
 
-    def __add__(self, vec: Optional["Vector"]) -> "Vector":
+    def __add__(self, vec: Optional[Vector]) -> Vector:
         if vec is not None:
             self.__value = [a + b for a, b in zip(self.__value, vec)]
         return self
 
-    def __mul__(self, other: int) -> "Vector":
+    def __mul__(self, other: int) -> Vector:
         self.__value = [a * other for a in self]
         return self
 
@@ -87,7 +86,7 @@ class ExprSizeCalculator(BottomUpVisitor):
         self.element_size = element_size
         self.kwargs = kwargs
 
-    def expr(self, tree: Expression, size: Vector) -> Vector:
+    def expr(self, tree: Token_.Expression, size: Vector) -> Vector:
         if self.element_size:
             tree.element_size = self.element_size
         """
@@ -356,7 +355,7 @@ class Parser:
         return (
             op.DataType.ZERO_STRING
             if elements >= 2
-            and not (isinstance(args[-1], Tree) and args[-1].data == 'dupdir')
+            and not (isinstance(args[-1], Tree) and args[-1].data == "dupdir")
             and isinstance(args[-1].children[-1], lark.Token)
             and args[-1].children[-1].type == "INTEGER"
             and args[-1].children[-1].value == "0"
@@ -688,7 +687,7 @@ class Parser:
             result = self.process_ast(line, result)
         except Exception as e:
             print(e)
-            logging.error("Error1")
+            logging.exception("Error1")
             result = [str(e)]
             raise
         return result
@@ -704,7 +703,7 @@ class Parser:
         except Exception as e:
             print(e)
             import traceback
-            logging.error(traceback.format_exc())
+            logging.exception(traceback.format_exc())
             result = [str(e)]
             raise
         return result
@@ -719,7 +718,7 @@ class Parser:
             result = self.process_ast(line, result)
         except Exception as e:
             print(e)
-            logging.error("Error3")
+            logging.exception("Error3")
             result = [str(e)]
             raise
         return result
@@ -742,7 +741,7 @@ class Parser:
             import logging
             import traceback
 
-            logging.error(traceback.format_exc())
+            logging.exception(traceback.format_exc())
             raise
         return result
 
@@ -861,7 +860,7 @@ class Parser:
         absolute_offset = None
         real_seg = None
         if m := re.match(
-            r".* ;~ (?P<segment>[0-9A-Fa-f]{4}):(?P<offset>[0-9A-Fa-f]{4})", raw
+            r".* ;~ (?P<segment>[0-9A-Fa-f]{4}):(?P<offset>[0-9A-Fa-f]{4})", raw,
         ):
             if self.itislst:
                 real_offset = int(m["offset"], 16)
@@ -883,7 +882,7 @@ class Parser:
         try:
             result = self.__lex.parser.parse(text, start=start_rule)
         except UnexpectedToken as ex:
-            logging.error("UnexpectedToken: [%s] line=%s column=%s", ex.token, ex.line, ex.column)
+            logging.exception("UnexpectedToken: [%s] line=%s column=%s", ex.token, ex.line, ex.column)
             sys.exit(9)
         return result
 
@@ -920,11 +919,11 @@ class Parser:
             size = 4
         return size
 
-    def typetosize(self, value: str | Token) -> int:
-        if isinstance(value, Token):
+    def typetosize(self, value: str | Token_) -> int:
+        if isinstance(value, Token_):
             value = value.children
         if not isinstance(value, str):
-            logging.error(f"Type is not a string TODO {str(value)}")
+            logging.error(f"Type is not a string TODO {value!s}")
             return 0
         value = value.lower()
         if value in self.structures and self.structures[value] is not True:
@@ -937,7 +936,7 @@ class Parser:
                     "dq": 8, "qword": 8, "real8": 8,
                     "dt": 10, "tbyte": 10, "real10": 10}[value]
         except KeyError:
-            logging.error("Cannot find size for %s", value)
+            logging.exception("Cannot find size for %s", value)
             size = 0
         return size
 
@@ -967,9 +966,9 @@ class Parser:
         number = 1
         if isinstance(args, list) and len(args) > 2 and isinstance(args[1], str) and args[1] == "dup":
             cpp = cpp_module.Cpp(self)
-            number = literal_eval(cpp.render_instruction_argument(Token.find_tokens(args[0],"expr")))
+            number = literal_eval(cpp.render_instruction_argument(Token_.find_tokens(args[0],"expr")))
             args = args[3]
-        args = Token.remove_tokens(args, ["structinstance"])
+        args = Token_.remove_tokens(args, ["structinstance"])
 
         d = op.Data(label, type, op.DataType.OBJECT, args, 1, s.getsize(), comment="struct instance", offset=offset)
         members = [deepcopy(i) for i in s.getdata().values()]
@@ -995,9 +994,9 @@ class Parser:
             self.__cur_seg_offset += number * s.getsize()
             self.__binary_data_size += number * s.getsize()
 
-    def add_extern(self, label: Token, type: Token) -> None:
+    def add_extern(self, label: Token_, type: Token) -> None:
         strtype = self.mangle_label(type)
-        if isinstance(type, Token):
+        if isinstance(type, Token_):
             strtype = type.children
         label = self.mangle_label(label)
         if strtype not in ["proc"]:
@@ -1076,15 +1075,15 @@ class Parser:
             and args[0].children[0].type == "LABEL"
         ):
             if args[0].children[0].lower() == "arbf":  # @f
-                args[0].children[0] = f"dummylabel{str(self.__c_dummy_jump_label + 1)}"
+                args[0].children[0] = f"dummylabel{self.__c_dummy_jump_label + 1!s}"
             elif args[0].children[0].lower() == "arbb":  # @b
-                args[0].children[0] = f"dummylabel{str(self.__c_dummy_jump_label)}"
+                args[0].children[0] = f"dummylabel{self.__c_dummy_jump_label!s}"
 
     def collect_labels(self, target: set[str], operation: baseop) -> None:
         for arg in operation.children:
-            offset = Token.find_tokens(arg, "offsetdir") or []
+            offset = Token_.find_tokens(arg, "offsetdir") or []
             if offset and not isinstance(offset[0], str): offset = []
-            labels = (Token.find_tokens(arg, "LABEL") or []) + offset
+            labels = (Token_.find_tokens(arg, "LABEL") or []) + offset
             # TODO replace with AST traversing
             #  If it is call to a proc then does not take it into account
             #  TODO: check for calls into middle of proc

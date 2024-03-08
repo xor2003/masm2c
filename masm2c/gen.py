@@ -6,8 +6,8 @@ from copy import copy
 from typing import TYPE_CHECKING
 
 import jsonpickle
-
 from lark import lark
+
 from masm2c import op
 from masm2c import proc as proc_module
 from masm2c.Token import Expression
@@ -395,11 +395,11 @@ class Gen:
                 logging.warning("push/pop balance = %d non zero at the exit of proc", self.__pushpop_count)
             return self.body, segment
         except (CrossJump, op.Unsupported) as e:
-            logging.error("%s: ERROR: %s", name, e)
+            logging.exception("%s: ERROR: %s", name, e)
             self.__failed.append(name)
             raise
         except Exception as ex:
-            logging.error(f"Exception {ex.args} for {name}")
+            logging.exception(f"Exception {ex.args} for {name}")
             raise
         return None, None
 
@@ -471,7 +471,7 @@ class Gen:
 
             result = self.renderer.produce_number_c(expr, radix, sign, value)
         except Exception as ex:
-            logging.error("Failed to parse number %s radix %d %s", expr, radix, ex)
+            logging.exception("Failed to parse number %s radix %d %s", expr, radix, ex)
             result = expr
 
         return result

@@ -1,8 +1,8 @@
 from collections.abc import Iterator
 
 import jsonpickle
-
 from lark import Lark, Transformer, Tree, lark, v_args
+
 from masm2c.Token import Token
 
 
@@ -16,19 +16,19 @@ class MatchTag:
     def process(self, stream: Iterator[lark.Token]) -> Iterator[lark.Token]:
         for t in stream:
             if t.type == "LABEL":
-                if t.value == 'struc':
+                if t.value == "struc":
                     t.type = "STRUCTHDR"
-                elif t.value == 'ends':
+                elif t.value == "ends":
                     t.type = "endsdir"
             #if t.type == "STRUCTHDR":
-            if self.last_type == 'LABEL' and t.type == "LABEL" and t.value == 'VECTOR':
+            if self.last_type == "LABEL" and t.type == "LABEL" and t.value == "VECTOR":
                 t.type = "STRUCTNAME"
             self.last_type = t.type
             self.last = t.value
             yield t
 
-with open('masm2c/_masm61.lark') as g:
-    l = Lark(g, parser='lalr', propagate_positions=True, debug=True,
+with open("masm2c/_masm61.lark") as g:
+    l = Lark(g, parser="lalr", propagate_positions=True, debug=True,
              postlex=MatchTag())  # , keep_all_tokens=True)
 
 """
@@ -92,9 +92,9 @@ end start ;IGNORE
 class ExprRemover(Transformer):
     @v_args(meta=True)
     def expr(self, meta, children):
-        children = Token.remove_tokens(children, 'expr')
+        children = Token.remove_tokens(children, "expr")
 
-        return Tree('expr', children, meta)
+        return Tree("expr", children, meta)
 
 
 e = ExprRemover()

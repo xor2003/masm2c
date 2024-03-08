@@ -7,8 +7,8 @@ from parglare import Grammar
 
 macronames = []
 structnames = []
-macronamere = re.compile(r'([A-Za-z@_\$\?][A-Za-z@_\$\?0-9]*)')
-commentid = re.compile(r'COMMENT\s+([^ ]).*?\1[^\r\n]*', flags=re.DOTALL)
+macronamere = re.compile(r"([A-Za-z@_\$\?][A-Za-z@_\$\?0-9]*)")
+commentid = re.compile(r"COMMENT\s+([^ ]).*?\1[^\r\n]*", flags=re.DOTALL)
 
 def macro_action(context, nodes, name):
     macronames.insert(0, name.lower())
@@ -60,16 +60,16 @@ def build_ast(nodes, type=''):
 
 def make_token(context, nodes):
     if len(nodes) == 1 and context.production.rhs[0].name not in (
-            'type', 'e01', 'e02', 'e03', 'e04', 'e05', 'e06', 'e07', 'e08', 'e09', 'e10', 'e11'):
+            "type", "e01", "e02", "e03", "e04", "e05", "e06", "e07", "e08", "e09", "e10", "e11"):
         nodes = Token(context.production.rhs[0].name, nodes[0])
-        print(f"mt~{str(nodes)}~")
+        print(f"mt~{nodes!s}~")
     if context.production.rhs[0].name in (
-            'type', 'e01', 'e02', 'e03', 'e04', 'e05', 'e06', 'e07', 'e08', 'e09', 'e10', 'e11'):
+            "type", "e01", "e02", "e03", "e04", "e05", "e06", "e07", "e08", "e09", "e10", "e11"):
         nodes = nodes[0]
     return nodes
 
 
-cur_segment = 'ds'  # !
+cur_segment = "ds"  # !
 indirection = 0  # !
 
 
@@ -77,16 +77,16 @@ def segoverride(context, nodes):
     global cur_segment
     if isinstance(nodes[0], list):
         cur_segment = nodes[0][-1]
-        return nodes[0][:-1] + [Token('segoverride', nodes[0][-1]), nodes[2]]
+        return nodes[0][:-1] + [Token("segoverride", nodes[0][-1]), nodes[2]]
     cur_segment = nodes[0]  # !
-    return [Token('segoverride', nodes[0]), nodes[2]]
+    return [Token("segoverride", nodes[0]), nodes[2]]
 
 
 def ptrdir(context, nodes):
     if len(nodes) == 3:
-        return [Token('ptrdir', nodes[0]), nodes[2]]
+        return [Token("ptrdir", nodes[0]), nodes[2]]
     else:
-        return [Token('ptrdir', nodes[0]), nodes[1]]
+        return [Token("ptrdir", nodes[0]), nodes[1]]
 
 
 def includedir(context, nodes, name):
@@ -98,39 +98,39 @@ def asminstruction(context, nodes, instruction, args):
     global cur_segment
     global indirection
     print(
-        f"instruction {get_raw(context)} {str(nodes)} ~~ {str(cur_segment)} {str(indirection)}"
+        f"instruction {get_raw(context)} {nodes!s} ~~ {cur_segment!s} {indirection!s}",
     )
-    cur_segment = 'ds'  # !
+    cur_segment = "ds"  # !
     indirection = 0  # !
     return nodes
 
 
 def notdir(context, nodes):
-    nodes[0] = '~'
+    nodes[0] = "~"
     return nodes
 
 
 def ordir(context, nodes):
-    nodes[1] = '|'
+    nodes[1] = "|"
     return nodes
 
 
 def xordir(context, nodes):
-    nodes[1] = '^'
+    nodes[1] = "^"
     return nodes
 
 
 def anddir(context, nodes):
-    nodes[1] = ' & '
+    nodes[1] = " & "
     return nodes
 
 
 def register(context, nodes):
-    return Token('register', nodes[0].lower())
+    return Token("register", nodes[0].lower())
 
 
 def segmentregister(context, nodes):
-    return Token('segmentregister', nodes[0].lower())
+    return Token("segmentregister", nodes[0].lower())
 
 
 def sqexpr(context, nodes):
@@ -139,38 +139,38 @@ def sqexpr(context, nodes):
     res = nodes[1]
 
     # if isinstance(res, list):
-    return Token('sqexpr', res)
+    return Token("sqexpr", res)
 
 
 def offsetdir(context, nodes):
     # global indirection
-    return Token('offsetdir', nodes[1])
+    return Token("offsetdir", nodes[1])
 
 
 def segmdir(context, nodes):
     # global indirection
-    return Token('segmdir', nodes[1])
+    return Token("segmdir", nodes[1])
 
 
 def instrprefix(context, nodes):
-    print(f"instrprefix /~{str(nodes)}" + "~\\")
+    print(f"instrprefix /~{nodes!s}" + "~\\")
     return nodes
 
 
 def LABEL(context, nodes):
-    return Token('LABEL', nodes)
+    return Token("LABEL", nodes)
 
 
 def STRING(context, nodes):
-    return Token('STRING', nodes)
+    return Token("STRING", nodes)
 
 
 def INTEGER(context, nodes):
-    return Token('INTEGER', nodes)
+    return Token("INTEGER", nodes)
 
 
 def expr(context, nodes):
-    return Token('expr', make_token(context, nodes))
+    return Token("expr", make_token(context, nodes))
 
 def structname(head, s, pos):
     if not (mtch := macronamere.match(s[pos:])):
@@ -188,12 +188,12 @@ def structdir(context, nodes, name, item):
     return []  # Token('structdir', nodes) TODO ignore by now
 
 def structinstdir(context, nodes, label, type, values):
-    print(f"structinstdir{str(label)}{str(type)}{str(values)}")
+    print(f"structinstdir{label!s}{type!s}{values!s}")
     return nodes  # Token('structdir', nodes) TODO ignore by now
 
 
 def memberdir(context, nodes, variable, field):
-    result = Token('memberdir', [variable, field])
+    result = Token("memberdir", [variable, field])
     print(result)
     return result
 
@@ -201,9 +201,9 @@ def commentkw(head, s, pos):
     return mtch.group(0) if (mtch := commentid.match(s[pos:])) else None
 
 recognizers = {
-    'macroname': macroname,
+    "macroname": macroname,
     "structname": structname,
-    'COMMENTKW': commentkw,
+    "COMMENTKW": commentkw,
 }
 
 actions = {
@@ -249,10 +249,10 @@ from parglare import Parser
 
 parser = Parser(grammar, debug=True, actions=actions, debug_colors=True)
 
-codeset = 'cp437'
+codeset = "cp437"
 
 if sys.version_info[0] >= 3:
-    sys.stdout.reconfigure(encoding='utf-8')
+    sys.stdout.reconfigure(encoding="utf-8")
 
 for i in sys.argv[1:]:
 

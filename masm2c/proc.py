@@ -25,6 +25,7 @@ import re
 from typing import Any
 
 from lark import lark
+
 from masm2c.op import _assignment, _equ, _mov, baseop, label
 from masm2c.Token import Expression
 
@@ -102,7 +103,7 @@ class Proc:
             cl = self.find_op_common_class(cmd, args)
         return cl
 
-    def find_op_common_class(self, cmd: str, args: list[Any | Expression]) -> type["_instruction3"] | type["_instruction2"] | type["_instruction0"] | type["_jump"] | type["_instruction1"]:
+    def find_op_common_class(self, cmd: str, args: list[Any | Expression]) -> type[_instruction3 | _instruction2 | _instruction0 | _jump | _instruction1]:
         logging.debug(cmd)
         try:
             cl = (
@@ -128,7 +129,7 @@ class Proc:
             elif isinstance(ptrdir[0], str):
                 o.original_type = ptrdir[0].lower()
 
-        o.raw_line = f"{line_number} {label} equ {str(value)}"
+        o.raw_line = f"{line_number} {label} equ {value!s}"
         o.line_number = line_number
         o.cmd = o.raw_line
         o.value = value
@@ -136,12 +137,12 @@ class Proc:
         return o
 
     def create_assignment_op(self, label: str, value: Expression, line_number: int=0) -> _assignment:
-        logging.debug(f"{label} {str(value)}")
+        logging.debug(f"{label} {value!s}")
         o = op._assignment([label, value])
         if hasattr(value, "original_type"):  # TODO cannot get original type anymore. not required here
             o.original_type = value.original_type
 
-        o.raw_line = f"{line_number} {label} = {str(value)}"
+        o.raw_line = f"{line_number} {label} = {value!s}"
         o.line_number = line_number
         o.cmd = o.raw_line
         o.value = value
@@ -208,8 +209,8 @@ class Proc:
             except SkipCode:
                 logging.debug(f"Skipping code {stmt}")
             except Exception as ex:
-                logging.error(f"Exception {ex.args}")
-                logging.error(f" in {stmt.filename}:{stmt.line_number} {stmt.raw_line}")
+                logging.exception(f"Exception {ex.args}")
+                logging.exception(f" in {stmt.filename}:{stmt.line_number} {stmt.raw_line}")
                 raise
 
             try:  # trying to add command and comment
@@ -219,7 +220,7 @@ class Proc:
             except AttributeError:
                 logging.warning(f"Some attributes missing while setting comment for {stmt}")
 
-    def generate_full_cmd_line(self, visitor: "Cpp", stmt: _mov) -> str:
+    def generate_full_cmd_line(self, visitor: Cpp, stmt: _mov) -> str:
         prefix = visitor.prefix
         visitor._cmdlabel = ""
         visitor.dispatch = ""
@@ -236,7 +237,7 @@ class Proc:
 
         return visitor._cmdlabel + visitor.dispatch + full_command
 
-    def generate_c_cmd(self, visitor: "Cpp", stmt: baseop) -> str:
+    def generate_c_cmd(self, visitor: Cpp, stmt: baseop) -> str:
         return stmt.accept(visitor)
 
     def if_terminated_proc(self):

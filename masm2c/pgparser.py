@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Union
 import lark.lexer
 import lark.tree
 from lark.visitors import _DiscardType
+
 from masm2c.op import Data, _assignment, baseop
 from masm2c.Token import Expression
 
@@ -24,7 +25,7 @@ from lark import Discard, Lark, Transformer, Tree, v_args
 from . import op
 from .enumeration import IndirectionType
 from .Macro import Macro
-from .Token import Expression, Token
+from .Token import Token
 
 macroses = OrderedDict()
 macronamere = re.compile(r"([A-Za-z_@$?][A-Za-z0-9_@$?]*)")
@@ -33,7 +34,7 @@ commentid = re.compile(r"COMMENT\s+([^ ]).*?\1[^\r\n]*", flags=re.DOTALL)
 class MatchTag:
     always_accept = "LABEL", "structinstdir", "STRUCTNAME"
 
-    def __init__(self, context: "Parser") -> None:
+    def __init__(self, context: Parser) -> None:
         self.context = context
         self.last_type = None
         self.last = None
@@ -95,7 +96,7 @@ def get_raw_line(input_str: str, meta: lark.tree.Meta) -> str:
 
 class CommonCollector(Transformer):
 
-    def __init__(self, context: "Parser", input_str: str="") -> None:
+    def __init__(self, context: Parser, input_str: str="") -> None:
         self.context = context
         self._expression = None
         self.input_str = input_str
@@ -111,7 +112,7 @@ class EquCollector(CommonCollector):
 
 class Asm2IR(CommonCollector):
 
-    def __init__(self, context: "Parser", input_str: str="") -> None:
+    def __init__(self, context: Parser, input_str: str="") -> None:
         super().__init__(context, input_str)
         self._radix = 10
         self._element_type = None
@@ -211,7 +212,7 @@ class Asm2IR(CommonCollector):
         try:
             type = children[0].lower()  # TODO handle jmp short near abc
         except AttributeError:
-            logging.error("AttributeError %s:%s", get_line_number(meta), get_raw_line(self.input_str, meta))
+            logging.exception("AttributeError %s:%s", get_line_number(meta), get_raw_line(self.input_str, meta))
             sys.exit(11)
         #if self._size: # TODO why need another variable?
         self.expression.ptr_size = self.context.typetosize(type)
@@ -392,9 +393,7 @@ class Asm2IR(CommonCollector):
                         self.expression.ptr_size = g.size
                     else:
                         self.expression.element_size = g.size
-            elif isinstance(g, (op.label, Proc)):
-                pass
-            elif isinstance(g, op.var):
+            elif isinstance(g, (Proc, op.label, op.var)):
                 pass
             elif isinstance(g, op.Struct):
                 logging.debug("get_size res %d", g.size)
@@ -410,7 +409,7 @@ class Asm2IR(CommonCollector):
 
     @v_args(meta=True)
     def segmentdir(self, meta, nodes):
-        logging.debug(f"segmentdir {str(nodes)} ~~")
+        logging.debug(f"segmentdir {nodes!s} ~~")
 
         name = self.name = self.context.mangle_label(nodes[0])
         opts = set()
@@ -445,7 +444,7 @@ class Asm2IR(CommonCollector):
     def procdir(self, meta, nodes):
         name, type = nodes[0], self._poptions
         self._poptions = []
-        logging.debug(f"procdir {str(nodes)} ~~")
+        logging.debug(f"procdir {nodes!s} ~~")
         self.context.action_proc(name, type, line_number=get_line_number(meta),
                                  raw=get_raw_line(self.input_str, meta))
         self._expression = None
@@ -453,7 +452,7 @@ class Asm2IR(CommonCollector):
 
     def endpdir(self, nodes):
         name = nodes[0]
-        logging.debug(f"endp {str(name)} ~~")
+        logging.debug(f"endp {name!s} ~~")
         self.context.action_endp()
         return nodes
 
@@ -553,7 +552,7 @@ class Asm2IR(CommonCollector):
         if m := re.match(r'[\'"](.+)[\'"]$', nodes):
             string = m[1]
             if not self.context.itislst:  # not for IDA .lst
-                string = string.replace("\'\'", "'").replace('\"\"', '"')  # masm behaviour
+                string = string.replace("''", "'").replace('""', '"')  # masm behaviour
             self.expression.element_number = len(string)
             self.expression.element_size = 1
             self.expression.mods.add("string")
@@ -604,7 +603,7 @@ recognizers = {
 
 
 class LarkParser:
-    def __new__(cls: type["LarkParser"], *args, **kwargs) -> "LarkParser":
+    def __new__(cls: type[LarkParser], *args, **kwargs) -> LarkParser:
         if not hasattr(cls, "_inst"):
             cls._inst = super().__new__(cls)
             logging.debug("Allocated LarkParser instance")
@@ -631,12 +630,12 @@ class ExprRemover(Transformer):
 
 class IncludeLoader(Transformer):
 
-    def __init__(self, context: "Parser") -> None:
+    def __init__(self, context: Parser) -> None:
         self.context = context
 
     def includedir(self, nodes):
         name = nodes[0].children[0]
-        name = name[1:-1] if name[0] == '<' and name[-1] == '>' else name
+        name = name[1:-1] if name[0] == "<" and name[-1] == ">" else name
         fullpath = os.path.join(os.path.dirname(os.path.realpath(self.context._current_file)), name)
         return self.context.parse_include_file_lines(fullpath)
 
@@ -686,9 +685,9 @@ class TopDownVisitor:
 
 class BottomUpVisitor:
 
-    def __init__(self, init: Union["Vector", None]=None, **kwargs) -> None:
+    def __init__(self, init: Union[Vector, None]=None, **kwargs) -> None:
         self.init = init
-    def visit(self, node: Any) -> "Vector":
+    def visit(self, node: Any) -> Vector:
         result = copy(self.init)
         try:
             if isinstance(node, Tree):

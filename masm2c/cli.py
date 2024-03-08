@@ -60,6 +60,7 @@ def parse_args(args):
     Returns:
     -------
       :obj:`argparse.Namespace`: command line parameters namespace
+
     """
     aparser = argparse.ArgumentParser(description=f"Masm source to C++ translator V{__version__} {__license__}", prefix_chars="-")
     aparser.add_argument(
@@ -124,6 +125,7 @@ def setup_logging(name, loglevel):
     Args:
     ----
     loglevel (int): minimum loglevel for emitting messages
+
     """
     root = logging.getLogger()
     root.setLevel(loglevel)
@@ -187,6 +189,7 @@ def main():
     Args:
     ----
       args ([str]): command line parameter list
+
     """
     args = sys.argv[1:]
     setup_logging("", logging.INFO)
