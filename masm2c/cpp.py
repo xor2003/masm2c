@@ -19,7 +19,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #
 import logging
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any, Optional, Union, List
 
 from lark.lexer import Token
 from lark.tree import Tree
@@ -101,7 +101,7 @@ bool __dispatch_call(m2c::_offsets __disp, struct m2c::_STATE* _state);
 class Cpp(Gen, TopDownVisitor):
     """Visitor which can produce C++ equivalents for asm instructions."""
 
-    def __init__(self, context: Optional["Parser"]=None, outfile: str="", skip_output: None=None,
+    def __init__(self, context: "Parser", outfile: str="", skip_output: None=None,
                  merge_data_segments: bool=True) -> None:
         # proc_strategy = SingleProcStrategy()):
         """:param context: pointer to Parser data
@@ -118,12 +118,13 @@ class Cpp(Gen, TopDownVisitor):
         self._indirection: IndirectionType = IndirectionType.VALUE
 
         #
-        self.__proc_done = []
-        self.__failed = []
-        self._proc_addr = []
-        self.__used_data_offsets = set()
-        self.__methods = []
+        self.__proc_done: list[str] = []
+        self.__failed: list[str] = []
+        self._proc_addr: list[tuple[str,int]] = []
+        #self.__used_data_offsets = set()
+        self.__methods: list[str] = []
         self.__pushpop_count = 0
+        self._ismember = False
 
         self.far = False
         self.size_changed = False
@@ -141,7 +142,7 @@ class Cpp(Gen, TopDownVisitor):
 
         self.itisjump = False
         self.itiscall = False
-        self.is_data = False
+        self.is_data = 0
 
         self.__type_table = {op.DataType.NUMBER: self.produce_c_data_number,
                              op.DataType.ARRAY: self.produce_c_data_array,
@@ -242,7 +243,7 @@ class Cpp(Gen, TopDownVisitor):
         :param segments: a dictionary of segments, where the key is the segment name and the value is the segment object
         :return: cpp_file, data_hpp_file, data_cpp_file, hpp_file
         """
-        self.is_data = True
+        self.is_data = -1
 
         cpp_file = ""
         data_hpp_file = ""
@@ -292,7 +293,7 @@ class Cpp(Gen, TopDownVisitor):
                     data_cpp_file += _reference_in_data_cpp  # reference in _data.cpp
                 data_hpp_file += type_and_name  # headers in _data.h
 
-        self.is_data = False
+        self.is_data = 0
         return cpp_file, data_hpp_file, data_cpp_file, hpp_file
 
     def _generate_extern_from_declaration_c(self, _hpp):
@@ -317,6 +318,7 @@ class Cpp(Gen, TopDownVisitor):
         return _reference
 
     def memberdir(self, tree: Tree) -> list[str]:
+        assert isinstance(tree.children, list) and all(isinstance(child, str)for child in tree.children)
         return [self.convert_member_(tree.children)]
 
 
@@ -587,9 +589,9 @@ class Cpp(Gen, TopDownVisitor):
             src.ptr_size = dst_size
         if dst.indirection == IndirectionType.POINTER and dst.element_size == 0 and src_size and not dst.ptr_size:
             dst.ptr_size = src_size
-        dst = self.render_instruction_argument(dst, dst_size, destination=True)
-        src = self.render_instruction_argument(src, src_size)
-        return dst, src
+        dst_str = self.render_instruction_argument(dst, dst_size, destination=True)
+        src_str = self.render_instruction_argument(src, src_size)
+        return dst_str, src_str
 
     def _add(self, dst: Expression, src: Expression) -> str:
         self.a, self.b = self.parse2(dst, src)
@@ -633,28 +635,28 @@ class Cpp(Gen, TopDownVisitor):
     def _jz(self, label: Expression) -> str:
         if self.isrelativejump(label):
             return "{;}"
-        label, _ = self.jump_post(label)  # TODO
-        return f"JZ({label})"
+        label_str, _ = self.jump_post(label)  # TODO
+        return f"JZ({label_str})"
 
     def _jnz(self, label: Expression) -> str:
-        label, _ = self.jump_post(label)
-        return f"JNZ({label})"
+        label_str, _ = self.jump_post(label)
+        return f"JNZ({label_str})"
 
     def _jbe(self, label: Expression) -> str:
-        label, _ = self.jump_post(label)
-        return f"JBE({label})"
+        label_str, _ = self.jump_post(label)
+        return f"JBE({label_str})"
 
     def _ja(self, label: Expression) -> str:
-        label, far = self.jump_post(label)
-        return f"JA({label})"
+        label_str, far = self.jump_post(label)
+        return f"JA({label_str})"
 
     def _jc(self, label: Expression) -> str:
-        label, far = self.jump_post(label)
-        return f"JC({label})"
+        label_str, far = self.jump_post(label)
+        return f"JC({label_str})"
 
     def _jnc(self, label: Expression) -> str:
-        label, far = self.jump_post(label)
-        return f"JNC({label})"
+        label_str, far = self.jump_post(label)
+        return f"JNC({label_str})"
 
     """
     def _push(self, regs):
@@ -722,6 +724,7 @@ class Cpp(Gen, TopDownVisitor):
         self.a = self.render_instruction_argument(src)
         size = self.calculate_size(src)
         srcr = Token_.find_tokens(src, REGISTER)
+        assert srcr
         return "SCAS(%s,%s,%d)" % (self.a, srcr[0], size)
 
     def process(self):
@@ -1048,6 +1051,7 @@ struct Memory{
         size = self.calculate_size(dst)
         dstr, srcr = Token_.find_tokens(dst, REGISTER), Token_.find_tokens(src, REGISTER)
         self.a, self.b = self.parse2(dst, src)
+        assert dstr and srcr
         return "MOVS(%s, %s, %s, %s, %d)" % (self.a, self.b, dstr[0], srcr[0], size)
 
     def _repe(self):
@@ -1062,6 +1066,7 @@ struct Memory{
         self.a = self.render_instruction_argument(src)
         size = self.calculate_size(src)
         srcr = Token_.find_tokens(src, REGISTER)
+        assert srcr
         return "LODS(%s,%s,%d)" % (self.a, srcr[0], size)
 
     def _leave(self) -> str:
@@ -1086,7 +1091,7 @@ struct Memory{
         if def_size == 0 and expr.element_size == 0 and expr.indirection != IndirectionType.POINTER:
             from .parser import ExprSizeCalculator, Vector
             calc = ExprSizeCalculator(init=Vector(0, 0), context=self._context)
-            def_size, _ = calc.visit(expr)  # , result=0)
+            def_size, _ = calc.visit(expr).values  # , result=0)
 
         if def_size and expr.element_size == 0:
             expr.element_size = def_size
@@ -1115,11 +1120,12 @@ struct Memory{
             if res < 0: return False
         return True
 
-    def _jump(self, cmd: str, label: Expression) -> str:
-        if self.isrelativejump(label):
+    def _jump(self, cmd: str, label_expr: Expression) -> str:
+        if self.isrelativejump(label_expr):
             return "{;}"
 
-        label, _ = self.jump_post(label)
+        label, _ = self.jump_post(label_expr)
+        assert self._context.args
         if self._context.args.mergeprocs == "separate" and cmd.upper() == "JMP":
             if label == "__dispatch_call":
                 return "return __dispatch_call(__disp, _state);"
@@ -1158,7 +1164,8 @@ struct Memory{
         self._cmdlabel += f"#undef {dst}\n#define {dst} {self.render_instruction_argument(src)}\n"
         return ""
 
-    def _equ(self, dst):
+    def _equ(self, dst: str):
+        assert isinstance(dst, str)
         src = self._context.get_global(dst).value
         src.indirection = IndirectionType.VALUE
         self._cmdlabel += f"#define {dst} {self.render_instruction_argument(src)}\n"
@@ -1230,9 +1237,9 @@ struct Memory{
         for i in data.getmembers():
             c, _, _ = self.produce_c_data_single_(i)
             rc += [c]
-        rc = "{" + ",".join(rc) + "}"
+        rc_str = "{" + ",".join(rc) + "}"
         rh = f"{data_ctype} {label}"
-        return rc, rh
+        return rc_str, rh
 
     def convert_char(self, c: Union[int, str]) -> str:
         if isinstance(c, int) and c not in [10, 13]:
@@ -1337,13 +1344,13 @@ struct Memory{
         name = mangle_asm_labels(name)
         return name.lower()
 
-    def produce_number_c(self, expr: str, radix: int, sign: str, value: str) -> str:
+    def produce_number_c(self, expr: str, radix: int, sign: int, value: int) -> str:
         if radix == 10:
             return f"{sign}{value}"
         elif radix == 16:
             return f"{sign}0x{value}"
         elif radix == 2:
-            return f"{sign}{hex(int(value, 2))}"
+            return f"{sign}{hex(int(str(value), 2))}"
         elif radix == 8:
             return f"{sign}0{value}"
         else:
@@ -1352,6 +1359,7 @@ struct Memory{
 
 
     def INTEGER(self, t: Token) -> list[str]:
+        assert t.start_pos and t.line is not None and t.column is not None
         return [self.produce_number_c("", t.start_pos, t.line, t.column)]
 
     def STRING(self, token: Token) -> list[str]:
@@ -1384,7 +1392,7 @@ struct Memory{
 
         self.element_size = tree.element_size
         self._ismember = False
-        self._need_pointer_to_member = False
+        self._need_pointer_to_member = []
         result = "".join(self.visit(tree.children))
         tree.indirection = self._indirection
 
@@ -1431,12 +1439,12 @@ struct Memory{
         c, h, size = self.produce_c_data_single_(data)
         c += f", // {data.getlabel()}" + "\n"
         h += ";\n"
-        self.is_data = False
+        self.is_data = 0
         return c, h, size
 
     def LABEL(self, token: Token) -> list[Union[str, Token]]:
         if self.is_data:
-            size = self.is_data if type(self.is_data) == int else 0
+            size = self.is_data
             return [self.convert_label_data(token, size=size)]
         return [self.convert_label_(token)]
 
@@ -1447,33 +1455,35 @@ struct Memory{
             return v
         if isinstance(g, op.var):
             if g.issegment:
-                v = f"seg_offset({g.name})"
+                result = f"seg_offset({g.name})"
             elif size == 2:
-                v = f"offset({g.segment},{g.name})"
+                result = f"offset({g.segment},{g.name})"
             elif size == 4:
-                v = f"far_offset({g.segment},{g.name})"
+                result = f"far_offset({g.segment},{g.name})"
             else:
                 logging.error(f"Some unknown data size {size} for {g.name}")
         elif isinstance(g, (op._equ, op._assignment)):
-            v = g.original_name
+            result = g.original_name
         elif isinstance(g, (op.label, proc.Proc)):
-            v = f"m2c::k{g.name.lower()}"
+            result = f"m2c::k{g.name.lower()}"
         elif not isinstance(g, op.Struct):
-            v = g.offset
-        logging.debug(v)
-        return v
+            result = g.offset
+        logging.debug(result)
+        return result
 
     def offsetdir(self, tree: Tree) -> list[Union[str, Token]]:  # TODO equ, assign support
         name = tree.children[0]
 
         if isinstance(name, lark.Tree) and name.data=="memberdir":
             label = name.children
+            assert isinstance(label, list) and all(isinstance(lab, str) for lab in label)
             if (g := self._context.get_global(label[0])) is None:
                 return label
 
-            value = self.convert_member_offset(g, label)
-            return [lark.Token("memberdir", value)]
+            value_str = self.convert_member_offset(g, label)
+            return [lark.Token("memberdir", value_str)]
 
+        assert isinstance(name, str)
         if (g := self._context.get_global(name)) is None:
             return [name]
         if isinstance(g, op.var):
@@ -1491,15 +1501,19 @@ struct Memory{
             raise ValueError("Unknown type for offsetdir %s", type(g))
 
     def notdir(self, tree: Tree) -> list[Union[str, Token]]:
+        assert isinstance(tree.children, list) and all(isinstance(child, str) for child in tree.children)
         return ["~", *tree.children]
 
     def ordir(self, tree: Tree) -> list[Union[str, Token]]:
+        assert isinstance(tree.children, list) and all(isinstance(child, str) for child in tree.children)
         return [tree.children[0], " | ", tree.children[1]]
 
     def xordir(self, tree):
+        assert isinstance(tree.children, list) and all(isinstance(child, str) for child in tree.children)
         return [tree.children[0], " ^ ", tree.children[1]]
 
     def anddir(self, tree):
+        assert isinstance(tree.children, list) and all(isinstance(child, str) for child in tree.children)
         return [tree.children[0], " & ", tree.children[1]]
 
     def sizearg(self, tree: Tree) -> list[str]:

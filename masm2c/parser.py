@@ -57,23 +57,24 @@ STRINGCNST = "STRING"
 
 class Vector:
 
-    def __init__(self, *args) -> None:
-        self.__value = args
+    def __init__(self, arg1, arg2) -> None:
+        self.__value: list[int] = [arg1, arg2]
 
     def __add__(self, vec: Optional[Vector]) -> Vector:
         if vec is not None:
-            self.__value = [a + b for a, b in zip(self.__value, vec)]
+            self.__value = [self.__value[0] + vec.values[0], self.__value[1] + vec.values[1]]
         return self
 
     def __mul__(self, other: int) -> Vector:
-        self.__value = [a * other for a in self]
+        self.__value = [self.__value[0] * other, self.__value[1] * other]
         return self
 
-    #@property
-    #def value(self):
+    @property
+    def values(self):
+        return self.__value
 
-    def __getitem__(self, item: int) -> int:
-        return self.__value[item]
+    #def __getitem__(self, item: int) -> int:
+    #    return self.__value[item]
 
     def __repr__(self) -> str:
         return f"{self.__value}"
@@ -761,7 +762,7 @@ class Parser:
         #for ex in args:
 
         calc = ExprSizeCalculator(element_size=binary_width, init=Vector(0, 0), context=self)
-        size, elements = calc.visit(args) #, result=0)
+        size, elements = calc.visit(args).values
         if size == 0:
             size = binary_width * elements
 
