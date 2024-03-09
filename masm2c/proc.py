@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import Any
+from typing import Any, TYPE_CHECKING, ClassVar
 
 from lark import lark
 
@@ -32,11 +32,14 @@ from masm2c.Token import Expression
 from . import op
 from .Token import Token
 
+if TYPE_CHECKING:
+    from .cpp import Cpp
+
 PTRDIR = "ptrdir"
 
 
 class Proc:
-    last_addr = 0xc000
+    last_addr: ClassVar = 0xc000
 
     def __init__(self, name: str, far: bool = False, line_number: int = 0, extern: bool = False, offset: int | None=0,
                  real_offset: int | None=0,
@@ -51,13 +54,13 @@ class Proc:
         self.name = name
         self.original_name = name
 
-        self.stmts = []
+        self.stmts: list[baseop] = []
         self.provided_labels = {name}
         self.line_number = line_number
         self.far = far
         self.used = False
         self.extern = extern
-        self.used_labels = set()
+        self.used_labels: set[str] = set()
         self.group = None
         self.segment = segment
 
@@ -65,7 +68,7 @@ class Proc:
         Proc.last_addr += 4
         self.real_offset, self.real_seg = real_offset, real_seg
 
-    def merge_two_procs(self, newname, other):
+    def merge_two_procs(self, newname: str, other: Proc):
         self.name, self.original_name = newname, newname
         self.stmts += other.stmts
         self.provided_labels |= other.provided_labels
@@ -83,7 +86,7 @@ class Proc:
         # trivial simplifications
 
 
-    def create_instruction_object(self, instruction: Token, args: list[Any | Expression] | None=None) -> baseop:
+    def create_instruction_object(self, instruction: lark.Token, args: list[Any | Expression] | None=None) -> baseop:
         """:param instruction: the instruction name
         :param args: a list of strings, each string is an argument to the instruction
         :return: An object of type cl, which is a subclass of Instruction.
@@ -96,14 +99,14 @@ class Proc:
         o.syntetic = False
         return o
 
-    def find_op_class(self, cmd: Token, args: list[Any | Expression]) -> Any:
+    def find_op_class(self, cmd: lark.Token, args: list[Any | Expression]) -> Any:
         try:
             cl = getattr(op, f"_{cmd.lower()}")
         except AttributeError:
             cl = self.find_op_common_class(cmd, args)
         return cl
 
-    def find_op_common_class(self, cmd: str, args: list[Any | Expression]) -> type[_instruction3 | _instruction2 | _instruction0 | _jump | _instruction1]:
+    def find_op_common_class(self, cmd: str, args: list[Any | Expression]) -> type[baseop]:
         logging.debug(cmd)
         try:
             cl = (
@@ -125,6 +128,7 @@ class Proc:
         o = op._equ(label)
         if ptrdir := Token.find_tokens(value, PTRDIR):
             if isinstance(ptrdir[0], Token):
+                assert isinstance(ptrdir[0].children, str)
                 o.original_type = ptrdir[0].children.lower()
             elif isinstance(ptrdir[0], str):
                 o.original_type = ptrdir[0].lower()

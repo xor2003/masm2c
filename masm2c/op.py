@@ -54,8 +54,8 @@ class baseop(lark.Tree):
     def __str__(self) -> str:
         return str(self.__class__)
 
-    #@property
-    #def data(self):
+    def accept(self, visitor: "Cpp") -> str:
+        raise NotImplementedError()
 
 class var:
 
@@ -1044,6 +1044,7 @@ class _equ(baseop):
         self.original_type = ""
         self.implemented = False
         self.size = 0
+        self.value: Expression
 
     def gettype(self):
         return self.original_type
@@ -1065,6 +1066,7 @@ class _assignment(baseop):
         self.original_type = ""
         self.implemented = False
         self.size = 0
+        self.value: Expression
 
     def gettype(self):
         return self.original_type
@@ -1087,6 +1089,7 @@ class _mov(baseop):
     def __init__(self, args: list[Expression]) -> None:
         super().__init__()
         self.children = args
+        self.syntetic = False
 
     def accept(self, visitor: "Cpp") -> str:
         return visitor._mov(*self.children)
