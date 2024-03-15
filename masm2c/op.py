@@ -399,7 +399,7 @@ SIMPLE_SEGMENTS = {
     },
 }
 
-class Segment(lark.Tree):
+class Segment:
 
     def __init__(self, name: str, offset: int, options: None=None, segclass: None=None, comment: str="") -> None:
         """Represents MASM Segment.
@@ -415,7 +415,7 @@ class Segment(lark.Tree):
         self.original_name = name
         self.used = False
         self.data = "segment"
-        self.children = []
+        self.children: list[Data] = []
         self.options = options
         self.segclass = segclass
         self.seglabels = {self.name}
@@ -472,7 +472,7 @@ class Data(baseop):
         self.elements = elements
         self.size = size
         self.children = array
-        self.__members = []
+        self.__members: list[Data] = []
         self.filename = filename
         self.raw_line = raw_line
         self.line_number = line_number
@@ -498,7 +498,7 @@ class Data(baseop):
     def getmembers(self) -> list["Data"]:
         return self.__members
 
-    def setvalue(self, value: list[Union[Any, int, list[int]]]) -> None:
+    def setvalue(self, value: list) -> None:
         if self.isobject():
             for m, v in zip(self.__members, value):
                 m.setvalue(v)
@@ -538,7 +538,7 @@ class Struct:
         :param dtype: Structure or Union?
         """
         self.__name = name
-        self.children = OrderedDict()
+        self.children: OrderedDict[str, Union[Data, Struct]] = OrderedDict()
         self.size = 0
         self.__type = Struct.Type.UNION if dtype.lower() == "union" else Struct.Type.STRUCT
 

@@ -52,3 +52,4 @@ MANIFEST
 
 *.obj
 *.o
+.aider*
