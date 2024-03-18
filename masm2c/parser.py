@@ -348,18 +348,17 @@ class Parser:
         # logging.debug "~4~ %s" %v
         return int(v)
 
-
-    def identify_data_internal_type(self, data: Tree, elements: int, is_string: bool) -> op.DataType:
-        if not is_string:
-            return op.DataType.ARRAY if elements > 1 else op.DataType.NUMBER
+    def identify_data_internal_type(self, data: Tree, elements_count: int, is_string_type: bool) -> op.DataType:
+        if not is_string_type:
+            return op.DataType.ARRAY if elements_count > 1 else op.DataType.NUMBER
         args = data.children
         return (
             op.DataType.ZERO_STRING
-            if elements >= 2
-            and not (isinstance(args[-1], Tree) and args[-1].data == "dupdir")
-            and isinstance(args[-1].children[-1], lark.Token)
-            and args[-1].children[-1].type == "INTEGER"
-            and args[-1].children[-1].value == "0"
+            if elements_count >= 2
+               and not (isinstance(args[-1], Tree) and args[-1].data == "dupdir")
+               and isinstance(args[-1].children[-1], lark.Token)
+               and args[-1].children[-1].type == "INTEGER"
+               and args[-1].children[-1].value == "0"
             else op.DataType.ARRAY_STRING
         )
 
