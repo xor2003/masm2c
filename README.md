@@ -42,13 +42,14 @@ Dune](http://img.youtube.com/vi/f-HArAmtXTc/0.jpg)](http://www.youtube.com/watch
    ```
    This generates C++ source files (e.g., game.cpp and game.h) and a .seg file containing segment information.
 
-2. **Function Merging Procedures:**
+2. **Merging Procedures:**
 
-      * Masm2c provides different options for handling procedure merging, controlled by the -m or --mergeprocs flag:
+      * Masm2c provides different options for handling procedure merging, it helps to get working code in case there are jumps between procedures.
+      * It controlled by the -m or --mergeprocs flag:
         * separate (default): Procedures are kept separate, and jumps between them use a global dispatch function.
         * persegment: Procedures within the same segment are merged.
         * single: All procedures are merged into a single function.
-      * It helps to get working code in case there are jumps between procedures.
+     
 
 3. **Specifying Load Segment:**
 
@@ -75,7 +76,7 @@ Dune](http://img.youtube.com/vi/f-HArAmtXTc/0.jpg)](http://www.youtube.com/watch
 * **C++ Source Files (.cpp and .h):** These files contain the translated C code equivalent to your assembly source.
 * **Segment File (.seg):** This file stores information about the segments in your assembly code. It can be used for merging data segments from multiple input files.
 
-Tips:**
+**Tips:**
 
 * For better disassembly and translation, consider using tools like libDOSBox to collect runtime information (e.g., segment register values, memory access patterns).
 * Masm2c scripts can help convert libDOSBox traces into annotations for disassemblers like IDA Pro.
