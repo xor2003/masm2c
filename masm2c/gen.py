@@ -141,7 +141,7 @@ class Gen:
         #groups_id += 1
         return groups
 
-    def merge_two_procs_with_label(self, first_proc_name, first_proc, next_proc_name, next_proc, new_group_name):
+    def merge_two_procs_with_label(self, first_proc_name: str, first_proc: Proc, next_proc_name: str, next_proc: Proc, new_group_name: str):
         self.groups[next_proc_name] = new_group_name
         next_label = op.label(next_proc_name, proc=first_proc_name, isproc=False,
                               line_number=next_proc.line_number, far=next_proc.far)
