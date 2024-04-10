@@ -1,3 +1,7 @@
+"""
+Defines classes for different types of assembly instructions and operands.
+It include classes like _mov, _add, _jmp, etc., each with methods to generate equivalent C code.
+"""
 # Masm2c S2S translator (initially based on SCUMMVM tasmrecover)
 #
 # Masm2c is the legal property of its developers, whose names
@@ -889,6 +893,7 @@ class label(baseop):
         self.isproc = isproc
         self.used = False
         self.globl = globl
+        self.proc = proc
 
     def accept(self, visitor):
         return visitor._label(self.name, self.isproc)

@@ -1,3 +1,8 @@
+"""
+Responsible for generating C++ code specifically.
+It might handle tasks like converting assembly labels to C++ identifiers, generating function prototypes,
+and handling C++ specific constructs.
+"""
 # Masm2c S2S translator (initially based on SCUMMVM tasmrecover)
 #
 # Masm2c is the legal property of its developers, whose names
@@ -113,7 +118,6 @@ class Cpp(Gen, TopDownVisitor):
         self.renderer = self
         self._namespace = os.path.basename(outfile)
         self.__codeset = "cp437"
-        self._context = context
 
         self._indirection: IndirectionType = IndirectionType.VALUE
 

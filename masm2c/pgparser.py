@@ -1,3 +1,8 @@
+"""
+Handle the parsing of MASM code using the Lark library.
+It defines grammar rules, actions for different types of instructions and directives,
+and transforms the parsed tree into an intermediate representation (IR) for further processing.
+"""
 from __future__ import annotations
 
 import logging

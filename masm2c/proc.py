@@ -1,4 +1,7 @@
-# Masm2c S2S translator (initially based on SCUMMVM tasmrecover)
+"""
+Deals with procedures (functions) in assembly code.
+"""
+# Masm2c S2S translator (initially based on SCUMMVM tasmrecover))
 #
 # Masm2c is the legal property of its developers, whose names
 # are too numerous to list here. Please refer to the COPYRIGHT
@@ -39,6 +42,8 @@ PTRDIR = "ptrdir"
 
 
 class Proc:
+    """The Proc class stores information about each procedure, such as its name, arguments, and the instructions it contains."""
+
     last_addr: ClassVar = 0xc000
 
     def __init__(self, name: str, far: bool = False, line_number: int = 0, extern: bool = False, offset: int | None=0,

@@ -1,3 +1,7 @@
+"""
+Deals with macro definitions and expansions.
+The Macro class stores information about each macro and its parameters.
+"""
 # Masm2c S2S translator (initially based on SCUMMVM tasmrecover)
 #
 # Masm2c is the legal property of its developers, whose names
