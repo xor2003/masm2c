@@ -26,20 +26,21 @@ class Gen:
     def __init__(self, context: "Parser", outfile: str="", skip_output: None=None,
                  merge_data_segments: bool=True) -> None:
         self._context = context
-        self.label_to_proc = {}
+        self.label_to_proc: dict[str, str] = {}
         self._isjustlabel = False
-        self.groups = OrderedDict()
-        self.grouped = set()
+        self.groups: OrderedDict[str, str] = OrderedDict()
+        self.grouped: set[str] = set()
         self._middle_size = 0
         self.merge_data_segments = merge_data_segments
         self._procs = context.proc_list
-        self.body = ""
+        self.body: str = ""
         self.lea = False
         self._work_segment = "ds"
         self.isvariable = False  # only address or variable
-        context.cpp = self
 
-
+        self.dispatch: str = ""
+        self.prefix: str = ""
+        self._cmdlabel: str = ""
 
 
     def calculate_size(self, expr: Expression) -> int:
@@ -128,6 +129,7 @@ class Gen:
         self._context.reset_global(first_proc_name, first_label)
         self.grouped.add(first_proc_name)
         self.groups[first_proc_name] = new_group_name
+        assert self._context.args
         proc_to_group = self._procs if self._context.args.mergeprocs == "single" else first_proc.to_group_with
         proc_to_group = self.sort_procedure_list_in_linenumber_order(proc_to_group)
         for next_proc_name in proc_to_group:
@@ -394,7 +396,7 @@ class Gen:
             labels = self.leave_unique_labels(self.proc.provided_labels)
 
             offsets = self.make_enums_and_labels(labels)
-            self.body += self.renderer.produce_jump_table_c(offsets)
+            self.body += self.produce_jump_table(offsets)
 
             segment = self.proc.segment
             self.proc = None
@@ -410,6 +412,9 @@ class Gen:
             logging.exception(f"Exception {ex.args} for {name}")
             raise
         return None, None
+
+    def produce_jump_table(self, offsets):
+        raise NotImplementedError()
 
     @staticmethod
     def isrelativejump(label: Expression) -> bool:
@@ -463,8 +468,11 @@ class Gen:
         offsets = []
         for k in labels:
             k = re.sub(r"\W", "_", k)
-            offsets.append((k.lower(), self.renderer.cpp_mangle_label(k)))
+            offsets.append((k.lower(), self.mangle_label(k)))
         return sorted(offsets, key=lambda t: t[1])
+
+    def mangle_label(self, name: str) -> str:
+        raise NotImplementedError()
 
     def convert_asm_number_into_c(self, expr: str, radix: int=10) -> str:
         """It tryes to convert assembler number in any base to a C number string with the same base.
@@ -477,12 +485,15 @@ class Gen:
             from masm2c.parser import parse_asm_number
             radix, sign, value = parse_asm_number(expr, radix)
 
-            result = self.renderer.produce_number_c(expr, radix, sign, value)
+            result = self.produce_number(expr, radix, sign, value)
         except Exception as ex:
             logging.exception("Failed to parse number %s radix %d %s", expr, radix, ex)
             result = expr
 
         return result
+
+    def produce_number(self, expr: str, radix: int, sign: str, value: str) -> str:
+        raise NotImplementedError()
 
 
 def guess_int_size(v: int) -> int:

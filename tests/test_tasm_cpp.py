@@ -5713,13 +5713,13 @@ class CppTest(unittest.TestCase):
         assert self.cpp.convert_asm_number_into_c(expr="7o") == "07"
 
     def test_cpp_39340(self):
-        assert self.cpp.cpp_mangle_label(name="loc_40458F") == "loc_40458f"
+        assert self.cpp.mangle_label(name="loc_40458F") == "loc_40458f"
 
     def test_cpp_39350(self):
-        assert self.cpp.cpp_mangle_label(name="_start") == "_start"
+        assert self.cpp.mangle_label(name="_start") == "_start"
 
     def test_cpp_39360(self):
-        assert self.cpp.cpp_mangle_label(name="_st$art$") == "_st_tmpart_tmp"
+        assert self.cpp.mangle_label(name="_st$art$") == "_st_tmpart_tmp"
 
 
 if __name__ == "__main__":

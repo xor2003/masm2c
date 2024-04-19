@@ -62,7 +62,7 @@ class SeparateProcStrategy:
         self.renderer = renderer
 
     def produce_proc_start(self, name):
-        return f" // Procedure {name}() start\n{self.renderer.cpp_mangle_label(name)}()\n{{\n"
+        return f" // Procedure {name}() start\n{self.renderer.mangle_label(name)}()\n{{\n"
 
     def function_header(self, name, entry_point=""):
         header = """
@@ -70,7 +70,7 @@ class SeparateProcStrategy:
  bool %s(m2c::_offsets _i, struct m2c::_STATE* _state){
     X86_REGREF
     __disp = _i;
-""" % self.renderer.cpp_mangle_label(name)
+""" % self.renderer.mangle_label(name)
 
         if entry_point != "":
             header += """
@@ -82,7 +82,7 @@ class SeparateProcStrategy:
     else goto __dispatch_call;
     %s:
     _begin:
-""" % self.renderer.cpp_mangle_label(name)
+""" % self.renderer.mangle_label(name)
         return header
 
     def write_declarations(self, procs, context):
@@ -90,7 +90,7 @@ class SeparateProcStrategy:
         for p in sorted(procs):  # TODO only if used or public
             if p == "mainproc" and not context.itislst:  # and not context.main_file:
                 result += "static "
-            result += "bool %s(m2c::_offsets, struct m2c::_STATE*);\n" % self.renderer.cpp_mangle_label(p)
+            result += "bool %s(m2c::_offsets, struct m2c::_STATE*);\n" % self.renderer.mangle_label(p)
 
         for i in sorted(context.externals_procs):
             v = context.get_global(i)
@@ -115,7 +115,7 @@ class Cpp(Gen, TopDownVisitor):
         """
         super().__init__(context, outfile=outfile, skip_output=skip_output, merge_data_segments=merge_data_segments)
         self.proc_strategy = SeparateProcStrategy(self)
-        self.renderer = self
+        self.renderer: Gen = self
         self._namespace = os.path.basename(outfile)
         self.__codeset = "cp437"
 
@@ -136,10 +136,6 @@ class Cpp(Gen, TopDownVisitor):
         self.itispointer = False
 
         self.struct_type = None
-
-        self.dispatch = ""
-        self.prefix = ""
-        self._cmdlabel = ""
 
         self.isvariable = False
         self.islabel = False
@@ -512,7 +508,7 @@ class Cpp(Gen, TopDownVisitor):
         if isproc:
             raise RuntimeError("Dead code?")
         else:
-            self._cmdlabel = "%s:\n" % self.cpp_mangle_label(name)
+            self._cmdlabel = "%s:\n" % self.mangle_label(name)
         return ""
 
     def _call(self, expr: Expression) -> str:
@@ -558,7 +554,7 @@ class Cpp(Gen, TopDownVisitor):
         else:
             proc_name, label_ip = "__dispatch_call", proc_name
 
-        proc_name = self.cpp_mangle_label(proc_name)
+        proc_name = self.mangle_label(proc_name)
 
         if far:
             ret += f"CALLF({proc_name},{label_ip})"
@@ -924,7 +920,7 @@ class Cpp(Gen, TopDownVisitor):
                  bool {self._context.entry_point}(m2c::_offsets, struct m2c::_STATE* _state){{return {self.label_to_proc[g.name]}(m2c::k{self._context.entry_point}, _state);}}
                 """
 
-            entry_point_text += f"""namespace m2c{{ m2cf* _ENTRY_POINT_ = &{self.cpp_mangle_label(self._context.entry_point)};}}
+            entry_point_text += f"""namespace m2c{{ m2cf* _ENTRY_POINT_ = &{self.mangle_label(self._context.entry_point)};}}
         """
         return entry_point_text
 
@@ -1297,7 +1293,7 @@ struct Memory{
         for k, v in globals:
             if isinstance(v, proc_module.Proc) and v.used:
                 k = re.sub(r"[^A-Za-z0-9_]", "_", k)  # need to do it during mangling
-                entries[k] = (self.cpp_mangle_label(k), "0")
+                entries[k] = (self.mangle_label(k), "0")
                 labels = v.provided_labels
 
                 entries.update({label: (v.name, "__disp") for label in set(labels) if label != v.name})
@@ -1320,7 +1316,7 @@ struct Memory{
             return f"MOV({self.a}, {self.b})"
         return f"{self.a} = {self.b};"
 
-    def produce_jump_table_c(self, offsets):
+    def produce_jump_table(self, offsets):
         """It takes a list of labels and produces a C++ switch statement that jumps to the corresponding label.
 
         :param offsets: a list of labels that we want to jump to
@@ -1344,11 +1340,11 @@ struct Memory{
         result += "    };\n}\n"
         return result
 
-    def cpp_mangle_label(self, name: str) -> str:
+    def mangle_label(self, name: str) -> str:
         name = mangle_asm_labels(name)
         return name.lower()
 
-    def produce_number_c(self, expr: str, radix: int, sign: int, value: int) -> str:
+    def produce_number(self, expr: str, radix: int, sign: str, value: str) -> str:
         if radix == 10:
             return f"{sign}{value}"
         elif radix == 16:
@@ -1364,7 +1360,7 @@ struct Memory{
 
     def INTEGER(self, t: Token) -> list[str]:
         assert t.start_pos and t.line is not None and t.column is not None
-        return [self.produce_number_c("", t.start_pos, t.line, t.column)]
+        return [self.produce_number("", t.start_pos, str(t.line), str(t.column))]
 
     def STRING(self, token: Token) -> list[str]:
         result = token.value

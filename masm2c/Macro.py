@@ -2,6 +2,9 @@
 Deals with macro definitions and expansions.
 The Macro class stores information about each macro and its parameters.
 """
+from masm2c.op import baseop
+
+
 # Masm2c S2S translator (initially based on SCUMMVM tasmrecover)
 #
 # Masm2c is the legal property of its developers, whose names
@@ -27,7 +30,7 @@ class Macro:
     def __init__(self, name, parameters, repeat=1) -> None:
         self.__name = name
         self.__parameters = parameters
-        self.instructions = []
+        self.instructions: list[baseop] = []
         self.__repeat = repeat
 
     def getparameters(self):

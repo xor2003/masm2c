@@ -280,7 +280,7 @@ class Parser:
         value.used = False
         self.__globals[name] = value
 
-    def reset_global(self, name: str, value: var | _assignment) -> None:
+    def reset_global(self, name: str, value: var | _assignment | label) -> None:
         if not name:
             raise NameError("empty name is not allowed")
         value.original_name = name

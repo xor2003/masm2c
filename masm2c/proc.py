@@ -36,6 +36,7 @@ from . import op
 from .Token import Token
 
 if TYPE_CHECKING:
+    from .gen import Gen
     from .cpp import Cpp
 
 PTRDIR = "ptrdir"
@@ -162,7 +163,7 @@ class Proc:
     def __str__(self) -> str:
         return "\n".join(i.__str__() for i in self.stmts)
 
-    def set_instruction_compare_subclass(self, stmt: _mov, full_command: str, itislst: bool) -> str:
+    def set_instruction_compare_subclass(self, stmt: baseop, full_command: str, itislst: bool) -> str:
         """Sets libdosbox's emulator the instruction subclass
         to perform comparison of instruction side effects at run-time with the emulated.
         """
@@ -202,7 +203,7 @@ class Proc:
         result = "\t" + trace_mode + "(" + full_command + ");"
         return result
 
-    def visit(self, visitor, skip=0):
+    def visit(self, visitor: "Gen", skip=0):
         for i in range(skip, len(self.stmts)):
             stmt = self.stmts[i]
             from .gen import InjectCode, SkipCode
@@ -229,7 +230,7 @@ class Proc:
             except AttributeError:
                 logging.warning(f"Some attributes missing while setting comment for {stmt}")
 
-    def generate_full_cmd_line(self, visitor: Cpp, stmt: _mov) -> str:
+    def generate_full_cmd_line(self, visitor: "Gen", stmt: baseop) -> str:
         prefix = visitor.prefix
         visitor._cmdlabel = ""
         visitor.dispatch = ""
@@ -263,6 +264,6 @@ class Proc:
     def is_return_point(self, stmt):
         return stmt.cmd.startswith("call")
 
-    def is_flow_change_stmt(self, stmt: _mov) -> bool:
+    def is_flow_change_stmt(self, stmt: baseop) -> bool:
         return stmt.cmd.startswith("j") or self.is_flow_terminating_stmt(stmt) \
                or stmt.cmd.startswith("call") or stmt.cmd.startswith("loop")

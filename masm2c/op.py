@@ -25,7 +25,7 @@ It include classes like _mov, _add, _jmp, etc., each with methods to generate eq
 from collections import OrderedDict
 from copy import deepcopy
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any, Union, Optional
 
 from lark import lark
 
@@ -44,11 +44,13 @@ class baseop(lark.Tree):
         super().__init__(self.__class__.__name__.lower(), [])
         self.cmd = ""
         self.raw_line = ""
+        self.filename = ""
         self.line_number = 0
         self.elements = 1
         self.size = 0
-        self.real_offset = None
-        self.real_seg = None
+        self.real_offset: Optional[int] = None
+        self.real_seg: Optional[int] = None
+        self.syntetic = False
 
     def getsize(self) -> int:
         return self.size
@@ -58,7 +60,7 @@ class baseop(lark.Tree):
     def __str__(self) -> str:
         return str(self.__class__)
 
-    def accept(self, visitor: "Cpp") -> str:
+    def accept(self, visitor: "Gen") -> str:
         raise NotImplementedError()
 
 class var:
