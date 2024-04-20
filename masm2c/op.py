@@ -25,12 +25,13 @@ It include classes like _mov, _add, _jmp, etc., each with methods to generate eq
 from collections import OrderedDict
 from copy import deepcopy
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Union, Optional
+from typing import TYPE_CHECKING, Any, Union, Optional, Sequence
 
 from lark import lark
 
 if TYPE_CHECKING:
     from masm2c.cpp import Cpp
+
 from masm2c.Token import Expression
 
 
@@ -60,7 +61,7 @@ class baseop(lark.Tree):
     def __str__(self) -> str:
         return str(self.__class__)
 
-    def accept(self, visitor: "Gen") -> str:
+    def accept(self, visitor: "Cpp") -> str:
         raise NotImplementedError()
 
 class var:
@@ -558,7 +559,7 @@ class Struct:
     def getdata(self) -> OrderedDict:
         return self.children
 
-    def getitem(self, key: str) -> Data:
+    def getitem(self, key: str) -> Union[Data, "Struct"]:
         return self.children[key.lower()]
 
     def getsize(self) -> int:
@@ -733,7 +734,7 @@ class _retn(baseop):
         return visitor._ret(self.children)
 
 class _retf(baseop):
-    def __init__(self, args: list[Union[Expression, Any]]) -> None:
+    def __init__(self, args: list[Expression]) -> None:
         super().__init__()
         self.children = args
 
@@ -877,7 +878,7 @@ class _nop(baseop):
 
 class label(baseop):
 
-    def __init__(self, name: str, proc:str=None, isproc: bool=False, line_number: int=0, far: bool=False, globl: bool=True) -> None:
+    def __init__(self, name: str, *, proc:str, isproc: bool=False, line_number: int=0, far: bool=False, globl: bool=True) -> None:
         """Label.
 
         :param name:
@@ -1066,7 +1067,7 @@ class _equ(baseop):
 
 
 class _assignment(baseop):
-    def __init__(self, args: list[Union[str, Expression]]) -> None:
+    def __init__(self, args: list[Union[str, lark.Tree]]) -> None:
         super().__init__()
         self.children = args
         self.original_name = ""
@@ -1085,7 +1086,7 @@ class _assignment(baseop):
         #    raise SkipCode
 
 class _xlat(baseop):
-    def __init__(self, args: list[Union[Expression, Any]]) -> None:
+    def __init__(self, args: list[Expression]) -> None:
         super().__init__()
         self.children = args
 

@@ -25,7 +25,7 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import Any, TYPE_CHECKING, ClassVar
+from typing import Any, TYPE_CHECKING, ClassVar, Optional
 
 from lark import lark
 
@@ -92,13 +92,14 @@ class Proc:
         # trivial simplifications
 
 
-    def create_instruction_object(self, instruction: lark.Token, args: list[Any | Expression] | None=None) -> baseop:
+    def create_instruction_object(self, instruction: lark.Token, args: Optional[list[Expression]] = None) -> baseop:
         """:param instruction: the instruction name
         :param args: a list of strings, each string is an argument to the instruction
         :return: An object of type cl, which is a subclass of Instruction.
         """
         if args is None:
             args = []
+        assert all(isinstance(arg, Expression) for arg in args)
         cl = self.find_op_class(instruction, args)
         o = cl(args)
         o.cmd = instruction.lower()
