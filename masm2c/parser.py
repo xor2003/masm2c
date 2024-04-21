@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from argparse import Namespace
 from ast import literal_eval
 
 """ Module to parse assembler source """
@@ -173,7 +174,7 @@ def dump_object(value: Struct | label | Proc | var | _equ) -> str:
 class Parser:
     c_dummy_label = 0
 
-    def __init__(self, args: Optional[list]=None) -> None:
+    def __init__(self, args: Optional[Namespace] = None) -> None:
         """Assembler parser."""
         self.test_mode = False
         self.__globals: OrderedDict[str, Struct | label | Proc | var | _equ] = OrderedDict()
@@ -189,7 +190,7 @@ class Parser:
         self.procs_start: set[int] = set()
 
         if not args:
-            class MyDummyObj: pass
+            class MyDummyObj(Namespace): pass
 
             args = MyDummyObj()
             args.mergeprocs = "separate"
@@ -342,7 +343,7 @@ class Parser:
             result = v
 
         try:
-            vv: int = eval(result)
+            vv: int = int(eval(result))
             return vv
         except Exception:
             pass
