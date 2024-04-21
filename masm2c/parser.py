@@ -87,7 +87,7 @@ class ExprSizeCalculator(BottomUpVisitor):
         self.element_size = element_size
         self.kwargs = kwargs
 
-    def expr(self, tree: Token_.Expression, size: Vector) -> Vector:
+    def expr(self, tree: Expression, size: Vector) -> Vector:
         if self.element_size:
             tree.element_size = self.element_size
         """
@@ -98,7 +98,9 @@ class ExprSizeCalculator(BottomUpVisitor):
         """
         return Vector(tree.size(), tree.element_number)
 
-    def dupdir(self, tree: Tree, size: Vector) -> Vector:
+    def dupdir(self, tree: lark.Tree, size: Vector) -> Vector:
+        if not hasattr(tree, "repeat"):
+            raise RuntimeError()
         return size * tree.repeat
 
     def LABEL(self, token: Token) -> Vector | None:  # TODO very strange, to replace
@@ -125,7 +127,7 @@ class ExprSizeCalculator(BottomUpVisitor):
                 if (g := context.get_global(type)) is None:
                     raise KeyError(type)
                 if isinstance(g, op.Struct):
-                    g = g.getitem(member)
+                    g = g.getitem(str(member))
                     type = g.data
                 else:
                     return g._size
@@ -171,20 +173,20 @@ def dump_object(value: Struct | label | Proc | var | _equ) -> str:
 class Parser:
     c_dummy_label = 0
 
-    def __init__(self, args: None=None, skip_binary_data: list = None) -> None:
+    def __init__(self, args: Optional[list]=None) -> None:
         """Assembler parser."""
         self.test_mode = False
-        self.__globals = OrderedDict()
+        self.__globals: OrderedDict[str, Struct | label | Proc | var | _equ] = OrderedDict()
         self.pass_number = 0
 
         self.__lex = LarkParser(context=self)
 
-        self.externals_vars = set()
-        self.externals_procs = set()
-        self.__files = set()
+        self.externals_vars: set[str] = set()
+        self.externals_procs: set[str] = set()
+        self.__files: set[str] = set()
         self.itislst = False
-        self.initial_procs_start = set()
-        self.procs_start = set()
+        self.initial_procs_start: set[int] = set()
+        self.procs_start: set[int] = set()
 
         if not args:
             class MyDummyObj: pass
@@ -327,26 +329,26 @@ class Parser:
     @staticmethod
     def parse_int(v: str) -> int:
         # logging.debug "~1~ %s" %v
-        if not isinstance(v, str):
-            raise Exception("Code deleted")
-        v: str = v.strip()
+        assert isinstance(v, str)
+        v = v.strip()
         # logging.debug "~2~ %s" %v
         if re.match(r"^[+-]?[0-8]+[OoQq]$", v):
-            v: int = int(v[:-1], 8)
+            result: str = str(int(v[:-1], 8))
         elif re.match(r"^[+-]?\d[0-9A-Fa-f]*[Hh]$", v):
-            v: int = int(v[:-1], 16)
+            result: str = str(int(v[:-1], 16))
         elif re.match(r"^[01]+[Bb]$", v):
-            v: int = int(v[:-1], 2)
+            result: str = str(int(v[:-1], 2))
+        else:
+            result = v
 
         try:
-            vv: int = eval(v)
-            if isinstance(vv, int):
-                v: int = vv
+            vv: int = eval(result)
+            return vv
         except Exception:
             pass
 
         # logging.debug "~4~ %s" %v
-        return int(v)
+        return int(result)
 
     def identify_data_internal_type(self, data: Tree, elements_count: int, is_string_type: bool) -> op.DataType:
         if not is_string_type:
@@ -994,7 +996,7 @@ class Parser:
             self.__cur_seg_offset += number * s.getsize()
             self.__binary_data_size += number * s.getsize()
 
-    def add_extern(self, label: Token_, type: Token) -> None:
+    def add_extern(self, label: str, type: Token) -> None:
         strtype = self.mangle_label(type)
         if isinstance(type, Token_):
             strtype = type.children
