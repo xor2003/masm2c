@@ -545,6 +545,8 @@ class Struct:
         :param dtype: Structure or Union?
         """
         self.__name = name
+        self.original_name = name
+        self.used = True
         self.children: OrderedDict[str, Union[Data, Struct]] = OrderedDict()
         self.size = 0
         self.__type = Struct.Type.UNION if dtype.lower() == "union" else Struct.Type.STRUCT
@@ -1049,10 +1051,12 @@ class _equ(baseop):
         super().__init__()
         self.name = name
         self.original_name = ""
+        self.used = True
         self.original_type = ""
         self.implemented = False
         self.size = 0
         self.value: Expression
+        self.element_size = 0
 
     def gettype(self):
         return self.original_type
@@ -1071,6 +1075,7 @@ class _assignment(baseop):
         super().__init__()
         self.children = args
         self.original_name = ""
+        self.used = True
         self.original_type = ""
         self.implemented = False
         self.size = 0

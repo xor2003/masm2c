@@ -153,7 +153,7 @@ def read_whole_file(file_name):
     return content
 
 
-def dump_object(value: Struct | label | Proc | var | _equ) -> str:
+def dump_object(value: Struct | label | Proc | var | _equ | _assignment) -> str:
     """Represents object as string.
 
     :param value: The object to dump
@@ -177,7 +177,7 @@ class Parser:
     def __init__(self, args: Optional[Namespace] = None) -> None:
         """Assembler parser."""
         self.test_mode = False
-        self.__globals: OrderedDict[str, Struct | label | Proc | var | _equ] = OrderedDict()
+        self.__globals: OrderedDict[str, Struct | label | Proc | var | _equ | _assignment] = OrderedDict()
         self.pass_number = 0
 
         self.__lex = LarkParser(context=self)
@@ -213,15 +213,15 @@ class Parser:
         self.flow_terminated = True
         self.need_label = True
 
-        self.structures = OrderedDict()
-        self.macro_names_stack = set()
-        self.proc_list = []
+        self.structures: OrderedDict[str, Struct] = OrderedDict()
+        self.macro_names_stack: set[str] = set()
+        self.proc_list: list[str] = []
         self.proc = None
 
         self.__offset_id = 0x1111
         self.entry_point = "mainproc_begin"
         self.main_file = False
-        self.__proc_stack = []
+        self.__proc_stack: list[Proc] = []
 
         self.__binary_data_size = 0
         self.__cur_seg_offset = 0
@@ -241,14 +241,14 @@ class Parser:
         self.current_macro = None
         self.current_struct = None
 
-        self.struct_names_stack = []
+        self.struct_names_stack: list[str] = []
 
         self._current_file = ""
         self.__current_file_hash = "0"
 
         self.data_merge_candidats = 0
 
-        self.equs = set()
+        self.equs: set[str] = set()
 
     """
     def visible(self):
@@ -271,7 +271,7 @@ class Parser:
         return self.__stack.pop()
     """
 
-    def set_global(self, name: str, value: Struct | label | Proc | var | _equ) -> None:
+    def set_global(self, name: str, value: Struct | label | Proc | var | _equ | _assignment) -> None:
         if not name:
             raise NameError("empty name is not allowed")
         value.original_name = name
@@ -283,7 +283,7 @@ class Parser:
         value.used = False
         self.__globals[name] = value
 
-    def reset_global(self, name: str, value: var | _assignment | label) -> None:
+    def reset_global(self, name: str, value: Struct | label | Proc | var | _equ | _assignment) -> None:
         if not name:
             raise NameError("empty name is not allowed")
         value.original_name = name
@@ -333,12 +333,13 @@ class Parser:
         assert isinstance(v, str)
         v = v.strip()
         # logging.debug "~2~ %s" %v
+        result: str
         if re.match(r"^[+-]?[0-8]+[OoQq]$", v):
-            result: str = str(int(v[:-1], 8))
+            result = str(int(v[:-1], 8))
         elif re.match(r"^[+-]?\d[0-9A-Fa-f]*[Hh]$", v):
-            result: str = str(int(v[:-1], 16))
+            result = str(int(v[:-1], 16))
         elif re.match(r"^[01]+[Bb]$", v):
-            result: str = str(int(v[:-1], 2))
+            result = str(int(v[:-1], 2))
         else:
             result = v
 
@@ -378,6 +379,7 @@ class Parser:
         self.make_sure_proc_exists(line_number, raw)
 
         # if self.proc:
+        assert self.proc
         l = op.label(name, proc=self.proc.name, isproc=isproc, line_number=self.__offset_id, far=far, globl=globl)
         _, l.real_offset, l.real_seg = self.get_lst_offsets(raw)
 
@@ -531,6 +533,7 @@ class Parser:
         label = self.mangle_label(label)
 
         # if self.has_global(label):
+        assert self.proc
         o = self.proc.create_assignment_op(label, value, line_number=line_number)
         o.filename = self._current_file
         o.raw_line = raw.rstrip()
@@ -542,25 +545,27 @@ class Parser:
     def action_assign_test(self, label: str="", value: str="", line_number: int=0) -> None:
         raw = value
         result = self.parse_text(value, start_rule="expr")
-        value = self.process_ast(value, result)
-        o = self.action_assign(label, value, raw, line_number)
+        value_tree = self.process_ast(value, result)
+        assert isinstance(value_tree, Expression)
+        o = self.action_assign(label, value_tree, raw, line_number)
         o.implemented = True
 
     def action_equ_test(self, label: str="", value: str="", raw: str="", line_number: int=0) -> None:
         result = self.parse_text(value, start_rule="equtype")
-        value = self.process_ast(value, result)
-
-        o = self.action_equ(label, value, raw, line_number)
+        value_tree = self.process_ast(value, result)
+        assert isinstance(value_tree, Expression)
+        o = self.action_equ(label, value_tree, raw, line_number)
         o.implemented = True
 
     def return_empty(self, _):
         return []
 
-    def action_equ(self, label: str="", value: Expression="", raw: str="", line_number: int=0) -> _equ:
+    def action_equ(self, label: str="", value: Expression | str="", raw: str="", line_number: int=0) -> _equ:
         from .enumeration import IndirectionType
         label = self.mangle_label(label)
         size = value.size() if isinstance(value, Expression) else 0
 
+        assert isinstance(value, Expression)
         o = Proc.create_equ_op(label, value, line_number=line_number)
         o.filename = self._current_file
         o.raw_line = raw.rstrip()
@@ -688,10 +693,11 @@ class Parser:
             self.test_pre_parse()
             result = self.parse_text(line + "\n", start_rule="instruction")
             result = self.process_ast(line, result)
+            assert isinstance(result, baseop)
         except Exception as e:
             print(e)
             logging.exception("Error1")
-            result = [str(e)]
+            #result = [str(e)]
             raise
         return result
 
@@ -719,10 +725,11 @@ class Parser:
             self.test_pre_parse()
             result = self.parse_text(line + "\n", start_rule="insegdirlist")
             result = self.process_ast(line, result)
+            assert isinstance(result, lark.Tree)
         except Exception as e:
             print(e)
             logging.exception("Error3")
-            result = [str(e)]
+            #result = [str(e)]
             raise
         return result
 
@@ -734,6 +741,7 @@ class Parser:
             self.test_pre_parse()
             expr = self.parse_text(line, start_rule="expr")
             expr = self.process_ast(line, expr)
+            assert isinstance(expr, Expression)
             #if destination:
             #if def_size and expr.element_size == 0:
             result = Cpp(self).render_instruction_argument(expr, def_size=def_size, destination=destination)
@@ -889,7 +897,7 @@ class Parser:
             sys.exit(9)
         return result
 
-    def process_ast(self, text: str, result: Tree) -> Tree:
+    def process_ast(self, text: str, result: Tree) -> baseop | Expression | lark.Tree:
         result = IncludeLoader(self).transform(result)
         result = ExprRemover().transform(result)
         asm2ir = Asm2IR(self, text)

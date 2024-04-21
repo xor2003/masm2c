@@ -110,6 +110,7 @@ class Expression(lark.Tree):
         self.registers = set()
         self.segment_register = "ds"
         self.segment_overriden = False
+        self.original_type = ""
 
     def size(self) -> int:
         from masm2c.enumeration import IndirectionType
