@@ -100,9 +100,9 @@ class ExprSizeCalculator(BottomUpVisitor):
         return Vector(tree.size(), tree.element_number)
 
     def dupdir(self, tree: lark.Tree, size: Vector) -> Vector:
-        if not hasattr(tree, "repeat"):
-            raise RuntimeError()
-        return size * tree.repeat
+        #if not hasattr(tree, "repeat"):
+        #    raise RuntimeError()
+        return size * tree.meta.line
 
     def LABEL(self, token: Token) -> Vector | None:  # TODO very strange, to replace
         context = self.kwargs["context"]
@@ -213,7 +213,7 @@ class Parser:
         self.flow_terminated = True
         self.need_label = True
 
-        self.structures: OrderedDict[str, Struct] = OrderedDict()
+        self.structures: OrderedDict[str, Optional[Struct]] = OrderedDict()
         self.macro_names_stack: set[str] = set()
         self.proc_list: list[str] = []
         self.proc = None
@@ -938,7 +938,7 @@ class Parser:
             logging.error(f"Type is not a string TODO {value!s}")
             return 0
         value = value.lower()
-        if value in self.structures and self.structures[value] is not True:
+        if value in self.structures and isinstance(self.structures[value], Struct):
             return self.structures[value].getsize()
         try:
             size = {"db": 1, "byte": 1, "sbyte": 1,

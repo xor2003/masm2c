@@ -32,7 +32,7 @@ from .enumeration import IndirectionType
 from .Macro import Macro
 from .Token import Token
 
-macroses = OrderedDict()
+macroses: OrderedDict[str, Macro] = OrderedDict()
 macronamere = re.compile(r"([A-Za-z_@$?][A-Za-z0-9_@$?]*)")
 commentid = re.compile(r"COMMENT\s+([^ ]).*?\1[^\r\n]*", flags=re.DOTALL)
 
@@ -41,8 +41,8 @@ class MatchTag:
 
     def __init__(self, context: Parser) -> None:
         self.context = context
-        self.last_type = None
-        self.last = None
+        self.last_type = ""
+        self.last = ""
 
     def process(self, stream: Iterator[lark.Token]) -> Iterator[lark.Token]:
         for t in stream:
@@ -52,10 +52,9 @@ class MatchTag:
                 print(self.last_type, self.last)
                 t.type = "endsdir"
 
-            #if t.type == "LABEL" and t.value == 'VECTOR':
-
             if self.last_type == "LABEL" and t.type == "STRUCTHDR":
-                self.context.structures[self.last.lower()] = True
+                assert self.last
+                self.context.structures[self.last.lower()] = None
 
             # if t.type == "STRUCTHDR":
             if self.context.structures and self.last_type == "LABEL" \
@@ -120,16 +119,18 @@ class Asm2IR(CommonCollector):
     def __init__(self, context: Parser, input_str: str="") -> None:
         super().__init__(context, input_str)
         self._radix = 10
-        self._element_type = None
+        self._element_type = ''
 
         self._size = 0
-        self._poptions = []
+        self._poptions: list[str] = []
 
     def externdef(self, nodes: list[lark.tree.Tree | lark.lexer.Token]) -> list[lark.tree.Tree | lark.lexer.Token]:
         label, type = nodes
+        assert isinstance(type, lark.tree.Tree)
         type = type.children[0].children[0]
         logging.debug("externdef %s", nodes)
-        self.context.add_extern(label, type)
+        assert isinstance(type, lark.lexer.Token)
+        self.context.add_extern(str(label), type)
         return nodes
 
     @v_args(meta=True)
@@ -144,6 +145,7 @@ class Asm2IR(CommonCollector):
     def assdir(self, meta:     lark.tree.Meta, nodes: list[lark.lexer.Token | Expression]) -> _assignment:
         name, value = nodes[0], nodes[1]
         logging.debug("assdir %s ~~", nodes)
+        assert isinstance(name, str) and isinstance(value, Expression)
         return self.context.action_assign(name, value, raw=get_raw(self.input_str, meta),
                                           line_number=get_line_number(meta))
 
@@ -174,6 +176,7 @@ class Asm2IR(CommonCollector):
     def expr(self, children: list[Any]) -> Expression:
         # while isinstance(children, list) and len(children) == 1:
         self.expression.children = children  # [0]
+        assert self._expression
         result:Expression = self._expression
         if not self.expression.segment_overriden and result.indirection == IndirectionType.POINTER and \
                 result.registers.intersection({"bp", "ebp", "sp", "esp"}):
@@ -182,24 +185,25 @@ class Asm2IR(CommonCollector):
         self._expression = None
         return result
 
-    def initvalue(self, expr: list[    lark.lexer.Token]) ->     lark.tree.Tree:
+    def initvalue(self, expr: list[    lark.lexer.Token]) -> lark.tree.Tree:
         return lark.Tree(data="exprlist", children=[self.expr(expr)])
 
-    def dupdir(self, children: list[Expression | lark.tree.Tree]) ->     lark.tree.Tree:
+    def dupdir(self, children: list[Expression | lark.tree.Tree]) -> lark.tree.Tree:
         from masm2c.cpp import IR2Cpp
         repeat = copy(children[0])
+        assert isinstance(repeat, Expression)
         repeat.indirection = IndirectionType.VALUE
-        repeat = "".join(IR2Cpp(self.context).visit(repeat))
-        repeat = eval(repeat)
-        value = children[1]
-        result = lark.Tree(data="dupdir", children=value)
-        result.repeat = repeat
+        repeat_str = "".join(IR2Cpp(self.context).visit(repeat))
+        repeat_int = eval(repeat_str)
+        value = [children[1]]
+        result: lark.Tree = lark.Tree(data="dupdir", children=value)
+        result.meta.line = repeat_int
         return result  # Token('dupdir', [times, values])
 
-    def segoverride(self, nodes: list[list[lark.tree.Tree] | list[lark.tree.Tree | lark.lexer.Token] | lark.tree.Tree | lark.lexer.Token]) -> list[lark.tree.Tree | list[lark.lexer.Token] | lark.lexer.Token | list[lark.tree.Tree]]:
-        seg = nodes[0]
-        if isinstance(seg, list):
-            seg = seg[0]
+    def segoverride(self, nodes: list[list[lark.tree.Tree] | list[lark.tree.Tree | lark.lexer.Token] | lark.tree.Tree | lark.lexer.Token]) -> list[list[lark.tree.Tree] | list[lark.tree.Tree | lark.lexer.Token] | lark.tree.Tree | lark.lexer.Token]:
+        #seg = nodes[0]
+        #if isinstance(seg, list):
+        #    seg = seg[0]
         self.expression.indirection = IndirectionType.POINTER
         self.expression.element_size = 0
         self.expression.segment_overriden = True
@@ -211,10 +215,11 @@ class Asm2IR(CommonCollector):
         return str(children[0]).lower()
 
     @v_args(meta=True)
-    def ptrdir(self, meta: lark.tree.Meta, children: list[str | list[lark.lexer.Token] | lark.lexer.Token | list[lark.tree.Tree] | lark.tree.Tree]) -> list[lark.tree.Tree | list[lark.lexer.Token] | lark.lexer.Token | list[lark.tree.Tree]]:
+    def ptrdir(self, meta: lark.tree.Meta, children: list[str | list[lark.lexer.Token] | lark.lexer.Token | list[lark.tree.Tree] | lark.tree.Tree]) -> list[str | list[lark.lexer.Token] | lark.lexer.Token | list[lark.tree.Tree] | lark.tree.Tree]:
         if self.expression.indirection == IndirectionType.VALUE:  # set above
             self.expression.indirection = IndirectionType.POINTER
         try:
+            assert isinstance(children[0], (str, lark.lexer.Token))
             type = children[0].lower()  # TODO handle jmp short near abc
         except AttributeError:
             logging.exception("AttributeError %s:%s", get_line_number(meta), get_raw_line(self.input_str, meta))
@@ -228,9 +233,10 @@ class Asm2IR(CommonCollector):
         self.expression.element_size = 0
         return children
 
-    def ptrdir2(self, children: list[lark.tree.Tree | lark.lexer.Token]) -> list[    lark.lexer.Token]:  # tasm?
+    def ptrdir2(self, children: list[lark.tree.Tree | lark.lexer.Token]) -> list[lark.tree.Tree | lark.lexer.Token]:  # tasm?
         self.expression.indirection = IndirectionType.POINTER
         self.expression.segment_overriden = True
+        assert isinstance(children[0], (str, lark.Token))
         self.expression.ptr_size = self.context.typetosize(children[0])
         self.expression.mods.add("size_changed")
         self._element_type = self.expression.original_type = children[0].lower()
@@ -342,7 +348,9 @@ class Asm2IR(CommonCollector):
         args = values.children[0]
         if args is None:
             args = []
+        assert isinstance(label, lark.Token)
         name = label.lower() if label else ""
+        assert isinstance(type, lark.Token)
         self.context.add_structinstance(name, type.lower(), args, raw=get_raw(self.input_str, meta))
         return Discard
 
@@ -435,13 +443,13 @@ class Asm2IR(CommonCollector):
         self._expression = None
         return nodes
 
-    def endsdir(self, nodes: list[    lark.lexer.Token]) -> list[    lark.lexer.Token]:
+    def endsdir(self, nodes: list[lark.lexer.Token]) -> list[lark.lexer.Token]:
         logging.debug(f"ends {nodes} ~~")
         self.context.action_ends()
         self._expression = None
         return nodes
 
-    def poptions(self, options):
+    def poptions(self, options: list):
         self._poptions = options
         return Discard
 
@@ -729,7 +737,7 @@ class AsmData2IR(TopDownVisitor):  # TODO HACK Remove it. !For missing funcitons
         return result
 
     def dupdir(self, tree:     lark.tree.Tree) -> list[int | list[lark.lexer.Token | str | int] | list[str | int]]:
-        return tree.repeat * self.visit(tree.children)
+        return tree.meta.line * self.visit(tree.children)
     def INTEGER(self, token:     lark.lexer.Token) -> list[int]:
         radix, sign, value = token.start_pos, token.line, token.column
         val = int(value, radix)
