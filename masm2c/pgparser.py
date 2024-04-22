@@ -6,7 +6,7 @@ and transforms the parsed tree into an intermediate representation (IR) for furt
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING, Union, Never
 
 import lark.lexer
 import lark.tree
@@ -353,7 +353,7 @@ class Asm2IR(CommonCollector):
         return children
 
     @v_args(meta=True)
-    def datadir(self, meta:     lark.tree.Meta, children: list) -> _DiscardType | Data:
+    def datadir(self, meta:     lark.tree.Meta, children: list) -> _DiscardType | Data | list[Never]:
         logging.debug("datadir %s ~~", children)
         if not children: return Discard
 

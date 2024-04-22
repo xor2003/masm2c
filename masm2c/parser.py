@@ -31,7 +31,7 @@ import re
 import sys
 from collections import OrderedDict
 from copy import deepcopy
-from typing import Any, Optional
+from typing import Any, Optional, Never
 
 import jsonpickle
 from lark import UnexpectedToken, lark
@@ -747,6 +747,7 @@ class Parser:
             result = Cpp(self).render_instruction_argument(expr, def_size=def_size, destination=destination)
         except Exception as e:
             exc_type, exc_obj, exc_tb = sys.exc_info()
+            assert exc_tb
             fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
             print(e, exc_type, fname, exc_tb.tb_lineno)
             import logging
@@ -761,7 +762,7 @@ class Parser:
 
 
 
-    def datadir_action(self, label: str, type: str, args: Tree, is_string: bool=False, raw: str="", line_number: int=0) -> Data:
+    def datadir_action(self, label: str, type: str, args: Tree, is_string: bool=False, raw: str="", line_number: int=0) -> Data | list[Never]:
         if self.__cur_seg_offset > 0xffff:
             return []
         if self.__cur_seg_offset & 0xff == 0:
@@ -815,6 +816,7 @@ class Parser:
                        raw_line=raw,
                        line_number=line_number, comment=data_type, offset=offset)
         if isstruct:
+            assert self.current_struct
             self.current_struct.append(data)
         else:
             _, data.real_offset, data.real_seg = self.get_lst_offsets(raw)
@@ -862,21 +864,20 @@ class Parser:
                 self.data_merge_candidats = 0
             self.__cur_seg_offset = real_offset
 
-    def get_lst_offsets(self, raw: str) -> tuple[None, None, None]:
+    def get_lst_offsets(self, raw: str) -> tuple[int, int, int]:
         """Get required offsets from .LST file
         :param raw: raw string
         :return: offset from memory begging, offset starting from segment, segment in para.
         """
-        real_offset = None
-        absolute_offset = None
-        real_seg = None
-        if m := re.match(
+        real_offset = 0
+        absolute_offset = 0
+        real_seg = 0
+        if self.itislst and (m := re.match(
             r".* ;~ (?P<segment>[0-9A-Fa-f]{4}):(?P<offset>[0-9A-Fa-f]{4})", raw,
-        ):
-            if self.itislst:
-                real_offset = int(m["offset"], 16)
-                real_seg = int(m["segment"], 16)
-                absolute_offset = real_seg * 0x10 + real_offset
+        )):
+            real_offset = int(m["offset"], 16)
+            real_seg = int(m["segment"], 16)
+            absolute_offset = real_seg * 0x10 + real_offset
         return absolute_offset, real_offset, real_seg
 
 
@@ -891,6 +892,7 @@ class Parser:
     def parse_text(self, text: str, file_name: None=None, start_rule: str="start") -> Tree:
         logging.debug("parsing: [%s]", text)
         try:
+            assert hasattr(self.__lex, "parser")
             result = self.__lex.parser.parse(text, start=start_rule)
         except UnexpectedToken as ex:
             logging.exception("UnexpectedToken: [%s] line=%s column=%s", ex.token, ex.line, ex.column)
@@ -911,12 +913,12 @@ class Parser:
         return result
 
     @staticmethod
-    def mangle_label(name: str | Token) -> str:
+    def mangle_label(name: str | lark.Token) -> str:
         name = name.lower()  # ([A-Za-z@_\$\?][A-Za-z0-9@_\$\?]*)
         return name.replace("@", "arb").replace("?", "que").replace("$", "dol")
 
     @staticmethod
-    def is_register(expr: Token | str) -> int:
+    def is_register(expr: lark.Token | str) -> int:
         expr = expr.lower()
         size = 0
         if expr in {"al", "bl", "cl", "dl", "ah", "bh", "ch", "dh"}:
@@ -930,9 +932,8 @@ class Parser:
             size = 4
         return size
 
-    def typetosize(self, value: str | Token_) -> int:
-        if isinstance(value, Token_):
-            value = value.children
+    def typetosize(self, value_in: str | Token_) -> int:
+        value = value_in.children if isinstance(value_in, Token_) else value_in
         if not isinstance(value, str):
             logging.error(f"Type is not a string TODO {value!s}")
             return 0
@@ -977,7 +978,8 @@ class Parser:
         number = 1
         if isinstance(args, list) and len(args) > 2 and isinstance(args[1], str) and args[1] == "dup":
             cpp = cpp_module.Cpp(self)
-            number = literal_eval(cpp.render_instruction_argument(Token_.find_tokens(args[0],"expr")))
+            expr = Token_.find_tokens(args[0],"expr")
+            number = literal_eval(cpp.render_instruction_argument(expr))
             args = args[3]
         args = Token_.remove_tokens(args, ["structinstance"])
 
@@ -994,6 +996,7 @@ class Parser:
 
         isstruct = len(self.struct_names_stack) != 0
         if isstruct:
+            assert self.current_struct
             self.current_struct.append(d)
         else:
             self.adjust_offset_to_real(raw, label)
@@ -1045,6 +1048,7 @@ class Parser:
 
         self.make_sure_proc_exists(line_number, raw)
 
+        assert self.proc
         o = self.proc.create_instruction_object(instruction, args)
         o.filename = self._current_file
         o.raw_line = raw
@@ -1103,6 +1107,7 @@ class Parser:
                 label = labels[0]
                 if label == "dol":
                     continue
+                assert isinstance(label, str)
                 target.add(self.mangle_label(label))
 
     def action_ends(self) -> None:
