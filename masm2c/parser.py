@@ -1114,6 +1114,7 @@ class Parser:
         if len(self.struct_names_stack):  # if it is not a structure then it is end of segment
             name = self.struct_names_stack.pop()
             logging.debug(f"endstruct {name}")
+            assert self.current_struct
             self.structures[name] = self.current_struct
             self.set_global(name, self.current_struct)
             self.current_struct = None
