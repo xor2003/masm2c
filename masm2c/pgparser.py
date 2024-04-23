@@ -620,7 +620,7 @@ recognizers = {
 
 
 class LarkParser:
-    _inst: Optional[LarkParser] = None
+    _inst: Final[list] = []
     parser: Lark
 
     #def __init__(self) -> None:
@@ -628,7 +628,7 @@ class LarkParser:
 
     def __new__(cls: type[LarkParser], *args, **kwargs) -> LarkParser:
         if not cls._inst:
-            cls._inst = super().__new__(cls)
+            cls._inst[0] = super().__new__(cls)
             logging.debug("Allocated LarkParser instance")
 
             file_name = f"{os.path.dirname(os.path.realpath(__file__))}/_masm61.lark"
@@ -641,7 +641,7 @@ class LarkParser:
                 #print(sorted([term.pattern.value for term in cls._inst.or_parser.terminals if term.pattern.type == 'str']))
             #cls._inst.parser = copy(cls._inst.or_parser)
 
-        return cls._inst
+        return cls._inst[0]
 
 
 
