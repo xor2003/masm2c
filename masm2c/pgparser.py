@@ -12,7 +12,7 @@ import lark.lexer
 import lark.tree
 from lark.visitors import _DiscardType
 
-from masm2c.op import Data, _assignment, baseop
+from masm2c.op import Data, _assignment, baseop, Struct
 from masm2c.Token import Expression
 
 if TYPE_CHECKING:
@@ -54,7 +54,7 @@ class MatchTag:
 
             if self.last_type == "LABEL" and t.type == "STRUCTHDR":
                 assert self.last
-                self.context.structures[self.last.lower()] = None
+                self.context.structures[self.last.lower()] = Struct("", "")
 
             # if t.type == "STRUCTHDR":
             if self.context.structures and self.last_type == "LABEL" \

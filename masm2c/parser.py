@@ -213,7 +213,7 @@ class Parser:
         self.flow_terminated = True
         self.need_label = True
 
-        self.structures: OrderedDict[str, Optional[Struct]] = OrderedDict()
+        self.structures: OrderedDict[str, Struct] = OrderedDict()
         self.macro_names_stack: set[str] = set()
         self.proc_list: list[str] = []
         self.proc = None
@@ -979,6 +979,7 @@ class Parser:
         if isinstance(args, list) and len(args) > 2 and isinstance(args[1], str) and args[1] == "dup":
             cpp = cpp_module.Cpp(self)
             expr = Token_.find_tokens(args[0],"expr")
+            assert isinstance(expr, Expression)
             number = literal_eval(cpp.render_instruction_argument(expr))
             args = args[3]
         args = Token_.remove_tokens(args, ["structinstance"])
