@@ -628,7 +628,7 @@ class LarkParser:
 
     def __new__(cls: type[LarkParser], *args, **kwargs) -> LarkParser:
         if not cls._inst:
-            cls._inst[0] = super().__new__(cls)
+            cls._inst.append(super().__new__(cls))
             logging.debug("Allocated LarkParser instance")
 
             file_name = f"{os.path.dirname(os.path.realpath(__file__))}/_masm61.lark"
