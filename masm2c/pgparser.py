@@ -6,7 +6,7 @@ and transforms the parsed tree into an intermediate representation (IR) for furt
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Union, Never, Optional, ClassVar
+from typing import TYPE_CHECKING, Union, Never, Optional, ClassVar, Final
 
 import lark.lexer
 import lark.tree
@@ -621,10 +621,10 @@ recognizers = {
 
 class LarkParser:
     _inst: Optional[LarkParser] = None
+    parser: Lark
 
-    def __init__(self, context) -> None:
-        self.parser: Lark
-        self.context = context
+    #def __init__(self) -> None:
+    #    self.parser: Lark
 
     def __new__(cls: type[LarkParser], *args, **kwargs) -> LarkParser:
         if not cls._inst:
