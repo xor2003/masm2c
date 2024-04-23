@@ -6,7 +6,7 @@ and transforms the parsed tree into an intermediate representation (IR) for furt
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Union, Never
+from typing import TYPE_CHECKING, Union, Never, Optional
 
 import lark.lexer
 import lark.tree
@@ -102,7 +102,7 @@ class CommonCollector(Transformer):
 
     def __init__(self, context: Parser, input_str: str="") -> None:
         self.context = context
-        self._expression = None
+        self._expression: Optional[Expression] = None
         self.input_str = input_str
 
 """
@@ -260,9 +260,9 @@ class Asm2IR(CommonCollector):
         if sign == "-":
             val *= -1
         self.expression.element_size_guess = guess_int_size(val)
-
+        sign_int = -1 if sign=="-" else 1
         t = lark.Token(type="INTEGER", value=sign + value)
-        t.start_pos, t.line, t.column = radix, sign, value
+        t.start_pos, t.line, t.value = radix, sign_int, value
         return t  # Token('INTEGER', Cpp(self.context.convert_asm_number_into_c(nodes, self.context.radix))  # TODO remove this
 
     def commentkw(self, head, s, pos):
@@ -345,18 +345,20 @@ class Asm2IR(CommonCollector):
     def structinstdir(self, meta:     lark.tree.Meta, nodes: list[lark.tree.Tree | lark.lexer.Token]) -> _DiscardType:
         label, type, values = nodes
         logging.debug(f"structinstdir {label} {type} {values}")
+        assert isinstance(values, lark.Tree)
         args = values.children[0]
         if args is None:
             args = []
         assert isinstance(label, lark.Token)
         name = label.lower() if label else ""
         assert isinstance(type, lark.Token)
+        assert isinstance(args, list)
         self.context.add_structinstance(name, type.lower(), args, raw=get_raw(self.input_str, meta))
         return Discard
 
     def insegdir(self, children: list) -> list[lark.tree.Tree | Data | _assignment]:
         self._expression = None
-        self._element_type = None
+        self._element_type = ""
         self._size = 0
         return children
 
@@ -369,12 +371,12 @@ class Asm2IR(CommonCollector):
             children = children[0]
         label = self.context.mangle_label(children.pop(0)) if isinstance(children[0], lark.Token) and children[0].type == "LABEL" else ""
         type = children.pop(0).lower()
-        if isinstance(children[0], (lark.Token, lark.Tree)):  # Data
+        if isinstance(children[0], lark.Tree):  # Data
             values = lark.Tree(data="data", children=children[0].children)
         else:
             values = children[0][2:3][0]
 
-        is_string = any("string" in expr.mods for expr in values.children if isinstance(expr, lark.Tree) and expr.data == "expr") \
+        is_string = any("string" in expr.mods for expr in values.children if isinstance(expr, Expression) and expr.data == "expr") \
                     and not any(isinstance(expr, lark.Tree) and expr.data == "dupdir" for expr in values.children)
 
         self._expression = None
@@ -390,8 +392,8 @@ class Asm2IR(CommonCollector):
         return nodes
 
 
-    def LABEL(self, value:     lark.lexer.Token) ->     lark.lexer.Token:
-        value = self.context.mangle_label(value)
+    def LABEL(self, value_in:     lark.lexer.Token) ->     lark.lexer.Token:
+        value = self.context.mangle_label(value_in)
         self.name = value
 
         logging.debug("name = %s", self.name)
@@ -402,7 +404,8 @@ class Asm2IR(CommonCollector):
                 #if not isinstance(g.value, Expression):
                 if isinstance(g.value, Expression):
                     g.size = g.value.size()
-                    if len(g.children) == 2 and g.children[1].indirection == IndirectionType.POINTER:
+                    if (len(g.children) == 2 and isinstance(g.children[1], Expression) and
+                            g.children[1].indirection == IndirectionType.POINTER):
                         self.expression.ptr_size = g.size
                     else:
                         self.expression.element_size = g.size
@@ -415,6 +418,7 @@ class Asm2IR(CommonCollector):
             else:
                 logging.debug("get_size res %d", g._size)
                 self.expression.element_size = g._size
+                assert False, "Dead code?"
                 l.size = g._size
 
         return l
@@ -487,22 +491,18 @@ class Asm2IR(CommonCollector):
         return Discard
 
     @v_args(meta=True)
-    def instruction(self, meta:     lark.tree.Meta, nodes: list[Any | lark.tree.Tree]) -> baseop:
+    def instruction(self, meta:     lark.tree.Meta, nodes: list[Any | lark.tree.Tree]) -> baseop | _DiscardType:
         logging.debug("asminstruction %s ~~", nodes)
 
         instruction = self.instruction_name
         args = nodes[0].children if len(nodes) else []
         if len(args) >= 2:
+            assert isinstance(args[0], Expression)
             args[0].mods.add("destination")
         if instruction == "lea":
             for arg in args:
+                assert isinstance(arg, Expression)
                 arg.mods.add("lea")
-        """
-        if not instruction:
-            return nodes
-        if args is None:
-            args = []
-        """
         self._expression = None
         return self.context.action_instruction(instruction, args, raw=get_raw_line(self.input_str, meta),
                                                line_number=get_line_number(meta)) or Discard
@@ -516,6 +516,7 @@ class Asm2IR(CommonCollector):
     @property
     def expression(self) -> Expression:
         self._expression = self._expression or Expression()
+        assert self._expression
         return self._expression
 
     def register(self, children: list[    lark.lexer.Token]) ->     lark.tree.Tree:
@@ -534,20 +535,20 @@ class Asm2IR(CommonCollector):
         self.expression.element_size = 0
         return nodes  # lark.Tree(data='sqexpr', children=nodes)
 
-    def sqexpr2(self, nodes: list[lark.tree.Tree | lark.lexer.Token]) -> list[    lark.tree.Tree]:
+    def sqexpr2(self, nodes: list[lark.tree.Tree | lark.lexer.Token]) -> list[lark.Tree]:
         logging.debug("/~%s~\\", nodes)
         self.expression.indirection = IndirectionType.POINTER
         self.expression.element_size = 0
         nodes.insert(1, lark.Token(type="PLUS", value="+"))
-        nodes = [lark.Tree(data="adddir", children=nodes)]
-        return nodes  # lark.Tree(data='sqexpr', children=nodes)
+        nodes_out = [lark.Tree(data="adddir", children=nodes)]
+        return nodes_out  # lark.Tree(data='sqexpr', children=nodes)
 
     def offsetdir(self, nodes: list[lark.tree.Tree | lark.lexer.Token]) ->     lark.tree.Tree:
         logging.debug("offset /~%s~\\", nodes)
         self.expression.indirection = IndirectionType.OFFSET
         self.expression.element_size = 2
         if isinstance(nodes[0], lark.Token):  # for labels, not for memberdir
-            nodes = [str(nodes[0])]
+            nodes = [nodes[0]]
         return lark.Tree("offsetdir", nodes)
 
     """
@@ -739,9 +740,9 @@ class AsmData2IR(TopDownVisitor):  # TODO HACK Remove it. !For missing funcitons
     def dupdir(self, tree:     lark.tree.Tree) -> list[int | list[lark.lexer.Token | str | int] | list[str | int]]:
         return tree.meta.line * self.visit(tree.children)
     def INTEGER(self, token:     lark.lexer.Token) -> list[int]:
-        radix, sign, value = token.start_pos, token.line, token.column
+        radix, sign, value = token.start_pos, token.line, token.value
         val = int(value, radix)
-        if sign == "-":
+        if sign == -1:
             val = 2 ** (8 * self.element_size) - val
         return [val]
 

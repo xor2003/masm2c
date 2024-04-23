@@ -35,7 +35,7 @@ class CppTest(unittest.TestCase):
         assert self.parser.parse_arg("-40h", def_size=0, destination=False) == "-0x40"
 
     def test_args_20090(self):
-        assert self.parser.parse_arg("+40h", def_size=0, destination=False) == "+0x40"
+        assert self.parser.parse_arg("+40h", def_size=0, destination=False) == "0x40"
 
     #def test_args_20100(self):
 

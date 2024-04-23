@@ -239,7 +239,7 @@ class Parser:
         self.radix = 10
 
         self.current_macro = None
-        self.current_struct = None
+        self.current_struct: Optional[Struct] = None
 
         self.struct_names_stack: list[str] = []
 
@@ -1043,7 +1043,7 @@ class Parser:
         o.line_number = 0
         proc.stmts.append(o)
 
-    def action_instruction(self, instruction: Token, args: list[Expression | Any], raw: str="", line_number: int=0) -> baseop:
+    def action_instruction(self, instruction: Token, args: list[Expression | Any], raw: str="", line_number: int=0) -> baseop | None:
         self.handle_local_asm_jumps(instruction, args)
 
         self.make_sure_proc_exists(line_number, raw)
@@ -1078,7 +1078,7 @@ class Parser:
             return o
         else:
             self.current_macro.instructions.append(o)
-            return None
+            return
 
     def handle_local_asm_jumps(self, instruction: Token, args: list[Expression | Any]) -> None:
         if (

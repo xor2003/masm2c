@@ -1359,8 +1359,10 @@ struct Memory{
 
 
     def INTEGER(self, t: Token) -> list[str]:
-        assert t.start_pos and t.line is not None and t.column is not None
-        return [self.produce_number("", t.start_pos, str(t.line), str(t.column))]
+        assert t.start_pos and t.line is not None and t.value is not None
+        radix, sign_int, value = t.start_pos, t.line, t.value
+        sign = "" if sign_int == 1 else "-"
+        return [self.produce_number("", radix, sign, value)]
 
     def STRING(self, token: Token) -> list[str]:
         result = token.value
