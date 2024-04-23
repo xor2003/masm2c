@@ -64,7 +64,7 @@ class Token(lark.Tree):
                 if result := Token.find_tokens(expr[i], lookfor):
                     l += result
         if not l:
-            l = None
+            return None
         return l
 
 
@@ -106,8 +106,8 @@ class Expression(lark.Tree):
         self.element_number = 1
         self.element_size_guess = 0
         self.ptr_size = 0
-        self.mods = set()
-        self.registers = set()
+        self.mods: set[str] = set()
+        self.registers: set[str] = set()
         self.segment_register = "ds"
         self.segment_overriden = False
         self.original_type = ""
