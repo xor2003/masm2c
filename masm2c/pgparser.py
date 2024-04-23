@@ -6,7 +6,7 @@ and transforms the parsed tree into an intermediate representation (IR) for furt
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Union, Never, Optional
+from typing import TYPE_CHECKING, Union, Never, Optional, ClassVar
 
 import lark.lexer
 import lark.tree
@@ -113,6 +113,17 @@ class EquCollector(CommonCollector):
 
 
 """
+
+
+class Getmacroargval:
+
+    def __init__(self, params, args) -> None:
+        self.argvaluedict = OrderedDict(zip(params, args))
+
+    def __call__(self, token):
+        return self.argvaluedict[token.children]
+
+
 
 class Asm2IR(CommonCollector):
 
@@ -304,14 +315,6 @@ class Asm2IR(CommonCollector):
         macroses[name] = self.context.current_macro
         self.context.current_macro = None
         return nodes
-
-    class Getmacroargval:
-
-        def __init__(self, params, args) -> None:
-            self.argvaluedict = OrderedDict(zip(params, args))
-
-        def __call__(self, token):
-            return self.argvaluedict[token.children]
 
     def macrocall(self, nodes, name, args):
         # macro usage
@@ -617,28 +620,35 @@ recognizers = {
 
 
 class LarkParser:
+    _inst: Optional[LarkParser] = None
+
+    def __init__(self, context) -> None:
+        self.parser: Lark
+        self.context = context
+
     def __new__(cls: type[LarkParser], *args, **kwargs) -> LarkParser:
-        if not hasattr(cls, "_inst"):
+        if not cls._inst:
             cls._inst = super().__new__(cls)
             logging.debug("Allocated LarkParser instance")
 
             file_name = f"{os.path.dirname(os.path.realpath(__file__))}/_masm61.lark"
             debug = True
             with open(file_name) as gr:
-                cls._inst.or_parser = Lark(gr, parser="lalr", propagate_positions=True, cache=True, debug=debug,
+                cls.parser = Lark(gr, parser="lalr", propagate_positions=True, cache=True, debug=debug,
                                            postlex=MatchTag(context=kwargs["context"]), start=["start", "insegdirlist",
                                                                                                "instruction", "expr",
                                                                                                "equtype", "_directivelist"])
                 #print(sorted([term.pattern.value for term in cls._inst.or_parser.terminals if term.pattern.type == 'str']))
-            cls._inst.parser = copy(cls._inst.or_parser)
+            #cls._inst.parser = copy(cls._inst.or_parser)
 
         return cls._inst
+
 
 
 class ExprRemover(Transformer):
     @v_args(meta=True)
     def expr(self, meta:     lark.tree.Meta, children: list[lark.tree.Tree | lark.lexer.Token]) ->     lark.tree.Tree:
-        children = Token.remove_tokens(children, "expr")
+        children = Token.remove_tokens(children, ["expr"])
 
         return Tree("expr", children, meta)
 
@@ -713,16 +723,19 @@ class BottomUpVisitor:
                     result += getattr(self, node.type)(node)
             elif isinstance(node, list):
                 for i in node:
+                    assert result is not None
                     result += self.visit(i)
             else:
                 import logging
                 logging.error(f"Error unknown type {node}")
+                assert self.init is not None
                 return self.init
         except:
             import logging
             import traceback
             i = traceback.format_exc()
             raise
+        assert result is not None
         return result
 
 class AsmData2IR(TopDownVisitor):  # TODO HACK Remove it. !For missing funcitons deletes details!
@@ -741,6 +754,7 @@ class AsmData2IR(TopDownVisitor):  # TODO HACK Remove it. !For missing funcitons
         return tree.meta.line * self.visit(tree.children)
     def INTEGER(self, token:     lark.lexer.Token) -> list[int]:
         radix, sign, value = token.start_pos, token.line, token.value
+        assert radix
         val = int(value, radix)
         if sign == -1:
             val = 2 ** (8 * self.element_size) - val
