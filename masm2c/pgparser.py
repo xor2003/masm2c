@@ -770,7 +770,8 @@ class AsmData2IR(TopDownVisitor):  # TODO HACK Remove it. !For missing funcitons
     def bypass(self, tree:     lark.tree.Tree) -> list[    lark.tree.Tree]:
         return [tree]
 
-    offsetdir = bypass
+    def offsetdir(self, tree:     lark.tree.Tree) -> list[    lark.tree.Tree]:
+        return [tree]
 
 
 OFFSETDIR = "offsetdir"
