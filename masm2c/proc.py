@@ -69,6 +69,7 @@ class Proc:
         self.used_labels: set[str] = set()
         self.group = None
         self.segment = segment
+        self.to_group_with: set[str] = set()
 
         self.offset = offset or Proc.last_addr
         Proc.last_addr += 4
@@ -106,14 +107,14 @@ class Proc:
         o.syntetic = False
         return o
 
-    def find_op_class(self, cmd: lark.Token, args: list[Any | Expression]) -> Any:
+    def find_op_class(self, cmd: lark.Token, args: list[Expression]) -> Any:
         try:
             cl = getattr(op, f"_{cmd.lower()}")
         except AttributeError:
             cl = self.find_op_common_class(cmd, args)
         return cl
 
-    def find_op_common_class(self, cmd: str, args: list[Any | Expression]) -> type[baseop]:
+    def find_op_common_class(self, cmd: str, args: list[Expression]) -> type[baseop]:
         logging.debug(cmd)
         try:
             cl = (
@@ -204,7 +205,7 @@ class Proc:
         result = "\t" + trace_mode + "(" + full_command + ");"
         return result
 
-    def visit(self, visitor: "Gen", skip=0):
+    def visit(self, visitor: Cpp, skip=0):
         for i in range(skip, len(self.stmts)):
             stmt = self.stmts[i]
             from .gen import InjectCode, SkipCode
@@ -231,7 +232,7 @@ class Proc:
             except AttributeError:
                 logging.warning(f"Some attributes missing while setting comment for {stmt}")
 
-    def generate_full_cmd_line(self, visitor: "Gen", stmt: baseop) -> str:
+    def generate_full_cmd_line(self, visitor: Cpp, stmt: baseop) -> str:
         prefix = visitor.prefix
         visitor._cmdlabel = ""
         visitor.dispatch = ""

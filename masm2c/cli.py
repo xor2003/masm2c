@@ -166,19 +166,19 @@ def process(name, args):
         outname = ""
     p = Parser(args)
 
-    counter = Parser.c_dummy_label
+    counter = Parser.c_dummy_label[0]
 
     p.parse_rt_info(outname)
-    if args.passes >= 2:
+    if args.get("passes") >= 2:
         p.parse_file(name)
         p.next_pass(counter)
 
     context = p.parse_file(name)
 
-    generator = Cpp(context, outfile=outname, skip_output=[])
+    generator = Cpp(context, outfile=outname)
     generator.process()
     generator.save_cpp_files(name)  # start routine
-    if args.list:
+    if args.get("list"):
         generator.dump_globals()
     return generator
 
@@ -210,7 +210,7 @@ def main():
             merge_data_segments = False
         if i.lower().endswith(".asm") or i.lower().endswith(".lst"):
             setup_logging(i, args.loglevel)
-            process(i, args)
+            process(i, dict(args))
 
     # Process .seg files
     generator = Cpp(Parser(args), merge_data_segments=merge_data_segments)

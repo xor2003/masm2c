@@ -103,17 +103,15 @@ bool __dispatch_call(m2c::_offsets __disp, struct m2c::_STATE* _state);
         return result
 
 
-class Cpp(Gen, TopDownVisitor):
+class Cpp(Gen):
     """Visitor which can produce C++ equivalents for asm instructions."""
 
-    def __init__(self, context: "Parser", outfile: str="", skip_output: None=None,
-                 merge_data_segments: bool=True) -> None:
+    def __init__(self, context: "Parser", outfile: str = "", merge_data_segments: bool = True) -> None:
         # proc_strategy = SingleProcStrategy()):
         """:param context: pointer to Parser data
         :param outfile: Output filename
-        :param skip_output: List of functions to skip at output
         """
-        super().__init__(context, outfile=outfile, skip_output=skip_output, merge_data_segments=merge_data_segments)
+        super().__init__(context, outfile=outfile, merge_data_segments=merge_data_segments)
         self.proc_strategy = SeparateProcStrategy(self)
         self.renderer: Gen = self
         self._namespace = os.path.basename(outfile)
@@ -995,7 +993,7 @@ static const dd kbegin = 0x1001;
         if len(strucs):
             structures += """#pragma pack(push, 1)"""
         for name, v in strucs.items():
-            struc_type = "struct" if v.gettype() == op.Struct.Type.STRUCT else "union"
+            struc_type = "struct" if v.gettype() == op.Struct.STRUCT else "union"
             structures += f"""
 {struc_type} {name} {{
 """
@@ -1126,7 +1124,7 @@ struct Memory{
 
         label, _ = self.jump_post(label_expr)
         assert self._context.args
-        if self._context.args.mergeprocs == "separate" and cmd.upper() == "JMP":
+        if self._context.args.get("mergeprocs") == "separate" and cmd.upper() == "JMP":
             if label == "__dispatch_call":
                 return "return __dispatch_call(__disp, _state);"
             if g := self._context.get_global(label):
@@ -1437,7 +1435,7 @@ struct Memory{
         self.is_data = binary_width
         # For unit test
         from masm2c.parser import Parser
-        Parser.c_dummy_label = 0
+        Parser.c_dummy_label[0] = 0
         c, h, size = self.produce_c_data_single_(data)
         c += f", // {data.getlabel()}" + "\n"
         h += ";\n"

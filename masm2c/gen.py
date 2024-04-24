@@ -10,21 +10,21 @@ from collections import OrderedDict
 from copy import copy
 from typing import TYPE_CHECKING
 
-import jsonpickle
+import pickle as jsonpickle
 from lark import lark
 
 from masm2c import op
 from masm2c import proc as proc_module
 from masm2c.Token import Expression
+from masm2c.pgparser import TopDownVisitor
 from masm2c.proc import Proc
 
 if TYPE_CHECKING:
     from masm2c.parser import Parser
 
 
-class Gen:
-    def __init__(self, context: "Parser", outfile: str="", skip_output: None=None,
-                 merge_data_segments: bool=True) -> None:
+class Gen(TopDownVisitor):
+    def __init__(self, context: "Parser", outfile: str = "", merge_data_segments: bool = True) -> None:
         self._context = context
         self.label_to_proc: dict[str, str] = {}
         self._isjustlabel = False
@@ -95,7 +95,7 @@ class Gen:
 
         #if self._context.args.mergeprocs == 'separate':
 
-        if self._context.args.mergeprocs != "single":
+        if self._context.args.get("mergeprocs") != "single":
             self._prepare_non_single_proc_data()
 
             self._align_grouping_lists()
@@ -110,7 +110,7 @@ class Gen:
         for first_proc_name in self._procs:
             if first_proc_name not in self.grouped:
                 first_proc = self._context.get_global(first_proc_name)
-                if self._context.args.mergeprocs == "single" or first_proc.to_group_with:
+                if self._context.args.get("mergeprocs") == "single" or first_proc.to_group_with:
                         groups = self.merge_all_procs_related_to_this(first_proc_name, first_proc, groups, len(groups) + 1)
         self._procs = [x for x in self._procs if x not in self.grouped]
         self._procs += groups
@@ -130,7 +130,7 @@ class Gen:
         self.grouped.add(first_proc_name)
         self.groups[first_proc_name] = new_group_name
         assert self._context.args
-        proc_to_group = self._procs if self._context.args.mergeprocs == "single" else first_proc.to_group_with
+        proc_to_group = self._procs if self._context.args.get("mergeprocs") == "single" else first_proc.to_group_with
         proc_to_group = self.sort_procedure_list_in_linenumber_order(proc_to_group)
         for next_proc_name in proc_to_group:
             if next_proc_name != first_proc_name and next_proc_name not in self.grouped:
@@ -217,7 +217,7 @@ class Gen:
                     procs_to_merge.add(
                         self.find_related_proc(missing_label))  # if label then merge proc implementing it
 
-            if self._context.args.mergeprocs == "persegment":
+            if self._context.args.get("mergeprocs") == "persegment":
                 self._prepare_per_segment_proc_data(first_proc_name, first_proc, procs_to_merge)
 
             first_proc.to_group_with = procs_to_merge

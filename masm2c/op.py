@@ -25,12 +25,13 @@ It include classes like _mov, _add, _jmp, etc., each with methods to generate eq
 from collections import OrderedDict
 from copy import deepcopy
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Union, Optional, Sequence
+from typing import TYPE_CHECKING, Any, Union, Optional, Sequence, Final
 
 from lark import lark
 
 if TYPE_CHECKING:
     from masm2c.cpp import Cpp
+    from masm2c.gen import Gen
 
 from masm2c.Token import Expression
 
@@ -408,7 +409,7 @@ SIMPLE_SEGMENTS = {
 
 class Segment:
 
-    def __init__(self, name: str, offset: int, options: None=None, segclass: None=None, comment: str="") -> None:
+    def __init__(self, name: str, offset: int, *, options: Optional[set[str]]=None, segclass: str="", comment: str="") -> None:
         """Represents MASM Segment.
 
         :param name: Segment name
@@ -423,10 +424,11 @@ class Segment:
         self.used = False
         self.data = "segment"
         self.children: list[Data] = []
-        self.options = options
+        self.options: set[str] = options or set()
         self.segclass = segclass
         self.seglabels = {self.name}
         self.size = 0  # Check if needed
+        self.comment = comment
 
     def getsize(self):
         return self.size
@@ -457,7 +459,7 @@ class Data(baseop):
     #             'filename', 'line', 'line_number']
 
     def __init__(self, label: str, type: str, data_internal_type: DataType, array: list[Any], elements: int, size: int, filename: str="", raw_line: str="",
-                 line_number: int=0, comment: str="", align: bool=False, offset: int=0, meta: None=None) -> None:
+                 line_number: int=0, comment: str="", align: bool=False, offset: int=0) -> None:
         """One element of data.
 
         :param label: Data label
@@ -487,7 +489,7 @@ class Data(baseop):
         self.real_seg, self.real_offset = None, None
         self.offset = offset
 
-        self._meta = meta
+        #self._meta = meta
 
     def __deepcopy__(self, memo: dict[Any, Any]) -> "Data":
         cls = self.__class__
@@ -534,9 +536,8 @@ class Data(baseop):
         return self.real_seg, self.real_offset
 
 class Struct:
-    class Type(Enum):
-        STRUCT = 1
-        UNION = 2
+    STRUCT: Final[int] = 1
+    UNION: Final[int] = 2
 
     def __init__(self, name: str, dtype: str) -> None:
         """Represent structure.
@@ -549,11 +550,11 @@ class Struct:
         self.used = True
         self.children: OrderedDict[str, Union[Data, Struct]] = OrderedDict()
         self.size = 0
-        self.__type = Struct.Type.UNION if dtype.lower() == "union" else Struct.Type.STRUCT
+        self.__type = Struct.UNION if dtype.lower() == "union" else Struct.STRUCT
 
     def append(self, data: Data) -> None:
         self.children[data.label.lower()] = data
-        if self.__type == Struct.Type.STRUCT:
+        if self.__type == Struct.STRUCT:
             self.size += data.getsize()
         else:  # Union
             self.size = max(self.size, data.getsize())
@@ -578,93 +579,103 @@ class basejmp(baseop):
 class _call(baseop):
     def __init__(self, args: list[Expression]) -> None:
         super().__init__()
-        self.children = args
+        
+        self.children_ = args
 
     def accept(self, visitor: "Cpp") -> str:
-        return visitor._call(*self.children)
+        return visitor._call(*self.children_)
 
 
 class _rep(baseop):
-    def __init__(self, args) -> None:
+    def __init__(self, args: list[Expression]) -> None:
         super().__init__()
-        self.children = args
+        
+        self.children_ = args
 
-    def accept(self, visitor):
-        return visitor._rep(*self.children)
+    def accept(self, visitor: "Cpp"):
+        return visitor._rep(*self.children_)
 
 
 class _add(baseop):
     def __init__(self, args: list[Expression]) -> None:
         super().__init__()
-        self.children = args
+        
+        self.children_ = args
 
     def accept(self, visitor: "Cpp") -> str:
-        return visitor._add(*self.children)
+        return visitor._add(*self.children_)
 
 
 
 class _mul(baseop):
     def __init__(self, args: list[Expression]) -> None:
         super().__init__()
-        self.children = args
+        
+        self.children_ = args
 
     def accept(self, visitor: "Cpp") -> str:
-        return visitor._mul(self.children)  #
+        return visitor._mul(self.children_)  #
 
 
 class _div(baseop):
     def __init__(self, args: list[Expression]) -> None:
         super().__init__()
-        self.children = args
+        
+        self.children_ = args
 
     def accept(self, visitor: "Cpp") -> str:
-        return visitor._div(*self.children)
+        return visitor._div(*self.children_)
 
 
 
 class _jne(basejmp):
     def __init__(self, args: list[Expression]) -> None:
         super().__init__()
-        self.children = args
+        
+        self.children_ = args
 
     def accept(self, visitor: "Cpp") -> str:
-        return visitor._jnz(*self.children)
+        return visitor._jnz(*self.children_)
 
 
 class _je(basejmp):
     def __init__(self, args: list[Expression]) -> None:
         super().__init__()
-        self.children = args
+        
+        self.children_ = args
 
     def accept(self, visitor: "Cpp") -> str:
-        return visitor._jz(*self.children)
+        return visitor._jz(*self.children_)
 
 
 class _jb(basejmp):
     def __init__(self, args: list[Expression]) -> None:
         super().__init__()
-        self.children = args
+        
+        self.children_ = args
 
     def accept(self, visitor: "Cpp") -> str:
-        return visitor._jc(*self.children)
+        return visitor._jc(*self.children_)
 
 
 class _jae(basejmp):
     def __init__(self, args: list[Expression]) -> None:
         super().__init__()
-        self.children = args
+        
+        self.children_ = args
 
     def accept(self, visitor: "Cpp") -> str:
-        return visitor._jnc(*self.children)
+        return visitor._jnc(*self.children_)
 
 
 class _jnb(basejmp):
     def __init__(self, args: list[Expression]) -> None:
         super().__init__()
-        self.children = args
+        
+        self.children_ = args
 
     def accept(self, visitor: "Cpp") -> str:
-        return visitor._jnc(*self.children)
+        return visitor._jnc(*self.children_)
 
 
 """
@@ -722,26 +733,29 @@ class _pop(baseop):
 class _ret(baseop):
     def __init__(self, args: list[Any]) -> None:
         super().__init__()
-        self.children = args
+        
+        self.children_ = args
 
     def accept(self, visitor: "Cpp") -> str:
-        return visitor._ret(self.children)
+        return visitor._ret(self.children_)
 
 class _retn(baseop):
     def __init__(self, args: list[Expression]) -> None:
         super().__init__()
-        self.children = args
+        
+        self.children_ = args
 
     def accept(self, visitor: "Cpp") -> str:
-        return visitor._ret(self.children)
+        return visitor._ret(self.children_)
 
 class _retf(baseop):
     def __init__(self, args: list[Expression]) -> None:
         super().__init__()
-        self.children = args
+        
+        self.children_ = args
 
     def accept(self, visitor: "Cpp") -> str:
-        return visitor._retf(self.children)
+        return visitor._retf(self.children_)
 
 
 class _lodsb(baseop):
@@ -863,10 +877,11 @@ class _movsb(baseop):
 class _int(baseop):
     def __init__(self, args: list[Expression]) -> None:
         super().__init__()
-        self.children = args
+        
+        self.children_ = args
 
     def accept(self, visitor: "Cpp") -> str:
-        return visitor._int(*self.children)
+        return visitor._int(*self.children_)
 
 """
 class _nop(baseop):
@@ -907,82 +922,90 @@ class label(baseop):
 class _lea(baseop):
     def __init__(self, args: list[Expression]) -> None:
         super().__init__()
-        self.children = args
+        
+        self.children_ = args
 
     def accept(self, visitor: "Cpp") -> str:
-        return visitor._lea(*self.children)
+        return visitor._lea(*self.children_)
 
 
 class _repe(baseop):
     def __init__(self, args) -> None:
         super().__init__()
-        self.children = args
+        
+        self.children_ = args
 
-    def accept(self, visitor):
-        return visitor._repe(*self.children)
+    def accept(self, visitor: "Cpp"):
+        return visitor._repe(*self.children_)
 
 
 class _repne(baseop):
     def __init__(self, args: list[Any]) -> None:
         super().__init__()
-        self.children = args
+        self.children_ = args
 
     def accept(self, visitor):
-        return visitor._repne(*self.children)
+        return visitor._repne(*self.children_)
 
 
 class _jna(basejmp):
     def __init__(self, args: list[Expression]) -> None:
         super().__init__()
-        self.children = args
+        
+        self.children_ = args
 
     def accept(self, visitor: "Cpp") -> str:
-        return visitor._jbe(*self.children)
+        return visitor._jbe(*self.children_)
 
 
 class _jnbe(basejmp):
     def __init__(self, args: list[Expression]) -> None:
         super().__init__()
-        self.children = args
+        
+        self.children_ = args
 
     def accept(self, visitor: "Cpp") -> str:
-        return visitor._ja(*self.children)
+        return visitor._ja(*self.children_)
 
 
 class _imul(baseop):
     def __init__(self, args: list[Expression]) -> None:
         super().__init__()
-        self.children = args
+        
+        self.children_ = args
 
     def accept(self, visitor: "Cpp") -> str:
-        return visitor._imul(self.children)  #
+        return visitor._imul(self.children_)
 
 
 class _movs(baseop):
     def __init__(self, args: list[Expression]) -> None:
         super().__init__()
-        self.children = args
+        
+        self.children_ = args
 
     def accept(self, visitor: "Cpp") -> str:
-        return visitor._movs(*self.children)
+        return visitor._movs(*self.children_)
 
 
 class _lods(baseop):
     def __init__(self, args: list[Expression]) -> None:
         super().__init__()
-        self.children = args
+        
+        self.children_ = args
 
     def accept(self, visitor: "Cpp") -> str:
-        return visitor._lods(*self.children)
+        return visitor._lods(*self.children_)
 
 
 class _scas(baseop):
     def __init__(self, args: list[Expression]) -> None:
         super().__init__()
-        self.children = args
+        
+        self.children_ = args
 
     def accept(self, visitor: "Cpp") -> str:
-        return visitor._scas(*self.children)
+        return visitor._scas(*self.children_)
 
 
 class _leave(baseop):
@@ -996,10 +1019,11 @@ class _leave(baseop):
 class _idiv(baseop):
     def __init__(self, args: list[Expression]) -> None:
         super().__init__()
-        self.children = args
+        
+        self.children_ = args
 
     def accept(self, visitor: "Cpp") -> str:
-        return visitor._idiv(*self.children)
+        return visitor._idiv(*self.children_)
 
 
 class _instruction0(baseop):
@@ -1013,37 +1037,41 @@ class _instruction0(baseop):
 class _instruction1(baseop):
     def __init__(self, args: list[Expression]) -> None:
         super().__init__()
-        self.children = args
+        
+        self.children_ = args
 
     def accept(self, visitor: "Cpp") -> str:
-        return visitor._instruction1(self.cmd, *self.children)
+        return visitor._instruction1(self.cmd, *self.children_)
 
 
 class _jump(baseop):
     def __init__(self, args: list[Expression]) -> None:
         super().__init__()
-        self.children = args
+        
+        self.children_ = args
 
     def accept(self, visitor: "Cpp") -> str:
-        return visitor._jump(self.cmd, *self.children)
+        return visitor._jump(self.cmd, *self.children_)
 
 
 class _instruction2(baseop):
     def __init__(self, args: list[Expression]) -> None:
         super().__init__()
-        self.children = args
+        
+        self.children_ = args
 
     def accept(self, visitor: "Cpp") -> str:
-        return visitor._instruction2(self.cmd, *self.children)
+        return visitor._instruction2(self.cmd, *self.children_)
 
 
 class _instruction3(baseop):
     def __init__(self, args: list[Expression]) -> None:
         super().__init__()
-        self.children = args
+        
+        self.children_ = args
 
     def accept(self, visitor: "Cpp") -> str:
-        return visitor._instruction3(self.cmd, *self.children)
+        return visitor._instruction3(self.cmd, *self.children_)
 
 
 class _equ(baseop):
@@ -1073,7 +1101,7 @@ class _equ(baseop):
 class _assignment(baseop):
     def __init__(self, args: list[Union[str, lark.Tree]]) -> None:
         super().__init__()
-        self.children = args
+        self.children_ = args
         self.original_name = ""
         self.used = True
         self.original_type = ""
@@ -1087,22 +1115,23 @@ class _assignment(baseop):
     def accept(self, visitor):
         # if self.implemented == False:
         self.implemented = True
-        return visitor._assignment(self.children)
+        return visitor._assignment(self.children_)
         #    raise SkipCode
 
 class _xlat(baseop):
     def __init__(self, args: list[Expression]) -> None:
         super().__init__()
-        self.children = args
+        self.children_ = args
 
     def accept(self, visitor: "Cpp") -> str:
-        return visitor._xlat(self.children)
+        return visitor._xlat(self.children_)
 
 class _mov(baseop):
     def __init__(self, args: list[Expression]) -> None:
         super().__init__()
-        self.children = args
+        
+        self.children_ = args
         self.syntetic = False
 
     def accept(self, visitor: "Cpp") -> str:
-        return visitor._mov(*self.children)
+        return visitor._mov(*self.children_)

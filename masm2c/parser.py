@@ -31,9 +31,9 @@ import re
 import sys
 from collections import OrderedDict
 from copy import deepcopy
-from typing import Any, Optional, Never
+from typing import Any, Optional, Final
 
-import jsonpickle
+import pickle as jsonpickle
 from lark import UnexpectedToken, lark
 from lark.lexer import Token
 from lark.tree import Tree
@@ -71,7 +71,7 @@ class Vector:
         return self
 
     @property
-    def values(self):
+    def values(self) -> list[int]:
         return self.__value
 
     #def __getitem__(self, item: int) -> int:
@@ -172,9 +172,9 @@ def dump_object(value: Struct | label | Proc | var | _equ | _assignment) -> str:
 
 
 class Parser:
-    c_dummy_label = 0
+    c_dummy_label: Final[list] = [0]
 
-    def __init__(self, args: Optional[Namespace] = None) -> None:
+    def __init__(self, args: Optional[dict] = None) -> None:
         """Assembler parser."""
         self.test_mode = False
         self.__globals: OrderedDict[str, Struct | label | Proc | var | _equ | _assignment] = OrderedDict()
@@ -190,13 +190,10 @@ class Parser:
         self.procs_start: set[int] = set()
 
         if not args:
-            class MyDummyObj(Namespace): pass
-
-            args = MyDummyObj()
-            args.mergeprocs = "separate"
+            args = {"mergeprocs": "separate"}
         self.args = args
 
-        self.next_pass(Parser.c_dummy_label)
+        self.next_pass(Parser.c_dummy_label[0])
 
     def next_pass(self, counter: int) -> None:
         """Initializer for each pass.
@@ -206,7 +203,7 @@ class Parser:
         """
         self.pass_number += 1
         logging.info(f"     Pass number {self.pass_number}")
-        Parser.c_dummy_label = counter
+        Parser.c_dummy_label[0] = counter
 
         self.procs_start = self.initial_procs_start
         self.segments = OrderedDict()
@@ -494,7 +491,7 @@ class Parser:
         :return: A dictionary of segments and their values.
         """
         content = read_whole_file(re.sub(r"\.lst$", ".map", file_name, flags=re.I)).splitlines()
-        DOSBOX_START_SEG = int(self.args.loadsegment, 0)
+        DOSBOX_START_SEG = int(self.args.get("loadsegment"), 0)
         strgenerator = iter(content)
         segs = OrderedDict()
         for line in strgenerator:
@@ -616,7 +613,7 @@ class Parser:
         self.proc = self.add_proc(name, raw, line_number, far)
 
     def add_proc(self, name: str, raw: str, line_number: int, far: bool) -> Proc:
-        if self.args.mergeprocs == "separate":
+        if self.args.get("mergeprocs") == "separate":
             self.need_label = False
         # if self.__separate_proc:
         offset, real_offset, real_seg = self.get_lst_offsets(raw)
@@ -762,7 +759,7 @@ class Parser:
 
 
 
-    def datadir_action(self, label: str, type: str, args: Tree, is_string: bool=False, raw: str="", line_number: int=0) -> Data | list[Never]:
+    def datadir_action(self, label: str, type: str, args: Tree, is_string: bool=False, raw: str="", line_number: int=0) -> Data | list:
         if self.__cur_seg_offset > 0xffff:
             return []
         if self.__cur_seg_offset & 0xff == 0:
@@ -1070,7 +1067,7 @@ class Parser:
                 logging.warning(f"Adding helping label {label_name}")
                 self.action_label(label_name, raw=raw)
             self.proc.stmts.append(o)
-            if self.args.mergeprocs == "single":
+            if self.args.get("mergeprocs") == "single":
                 self.need_label |= self.proc.is_return_point(o)
             self.flow_terminated = self.proc.is_flow_terminating_stmt(o)
             self.need_label |= self.flow_terminated
@@ -1104,7 +1101,7 @@ class Parser:
             #  If it is call to a proc then does not take it into account
             #  TODO: check for calls into middle of proc
             if labels and not operation.cmd.startswith("call") and not (
-                    self.args.mergeprocs == "separate" and operation.cmd == "jmp"):
+                    self.args.get("mergeprocs") == "separate" and operation.cmd == "jmp"):
                 label = labels[0]
                 if label == "dol":
                     continue
