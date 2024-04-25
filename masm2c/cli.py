@@ -210,7 +210,7 @@ def main():
             merge_data_segments = False
         if i.lower().endswith(".asm") or i.lower().endswith(".lst"):
             setup_logging(i, args.loglevel)
-            process(i, dict(args))
+            process(i, vars(args))
 
     # Process .seg files
     generator = Cpp(Parser(args), merge_data_segments=merge_data_segments)
