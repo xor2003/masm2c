@@ -409,7 +409,7 @@ SIMPLE_SEGMENTS = {
 
 class Segment:
 
-    def __init__(self, name: str, offset: int, *, options: Optional[set[str]]=None, segclass: str="", comment: str="") -> None:
+    def __init__(self, name: str, offset: int, *, options: Optional[set[str]]=None, segclass: Optional[str]="", comment: str="") -> None:
         """Represents MASM Segment.
 
         :param name: Segment name

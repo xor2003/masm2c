@@ -58,7 +58,7 @@ STRINGCNST = "STRING"
 
 class Vector:
 
-    def __init__(self, arg1, arg2) -> None:
+    def __init__(self, arg1: int=0, arg2: int=0) -> None:
         self.__value: list[int] = [arg1, arg2]
 
     def __add__(self, vec: Optional[Vector]) -> Vector:
@@ -82,8 +82,8 @@ class Vector:
 
 class ExprSizeCalculator(BottomUpVisitor):
 
-    def __init__(self, element_size: int=0, **kwargs) -> None:
-        super().__init__(**kwargs)
+    def __init__(self, element_size: int=0, *, init: Vector, **kwargs) -> None:
+        super().__init__(init=init, **kwargs)
         self.element_number = 0
         self.element_size = element_size
         self.kwargs = kwargs
@@ -159,7 +159,9 @@ def dump_object(value: Struct | label | Proc | var | _equ | _assignment) -> str:
     :param value: The object to dump
     :return: A string representation of the object.
     """
-    stuff = str(value.__dict__)
+    if not hasattr(value, "__dict__"):
+        return ""
+    stuff = str(vars(value))
     replacements = (
         (r"\n", " "),
         (r"[{}]", ""),
@@ -471,7 +473,7 @@ class Parser:
             # we want exact placement so program could work
             content = self.extract_addresses_from_lst(file_name, content)
         result = self.parse_text(content, file_name=file_name)
-        result = self.process_ast(content, result)
+        self.process_ast(content, result)
 
     def extract_addresses_from_lst(self, file_name, content):
         self.itislst = True
@@ -886,11 +888,11 @@ class Parser:
     def parse_file_inside(self, text, file_name=None):
         return self.parse_include(text, file_name)
 
-    def parse_text(self, text: str, file_name: None=None, start_rule: str="start") -> Tree:
+    def parse_text(self, text: str, file_name: str="", start_rule: str="start") -> Tree:
         logging.debug("parsing: [%s]", text)
         try:
-            assert hasattr(self.__lex, "parser")
-            result = self.__lex.parser.parse(text, start=start_rule)
+            assert self.__lex.parser[0]
+            result = self.__lex.parser[0].parse(text, start=start_rule)
         except UnexpectedToken as ex:
             logging.exception("UnexpectedToken: [%s] line=%s column=%s", ex.token, ex.line, ex.column)
             sys.exit(9)

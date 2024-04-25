@@ -23,6 +23,7 @@
 import argparse
 import glob
 import logging
+import os
 import re
 import sys
 
@@ -183,7 +184,7 @@ def process(name, args):
     return generator
 
 
-def main():
+def main() -> None:
     """Main entry point allowing external calls.
 
     Args:
@@ -191,13 +192,12 @@ def main():
       args ([str]): command line parameter list
 
     """
-    args = sys.argv[1:]
     setup_logging("", logging.INFO)
-    if sys.version_info[0] >= 3:
-        sys.stdout.reconfigure(encoding="utf-8")
-        sys.stderr.reconfigure(encoding="utf-8")
+    #if sys.version_info[0] >= 3:
+    #    sys.stdout.reconfigure(encoding="utf-8")
+    #    sys.stderr.reconfigure(encoding="utf-8")
 
-    args = parse_args(args)
+    args: argparse.Namespace = parse_args(sys.argv[1:])
     logging.info(f"Masm source to C++ translator V{__version__} {__license__}")
     # Process .asm
     merge_data_segments = True
@@ -210,13 +210,14 @@ def main():
             merge_data_segments = False
         if i.lower().endswith(".asm") or i.lower().endswith(".lst"):
             setup_logging(i, args.loglevel)
-            process(i, dict(args))
+            process(i, vars(args))
 
     # Process .seg files
-    generator = Cpp(Parser(args), merge_data_segments=merge_data_segments)
+    generator = Cpp(Parser(vars(args)), merge_data_segments=merge_data_segments)
     generator.convert_segment_files_into_datacpp(files)
 
     logging.info(" *** Finished")
+    os._exit(0)
 
 
 
@@ -229,5 +230,5 @@ if __name__ == "__main__":
     main()
 """
 
-if __name__ == "__main__":
-    main()
+#if __name__ == "__main__":
+main()

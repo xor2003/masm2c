@@ -298,7 +298,7 @@ class Gen(TopDownVisitor):
         return labels
 
     def write_segment_file(self, segments, structs, fname):
-        jsonpickle.set_encoder_options("json", indent=2)
+        #jsonpickle.set_encoder_options("json", indent=2)
         fname = fname.replace(".asm",".seg").replace(".lst",".seg")
         with open(fname, "wb") as f:
             pickle.dump((segments, structs), f)

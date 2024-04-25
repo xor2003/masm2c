@@ -1423,11 +1423,10 @@ struct Memory{
             )
         return result
 
-    def _check_for_just_label(self, origexpr, single):
+    def _check_for_just_label(self, origexpr, single: bool):
         return single and ((isinstance(origexpr, lark.Token) and origexpr.type == LABEL)
-                           or (isinstance(origexpr, lark.Token) and origexpr.type == SQEXPR
-                               and isinstance(origexpr.children,
-                                              lark.Token) and origexpr.children.type == LABEL)
+                           or (isinstance(origexpr, lark.Tree) and origexpr.data == SQEXPR
+                               and isinstance(origexpr.children, lark.Token) and origexpr.children.type == LABEL)
                            or (isinstance(origexpr, lark.Tree) and origexpr.data == MEMBERDIR))
 
     def data(self, data: Data) -> tuple[str, str, int]:

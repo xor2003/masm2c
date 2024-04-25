@@ -258,10 +258,10 @@ class Asm2IR(CommonCollector):
         self._element_type = children[0].lower()
         return str(children[0]).lower()
 
-    def ANYTHING(self, value:     lark.lexer.Token) ->     lark.lexer.Token:
+    def ANYTHING(self, value: lark.lexer.Token) -> lark.lexer.Token:
         return self.INTEGER("0")
 
-    def INTEGER(self, value: lark.lexer.Token | str) ->     lark.lexer.Token:
+    def INTEGER(self, value: lark.lexer.Token | str) -> lark.lexer.Token:
         from .gen import guess_int_size
         from .parser import parse_asm_number
 
@@ -395,12 +395,12 @@ class Asm2IR(CommonCollector):
         return nodes
 
 
-    def LABEL(self, value_in:     lark.lexer.Token) ->     lark.lexer.Token:
+    def LABEL(self, value_in: lark.lexer.Token) -> lark.lexer.Token:
         value = self.context.mangle_label(value_in)
         self.name = value
 
         logging.debug("name = %s", self.name)
-        l = lark.Token(type="LABEL", value=value)
+        l = lark.Token("LABEL", value)
         if g := self.context.get_global(self.name):
             from masm2c.proc import Proc
             if isinstance(g, (op._equ, op._assignment)):
@@ -565,7 +565,7 @@ class Asm2IR(CommonCollector):
     def labeltok(self, nodes):
         return nodes  # Token('LABEL', nodes)
 
-    def STRING(self, nodes:     lark.lexer.Token) -> lark.lexer.Token:
+    def STRING(self, nodes: lark.lexer.Token) -> lark.lexer.Token:
         if m := re.match(r'[\'"](.+)[\'"]$', nodes):
             string = m[1]
             if not self.context.itislst:  # not for IDA .lst
@@ -620,28 +620,22 @@ recognizers = {
 
 
 class LarkParser:
-    _inst: Final[list] = []
-    parser: Lark
+    parser: Final[list] = []
 
-    #def __init__(self) -> None:
-    #    self.parser: Lark
+    def __init__(self, context: Parser) -> None:
+        if self.parser:
+            return
 
-    def __new__(cls: type[LarkParser], *args, **kwargs) -> LarkParser:
-        if not cls._inst:
-            cls._inst.append(super().__new__(cls))
-            logging.debug("Allocated LarkParser instance")
+        logging.debug("Allocated LarkParser instance")
 
-            file_name = f"{os.path.dirname(os.path.realpath(__file__))}/_masm61.lark"
-            debug = True
-            with open(file_name) as gr:
-                cls.parser = Lark(gr, parser="lalr", propagate_positions=True, cache=True, debug=debug,
-                                           postlex=MatchTag(context=kwargs["context"]), start=["start", "insegdirlist",
-                                                                                               "instruction", "expr",
-                                                                                               "equtype", "_directivelist"])
-                #print(sorted([term.pattern.value for term in cls._inst.or_parser.terminals if term.pattern.type == 'str']))
-            #cls._inst.parser = copy(cls._inst.or_parser)
-
-        return cls._inst[0]
+        file_name = f"{os.path.dirname(os.path.realpath(__file__))}/_masm61.lark"
+        debug = True
+        with open(file_name) as gr:
+            self.parser.append(Lark(gr, parser="lalr", propagate_positions=True, cache=True, debug=debug,
+                                       postlex=MatchTag(context=context), start=["start", "insegdirlist",
+                                                                                           "instruction", "expr",
+                                                                                           "equtype", "_directivelist"]))
+            #print(sorted([term.pattern.value for term in cls._inst.or_parser.terminals if term.pattern.type == 'str']))
 
 
 
@@ -709,7 +703,7 @@ class TopDownVisitor:
 
 class BottomUpVisitor:
 
-    def __init__(self, init: Union[Vector, None]=None, **kwargs) -> None:
+    def __init__(self, init: Optional[Vector]=None, **kwargs) -> None:
         self.init = init
     def visit(self, node: Any) -> Vector:
         result = copy(self.init)
@@ -752,7 +746,7 @@ class AsmData2IR(TopDownVisitor):  # TODO HACK Remove it. !For missing funcitons
 
     def dupdir(self, tree:     lark.tree.Tree) -> list[int | list[lark.lexer.Token | str | int] | list[str | int]]:
         return tree.meta.line * self.visit(tree.children)
-    def INTEGER(self, token:     lark.lexer.Token) -> list[int]:
+    def INTEGER(self, token: lark.lexer.Token) -> list[int]:
         radix, sign, value = token.start_pos, token.line, token.value
         assert radix
         val = int(value, radix)
@@ -760,11 +754,11 @@ class AsmData2IR(TopDownVisitor):  # TODO HACK Remove it. !For missing funcitons
             val = 2 ** (8 * self.element_size) - val
         return [val]
 
-    def STRING(self, token:     lark.lexer.Token) -> list[str]:
+    def STRING(self, token: lark.lexer.Token) -> list[str]:
         result = token.value
         return list(result)
 
-    def LABEL(self, tree:     lark.lexer.Token) -> list[    lark.lexer.Token]:
+    def LABEL(self, tree: lark.lexer.Token) -> list[    lark.lexer.Token]:
         return [lark.Token(type="LABEL", value=tree.lower())]  # TODO HACK
 
     def bypass(self, tree:     lark.tree.Tree) -> list[    lark.tree.Tree]:
