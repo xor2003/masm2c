@@ -1,11 +1,3 @@
-# cython: language_level=3
-# cython: boundscheck=False
-# cython: wraparound=True
-# cython: initializedcheck=False
-# cython: cdivizion=True
-# cython: always_allow_keywords=False
-# cython: unraisable_traceback=False
-# cython: binding=False
 """
 Responsible for generating C++ code specifically.
 It might handle tasks like converting assembly labels to C++ identifiers, generating function prototypes,
@@ -32,13 +24,13 @@ and handling C++ specific constructs.
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #
 import logging
-from typing import TYPE_CHECKING, Any, Optional, Union, List
+from typing import TYPE_CHECKING, Any, Union
 
 from lark.lexer import Token
 from lark.tree import Tree
 
-from masm2c.op import Data
 from masm2c.Token import Token as Token_, Expression
+from masm2c.op import Data
 
 if TYPE_CHECKING:
     from masm2c.parser import Parser
@@ -49,11 +41,11 @@ from collections import OrderedDict
 
 from lark import lark
 
-from . import op, proc
-from . import proc as proc_module
+from . import op
+from masm2c.proc import Proc
 from .enumeration import IndirectionType
 from .gen import Gen, InjectCode, mangle_asm_labels
-from .pgparser import LABEL, MEMBERDIR, REGISTER, SQEXPR, Asm2IR, TopDownVisitor
+from .pgparser import LABEL, MEMBERDIR, REGISTER, SQEXPR, Asm2IR
 
 
 def flatten(s: list) -> list:
@@ -506,7 +498,7 @@ class Cpp(Gen):
         """
         logging.debug("jump_to_label(%s)", name)
         far = False
-        if isinstance(name, str) and (g := self._context.get_global(name)) and isinstance(g, proc_module.Proc | op.label):
+        if isinstance(name, str) and (g := self._context.get_global(name)) and isinstance(g, Proc | op.label):
             far = g.far  # make far calls to far procs
         return far
 
@@ -986,8 +978,7 @@ static const dd kbegin = 0x1001;
 """
         i = 0x1001
         for k, v in list(self._context.get_globals().items()):
-            # if isinstance(v, (op.label, proc_module.Proc)) and v.used:
-            if isinstance(v, (op.label, proc_module.Proc)):
+            if isinstance(v, (op.label, Proc)):
                 k = re.sub(r"[^A-Za-z0-9_]", "_", k).lower()
                 i += 1
                 if v.real_offset or v.real_seg:
@@ -1139,7 +1130,7 @@ struct Memory{
                 target_proc_name = None
                 if isinstance(g, op.label) and g.name in self.label_to_proc:
                     target_proc_name = self.label_to_proc[g.name]
-                elif isinstance(g, proc_module.Proc):
+                elif isinstance(g, Proc):
                     target_proc_name = g.name
                 if target_proc_name and self.proc.name != target_proc_name:
                     if g.name == target_proc_name:
@@ -1297,7 +1288,7 @@ struct Memory{
 """
         entries = OrderedDict()
         for k, v in globals:
-            if isinstance(v, proc_module.Proc) and v.used:
+            if isinstance(v, Proc) and v.used:
                 k = re.sub(r"[^A-Za-z0-9_]", "_", k)  # need to do it during mangling
                 entries[k] = (self.mangle_label(k), "0")
                 labels = v.provided_labels
@@ -1471,7 +1462,7 @@ struct Memory{
                 logging.error(f"Some unknown data size {size} for {g.name}")
         elif isinstance(g, (op._equ, op._assignment)):
             result = g.original_name
-        elif isinstance(g, (op.label, proc.Proc)):
+        elif isinstance(g, (op.label, Proc)):
             result = f"m2c::k{g.name.lower()}"
         elif not isinstance(g, op.Struct):
             result = g.offset
@@ -1501,7 +1492,7 @@ struct Memory{
                 return [f"far_offset({g.segment},{g.name})"]
             else:
                 raise ValueError("Unknown offset size %s", self.element_size)
-        elif isinstance(g, (proc_module.Proc, op.label)):
+        elif isinstance(g, (Proc, op.label)):
             logging.debug("it is proc")
             return [f"m2c::k{g.name}"]
         else:

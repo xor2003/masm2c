@@ -25,7 +25,7 @@ It include classes like _mov, _add, _jmp, etc., each with methods to generate eq
 from collections import OrderedDict
 from copy import deepcopy
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Union, Optional, Sequence, Final
+from typing import TYPE_CHECKING, Any, Union, Optional, Final
 
 from lark import lark
 
@@ -33,7 +33,6 @@ if TYPE_CHECKING:
     from masm2c.cpp import Cpp
 
 from masm2c.Token import Expression
-from mypy_extensions import mypyc_attr
 
 class Unsupported(Exception):
     pass
@@ -406,7 +405,6 @@ SIMPLE_SEGMENTS = {
     },
 }
 
-@mypyc_attr(serializable=True)
 class Segment:
 
     def __init__(self, name: str, offset: int, *, options: Optional[set[str]]=None, segclass: Optional[str]="", comment: str="") -> None:
@@ -454,7 +452,6 @@ class DataType(Enum):
     OBJECT = 5
 
 
-@mypyc_attr(serializable=True)
 class Data(baseop):
     # __slots__ = ['label', 'type', 'data_internal_type', 'array', 'elements', 'size', 'members',
     #             'filename', 'line', 'line_number']
@@ -537,7 +534,6 @@ class Data(baseop):
     def getrealaddr(self):
         return self.real_seg, self.real_offset
 
-@mypyc_attr(serializable=True)
 class Struct:
     STRUCT: Final[int] = 1
     UNION: Final[int] = 2

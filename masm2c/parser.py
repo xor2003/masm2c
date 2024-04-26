@@ -1,13 +1,3 @@
-# cython: language_level=3
-# cython: boundscheck=False
-# cython: wraparound=True
-# cython: initializedcheck=False
-# cython: cdivizion=True
-# cython: always_allow_keywords=False
-# cython: unraisable_traceback=False
-# cython: binding=False
-from ast import literal_eval
-
 """ Module to parse assembler source """
 # Masm2c S2S translator (initially based on SCUMMVM tasmrecover)
 #
@@ -29,6 +19,8 @@ from ast import literal_eval
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #
+from masm2c.proc import Proc
+from ast import literal_eval
 import hashlib
 import logging
 import os
@@ -44,7 +36,6 @@ from lark.lexer import Token
 from lark.tree import Tree
 
 from masm2c.op import Data, Struct, _assignment, _equ, baseop, label, var
-from masm2c.proc import Proc
 from masm2c.Token import Token as Token_, Expression
 
 from . import cpp as cpp_module
@@ -66,12 +57,12 @@ class Vector:
     def __init__(self, arg1: int=0, arg2: int=0) -> None:
         self.__value: list[int] = [arg1, arg2]
 
-    def __add__(self, vec: Optional[Vector]) -> Vector:
+    def __add__(self, vec: Optional["Vector"]) -> "Vector":
         if vec is not None:
             self.__value = [self.__value[0] + vec.values[0], self.__value[1] + vec.values[1]]
         return self
 
-    def __mul__(self, other: int) -> Vector:
+    def __mul__(self, other: int) -> "Vector":
         self.__value = [self.__value[0] * other, self.__value[1] * other]
         return self
 

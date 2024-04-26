@@ -1,28 +1,21 @@
-# cython: language_level=3
-# cython: boundscheck=False
-# cython: wraparound=True
-# cython: initializedcheck=False
-# cython: cdivizion=True
-# cython: always_allow_keywords=False
-# cython: unraisable_traceback=False
-# cython: binding=False
 """
 Handle the parsing of MASM code using the Lark library.
 It defines grammar rules, actions for different types of instructions and directives,
 and transforms the parsed tree into an intermediate representation (IR) for further processing.
 """
-import logging
-from typing import TYPE_CHECKING, Union, Optional, ClassVar, Final
+from typing import TYPE_CHECKING, Optional, Final
 
+if TYPE_CHECKING:
+    from masm2c.parser import Parser, Vector
+
+import logging
 import lark.lexer
 import lark.tree
 from lark.visitors import _DiscardType
 
-from masm2c.op import Data, _assignment, baseop, Struct
 from masm2c.Token import Expression
+from masm2c.op import Data, _assignment, baseop, Struct
 
-if TYPE_CHECKING:
-    from masm2c.parser import Parser, Vector
 import os
 import re
 import sys
@@ -45,7 +38,7 @@ commentid = re.compile(r"COMMENT\s+([^ ]).*?\1[^\r\n]*", flags=re.DOTALL)
 class MatchTag:
     always_accept = "LABEL", "structinstdir", "STRUCTNAME"
 
-    def __init__(self, context: Parser) -> None:
+    def __init__(self, context: "Parser") -> None:
         self.context = context
         self.last_type = ""
         self.last = ""
@@ -106,7 +99,7 @@ def get_raw_line(input_str: str, meta: lark.tree.Meta) -> str:
 
 class CommonCollector(Transformer):
 
-    def __init__(self, context: Parser, input_str: str="") -> None:
+    def __init__(self, context: "Parser", input_str: str="") -> None:
         self.context = context
         self._expression: Optional[Expression] = None
         self.input_str = input_str
@@ -133,7 +126,7 @@ class Getmacroargval:
 
 class Asm2IR(CommonCollector):
 
-    def __init__(self, context: Parser, input_str: str="") -> None:
+    def __init__(self, context: "Parser", input_str: str="") -> None:
         super().__init__(context, input_str)
         self._radix = 10
         self._element_type = ''
@@ -602,7 +595,7 @@ class Asm2IR(CommonCollector):
 
     def offsetdirtype(self, nodes):
         directive = nodes[0].lower()
-        from .parser import Parser
+        from masm2c.parser import Parser
         logging.debug("offsetdirtype %s", nodes)
         value = str(nodes[1].children[0]) if len(nodes)==2 else 2
         if directive == "align":
@@ -628,7 +621,7 @@ recognizers = {
 class LarkParser:
     parser: Final[list] = []
 
-    def __init__(self, context: Parser) -> None:
+    def __init__(self, context: "Parser") -> None:
         if self.parser:
             return
 
@@ -654,7 +647,7 @@ class ExprRemover(Transformer):
 
 class IncludeLoader(Transformer):
 
-    def __init__(self, context: Parser) -> None:
+    def __init__(self, context: "Parser") -> None:
         self.context = context
 
     def includedir(self, nodes):
@@ -707,9 +700,9 @@ class TopDownVisitor:
 
 class BottomUpVisitor:
 
-    def __init__(self, init: Optional[Vector]=None, **kwargs) -> None:
+    def __init__(self, init: Optional["Vector"]=None, **kwargs) -> None:
         self.init = init
-    def visit(self, node: Any) -> Vector:
+    def visit(self, node: Any) -> "Vector":
         result = copy(self.init)
         try:
             if isinstance(node, Tree):
