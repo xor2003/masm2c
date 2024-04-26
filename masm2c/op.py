@@ -31,11 +31,16 @@ from lark import lark
 
 if TYPE_CHECKING:
     from masm2c.cpp import Cpp
-    from masm2c.gen import Gen
 
 from masm2c.Token import Expression
+from mypy_extensions import mypyc_attr
 
-
+__all__ = ["_add", "_assignment", "basejmp", "baseop", "_call", "_cmpsb", "Data", "DataType", "_div", "_equ",
+           "_idiv", "_imul", "_instruction0", "_instruction1", "_instruction2", "_instruction3", "_int",
+           "_jae", "_jb", "_je", "_jna", "_jnb", "_jnbe", "_jne", "_jump", "label", "_lea", "_leave", "_lods", "_lodsb",
+           "_lodsd", "_lodsw", "_mov", "_movs", "_movsb", "_movsd", "_movsw", "_mul", "_nop", "_pop", "_push", "_rep",
+           "_repe", "_repne", "_ret", "_retf", "_retn", "_scas", "_scasb", "_scasd", "_scasw", "Segment", "_stosb",
+           "_stosd", "_stosw", "Struct", "Unsupported", "var", "_xlat"]
 class Unsupported(Exception):
     pass
 
@@ -407,6 +412,7 @@ SIMPLE_SEGMENTS = {
     },
 }
 
+@mypyc_attr(serializable=True)
 class Segment:
 
     def __init__(self, name: str, offset: int, *, options: Optional[set[str]]=None, segclass: Optional[str]="", comment: str="") -> None:
@@ -454,6 +460,7 @@ class DataType(Enum):
     OBJECT = 5
 
 
+@mypyc_attr(serializable=True)
 class Data(baseop):
     # __slots__ = ['label', 'type', 'data_internal_type', 'array', 'elements', 'size', 'members',
     #             'filename', 'line', 'line_number']
@@ -488,6 +495,7 @@ class Data(baseop):
         self.align = align
         self.real_seg, self.real_offset = None, None
         self.offset = offset
+        self.comment = comment
 
         #self._meta = meta
 
@@ -535,6 +543,7 @@ class Data(baseop):
     def getrealaddr(self):
         return self.real_seg, self.real_offset
 
+@mypyc_attr(serializable=True)
 class Struct:
     STRUCT: Final[int] = 1
     UNION: Final[int] = 2
@@ -545,7 +554,7 @@ class Struct:
         :param name: Name
         :param dtype: Structure or Union?
         """
-        self.__name = name
+        self.name = name
         self.original_name = name
         self.used = True
         self.children: OrderedDict[str, Union[Data, Struct]] = OrderedDict()

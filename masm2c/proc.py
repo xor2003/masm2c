@@ -93,7 +93,7 @@ class Proc:
         # trivial simplifications
 
 
-    def create_instruction_object(self, instruction: lark.Token, args: Optional[list[Expression]] = None) -> baseop:
+    def create_instruction_object(self, instruction: str, args: Optional[list[Expression]] = None) -> baseop:
         """:param instruction: the instruction name
         :param args: a list of strings, each string is an argument to the instruction
         :return: An object of type cl, which is a subclass of Instruction.
@@ -108,9 +108,9 @@ class Proc:
         return o
 
     def find_op_class(self, cmd: lark.Token, args: list[Expression]) -> Any:
-        try:
+        if hasattr(op, f"_{cmd.lower()}"):
             cl = getattr(op, f"_{cmd.lower()}")
-        except AttributeError:
+        else:
             cl = self.find_op_common_class(cmd, args)
         return cl
 

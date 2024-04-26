@@ -1043,7 +1043,7 @@ class Parser:
         o.line_number = 0
         proc.stmts.append(o)
 
-    def action_instruction(self, instruction: Token, args: list[Expression | Any], raw: str="", line_number: int=0) -> baseop | None:
+    def action_instruction(self, instruction: str, args: list[Expression | Any], raw: str="", line_number: int=0) -> baseop | None:
         self.handle_local_asm_jumps(instruction, args)
 
         self.make_sure_proc_exists(line_number, raw)
@@ -1125,7 +1125,7 @@ class Parser:
     def action_end(self, label):
         if label:
             self.main_file = True
-            self.entry_point = label
+            self.entry_point = str(label)
             self.add_call_to_entrypoint()
 
     def parse_rt_info(self, name):

@@ -145,25 +145,25 @@ class Asm2IR(CommonCollector):
         return nodes
 
     @v_args(meta=True)
-    def equdir(self, meta, nodes):
-        name, value = nodes[0], nodes[1]
+    def equdir(self, meta: lark.tree.Meta, nodes: list[lark.tree.Tree | lark.lexer.Token]):
+        name, value = str(nodes[0]), nodes[1]
         logging.debug("equdir %s ~~", nodes)
 
         return self.context.action_equ(name, value, raw=get_raw(self.input_str, meta),
                                        line_number=get_line_number(meta))
 
     @v_args(meta=True)
-    def assdir(self, meta:     lark.tree.Meta, nodes: list[lark.lexer.Token | Expression]) -> _assignment:
-        name, value = nodes[0], nodes[1]
+    def assdir(self, meta: lark.tree.Meta, nodes: list[lark.lexer.Token | Expression]) -> _assignment:
+        name, value = str(nodes[0]), nodes[1]
         logging.debug("assdir %s ~~", nodes)
         assert isinstance(name, str) and isinstance(value, Expression)
         return self.context.action_assign(name, value, raw=get_raw(self.input_str, meta),
                                           line_number=get_line_number(meta))
 
     @v_args(meta=True)
-    def labeldef(self, meta, children):
-        logging.debug("labeldef %s ~~", children)
-        name, colon = children  # TODO
+    def labeldef(self, meta, nodes):
+        logging.debug("labeldef %s ~~", nodes)
+        name, colon = str(nodes[0]), nodes[1]
         return self.context.action_label(name, isproc=False, raw=get_raw_line(self.input_str, meta),
                                          line_number=get_line_number(meta),
                                          globl=(colon == "::"))
@@ -480,13 +480,13 @@ class Asm2IR(CommonCollector):
     @v_args(meta=True)
     def instrprefix(self, meta:     lark.tree.Meta, nodes: list[    lark.lexer.Token]) -> _DiscardType:
         logging.debug(f"instrprefix {nodes} ~~")
-        instruction = nodes[0]
+        instruction = str(nodes[0])
         self.context.action_instruction(instruction, [], raw=get_raw_line(self.input_str, meta),
                                         line_number=get_line_number(meta))
         return Discard
 
     def mnemonic(self, name: list[    lark.lexer.Token]) -> _DiscardType:
-        self.instruction_name = name[0]
+        self.instruction_name = str(name[0])
         return Discard
 
     def comment(self, children: list[    lark.lexer.Token]) -> _DiscardType:
@@ -598,7 +598,7 @@ class Asm2IR(CommonCollector):
         directive = nodes[0].lower()
         from .parser import Parser
         logging.debug("offsetdirtype %s", nodes)
-        value = nodes[1].children[0] if len(nodes)==2 else 2
+        value = str(nodes[1].children[0]) if len(nodes)==2 else 2
         if directive == "align":
             self.context.align(Parser.parse_int(value))
         elif directive == "even":
@@ -684,16 +684,14 @@ class TopDownVisitor:
                 else:
                     for i in node:
                         result = self.visit(i, result)
-            elif isinstance(node, str | int):
+            elif isinstance(node, (str, int)):
                 result += [f"{node}"]
             elif hasattr(self, type(node).__name__):
                 result = getattr(self, type(node).__name__)(node)
             else:
-                import logging
-                logging.error(f"Error unknown type {node}")
-                raise ValueError(f"Error unknown type {node}")
+                logging.error(f"Error unknown type {type(node).__name__} {node}")
+                raise ValueError(f"Error unknown type {type(node).__name__} {node}")
         except Exception as ex:
-            import logging
             import traceback
             i = traceback.format_exc()
             print(node, i, ex)
