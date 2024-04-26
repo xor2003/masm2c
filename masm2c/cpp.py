@@ -1,3 +1,11 @@
+# cython: language_level=3
+# cython: boundscheck=False
+# cython: wraparound=True
+# cython: initializedcheck=False
+# cython: cdivizion=True
+# cython: always_allow_keywords=False
+# cython: unraisable_traceback=False
+# cython: binding=False
 """
 Responsible for generating C++ code specifically.
 It might handle tasks like converting assembly labels to C++ identifiers, generating function prototypes,

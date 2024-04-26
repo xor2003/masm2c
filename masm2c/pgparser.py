@@ -1,10 +1,16 @@
+# cython: language_level=3
+# cython: boundscheck=False
+# cython: wraparound=True
+# cython: initializedcheck=False
+# cython: cdivizion=True
+# cython: always_allow_keywords=False
+# cython: unraisable_traceback=False
+# cython: binding=False
 """
 Handle the parsing of MASM code using the Lark library.
 It defines grammar rules, actions for different types of instructions and directives,
 and transforms the parsed tree into an intermediate representation (IR) for further processing.
 """
-from __future__ import annotations
-
 import logging
 from typing import TYPE_CHECKING, Union, Optional, ClassVar, Final
 

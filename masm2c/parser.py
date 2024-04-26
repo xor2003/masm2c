@@ -1,6 +1,11 @@
-from __future__ import annotations
-
-from argparse import Namespace
+# cython: language_level=3
+# cython: boundscheck=False
+# cython: wraparound=True
+# cython: initializedcheck=False
+# cython: cdivizion=True
+# cython: always_allow_keywords=False
+# cython: unraisable_traceback=False
+# cython: binding=False
 from ast import literal_eval
 
 """ Module to parse assembler source """

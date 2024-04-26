@@ -35,12 +35,6 @@ if TYPE_CHECKING:
 from masm2c.Token import Expression
 from mypy_extensions import mypyc_attr
 
-__all__ = ["_add", "_assignment", "basejmp", "baseop", "_call", "_cmpsb", "Data", "DataType", "_div", "_equ",
-           "_idiv", "_imul", "_instruction0", "_instruction1", "_instruction2", "_instruction3", "_int",
-           "_jae", "_jb", "_je", "_jna", "_jnb", "_jnbe", "_jne", "_jump", "label", "_lea", "_leave", "_lods", "_lodsb",
-           "_lodsd", "_lodsw", "_mov", "_movs", "_movsb", "_movsd", "_movsw", "_mul", "_nop", "_pop", "_push", "_rep",
-           "_repe", "_repne", "_ret", "_retf", "_retn", "_scas", "_scasb", "_scasd", "_scasw", "Segment", "_stosb",
-           "_stosd", "_stosw", "Struct", "Unsupported", "var", "_xlat"]
 class Unsupported(Exception):
     pass
 
