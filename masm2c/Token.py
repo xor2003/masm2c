@@ -39,7 +39,7 @@ class Token(lark.Tree):
     # def __repr__(self):
 
     @staticmethod
-    def find_tokens(expr: Any, lookfor: str) -> Union[list[str], list[lark.tree.Tree], None]:
+    def find_tokens(expr: Any, lookfor: str) -> Union[list[str], list[lark.Tree], None]:
         l = []
         if isinstance(expr, Tree):
             if expr.data == lookfor:
