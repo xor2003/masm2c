@@ -2991,7 +2991,7 @@ h_array db '^',10,10
         self.assertEqual(*self.doTest("call    near ptr loc_40458f", "CALL(mainproc,m2c::kloc_40458f)"))
 
     def test_instr_10910(self):
-        self.assertEqual(*self.doTest("call    far ptr loc_40458f+1", "CALLF(mainproc,m2c::kloc_40458f)"))
+        self.assertEqual(*self.doTest("call    far ptr loc_40458f+1", "CALLF(__dispatch_call,loc_40458f+1)"))
 
     def test_instr_10920(self):
         self.assertEqual(*self.doTest("push    [bp+arg_2]", "PUSH(*(dw*)(raddr(ss,bp+arg_2)))"))
@@ -3005,10 +3005,10 @@ h_array db '^',10,10
         self.cpp._context.itislst = False
 
     def test_instr_10950(self):
-        self.assertEqual(*self.doTest("jmp far ptr 0:0", ""))
+        self.assertEqual(*self.doTest("jmp far ptr 0:0", "return __dispatch_call(__disp, _state);"))
 
-    def test_instr_10960(self):
-        self.assertEqual(*self.doTest("call far ptr 0:0", ""))
+    def test_instr_10960(self):  # TODO!!! Actually it should go there the memory points
+        self.assertEqual(*self.doTest("call far ptr 0:0", "CALLF(__dispatch_call,0)"))
 
     def test_instr_10970(self):
         self.assertEqual(*self.doTest("imul    word_0", "IMUL1_2(word_0)"))

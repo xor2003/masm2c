@@ -610,12 +610,12 @@ class Cpp(Gen):
 
     def _imul(self, src: list[Expression]) -> str:
         size = 0
+        res = [self.render_instruction_argument(i, size) for i in src]
         for i in src:
             if size == 0:
                 size = self.calculate_size(i)
             else:
                 break
-        res = [self.render_instruction_argument(i, size) for i in src]
         if size == 0:
             size = self._middle_size
         return "IMUL%d_%d(%s)" % (len(src), size, ",".join(res))
