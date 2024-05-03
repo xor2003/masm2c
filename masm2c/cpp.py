@@ -925,7 +925,7 @@ class Cpp(Gen):
     def render_function_wrappers_c(self):
         return "".join(
             f"""
- bool {p}(m2c::_offsets, struct m2c::_STATE* _state){{return {self.groups[p]}(m2c::k{p}, _state);}}
+ bool {self.renderer.mangle_label(p)}(m2c::_offsets, struct m2c::_STATE* _state){{return {self.groups[p]}(m2c::k{p}, _state);}}
 """
             for p in sorted(self.grouped)
         )
@@ -1460,6 +1460,7 @@ struct Memory{
                 result = f"far_offset({g.segment},{g.name})"
             else:
                 logging.error(f"Some unknown data size {size} for {g.name}")
+                result = g.original_name
         elif isinstance(g, (op._equ, op._assignment)):
             result = g.original_name
         elif isinstance(g, (op.label, Proc)):
