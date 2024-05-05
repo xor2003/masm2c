@@ -102,15 +102,15 @@ class ExprSizeCalculator(BottomUpVisitor):
 
     def LABEL(self, token: Token) -> Vector | None:  # TODO very strange, to replace
         context = self.kwargs["context"]
-        if g := context.get_global(token):
-            if isinstance(g, op.var):
-                if self.element_size < 1:
-                    self.element_size = g.size
-                return Vector(self.element_size, 1)
-            elif isinstance(g, (op._assignment, op._equ)):
-                self.element_size = g.value.size()
-                return Vector(self.element_size, 1)
+        if not (g := context.get_global(token)):
             return None
+        if isinstance(g, op.var):
+            if self.element_size < 1:
+                self.element_size = g.size
+            return Vector(self.element_size, 1)
+        elif isinstance(g, (op._assignment, op._equ)):
+            self.element_size = g.value.size()
+            return Vector(self.element_size, 1)
         return None
 
     def memberdir(self, tree: Tree, size: Vector) -> Vector:
@@ -129,7 +129,7 @@ class ExprSizeCalculator(BottomUpVisitor):
                 else:
                     return g._size
         except KeyError as ex:
-            logging.debug(f"Didn't found for {label} {ex.args} will try workaround")
+            logging.debug("Didn't found for %s %s will try workaround", label, ex.args)
             # if members are global as with M510 or tasm try to find last member size
             g = context.get_global(label[-1])
 
@@ -241,7 +241,7 @@ class Parser:
         self._current_file = ""
         self.__current_file_hash = "0"
 
-        self.data_merge_candidats = 0
+        self.data_merge_candidates = 0
 
         self.equs: set[str] = set()
 
@@ -283,7 +283,7 @@ class Parser:
             raise NameError("empty name is not allowed")
         value.original_name = name
         name = name.lower()
-        logging.debug(f"reset global {name} -> {value}")
+        logging.debug("reset global %s -> %s", name, value)
         self.__globals[name] = value
 
     def get_global(self, name: Token | str) -> Any:
@@ -387,14 +387,15 @@ class Parser:
         self.__offset_id += 1
 
     def make_sure_proc_exists(self, line_number: int, raw: str) -> None:
-        if not self.proc:
-            _, real_offset, real_seg = self.get_lst_offsets(raw)
-            offset = real_offset if real_seg else self.__cur_seg_offset
-            pname = f"{self.__segment.name}_{offset:x}_proc"  # automatically generated proc name
-            if pname in self.proc_list:
-                self.proc = self.get_global(pname)
-            else:
-                self.proc = self.add_proc(pname, raw, line_number, False)
+        if self.proc:
+            return
+        _, real_offset, real_seg = self.get_lst_offsets(raw)
+        offset = real_offset if real_seg else self.__cur_seg_offset
+        pname = f"{self.__segment.name}_{offset:x}_proc"  # automatically generated proc name
+        if pname in self.proc_list:
+            self.proc = self.get_global(pname)
+        else:
+            self.proc = self.add_proc(pname, raw, line_number, False)
 
     def align(self, align_bound=0x10):
         num = (align_bound - (self.__binary_data_size & (align_bound - 1))) if (
@@ -404,19 +405,20 @@ class Parser:
     def org(self, num):
         if self.itislst:
             return
-        if num:
-            label = self.get_dummy_label()
-            offset = self.__binary_data_size
-            self.__binary_data_size += num
-            self.data_merge_candidats = 0
+        if num == 0:
+            return
+        label = self.get_dummy_label()
+        offset = self.__binary_data_size
+        self.__binary_data_size += num
+        self.data_merge_candidates = 0
 
-            self.__segment.append(
-                op.Data(label, "db", op.DataType.ARRAY, [0], num, num, comment="for alignment", align=True,
-                        offset=offset))
+        self.__segment.append(
+            op.Data(label, "db", op.DataType.ARRAY, [0], num, num, comment="for alignment", align=True,
+                    offset=offset))
 
     def move_offset(self, pointer, raw):
         if pointer > self.__binary_data_size:
-            self.data_merge_candidats = 0
+            self.data_merge_candidates = 0
             label = self.get_dummy_label()
 
             num = pointer - self.__binary_data_size
@@ -427,7 +429,7 @@ class Parser:
                 op.Data(label, "db", op.DataType.ARRAY, [0], num, num, comment="move_offset", align=True,
                         offset=offset))
         elif pointer < self.__binary_data_size and not self.itislst:
-            self.data_merge_candidats = 0
+            self.data_merge_candidates = 0
             logging.warning(f"Maybe wrong offset current:{self.__binary_data_size:x} should be:{pointer:x} ~{raw}~")
 
     def get_dummy_label(self) -> str:
@@ -504,7 +506,7 @@ class Parser:
                     r"^\s+(?P<start>[0-9A-F]{5,10})H [0-9A-F]{5,10}H [0-9A-F]{5,10}H (?P<segment>[_0-9A-Za-z]+)\s+[A-Z]+",
                     line)
                 segs[m["segment"]] = f"{int(m['start'], 16) // 16 + DOSBOX_START_SEG:04X}"
-        logging.debug(f"Results of loading .map file: {segs}")
+        logging.debug("Results of loading .map file: %s", segs)
         return segs
 
     def parse_include_file_lines(self, file_name):
@@ -576,7 +578,7 @@ class Parser:
     def create_segment(self, name, options=None, segclass=None, raw=""):
         logging.info("     Found segment %s", name)
         name = name.lower()
-        self.data_merge_candidats = 0
+        self.data_merge_candidates = 0
         self.__segment_name = name
         if name in self.segments:
             self.__segment = self.segments[name]
@@ -607,6 +609,7 @@ class Parser:
         for i in type:
             if i and i.lower() == "far":
                 far = True
+                break
 
         self.proc = self.add_proc(name, raw, line_number, far)
 
@@ -819,45 +822,49 @@ class Parser:
             if dummy_label and data_internal_type == op.DataType.NUMBER and binary_width == 1:
                 self.merge_data_bytes()
             else:
-                self.data_merge_candidats = 0
+                self.data_merge_candidates = 0
 
 
         self.flow_terminated = True
         return data  # c, h, size
 
     def merge_data_bytes(self) -> None:
-        self.data_merge_candidats += 1
+        self.data_merge_candidates += 1
         size = 32
-        if self.data_merge_candidats == size:
-            if self.__segment.getdata()[-size].offset + size - 1 != self.__segment.getdata()[-1].offset:
-                logging.debug(
-                    f"Cannot merge {self.__segment.getdata()[-size].label} - {self.__segment.getdata()[-1].label}")
-            else:
-                logging.debug(
-                    f"Merging data at {self.__segment.getdata()[-size].label} - {self.__segment.getdata()[-1].label}")
-                array = [x.children[0] for x in self.__segment.getdata()[-size:]]
-                if not any(array):  # all zeros
-                    array = [0]
+        if self.data_merge_candidates != size:
+            return
 
-                self.__segment.getdata()[-size].children = array
-                self.__segment.getdata()[-size].elements = size
-                self.__segment.getdata()[-size].data_internal_type = op.DataType.ARRAY
-                self.__segment.getdata()[-size]._size = size
-                self.__segment.setdata(self.__segment.getdata()[:-(size - 1)])
+        if self.__segment.getdata()[-size].offset + size - 1 != self.__segment.getdata()[-1].offset:
+            logging.debug(
+                "Cannot merge %s - %s", self.__segment.getdata()[-size].label, self.__segment.getdata()[-1].label)
+        else:
+            logging.debug(
+                "Merging data at %s - %s", self.__segment.getdata()[-size].label, self.__segment.getdata()[-1].label)
+            array = [x.children[0] for x in self.__segment.getdata()[-size:]]
+            if not any(array):  # all zeros
+                array = [0]
 
-            self.data_merge_candidats = 0
+            self.__segment.getdata()[-size].children = array
+            self.__segment.getdata()[-size].elements = size
+            self.__segment.getdata()[-size].data_internal_type = op.DataType.ARRAY
+            self.__segment.getdata()[-size]._size = size
+            self.__segment.setdata(self.__segment.getdata()[:-(size - 1)])
+
+        self.data_merge_candidates = 0
 
     def adjust_offset_to_real(self, raw: str, label: str) -> None:
         absolute_offset, real_offset, _ = self.get_lst_offsets(raw)
         if self.itislst and real_offset and real_offset > 0xffff:  # IDA issue
             return
-        if absolute_offset:
-            self.move_offset(absolute_offset, raw)
-            if self.__cur_seg_offset > real_offset and not self.itislst:
-                logging.warning(f"Current offset does not equal to required for {label}")
-            if self.__cur_seg_offset != real_offset:
-                self.data_merge_candidats = 0
-            self.__cur_seg_offset = real_offset
+        if absolute_offset == 0:
+            return
+
+        self.move_offset(absolute_offset, raw)
+        if self.__cur_seg_offset > real_offset and not self.itislst:
+            logging.warning(f"Current offset does not equal to required for {label}")
+        if self.__cur_seg_offset != real_offset:
+            self.data_merge_candidates = 0
+        self.__cur_seg_offset = real_offset
 
     def get_lst_offsets(self, raw: str) -> tuple[int, int, int]:
         """Get required offsets from .LST file
@@ -952,20 +959,19 @@ class Parser:
             if isinstance(values, lark.Tree):
                 values = values.children
             return [self.convert_members(m, v) for m, v in zip(data.getmembers(), values)]
-        else:
-            """
-            type = data.gettype()
-            binary_width = self.typetosize(type)
-            _, _, array = self.process_data_tokens(values, binary_width)
-            """
-            return AsmData2IR().visit(values)
+        """
+        type = data.gettype()
+        binary_width = self.typetosize(type)
+        _, _, array = self.process_data_tokens(values, binary_width)
+        """
+        return AsmData2IR().visit(values)
 
     def add_structinstance(self, label: str, type: str, args: list[Any | Tree], raw: str="") -> None:
 
         if not label:
             label = self.get_dummy_label()
 
-        self.data_merge_candidats = 0
+        self.data_merge_candidates = 0
         self.adjust_offset_to_real(raw, label)
         offset = self.__cur_seg_offset
 
@@ -1049,36 +1055,37 @@ class Parser:
         o.filename = self._current_file
         o.raw_line = raw
         o.line_number = line_number
-        if self.current_macro is None:
-            _, o.real_offset, o.real_seg = self.get_lst_offsets(raw)
-            if not self.need_label and o.real_seg and len(self.procs_start) \
-                    and (o.real_seg * 0x10 + o.real_offset) in self.procs_start:
-                logging.warning(
-                    f"Add a label since run-time info contain flow enter at this address {o.real_seg:x}:{o.real_offset:x} line={line_number}")
-                self.need_label = True
-            if self.need_label and self.flow_terminated:
-                logging.warning(f"Flow terminated and it was no label yet line={line_number}")
-                if o.real_seg:
-                    logging.warning(f"at {o.real_seg:x}:{o.real_offset:x}")
-            if self.need_label and self.proc.stmts:  # skip first instruction
-                label_name = f"ret_{o.real_seg:x}_{o.real_offset:x}" if o.real_seg else self.get_extra_dummy_jumplabel()
-                logging.warning(f"Adding helping label {label_name}")
-                self.action_label(label_name, raw=raw)
-            self.proc.stmts.append(o)
-            if self.args.get("mergeprocs") == "single":
-                self.need_label |= self.proc.is_return_point(o)
-            self.flow_terminated = self.proc.is_flow_terminating_stmt(o)
-            self.need_label |= self.flow_terminated
 
-            self.collect_labels(self.proc.used_labels, o)
-            return o
-        else:
+        if self.current_macro:
             self.current_macro.instructions.append(o)
             return
 
+        _, o.real_offset, o.real_seg = self.get_lst_offsets(raw)
+        if not self.need_label and o.real_seg and len(self.procs_start) \
+                and (o.real_seg * 0x10 + o.real_offset) in self.procs_start:
+            logging.warning(
+                f"Add a label since run-time info contain flow enter at this address {o.real_seg:x}:{o.real_offset:x} line={line_number}")
+            self.need_label = True
+        if self.need_label and self.flow_terminated:
+            logging.warning(f"Flow terminated and it was no label yet line={line_number}")
+            if o.real_seg:
+                logging.warning(f"at {o.real_seg:x}:{o.real_offset:x}")
+        if self.need_label and self.proc.stmts:  # skip first instruction
+            label_name = f"ret_{o.real_seg:x}_{o.real_offset:x}" if o.real_seg else self.get_extra_dummy_jumplabel()
+            logging.warning(f"Adding helping label {label_name}")
+            self.action_label(label_name, raw=raw)
+        self.proc.stmts.append(o)
+        if self.args.get("mergeprocs") == "single":
+            self.need_label |= self.proc.is_return_point(o)
+        self.flow_terminated = self.proc.is_flow_terminating_stmt(o)
+        self.need_label |= self.flow_terminated
+
+        self.collect_labels(self.proc.used_labels, o)
+        return o
+
     def handle_local_asm_jumps(self, instruction: Token, args: list[Expression | Any]) -> None:
         if (
-            instruction[0].lower() in ["j", "loop"]
+            (instruction.lower().startswith("j") or instruction.lower().startswith("loop"))
             and len(args) == 1
             and isinstance(args[0], lark.Tree)
             and isinstance(args[0].children, list)
@@ -1093,7 +1100,8 @@ class Parser:
     def collect_labels(self, target: set[str], operation: baseop) -> None:
         for arg in operation.children:
             offset = Token_.find_tokens(arg, "offsetdir") or []
-            if offset and not isinstance(offset[0], str): offset = []
+            if offset and not isinstance(offset[0], str):
+                offset = []
             labels = (Token_.find_tokens(arg, "LABEL") or []) + offset
             # TODO replace with AST traversing
             #  If it is call to a proc then does not take it into account
@@ -1109,7 +1117,7 @@ class Parser:
     def action_ends(self) -> None:
         if len(self.struct_names_stack):  # if it is not a structure then it is end of segment
             name = self.struct_names_stack.pop()
-            logging.debug(f"endstruct {name}")
+            logging.debug("endstruct %s", name)
             assert self.current_struct
             self.structures[name] = self.current_struct
             self.set_global(name, self.current_struct)
@@ -1138,22 +1146,22 @@ class Parser:
 def parse_asm_number(expr: Token | str, radix: int) -> tuple[int, str, str]:
     if expr == "?":
         radix, sign, value = 10, "", "0"
+        return radix, sign, value
+
+    if m := re.match(r"^(?P<sign>[+-]?)(?P<value>[0-8]+)[OoQq]$", expr):
+        radix = 8
+    elif m := re.match(r"^(?P<sign>[+-]?)(?P<value>[0-9][0-9A-Fa-f]*)[Hh]$", expr):
+        radix = 16
+    elif m := re.match(r"^(?P<sign>[+-]?)(?P<value>[0-9]+)[Dd]$", expr):
+        radix = 10
+    elif m := re.match(r"^(?P<sign>[+-]?)(?P<value>[0-1]+)[Bb]$", expr):
+        radix = 2
+    elif m := re.match(r"^(?P<sign>[+-]?)(?P<value>[0-9]+)$", expr):
+        pass
+    elif m := re.match(r"^(?P<sign>[+-]?)(?P<value>[0-9][0-9A-Fa-f]*)$", expr):
+        radix = 16
     else:
-        if m := re.match(r"^(?P<sign>[+-]?)(?P<value>[0-8]+)[OoQq]$", expr):
-            radix = 8
-        elif m := re.match(r"^(?P<sign>[+-]?)(?P<value>[0-9][0-9A-Fa-f]*)[Hh]$", expr):
-            radix = 16
-        elif m := re.match(r"^(?P<sign>[+-]?)(?P<value>[0-9]+)[Dd]$", expr):
-            radix = 10
-        elif m := re.match(r"^(?P<sign>[+-]?)(?P<value>[0-1]+)[Bb]$", expr):
-            radix = 2
-        elif m := re.match(r"^(?P<sign>[+-]?)(?P<value>[0-9]+)$", expr):
-            pass
-        elif m := re.match(r"^(?P<sign>[+-]?)(?P<value>[0-9][0-9A-Fa-f]*)$", expr):
-            radix = 16
-        else:
-            raise ValueError(expr)
-        sign = m["sign"] or ""
-        value = m["value"]
-        #if sign == '-':
+        raise ValueError(expr)
+    sign = m["sign"] or ""
+    value = m["value"]
     return radix, sign, value

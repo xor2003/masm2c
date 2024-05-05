@@ -286,7 +286,7 @@ class Asm2IR(CommonCollector):
             if macroses:
                 result = mtch.group().lower()
                 if result in macroses:
-                    logging.debug(f" ~^~{result}~^~ in macronames")
+                    logging.debug(" ~^~%s~^~ in macronames", result)
                     return result
         return None
 
@@ -317,7 +317,7 @@ class Asm2IR(CommonCollector):
 
     def macrocall(self, nodes, name, args):
         # macro usage
-        logging.debug(f"macrocall {name}~~")
+        logging.debug("macrocall %s~~", name)
         macros = macroses[name]
         instructions = deepcopy(macros.instructions)
         param_assigner = self.Getmacroargval(macros.getparameters(), args)
@@ -331,7 +331,7 @@ class Asm2IR(CommonCollector):
             if self.context.structures:
                 result = mtch.group().lower()
                 if result in self.context.structures:
-                    logging.debug(f" ~^~{result}~^~ in structures")
+                    logging.debug(" ~^~%s~^~ in structures", result)
                     return result
         return None
 
@@ -340,13 +340,13 @@ class Asm2IR(CommonCollector):
         # structure definition header
         self.context.current_struct = op.Struct(name.lower(), type.lower())
         self.context.struct_names_stack.append(name.lower())
-        logging.debug(f"structname added ~~{name}~~")
+        logging.debug("structname added ~~%s~~", name)
         return nodes
 
     @v_args(meta=True)
     def structinstdir(self, meta:     lark.tree.Meta, nodes: list[lark.Tree | lark.lexer.Token]) -> _DiscardType:
         label, type, values = nodes
-        logging.debug(f"structinstdir {label} {type} {values}")
+        logging.debug("structinstdir %s %s %s", label, type, values)
         assert isinstance(values, lark.Tree)
         args = values.children[0]
         if args is None:
@@ -428,7 +428,7 @@ class Asm2IR(CommonCollector):
 
     @v_args(meta=True)
     def segmentdir(self, meta, nodes):
-        logging.debug(f"segmentdir {nodes!s} ~~")
+        logging.debug("segmentdir %s ~~", nodes)
 
         name = self.name = self.context.mangle_label(nodes[0])
         opts = set()
@@ -450,7 +450,7 @@ class Asm2IR(CommonCollector):
         return nodes
 
     def endsdir(self, nodes: list[lark.lexer.Token]) -> list[lark.lexer.Token]:
-        logging.debug(f"ends {nodes} ~~")
+        logging.debug("ends %s ~~", nodes)
         self.context.action_ends()
         self._expression = None
         return nodes
@@ -463,7 +463,7 @@ class Asm2IR(CommonCollector):
     def procdir(self, meta, nodes):
         name, type = nodes[0], self._poptions
         self._poptions = []
-        logging.debug(f"procdir {nodes!s} ~~")
+        logging.debug("procdir %s ~~", nodes)
         self.context.action_proc(name, type, line_number=get_line_number(meta),
                                  raw=get_raw_line(self.input_str, meta))
         self._expression = None
@@ -471,14 +471,14 @@ class Asm2IR(CommonCollector):
 
     def endpdir(self, nodes):
         name = nodes[0]
-        logging.debug(f"endp {name!s} ~~")
+        logging.debug("endp %s ~~", name)
         self.context.action_endp()
         return nodes
 
 
     @v_args(meta=True)
     def instrprefix(self, meta:     lark.tree.Meta, nodes: list[lark.Token]) -> _DiscardType:
-        logging.debug(f"instrprefix {nodes} ~~")
+        logging.debug("instrprefix %s ~~", nodes)
         instruction = str(nodes[0])
         self.context.action_instruction(instruction, [], raw=get_raw_line(self.input_str, meta),
                                         line_number=get_line_number(meta))

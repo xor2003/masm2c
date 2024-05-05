@@ -29,7 +29,7 @@ from typing import Any, TYPE_CHECKING, ClassVar, Optional
 
 from lark import lark
 
-from masm2c.op import _assignment, _equ, _mov, baseop, label
+from masm2c.op import _assignment, _equ, baseop, label
 from masm2c.Token import Expression
 
 from . import op
@@ -84,7 +84,7 @@ class Proc:
         del other
 
     def add_label(self, name: str, label: label) -> None:
-        logging.debug(f"Label {name} is provided by {self.name} proc")
+        logging.debug("Label %s is provided by %s proc", name, self.name)
         self.stmts.append(label)
         self.provided_labels.add(name)
 
@@ -149,7 +149,7 @@ class Proc:
         return o
 
     def create_assignment_op(self, label: str, value: Expression, line_number: int=0) -> _assignment:
-        logging.debug(f"{label} {value!s}")
+        logging.debug("%s %s", label, value)
         o = op._assignment([label, value])
         if hasattr(value, "original_type"):  # TODO cannot get original type anymore. not required here
             o.original_type = value.original_type
@@ -213,13 +213,13 @@ class Proc:
                 full_line = self.generate_full_cmd_line(visitor, stmt)
                 visitor.body += full_line
             except InjectCode as ex:
-                logging.debug(f"Injecting code {ex.cmd} before {stmt}")
+                logging.debug("Injecting code %s before %s", ex.cmd, stmt)
                 s = self.generate_full_cmd_line(visitor, ex.cmd)
                 visitor.body += s
                 s = self.generate_full_cmd_line(visitor, stmt)
                 visitor.body += s
             except SkipCode:
-                logging.debug(f"Skipping code {stmt}")
+                logging.debug("Skipping code %s", stmt)
             except Exception as ex:
                 logging.exception(f"Exception {ex.args}")
                 logging.exception(f" in {stmt.filename}:{stmt.line_number} {stmt.raw_line}")

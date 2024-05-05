@@ -30,7 +30,7 @@ from lark.lexer import Token
 from lark.tree import Tree
 
 from masm2c.Token import Token as Token_, Expression
-from masm2c.op import Data
+from masm2c.op import Data, Struct
 
 if TYPE_CHECKING:
     from masm2c.parser import Parser
@@ -170,8 +170,7 @@ class Cpp(Gen):
             return self.convert_label_var(g, name, original_name)
         elif isinstance(g, op.label):
             return f"m2c::k{name}" if self.is_data or not self.itisjump else name
-        else:
-            return name
+        return name
 
     def convert_label_var(self, g, name, original_name) -> str:
         logging.debug("Variable detected. Size: %s", g.size)
@@ -201,16 +200,20 @@ class Cpp(Gen):
                 self._indirection = IndirectionType.POINTER
 
         if g.elements == 1 and self._isjustlabel and not self.lea and g.size == self.element_size:
-            result = g.name
             self._indirection = IndirectionType.VALUE
+            result = g.name
         else:
             result = self._convert_label_var_non_segment_complex(g, name)
         return result
 
     def _convert_label_var_non_segment_complex(self, g, name):
+        if self._work_segment == "cs":
+            self.body += "\tcs=seg_offset(" + g.segment + ");\n"
+
         if not self._isjustlabel and not self.lea and self._indirection == IndirectionType.VALUE:
             self._indirection = IndirectionType.POINTER
-        if self._indirection == IndirectionType.POINTER:  # and self.isvariable:
+
+        if self._indirection == IndirectionType.POINTER:
             result = g.name
             if not self._isjustlabel:  # if not just single label: [a+3] address arithmetics
                 self.needs_dereference = True
@@ -230,8 +233,7 @@ class Cpp(Gen):
             self.itispointer = False
         else:
             result = name
-        if self._work_segment == "cs":
-            self.body += "\tcs=seg_offset(" + g.segment + ");\n"
+
         return result
 
     def render_data_c(self, segments):
@@ -334,19 +336,15 @@ class Cpp(Gen):
         if isinstance(g, (op._equ, op._assignment)):
             value = self._convert_member_equ(g, label)
         elif isinstance(g, op.var):
-
             value = self._convert_member_var(g, label)
         elif isinstance(g, op.Struct):
             #if self._isjustmember:
             value = f'offsetof({label[0]},{".".join(label[1:])})'
 
         if self._indirection == IndirectionType.POINTER and self.needs_dereference and self.struct_type:
-
             self._ismember = True
-
             self.needs_dereference = False
 
-        #if size == 0:
         return value
 
     def _convert_member_var(self, g, label):
@@ -381,6 +379,7 @@ class Cpp(Gen):
                         self.size_changed = True
             elif self._indirection == IndirectionType.OFFSET:
                 value = f'offset({g.segment},{".".join(label)})'
+
             if self._work_segment == "cs":
                 self.body += "\tcs=seg_offset(" + g.segment + ");\n"
         return value
@@ -389,6 +388,7 @@ class Cpp(Gen):
         logging.debug("%s", g)
         if not g.implemented:
             raise InjectCode(g)
+
         if self._isjustlabel:
             value = ".".join(label)
         else:
@@ -409,31 +409,30 @@ class Cpp(Gen):
             value = f'({label[0]})+offsetof({g.original_type},{".".join(label[1:])})'
         else:
             raise Exception(f"Not handled type {type(g)!s}")
+
         self._indirection = IndirectionType.VALUE
         return value
 
-    def convert_sqbr_reference(self, segment: str, expr: str, destination: bool, size: int, islabel: bool,
-                               lea: bool = False) -> str:
-        if not lea or destination:
-            if not self.islabel or not self.isvariable:
-                self.needs_dereference = True
-                self.itispointer = True
-                if size == 1:
-                    expr = f"raddr({segment},{expr})"
-                elif size == 2:
-                    expr = f"(dw*)(raddr({segment},{expr}))"
-                elif size == 4:
-                    expr = f"(dd*)(raddr({segment},{expr}))"
-                elif size == 8:
-                    expr = f"(dq*)(raddr({segment},{expr}))"
-                else:
-                    logging.error(f"~{expr}~ invalid size {size}")
-                    expr = f"raddr({segment},{expr})"
-            elif self.size_changed:  # or not self._isjustlabel:
-                    expr = Cpp.render_new_pointer_size(self.itispointer, expr, size)
-                    self.size_changed = False
+    def convert_sqbr_reference(self, segment: str, expr: str, size: int) -> str:
+        if not self.islabel or not self.isvariable:
+            self.needs_dereference = True
+            self.itispointer = True
+            if size == 1:
+                expr = f"raddr({segment},{expr})"
+            elif size == 2:
+                expr = f"(dw*)(raddr({segment},{expr}))"
+            elif size == 4:
+                expr = f"(dd*)(raddr({segment},{expr}))"
+            elif size == 8:
+                expr = f"(dq*)(raddr({segment},{expr}))"
+            else:
+                logging.error(f"~{expr}~ invalid size {size}")
+                expr = f"raddr({segment},{expr})"
+        elif self.size_changed:  # or not self._isjustlabel:
+                expr = Cpp.render_new_pointer_size(self.itispointer, expr, size)
+                self.size_changed = False
 
-            logging.debug(f"expr: {expr}")
+        logging.debug("expr: %s", expr)
         return expr
 
     @staticmethod
@@ -505,8 +504,7 @@ class Cpp(Gen):
     def _label(self, name, isproc):
         if isproc:
             raise RuntimeError("Dead code?")
-        else:
-            self._cmdlabel = "%s:\n" % self.mangle_label(name)
+        self._cmdlabel = "%s:\n" % self.mangle_label(name)
         return ""
 
     def _call(self, expr: Expression) -> str:
@@ -600,10 +598,9 @@ class Cpp(Gen):
         size = 0
         res = [self.render_instruction_argument(i, size) for i in src]
         for i in src:
-            if size == 0:
-                size = self.calculate_size(i)
-            else:
+            if size:
                 break
+            size = self.calculate_size(i)
         if size == 0:
             size = self._middle_size
         return "MUL%d_%d(%s)" % (len(src), size, ",".join(res))
@@ -612,10 +609,9 @@ class Cpp(Gen):
         size = 0
         res = [self.render_instruction_argument(i, size) for i in src]
         for i in src:
-            if size == 0:
-                size = self.calculate_size(i)
-            else:
+            if size:
                 break
+            size = self.calculate_size(i)
         if size == 0:
             size = self._middle_size
         return "IMUL%d_%d(%s)" % (len(src), size, ",".join(res))
@@ -910,15 +906,17 @@ class Cpp(Gen):
         return cpp_file_text
 
     def render_entrypoint_c(self):
-        entry_point_text = ""
-        if self._context.main_file:
-            g = self._context.get_global(self._context.entry_point)
-            if isinstance(g, op.label) and self._context.entry_point not in self.grouped:
-                entry_point_text = f"""
-                 bool {self._context.entry_point}(m2c::_offsets, struct m2c::_STATE* _state){{return {self.label_to_proc[g.name]}(m2c::k{self._context.entry_point}, _state);}}
-                """
+        if not self._context.main_file:
+            return ""
 
-            entry_point_text += f"""namespace m2c{{ m2cf* _ENTRY_POINT_ = &{self.mangle_label(self._context.entry_point)};}}
+        entry_point_text = ""
+        g = self._context.get_global(self._context.entry_point)
+        if isinstance(g, op.label) and self._context.entry_point not in self.grouped:
+            entry_point_text = f"""
+             bool {self._context.entry_point}(m2c::_offsets, struct m2c::_STATE* _state){{return {self.label_to_proc[g.name]}(m2c::k{self._context.entry_point}, _state);}}
+            """
+
+        entry_point_text += f"""namespace m2c{{ m2cf* _ENTRY_POINT_ = &{self.mangle_label(self._context.entry_point)};}}
         """
         return entry_point_text
 
@@ -987,10 +985,11 @@ static const dd kbegin = 0x1001;
         labeloffsets += "}\n"
         return labeloffsets
 
-    def produce_structures(self, strucs):
+    def produce_structures(self, strucs: dict[str, "Struct"]):
         structures = "\n"
-        if len(strucs):
+        if strucs:
             structures += """#pragma pack(push, 1)"""
+
         for name, v in strucs.items():
             struc_type = "struct" if v.gettype() == op.Struct.STRUCT else "union"
             structures += f"""
@@ -1000,7 +999,7 @@ static const dd kbegin = 0x1001;
                 structures += f"  {member.data_type} {member.label};\n"
             structures += """};
 """
-        if len(strucs):
+        if strucs:
             structures += """
 #pragma pack(pop)
 
@@ -1178,7 +1177,7 @@ struct Memory{
         internal_data_type = data.getinttype()
         self.element_size = data.getsize()
 
-        logging.debug(f"current data type = {internal_data_type}")
+        logging.debug("current data type = %s", internal_data_type)
         rc, rh = self.__type_table[internal_data_type](data)
 
         logging.debug(rc)
@@ -1408,9 +1407,9 @@ struct Memory{
             result = f"{result}+{self._need_pointer_to_member[0]}))->{'.'.join(self._need_pointer_to_member[1:])}"
 
         if tree.indirection == IndirectionType.POINTER and not self._ismember and (
-                not self._isjustlabel or self.size_changed):
-            result = self.convert_sqbr_reference(tree.segment_register, result, "destination" in tree.mods,
-                                                 tree.ptr_size, False, lea="lea" in tree.mods)
+                not self._isjustlabel or self.size_changed) and ("lea" not in tree.mods or "destination" in tree.mods):
+            result = self.convert_sqbr_reference(tree.segment_register, result,
+                                                 tree.ptr_size)
         if self._ismember:
             result = f"(({self.struct_type}*)raddr({self._work_segment},{result}"
         if self.needs_dereference:

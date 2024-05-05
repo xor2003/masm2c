@@ -60,7 +60,7 @@ class Gen(TopDownVisitor):
                 else:
                     return g._size
         except KeyError as ex:
-            logging.debug(f"Didn't found for {label} {ex.args} will try workaround")
+            logging.debug("Didn't found for %s %s will try workaround", label, ex.args)
             # if members are global as with M510 or tasm try to find last member size
             g = self._context.get_global(label[-1])
 
@@ -107,10 +107,11 @@ class Gen(TopDownVisitor):
         groups = []
         #groups_id = 1
         for first_proc_name in self._procs:
-            if first_proc_name not in self.grouped:
-                first_proc = self._context.get_global(first_proc_name)
-                if self._context.args.get("mergeprocs") == "single" or first_proc.to_group_with:
-                        groups = self.merge_all_procs_related_to_this(first_proc_name, first_proc, groups, len(groups) + 1)
+            if first_proc_name in self.grouped:
+                continue
+            first_proc = self._context.get_global(first_proc_name)
+            if self._context.args.get("mergeprocs") == "single" or first_proc.to_group_with:
+                    groups = self.merge_all_procs_related_to_this(first_proc_name, first_proc, groups, len(groups) + 1)
         self._procs = [x for x in self._procs if x not in self.grouped]
         self._procs += groups
         self._procs = self.sort_procedure_list_in_linenumber_order(self._procs)
@@ -133,11 +134,11 @@ class Gen(TopDownVisitor):
         proc_to_group = self._procs if self._context.args.get("mergeprocs") == "single" else first_proc.to_group_with
         proc_to_group = self.sort_procedure_list_in_linenumber_order(proc_to_group)
         for next_proc_name in proc_to_group:
-            if next_proc_name != first_proc_name and next_proc_name not in self.grouped:
-                next_proc = self._context.get_global(next_proc_name)
-                if isinstance(next_proc, Proc):  # and first_proc.far == next_proc.far:
-                    self.merge_two_procs_with_label(first_proc_name, first_proc, next_proc_name, next_proc,
-                                                    new_group_name)
+            if next_proc_name == first_proc_name or next_proc_name in self.grouped\
+                or not (next_proc := self._context.get_global(next_proc_name)) or not isinstance(next_proc, Proc):
+                continue
+            self.merge_two_procs_with_label(first_proc_name, first_proc, next_proc_name, next_proc,
+                                            new_group_name)
         groups += [new_group_name]
         self._context.set_global(new_group_name, first_proc)
         #groups_id += 1
@@ -150,7 +151,7 @@ class Gen(TopDownVisitor):
         next_label.real_offset, next_label.real_seg = next_proc.real_offset, next_proc.real_seg
         next_label.used = True
         first_proc.add_label(next_proc_name, next_label)
-        logging.debug(f"     with {next_proc_name}")
+        logging.debug("     with %s", next_proc_name)
         first_proc.merge_two_procs(new_group_name, next_proc)
         for missing_label in first_proc.provided_labels:
             self.label_to_proc[missing_label] = new_group_name
@@ -165,30 +166,35 @@ class Gen(TopDownVisitor):
             logging.info(f"     Identifing proc to merge #{iteration}")
             changed = False
             for first_proc_name in self._procs:
-                logging.debug(f"Proc {first_proc_name}")
+                logging.debug("Proc %s", first_proc_name)
                 first_proc = self._context.get_global(first_proc_name)
                 for next_proc_name in first_proc.to_group_with:
-                    if first_proc_name != next_proc_name:
-                        logging.debug(f"  will group with {next_proc_name}")
-                        next_proc = self._context.get_global(next_proc_name)
-                        if not next_proc.to_group_with:
-                            next_proc.to_group_with = set()
-                        if first_proc.to_group_with != next_proc.to_group_with:
-                            first_proc.to_group_with = next_proc.to_group_with = set.union(next_proc.to_group_with,
-                                                                                           first_proc.to_group_with)
-                            changed = True
-                logging.debug(f"  will group with {first_proc.to_group_with}")
+                    if first_proc_name == next_proc_name:
+                        continue
+
+                    logging.debug("  will group with %s", next_proc_name)
+                    next_proc = self._context.get_global(next_proc_name)
+                    if not next_proc.to_group_with:
+                        next_proc.to_group_with = set()
+                    if first_proc.to_group_with == next_proc.to_group_with:
+                        continue
+
+                    first_proc.to_group_with = next_proc.to_group_with = set.union(next_proc.to_group_with,
+                                                                                   first_proc.to_group_with)
+                    changed = True
+                logging.debug("  will group with %s", first_proc.to_group_with)
 
     def _leave_only_same_segment_procs(self):
         for first_proc_name in self._procs:
-            logging.debug(f"Proc {first_proc_name}")
+            logging.debug("Proc %s", first_proc_name)
             proc = self._context.get_global(first_proc_name)
             only_current_segment_procs = set()
             for other_proc_name in proc.to_group_with:
-                if first_proc_name != other_proc_name:
-                    other_proc = self._context.get_global(other_proc_name)
-                    if proc.segment == other_proc.segment:
-                        only_current_segment_procs.add(other_proc_name)
+                if first_proc_name == other_proc_name \
+                    or not (other_proc := self._context.get_global(other_proc_name)) \
+                    or proc.segment != other_proc.segment:
+                    continue
+                only_current_segment_procs.add(other_proc_name)
             proc.to_group_with = only_current_segment_procs
 
     def _prepare_non_single_proc_data(self):
@@ -196,11 +202,11 @@ class Gen(TopDownVisitor):
             first_proc = self._context.get_global(first_proc_name)
 
             first_proc.used_labels = self.leave_only_procs_and_labels(first_proc.used_labels)
-            logging.debug(f"Proc {first_proc_name} used labels {first_proc.used_labels}")
-            logging.debug(f"                   provided labels {first_proc.provided_labels}")
+            logging.debug("Proc %s used labels %s",  first_proc_name, first_proc.used_labels)
+            logging.debug("                   provided labels %s", first_proc.provided_labels)
 
             missing_labels = first_proc.used_labels - first_proc.provided_labels
-            logging.debug(f"                    missing labels {missing_labels}")
+            logging.debug("                    missing labels %s", missing_labels)
             procs_to_merge = set()
             if not first_proc.if_terminated_proc():
                 """If execution does not terminated in the procedure range when merge it with next proc"""
@@ -221,7 +227,7 @@ class Gen(TopDownVisitor):
                 self._prepare_per_segment_proc_data(first_proc_name, first_proc, procs_to_merge)
 
             first_proc.to_group_with = procs_to_merge
-            logging.debug(f" will merge {procs_to_merge}")
+            logging.debug(" will merge %s", procs_to_merge)
 
     def _prepare_per_segment_proc_data(self, first_proc_name, first_proc, procs_to_merge):
         for pname in self._procs:
@@ -231,22 +237,24 @@ class Gen(TopDownVisitor):
                     procs_to_merge.add(pname)
 
     def _link_consecutive_non_terminated_procs(self):
+        last_proc_index = len(self._procs) - 1
         for index, first_proc_name in enumerate(self._procs):
             first_proc = self._context.get_global(first_proc_name)
-            if not first_proc.if_terminated_proc() and index < len(self._procs) - 1:
-                result = self._context.parse_text(self._procs[index + 1], start_rule="expr")
-                expr = self._context.process_ast("", result)
-                o = first_proc.create_instruction_object("jmp", [expr])
-                o.filename = ""
-                o.line_number = 0
-                o.raw_line = ""
-                o.syntetic = True
-                first_proc.stmts.append(o)
+            if first_proc.if_terminated_proc() or index >= last_proc_index:
+                continue
+            result = self._context.parse_text(self._procs[index + 1], start_rule="expr")
+            expr = self._context.process_ast("", result)
+            o = first_proc.create_instruction_object("jmp", [expr])
+            o.filename = ""
+            o.line_number = 0
+            o.raw_line = ""
+            o.syntetic = True
+            first_proc.stmts.append(o)
 
     def generate_label_to_proc_map(self):
         for proc_name in self._procs:
             proc = self._context.get_global(proc_name)
-            logging.debug(f"Proc {proc_name} provides: {proc.provided_labels}")
+            logging.debug("Proc %s provides: %s", proc_name, proc.provided_labels)
             for label in proc.provided_labels:
                 self.label_to_proc[label] = proc_name
 
@@ -265,24 +273,25 @@ class Gen(TopDownVisitor):
         """It prints out the names of the procedures that were merged together."""
         for first_proc_name in self._procs:
             first_proc = self._context.get_global(first_proc_name)
-            if first_proc.to_group_with:
-                logging.info(f"     ~{first_proc_name}")
-                for p_name in first_proc.to_group_with:
-                    logging.info(f"       {p_name}")
+            if not first_proc.to_group_with:
+                continue
+            logging.info(f"     ~{first_proc_name}")
+            for p_name in first_proc.to_group_with:
+                logging.info(f"       {p_name}")
 
     def find_related_proc(self, name):
         """:param name: the name of the global object
         :return: The name of the related proc.
         """
         from masm2c.proc import Proc
-        logging.debug(f"get_related_proc {name}")
+        logging.debug("get_related_proc %s", name)
         global_object = self._context.get_global(name)
         if isinstance(global_object, op.label):
             related_proc = self.label_to_proc[name]
-            logging.debug(f" {name} is a label, related proc nameL {related_proc}")
+            logging.debug(" %s is a label, related proc name: %s", name, related_proc)
         elif isinstance(global_object, Proc):
             related_proc = global_object.name
-            logging.debug(f" {name} is a proc, related proc nameL {related_proc}")
+            logging.debug(" %s is a proc, related proc name: %s", name, related_proc)
         return related_proc
 
     def leave_only_procs_and_labels(self, all_labels):
@@ -354,14 +363,15 @@ class Gen(TopDownVisitor):
             if old != new:
                 logging.error("Overwritting segment %s", segment_name)
 
-    def _check_for_struct_overwrite(self, allstructs, newstructs):
+    def _check_for_struct_overwrite(self, allstructs: dict, newstructs: dict):
         if allstructs != newstructs and set(allstructs.keys()) & set(newstructs.keys()):
             for struct_name, struct_value in newstructs.items():
-                if struct_name in allstructs:
-                    old1 = jsonpickle.encode(allstructs[struct_name], unpicklable=False)
-                    new1 = jsonpickle.encode(struct_value, unpicklable=False)
-                    if old1 != new1:
-                        logging.error(f"Overwriting structure {struct_name}")
+                if struct_name not in allstructs:
+                    continue
+                old = jsonpickle.encode(allstructs[struct_name], unpicklable=False)
+                new = jsonpickle.encode(struct_value, unpicklable=False)
+                if old != new:
+                    logging.error(f"Overwriting structure {struct_name}")
 
     def _render_procedure(self, name, def_skip=0):
         """It takes a procedure name, and returns a C++ string containing for that procedure.
@@ -450,17 +460,17 @@ class Gen(TopDownVisitor):
                 lst.write(f"{v}\n")
 
             lst.write("\nLabels:\n")
-            for _k, v in self._context.get_globals().items():
+            for v in self._context.get_globals().values():
                 if isinstance(v, op.label):
                     lst.write(f"{v.name}\n")
 
             lst.write("\nProcs:\n")
-            for _k, v in self._context.get_globals().items():
+            for v in self._context.get_globals().values():
                 if isinstance(v, Proc):
                     lst.write(f"{v.name} {v.offset}\n")
 
             lst.write("\nVars:\n")
-            for _k, v in self._context.get_globals().items():
+            for v in self._context.get_globals().values():
                 if isinstance(v, op.var):
                     lst.write(f"{v.name} {v.offset}\n")
 
