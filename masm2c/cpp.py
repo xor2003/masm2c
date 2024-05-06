@@ -176,17 +176,17 @@ class Cpp(Gen):
         logging.debug("Variable detected. Size: %s", g.size)
         self.variable_size = source_var_size = g.size
 
-        if source_var_size == 0 and not g.issegment:
-            raise Exception("Invalid variable '%s' size %u" % (name, source_var_size))
-
-        if source_var_size:
-            self.isvariable = True
-        if self._middle_size == 0:  # TODO check
-            self._middle_size = source_var_size
-
         if g.issegment:
             self._indirection = IndirectionType.VALUE
             return f"seg_offset({original_name.lower()})"
+
+        if source_var_size == 0:
+            raise Exception("Invalid variable '%s' size %u" % (name, source_var_size))
+
+        self.isvariable = True
+        if self._middle_size == 0:  # TODO check
+            self._middle_size = source_var_size
+
         return self._convert_label_var_non_segment(g, name)
 
     def _convert_label_var_non_segment(self, g, name):
@@ -199,7 +199,10 @@ class Cpp(Gen):
             if not self.lea:
                 self._indirection = IndirectionType.POINTER
 
-        if g.elements == 1 and self._isjustlabel and not self.lea and g.size == self.element_size:
+        #print("\ng.elements == 1 %s, self._isjustlabel=%s, not self.lea=%s, g.size == self.element_size %s" %(
+        #      g.elements == 1, self._isjustlabel, not self.lea, g.size == self.element_size))
+        simple_argument = g.elements == 1 and self._isjustlabel and not self.lea and g.size == self.element_size
+        if simple_argument:
             self._indirection = IndirectionType.VALUE
             result = g.name
         else:
@@ -210,6 +213,8 @@ class Cpp(Gen):
         if self._work_segment == "cs":
             self.body += "\tcs=seg_offset(" + g.segment + ");\n"
 
+        #print("\nnot self._isjustlabel=%s ?not self.lea=%s? self._indirection == IndirectionType.VALUE %s" %(
+        #      not self._isjustlabel, not self.lea, self._indirection == IndirectionType.VALUE))
         if not self._isjustlabel and not self.lea and self._indirection == IndirectionType.VALUE:
             self._indirection = IndirectionType.POINTER
 
