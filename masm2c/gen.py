@@ -47,6 +47,12 @@ class Gen(TopDownVisitor):
 
 
     def calculate_member_size(self, label: list[str]) -> int:
+        """
+        Calculate the size of a member.
+
+        :param label: The label of the member
+        :return: The size of the member
+        """
         g = self._context.get_global(label[0])
         type = label[0] if isinstance(g, op.Struct) else g.original_type
 
