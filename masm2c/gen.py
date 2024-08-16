@@ -454,7 +454,8 @@ class Gen(TopDownVisitor):
             and label.children[0].children[0].data == "dollar"
         )
 
-    def dump_globals(self):
+    def dump_globals(self) -> None:
+        """Dumps the global variables to a file."""
         from masm2c.proc import Proc
         name = f"{self._namespace.lower()}.list"
         logging.info(f" *** Generating globals listing {name}")
