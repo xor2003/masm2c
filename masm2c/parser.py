@@ -490,7 +490,8 @@ class Parser:
         :param file_name: The name of the .map file
         :return: A dictionary of segments and their values.
         """
-        content = read_whole_file(re.sub(r"\.lst$", ".map", file_name, flags=re.I)).splitlines()
+        map_file = re.sub(r"\.lst$", ".map", file_name, flags=re.I)
+        content = read_whole_file(map_file).splitlines()
         DOSBOX_START_SEG = int(self.args.get("loadsegment"), 0)
         strgenerator = iter(content)
         segs = OrderedDict()
@@ -499,13 +500,18 @@ class Parser:
                 break
         # Reads text until the end of the block:
         for line in strgenerator:  # This keeps reading the file
-            if line.strip() == "Address         Publics by Value":
-                break
-            if line.strip():
-                m = re.match(
-                    r"^\s+(?P<start>[0-9A-F]{5,10})H [0-9A-F]{5,10}H [0-9A-F]{5,10}H (?P<segment>[_0-9A-Za-z]+)\s+[A-Z]+",
-                    line)
-                segs[m["segment"]] = f"{int(m['start'], 16) // 16 + DOSBOX_START_SEG:04X}"
+            try:
+                if line.strip() == "Address         Publics by Value":
+                    break
+                if line.strip():
+                    m = re.match(
+                        r"^\s+(?P<start>[0-9A-F]{5,10})H [0-9A-F]{5,10}H [0-9A-F]{5,10}H (?P<segment>[_0-9A-Za-z]+)\s+",
+                        line)
+                    segs[m["segment"]] = f"{int(m['start'], 16) // 16 + DOSBOX_START_SEG:04X}"
+            except Exception as ex:
+                print("read_segments_map Exception", ex, map_file, line)
+                raise
+
         logging.debug("Results of loading .map file: %s", segs)
         return segs
 
