@@ -1084,25 +1084,52 @@ struct Memory{
         self.a = self.render_instruction_argument(dst)
         return f"{cmd.upper()}({self.a})"
 
-    def render_instruction_argument(self, expr: Expression, def_size: int = 0, destination: bool = False, lea: bool = False) -> str:
+    def render_instruction_argument(self, expr: Expression, def_size: int = 0, destination: bool = False,
+                                    lea: bool = False) -> str:
+        """
+        Render the instruction argument for the given expression.
+
+        Args:
+            expr (Expression): The expression to render.
+            def_size (int, optional): The default size of the expression. Defaults to 0.
+            destination (bool, optional): Whether the expression is a destination. Defaults to False.
+            lea (bool, optional): Whether to use LEA instruction. Defaults to False.
+
+        Returns:
+            str: The rendered instruction argument.
+        """
+        # Add destination modifier if necessary
         if destination:
             expr.mods.add("destination")
+
+        # Add LEA modifier if necessary
         if lea:
             expr.mods.add("lea")
+
+        # Calculate the default size if necessary
         if def_size == 0 and expr.element_size == 0 and expr.indirection != IndirectionType.POINTER:
             from .parser import ExprSizeCalculator, Vector
             calc = ExprSizeCalculator(init=Vector(0, 0), context=self._context)
             def_size, _ = calc.visit(expr).values  # , result=0)
 
+        # Set the element size if necessary
         if def_size and expr.element_size == 0:
             expr.element_size = def_size
+
+        # Create an instance of IR2Cpp and set its attributes
         ir2cpp = IR2Cpp(self._context)
         ir2cpp.lea = self.lea
         ir2cpp._indirection = expr.indirection
         ir2cpp.itisjump = self.itisjump
         ir2cpp.itiscall = self.itiscall
+
+        # Render the expression using IR2Cpp
         result = "".join(ir2cpp.visit(expr))
+
+        # Update the size_changed attribute
         self.size_changed = ir2cpp.size_changed
+
+        # Remove parentheses if necessary
         return result[1:-1] if self.check_parentesis(result) else result
 
     def check_parentesis(self, string: str) -> bool:
