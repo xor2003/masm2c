@@ -231,8 +231,8 @@ class Asm2IR(CommonCollector):
         try:
             assert isinstance(children[0], (str, lark.lexer.Token))
             type = children[0].lower()  # TODO handle jmp short near abc
-        except AttributeError:
-            logging.exception("AttributeError %s:%s", get_line_number(meta), get_raw_line(self.input_str, meta))
+        except Exception:
+            logging.exception("Error %s:%s", get_line_number(meta), get_raw_line(self.input_str, meta))
             sys.exit(11)
         #if self._size: # TODO why need another variable?
         self.expression.ptr_size = self.context.typetosize(type)
