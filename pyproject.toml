@@ -9,7 +9,10 @@ description = "Masm2c is a 16-bit assembly to C++ translator"
 authors = [
     {name = "xor2003", email = "xor2003@gmx.com"},
 ]
-dependencies = ["lark","jsonpickle"]
+dependencies = [
+    "jsonpickle>=3.4.2",
+    "lark>=1.2.2",
+]
 requires-python = ">=3.9"
 readme = "README.md"
 license = {text = "GPL"}
@@ -26,6 +29,13 @@ classifiers = [
     "Programming Language :: Assembly",
     "Programming Language :: C++",
     "Operating System :: OS Independent"
+]
+
+[project.optional-dependencies]
+dev = [
+    "coverage>=7.6.4",
+    "mock>=5.1.0",
+    "pytest>=8.3.3",
 ]
 
 [project.urls]
