@@ -30,7 +30,7 @@ from collections import OrderedDict
 from copy import deepcopy
 from typing import Any, Optional, Final
 
-import pickle as jsonpickle
+import jsonpickle
 from lark import UnexpectedToken, lark
 from lark.lexer import Token
 from lark.tree import Tree
