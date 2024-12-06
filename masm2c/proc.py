@@ -36,7 +36,6 @@ from . import op
 from .Token import Token
 
 if TYPE_CHECKING:
-    from .gen import Gen
     from .cpp import Cpp
 
 PTRDIR = "ptrdir"
