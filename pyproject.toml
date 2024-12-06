@@ -50,3 +50,5 @@ masm2c = "masm2c.cli:main"
 
 [tool.setuptools]
 packages = ["masm2c"]
+
+[tool.poetry]
