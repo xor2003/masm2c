@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=61.2.0"]
+requires = ["setuptools>=61.2.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -16,7 +16,7 @@ dependencies = [
 requires-python = ">=3.9"
 readme = "README.md"
 license = {text = "GPL"}
-keywords = ["masm", "assembly","reverse engineering"]
+keywords = ["masm", "assembly", "reverse engineering"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -41,14 +41,6 @@ dev = [
 [project.urls]
 Homepage = "https://github.com/xor2003/masm2c"
 
-[tool.distutils.egg_info]
-tag-build = ""
-tag-date = 0
-
 [project.scripts]
 masm2c = "masm2c.cli:main"
 
-[tool.setuptools]
-packages = ["masm2c"]
-
-[tool.poetry]
