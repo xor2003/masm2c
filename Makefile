@@ -1,4 +1,4 @@
-.PHONY: clean clean-test clean-pyc clean-build docs help lint
+.PHONY: clean clean-test clean-pyc clean-build docs help lint test check
 .DEFAULT_GOAL := help
 define BROWSER_PYSCRIPT
 import os, webbrowser, sys
@@ -83,3 +83,14 @@ dist: clean ## builds source and wheel package
 
 install: clean ## install the package to the active Python's site-packages
 	python setup.py install
+test: $(TESTS)
+
+check: test
+    ./$<
+
+TESTS = test_insn_tests
+
+test_insn_tests: test_insn_tests.cpp asm.h asm_16.h
+    $(CXX) $(CXXFLAGS) -I./include -isystem /usr/local/include \
+    -L/usr/local/lib -lpthread -lgtest_main \
+    -o $@ $<
