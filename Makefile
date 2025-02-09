@@ -50,8 +50,6 @@ clean-test: ## remove test and coverage artifacts
 lint: ## check style with flake8
 	flake8
 
-test: ## run tests quickly with the default Python
-	py.test tests/func
 
 
 test-all: ## run tests on every Python version with tox
@@ -85,13 +83,12 @@ install: clean ## install the package to the active Python's site-packages
 	python setup.py install
 test: $(TESTS)
 
-check: test
-    ./$<
+check: test_insn_tests
+	./$<
 
 TESTS = test_insn_tests
-  test_instr_tests
 
-test_insn_tests: test_insn_tests.cpp asm.h asm_16.h
-    $(CXX) $(CXXFLAGS) -I./include -isystem /usr/local/include \
-    -L/usr/local/lib -lpthread -lgtest_main \
-    -o $@ $<
+test_insn_tests: test_insn_tests.cpp asm.h asm_16.h asm.cpp
+	$(CXX) $(CXXFLAGS) -I./include -isystem /usr/local/include -Wno-overflow \
+	-L/usr/local/lib -lpthread -lgtest_main \
+	-o $@ $<
