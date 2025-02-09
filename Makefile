@@ -89,6 +89,7 @@ check: test
     ./$<
 
 TESTS = test_insn_tests
+  test_instr_tests
 
 test_insn_tests: test_insn_tests.cpp asm.h asm_16.h
     $(CXX) $(CXXFLAGS) -I./include -isystem /usr/local/include \

@@ -64,11 +64,68 @@ TEST_F(InsnTests, ADD_32bit) {
 TEST_F(InsnTests, ADC_8bit) {
     db a = 0x10;
     db b = 0x20;
-    db CF = 1;
     test_instruction_base(a, b, 0x31);
 }
 
-// Add more test cases for different instructions and edge cases...
+TEST_F(InsnTests, SUB_8bit) {
+    db a = 0x30;
+    db b = 0x20;
+    test_instruction_base(a, b, 0x10);
+}
+
+TEST_F(InsnTests, SUB_16bit_with_borrow) {
+    dw a = 0x200;
+    dw b = 0x300;
+    test_instruction_base(a, b, 0xffff);
+}
+
+TEST_F(InsnTests, AND_8bit) {
+    db a = 0x3a;
+    db b = 0x24;
+    test_instruction_base(a, b, 0x20);
+}
+
+TEST_F(InsnTests, OR_8bit) {
+    db a = 0x3a;
+    db b = 0x24;
+    test_instruction_base(a, b, 0x3e);
+}
+
+TEST_F(InsnTests, XOR_8bit) {
+    db a = 0x3a;
+    db b = 0x24;
+    test_instruction_base(a, b, 0x46);
+}
+
+TEST_F(InsnTests, SHL_8bit) {
+    db a = 0x10;
+    db b = 0x02;
+    test_instruction_base(a, b, 0x40);
+}
+
+TEST_F(InsnTests, SHL_16bit) {
+    dw a = 0x100;
+    db b = 0x02;
+    test_instruction_base(a, b, 0x400);
+}
+
+TEST_F(InsnTests, SHR_8bit) {
+    db a = 0x80;
+    db b = 0x01;
+    test_instruction_base(a, b, 0x40);
+}
+
+TEST_F(InsnTests, SHR_16bit) {
+    dw a = 0x8000;
+    db b = 0x01;
+    test_instruction_base(a, b, 0x4000);
+}
+
+TEST_F(InsnTests, XOR_32bit_flags) {
+    dd a = 0xffffffff;
+    dd b = 0xffffffff;
+    test_instruction_flags(a, b, false, true, false, false, false);
+}
 // This is just a starting point, we should add:
 // - Subtraction operations (SUB_)
 // - Bit manipulation (AND_, OR_, XOR_)
