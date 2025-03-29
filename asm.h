@@ -763,6 +763,9 @@ AFFECT_CF((a)!=0);
 		AFFECT_SF_(a,a);
 }
 
+#ifdef TEST
+#undef TEST
+#endif
 #define TEST(a, b) m2c::TEST_(a, b, m2cflags)
 template <class D, class S>
     MYINLINE void TEST_(D &a, const S &b, m2c::eflags &m2cflags) {

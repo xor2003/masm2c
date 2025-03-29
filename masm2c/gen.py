@@ -53,22 +53,22 @@ class Gen(TopDownVisitor):
         :param label: The label of the member
         :return: The size of the member
         """
-        g = self._context.get_global(label[0])
+        g = self._context.symbols.get_global(label[0])
         type = label[0] if isinstance(g, op.Struct) else g.original_type
 
         try:
-            for member in label[1:]:
-                if (g := self._context.get_global(type)) is None:
-                    raise KeyError(type)
-                if isinstance(g, op.Struct):
-                    g = g.getitem(member)
-                    type = g.data
-                else:
-                    return g._size
+           for member in label[1:]:
+               if (g := self._context.symbols.get_global(type)) is None:
+                   raise KeyError(type)
+               if isinstance(g, op.Struct):
+                   g = g.getitem(member)
+                   type = g.data
+               else:
+                   return g._size
         except KeyError as ex:
-            logging.debug("Didn't found for %s %s will try workaround", label, ex.args)
-            # if members are global as with M510 or tasm try to find last member size
-            g = self._context.get_global(label[-1])
+           logging.debug("Didn't found for %s %s will try workaround", label, ex.args)
+           # if members are global as with M510 or tasm try to find last member size
+           g = self._context.symbols.get_global(label[-1])
 
         return g.size
 
@@ -84,7 +84,7 @@ class Gen(TopDownVisitor):
             return labels
         uniq_labels = OrderedDict()
         for label in labels:
-            g = self._context.get_global(label)
+            g = self._context.symbols.get_global(label)
             uniq_labels[f"{g.real_seg}_{g.real_offset}"] = label
         return uniq_labels.values()
 
@@ -115,7 +115,7 @@ class Gen(TopDownVisitor):
         for first_proc_name in self._procs:
             if first_proc_name in self.grouped:
                 continue
-            first_proc = self._context.get_global(first_proc_name)
+            first_proc = self._context.symbols.get_global(first_proc_name)
             if self._context.args.get("mergeprocs") == "single" or first_proc.to_group_with:
                     groups = self.merge_all_procs_related_to_this(first_proc_name, first_proc, groups, len(groups) + 1)
         self._procs = [x for x in self._procs if x not in self.grouped]
@@ -133,7 +133,7 @@ class Gen(TopDownVisitor):
 
         first_proc.stmts.insert(0, first_label)
         first_proc.provided_labels.add(first_proc_name)
-        self._context.reset_global(first_proc_name, first_label)
+        self._context.symbols.reset_global(first_proc_name, first_label)
         self.grouped.add(first_proc_name)
         self.groups[first_proc_name] = new_group_name
         assert self._context.args
@@ -141,12 +141,12 @@ class Gen(TopDownVisitor):
         proc_to_group = self.sort_procedure_list_in_linenumber_order(proc_to_group)
         for next_proc_name in proc_to_group:
             if next_proc_name == first_proc_name or next_proc_name in self.grouped\
-                or not (next_proc := self._context.get_global(next_proc_name)) or not isinstance(next_proc, Proc):
+                or not (next_proc := self._context.symbols.get_global(next_proc_name)) or not isinstance(next_proc, Proc):
                 continue
             self.merge_two_procs_with_label(first_proc_name, first_proc, next_proc_name, next_proc,
                                             new_group_name)
         groups += [new_group_name]
-        self._context.set_global(new_group_name, first_proc)
+        self._context.symbols.set_global(new_group_name, first_proc)
         #groups_id += 1
         return groups
 
@@ -161,7 +161,7 @@ class Gen(TopDownVisitor):
         first_proc.merge_two_procs(new_group_name, next_proc)
         for missing_label in first_proc.provided_labels:
             self.label_to_proc[missing_label] = new_group_name
-        self._context.reset_global(next_proc_name, next_label)
+        self._context.symbols.reset_global(next_proc_name, next_label)
         self.grouped.add(next_proc_name)
 
     def _align_grouping_lists(self):
@@ -173,13 +173,13 @@ class Gen(TopDownVisitor):
             changed = False
             for first_proc_name in self._procs:
                 logging.debug("Proc %s", first_proc_name)
-                first_proc = self._context.get_global(first_proc_name)
+                first_proc = self._context.symbols.get_global(first_proc_name)
                 for next_proc_name in first_proc.to_group_with:
                     if first_proc_name == next_proc_name:
                         continue
 
                     logging.debug("  will group with %s", next_proc_name)
-                    next_proc = self._context.get_global(next_proc_name)
+                    next_proc = self._context.symbols.get_global(next_proc_name)
                     if not next_proc.to_group_with:
                         next_proc.to_group_with = set()
                     if first_proc.to_group_with == next_proc.to_group_with:
@@ -193,11 +193,11 @@ class Gen(TopDownVisitor):
     def _leave_only_same_segment_procs(self):
         for first_proc_name in self._procs:
             logging.debug("Proc %s", first_proc_name)
-            proc = self._context.get_global(first_proc_name)
+            proc = self._context.symbols.get_global(first_proc_name)
             only_current_segment_procs = set()
             for other_proc_name in proc.to_group_with:
                 if first_proc_name == other_proc_name \
-                    or not (other_proc := self._context.get_global(other_proc_name)) \
+                    or not (other_proc := self._context.symbols.get_global(other_proc_name)) \
                     or proc.segment != other_proc.segment:
                     continue
                 only_current_segment_procs.add(other_proc_name)
@@ -205,7 +205,7 @@ class Gen(TopDownVisitor):
 
     def _prepare_non_single_proc_data(self):
         for index, first_proc_name in enumerate(self._procs):
-            first_proc = self._context.get_global(first_proc_name)
+            first_proc = self._context.symbols.get_global(first_proc_name)
 
             first_proc.used_labels = self.leave_only_procs_and_labels(first_proc.used_labels)
             logging.debug("Proc %s used labels %s",  first_proc_name, first_proc.used_labels)
@@ -238,14 +238,14 @@ class Gen(TopDownVisitor):
     def _prepare_per_segment_proc_data(self, first_proc_name, first_proc, procs_to_merge):
         for pname in self._procs:
             if pname != first_proc_name:
-                p_proc = self._context.get_global(pname)
+                p_proc = self._context.symbols.get_global(pname)
                 if first_proc.segment == p_proc.segment:
                     procs_to_merge.add(pname)
 
     def _link_consecutive_non_terminated_procs(self):
         last_proc_index = len(self._procs) - 1
         for index, first_proc_name in enumerate(self._procs):
-            first_proc = self._context.get_global(first_proc_name)
+            first_proc = self._context.symbols.get_global(first_proc_name)
             if first_proc.if_terminated_proc() or index >= last_proc_index:
                 continue
             result = self._context.parse_text(self._procs[index + 1], start_rule="expr")
@@ -259,7 +259,7 @@ class Gen(TopDownVisitor):
 
     def generate_label_to_proc_map(self):
         for proc_name in self._procs:
-            proc = self._context.get_global(proc_name)
+            proc = self._context.symbols.get_global(proc_name)
             logging.debug("Proc %s provides: %s", proc_name, proc.provided_labels)
             for label in proc.provided_labels:
                 self.label_to_proc[label] = proc_name
@@ -271,14 +271,14 @@ class Gen(TopDownVisitor):
         :return: A list of procedure names in line number order.
         """
         line_to_proc = {
-            self._context.get_global(first_proc_name).line_number: first_proc_name for first_proc_name in
+            self._context.symbols.get_global(first_proc_name).line_number: first_proc_name for first_proc_name in
              proc_list}
         return [line_to_proc[line_number] for line_number in sorted(line_to_proc.keys())]
 
     def print_how_procs_merged(self):
         """It prints out the names of the procedures that were merged together."""
         for first_proc_name in self._procs:
-            first_proc = self._context.get_global(first_proc_name)
+            first_proc = self._context.symbols.get_global(first_proc_name)
             if not first_proc.to_group_with:
                 continue
             logging.info(f"     ~{first_proc_name}")
@@ -291,7 +291,7 @@ class Gen(TopDownVisitor):
         """
         from masm2c.proc import Proc
         logging.debug("get_related_proc %s", name)
-        global_object = self._context.get_global(name)
+        global_object = self._context.symbols.get_global(name)
         if isinstance(global_object, op.label):
             related_proc = self.label_to_proc[name]
             logging.debug(" %s is a label, related proc name: %s", name, related_proc)
@@ -309,7 +309,7 @@ class Gen(TopDownVisitor):
         from masm2c.proc import Proc
         labels = set()  # leave only real labels
         for label_name in all_labels:
-            first_label = self._context.get_global(label_name)
+            first_label = self._context.symbols.get_global(label_name)
             if isinstance(first_label, (op.label, Proc)):
                 labels.add(label_name)
         return labels
@@ -391,7 +391,7 @@ class Gen(TopDownVisitor):
             skip = def_skip
             self.__pushpop_count = 0
             self.temps_max = 0
-            if g := self._context.get_global(name):
+            if g := self._context.symbols.get_global(name):
                 self.proc = g
             else:
                 logging.debug("No procedure named %s, trying label", name)
@@ -406,7 +406,7 @@ class Gen(TopDownVisitor):
             self.body = ""
 
             entry_point = ""
-            if g := self._context.get_global(self._context.entry_point) and isinstance(g, op.label) and self.label_to_proc[g.name] == self.proc:
+            if g := self._context.symbols.get_global(self._context.entry_point) and isinstance(g, op.label) and self.label_to_proc[g.name] == self.proc:
                 entry_point = self._context.entry_point
             self.body += self.proc_strategy.function_header(name, entry_point)
 
@@ -467,22 +467,22 @@ class Gen(TopDownVisitor):
                 lst.write(f"{v}\n")
 
             lst.write("\nLabels:\n")
-            for v in self._context.get_globals().values():
+            for v in self._context.symbols.get_globals().values():
                 if isinstance(v, op.label):
                     lst.write(f"{v.name}\n")
 
             lst.write("\nProcs:\n")
-            for v in self._context.get_globals().values():
+            for v in self._context.symbols.get_globals().values():
                 if isinstance(v, Proc):
                     lst.write(f"{v.name} {v.offset}\n")
 
             lst.write("\nVars:\n")
-            for v in self._context.get_globals().values():
+            for v in self._context.symbols.get_globals().values():
                 if isinstance(v, op.var):
                     lst.write(f"{v.name} {v.offset}\n")
 
             lst.write(
-                jsonpickle.encode((self._context.get_globals(), self._context.segments, self._context.structures)))
+                jsonpickle.encode((self._context.symbols.get_globals(), self._context.segments, self._context.structures)))
 
 
     def make_enums_and_labels(self, labels):

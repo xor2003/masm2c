@@ -12,13 +12,13 @@ class Test_MergeAllProcs:
         first_proc_name = "proc1"
         first_proc = proc_module.Proc(first_proc_name, line_number=1)
         first_proc.to_group_with = set(["proc2", "proc3"])
-        context.set_global(first_proc_name, first_proc)
+        context.symbols.set_global(first_proc_name, first_proc)
         proc2 = proc_module.Proc("proc2", line_number=2)
         proc2.to_group_with = set(["proc1", "proc3"])
-        context.set_global("proc2", proc2)
+        context.symbols.set_global("proc2", proc2)
         proc3 = proc_module.Proc("proc3", line_number=3)
         proc3.to_group_with = set(["proc1", "proc2"])
-        context.set_global("proc3", proc3)
+        context.symbols.set_global("proc3", proc3)
 
         gen = Gen(context=context)
         gen._procs = ["proc1", "proc2", "proc3"]
@@ -35,7 +35,7 @@ class Test_MergeAllProcs:
         assert first_proc.stmts[0].data == "label"
         assert first_proc.stmts[0].real_offset == first_proc.real_offset
         assert first_proc.stmts[0].real_seg == first_proc.real_seg
-        assert gen._context.get_global("_group1") == first_proc
+        assert gen._context.symbols.get_global("_group1") == first_proc
 
     def test_merge_two_procs_with_label_updates_groups_dictionary(self):
         first_proc_name = "proc1"

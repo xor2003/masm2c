@@ -400,7 +400,7 @@ class Asm2IR(CommonCollector):
 
         logging.debug("name = %s", self.name)
         l = lark.Token("LABEL", value)
-        if g := self.context.get_global(self.name):
+        if g := self.context.symbols.get_global(self.name):
             from masm2c.proc import Proc
             if isinstance(g, (op._equ, op._assignment)):
                 #if not isinstance(g.value, Expression):
@@ -691,9 +691,7 @@ class TopDownVisitor:
                 logging.error(f"Error unknown type {type(node).__name__} {node}")
                 raise ValueError(f"Error unknown type {type(node).__name__} {node}")
         except Exception as ex:
-            import traceback
-            i = traceback.format_exc()
-            print(node, i, ex)
+            logging.exception("Exception %s", node)
             sys.exit(1)
         return result
 

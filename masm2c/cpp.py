@@ -93,7 +93,7 @@ class SeparateProcStrategy:
             result += "bool %s(m2c::_offsets, struct m2c::_STATE*);\n" % self.renderer.mangle_label(p)
 
         for i in sorted(context.externals_procs):
-            v = context.get_global(i)
+            v = context.symbols.get_global(i)
             if v.used:
                 result += f"extern bool {v.name}(m2c::_offsets, struct m2c::_STATE*);\n"
 
@@ -161,7 +161,7 @@ class Cpp(Gen):
         :rtype: str
         """
         name = str(original_name)
-        if (g := self._context.get_global(name)) is None:
+        if (g := self._context.symbols.get_global(name)) is None:
             return name
 
         self.islabel = True
@@ -331,10 +331,10 @@ class Cpp(Gen):
         self.struct_type = None
         value = ".".join(label)
 
-        if self._indirection == IndirectionType.OFFSET and (g := self._context.get_global(label[0])):
+        if self._indirection == IndirectionType.OFFSET and (g := self._context.symbols.get_global(label[0])):
             return self.convert_member_offset(g, label)
 
-        if (g := self._context.get_global(label[0])) is None:
+        if (g := self._context.symbols.get_global(label[0])) is None:
             logging.error("global '%s' is missing", label)
             return ".".join(label)
 
@@ -477,7 +477,7 @@ class Cpp(Gen):
         elif "near" in expr.mods:
             far = False
 
-        if isinstance(name, str) and ((g := self._context.get_global(name)) is None or isinstance(g, op.var)):
+        if isinstance(name, str) and ((g := self._context.symbols.get_global(name)) is None or isinstance(g, op.var)):
             # jumps feat purpose:
             # * in sub __dispatch_call - for address based jumps or grouped subs
             # * direct jumps
@@ -502,7 +502,7 @@ class Cpp(Gen):
         """
         logging.debug("jump_to_label(%s)", name)
         far = False
-        if isinstance(name, str) and (g := self._context.get_global(name)) and isinstance(g, Proc | op.label):
+        if isinstance(name, str) and (g := self._context.symbols.get_global(name)) and isinstance(g, Proc | op.label):
             far = g.far  # make far calls to far procs
         return far
 
@@ -530,7 +530,7 @@ class Cpp(Gen):
             far = False
 
         label_ip = "0"
-        if isinstance(proc_name, str) and (g := self._context.get_global(proc_name)):
+        if isinstance(proc_name, str) and (g := self._context.symbols.get_global(proc_name)):
             if isinstance(g, op.label) and not g.isproc and proc_name not in self._procs and proc_name not in self.grouped:
                 label_ip = f"m2c::k{proc_name}"
                 proc_name = self.label_to_proc[g.name]
@@ -732,7 +732,7 @@ class Cpp(Gen):
 
     def _remove_hacks(self):
         for proc_name in self._procs:
-            proc = self._context.get_global(proc_name)
+            proc = self._context.symbols.get_global(proc_name)
             i = 0
             while i < len(proc.stmts):
                 self._remove_hacks_popf(i, proc)
@@ -829,7 +829,7 @@ class Cpp(Gen):
 {self.render_function_wrappers_c()}
 {self.render_entrypoint_c()}
 {self.write_procedures(banner, header_fname)}
-{self.produce_global_jump_table(list(self._context.get_globals().items()), self._context.itislst)}
+{self.produce_global_jump_table(list(self._context.symbols.get_globals().items()), self._context.itislst)}
 
         #include <algorithm>
         #include <iterator>
@@ -915,7 +915,7 @@ class Cpp(Gen):
             return ""
 
         entry_point_text = ""
-        g = self._context.get_global(self._context.entry_point)
+        g = self._context.symbols.get_global(self._context.entry_point)
         if isinstance(g, op.label) and self._context.entry_point not in self.grouped:
             entry_point_text = f"""
              bool {self._context.entry_point}(m2c::_offsets, struct m2c::_STATE* _state){{return {self.label_to_proc[g.name]}(m2c::k{self._context.entry_point}, _state);}}
@@ -980,7 +980,7 @@ void   Initializer();
 static const dd kbegin = 0x1001;
 """
         i = 0x1001
-        for k, v in list(self._context.get_globals().items()):
+        for k, v in list(self._context.symbols.get_globals().items()):
             if isinstance(v, (op.label, Proc)):
                 k = re.sub(r"[^A-Za-z0-9_]", "_", k).lower()
                 i += 1
@@ -1034,7 +1034,7 @@ struct Memory{
     def produce_externals(self, context):
         data = "\n"
         for i in context.externals_vars:
-            v = context.get_global(i)
+            v = context.symbols.get_global(i)
             if v.used:
                 data += f"extern {v.original_type} {v.name};\n"
         return data
@@ -1157,7 +1157,7 @@ struct Memory{
         if self._context.args.get("mergeprocs") == "separate" and cmd.upper() == "JMP":
             if label == "__dispatch_call":
                 return "return __dispatch_call(__disp, _state);"
-            if g := self._context.get_global(label):
+            if g := self._context.symbols.get_global(label):
                 target_proc_name = None
                 if isinstance(g, op.label) and g.name in self.label_to_proc:
                     target_proc_name = self.label_to_proc[g.name]
@@ -1194,7 +1194,7 @@ struct Memory{
 
     def _equ(self, dst: str):
         assert isinstance(dst, str)
-        src = self._context.get_global(dst).value
+        src = self._context.symbols.get_global(dst).value
         src.indirection = IndirectionType.VALUE
         self._cmdlabel += f"#define {dst} {self.render_instruction_argument(src)}\n"
         return ""
@@ -1480,7 +1480,7 @@ struct Memory{
     def convert_label_data(self, v: Token, size: int=0) -> Union[Token, str]:
         logging.debug("convert_label_data(%s)", v)
         size = size or 2
-        if (g := self._context.get_global(v)) is None:
+        if (g := self._context.symbols.get_global(v)) is None:
             return v
         if isinstance(g, op.var):
             if g.issegment:
@@ -1507,14 +1507,14 @@ struct Memory{
         if isinstance(name, lark.Tree) and name.data=="memberdir":
             label = name.children
             assert isinstance(label, list) and all(isinstance(lab, str) for lab in label)
-            if (g := self._context.get_global(label[0])) is None:
+            if (g := self._context.symbols.get_global(label[0])) is None:
                 return label
 
             value_str = self.convert_member_offset(g, label)
             return [lark.Token("memberdir", value_str)]
 
         assert isinstance(name, str)
-        if (g := self._context.get_global(name)) is None:
+        if (g := self._context.symbols.get_global(name)) is None:
             return [name]
         if isinstance(g, op.var):
             logging.debug("it is var %s", g.size)

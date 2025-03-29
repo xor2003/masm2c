@@ -37,6 +37,7 @@ from lark.tree import Tree
 
 from masm2c.op import Data, Struct, _assignment, _equ, baseop, label, var
 from masm2c.Token import Token as Token_, Expression
+from .symbol_table import SymbolTable # Added import
 
 from . import cpp as cpp_module
 from . import op
@@ -102,7 +103,7 @@ class ExprSizeCalculator(BottomUpVisitor):
 
     def LABEL(self, token: Token) -> Vector | None:  # TODO very strange, to replace
         context = self.kwargs["context"]
-        if not (g := context.get_global(token)):
+        if not (g := context.symbols.get_global(token)):
             return None
         if isinstance(g, op.var):
             if self.element_size < 1:
@@ -116,12 +117,12 @@ class ExprSizeCalculator(BottomUpVisitor):
     def memberdir(self, tree: Tree, size: Vector) -> Vector:
         label = tree.children
         context = self.kwargs["context"]
-        g = context.get_global(label[0])
+        g = context.symbols.get_global(label[0])
         type = label[0] if isinstance(g, op.Struct) else g.original_type
 
         try:
             for member in label[1:]:
-                if (g := context.get_global(type)) is None:
+                if (g := context.symbols.get_global(type)) is None:
                     raise KeyError(type)
                 if isinstance(g, op.Struct):
                     g = g.getitem(str(member))
@@ -131,7 +132,7 @@ class ExprSizeCalculator(BottomUpVisitor):
         except KeyError as ex:
             logging.debug("Didn't found for %s %s will try workaround", label, ex.args)
             # if members are global as with M510 or tasm try to find last member size
-            g = context.get_global(label[-1])
+            g = context.symbols.get_global(label[-1])
 
         self.element_size = g.size
         return Vector(self.element_size, 1)
@@ -175,7 +176,9 @@ class Parser:
     def __init__(self, args: Optional[dict] = None) -> None:
         """Assembler parser."""
         self.test_mode = False
-        self.__globals: OrderedDict[str, Struct | label | Proc | var | _equ | _assignment] = OrderedDict()
+        # self.__globals: OrderedDict[str, Struct | label | Proc | var | _equ | _assignment] = OrderedDict() # Removed
+        self.symbols = SymbolTable() # Use SymbolTable
+        self.symbols.test_mode = self.test_mode # Pass test_mode flag
         self.pass_number = 0
 
         self.__lex = LarkParser(context=self)
@@ -201,6 +204,7 @@ class Parser:
         """
         self.pass_number += 1
         logging.info(f"     Pass number {self.pass_number}")
+        self.symbols.set_pass_info(self.pass_number, self.test_mode) # Update SymbolTable
         Parser.c_dummy_label[0] = counter
 
         self.procs_start = self.initial_procs_start
@@ -246,12 +250,6 @@ class Parser:
         self.equs: set[str] = set()
 
     """
-    def visible(self):
-        for i in self.__stack:
-            if not i or i == 0:
-                return False
-        return True
-
     def push_if(self, text):
         value = self.evall(text)
         # logging.debug "if %s -> %s" %(text, value)
@@ -264,58 +262,6 @@ class Parser:
     def pop_if(self):
         # logging.debug "endif"
         return self.__stack.pop()
-    """
-
-    def set_global(self, name: str, value: Struct | label | Proc | var | _equ | _assignment) -> None:
-        if not name:
-            raise NameError("empty name is not allowed")
-        value.original_name = name
-        name = name.lower()
-
-        logging.debug("set_global(name='%s',value=%s)", name, dump_object(value))
-        if name in self.__globals and self.pass_number == 1 and not self.test_mode:
-            raise LookupError(f"global {name} was already defined")
-        value.used = False
-        self.__globals[name] = value
-
-    def reset_global(self, name: str, value: Struct | label | Proc | var | _equ | _assignment) -> None:
-        if not name:
-            raise NameError("empty name is not allowed")
-        value.original_name = name
-        name = name.lower()
-        logging.debug("reset global %s -> %s", name, value)
-        self.__globals[name] = value
-
-    def get_global(self, name: Token | str) -> Any:
-        name = name.lower()
-        logging.debug("get_global(%s)",name)
-        g = self.__globals.get(name)
-        logging.debug("%s", type(g))
-        if g is None:
-            logging.debug("get_global KeyError %s", name)
-            return None
-        g.used = True
-        return g
-
-    def get_globals(self):
-        return self.__globals
-
-    """
-    def has_global(self, name):
-        name = name.lower()
-        return name in self.__globals
-
-
-    def set_offset(self, name, value):
-        if len(name) == 0:
-            raise NameError("empty name is not allowed")
-        logging.debug("adding offset %s -> %s" % (name, value))
-        if name in self.__offsets and self.pass_number == 1:
-            raise LookupError("offset %s was already defined", name)
-        self.__offsets[name] = value
-
-    def get_offset(self, name):
-        return self.__offsets[name.lower()]
     """
 
     def replace_dollar_w_segoffst(self, v: str) -> str:
@@ -383,7 +329,7 @@ class Parser:
         self.proc.add_label(name, l)
         # self.set_offset(name,
         #                ("&m." + name.lower() + " - &m." + self.__segment_name, self.proc, self.__offset_id))
-        self.set_global(name, l)
+        self.symbols.set_global(name, l)
         self.__offset_id += 1
 
     def make_sure_proc_exists(self, line_number: int, raw: str) -> None:
@@ -393,7 +339,7 @@ class Parser:
         offset = real_offset if real_seg else self.__cur_seg_offset
         pname = f"{self.__segment.name}_{offset:x}_proc"  # automatically generated proc name
         if pname in self.proc_list:
-            self.proc = self.get_global(pname)
+            self.proc = self.symbols.get_global(pname)
         else:
             self.proc = self.add_proc(pname, raw, line_number, False)
 
@@ -540,7 +486,7 @@ class Parser:
         o = self.proc.create_assignment_op(label, value, line_number=line_number)
         o.filename = self._current_file
         o.raw_line = raw.rstrip()
-        self.reset_global(label, o)
+        self.symbols.reset_global(label, o)
         self.proc.stmts.append(o)
         self.equs.add(label)
         return o
@@ -575,9 +521,9 @@ class Parser:
         o.element_size = size
         if isinstance(value, Expression) and value.indirection == IndirectionType.POINTER:
             o.original_type = value.original_type
-        self.set_global(label, o)
+        self.symbols.set_global(label, o)
         self.equs.add(label)
-        proc = self.get_global("mainproc")
+        proc = self.symbols.get_global("mainproc")
         proc.stmts.append(o)
         return o
 
@@ -604,7 +550,7 @@ class Parser:
             self.__segment = op.Segment(name, offset, options=options, segclass=segclass)
             self.segments[name] = self.__segment
 
-            self.set_global(name, op.var(binary_width, offset, name, issegment=True))
+            self.symbols.set_global(name, op.var(binary_width, offset, name, issegment=True))
         return self.__segment
 
     def action_proc(self, name, type, line_number=0, raw=""):
@@ -630,7 +576,7 @@ class Parser:
                     real_offset=real_offset, real_seg=real_seg,
                     segment=self.__segment.name)
         self.proc_list.append(name)
-        self.set_global(name, proc)
+        self.symbols.set_global(name, proc)
         self.__proc_stack.append(proc)
         return proc
 
@@ -801,7 +747,7 @@ class Parser:
 
         logging.debug("~size %d elements %d", binary_width, elements)
         if label and not isstruct:
-            self.set_global(label, op.var(binary_width, offset, name=label,
+            self.symbols.set_global(label, op.var(binary_width, offset, name=label,
                                           segment=self.__segment_name, elements=elements, original_type=type,
                                           filename=self._current_file, raw=raw, line_number=line_number))
 
@@ -1009,7 +955,7 @@ class Parser:
         else:
             self.adjust_offset_to_real(raw, label)
             if label:
-                self.set_global(label,
+                self.symbols.set_global(label,
                                 op.var(number * s.getsize(), self.__cur_seg_offset, label, segment=self.__segment_name, \
                                        original_type=type))
             self.__segment.append(d)
@@ -1023,7 +969,7 @@ class Parser:
         label = self.mangle_label(label)
         if strtype not in ["proc"]:
             binary_width = self.typetosize(type)
-            self.reset_global(label, op.var(binary_width, 0, name=label, segment=self.__segment_name,
+            self.symbols.reset_global(label, op.var(binary_width, 0, name=label, segment=self.__segment_name,
                                             elements=1, external=True, original_type=strtype))
             self.externals_vars.add(label)
         else:  # Proc
@@ -1031,12 +977,12 @@ class Parser:
             self.externals_procs.add(label)
             proc = Proc(label, extern=True)
             logging.debug("procedure %s, extern", label)
-            self.reset_global(label, proc)
+            self.symbols.reset_global(label, proc)
 
     def add_call_to_entrypoint(self):
         """It adds a call to the entry point of the program to the service mainproc."""
         # if self.__separate_proc:
-        proc = self.get_global("mainproc")
+        proc = self.symbols.get_global("mainproc")
         result = self.parse_text(self.entry_point, start_rule="expr")
         expr = self.process_ast("", result)
 
@@ -1126,7 +1072,7 @@ class Parser:
             logging.debug("endstruct %s", name)
             assert self.current_struct
             self.structures[name] = self.current_struct
-            self.set_global(name, self.current_struct)
+            self.symbols.set_global(name, self.current_struct)
             self.current_struct = None
         else:
             self.action_endp()
