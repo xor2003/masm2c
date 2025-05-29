@@ -278,7 +278,7 @@ class Gen(TopDownVisitor):
     def print_how_procs_merged(self):
         """It prints out the names of the procedures that were merged together."""
         for first_proc_name in self._procs:
-            first_proc = self._context.symbols.get_global(first_proc_name)
+            first_proc = self._context.symbols.get_and_mark_global(first_proc_name)
             if not first_proc.to_group_with:
                 continue
             logging.info(f"     ~{first_proc_name}")

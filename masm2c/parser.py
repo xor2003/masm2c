@@ -54,28 +54,54 @@ INTEGERCNST = "integer"
 STRINGCNST = "STRING"
 
 class Vector:
-
+    """A 2D vector class with basic vector operations."""
+    
     def __init__(self, arg1: int=0, arg2: int=0) -> None:
+        """Initialize a new vector with x and y components.
+        
+        Args:
+            arg1: x component (default: 0)
+            arg2: y component (default: 0)
+        """
         self.__value: list[int] = [arg1, arg2]
 
     def __add__(self, vec: Optional["Vector"]) -> "Vector":
-        if vec is not None:
-            self.__value = [self.__value[0] + vec.values[0], self.__value[1] + vec.values[1]]
-        return self
+        """Add another vector to this vector.
+        
+        Args:
+            vec: The vector to add. If None, returns a copy of this vector.
+            
+        Returns:
+            A new Vector instance with the sum of the vectors.
+        """
+        if vec is None:
+            return Vector(self.__value[0], self.__value[1])
+        return Vector(self.__value[0] + vec.values[0], self.__value[1] + vec.values[1])
 
     def __mul__(self, other: int) -> "Vector":
-        self.__value = [self.__value[0] * other, self.__value[1] * other]
-        return self
+        """Multiply this vector by a scalar.
+        
+        Args:
+            other: The scalar to multiply by.
+            
+        Returns:
+            A new Vector instance with scaled components.
+            
+        Raises:
+            TypeError: If other is not an integer.
+        """
+        if not isinstance(other, int):
+            raise TypeError(f"Cannot multiply Vector by {type(other)}")
+        return Vector(self.__value[0] * other, self.__value[1] * other)
+
+    def __repr__(self) -> str:
+        """Return a string representation of the vector."""
+        return f"Vector({self.__value[0]}, {self.__value[1]})"
 
     @property
     def values(self) -> list[int]:
-        return self.__value
-
-    #def __getitem__(self, item: int) -> int:
-    #    return self.__value[item]
-
-    def __repr__(self) -> str:
-        return f"{self.__value}"
+        """Return the vector components as a list."""
+        return self.__value.copy()
 
 class ExprSizeCalculator(BottomUpVisitor):
 
@@ -103,7 +129,7 @@ class ExprSizeCalculator(BottomUpVisitor):
 
     def LABEL(self, token: Token) -> Vector | None:  # TODO very strange, to replace
         context = self.kwargs["context"]
-        if not (g := context.symbols.get_global(token)):
+        if not (g := context.symbols.get_and_mark_global(token)):
             return None
         if isinstance(g, op.var):
             if self.element_size < 1:
@@ -117,12 +143,12 @@ class ExprSizeCalculator(BottomUpVisitor):
     def memberdir(self, tree: Tree, size: Vector) -> Vector:
         label = tree.children
         context = self.kwargs["context"]
-        g = context.symbols.get_global(label[0])
+        g = context.symbols.get_and_mark_global(label[0])
         type = label[0] if isinstance(g, op.Struct) else g.original_type
 
         try:
             for member in label[1:]:
-                if (g := context.symbols.get_global(type)) is None:
+                if (g := context.symbols.get_and_mark_global(type)) is None:
                     raise KeyError(type)
                 if isinstance(g, op.Struct):
                     g = g.getitem(str(member))
@@ -132,22 +158,10 @@ class ExprSizeCalculator(BottomUpVisitor):
         except KeyError as ex:
             logging.debug("Didn't found for %s %s will try workaround", label, ex.args)
             # if members are global as with M510 or tasm try to find last member size
-            g = context.symbols.get_global(label[-1])
+            g = context.symbols.get_and_mark_global(label[-1])
 
         self.element_size = g.size
         return Vector(self.element_size, 1)
-
-
-def read_whole_file(file_name):
-    """It reads the whole file and returns it as a string.
-
-    :param file_name: The name of the file to read
-    :return: The content of the file.
-    """
-    logging.info("     Reading file %s...", file_name)
-    with open(file_name, encoding="cp437") as file:
-        content = file.read()
-    return content
 
 
 def dump_object(value: Struct | label | Proc | var | _equ | _assignment) -> str:
@@ -249,49 +263,48 @@ class Parser:
 
         self.equs: set[str] = set()
 
-    """
-    def push_if(self, text):
-        value = self.evall(text)
-        # logging.debug "if %s -> %s" %(text, value)
-        self.__stack.append(value)
-
-    def push_else(self):
-        # logging.debug "else"
-        self.__stack[-1] = not self.__stack[-1]
-
-    def pop_if(self):
-        # logging.debug "endif"
-        return self.__stack.pop()
-    """
 
     def replace_dollar_w_segoffst(self, v: str) -> str:
         logging.debug("$ = %d", self.__cur_seg_offset)
         return v.replace("$", str(self.__cur_seg_offset))
 
     @staticmethod
+    def _parse_octal(v: str) -> int:
+        """Parse octal number string (ending with O or Q)"""
+        return int(v[:-1], 8)
+
+    @staticmethod
+    def _parse_hex(v: str) -> int:
+        """Parse hexadecimal number string (ending with H)"""
+        return int(v[:-1], 16)
+
+    @staticmethod
+    def _parse_binary(v: str) -> int:
+        """Parse binary number string (ending with B)"""
+        return int(v[:-1], 2)
+
+    @staticmethod
+    def _parse_decimal(v: str) -> int:
+        """Parse decimal number or expression"""
+        try:
+            return int(eval(v))
+        except Exception:
+            return int(v)
+
+    @staticmethod
     def parse_int(v: str) -> int:
-        # logging.debug "~1~ %s" %v
+        """Parse integer from string in various bases (hex, octal, binary, decimal)"""
         assert isinstance(v, str)
         v = v.strip()
-        # logging.debug "~2~ %s" %v
-        result: str
+        
         if re.match(r"^[+-]?[0-8]+[OoQq]$", v):
-            result = str(int(v[:-1], 8))
+            return Parser._parse_octal(v)
         elif re.match(r"^[+-]?\d[0-9A-Fa-f]*[Hh]$", v):
-            result = str(int(v[:-1], 16))
+            return Parser._parse_hex(v)
         elif re.match(r"^[01]+[Bb]$", v):
-            result = str(int(v[:-1], 2))
+            return Parser._parse_binary(v)
         else:
-            result = v
-
-        try:
-            vv: int = int(eval(result))
-            return vv
-        except Exception:
-            pass
-
-        # logging.debug "~4~ %s" %v
-        return int(result)
+            return Parser._parse_decimal(v)
 
     def identify_data_internal_type(self, data: Tree, elements_count: int, is_string_type: bool) -> op.DataType:
         if not is_string_type:
@@ -310,26 +323,53 @@ class Parser:
 
 
     def action_label(self, name: str, far: bool=False, isproc: bool=False, raw: str="", globl: bool=True, line_number: int=0) -> None:
-        logging.debug("label name: %s", name)
-        if name == "arbarb": # @@
+        """Create and register a new label in the current procedure
+        
+        Args:
+            name: Original label name
+            far: Whether the label has far addressing
+            isproc: Whether the label represents a procedure
+            raw: Raw line text for address extraction
+            globl: Whether the label has global scope
+            line_number: Source line number
+        """
+        logging.debug("Creating label: %s", name)
+        
+        # Handle special placeholder labels
+        if name == "arbarb":  # Special case placeholder
             name = self.get_dummy_jumplabel()
-        name = self.mangle_label(name)  # for tests only
-
-
+            
+        # Mangle label name for C compatibility
+        mangled_name = self.mangle_label(name)
+        
         self.need_label = False
         self.make_sure_proc_exists(line_number, raw)
-
-        # if self.proc:
-        assert self.proc
-        l = op.label(name, proc=self.proc.name, isproc=isproc, line_number=self.__offset_id, far=far, globl=globl)
-        _, l.real_offset, l.real_seg = self.get_lst_offsets(raw)
-
-        if l.real_seg:
-            self.procs_start.discard(l.real_seg * 0x10 + l.real_offset)
-        self.proc.add_label(name, l)
-        # self.set_offset(name,
-        #                ("&m." + name.lower() + " - &m." + self.__segment_name, self.proc, self.__offset_id))
-        self.symbols.set_global(name, l)
+        
+        assert self.proc, "No current procedure for label"
+        
+        # Create label object
+        label_obj = op.label(
+            mangled_name,
+            proc=self.proc.name,
+            isproc=isproc,
+            line_number=self.__offset_id,
+            far=far,
+            globl=globl
+        )
+        
+        # Extract real addresses from listing if available
+        _, label_obj.real_offset, label_obj.real_seg = self.get_lst_offsets(raw)
+        
+        # Update procedure start tracking
+        if label_obj.real_seg:
+            self.procs_start.discard(label_obj.real_seg * 0x10 + label_obj.real_offset)
+            
+        # Register label with procedure and symbol table
+        self.proc.add_label(mangled_name, label_obj)
+        self.symbols.set_global(mangled_name, label_obj)
+        
+        # Increment ID for next label
+        self.__offset_id += 1
         self.__offset_id += 1
 
     def make_sure_proc_exists(self, line_number: int, raw: str) -> None:
@@ -339,7 +379,7 @@ class Parser:
         offset = real_offset if real_seg else self.__cur_seg_offset
         pname = f"{self.__segment.name}_{offset:x}_proc"  # automatically generated proc name
         if pname in self.proc_list:
-            self.proc = self.symbols.get_global(pname)
+            self.proc = self.symbols.get_and_mark_global(pname)
         else:
             self.proc = self.add_proc(pname, raw, line_number, False)
 
@@ -412,7 +452,8 @@ class Parser:
     def parse_file_lines(self, file_name):
         self._current_file = file_name
         self.__current_file_hash = hashlib.blake2s(os.path.basename(self._current_file).encode("utf8")).hexdigest()
-        content = read_whole_file(file_name)
+        from . import utils
+        content = utils.read_whole_file(file_name)
         if file_name.lower().endswith(".lst"):  # for .lst provided by IDA move address to comments after ;~
             # we want exact placement so program could work
             content = self.extract_addresses_from_lst(file_name, content)
@@ -436,8 +477,9 @@ class Parser:
         :param file_name: The name of the .map file
         :return: A dictionary of segments and their values.
         """
+        from . import utils
         map_file = re.sub(r"\.lst$", ".map", file_name, flags=re.I)
-        content = read_whole_file(map_file).splitlines()
+        content = utils.read_whole_file(map_file).splitlines()
         DOSBOX_START_SEG = int(self.args.get("loadsegment"), 0)
         strgenerator = iter(content)
         segs = OrderedDict()
@@ -464,7 +506,8 @@ class Parser:
     def parse_include_file_lines(self, file_name):
         self.__files.add(self._current_file)
         self._current_file = file_name
-        content = read_whole_file(file_name)
+        from . import utils
+        content = utils.read_whole_file(file_name)
         result = self.parse_file_inside(content, file_name=file_name)
         self._current_file = self.__files.pop()
         return result
@@ -523,7 +566,7 @@ class Parser:
             o.original_type = value.original_type
         self.symbols.set_global(label, o)
         self.equs.add(label)
-        proc = self.symbols.get_global("mainproc")
+        proc = self.symbols.get_and_mark_global("mainproc")
         proc.stmts.append(o)
         return o
 
@@ -859,7 +902,7 @@ class Parser:
         asm2ir = Asm2IR(self, text)
         """
         for e in self.equs:
-            g = self.get_global(e)
+            g = self.get_and_mark_global(e)
             if not isinstance(g.value, Expression):
                 g.value = asm2ir.transform(g.value)
         """
@@ -982,7 +1025,7 @@ class Parser:
     def add_call_to_entrypoint(self):
         """It adds a call to the entry point of the program to the service mainproc."""
         # if self.__separate_proc:
-        proc = self.symbols.get_global("mainproc")
+        proc = self.symbols.get_and_mark_global("mainproc")
         result = self.parse_text(self.entry_point, start_rule="expr")
         expr = self.process_ast("", result)
 

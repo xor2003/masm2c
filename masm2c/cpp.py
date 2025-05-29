@@ -161,7 +161,7 @@ class Cpp(Gen):
         :rtype: str
         """
         name = str(original_name)
-        if (g := self._context.symbols.get_global(name)) is None:
+        if (g := self._context.symbols.get_and_mark_global(name)) is None:
             return name
 
         self.islabel = True
@@ -334,7 +334,7 @@ class Cpp(Gen):
         if self._indirection == IndirectionType.OFFSET and (g := self._context.symbols.get_global(label[0])):
             return self.convert_member_offset(g, label)
 
-        if (g := self._context.symbols.get_global(label[0])) is None:
+        if (g := self._context.symbols.get_and_mark_global(label[0])) is None:
             logging.error("global '%s' is missing", label)
             return ".".join(label)
 
@@ -477,7 +477,7 @@ class Cpp(Gen):
         elif "near" in expr.mods:
             far = False
 
-        if isinstance(name, str) and ((g := self._context.symbols.get_global(name)) is None or isinstance(g, op.var)):
+        if isinstance(name, str) and ((g := self._context.symbols.get_and_mark_global(name)) is None or isinstance(g, op.var)):
             # jumps feat purpose:
             # * in sub __dispatch_call - for address based jumps or grouped subs
             # * direct jumps
