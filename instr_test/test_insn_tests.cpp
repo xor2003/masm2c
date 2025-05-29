@@ -17,20 +17,19 @@ db(& stack)[STACK_SIZE]=m.stack;
 db(& heap)[HEAP_SIZE]=m.heap;
 }
 
-namespace m2c{ m2cf* _ENTRY_POINT_ = 0;}
-
+namespace m2c{
+    bool run_tests(_offsets, struct _STATE*) {
+        ::testing::InitGoogleTest();
+        RUN_ALL_TESTS();
+        return true;
+    }
+    m2cf* _ENTRY_POINT_ = run_tests;
+}
 
 m2c::_STATE sstate;
 m2c::_STATE* _state=&sstate;
 X86_REGREF
 
-bool from_callf;
-
-namespace m2c{
-void log_debug(const char *fmt, ...){printf("unimp ");}
-void log_error(const char *fmt, ...){printf("unimp ");}
-//void log_spaces(int){}
-}
 //--------------------------------------------
 
 
@@ -10542,7 +10541,3 @@ class EmulatedInstructionsTest : public ::testing::Test {
 }  // namespace
 
 
-int main(int argc, char **argv) {
-    testing::InitGoogleTest(&argc, argv);
-    return RUN_ALL_TESTS();
-}
