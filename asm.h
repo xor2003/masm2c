@@ -1766,8 +1766,36 @@ bool is_little_endian();
 #define JP(x) UNIMPLEMENTED
 
 
-#define BSR(a,b) UNIMPLEMENTED
+#define BSR(dest, src) m2c::BSR_(dest, src, m2cflags)
+template <class D, class S>
+    MYINLINE void BSR_(D &dest, const S &src, m2c::eflags &m2cflags) {
+        if (src == 0) {
+            AFFECT_ZF(1);
+        } else {
+            AFFECT_ZF(0);
+            D bit = sizeof(S) * 8 - 1;
+            while (bit > 0 && (src & (static_cast<S>(1) << bit)) == 0) {
+                bit--;
+            }
+            dest = bit;
+        }
+}
 
+
+#define BSF(dest, src) m2c::BSF_(dest, src, m2cflags)
+template <class D, class S>
+    MYINLINE void BSF_(D &dest, const S &src, m2c::eflags &m2cflags) {
+        if (src == 0) {
+            AFFECT_ZF(1);
+        } else {
+            AFFECT_ZF(0);
+            D temp = 0;
+            while (temp < (sizeof(S)*8) && (src & (static_cast<S>(1) << temp)) == 0) {
+                temp++;
+            }
+            dest = temp;
+        }
+}
 
 #define CMPXCHG UNIMPLEMENTED
 
@@ -1775,7 +1803,7 @@ bool is_little_endian();
 #define LOOPWE(x) UNIMPLEMENTED
 #define LOOPWNE(x) UNIMPLEMENTED
 */
-#define CDQ UNIMPLEMENTED
+#define CDQ { edx = (eax & 0x80000000) ? 0xffffffff : 0; }
 
 
 #define ORG(x) 
@@ -1830,10 +1858,6 @@ double realElapsedTime(void);
 
 void realtocurs();
 dw getscan();
-
-// SDL2 VGA
-//struct SDL_Renderer;
-
 
 //extern chtype vga_to_curses[256];
 
