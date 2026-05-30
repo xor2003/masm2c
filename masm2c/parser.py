@@ -493,8 +493,8 @@ class Parser:
 
     @staticmethod
     def _read_whole_file(file_name: str) -> str:
-        with open(file_name, "r", encoding="cp437", errors="replace") as handle:
-            return handle.read()
+        from . import utils
+        return utils.read_whole_file(file_name)
 
     def is_known_macro(self, name: str) -> bool:
         return name in self.macroses

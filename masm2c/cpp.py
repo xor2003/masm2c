@@ -861,38 +861,36 @@ class Cpp(Gen):
         return stmt.cmd == "" and stmt.data == "label"
 
     @staticmethod
+    def _single_child_tree(node: Any, data: str) -> lark.Tree | None:
+        if not isinstance(node, lark.Tree) or node.data != data or len(node.children) != 1:
+            return None
+        child = node.children[0]
+        return child if isinstance(child, lark.Tree) else None
+
+    @staticmethod
+    def _is_integer_expr_token(node: Any, value: str) -> bool:
+        if not isinstance(node, lark.Tree) or node.data != "expr" or len(node.children) != 1:
+            return False
+        token = node.children[0]
+        return isinstance(token, lark.Token) and token.type == "INTEGER" and token.value == value
+
+    @staticmethod
+    def _is_named_tree_expr(node: Any, expr_data: str, child_data: str, child_values: list[str]) -> bool:
+        expr_child = Cpp._single_child_tree(node, expr_data)
+        return bool(expr_child and expr_child.data == child_data and expr_child.children == child_values)
+
+    @staticmethod
     def _is_or_bh_zero_stmt(stmt: Any) -> bool:
         if stmt.cmd != "or" or len(stmt.children) != 2:
             return False
         left, right = stmt.children
-        return (
-            isinstance(left, lark.Tree)
-            and left.data == "expr"
-            and len(left.children) == 1
-            and isinstance(left.children[0], lark.Tree)
-            and left.children[0].data == "register"
-            and left.children[0].children == ["bh"]
-            and isinstance(right, lark.Tree)
-            and right.data == "expr"
-            and len(right.children) == 1
-            and isinstance(right.children[0], lark.Token)
-            and right.children[0].type == "INTEGER"
-            and right.children[0].value == "0"
-        )
+        return Cpp._is_named_tree_expr(left, "expr", "register", ["bh"]) and Cpp._is_integer_expr_token(right, "0")
 
     @staticmethod
     def _is_push_cs_stmt(stmt: Any) -> bool:
         if stmt.cmd != "push" or len(stmt.children) != 1:
             return False
-        expr = stmt.children[0]
-        return (
-            isinstance(expr, lark.Tree)
-            and expr.data == "expr"
-            and len(expr.children) == 1
-            and isinstance(expr.children[0], lark.Tree)
-            and expr.children[0].data == "segmentregister"
-            and expr.children[0].children == ["cs"]
-        )
+        return Cpp._is_named_tree_expr(stmt.children[0], "expr", "segmentregister", ["cs"])
 
     @staticmethod
     def _is_call_adddir_stmt(stmt: Any) -> bool:
