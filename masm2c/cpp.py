@@ -1532,53 +1532,62 @@ struct Memory{
         state = self._expr_state
         state.reset()
         previous_indirection = state.indirection
-        effective_indirection = tree.indirection
-        if self.itiscall and tree.mods & {"near", "far"}:
-            effective_indirection = IndirectionType.VALUE
-        state.indirection = effective_indirection
+        state.indirection = self._effective_indirection_for_expr(tree)
         prev_element_size = state.element_size
         state.element_size = tree.element_size
         try:
-            origexpr = tree.children[0]
-            while isinstance(origexpr, list) and origexpr:
-                origexpr = origexpr[0]
-
-            single = len(tree.children) == 1
-            state.is_just_label = self._check_for_just_label(origexpr, single)
-            state.is_just_member = single and isinstance(origexpr, lark.Tree) and origexpr.data == MEMBERDIR
-
+            self._initialize_expr_shape_flags(tree)
             result = "".join(self.visit(tree.children))
-            effective_indirection = state.indirection
-            effective_ptr_size = tree.ptr_size
-            if effective_indirection == IndirectionType.POINTER and effective_ptr_size == 0 and state.variable_size:  # [ var ]
-                effective_ptr_size = state.variable_size  # Set destination size based on variable size
-            state.size_changed = state.size_changed or "size_changed" in tree.mods and self._middle_size != tree.size()
-
-            if effective_indirection == IndirectionType.POINTER and tree.registers.intersection({"bp", "ebp", "sp", "esp"}):
-                state.work_segment = "ss"  # and segment is not overriden means base is "ss:"
-
-            if state.need_pointer_to_member:
-                result = result[:-1] if result[-1] == "+" else result
-                result = result.replace("++", "+").replace("+-", "-")
-                result = f"{result}+{state.need_pointer_to_member[0]}))->{'.'.join(state.need_pointer_to_member[1:])}"
-
-            if effective_indirection == IndirectionType.POINTER and not state.is_member and (
-                    not state.is_just_label or state.size_changed) and ("lea" not in tree.mods or "destination" in tree.mods):
-                result = self.convert_sqbr_reference(tree.segment_register, result,
-                                                     effective_ptr_size)
-            if state.is_member:
-                result = f"(({state.struct_type}*)raddr({state.work_segment},{result}"
-            if state.needs_dereference:
-                state.needs_dereference = False
-                result = (
-                    f"*{result}"
-                    if result[0] == "(" and result[-1] == ")"
-                    else f"*({result})"
-                )
-            return result
+            return self._finalize_rendered_expr(tree, result)
         finally:
             state.indirection = previous_indirection
             state.element_size = prev_element_size
+
+    def _effective_indirection_for_expr(self, tree: Expression) -> IndirectionType:
+        effective_indirection = tree.indirection
+        if self.itiscall and tree.mods & {"near", "far"}:
+            return IndirectionType.VALUE
+        return effective_indirection
+
+    def _initialize_expr_shape_flags(self, tree: Expression) -> None:
+        state = self._expr_state
+        origexpr = tree.children[0]
+        while isinstance(origexpr, list) and origexpr:
+            origexpr = origexpr[0]
+        single = len(tree.children) == 1
+        state.is_just_label = self._check_for_just_label(origexpr, single)
+        state.is_just_member = single and isinstance(origexpr, lark.Tree) and origexpr.data == MEMBERDIR
+
+    def _effective_ptr_size_for_expr(self, tree: Expression) -> int:
+        state = self._expr_state
+        effective_ptr_size = tree.ptr_size
+        if state.indirection == IndirectionType.POINTER and effective_ptr_size == 0 and state.variable_size:
+            return state.variable_size
+        return effective_ptr_size
+
+    def _finalize_rendered_expr(self, tree: Expression, result: str) -> str:
+        state = self._expr_state
+        state.size_changed = state.size_changed or "size_changed" in tree.mods and self._middle_size != tree.size()
+        effective_ptr_size = self._effective_ptr_size_for_expr(tree)
+
+        if state.indirection == IndirectionType.POINTER and tree.registers.intersection({"bp", "ebp", "sp", "esp"}):
+            state.work_segment = "ss"
+
+        if state.need_pointer_to_member:
+            result = result[:-1] if result[-1] == "+" else result
+            result = result.replace("++", "+").replace("+-", "-")
+            result = f"{result}+{state.need_pointer_to_member[0]}))->{'.'.join(state.need_pointer_to_member[1:])}"
+
+        if state.indirection == IndirectionType.POINTER and not state.is_member and (
+            not state.is_just_label or state.size_changed
+        ) and ("lea" not in tree.mods or "destination" in tree.mods):
+            result = self.convert_sqbr_reference(tree.segment_register, result, effective_ptr_size)
+        if state.is_member:
+            result = f"(({state.struct_type}*)raddr({state.work_segment},{result}"
+        if state.needs_dereference:
+            state.needs_dereference = False
+            result = f"*{result}" if result[0] == "(" and result[-1] == ")" else f"*({result})"
+        return result
 
     def _check_for_just_label(self, origexpr, single: bool):
         return single and ((isinstance(origexpr, lark.Token) and origexpr.type == LABEL)
