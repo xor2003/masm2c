@@ -1531,7 +1531,11 @@ struct Memory{
     def expr(self, tree: Expression) -> str:
         state = self._expr_state
         state.reset()
-        state.indirection = tree.indirection
+        previous_indirection = state.indirection
+        effective_indirection = tree.indirection
+        if self.itiscall and tree.mods & {"near", "far"}:
+            effective_indirection = IndirectionType.VALUE
+        state.indirection = effective_indirection
         prev_element_size = state.element_size
         state.element_size = tree.element_size
         try:
@@ -1543,12 +1547,8 @@ struct Memory{
             state.is_just_label = self._check_for_just_label(origexpr, single)
             state.is_just_member = single and isinstance(origexpr, lark.Tree) and origexpr.data == MEMBERDIR
 
-            effective_indirection = tree.indirection
-            if self.itiscall and tree.mods & {"near", "far"}: # and self._expr_state.is_just_label:
-                effective_indirection = IndirectionType.VALUE
-                self._expr_state.indirection = IndirectionType.VALUE
             result = "".join(self.visit(tree.children))
-            effective_indirection = self._expr_state.indirection
+            effective_indirection = state.indirection
             effective_ptr_size = tree.ptr_size
             if effective_indirection == IndirectionType.POINTER and effective_ptr_size == 0 and state.variable_size:  # [ var ]
                 effective_ptr_size = state.variable_size  # Set destination size based on variable size
@@ -1577,7 +1577,7 @@ struct Memory{
                 )
             return result
         finally:
-            state.indirection = IndirectionType.VALUE
+            state.indirection = previous_indirection
             state.element_size = prev_element_size
 
     def _check_for_just_label(self, origexpr, single: bool):
