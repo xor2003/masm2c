@@ -27,7 +27,7 @@ jobs:
           pip install -r requirements.txt
           pip install ruff mypy vulture radon
       - name: QA checks
-        run: python scripts/qa.py
+        run: make ci-qa
 
   integration-scripts:
     runs-on: ubuntu-22.04
@@ -41,8 +41,5 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-      - name: Run project scripts
-        run: |
-          bash ./install-test.sh
-          bash ./runtests.sh
-          bash ./_binarytests.sh
+      - name: Run integration checks
+        run: make ci-integration

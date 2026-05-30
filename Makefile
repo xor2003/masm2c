@@ -1,4 +1,4 @@
-.PHONY: clean clean-test clean-pyc clean-build docs help lint test check
+.PHONY: clean clean-test clean-pyc clean-build docs help lint test check ci-qa ci-pytest ci-asmtests ci-qemu-tests ci-integration
 .DEFAULT_GOAL := help
 define BROWSER_PYSCRIPT
 import os, webbrowser, sys
@@ -85,6 +85,20 @@ test: $(TESTS)
 
 check: test_insn_tests
 	./$<
+
+ci-qa: ## run unified Python quality checks used by CI
+	python scripts/qa.py
+
+ci-pytest: ## run project pytest suite
+	python -m pytest -q
+
+ci-asmtests: ## run asm translation/regression tests
+	python asmTests/run_tests.py --jobs $${JOBS:-1}
+
+ci-qemu-tests: ## run qemu-based integration tests
+	cd qemu_tests && ./_test.sh
+
+ci-integration: ci-pytest ci-asmtests ci-qemu-tests ## run integration checks used by CI
 
 TESTS = test_insn_tests
 
