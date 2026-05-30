@@ -20,8 +20,8 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #
 try:
-    from rich import print
-    from rich.traceback import install
+    from rich import print  # type: ignore[import-not-found]
+    from rich.traceback import install  # type: ignore[import-not-found]
     install(show_locals=True)
 except Exception:
     pass
