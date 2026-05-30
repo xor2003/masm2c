@@ -30,6 +30,7 @@ from collections import OrderedDict
 from copy import copy, deepcopy
 from dataclasses import dataclass, field
 from typing import Any, Optional, Final
+from collections.abc import Callable
 
 import jsonpickle  # type: ignore[import-untyped]
 from lark import UnexpectedToken, lark
@@ -769,13 +770,29 @@ class Parser:
         return segs
 
     def parse_include_file_lines(self, file_name):
-        previous = self._switch_file_context(file_name)
-        try:
+        def _parse() -> list[Any]:
             from . import utils
             content = utils.read_whole_file(file_name)
             return self.parse_file_inside(content, file_name=file_name)
+        return self._run_with_file_context(file_name, _parse)
+
+    def _run_with_file_context(self, file_name: str, action: Callable[[], Any]) -> Any:
+        previous = self._switch_file_context(file_name)
+        try:
+            return action()
         finally:
             self._current_file, self.__current_file_hash = previous
+
+    def _run_in_transient_test_parse_state(self, action: Callable[[], Any]) -> Any:
+        previous_test_mode = self.test_mode
+        previous_segments = self.segments
+        self.test_mode = True
+        self.segments = OrderedDict()
+        try:
+            return action()
+        finally:
+            self.test_mode = previous_test_mode
+            self.segments = previous_segments
 
     def action_assign(self, label: Token | str, value: Expression, raw: str="", line_number: int=0) -> _assignment:
         """This function is called when the parser encounters an assignment statement
@@ -945,84 +962,60 @@ class Parser:
 
     def action_code(self, line: str) -> baseop:
         previous_need_label = self.need_label
-        previous_test_mode = self.test_mode
-        previous_segments = self.segments
         self.need_label = False
-        self.test_mode = True
-        self.segments = OrderedDict()
         try:
-            try:
+            def _parse_instruction() -> baseop:
                 self.test_pre_parse()
                 result = self.parse_text(line + "\n", start_rule="instruction")
                 result = self.process_ast(line, result)
                 assert isinstance(result, baseop)
+                return result
+            try:
+                return self._run_in_transient_test_parse_state(_parse_instruction)
             except Exception as e:
                 print(e)
                 logging.exception("Error1")
-                #result = [str(e)]
                 raise
         finally:
             self.need_label = previous_need_label
-            self.test_mode = previous_test_mode
-            self.segments = previous_segments
-        return result
 
     def test_size(self, line):
-        previous_test_mode = self.test_mode
-        previous_segments = self.segments
-        self.test_mode = True
-        self.segments = OrderedDict()
-        try:
+        def _parse_size() -> int:
             try:
                 self.test_pre_parse()
                 result = self.parse_text(line, start_rule="expr")
                 expr = self.process_ast(line, result)
-                result = expr.size()
+                return expr.size()
             except Exception as e:
                 print(e)
                 import traceback
                 logging.exception(traceback.format_exc())
-                result = [str(e)]
                 raise
-        finally:
-            self.test_mode = previous_test_mode
-            self.segments = previous_segments
-        return result
+        return self._run_in_transient_test_parse_state(_parse_size)
 
     def action_data(self, line: str) -> Tree:
         """For tests only."""
-        previous_test_mode = self.test_mode
-        previous_segments = self.segments
-        self.test_mode = True
-        self.segments = OrderedDict()
-        try:
+        def _parse_data() -> Tree:
             try:
                 self.test_pre_parse()
                 result = self.parse_text(line + "\n", start_rule="insegdirlist")
                 result = self.process_ast(line, result)
                 assert isinstance(result, lark.Tree)
+                return result
             except Exception as e:
                 print(e)
                 logging.exception("Error3")
-                #result = [str(e)]
                 raise
-        finally:
-            self.test_mode = previous_test_mode
-            self.segments = previous_segments
-        return result
+        return self._run_in_transient_test_parse_state(_parse_data)
 
     def parse_arg(self, line: str, def_size: int=0, destination: bool=False) -> str:
-        previous_test_mode = self.test_mode
-        previous_segments = self.segments
-        self.test_mode = True
-        self.segments = OrderedDict()
-        try:
+        def _parse_arg() -> str:
             try:
                 self.test_pre_parse()
                 expr = self.parse_text(line, start_rule="expr")
                 expr = self.process_ast(line, expr)
                 assert isinstance(expr, Expression)
-                result = self.render_expression(expr, def_size=def_size, destination=destination)
+                return self.render_expression(expr, def_size=def_size, destination=destination)
             except Exception as e:
                 exc_type, exc_obj, exc_tb = sys.exc_info()
                 assert exc_tb
@@ -1033,10 +1026,7 @@ class Parser:
 
                 logging.exception(traceback.format_exc())
                 raise
-        finally:
-            self.test_mode = previous_test_mode
-            self.segments = previous_segments
-        return result
+        return self._run_in_transient_test_parse_state(_parse_arg)
 
     def parse_include(self, line, file_name=None):
         return self.parse_text(line, file_name=file_name, start_rule="insegdirlist")
