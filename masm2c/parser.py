@@ -1060,24 +1060,12 @@ class Parser:
             logging.info(f"      Current offset {self.__cur_seg_offset:x} line={line_number}")
         isstruct = len(self.struct_names_stack) != 0
 
-        binary_width = self.typetosize(type)
-        #for ex in args:
-
-        calc = ExprSizeCalculator(element_size=binary_width, init=Vector(0, 0), context=self)
-        size, elements = calc.visit(args).values
-        if size == 0:
-            size = binary_width * elements
+        binary_width, size, elements = self._compute_data_layout(type, args)
 
         offset = self.__cur_seg_offset
         if not isstruct:
-
-            self.adjust_offset_to_real(raw, label)
-
+            self._prepare_nonstruct_data_context(raw, label, line_number, args)
             offset = self.__cur_seg_offset
-            if not self.flow_terminated:
-                logging.error(f"Flow wasn't terminated! line={line_number} offset={self.__cur_seg_offset}")
-
-            logging.debug("args %s offset %d", args, offset)
 
         logging.debug("convert_data %s %d %s", label, binary_width, args)
 
@@ -1087,10 +1075,7 @@ class Parser:
             array = [0]
 
         logging.debug("~size %d elements %d", binary_width, elements)
-        if label and not isstruct:
-            self.symbols.set_global(label, op.var(binary_width, offset, name=label,
-                                          segment=self.__segment_name, elements=elements, original_type=type,
-                                          filename=self._current_file, raw=raw, line_number=line_number))
+        self._register_data_symbol_if_needed(label, isstruct, binary_width, offset, type, elements, raw, line_number)
 
         dummy_label = False
         if not label:
@@ -1106,20 +1091,72 @@ class Parser:
         data = op.Data(label, type, data_internal_type, array, elements, size, filename=self._current_file,
                        raw_line=raw,
                        line_number=line_number, comment=data_type, offset=offset)
-        if isstruct:
-            assert self.current_struct
-            self.current_struct.append(data)
-        else:
-            _, data.real_offset, data.real_seg = self.get_lst_offsets(raw)
-            self.__segment.append(data)
-            if dummy_label and data_internal_type == op.DataType.NUMBER and binary_width == 1:
-                self.merge_data_bytes()
-            else:
-                self.data_merge_candidates = 0
-
+        self._append_data_record(data, isstruct, raw, dummy_label, data_internal_type, binary_width)
 
         self.flow_terminated = True
         return data  # c, h, size
+
+    def _compute_data_layout(self, data_type: str, args: Tree) -> tuple[int, int, int]:
+        binary_width = self.typetosize(data_type)
+        calc = ExprSizeCalculator(element_size=binary_width, init=Vector(0, 0), context=self)
+        size, elements = calc.visit(args).values
+        if size == 0:
+            size = binary_width * elements
+        return binary_width, size, elements
+
+    def _prepare_nonstruct_data_context(self, raw: str, label: str, line_number: int, args: Tree) -> None:
+        self.adjust_offset_to_real(raw, label)
+        if not self.flow_terminated:
+            logging.error(f"Flow wasn't terminated! line={line_number} offset={self.__cur_seg_offset}")
+        logging.debug("args %s offset %d", args, self.__cur_seg_offset)
+
+    def _register_data_symbol_if_needed(
+            self,
+            label: str,
+            isstruct: bool,
+            binary_width: int,
+            offset: int,
+            data_type: str,
+            elements: int,
+            raw: str,
+            line_number: int,
+    ) -> None:
+        if not label or isstruct:
+            return
+        self.symbols.set_global(
+            label,
+            op.var(
+                binary_width,
+                offset,
+                name=label,
+                segment=self.__segment_name,
+                elements=elements,
+                original_type=data_type,
+                filename=self._current_file,
+                raw=raw,
+                line_number=line_number,
+            ),
+        )
+
+    def _append_data_record(
+            self,
+            data: Data,
+            isstruct: bool,
+            raw: str,
+            dummy_label: bool,
+            data_internal_type: op.DataType,
+            binary_width: int,
+    ) -> None:
+        if isstruct:
+            assert self.current_struct
+            self.current_struct.append(data)
+            return
+        _, data.real_offset, data.real_seg = self.get_lst_offsets(raw)
+        self.__segment.append(data)
+        if dummy_label and data_internal_type == op.DataType.NUMBER and binary_width == 1:
+            self.merge_data_bytes()
+        else:
+            self.data_merge_candidates = 0
 
     def merge_data_bytes(self) -> None:
         self.data_merge_candidates += 1
