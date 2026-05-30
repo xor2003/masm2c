@@ -162,6 +162,19 @@ def summarize(results: Iterable[CaseResult], logs_dir: Path) -> int:
             print(f"{r.status:<5} {r.name}")
     print("----------------------------------------------------------")
     print(f"Total: {total}  Passed: {passed}  Skipped: {skipped}  Failed: {failed}")
+    if failed:
+        print("\nFailure details (last log lines per file):")
+        for r in ordered:
+            if r.status != "FAIL" or not r.log_file or not r.log_file.exists():
+                continue
+            print(f"\n--- {r.name} ({r.reason}) ---")
+            try:
+                lines = r.log_file.read_text(encoding="utf-8", errors="replace").splitlines()
+                tail = lines[-40:] if len(lines) > 40 else lines
+                for line in tail:
+                    print(line)
+            except Exception as ex:
+                print(f"[could not read log: {ex}]")
     print(f"Logs: {logs_dir}")
     print("==========================================================")
     return failed

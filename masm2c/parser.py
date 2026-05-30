@@ -476,8 +476,7 @@ class Parser:
         previous_itislst = self.itislst
         self._switch_file_context(file_name)
         try:
-            from . import utils
-            content = utils.read_whole_file(file_name)
+            content = self._read_whole_file(file_name)
             if file_name.lower().endswith(".lst"):  # for .lst provided by IDA move address to comments after ;~
                 # we want exact placement so program could work
                 content = self.extract_addresses_from_lst(file_name, content)
@@ -491,6 +490,11 @@ class Parser:
         self._current_file = file_name
         self.__current_file_hash = hashlib.blake2s(os.path.basename(file_name).encode("utf8")).hexdigest()
         return previous
+
+    @staticmethod
+    def _read_whole_file(file_name: str) -> str:
+        with open(file_name, "r", encoding="cp437", errors="replace") as handle:
+            return handle.read()
 
     def is_known_macro(self, name: str) -> bool:
         return name in self.macroses
@@ -743,9 +747,8 @@ class Parser:
         :param file_name: The name of the .map file
         :return: A dictionary of segments and their values.
         """
-        from . import utils
         map_file = re.sub(r"\.lst$", ".map", file_name, flags=re.I)
-        content = utils.read_whole_file(map_file).splitlines()
+        content = self._read_whole_file(map_file).splitlines()
         DOSBOX_START_SEG = int(self.args.get("loadsegment"), 0)
         strgenerator = iter(content)
         segs = OrderedDict()
@@ -771,8 +774,7 @@ class Parser:
 
     def parse_include_file_lines(self, file_name):
         def _parse() -> list[Any]:
-            from .utils import read_whole_file
-            content = read_whole_file(file_name)
+            content = self._read_whole_file(file_name)
             return self.parse_file_inside(content, file_name=file_name)
         return self._run_with_file_context(file_name, _parse)
 

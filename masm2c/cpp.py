@@ -862,16 +862,37 @@ class Cpp(Gen):
 
     @staticmethod
     def _is_or_bh_zero_stmt(stmt: Any) -> bool:
-        return stmt.cmd == "or" and stmt.children == [
-            lark.Tree("expr", [lark.Tree("register", ["bh"])]),
-            lark.Tree("expr", [lark.Token("INTEGER", "0")]),
-        ]
+        if stmt.cmd != "or" or len(stmt.children) != 2:
+            return False
+        left, right = stmt.children
+        return (
+            isinstance(left, lark.Tree)
+            and left.data == "expr"
+            and len(left.children) == 1
+            and isinstance(left.children[0], lark.Tree)
+            and left.children[0].data == "register"
+            and left.children[0].children == ["bh"]
+            and isinstance(right, lark.Tree)
+            and right.data == "expr"
+            and len(right.children) == 1
+            and isinstance(right.children[0], lark.Token)
+            and right.children[0].type == "INTEGER"
+            and right.children[0].value == "0"
+        )
 
     @staticmethod
     def _is_push_cs_stmt(stmt: Any) -> bool:
-        return stmt.cmd == "push" and stmt.children == [
-            lark.Tree("expr", [lark.Tree("segmentregister", ["cs"])])
-        ]
+        if stmt.cmd != "push" or len(stmt.children) != 1:
+            return False
+        expr = stmt.children[0]
+        return (
+            isinstance(expr, lark.Tree)
+            and expr.data == "expr"
+            and len(expr.children) == 1
+            and isinstance(expr.children[0], lark.Tree)
+            and expr.children[0].data == "segmentregister"
+            and expr.children[0].children == ["cs"]
+        )
 
     @staticmethod
     def _is_call_adddir_stmt(stmt: Any) -> bool:
