@@ -284,58 +284,89 @@ class Cpp(Gen):
         :param segments: a dictionary of segments, where the key is the segment name and the value is the segment object
         :return: cpp_file, data_hpp_file, data_cpp_file, hpp_file
         """
+        prev_data_label_size = self._expr_state.data_label_size
         self._expr_state.data_label_size = 2
+        try:
+            cpp_file = ""
+            data_hpp_file = ""
+            data_cpp_file = ""
+            hpp_file = ""
+            for segment in segments.values():
+                segment_data_cpp, segment_hpp = self._emit_segment_binding_declarations(segment)
+                data_cpp_file += segment_data_cpp
+                hpp_file += segment_hpp
 
-        cpp_file = ""
-        data_hpp_file = ""
-        data_cpp_file = ""
-        hpp_file = ""
-        for segment in segments.values():
-            #  Add segment address
-            data_cpp_file += f"db& {segment.name}=*((db*)&m2c::m+0x{segment.offset:x});\n"
-            hpp_file += f"extern db& {segment.name};\n"
+                for data in segment.getdata():
+                    rendered = self._render_data_declaration(data)
+                    cpp_file += rendered["cpp_init"]
+                    data_hpp_file += rendered["data_hpp_decl"]
+                    data_cpp_file += rendered["data_cpp_ref"]
+                    hpp_file += rendered["extern_hpp_decl"]
+            return cpp_file, data_hpp_file, data_cpp_file, hpp_file
+        finally:
+            self._expr_state.data_label_size = prev_data_label_size
 
-            for data in segment.getdata():
-                value, type_and_name, _ = self.produce_c_data_single_(data)
+    def _emit_segment_binding_declarations(self, segment: Any) -> tuple[str, str]:
+        data_cpp = f"db& {segment.name}=*((db*)&m2c::m+0x{segment.offset:x});\n"
+        hpp = f"extern db& {segment.name};\n"
+        return data_cpp, hpp
 
-                type_and_name += ";\n"
+    def _render_data_declaration(self, data: Data) -> dict[str, str]:
+        value, type_and_name, _ = self.produce_c_data_single_(data)
+        type_and_name += ";\n"
+        cpp_init = ""
+        extern_hpp_decl = ""
+        data_cpp_ref = ""
 
-                if not data.is_align():  # if align do not assign it
-                    m = re.match(r"^(\w+)\s+(\w+)(\[\d+\])?;\n", type_and_name)
-                    if not m:
-                        logging.error(f"Failed to parse {value} {type_and_name}")
-                    name = m[2]
+        if not data.is_align():
+            (
+                cpp_init,
+                type_and_name,
+                extern_hpp_decl,
+                data_cpp_ref,
+            ) = self._render_data_assignment_and_refs(data, value, type_and_name)
 
-                    type_and_size = re.sub(r"^(?P<type>\w+)\s+\w+(\[\d+\])?;\n", r"\g<type> tmp999\g<2>", type_and_name)
+        return {
+            "cpp_init": cpp_init,
+            "data_hpp_decl": type_and_name,
+            "data_cpp_ref": data_cpp_ref,
+            "extern_hpp_decl": extern_hpp_decl,
+        }
 
-                    if name.startswith("dummy") and value == "0":
-                        value = ""
-                    elif m[2]:  # if array
-                        value = "" if value == "{}" else f"    {{{type_and_size}={value};MYCOPY({name})}}"
-                    else:
-                        value = f"    {{{type_and_size}={value};MYCOPY({name})}}"
+    def _render_data_assignment_and_refs(
+            self,
+            data: Data,
+            value: str,
+            type_and_name: str,
+    ) -> tuple[str, str, str, str]:
+        match = re.match(r"^(\w+)\s+(\w+)(\[\d+\])?;\n", type_and_name)
+        if not match:
+            logging.error(f"Failed to parse {value} {type_and_name}")
+            return "", type_and_name, "", ""
 
-                    # char (& bb)[5] = group.bb;
-                    # references
-                    _reference_in_data_cpp = self._generate_dataref_from_declaration_c(type_and_name)
-                    # externs
-                    _extern_in_hpp = self._generate_extern_from_declaration_c(type_and_name)
+        name = match[2]
+        type_and_size = re.sub(r"^(?P<type>\w+)\s+\w+(\[\d+\])?;\n", r"\g<type> tmp999\g<2>", type_and_name)
+        cpp_init = self._build_data_assignment(name, value, type_and_size, bool(match[3]))
+        data_cpp_ref = self._generate_dataref_from_declaration_c(type_and_name)
+        extern_hpp_decl = self._generate_extern_from_declaration_c(type_and_name)
+        if cpp_init:
+            cpp_init, type_and_name = self._append_real_address_comment(data, cpp_init, type_and_name)
+            cpp_init += "\n"
+        return cpp_init, type_and_name, extern_hpp_decl, data_cpp_ref
 
-                    if value:
-                        real_seg, real_offset = data.getrealaddr()
-                        if real_seg:
-                            value += f" // {real_seg:04x}:{real_offset:04x}"
-                            type_and_name = f"{type_and_name[:-1]} // {real_seg:04x}:{real_offset:04x}\n"
-                        value += "\n"
+    def _build_data_assignment(self, name: str, value: str, type_and_size: str, is_array: bool) -> str:
+        if name.startswith("dummy") and value == "0":
+            return ""
+        if is_array:
+            return "" if value == "{}" else f"    {{{type_and_size}={value};MYCOPY({name})}}"
+        return f"    {{{type_and_size}={value};MYCOPY({name})}}"
 
-                    cpp_file += value  # cpp source - assigning
-                    hpp_file += _extern_in_hpp  # extern for header
-
-                    data_cpp_file += _reference_in_data_cpp  # reference in _data.cpp
-                data_hpp_file += type_and_name  # headers in _data.h
-
-        self._expr_state.data_label_size = 0
-        return cpp_file, data_hpp_file, data_cpp_file, hpp_file
+    def _append_real_address_comment(self, data: Data, value: str, type_and_name: str) -> tuple[str, str]:
+        real_seg, real_offset = data.getrealaddr()
+        if not real_seg:
+            return value, type_and_name
+        comment = f" // {real_seg:04x}:{real_offset:04x}"
+        return value + comment, f"{type_and_name[:-1]}{comment}\n"
 
     def _generate_extern_from_declaration_c(self, _hpp):
         """It takes a C++ declaration and returns a extern declaration to the same.
