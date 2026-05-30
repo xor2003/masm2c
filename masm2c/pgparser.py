@@ -22,7 +22,7 @@ import sys
 from collections import OrderedDict
 from collections.abc import Iterator
 from copy import copy, deepcopy
-from typing import Any
+from typing import Any, cast
 
 from lark import Discard, Lark, Transformer, Tree, v_args
 
@@ -34,6 +34,7 @@ macronamere = re.compile(r"([A-Za-z_@$?][A-Za-z0-9_@$?]*)")
 commentid = re.compile(r"COMMENT\s+([^ ]).*?\1[^\r\n]*", flags=re.DOTALL)
 
 class MatchTag:
+    __slots__ = ("context", "last_type", "last")
     always_accept = "LABEL", "structinstdir", "STRUCTNAME"
 
     def __init__(self, context: "Parser") -> None:
@@ -96,6 +97,7 @@ def get_raw_line(input_str: str, meta: lark.tree.Meta) -> str:
 
 
 class CommonCollector(Transformer):
+    __slots__ = ("context", "_expression", "input_str")
 
     def __init__(self, context: "Parser", input_str: str="") -> None:
         self.context = context
@@ -113,6 +115,7 @@ class EquCollector(CommonCollector):
 
 
 class Getmacroargval:
+    __slots__ = ("argvaluedict",)
 
     def __init__(self, params, args) -> None:
         self.argvaluedict = OrderedDict(zip(params, args))
@@ -123,10 +126,13 @@ class Getmacroargval:
 
 
 class Asm2IR(CommonCollector):
+    __slots__ = ("_radix", "_pending_proc_options", "_pending_mnemonic")
 
     def __init__(self, context: "Parser", input_str: str="") -> None:
         super().__init__(context, input_str)
         self._radix = 10
+        self._pending_proc_options: list[str] = []
+        self._pending_mnemonic = ""
 
     def externdef(self, nodes: list[lark.Tree | lark.Token]) -> list[lark.Tree | lark.Token]:
         label, type = nodes
@@ -142,7 +148,7 @@ class Asm2IR(CommonCollector):
         name, value = str(nodes[0]), nodes[1]
         logging.debug("equdir %s ~~", nodes)
 
-        return self.context.define_equ(name, value, raw=get_raw(self.input_str, meta),
+        return self.context.define_equ(name, cast(Expression, value), raw=get_raw(self.input_str, meta),
                                        line_number=get_line_number(meta))
 
     @v_args(meta=True)
@@ -346,7 +352,8 @@ class Asm2IR(CommonCollector):
     @v_args(meta=True)
     def datadir(self, meta:     lark.tree.Meta, children: list) -> _DiscardType | Data | list:
         logging.debug("datadir %s ~~", children)
-        if not children: return Discard
+        if not children:
+            return Discard
 
         if len(children)==1: # TODO why?
             children = children[0]
@@ -376,7 +383,7 @@ class Asm2IR(CommonCollector):
     def LABEL(self, value_in: lark.lexer.Token) -> lark.lexer.Token:
         value = self.context.resolve_label_for_expression(value_in, self.expression)
         logging.debug("name = %s", value)
-        l = lark.Token("LABEL", value)
+        token = lark.Token("LABEL", value)
         if (g := self.context.lookup_global_symbol(value)) is None:
             # Handle dummy labels that haven't been added to symbol table yet
             # This can happen during parsing when dummy labels are referenced before they're defined
@@ -385,7 +392,7 @@ class Asm2IR(CommonCollector):
         elif isinstance(g, op.Struct):
             logging.debug("get_size res %d", g.size)
 
-        return l
+        return token
 
 
     @v_args(meta=True)
@@ -418,12 +425,13 @@ class Asm2IR(CommonCollector):
         return nodes
 
     def poptions(self, options: list):
-        self.context.set_pending_proc_options(options)
+        self._pending_proc_options = list(options)
         return Discard
 
     @v_args(meta=True)
     def procdir(self, meta, nodes):
-        name, type = nodes[0], self.context.consume_proc_options()
+        name, type = nodes[0], self._pending_proc_options
+        self._pending_proc_options = []
         logging.debug("procdir %s ~~", nodes)
         self.context.begin_procedure(name, type, line_number=get_line_number(meta),
                                      raw=get_raw_line(self.input_str, meta))
@@ -446,7 +454,7 @@ class Asm2IR(CommonCollector):
         return Discard
 
     def mnemonic(self, name: list[lark.Token]) -> _DiscardType:
-        self.context.set_pending_mnemonic(str(name[0]))
+        self._pending_mnemonic = str(name[0])
         return Discard
 
     def comment(self, children: list[lark.Token]) -> _DiscardType:
@@ -459,7 +467,8 @@ class Asm2IR(CommonCollector):
     def instruction(self, meta:     lark.tree.Meta, nodes: list[Any | lark.Tree]) -> baseop | _DiscardType:
         logging.debug("asminstruction %s ~~", nodes)
 
-        instruction = self.context.consume_pending_mnemonic()
+        instruction = self._pending_mnemonic
+        self._pending_mnemonic = ""
         args = nodes[0].children if len(nodes) else []
         args = self.context.prepare_instruction_args(instruction, args)
         self._expression = None
@@ -648,7 +657,7 @@ class TopDownVisitor:
             else:
                 logging.error(f"Error unknown type {type(node).__name__} {node}")
                 raise ValueError(f"Error unknown type {type(node).__name__} {node}")
-        except Exception as ex:
+        except Exception:
             logging.exception("Exception %s", node)
             sys.exit(1)
         return result
@@ -679,7 +688,6 @@ class BottomUpVisitor:
                 return self.init
         except Exception as ex:
             import logging
-            import traceback
             logging.debug(f"Exception processing node {node}: {ex}")
             assert self.init is not None
             return self.init

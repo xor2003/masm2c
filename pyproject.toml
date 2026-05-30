@@ -34,6 +34,13 @@ classifiers = [
 [project.optional-dependencies]
 dev = [
     "coverage>=7.6.4",
+    "mypy>=1.11.2",
+    "mock>=5.1.0",
+    "pytest>=8.3.3",
+    "ruff>=0.6.9",
+]
+test = [
+    "coverage>=7.6.4",
     "mock>=5.1.0",
     "pytest>=8.3.3",
 ]
@@ -44,3 +51,5 @@ Homepage = "https://github.com/xor2003/masm2c"
 [project.scripts]
 masm2c = "masm2c.cli:main"
 
+[tool.setuptools.packages.find]
+include = ["masm2c*"]

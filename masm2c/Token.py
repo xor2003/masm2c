@@ -40,30 +40,30 @@ class Token(lark.Tree):
 
     @staticmethod
     def find_tokens(expr: Any, lookfor: str) -> Union[list[str], list[lark.Tree], None]:
-        l = []
+        found: list[Any] = []
         if isinstance(expr, Tree):
             if expr.data == lookfor:
                 if len(expr.children) == 1:
-                    l.append(expr.children[0])
+                    found.append(expr.children[0])
                 else:
-                    l.append(expr.children)
+                    found.append(expr.children)
             result = (
                 None
                 if isinstance(expr.children, str)
                 else Token.find_tokens(expr.children, lookfor)
             )
             if result:
-                l += result
+                found += result
         elif isinstance(expr, lark.Token):
             if expr.type == lookfor:
-                l.append(expr.value)
+                found.append(expr.value)
         elif isinstance(expr, list):
             for i in range(len(expr)):
                 if result := Token.find_tokens(expr[i], lookfor):
-                    l += result
-        if not l:
+                    found += result
+        if not found:
             return None
-        return l
+        return found
 
 
     @staticmethod
@@ -77,16 +77,15 @@ class Token(lark.Tree):
                 expr.children = Token.remove_tokens(expr.children, lookfor)
             return expr
         elif isinstance(expr, list):
-            l = []
+            reduced: list[Any] = []
             for i in range(len(expr)):
                 result = Token.remove_tokens(expr[i], lookfor)
                 if result is not None:
                     if isinstance(result, list):
-                        l.extend(result)
+                        reduced.extend(result)
                     else:
-                        l.append(result)
-            # if not l:
-            return l
+                        reduced.append(result)
+            return reduced
         return expr
 
 
@@ -116,4 +115,3 @@ class Expression(lark.Tree):
             return self.ptr_size
         else:
             return self.element_size * self.element_number
-

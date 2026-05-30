@@ -106,7 +106,7 @@ class Proc:
         o.syntetic = False
         return o
 
-    def find_op_class(self, cmd: lark.Token, args: list[Expression]) -> Any:
+    def find_op_class(self, cmd: str | lark.Token, args: list[Expression]) -> Any:
         if hasattr(op, f"_{cmd.lower()}"):
             cl = getattr(op, f"_{cmd.lower()}")
         else:

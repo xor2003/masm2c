@@ -1,10 +1,10 @@
-#!/bin/sh -exv
+#!/bin/sh
+set -eux
 
-pip install --upgrade pip
-pip install pytest coverage
-pip install -r requirements.txt
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
 
 #git clone https://github.com/igordejanovic/parglare.git parglaredev
 #pip install parglaredev/
 
-pip install -e .[test]
+python -m pip install -e .[dev]

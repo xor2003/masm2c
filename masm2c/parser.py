@@ -31,7 +31,7 @@ from collections import OrderedDict
 from copy import copy, deepcopy
 from typing import Any, Optional, Final
 
-import jsonpickle
+import jsonpickle  # type: ignore[import-untyped]
 from lark import UnexpectedToken, lark
 from lark.lexer import Token
 from lark.tree import Tree
@@ -154,7 +154,7 @@ class ExprSizeCalculator(BottomUpVisitor):
                     raise KeyError(type)
                 if isinstance(g, op.Struct):
                     g = g.getitem(str(member))
-                    type = g.data
+                    type = g.data  # type: ignore[union-attr]
                 else:
                     return g._size
         except KeyError as ex:
@@ -507,12 +507,9 @@ class Parser:
         return Parser.parse_int(value)
 
     def evaluate_repeat_count(self, repeat_expression: Expression) -> int:
-        from masm2c.cpp import IR2Cpp
-
         repeat = copy(repeat_expression)
         repeat.indirection = IndirectionType.VALUE
-        repeat_str = "".join(IR2Cpp(self).visit(repeat))
-        return eval(repeat_str)
+        return self.eval_expression_to_int(repeat)
 
     def normalize_label(self, name: str | lark.Token) -> str:
         return Parser.mangle_label(name)
@@ -1021,7 +1018,11 @@ class Parser:
         evaluator = self.expr_int_evaluator
         if evaluator is not None:
             return int(evaluator(self, expr))
-        return int(literal_eval(self.render_expression(expr)))
+        rendered = self.render_expression(expr)
+        try:
+            return int(literal_eval(rendered))
+        except (SyntaxError, ValueError):
+            return int(eval(rendered, {"__builtins__": {}}, {}))
 
 
 
@@ -1278,7 +1279,7 @@ class Parser:
     def add_extern(self, label: str, type: Token) -> None:
         strtype = self.mangle_label(type)
         if isinstance(type, Token_):
-            strtype = type.children
+            strtype = str(type.children)
         label = self.mangle_label(label)
         if strtype not in ["proc"]:
             binary_width = self.typetosize(type)
@@ -1348,7 +1349,7 @@ class Parser:
         self.collect_labels(self.proc.used_labels, o)
         return o
 
-    def handle_local_asm_jumps(self, instruction: Token, args: list[Expression | Any]) -> None:
+    def handle_local_asm_jumps(self, instruction: str | Token, args: list[Expression | Any]) -> None:
         if (
             (instruction.lower().startswith("j") or instruction.lower().startswith("loop"))
             and len(args) == 1

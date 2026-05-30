@@ -46,6 +46,7 @@ class baseop(lark.Tree):
         self.raw_line = ""
         self.filename = ""
         self.line_number = 0
+        self.children: list[Any] = []
         self.elements = 1
         self.size = 0
         self.real_offset: Optional[int] = None

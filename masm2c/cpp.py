@@ -1147,12 +1147,16 @@ struct Memory{
         >>> self.check_parentesis('()()')
         False
         """
-        if not string or string[0] != "(" or string[-1] != ")": return False
+        if not string or string[0] != "(" or string[-1] != ")":
+            return False
         res = 0
         for c in string[1:-1]:
-            if c == "(": res += 1
-            elif c == ")": res -= 1
-            if res < 0: return False
+            if c == "(":
+                res += 1
+            elif c == ")":
+                res -= 1
+            if res < 0:
+                return False
         return True
 
     def _jump(self, cmd: str, label_expr: Expression) -> str:
@@ -1265,8 +1269,8 @@ struct Memory{
             elif isinstance(v, lark.Tree):
                 rc += "".join(self.visit(v))
             elif isinstance(v, list):
-                l = [str(i) for i in v]
-                rc += "".join(l)
+                values = [str(i) for i in v]
+                rc += "".join(values)
             else:
                 rc += str(v)
         rc += "}"

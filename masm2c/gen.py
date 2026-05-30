@@ -10,7 +10,7 @@ from collections import OrderedDict
 from copy import copy
 from typing import TYPE_CHECKING
 
-import jsonpickle
+import jsonpickle  # type: ignore[import-untyped]
 from lark import lark
 
 from masm2c import op
@@ -25,6 +25,7 @@ if TYPE_CHECKING:
 class Gen(TopDownVisitor):
     def __init__(self, context: "Parser", outfile: str = "", merge_data_segments: bool = True) -> None:
         self._context = context
+        self._namespace: str = ""
         self.label_to_proc: dict[str, str] = {}
         self._isjustlabel = False
         self.groups: OrderedDict[str, str] = OrderedDict()
@@ -62,7 +63,7 @@ class Gen(TopDownVisitor):
                    raise KeyError(type)
                if isinstance(g, op.Struct):
                    g = g.getitem(member)
-                   type = g.data
+                   type = g.data  # type: ignore[union-attr]
                else:
                    return g._size
         except KeyError as ex:
@@ -474,23 +475,23 @@ class Gen(TopDownVisitor):
         jsonpickle.set_encoder_options("json", indent=2)
         with open(name, "w") as lst:
             lst.write("Segment:\n")
-            for v in self._context.segments:
-                lst.write(f"{v}\n")
+            for segment_name in self._context.segments:
+                lst.write(f"{segment_name}\n")
 
             lst.write("\nLabels:\n")
-            for v in self._context.symbols.get_globals().values():
-                if isinstance(v, op.label):
-                    lst.write(f"{v.name}\n")
+            for global_obj in self._context.symbols.get_globals().values():
+                if isinstance(global_obj, op.label):
+                    lst.write(f"{global_obj.name}\n")
 
             lst.write("\nProcs:\n")
-            for v in self._context.symbols.get_globals().values():
-                if isinstance(v, Proc):
-                    lst.write(f"{v.name} {v.offset}\n")
+            for global_obj in self._context.symbols.get_globals().values():
+                if isinstance(global_obj, Proc):
+                    lst.write(f"{global_obj.name} {global_obj.offset}\n")
 
             lst.write("\nVars:\n")
-            for v in self._context.symbols.get_globals().values():
-                if isinstance(v, op.var):
-                    lst.write(f"{v.name} {v.offset}\n")
+            for global_obj in self._context.symbols.get_globals().values():
+                if isinstance(global_obj, op.var):
+                    lst.write(f"{global_obj.name} {global_obj.offset}\n")
 
             lst.write(
                 jsonpickle.encode((self._context.symbols.get_globals(), self._context.segments, self._context.structures)))
