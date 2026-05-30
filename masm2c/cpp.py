@@ -849,43 +849,61 @@ class Cpp(Gen):
 
     def _remove_hacks_popf(self, i, proc):
         # replace popf hack: or bh, 0; push cs; call loc+1
-        if len(proc.stmts) - i >= 5 and \
-                proc.stmts[i].cmd == "" and proc.stmts[i].data == "label" and \
-                proc.stmts[i + 1].cmd == "or" and proc.stmts[i + 1].children == \
-                [lark.Tree("expr", [lark.Tree("register", ["bh"])]),
-                 lark.Tree("expr", [lark.Token("INTEGER", "0")])] and \
-                proc.stmts[i + 2].cmd == "" and proc.stmts[i + 2].data == "label" and \
-                proc.stmts[i + 3].cmd == "push" and proc.stmts[i + 3].children == \
-                [lark.Tree("expr", [lark.Tree("segmentregister", ["cs"])])] and \
-                proc.stmts[i + 4].cmd == "call" and proc.stmts[i + 4].children[0].data == "expr" and \
-                proc.stmts[i + 4].children[0].children[0].data == "adddir":
+        if self._matches_popf_hack(proc, i, with_middle_label=True):
             logging.info("Patching popf hack")
-            del proc.stmts[i + 4]
-            del proc.stmts[i + 3]
-            o = proc.create_instruction_object("popf", [])
-            o.filename = ""
-            o.line_number = 0
-            o.raw_line = ""
-            o.syntetic = True
-            proc.stmts[i + 1] = o
-        elif len(proc.stmts) - i >= 4 and \
-                proc.stmts[i].cmd == "" and proc.stmts[i].data == "label" and \
-                proc.stmts[i + 1].cmd == "or" and proc.stmts[i + 1].children == \
-                [lark.Tree("expr", [lark.Tree("register", ["bh"])]),
-                 lark.Tree("expr", [lark.Token("INTEGER", "0")])] and \
-                proc.stmts[i + 2].cmd == "push" and proc.stmts[i + 2].children == \
-                [lark.Tree("expr", [lark.Tree("segmentregister", ["cs"])])] and \
-                proc.stmts[i + 3].cmd == "call" and proc.stmts[i + 3].children[0].data == "expr" and \
-                proc.stmts[i + 3].children[0].children[0].data == "adddir":
+            self._apply_popf_patch(proc, i, call_idx=i + 4, push_idx=i + 3)
+        elif self._matches_popf_hack(proc, i, with_middle_label=False):
             logging.info("Patching popf hack")
-            del proc.stmts[i + 3]
-            del proc.stmts[i + 2]
-            o = proc.create_instruction_object("popf", [])
-            o.filename = ""
-            o.line_number = 0
-            o.raw_line = ""
-            o.syntetic = True
-            proc.stmts[i + 1] = o
+            self._apply_popf_patch(proc, i, call_idx=i + 3, push_idx=i + 2)
+
+    @staticmethod
+    def _is_label_stmt(stmt: Any) -> bool:
+        return stmt.cmd == "" and stmt.data == "label"
+
+    @staticmethod
+    def _is_or_bh_zero_stmt(stmt: Any) -> bool:
+        return stmt.cmd == "or" and stmt.children == [
+            lark.Tree("expr", [lark.Tree("register", ["bh"])]),
+            lark.Tree("expr", [lark.Token("INTEGER", "0")]),
+        ]
+
+    @staticmethod
+    def _is_push_cs_stmt(stmt: Any) -> bool:
+        return stmt.cmd == "push" and stmt.children == [
+            lark.Tree("expr", [lark.Tree("segmentregister", ["cs"])])
+        ]
+
+    @staticmethod
+    def _is_call_adddir_stmt(stmt: Any) -> bool:
+        return (
+            stmt.cmd == "call"
+            and stmt.children[0].data == "expr"
+            and stmt.children[0].children[0].data == "adddir"
+        )
+
+    def _matches_popf_hack(self, proc: Any, i: int, *, with_middle_label: bool) -> bool:
+        min_len = 5 if with_middle_label else 4
+        if len(proc.stmts) - i < min_len:
+            return False
+        if not self._is_label_stmt(proc.stmts[i]):
+            return False
+        if not self._is_or_bh_zero_stmt(proc.stmts[i + 1]):
+            return False
+        push_idx = i + 3 if with_middle_label else i + 2
+        call_idx = i + 4 if with_middle_label else i + 3
+        if with_middle_label and not self._is_label_stmt(proc.stmts[i + 2]):
+            return False
+        return self._is_push_cs_stmt(proc.stmts[push_idx]) and self._is_call_adddir_stmt(proc.stmts[call_idx])
+
+    def _apply_popf_patch(self, proc: Any, i: int, *, call_idx: int, push_idx: int) -> None:
+        del proc.stmts[call_idx]
+        del proc.stmts[push_idx]
+        o = proc.create_instruction_object("popf", [])
+        o.filename = ""
+        o.line_number = 0
+        o.raw_line = ""
+        o.syntetic = True
+        proc.stmts[i + 1] = o
 
     def save_cpp_files(self, fname):
         cpp_assigns, _, _, cpp_extern = self.render_data_c(self._context.segments)
