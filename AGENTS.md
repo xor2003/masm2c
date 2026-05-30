@@ -76,10 +76,10 @@ Avoid editing generated or bulky artifacts unless explicitly required:
 - Required quality gates for Python changes:
   - `python scripts/qa.py`
 - Integration/script checks should remain runnable via shell:
-  - `bash ./install-test.sh`
-  - `bash ./runtests.sh`
-  - `bash ./_binarytests.sh`
-  - `python ./asmTests/run_tests.py` (local regression pass; `popf.asm` unsupported and intentionally skipped)
+  - `make ci-qa`
+  - `make ci-pytest`
+  - `make ci-asmtests` (local regression pass; `popf.asm` unsupported and intentionally skipped)
+  - `make ci-qemu-tests`
 - Prefer updating existing workflows under `.github/workflows/` instead of adding redundant pipelines.
 
 ## Safe Refactor Workflow

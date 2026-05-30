@@ -771,8 +771,8 @@ class Parser:
 
     def parse_include_file_lines(self, file_name):
         def _parse() -> list[Any]:
-            from . import utils
-            content = utils.read_whole_file(file_name)
+            from .utils import read_whole_file
+            content = read_whole_file(file_name)
             return self.parse_file_inside(content, file_name=file_name)
         return self._run_with_file_context(file_name, _parse)
 
@@ -985,6 +985,7 @@ class Parser:
                 self.test_pre_parse()
                 result = self.parse_text(line, start_rule="expr")
                 expr = self.process_ast(line, result)
+                assert isinstance(expr, Expression)
                 return expr.size()
             except Exception as e:
                 print(e)
