@@ -882,18 +882,22 @@ class Cpp(Gen):
         )
 
     def _matches_popf_hack(self, proc: Any, i: int, *, with_middle_label: bool) -> bool:
-        min_len = 5 if with_middle_label else 4
+        min_len, middle_label_idx, push_idx, call_idx = (
+            (5, i + 2, i + 3, i + 4)
+            if with_middle_label
+            else (4, None, i + 2, i + 3)
+        )
         if len(proc.stmts) - i < min_len:
             return False
         if not self._is_label_stmt(proc.stmts[i]):
             return False
         if not self._is_or_bh_zero_stmt(proc.stmts[i + 1]):
             return False
-        push_idx = i + 3 if with_middle_label else i + 2
-        call_idx = i + 4 if with_middle_label else i + 3
-        if with_middle_label and not self._is_label_stmt(proc.stmts[i + 2]):
+        if middle_label_idx is not None and not self._is_label_stmt(proc.stmts[middle_label_idx]):
             return False
-        return self._is_push_cs_stmt(proc.stmts[push_idx]) and self._is_call_adddir_stmt(proc.stmts[call_idx])
+        if not self._is_push_cs_stmt(proc.stmts[push_idx]):
+            return False
+        return self._is_call_adddir_stmt(proc.stmts[call_idx])
 
     def _apply_popf_patch(self, proc: Any, i: int, *, call_idx: int, push_idx: int) -> None:
         del proc.stmts[call_idx]
