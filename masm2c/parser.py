@@ -1340,9 +1340,22 @@ class Parser:
 
     def action_instruction(self, instruction: str, args: list[Expression | Any], raw: str="", line_number: int=0) -> baseop | None:
         self.handle_local_asm_jumps(instruction, args)
-
         self.make_sure_proc_exists(line_number, raw)
+        op = self._build_instruction_op(instruction, args, raw, line_number)
+        if op is None:
+            return None
+        self._update_runtime_label_state(op, raw, line_number)
+        self._append_helping_label_if_needed(op, raw)
+        self._finalize_instruction_state(op)
+        return op
 
+    def _build_instruction_op(
+            self,
+            instruction: str,
+            args: list[Expression | Any],
+            raw: str,
+            line_number: int,
+    ) -> baseop | None:
         assert self.proc
         o = self.proc.create_instruction_object(instruction, args)
         o.filename = self._current_file
@@ -1351,11 +1364,18 @@ class Parser:
 
         if self.current_macro:
             self.current_macro.instructions.append(o)
-            return
+            return None
+        return o
 
+    def _update_runtime_label_state(self, o: baseop, raw: str, line_number: int) -> None:
+        assert self.proc
         _, o.real_offset, o.real_seg = self.get_lst_offsets(raw)
-        if not self.need_label and o.real_seg and len(self.procs_start) \
-                and (o.real_seg * 0x10 + o.real_offset) in self.procs_start:
+        if (
+            not self.need_label
+            and o.real_seg
+            and self.procs_start
+            and (o.real_seg * 0x10 + o.real_offset) in self.procs_start
+        ):
             logging.warning(
                 f"Add a label since run-time info contain flow enter at this address {o.real_seg:x}:{o.real_offset:x} line={line_number}")
             self.need_label = True
@@ -1363,10 +1383,16 @@ class Parser:
             logging.warning(f"Flow terminated and it was no label yet line={line_number}")
             if o.real_seg:
                 logging.warning(f"at {o.real_seg:x}:{o.real_offset:x}")
-        if self.need_label and self.proc.stmts:  # skip first instruction
+
+    def _append_helping_label_if_needed(self, o: baseop, raw: str) -> None:
+        assert self.proc
+        if self.need_label and self.proc.stmts:
             label_name = f"ret_{o.real_seg:x}_{o.real_offset:x}" if o.real_seg else self.get_extra_dummy_jumplabel()
             logging.warning(f"Adding helping label {label_name}")
             self.action_label(label_name, raw=raw)
+
+    def _finalize_instruction_state(self, o: baseop) -> None:
+        assert self.proc
         self.proc.stmts.append(o)
         if self.args.get("mergeprocs") == "single":
             self.need_label |= self.proc.is_return_point(o)
@@ -1374,7 +1400,6 @@ class Parser:
         self.need_label |= self.flow_terminated
 
         self.collect_labels(self.proc.used_labels, o)
-        return o
 
     def handle_local_asm_jumps(self, instruction: str | Token, args: list[Expression | Any]) -> None:
         if (
