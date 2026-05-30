@@ -71,6 +71,8 @@ class _ExprRenderState:
         "size_changed",
         "variable_size",
         "work_segment",
+        "indirection",
+        "element_size",
     )
 
     def __init__(self) -> None:
@@ -89,6 +91,8 @@ class _ExprRenderState:
         self.size_changed = False
         self.variable_size = 0
         self.work_segment = "ds"
+        self.indirection = IndirectionType.VALUE
+        self.element_size = -1
 
 
 class SeparateProcStrategy:
@@ -153,8 +157,6 @@ class Cpp(Gen):
         self._namespace = os.path.basename(outfile)
         self.__codeset = "cp437"
 
-        self._indirection: IndirectionType = IndirectionType.VALUE
-
         #
         self.__proc_done: list[str] = []
         self.__failed: list[str] = []
@@ -177,8 +179,6 @@ class Cpp(Gen):
                              op.DataType.ARRAY_STRING: self.produce_c_data_array_string,
                              op.DataType.OBJECT: self.produce_c_data_object,
                              }
-
-        self.element_size = -1
 
     def convert_label_(self, original_name: Token) -> str:
         """Converts a label to its corresponding value.
@@ -206,7 +206,7 @@ class Cpp(Gen):
         self._expr_state.variable_size = source_var_size = g.size
 
         if g.issegment:
-            self._indirection = IndirectionType.VALUE
+            self._expr_state.indirection = IndirectionType.VALUE
             return f"seg_offset({original_name.lower()})"
 
         if source_var_size == 0:
@@ -227,13 +227,18 @@ class Cpp(Gen):
             state.is_pointer = True
 
             if not self.lea:
-                self._indirection = IndirectionType.POINTER
+                self._expr_state.indirection = IndirectionType.POINTER
 
         #print("\ng.elements == 1 %s, self._expr_state.is_just_label=%s, not self.lea=%s, g.size == self.element_size %s" %(
         #      g.elements == 1, self._expr_state.is_just_label, not self.lea, g.size == self.element_size))
-        simple_argument = g.elements == 1 and state.is_just_label and not self.lea and g.size == self.element_size
+        simple_argument = (
+            g.elements == 1
+            and state.is_just_label
+            and not self.lea
+            and g.size == state.element_size
+        )
         if simple_argument:
-            self._indirection = IndirectionType.VALUE
+            self._expr_state.indirection = IndirectionType.VALUE
             result = g.name
         else:
             result = self._convert_label_var_non_segment_complex(g, name)
@@ -244,12 +249,12 @@ class Cpp(Gen):
         if self._expr_state.work_segment == "cs":
             self.body += "\tcs=seg_offset(" + g.segment + ");\n"
 
-        #print("\nnot self._expr_state.is_just_label=%s ?not self.lea=%s? self._indirection == IndirectionType.VALUE %s" %(
-        #      not self._expr_state.is_just_label, not self.lea, self._indirection == IndirectionType.VALUE))
-        if not state.is_just_label and not self.lea and self._indirection == IndirectionType.VALUE:
-            self._indirection = IndirectionType.POINTER
+        #print("\nnot self._expr_state.is_just_label=%s ?not self.lea=%s? self._expr_state.indirection == IndirectionType.VALUE %s" %(
+        #      not self._expr_state.is_just_label, not self.lea, self._expr_state.indirection == IndirectionType.VALUE))
+        if not state.is_just_label and not self.lea and self._expr_state.indirection == IndirectionType.VALUE:
+            self._expr_state.indirection = IndirectionType.POINTER
 
-        if self._indirection == IndirectionType.POINTER:
+        if self._expr_state.indirection == IndirectionType.POINTER:
             result = g.name
             if not state.is_just_label:  # if not just single label: [a+3] address arithmetics
                 state.needs_dereference = True
@@ -263,7 +268,7 @@ class Cpp(Gen):
                     result = f"((db*){result})"
                     state.size_changed = True
                     self._middle_size = 1
-        elif self._indirection == IndirectionType.OFFSET:
+        elif self._expr_state.indirection == IndirectionType.OFFSET:
             result = f"offset({g.segment},{g.name})"
             state.needs_dereference = False
             state.is_pointer = False
@@ -370,7 +375,7 @@ class Cpp(Gen):
         state.struct_type = None
         value = ".".join(label)
 
-        if self._indirection == IndirectionType.OFFSET and (g := self._context.symbols.get_global(label[0])):
+        if self._expr_state.indirection == IndirectionType.OFFSET and (g := self._context.symbols.get_global(label[0])):
             return self.convert_member_offset(g, label)
 
         if (g := self._context.symbols.get_and_mark_global(label[0])) is None:
@@ -385,7 +390,7 @@ class Cpp(Gen):
             #if self._expr_state.is_just_member:
             value = f'offsetof({label[0]},{".".join(label[1:])})'
 
-        if self._indirection == IndirectionType.POINTER and state.needs_dereference and state.struct_type:
+        if self._expr_state.indirection == IndirectionType.POINTER and state.needs_dereference and state.struct_type:
             state.is_member = True
             state.needs_dereference = False
 
@@ -407,11 +412,11 @@ class Cpp(Gen):
             state.needs_dereference = False
             state.is_pointer = False
             value = ".".join(label)
-            self._indirection = IndirectionType.VALUE
+            self._expr_state.indirection = IndirectionType.VALUE
         else:
             state.needs_dereference = True
             state.is_pointer = True
-            if self._indirection == IndirectionType.POINTER:
+            if self._expr_state.indirection == IndirectionType.POINTER:
                 value = ".".join(label)
                 if not state.is_just_label:  # if not just single label
                     if g.elements == 1:  # array generates pointer himself
@@ -422,7 +427,7 @@ class Cpp(Gen):
                     else:
                         value = f"((db*){value})"
                         state.size_changed = True
-            elif self._indirection == IndirectionType.OFFSET:
+            elif self._expr_state.indirection == IndirectionType.OFFSET:
                 value = f'offset({g.segment},{".".join(label)})'
 
             if self._expr_state.work_segment == "cs":
@@ -456,7 +461,7 @@ class Cpp(Gen):
         else:
             raise Exception(f"Not handled type {type(g)!s}")
 
-        self._indirection = IndirectionType.VALUE
+        self._expr_state.indirection = IndirectionType.VALUE
         return value
 
     def convert_sqbr_reference(self, segment: str, expr: str, size: int) -> str:
@@ -1275,10 +1280,14 @@ struct Memory{
         """
         # Real conversion
         internal_data_type = data.getinttype()
-        self.element_size = data.getsize()
-
-        logging.debug("current data type = %s", internal_data_type)
-        rc, rh = self.__type_table[internal_data_type](data)
+        state = self._expr_state
+        prev_size = state.element_size
+        state.element_size = data.getsize()
+        try:
+            logging.debug("current data type = %s", internal_data_type)
+            rc, rh = self.__type_table[internal_data_type](data)
+        finally:
+            state.element_size = prev_size
 
         logging.debug(rc)
         logging.debug(rh)
@@ -1522,9 +1531,9 @@ struct Memory{
     def expr(self, tree: Expression) -> str:
         state = self._expr_state
         state.reset()
-        previous_indirection = self._indirection
-        self._indirection = tree.indirection
-
+        state.indirection = tree.indirection
+        prev_element_size = state.element_size
+        state.element_size = tree.element_size
         try:
             origexpr = tree.children[0]
             while isinstance(origexpr, list) and origexpr:
@@ -1534,18 +1543,18 @@ struct Memory{
             state.is_just_label = self._check_for_just_label(origexpr, single)
             state.is_just_member = single and isinstance(origexpr, lark.Tree) and origexpr.data == MEMBERDIR
 
+            effective_indirection = tree.indirection
             if self.itiscall and tree.mods & {"near", "far"}: # and self._expr_state.is_just_label:
-                tree.indirection = self._indirection = IndirectionType.VALUE
-
-            self.element_size = tree.element_size
+                effective_indirection = IndirectionType.VALUE
+                self._expr_state.indirection = IndirectionType.VALUE
             result = "".join(self.visit(tree.children))
-            tree.indirection = self._indirection
-
-            if tree.indirection == IndirectionType.POINTER and tree.ptr_size == 0 and state.variable_size:  # [ var ]
-                tree.ptr_size = state.variable_size  # Set destination size based on variable size
+            effective_indirection = self._expr_state.indirection
+            effective_ptr_size = tree.ptr_size
+            if effective_indirection == IndirectionType.POINTER and effective_ptr_size == 0 and state.variable_size:  # [ var ]
+                effective_ptr_size = state.variable_size  # Set destination size based on variable size
             state.size_changed = state.size_changed or "size_changed" in tree.mods and self._middle_size != tree.size()
 
-            if tree.indirection == IndirectionType.POINTER and tree.registers.intersection({"bp", "ebp", "sp", "esp"}):
+            if effective_indirection == IndirectionType.POINTER and tree.registers.intersection({"bp", "ebp", "sp", "esp"}):
                 state.work_segment = "ss"  # and segment is not overriden means base is "ss:"
 
             if state.need_pointer_to_member:
@@ -1553,10 +1562,10 @@ struct Memory{
                 result = result.replace("++", "+").replace("+-", "-")
                 result = f"{result}+{state.need_pointer_to_member[0]}))->{'.'.join(state.need_pointer_to_member[1:])}"
 
-            if tree.indirection == IndirectionType.POINTER and not state.is_member and (
+            if effective_indirection == IndirectionType.POINTER and not state.is_member and (
                     not state.is_just_label or state.size_changed) and ("lea" not in tree.mods or "destination" in tree.mods):
                 result = self.convert_sqbr_reference(tree.segment_register, result,
-                                                     tree.ptr_size)
+                                                     effective_ptr_size)
             if state.is_member:
                 result = f"(({state.struct_type}*)raddr({state.work_segment},{result}"
             if state.needs_dereference:
@@ -1568,7 +1577,8 @@ struct Memory{
                 )
             return result
         finally:
-            self._indirection = previous_indirection
+            state.indirection = IndirectionType.VALUE
+            state.element_size = prev_element_size
 
     def _check_for_just_label(self, origexpr, single: bool):
         return single and ((isinstance(origexpr, lark.Token) and origexpr.type == LABEL)
@@ -1635,12 +1645,12 @@ struct Memory{
             return [name]
         if isinstance(g, op.var):
             logging.debug("it is var %s", g.size)
-            if self.element_size == 2:
+            if self._expr_state.element_size == 2:
                 return [f"offset({g.segment},{g.name})"]
-            elif self.element_size == 4:
+            elif self._expr_state.element_size == 4:
                 return [f"far_offset({g.segment},{g.name})"]
             else:
-                raise ValueError("Unknown offset size %s", self.element_size)
+                raise ValueError("Unknown offset size %s", self._expr_state.element_size)
         elif isinstance(g, (Proc, op.label)):
             logging.debug("it is proc")
             return [f"m2c::k{g.name}"]
@@ -1679,7 +1689,7 @@ class IR2Cpp(Cpp):
     ) -> None:
         super().__init__(context=parser)
         self.lea = lea
-        self._indirection = indirection
+        self._expr_state.indirection = indirection
         self.itisjump = is_jump
         self.itiscall = is_call
 
