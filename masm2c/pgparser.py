@@ -131,6 +131,21 @@ class Asm2IR(CommonCollector):
     def __init__(self, context: "Parser", input_str: str="") -> None:
         super().__init__(context, input_str)
 
+    def _clear_expression(self) -> None:
+        self._expression = None
+
+    def _finish_expression(self, children: list[Any]) -> Expression:
+        expr = self.expression
+        expr.children = children
+        if (
+            not expr.segment_overriden
+            and expr.indirection == IndirectionType.POINTER
+            and expr.registers.intersection({"bp", "ebp", "sp", "esp"})
+        ):
+            expr.segment_register = "ss"
+        self._clear_expression()
+        return expr
+
     def externdef(self, nodes: list[lark.Tree | lark.Token]) -> list[lark.Tree | lark.Token]:
         label, type = nodes
         assert isinstance(type, lark.Tree)
@@ -181,16 +196,7 @@ class Asm2IR(CommonCollector):
     """
 
     def expr(self, children: list[Any]) -> Expression:
-        # while isinstance(children, list) and len(children) == 1:
-        self.expression.children = children  # [0]
-        assert self._expression
-        result:Expression = self._expression
-        if not self.expression.segment_overriden and result.indirection == IndirectionType.POINTER and \
-                result.registers.intersection({"bp", "ebp", "sp", "esp"}):
-            result.segment_register = "ss"
-        #if result.indirection == IndirectionType.POINTER:
-        self._expression = None
-        return result
+        return self._finish_expression(children)
 
     def initvalue(self, expr: list[lark.Token]) -> lark.Tree:
         return lark.Tree(data="exprlist", children=[self.expr(expr)])
@@ -342,7 +348,7 @@ class Asm2IR(CommonCollector):
         return Discard
 
     def insegdir(self, children: list) -> list[lark.Tree | Data | _assignment]:
-        self._expression = None
+        self._clear_expression()
         self.context.flush_pending_source_comment()
         return children
 
@@ -364,7 +370,7 @@ class Asm2IR(CommonCollector):
         is_string = any("string" in expr.mods for expr in values.children if isinstance(expr, Expression) and expr.data == "expr") \
                     and not any(isinstance(expr, lark.Tree) and expr.data == "dupdir" for expr in values.children)
 
-        self._expression = None
+        self._clear_expression()
         return self.context.define_data(label, type, values, is_string=is_string, raw=get_raw(self.input_str, meta),
                                         line_number=get_line_number(meta))
 
@@ -373,7 +379,7 @@ class Asm2IR(CommonCollector):
         segtype = nodes[-1] if nodes else ""
         logging.debug("segdir %s ~~", nodes)
         self.context.begin_simple_segment(segtype.lower())  # TODO
-        self._expression = None
+        self._clear_expression()
         return nodes
 
 
@@ -412,13 +418,13 @@ class Asm2IR(CommonCollector):
                     logging.warning('Unknown segment option')
         """
         self.context.begin_named_segment(name, options=opts, segclass=segclass, raw=get_raw(self.input_str, meta))
-        self._expression = None
+        self._clear_expression()
         return nodes
 
     def endsdir(self, nodes: list[lark.lexer.Token]) -> list[lark.lexer.Token]:
         logging.debug("ends %s ~~", nodes)
         self.context.end_current_scope()
-        self._expression = None
+        self._clear_expression()
         return nodes
 
     def poptions(self, options: list):
@@ -466,7 +472,7 @@ class Asm2IR(CommonCollector):
         instruction = self.context.consume_pending_mnemonic()
         args = nodes[0].children if len(nodes) else []
         args = self.context.prepare_instruction_args(instruction, args)
-        self._expression = None
+        self._clear_expression()
         return self.context.dispatch_instruction(instruction, args, raw=get_raw_line(self.input_str, meta),
                                                  line_number=get_line_number(meta)) or Discard
 
