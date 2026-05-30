@@ -7,7 +7,7 @@ pip install -r requirements.txt
 
 cd asmTests
 
-./_tests.sh 
+python ./run_tests.py
 
 cd ../qemu_tests
 

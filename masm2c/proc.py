@@ -87,9 +87,66 @@ class Proc:
         self.stmts.append(label)
         self.provided_labels.add(name)
 
-    def optimize(self, keep_labels=None):
-        logging.info("optimizing...")
-        # trivial simplifications
+    def optimize(self, keep_labels: Optional[set[str]] = None) -> int:
+        """Conservative dead-code elimination inside one proc.
+
+        Removes statements after an unconditional flow terminator (`jmp`, `ret`, `iret`)
+        until the next label. Labels are preserved as control-flow join points.
+        """
+        if not self.stmts:
+            return 0
+        kept: list[baseop] = []
+        removed = 0
+        in_dead_zone = False
+        keep_labels = keep_labels or set()
+
+        for stmt in self.stmts:
+            is_label_stmt = isinstance(stmt, op.label)
+            if is_label_stmt:
+                in_dead_zone = False
+                kept.append(stmt)
+                continue
+
+            if in_dead_zone:
+                removed += 1
+                continue
+
+            kept.append(stmt)
+            if self.is_flow_terminating_stmt(stmt):
+                in_dead_zone = True
+
+        self.stmts = kept
+        if removed:
+            logging.info("DCE removed %d unreachable statement(s) in proc %s", removed, self.name)
+        return removed
+
+    def complexity_metrics(self) -> dict[str, int]:
+        stmt_count = len(self.stmts)
+        branch_points = 0
+        flow_changes = 0
+        terminators = 0
+        labels = 0
+
+        for stmt in self.stmts:
+            if isinstance(stmt, op.label):
+                labels += 1
+                continue
+            cmd = stmt.cmd.lower()
+            if self.is_flow_change_stmt(stmt):
+                flow_changes += 1
+            if self.is_flow_terminating_stmt(stmt):
+                terminators += 1
+            if re.match(r"^j(?!mp)[a-z]+$", cmd) or cmd.startswith("loop"):
+                branch_points += 1
+
+        return {
+            "statements": stmt_count,
+            "labels": labels,
+            "flow_changes": flow_changes,
+            "terminators": terminators,
+            "branch_points": branch_points,
+            "cyclomatic": 1 + branch_points,
+        }
 
 
     def create_instruction_object(self, instruction: str, args: Optional[list[Expression]] = None) -> baseop:

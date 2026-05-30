@@ -38,6 +38,7 @@ if TYPE_CHECKING:
 import os
 import re
 from collections import OrderedDict
+from copy import copy
 
 from lark import lark
 
@@ -54,6 +55,40 @@ def flatten(s: list) -> list:
     if isinstance(s[0], list):
         return flatten(s[0]) + flatten(s[1:])
     return s[:1] + flatten(s[1:])
+
+
+class _ExprRenderState:
+    __slots__ = (
+        "needs_dereference",
+        "is_pointer",
+        "struct_type",
+        "is_variable",
+        "is_label",
+        "is_just_label",
+        "is_just_member",
+        "is_member",
+        "need_pointer_to_member",
+        "size_changed",
+        "variable_size",
+        "work_segment",
+    )
+
+    def __init__(self) -> None:
+        self.reset()
+
+    def reset(self) -> None:
+        self.needs_dereference = False
+        self.is_pointer = False
+        self.struct_type = None
+        self.is_variable = False
+        self.is_label = False
+        self.is_just_label = False
+        self.is_just_member = False
+        self.is_member = False
+        self.need_pointer_to_member: list[str] = []
+        self.size_changed = False
+        self.variable_size = 0
+        self.work_segment = "ds"
 
 
 class SeparateProcStrategy:
@@ -111,6 +146,7 @@ class Cpp(Gen):
         """:param context: pointer to Parser data
         :param outfile: Output filename
         """
+        self._expr_state = _ExprRenderState()
         super().__init__(context, outfile=outfile, merge_data_segments=merge_data_segments)
         self.proc_strategy = SeparateProcStrategy(self)
         self.renderer: Gen = self
@@ -126,17 +162,10 @@ class Cpp(Gen):
         #self.__used_data_offsets = set()
         self.__methods: list[str] = []
         self.__pushpop_count = 0
-        self._ismember = False
+        self._expr_state.is_member = False
 
         self.far = False
-        self.size_changed = False
-        self.needs_dereference = False
-        self.itispointer = False
-
-        self.struct_type = None
-
-        self.isvariable = False
-        self.islabel = False
+        self._expr_state.reset()
 
         self.itisjump = False
         self.itiscall = False
@@ -151,7 +180,6 @@ class Cpp(Gen):
 
         self.element_size = -1
 
-
     def convert_label_(self, original_name: Token) -> str:
         """Converts a label to its corresponding value.
 
@@ -164,7 +192,8 @@ class Cpp(Gen):
         if (g := self._context.symbols.get_and_mark_global(name)) is None:
             return name
 
-        self.islabel = True
+        state = self._expr_state
+        state.is_label = True
 
         if isinstance(g, op.var):
             return self.convert_label_var(g, name, original_name)
@@ -174,7 +203,7 @@ class Cpp(Gen):
 
     def convert_label_var(self, g, name, original_name) -> str:
         logging.debug("Variable detected. Size: %s", g.size)
-        self.variable_size = source_var_size = g.size
+        self._expr_state.variable_size = source_var_size = g.size
 
         if g.issegment:
             self._indirection = IndirectionType.VALUE
@@ -183,25 +212,26 @@ class Cpp(Gen):
         if source_var_size == 0:
             raise Exception("Invalid variable '%s' size %u" % (name, source_var_size))
 
-        self.isvariable = True
+        self._expr_state.is_variable = True
         if self._middle_size == 0:  # TODO check
             self._middle_size = source_var_size
 
         return self._convert_label_var_non_segment(g, name)
 
     def _convert_label_var_non_segment(self, g, name):
-        self.needs_dereference = False
-        self.itispointer = False
+        state = self._expr_state
+        state.needs_dereference = False
+        state.is_pointer = False
         if g.elements != 1:  # array
-            self.needs_dereference = True
-            self.itispointer = True
+            state.needs_dereference = True
+            state.is_pointer = True
 
             if not self.lea:
                 self._indirection = IndirectionType.POINTER
 
-        #print("\ng.elements == 1 %s, self._isjustlabel=%s, not self.lea=%s, g.size == self.element_size %s" %(
-        #      g.elements == 1, self._isjustlabel, not self.lea, g.size == self.element_size))
-        simple_argument = g.elements == 1 and self._isjustlabel and not self.lea and g.size == self.element_size
+        #print("\ng.elements == 1 %s, self._expr_state.is_just_label=%s, not self.lea=%s, g.size == self.element_size %s" %(
+        #      g.elements == 1, self._expr_state.is_just_label, not self.lea, g.size == self.element_size))
+        simple_argument = g.elements == 1 and state.is_just_label and not self.lea and g.size == self.element_size
         if simple_argument:
             self._indirection = IndirectionType.VALUE
             result = g.name
@@ -210,19 +240,20 @@ class Cpp(Gen):
         return result
 
     def _convert_label_var_non_segment_complex(self, g, name):
-        if self._work_segment == "cs":
+        state = self._expr_state
+        if self._expr_state.work_segment == "cs":
             self.body += "\tcs=seg_offset(" + g.segment + ");\n"
 
-        #print("\nnot self._isjustlabel=%s ?not self.lea=%s? self._indirection == IndirectionType.VALUE %s" %(
-        #      not self._isjustlabel, not self.lea, self._indirection == IndirectionType.VALUE))
-        if not self._isjustlabel and not self.lea and self._indirection == IndirectionType.VALUE:
+        #print("\nnot self._expr_state.is_just_label=%s ?not self.lea=%s? self._indirection == IndirectionType.VALUE %s" %(
+        #      not self._expr_state.is_just_label, not self.lea, self._indirection == IndirectionType.VALUE))
+        if not state.is_just_label and not self.lea and self._indirection == IndirectionType.VALUE:
             self._indirection = IndirectionType.POINTER
 
         if self._indirection == IndirectionType.POINTER:
             result = g.name
-            if not self._isjustlabel:  # if not just single label: [a+3] address arithmetics
-                self.needs_dereference = True
-                self.itispointer = True
+            if not state.is_just_label:  # if not just single label: [a+3] address arithmetics
+                state.needs_dereference = True
+                state.is_pointer = True
                 if g.elements == 1:  # array generates pointer himself
                     result = f"&{result}"
 
@@ -230,12 +261,12 @@ class Cpp(Gen):
                     result = f"({result})"
                 else:
                     result = f"((db*){result})"
-                    self.size_changed = True
+                    state.size_changed = True
                     self._middle_size = 1
         elif self._indirection == IndirectionType.OFFSET:
             result = f"offset({g.segment},{g.name})"
-            self.needs_dereference = False
-            self.itispointer = False
+            state.needs_dereference = False
+            state.is_pointer = False
         else:
             result = name
 
@@ -335,7 +366,8 @@ class Cpp(Gen):
 
 
     def convert_member_(self, label: list[str]) -> str:
-        self.struct_type = None
+        state = self._expr_state
+        state.struct_type = None
         value = ".".join(label)
 
         if self._indirection == IndirectionType.OFFSET and (g := self._context.symbols.get_global(label[0])):
@@ -350,37 +382,38 @@ class Cpp(Gen):
         elif isinstance(g, op.var):
             value = self._convert_member_var(g, label)
         elif isinstance(g, op.Struct):
-            #if self._isjustmember:
+            #if self._expr_state.is_just_member:
             value = f'offsetof({label[0]},{".".join(label[1:])})'
 
-        if self._indirection == IndirectionType.POINTER and self.needs_dereference and self.struct_type:
-            self._ismember = True
-            self.needs_dereference = False
+        if self._indirection == IndirectionType.POINTER and state.needs_dereference and state.struct_type:
+            state.is_member = True
+            state.needs_dereference = False
 
         return value
 
     def _convert_member_var(self, g, label):
+        state = self._expr_state
         source_var_size = self.calculate_member_size(label)
         if source_var_size == 0:
             raise Exception(f"invalid var {label} size {source_var_size}")
 
-        self.variable_size = source_var_size
+        state.variable_size = source_var_size
         logging.debug("it is var %s", source_var_size)
         if self._middle_size == 0:
             self._middle_size = source_var_size
-        self.isvariable = True
-        self.islabel = True
-        if g.elements == 1 and self._isjustlabel and not self.lea and source_var_size == self._middle_size:
-            self.needs_dereference = False
-            self.itispointer = False
+        state.is_variable = True
+        state.is_label = True
+        if g.elements == 1 and state.is_just_label and not self.lea and source_var_size == self._middle_size:
+            state.needs_dereference = False
+            state.is_pointer = False
             value = ".".join(label)
             self._indirection = IndirectionType.VALUE
         else:
-            self.needs_dereference = True
-            self.itispointer = True
+            state.needs_dereference = True
+            state.is_pointer = True
             if self._indirection == IndirectionType.POINTER:
                 value = ".".join(label)
-                if not self._isjustlabel:  # if not just single label
+                if not state.is_just_label:  # if not just single label
                     if g.elements == 1:  # array generates pointer himself
                         value = f"&{value}"
 
@@ -388,26 +421,27 @@ class Cpp(Gen):
                         value = f"({value})"
                     else:
                         value = f"((db*){value})"
-                        self.size_changed = True
+                        state.size_changed = True
             elif self._indirection == IndirectionType.OFFSET:
                 value = f'offset({g.segment},{".".join(label)})'
 
-            if self._work_segment == "cs":
+            if self._expr_state.work_segment == "cs":
                 self.body += "\tcs=seg_offset(" + g.segment + ");\n"
         return value
 
     def _convert_member_equ(self, g, label):
+        state = self._expr_state
         logging.debug("%s", g)
         if not g.implemented:
             raise InjectCode(g)
 
-        if self._isjustlabel:
+        if state.is_just_label:
             value = ".".join(label)
         else:
-            self.struct_type = g.value.original_type
-            self.needs_dereference = True
-            self.itispointer = False
-            self._need_pointer_to_member = label
+            state.struct_type = g.value.original_type
+            state.needs_dereference = True
+            state.is_pointer = False
+            state.need_pointer_to_member = label
             value = ""
         logging.debug("equ: %s -> %s", label[0], value)
         return value
@@ -426,9 +460,10 @@ class Cpp(Gen):
         return value
 
     def convert_sqbr_reference(self, segment: str, expr: str, size: int) -> str:
-        if not self.islabel or not self.isvariable:
-            self.needs_dereference = True
-            self.itispointer = True
+        state = self._expr_state
+        if not state.is_label or not state.is_variable:
+            state.needs_dereference = True
+            state.is_pointer = True
             if size == 1:
                 expr = f"raddr({segment},{expr})"
             elif size == 2:
@@ -440,9 +475,9 @@ class Cpp(Gen):
             else:
                 logging.error(f"~{expr}~ invalid size {size}")
                 expr = f"raddr({segment},{expr})"
-        elif self.size_changed:  # or not self._isjustlabel:
-                expr = Cpp.render_new_pointer_size(self.itispointer, expr, size)
-                self.size_changed = False
+        elif state.size_changed:  # or not state.is_just_label:
+                expr = Cpp.render_new_pointer_size(state.is_pointer, expr, size)
+                state.size_changed = False
 
         logging.debug("expr: %s", expr)
         return expr
@@ -584,7 +619,7 @@ class Cpp(Gen):
         self.a = self.render_instruction_argument(src[0])[2:-1]
         return f"XLATP({self.a})"
 
-    def parse2(self, dst: Expression, src: Expression) -> tuple[str, str]:
+    def parse2(self, dst: Expression, src: Expression, *, lea: bool = False) -> tuple[str, str]:
         dst_size, src_size = self.calculate_size(dst), self.calculate_size(src)
         if dst_size == 0:
             if src_size == 0:
@@ -593,12 +628,8 @@ class Cpp(Gen):
         if src_size == 0:
             src_size = dst_size
 
-        if src.indirection == IndirectionType.POINTER and src.element_size == 0 and dst_size and not src.ptr_size:
-            src.ptr_size = dst_size
-        if dst.indirection == IndirectionType.POINTER and dst.element_size == 0 and src_size and not dst.ptr_size:
-            dst.ptr_size = src_size
-        dst_str = self.render_instruction_argument(dst, dst_size, destination=True)
-        src_str = self.render_instruction_argument(src, src_size)
+        dst_str = self.render_instruction_argument(dst, dst_size, destination=True, lea=lea)
+        src_str = self.render_instruction_argument(src, src_size, lea=lea)
         return dst_str, src_str
 
     def _add(self, dst: Expression, src: Expression) -> str:
@@ -608,22 +639,26 @@ class Cpp(Gen):
 
     def _mul(self, src: list[Expression]) -> str:
         size = 0
-        res = [self.render_instruction_argument(i, size) for i in src]
-        for i in src:
+        res: list[str] = []
+        for arg in src:
+            rendered, state = self.render_instruction_argument_with_state(arg, size)
+            res.append(rendered)
             if size:
-                break
-            size = self.calculate_size(i)
+                continue
+            size = self.calculate_size(arg) or state.variable_size or arg.ptr_size or arg.element_size
         if size == 0:
             size = self._middle_size
         return "MUL%d_%d(%s)" % (len(src), size, ",".join(res))
 
     def _imul(self, src: list[Expression]) -> str:
         size = 0
-        res = [self.render_instruction_argument(i, size) for i in src]
-        for i in src:
+        res: list[str] = []
+        for arg in src:
+            rendered, state = self.render_instruction_argument_with_state(arg, size)
+            res.append(rendered)
             if size:
-                break
-            size = self.calculate_size(i)
+                continue
+            size = self.calculate_size(arg) or state.variable_size or arg.ptr_size or arg.element_size
         if size == 0:
             size = self._middle_size
         return "IMUL%d_%d(%s)" % (len(src), size, ",".join(res))
@@ -1047,12 +1082,9 @@ struct Memory{
         return data
 
     def _lea(self, dst: Expression, src: Expression) -> str:
-        src.indirection = IndirectionType.OFFSET
-        src.mods.add("lea")
-        dst.mods.add("lea")
-        self.lea = True
-        self.a, self.b = self.parse2(dst, src)
-        self.lea = False
+        src_render = self._clone_expression_for_render(src)
+        src_render.indirection = IndirectionType.OFFSET
+        self.a, self.b = self.parse2(dst, src_render, lea=True)
         return f"{self.a} = {self.b}"
 
     def _movs(self, dst: Expression, src: Expression) -> str:
@@ -1105,39 +1137,56 @@ struct Memory{
         Returns:
             str: The rendered instruction argument.
         """
-        # Add destination modifier if necessary
+        render_expr = self._clone_expression_for_render(expr)
         if destination:
-            expr.mods.add("destination")
-
-        # Add LEA modifier if necessary
+            render_expr.mods.add("destination")
         if lea:
-            expr.mods.add("lea")
+            render_expr.mods.add("lea")
 
         # Calculate the default size if necessary
-        if def_size == 0 and expr.element_size == 0 and expr.indirection != IndirectionType.POINTER:
+        if def_size == 0 and render_expr.element_size == 0 and render_expr.indirection != IndirectionType.POINTER:
             from .parser import ExprSizeCalculator, Vector
             calc = ExprSizeCalculator(init=Vector(0, 0), context=self._context)
-            def_size, _ = calc.visit(expr).values  # , result=0)
+            def_size, _ = calc.visit(render_expr).values  # , result=0)
 
+        if (
+            render_expr.indirection == IndirectionType.POINTER
+            and def_size
+            and not render_expr.ptr_size
+        ):
+            render_expr.ptr_size = def_size
         # Set the element size if necessary
-        if def_size and expr.element_size == 0:
-            expr.element_size = def_size
+        if def_size and render_expr.element_size == 0:
+            render_expr.element_size = def_size
 
-        # Create an instance of IR2Cpp and set its attributes
-        ir2cpp = IR2Cpp(self._context)
-        ir2cpp.lea = self.lea
-        ir2cpp._indirection = expr.indirection
-        ir2cpp.itisjump = self.itisjump
-        ir2cpp.itiscall = self.itiscall
+        result, _ = self.render_instruction_argument_with_state(render_expr, def_size, lea=lea)
+        return result
 
-        # Render the expression using IR2Cpp
+    @staticmethod
+    def _clone_expression_for_render(expr: Expression) -> Expression:
+        cloned = copy(expr)
+        cloned.mods = set(expr.mods)
+        cloned.registers = set(expr.registers)
+        return cloned
+
+    def render_instruction_argument_with_state(
+            self,
+            expr: Expression,
+            def_size: int = 0,
+            *,
+            lea: bool = False,
+    ) -> tuple[str, _ExprRenderState]:
+        # Render expression with explicit rendering context instead of mutating shared fields.
+        ir2cpp = IR2Cpp(
+            self._context,
+            lea=lea,
+            indirection=expr.indirection,
+            is_jump=self.itisjump,
+            is_call=self.itiscall,
+        )
         result = "".join(ir2cpp.visit(expr))
-
-        # Update the size_changed attribute
-        self.size_changed = ir2cpp.size_changed
-
-        # Remove parentheses if necessary
-        return result[1:-1] if self.check_parentesis(result) else result
+        rendered = result[1:-1] if self.check_parentesis(result) else result
+        return rendered, ir2cpp._expr_state
 
     def check_parentesis(self, string: str) -> bool:
         """Check if first ( matches the last one.
@@ -1463,51 +1512,55 @@ struct Memory{
 
 
     def expr(self, tree: Expression) -> str:
+        state = self._expr_state
+        state.reset()
+        previous_indirection = self._indirection
         self._indirection = tree.indirection
 
-        origexpr = tree.children[0]
-        while isinstance(origexpr, list) and origexpr:
-            origexpr = origexpr[0]
+        try:
+            origexpr = tree.children[0]
+            while isinstance(origexpr, list) and origexpr:
+                origexpr = origexpr[0]
 
-        single = len(tree.children) == 1
-        self._isjustlabel = self._check_for_just_label(origexpr, single)
-        self._isjustmember = single and isinstance(origexpr, lark.Tree) and origexpr.data == MEMBERDIR
+            single = len(tree.children) == 1
+            state.is_just_label = self._check_for_just_label(origexpr, single)
+            state.is_just_member = single and isinstance(origexpr, lark.Tree) and origexpr.data == MEMBERDIR
 
-        if self.itiscall and tree.mods & {"near", "far"}: # and self._isjustlabel:
-            tree.indirection = self._indirection = IndirectionType.VALUE
+            if self.itiscall and tree.mods & {"near", "far"}: # and self._expr_state.is_just_label:
+                tree.indirection = self._indirection = IndirectionType.VALUE
 
-        self.element_size = tree.element_size
-        self._ismember = False
-        self._need_pointer_to_member = []
-        result = "".join(self.visit(tree.children))
-        tree.indirection = self._indirection
+            self.element_size = tree.element_size
+            result = "".join(self.visit(tree.children))
+            tree.indirection = self._indirection
 
-        if tree.indirection == IndirectionType.POINTER and tree.ptr_size == 0 and hasattr(self,"variable_size"):  # [ var ]
-            tree.ptr_size = self.variable_size  # Set destination size based on variable size
-        self.size_changed = self.size_changed or "size_changed" in tree.mods and self._middle_size != tree.size()
+            if tree.indirection == IndirectionType.POINTER and tree.ptr_size == 0 and state.variable_size:  # [ var ]
+                tree.ptr_size = state.variable_size  # Set destination size based on variable size
+            state.size_changed = state.size_changed or "size_changed" in tree.mods and self._middle_size != tree.size()
 
-        if tree.indirection == IndirectionType.POINTER and tree.registers.intersection({"bp", "ebp", "sp", "esp"}):
-            self._work_segment = "ss"  # and segment is not overriden means base is "ss:"
+            if tree.indirection == IndirectionType.POINTER and tree.registers.intersection({"bp", "ebp", "sp", "esp"}):
+                state.work_segment = "ss"  # and segment is not overriden means base is "ss:"
 
-        if self._need_pointer_to_member:
-            result = result[:-1] if result[-1] == "+" else result
-            result = result.replace("++", "+").replace("+-", "-")
-            result = f"{result}+{self._need_pointer_to_member[0]}))->{'.'.join(self._need_pointer_to_member[1:])}"
+            if state.need_pointer_to_member:
+                result = result[:-1] if result[-1] == "+" else result
+                result = result.replace("++", "+").replace("+-", "-")
+                result = f"{result}+{state.need_pointer_to_member[0]}))->{'.'.join(state.need_pointer_to_member[1:])}"
 
-        if tree.indirection == IndirectionType.POINTER and not self._ismember and (
-                not self._isjustlabel or self.size_changed) and ("lea" not in tree.mods or "destination" in tree.mods):
-            result = self.convert_sqbr_reference(tree.segment_register, result,
-                                                 tree.ptr_size)
-        if self._ismember:
-            result = f"(({self.struct_type}*)raddr({self._work_segment},{result}"
-        if self.needs_dereference:
-            self.needs_dereference = False
-            result = (
-                f"*{result}"
-                if result[0] == "(" and result[-1] == ")"
-                else f"*({result})"
-            )
-        return result
+            if tree.indirection == IndirectionType.POINTER and not state.is_member and (
+                    not state.is_just_label or state.size_changed) and ("lea" not in tree.mods or "destination" in tree.mods):
+                result = self.convert_sqbr_reference(tree.segment_register, result,
+                                                     tree.ptr_size)
+            if state.is_member:
+                result = f"(({state.struct_type}*)raddr({state.work_segment},{result}"
+            if state.needs_dereference:
+                state.needs_dereference = False
+                result = (
+                    f"*{result}"
+                    if result[0] == "(" and result[-1] == ")"
+                    else f"*({result})"
+                )
+            return result
+        finally:
+            self._indirection = previous_indirection
 
     def _check_for_just_label(self, origexpr, single: bool):
         return single and ((isinstance(origexpr, lark.Token) and origexpr.type == LABEL)
@@ -1606,13 +1659,22 @@ struct Memory{
         return [f"sizeof({tree.children[0]})"]
 
 
-IR2Cpp = Cpp
-"""
-class IR2Cpp(TopDownVisitor, Cpp):
+class IR2Cpp(Cpp):
+    def __init__(
+        self,
+        parser: "Parser",
+        *,
+        lea: bool = False,
+        indirection: IndirectionType = IndirectionType.VALUE,
+        is_jump: bool = False,
+        is_call: bool = False,
+    ) -> None:
+        super().__init__(context=parser)
+        self.lea = lea
+        self._indirection = indirection
+        self.itisjump = is_jump
+        self.itiscall = is_call
 
-    def __init__(self, parser):
-        super(IR2Cpp, self).__init__(context=parser)
-"""
 
 
 if __name__ == "__main__":

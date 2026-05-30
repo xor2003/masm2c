@@ -46,6 +46,11 @@ Run Python tests:
 rtk pytest -q
 ```
 
+Run unified Python quality checks:
+```bash
+rtk python scripts/qa.py
+```
+
 Run C++ instruction test target:
 ```bash
 rtk make check
@@ -69,14 +74,12 @@ Avoid editing generated or bulky artifacts unless explicitly required:
 ## CI/CD Expectations
 - Keep GitHub Actions simple and conventional: install deps, lint, type-check, unit test, then integration scripts.
 - Required quality gates for Python changes:
-  - `ruff check masm2c tests`
-  - `mypy masm2c`
-  - `pytest -q`
+  - `python scripts/qa.py`
 - Integration/script checks should remain runnable via shell:
   - `bash ./install-test.sh`
   - `bash ./runtests.sh`
   - `bash ./_binarytests.sh`
-  - `bash ./asmTests/_tests.sh` (local regression pass; `popf.asm` unsupported and intentionally skipped)
+  - `python ./asmTests/run_tests.py` (local regression pass; `popf.asm` unsupported and intentionally skipped)
 - Prefer updating existing workflows under `.github/workflows/` instead of adding redundant pipelines.
 
 ## Safe Refactor Workflow

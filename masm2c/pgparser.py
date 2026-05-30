@@ -126,13 +126,10 @@ class Getmacroargval:
 
 
 class Asm2IR(CommonCollector):
-    __slots__ = ("_radix", "_pending_proc_options", "_pending_mnemonic")
+    __slots__ = ()
 
     def __init__(self, context: "Parser", input_str: str="") -> None:
         super().__init__(context, input_str)
-        self._radix = 10
-        self._pending_proc_options: list[str] = []
-        self._pending_mnemonic = ""
 
     def externdef(self, nodes: list[lark.Tree | lark.Token]) -> list[lark.Tree | lark.Token]:
         label, type = nodes
@@ -258,7 +255,7 @@ class Asm2IR(CommonCollector):
         from .gen import guess_int_size
         from .parser import parse_asm_number
 
-        radix, sign, value = parse_asm_number(value, self._radix)
+        radix, sign, value = parse_asm_number(value, self.context.radix)
 
         val = int(value, radix)
         if sign == "-":
@@ -269,7 +266,7 @@ class Asm2IR(CommonCollector):
         t.start_pos, t.line, t.value = radix, sign_int, value
         return t  # Token('INTEGER', Cpp(self.context.convert_asm_number_into_c(nodes, self.context.radix))  # TODO remove this
 
-    def commentkw(self, head, s, pos):
+    def commentkw(self, _head, s, pos):
         # multiline comment
         if s[pos:pos + 7] == "COMMENT" and (mtch := commentid.match(s[pos:])):
             return mtch.group(0)
@@ -425,13 +422,12 @@ class Asm2IR(CommonCollector):
         return nodes
 
     def poptions(self, options: list):
-        self._pending_proc_options = list(options)
+        self.context.set_pending_proc_options([str(item) for item in options])
         return Discard
 
     @v_args(meta=True)
     def procdir(self, meta, nodes):
-        name, type = nodes[0], self._pending_proc_options
-        self._pending_proc_options = []
+        name, type = nodes[0], self.context.consume_pending_proc_options()
         logging.debug("procdir %s ~~", nodes)
         self.context.begin_procedure(name, type, line_number=get_line_number(meta),
                                      raw=get_raw_line(self.input_str, meta))
@@ -454,7 +450,7 @@ class Asm2IR(CommonCollector):
         return Discard
 
     def mnemonic(self, name: list[lark.Token]) -> _DiscardType:
-        self._pending_mnemonic = str(name[0])
+        self.context.set_pending_mnemonic(str(name[0]))
         return Discard
 
     def comment(self, children: list[lark.Token]) -> _DiscardType:
@@ -467,8 +463,7 @@ class Asm2IR(CommonCollector):
     def instruction(self, meta:     lark.tree.Meta, nodes: list[Any | lark.Tree]) -> baseop | _DiscardType:
         logging.debug("asminstruction %s ~~", nodes)
 
-        instruction = self._pending_mnemonic
-        self._pending_mnemonic = ""
+        instruction = self.context.consume_pending_mnemonic()
         args = nodes[0].children if len(nodes) else []
         args = self.context.prepare_instruction_args(instruction, args)
         self._expression = None
@@ -548,7 +543,7 @@ class Asm2IR(CommonCollector):
         return lark.Tree("memberdir", [self.context.normalize_label(str(node)) for node in nodes])
 
     def radixdir(self, children):
-        self._radix = int(children[0])
+        self.context.set_radix(int(children[0]))
         return children
 
 

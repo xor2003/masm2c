@@ -294,9 +294,13 @@ class Parser:
     def _parse_decimal(v: str) -> int:
         """Parse decimal number or expression"""
         try:
-            return int(eval(v))
+            return Parser._eval_int_expression(v)
         except Exception:
             return int(v)
+
+    @staticmethod
+    def _eval_int_expression(rendered: str) -> int:
+        return int(eval(rendered, {"__builtins__": {}}, {}))
 
     @staticmethod
     def parse_int(v: str) -> int:
@@ -506,6 +510,12 @@ class Parser:
     def parse_numeric_value(self, value: str) -> int:
         return Parser.parse_int(value)
 
+    def set_radix(self, radix: int) -> None:
+        if 2 <= radix <= 16:
+            self.radix = radix
+        else:
+            raise ValueError(f"Invalid radix {radix}; expected 2..16")
+
     def evaluate_repeat_count(self, repeat_expression: Expression) -> int:
         repeat = copy(repeat_expression)
         repeat.indirection = IndirectionType.VALUE
@@ -580,10 +590,14 @@ class Parser:
     def set_pending_proc_options(self, options: list[str]) -> None:
         self._pending_proc_options = list(options)
 
-    def consume_proc_options(self) -> list[str]:
+    def consume_pending_proc_options(self) -> list[str]:
         options = self._pending_proc_options
         self._pending_proc_options = []
         return options
+
+    # Backward-compatible alias for older call sites.
+    def consume_proc_options(self) -> list[str]:
+        return self.consume_pending_proc_options()
 
     def prepare_instruction_args(self, instruction: str, args: list[Any]) -> list[Any]:
         if len(args) >= 2 and isinstance(args[0], Expression):
@@ -1022,7 +1036,7 @@ class Parser:
         try:
             return int(literal_eval(rendered))
         except (SyntaxError, ValueError):
-            return int(eval(rendered, {"__builtins__": {}}, {}))
+            return Parser._eval_int_expression(rendered)
 
 
 

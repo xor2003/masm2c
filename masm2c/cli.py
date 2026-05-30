@@ -29,7 +29,6 @@ except Exception:
 import argparse
 import glob
 import logging
-import os
 import re
 import sys
 
@@ -99,7 +98,6 @@ def parse_args(args):
         "--passes",
         dest="passes",
         help="How many parsing passes (default: 2)",
-        nargs=1,
         type=int,
         choices=[1, 2],
         default=2,
@@ -122,6 +120,18 @@ def parse_args(args):
     aparser.add_argument(
         "-m", "--mergeprocs", type=str, default="separate", choices=["separate", "persegment", "single"],
         help="How to merge procs (default: persegment)" )
+    aparser.add_argument(
+        "--dce",
+        action="store_true",
+        default=False,
+        help="Enable conservative dead-code elimination inside parsed procs",
+    )
+    aparser.add_argument(
+        "--metrics",
+        action="store_true",
+        default=False,
+        help="Print simple per-proc complexity metrics",
+    )
     aparser.add_argument("filenames", nargs="+", help="Assembler source .asm Masm 6 or .lst from IDA Pro or .seg Segment dump to merge")
     return aparser.parse_args(args)
 
@@ -182,6 +192,53 @@ def process(name, args):
 
     context = p.parse_file(name)
 
+    if args.get("dce") or args.get("metrics"):
+        from .proc import Proc
+        total_removed = 0
+        total_metrics = {
+            "procs": 0,
+            "statements": 0,
+            "labels": 0,
+            "flow_changes": 0,
+            "terminators": 0,
+            "branch_points": 0,
+            "cyclomatic": 0,
+        }
+        for proc_name in context.proc_list:
+            proc_obj = context.symbols.get_global(proc_name)
+            if not isinstance(proc_obj, Proc):
+                continue
+            if args.get("dce"):
+                total_removed += proc_obj.optimize()
+            if args.get("metrics"):
+                m = proc_obj.complexity_metrics()
+                total_metrics["procs"] += 1
+                for key in ("statements", "labels", "flow_changes", "terminators", "branch_points", "cyclomatic"):
+                    total_metrics[key] += m[key]
+                logging.info(
+                    "metrics proc=%s stmts=%d labels=%d flow=%d terms=%d branches=%d cc=%d",
+                    proc_name,
+                    m["statements"],
+                    m["labels"],
+                    m["flow_changes"],
+                    m["terminators"],
+                    m["branch_points"],
+                    m["cyclomatic"],
+                )
+        if args.get("dce"):
+            logging.info("DCE summary removed=%d", total_removed)
+        if args.get("metrics"):
+            logging.info(
+                "metrics total procs=%d stmts=%d labels=%d flow=%d terms=%d branches=%d cc=%d",
+                total_metrics["procs"],
+                total_metrics["statements"],
+                total_metrics["labels"],
+                total_metrics["flow_changes"],
+                total_metrics["terminators"],
+                total_metrics["branch_points"],
+                total_metrics["cyclomatic"],
+            )
+
     generator = Cpp(context, outfile=outname)
     generator.process()
     generator.save_cpp_files(name)  # start routine
@@ -223,7 +280,7 @@ def main() -> None:
     generator.convert_segment_files_into_datacpp(files)
 
     logging.info(" *** Finished")
-    os._exit(0)
+    raise SystemExit(0)
 
 
 
@@ -236,5 +293,5 @@ if __name__ == "__main__":
     main()
 """
 
-#if __name__ == "__main__":
-main()
+if __name__ == "__main__":
+    main()

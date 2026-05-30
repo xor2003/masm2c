@@ -508,9 +508,8 @@ class ParserDataTest(unittest.TestCase):
     def test_data_13330(self):
         assert self.convert_data(line="_eModuleNotFound\tdb 'Module not found',0Dh,0Ah,0 ; DATA XREF: _moduleread+1C\x18o") == ('"Module not found\\r\\n", // _emodulenotfound\n', "char _emodulenotfound[19];\n", 19)
 
-    @unittest.skip("to check")
     def test_data_13340(self):
-        assert self.convert_data(line="_effoff_18F60\tdw offset _eff_nullsub\t; DATA XREF: sub_137D5+16\x18r") == ("k_eff_nullsub, // _effoff_18f60\n", "dw _effoff_18f60;\n", 2)
+        assert self.convert_data(line="_effoff_18F60\tdw offset _eff_nullsub\t; DATA XREF: sub_137D5+16\x18r") == ("_eff_nullsub, // _effoff_18f60\n", "dw _effoff_18f60;\n", 2)
 
     def test_data_13400(self):
         assert self.convert_data(line="_f1_help_text\tdw 3F8h\t\t\t; DATA XREF: seg001:1CD8\x18o") == ("1016, // _f1_help_text\n", "dw _f1_help_text;\n", 2)
@@ -542,9 +541,8 @@ class ParserDataTest(unittest.TestCase):
     def test_data_13870(self):
         assert self.convert_data(line="_notes\t\tdb '  C-C#D-D#E-F-F#G-G#A-A#B-' ; DATA XREF: seg001:1930\x18r") == ("{' ',' ','C','-','C','#','D','-','D','#','E','-','F','-','F','#','G','-','G','#','A','-','A','#','B','-'}, // _notes\n", "char _notes[26];\n", 26)
 
-    @unittest.skip("to check")
     def test_data_13880(self):
-        assert self.convert_data(line="_offs_draw\tdw offset loc_19050\t; DATA XREF: _keyb_screen_loop+32\x18r") == ("kloc_19050, // _offs_draw\n", "dw _offs_draw;\n", 2)
+        assert self.convert_data(line="_offs_draw\tdw offset loc_19050\t; DATA XREF: _keyb_screen_loop+32\x18r") == ("loc_19050, // _offs_draw\n", "dw _offs_draw;\n", 2)
 
     def test_data_13980(self):
         assert self.convert_data(line="_pc_timer_tbl\tdb 40h,40h,40h,40h,40h,40h,40h,40h,40h,40h,3Fh,3Fh,3Fh") == ("{64,64,64,64,64,64,64,64,64,64,63,63,63}, // _pc_timer_tbl\n", "db _pc_timer_tbl[13];\n", 13)
@@ -602,9 +600,8 @@ class ParserDataTest(unittest.TestCase):
     def test_data_14370(self):
         assert self.convert_data(line="_table_25261\tdb  0, 4, 8,0Ch,10h,14h,18h,1Ch,20h,24h,28h,2Ch,30h,34h") == ("{0,4,8,12,16,20,24,28,32,36,40,44,48,52}, // _table_25261\n", "db _table_25261[14];\n", 14)
 
-    @unittest.skip("to check")
     def test_data_14380(self):
-        assert self.convert_data(line="_table_sndcrdname dw offset _aGravisUltrasou ; DATA XREF:\t_text_init2+19D\x18r") == ("0, // _table_sndcrdname\n", "dw _table_sndcrdname;\n", 2)
+        assert self.convert_data(line="_table_sndcrdname dw offset _aGravisUltrasou ; DATA XREF:\t_text_init2+19D\x18r") == ("_agravisultrasou, // _table_sndcrdname\n", "dw _table_sndcrdname;\n", 2)
 
     def test_data_14390(self):
         assert self.convert_data(line="_tabledword_24526 dd    0,65536,46340,25079,12785,6423,3215,1608, 804, 402") == ("{0,65536,46340,25079,12785,6423,3215,1608,804,402}, // _tabledword_24526\n", "dd _tabledword_24526[10];\n", 40)
@@ -876,9 +873,8 @@ class ParserDataTest(unittest.TestCase):
     def test_data_15380(self):
         assert self.convert_data(line="dd 111,1") == ("{111,1}, // dummy0_0\n", "dd dummy0_0[2];\n", 8)
 
-    @unittest.skip("to check")
     def test_data_15390(self):
-        assert self.convert_data(line="dd offset var5") == ("offset(_data,var5), // dummy0_0\n", "dw dummy0_0;\n", 4)
+        assert self.convert_data(line="dd offset var5") == ("var5, // dummy0_0\n", "dd dummy0_0;\n", 4)
 
     def test_data_15400(self):
         assert self.convert_data(line="dd unk_24453") == ("unk_24453, // dummy0_0\n", "dd dummy0_0;\n", 4)
@@ -904,13 +900,11 @@ class ParserDataTest(unittest.TestCase):
     def test_data_15470(self):
         assert self.convert_data(line="dw 32Ah") == ("810, // dummy0_0\n", "dw dummy0_0;\n", 2)
 
-    @unittest.skip("to check")
     def test_data_15480(self):
-        assert self.convert_data(line="dw @df@@@@8") == ("karbdfarbarbarbarb8, // dummy0_0\n", "dw dummy0_0;\n", 2)
+        assert self.convert_data(line="dw @df@@@@8") == ("arbdfarbarbarbarb8, // dummy0_0\n", "dw dummy0_0;\n", 2)
 
-    @unittest.skip("to check")
     def test_data_15490(self):
-        assert self.convert_data(line="dw offset __2stm_module\t; 2STM") == ("k__2stm_module, // dummy0_0\n", "dw dummy0_0;\n", 2)
+        assert self.convert_data(line="dw offset __2stm_module\t; 2STM") == ("__2stm_module, // dummy0_0\n", "dw dummy0_0;\n", 2)
 
     def test_data_15500(self):
         assert self.convert_data(line="dw offset noerror") == ("m2c::knoerror, // dummy0_0\n", "dw dummy0_0;\n", 2)
@@ -948,13 +942,11 @@ class ParserDataTest(unittest.TestCase):
     def test_data_15590(self):
         assert self.convert_data(line="myoffs\t\tdw offset label2") == ("label2, // myoffs\n", "dw myoffs;\n", 2)
 
-    @unittest.skip("to check")
     def test_data_15600(self):
-        assert self.convert_data(line="off_18E00\tdw offset loc_16A89\t; DATA XREF: sub_1609F:loc_16963\x18r") == ("kloc_16a89, // off_18e00\n", "dw off_18e00;\n", 2)
+        assert self.convert_data(line="off_18E00\tdw offset loc_16A89\t; DATA XREF: sub_1609F:loc_16963\x18r") == ("loc_16a89, // off_18e00\n", "dw off_18e00;\n", 2)
 
-    @unittest.skip("to check")
     def test_data_15610(self):
-        assert self.convert_data(line="off_25326\tdw offset _inr_module\t; DATA XREF: _moduleread:loc_10040\x18o") == ("k_inr_module, // off_25326\n", "dw off_25326;\n", 2)
+        assert self.convert_data(line="off_25326\tdw offset _inr_module\t; DATA XREF: _moduleread:loc_10040\x18o") == ("_inr_module, // off_25326\n", "dw off_25326;\n", 2)
 
     def test_data_15620(self):
         assert self.convert_data(line="pal_jeu db 000,000,000,000,000,021,000,000,042,000,000,063,009,000,000,009") == ("{0,0,0,0,0,21,0,0,42,0,0,63,9,0,0,9}, // pal_jeu\n", "db pal_jeu[16];\n", 16)

@@ -491,7 +491,7 @@ class Data(baseop):
 
         #self._meta = meta
 
-    def __deepcopy__(self, memo: dict[Any, Any]) -> "Data":
+    def __deepcopy__(self, _memo: dict[Any, Any]) -> "Data":
         cls = self.__class__
         result = cls.__new__(cls)
         for k, v in self.__dict__.items():

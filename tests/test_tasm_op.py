@@ -353,7 +353,7 @@ class ParserTest(unittest.TestCase):
         assert p.typetosize("dw") == 2
         assert p.typetosize("dt") == 10
 
-    @unittest.skip("was working for parglare")
+    @unittest.skip("legacy parser API test (parglare-era action_data contract)")
     @patch.object(logging, "debug")
     @patch.object(logging, "info")
     # @patch.object(parser, 'get_global')

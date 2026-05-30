@@ -442,7 +442,6 @@ class Gen(TopDownVisitor):
         except Exception as ex:
             logging.exception(f"Exception {ex.args} for {name}")
             raise
-        return None, None
 
     def produce_jump_table(self, offsets):
         raise NotImplementedError()
