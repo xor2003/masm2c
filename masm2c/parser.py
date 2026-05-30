@@ -29,6 +29,7 @@ import re
 import sys
 from collections import OrderedDict
 from copy import copy, deepcopy
+from dataclasses import dataclass, field
 from typing import Any, Optional, Final
 
 import jsonpickle  # type: ignore[import-untyped]
@@ -54,6 +55,19 @@ from .enumeration import IndirectionType
 
 INTEGERCNST = "integer"
 STRINGCNST = "STRING"
+
+
+@dataclass
+class _PendingParseState:
+    proc_options: list[str] = field(default_factory=list)
+    mnemonic: str = ""
+    source_comment: str = ""
+
+    def reset(self) -> None:
+        self.proc_options.clear()
+        self.mnemonic = ""
+        self.source_comment = ""
+
 
 class Vector:
     """A 2D vector class with basic vector operations."""
@@ -257,9 +271,7 @@ class Parser:
 
         self.current_macro = None
         self.current_struct: Optional[Struct] = None
-        self._pending_proc_options: list[str] = []
-        self._pending_mnemonic = ""
-        self._pending_source_comment = ""
+        self._pending = _PendingParseState()
 
         self.struct_names_stack: list[str] = []
 
@@ -588,11 +600,11 @@ class Parser:
         return self.datadir_action(label, data_type, values, is_string=is_string, raw=raw, line_number=line_number)
 
     def set_pending_proc_options(self, options: list[str]) -> None:
-        self._pending_proc_options = list(options)
+        self._pending.proc_options = list(options)
 
     def consume_pending_proc_options(self) -> list[str]:
-        options = self._pending_proc_options
-        self._pending_proc_options = []
+        options = self._pending.proc_options
+        self._pending.proc_options = []
         return options
 
     # Backward-compatible alias for older call sites.
@@ -609,11 +621,11 @@ class Parser:
         return args
 
     def set_pending_mnemonic(self, mnemonic: str) -> None:
-        self._pending_mnemonic = mnemonic
+        self._pending.mnemonic = mnemonic
 
     def consume_pending_mnemonic(self) -> str:
-        mnemonic = self._pending_mnemonic
-        self._pending_mnemonic = ""
+        mnemonic = self._pending.mnemonic
+        self._pending.mnemonic = ""
         return mnemonic
 
     def resolve_label_for_expression(self, value_in: Token | str, expr: Expression) -> str:
@@ -651,11 +663,11 @@ class Parser:
         expr.segment_register = reg
 
     def set_pending_source_comment(self, text: str) -> None:
-        self._pending_source_comment = text.strip()
+        self._pending.source_comment = text.strip()
 
     def consume_pending_source_comment(self) -> str:
-        text = self._pending_source_comment
-        self._pending_source_comment = ""
+        text = self._pending.source_comment
+        self._pending.source_comment = ""
         return text
 
     def flush_pending_source_comment(self, *, line_number: int=0) -> None:

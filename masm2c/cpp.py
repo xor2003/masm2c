@@ -509,9 +509,7 @@ class Cpp(Gen):
 
 
     def jump_post(self, expr: Expression) -> tuple[str, bool]:
-        self.itisjump = True
-        result = self.render_instruction_argument(expr, 0)  # TODO why need something else?
-        self.itisjump = False
+        result = self._render_with_flags(expr, is_jump=True)  # TODO why need something else?
         name = result
         far = self.get_global_far(name)
         if "far" in expr.mods:
@@ -557,14 +555,11 @@ class Cpp(Gen):
     def _call(self, expr: Expression) -> str:
         logging.debug("cpp._call(%s)", expr)
         ret = ""
-        if expr.ptr_size == 0:
-            expr.ptr_size = 2
-        size = self.calculate_size(expr)
-        self.itisjump = True
-        self.itiscall = True
-        proc_name = self.render_instruction_argument(expr, 0)  # TODO why need something else?
-        self.itiscall = False
-        self.itisjump = False
+        expr_render = self._clone_expression_for_render(expr)
+        if expr_render.ptr_size == 0:
+            expr_render.ptr_size = 2
+        size = self.calculate_size(expr_render)
+        proc_name = self._render_with_flags(expr_render, is_jump=True, is_call=True)  # TODO why need something else?
         far = self.get_global_far(proc_name)
         if size == 4 or "far" in expr.mods:
             far = True
@@ -605,19 +600,27 @@ class Cpp(Gen):
             ret += f"CALL({proc_name},{label_ip})"
         return ret
 
+    def _render_with_flags(self, expr: Expression, *, is_jump: bool = False, is_call: bool = False) -> str:
+        prev_jump, prev_call = self.itisjump, self.itiscall
+        self.itisjump, self.itiscall = is_jump, is_call
+        try:
+            return self.render_instruction_argument(expr, 0)
+        finally:
+            self.itisjump, self.itiscall = prev_jump, prev_call
+
     def _ret(self, src: list[Union[Expression, Any]]) -> str:
-        self.a = self.render_instruction_argument(src[0]) if src else "0"
-        return f"RETN({self.a})"
+        arg = self.render_instruction_argument(src[0]) if src else "0"
+        return f"RETN({arg})"
 
     def _retf(self, src: list[Union[Expression, Any]]) -> str:
-        self.a = self.render_instruction_argument(src[0]) if src else "0"
-        return f"RETF({self.a})"
+        arg = self.render_instruction_argument(src[0]) if src else "0"
+        return f"RETF({arg})"
 
     def _xlat(self, src: list[Union[Expression, Any]]) -> str:
         if not src:
             return "XLAT"
-        self.a = self.render_instruction_argument(src[0])[2:-1]
-        return f"XLATP({self.a})"
+        arg = self.render_instruction_argument(src[0])[2:-1]
+        return f"XLATP({arg})"
 
     def parse2(self, dst: Expression, src: Expression, *, lea: bool = False) -> tuple[str, str]:
         dst_size, src_size = self.calculate_size(dst), self.calculate_size(src)
@@ -633,9 +636,9 @@ class Cpp(Gen):
         return dst_str, src_str
 
     def _add(self, dst: Expression, src: Expression) -> str:
-        self.a, self.b = self.parse2(dst, src)
+        a, b = self.parse2(dst, src)
         # if self.d in ['sp', 'esp'] and check_int(self.s):
-        return f"ADD({self.a}, {self.b})"
+        return f"ADD({a}, {b})"
 
     def _mul(self, src: list[Expression]) -> str:
         size = 0
@@ -664,14 +667,14 @@ class Cpp(Gen):
         return "IMUL%d_%d(%s)" % (len(src), size, ",".join(res))
 
     def _div(self, src: Expression) -> str:
-        self.a = self.render_instruction_argument(src)
+        a = self.render_instruction_argument(src)
         size = self.calculate_size(src)
-        return "DIV%d(%s)" % (size, self.a)
+        return "DIV%d(%s)" % (size, a)
 
     def _idiv(self, src: Expression) -> str:
-        self.a = self.render_instruction_argument(src)
+        a = self.render_instruction_argument(src)
         size = self.calculate_size(src)
-        return "IDIV%d(%s)" % (size, self.a)
+        return "IDIV%d(%s)" % (size, a)
 
     def _jz(self, label: Expression) -> str:
         if self.isrelativejump(label):
@@ -762,11 +765,11 @@ class Cpp(Gen):
         return "SCASD"
 
     def _scas(self, src: Expression) -> str:
-        self.a = self.render_instruction_argument(src)
+        a = self.render_instruction_argument(src)
         size = self.calculate_size(src)
         srcr = Token_.find_tokens(src, REGISTER)
         assert srcr
-        return "SCAS(%s,%s,%d)" % (self.a, srcr[0], size)
+        return "SCAS(%s,%s,%d)" % (a, srcr[0], size)
 
     def process(self):
         self.merge_procs()
@@ -1084,15 +1087,15 @@ struct Memory{
     def _lea(self, dst: Expression, src: Expression) -> str:
         src_render = self._clone_expression_for_render(src)
         src_render.indirection = IndirectionType.OFFSET
-        self.a, self.b = self.parse2(dst, src_render, lea=True)
-        return f"{self.a} = {self.b}"
+        a, b = self.parse2(dst, src_render, lea=True)
+        return f"{a} = {b}"
 
     def _movs(self, dst: Expression, src: Expression) -> str:
         size = self.calculate_size(dst)
         dstr, srcr = Token_.find_tokens(dst, REGISTER), Token_.find_tokens(src, REGISTER)
-        self.a, self.b = self.parse2(dst, src)
+        a, b = self.parse2(dst, src)
         assert dstr and srcr
-        return "MOVS(%s, %s, %s, %s, %d)" % (self.a, self.b, dstr[0], srcr[0], size)
+        return "MOVS(%s, %s, %s, %s, %d)" % (a, b, dstr[0], srcr[0], size)
 
     def _repe(self):
         self.prefix = "\tREPE "
@@ -1103,63 +1106,34 @@ struct Memory{
         return ""
 
     def _lods(self, src: Expression) -> str:
-        self.a = self.render_instruction_argument(src)
+        a = self.render_instruction_argument(src)
         size = self.calculate_size(src)
         srcr = Token_.find_tokens(src, REGISTER)
         assert srcr
-        return "LODS(%s,%s,%d)" % (self.a, srcr[0], size)
+        return "LODS(%s,%s,%d)" % (a, srcr[0], size)
 
     def _leave(self) -> str:
         return "LEAVE"  # MOV(esp, ebp) POP(ebp)
 
     def _int(self, dst: Expression) -> str:
-        self.a = self.render_instruction_argument(dst)
-        return f"_INT({self.a})"
+        a = self.render_instruction_argument(dst)
+        return f"_INT({a})"
 
     def _instruction0(self, cmd: str) -> str:
         return cmd.upper()
 
     def _instruction1(self, cmd: str, dst: Expression) -> str:
-        self.a = self.render_instruction_argument(dst)
-        return f"{cmd.upper()}({self.a})"
+        a = self.render_instruction_argument(dst)
+        return f"{cmd.upper()}({a})"
 
     def render_instruction_argument(self, expr: Expression, def_size: int = 0, destination: bool = False,
                                     lea: bool = False) -> str:
-        """
-        Render the instruction argument for the given expression.
-
-        Args:
-            expr (Expression): The expression to render.
-            def_size (int, optional): The default size of the expression. Defaults to 0.
-            destination (bool, optional): Whether the expression is a destination. Defaults to False.
-            lea (bool, optional): Whether to use LEA instruction. Defaults to False.
-
-        Returns:
-            str: The rendered instruction argument.
-        """
-        render_expr = self._clone_expression_for_render(expr)
-        if destination:
-            render_expr.mods.add("destination")
-        if lea:
-            render_expr.mods.add("lea")
-
-        # Calculate the default size if necessary
-        if def_size == 0 and render_expr.element_size == 0 and render_expr.indirection != IndirectionType.POINTER:
-            from .parser import ExprSizeCalculator, Vector
-            calc = ExprSizeCalculator(init=Vector(0, 0), context=self._context)
-            def_size, _ = calc.visit(render_expr).values  # , result=0)
-
-        if (
-            render_expr.indirection == IndirectionType.POINTER
-            and def_size
-            and not render_expr.ptr_size
-        ):
-            render_expr.ptr_size = def_size
-        # Set the element size if necessary
-        if def_size and render_expr.element_size == 0:
-            render_expr.element_size = def_size
-
-        result, _ = self.render_instruction_argument_with_state(render_expr, def_size, lea=lea)
+        result, _ = self.render_instruction_argument_with_state(
+            expr,
+            def_size,
+            destination=destination,
+            lea=lea,
+        )
         return result
 
     @staticmethod
@@ -1169,22 +1143,54 @@ struct Memory{
         cloned.registers = set(expr.registers)
         return cloned
 
+    def _prepare_expression_for_render(
+            self,
+            expr: Expression,
+            def_size: int = 0,
+            *,
+            destination: bool = False,
+            lea: bool = False,
+    ) -> tuple[Expression, int]:
+        render_expr = self._clone_expression_for_render(expr)
+        if destination:
+            render_expr.mods.add("destination")
+        if lea:
+            render_expr.mods.add("lea")
+
+        if def_size == 0 and render_expr.element_size == 0 and render_expr.indirection != IndirectionType.POINTER:
+            from .parser import ExprSizeCalculator, Vector
+            calc = ExprSizeCalculator(init=Vector(0, 0), context=self._context)
+            def_size, _ = calc.visit(render_expr).values
+
+        if render_expr.indirection == IndirectionType.POINTER and def_size and not render_expr.ptr_size:
+            render_expr.ptr_size = def_size
+        if def_size and render_expr.element_size == 0:
+            render_expr.element_size = def_size
+        return render_expr, def_size
+
     def render_instruction_argument_with_state(
             self,
             expr: Expression,
             def_size: int = 0,
             *,
+            destination: bool = False,
             lea: bool = False,
     ) -> tuple[str, _ExprRenderState]:
+        render_expr, def_size = self._prepare_expression_for_render(
+            expr,
+            def_size,
+            destination=destination,
+            lea=lea,
+        )
         # Render expression with explicit rendering context instead of mutating shared fields.
         ir2cpp = IR2Cpp(
             self._context,
             lea=lea,
-            indirection=expr.indirection,
+            indirection=render_expr.indirection,
             is_jump=self.itisjump,
             is_call=self.itiscall,
         )
-        result = "".join(ir2cpp.visit(expr))
+        result = "".join(ir2cpp.visit(render_expr))
         rendered = result[1:-1] if self.check_parentesis(result) else result
         return rendered, ir2cpp._expr_state
 
@@ -1231,13 +1237,13 @@ struct Memory{
         return f"{cmd.upper()}({label})"
 
     def _instruction2(self, cmd: str, dst: Expression, src: Expression) -> str:
-        self.a, self.b = self.parse2(dst, src)
-        return f"{cmd.upper()}({self.a}, {self.b})"
+        a, b = self.parse2(dst, src)
+        return f"{cmd.upper()}({a}, {b})"
 
     def _instruction3(self, cmd: str, dst: Expression, src: Expression, c: Expression) -> str:
-        self.a, self.b = self.parse2(dst, src)
-        self.c = self.render_instruction_argument(c)
-        return f"{cmd.upper()}({self.a}, {self.b}, {self.c})"
+        a, b = self.parse2(dst, src)
+        c_rendered = self.render_instruction_argument(c)
+        return f"{cmd.upper()}({a}, {b}, {c_rendered})"
 
     def return_empty(self, _):
         return []
@@ -1248,15 +1254,17 @@ struct Memory{
         if not isinstance(src, Expression):
             src = asm2ir.transform(src)
 
-        src.indirection = IndirectionType.VALUE
-        self._cmdlabel += f"#undef {dst}\n#define {dst} {self.render_instruction_argument(src)}\n"
+        src_render = self._clone_expression_for_render(src)
+        src_render.indirection = IndirectionType.VALUE
+        self._cmdlabel += f"#undef {dst}\n#define {dst} {self.render_instruction_argument(src_render)}\n"
         return ""
 
     def _equ(self, dst: str):
         assert isinstance(dst, str)
         src = self._context.symbols.get_global(dst).value
-        src.indirection = IndirectionType.VALUE
-        self._cmdlabel += f"#define {dst} {self.render_instruction_argument(src)}\n"
+        src_render = self._clone_expression_for_render(src)
+        src_render.indirection = IndirectionType.VALUE
+        self._cmdlabel += f"#define {dst} {self.render_instruction_argument(src_render)}\n"
         return ""
 
     def produce_c_data_single_(self, data: Data) -> tuple[str, str, int]:
@@ -1443,11 +1451,11 @@ struct Memory{
         return result
 
     def _mov(self, dst: Expression, src: Expression) -> str:
-        self.a, self.b = self.parse2(dst, src)
-        mapped_memory_access = "raddr" in self.a or "raddr" in self.b
+        a, b = self.parse2(dst, src)
+        mapped_memory_access = "raddr" in a or "raddr" in b
         if mapped_memory_access:
-            return f"MOV({self.a}, {self.b})"
-        return f"{self.a} = {self.b};"
+            return f"MOV({a}, {b})"
+        return f"{a} = {b};"
 
     def produce_jump_table(self, offsets):
         """It takes a list of labels and produces a C++ switch statement that jumps to the corresponding label.

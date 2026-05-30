@@ -4,6 +4,8 @@ from __future__ import annotations
 import argparse
 import concurrent.futures
 import os
+import shutil
+import shlex
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -47,7 +49,38 @@ def compile_runtime(script_dir: Path, cxx: str) -> None:
         subprocess.run(["bash", "-lc", cmd], cwd=parent, check=True)
 
 
-def run_case(script_dir: Path, name: str, logs_dir: Path, cxx: str) -> CaseResult:
+def get_opt_flags(script_dir: Path) -> str:
+    cfg = script_dir / "_config.sh"
+    cmd = f"set -euo pipefail; . '{cfg}'; printf '%s' \"$OPT\""
+    proc = subprocess.run(["bash", "-lc", cmd], cwd=script_dir.parent, check=True, capture_output=True, text=True)
+    return proc.stdout.strip()
+
+
+def prepare_case_workspace(script_dir: Path, name: str) -> Path:
+    base = name.rsplit(".", 1)[0]
+    work_root = script_dir / ".test-work"
+    work_dir = work_root / base
+    if work_dir.exists():
+        shutil.rmtree(work_dir)
+    work_dir.mkdir(parents=True, exist_ok=True)
+
+    src_case = script_dir / name
+    shutil.copy2(src_case, work_dir / name)
+
+    # Preserve include compatibility for isolated per-case runs.
+    for pattern in ("*.inc", "*.asm", "*.lst", "*.map", "*.txt"):
+        for src in script_dir.glob(pattern):
+            dst = work_dir / src.name
+            if dst.exists():
+                continue
+            try:
+                os.symlink(src, dst)
+            except OSError:
+                shutil.copy2(src, dst)
+    return work_dir
+
+
+def run_case(script_dir: Path, name: str, logs_dir: Path, cxx: str, opt_flags: str) -> CaseResult:
     base = name.rsplit(".", 1)[0]
     log_file = logs_dir / f"{base}.log"
 
@@ -56,16 +89,60 @@ def run_case(script_dir: Path, name: str, logs_dir: Path, cxx: str) -> CaseResul
         log_file.write_text(msg, encoding="utf-8")
         return CaseResult(name=name, status="SKIP", rc=0, reason=SKIP_CASES[name], log_file=log_file)
 
-    cmd = ["bash", str(script_dir / "_singletest.sh"), name]
-    env = os.environ.copy()
-    env["CXX"] = cxx
-    env["PYTHON"] = sys.executable
-    proc = subprocess.run(cmd, cwd=script_dir, env=env, capture_output=True, text=True)
-    output = f"Testing {name}:\n{proc.stdout}{proc.stderr}"
+    work_dir = prepare_case_workspace(script_dir, name)
+    repo_root = script_dir.parent
+    output_chunks: list[str] = [f"Testing {name}:"]
+
+    translate = [
+        sys.executable,
+        str(repo_root / "masm2c.py"),
+        "-m",
+        "separate",
+        name,
+    ]
+    t = subprocess.run(translate, cwd=work_dir, capture_output=True, text=True)
+    output_chunks.append(t.stdout)
+    output_chunks.append(t.stderr)
+    if t.returncode != 0:
+        output_chunks.append("Step failed: translate\n")
+        output = "\n".join(output_chunks)
+        log_file.write_text(output, encoding="utf-8", errors="replace")
+        return CaseResult(name=name, status="FAIL", rc=t.returncode, reason=f"exit={t.returncode}", log_file=log_file)
+
+    compile_cmd = [
+        cxx,
+        "_data.cpp",
+        f"{base}.cpp",
+        str(repo_root / "asm.o"),
+        str(repo_root / "memmgr.o"),
+        str(repo_root / "shadowstack.o"),
+        *shlex.split(opt_flags),
+        f"-I{script_dir}",
+        f"-I{repo_root}",
+        "-o",
+        base,
+    ]
+    b = subprocess.run(compile_cmd, cwd=work_dir, capture_output=True, text=True)
+    output_chunks.append(b.stdout)
+    output_chunks.append(b.stderr)
+    if b.returncode != 0:
+        output_chunks.append("Step failed: build\n")
+        output = "\n".join(output_chunks)
+        log_file.write_text(output, encoding="utf-8", errors="replace")
+        return CaseResult(name=name, status="FAIL", rc=b.returncode, reason=f"exit={b.returncode}", log_file=log_file)
+
+    e = subprocess.run([str(work_dir / base)], cwd=work_dir, capture_output=True, text=True)
+    output_chunks.append(e.stdout)
+    output_chunks.append(e.stderr)
+    if e.returncode != 0:
+        output_chunks.append("Step failed: execute\n")
+        output = "\n".join(output_chunks)
+        log_file.write_text(output, encoding="utf-8", errors="replace")
+        return CaseResult(name=name, status="FAIL", rc=e.returncode, reason=f"exit={e.returncode}", log_file=log_file)
+
+    output = "\n".join(output_chunks)
     log_file.write_text(output, encoding="utf-8", errors="replace")
-    if proc.returncode == 0:
-        return CaseResult(name=name, status="PASS", rc=0, log_file=log_file)
-    return CaseResult(name=name, status="FAIL", rc=proc.returncode, reason=f"exit={proc.returncode}", log_file=log_file)
+    return CaseResult(name=name, status="PASS", rc=0, log_file=log_file)
 
 
 def summarize(results: Iterable[CaseResult], logs_dir: Path) -> int:
@@ -101,6 +178,7 @@ def main() -> int:
     logs_dir.mkdir(exist_ok=True)
 
     cxx = os.environ.get("CXX", "g++")
+    opt_flags = get_opt_flags(script_dir)
     print(f"Preparing runtime objects (CXX={cxx}, JOBS={args.jobs})...")
     compile_runtime(script_dir, cxx)
 
@@ -114,10 +192,10 @@ def main() -> int:
     results: list[CaseResult] = []
     if args.jobs <= 1:
         for c in cases:
-            results.append(run_case(script_dir, c, logs_dir, cxx))
+            results.append(run_case(script_dir, c, logs_dir, cxx, opt_flags))
     else:
         with concurrent.futures.ThreadPoolExecutor(max_workers=args.jobs) as ex:
-            futs = [ex.submit(run_case, script_dir, c, logs_dir, cxx) for c in cases]
+            futs = [ex.submit(run_case, script_dir, c, logs_dir, cxx, opt_flags) for c in cases]
             for f in concurrent.futures.as_completed(futs):
                 results.append(f.result())
         results.sort(key=lambda r: r.name)
