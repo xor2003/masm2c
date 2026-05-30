@@ -73,6 +73,7 @@ class _ExprRenderState:
         "work_segment",
         "indirection",
         "element_size",
+        "data_label_size",
     )
 
     def __init__(self) -> None:
@@ -93,6 +94,7 @@ class _ExprRenderState:
         self.work_segment = "ds"
         self.indirection = IndirectionType.VALUE
         self.element_size = -1
+        self.data_label_size = 0
 
 
 class SeparateProcStrategy:
@@ -171,8 +173,6 @@ class Cpp(Gen):
 
         self.itisjump = False
         self.itiscall = False
-        self.is_data = 0
-
         self.__type_table = {op.DataType.NUMBER: self.produce_c_data_number,
                              op.DataType.ARRAY: self.produce_c_data_array,
                              op.DataType.ZERO_STRING: self.produce_c_data_zero_string,
@@ -198,7 +198,7 @@ class Cpp(Gen):
         if isinstance(g, op.var):
             return self.convert_label_var(g, name, original_name)
         elif isinstance(g, op.label):
-            return f"m2c::k{name}" if self.is_data or not self.itisjump else name
+            return f"m2c::k{name}" if self._expr_state.data_label_size or not self.itisjump else name
         return name
 
     def convert_label_var(self, g, name, original_name) -> str:
@@ -284,7 +284,7 @@ class Cpp(Gen):
         :param segments: a dictionary of segments, where the key is the segment name and the value is the segment object
         :return: cpp_file, data_hpp_file, data_cpp_file, hpp_file
         """
-        self.is_data = -1
+        self._expr_state.data_label_size = 2
 
         cpp_file = ""
         data_hpp_file = ""
@@ -334,7 +334,7 @@ class Cpp(Gen):
                     data_cpp_file += _reference_in_data_cpp  # reference in _data.cpp
                 data_hpp_file += type_and_name  # headers in _data.h
 
-        self.is_data = 0
+        self._expr_state.data_label_size = 0
         return cpp_file, data_hpp_file, data_cpp_file, hpp_file
 
     def _generate_extern_from_declaration_c(self, _hpp):
@@ -1588,25 +1588,28 @@ struct Memory{
 
     def data(self, data: Data) -> tuple[str, str, int]:
         binary_width = self._context.typetosize(data.data_type)  # TODO pervertion
-        self.is_data = binary_width
+        prev_data_label_size = self._expr_state.data_label_size
+        self._expr_state.data_label_size = binary_width
         # For unit test
         from masm2c.parser import Parser
         Parser.c_dummy_label[0] = 0
-        c, h, size = self.produce_c_data_single_(data)
-        c += f", // {data.getlabel()}" + "\n"
-        h += ";\n"
-        self.is_data = 0
+        try:
+            c, h, size = self.produce_c_data_single_(data)
+            c += f", // {data.getlabel()}" + "\n"
+            h += ";\n"
+        finally:
+            self._expr_state.data_label_size = prev_data_label_size
         return c, h, size
 
     def LABEL(self, token: Token) -> list[Union[str, Token]]:
-        if self.is_data:
-            size = self.is_data
+        if self._expr_state.data_label_size:
+            size = self._expr_state.data_label_size
             return [self.convert_label_data(token, size=size)]
         return [self.convert_label_(token)]
 
     def convert_label_data(self, v: Token, size: int=0) -> Union[Token, str]:
         logging.debug("convert_label_data(%s)", v)
-        size = size or 2
+        size = 2 if size <= 0 else size
         if (g := self._context.symbols.get_global(v)) is None:
             return v
         if isinstance(g, op.var):
