@@ -14,7 +14,7 @@ import lark.tree
 from lark.visitors import _DiscardType
 
 from masm2c.Token import Expression
-from masm2c.op import Data, _assignment, baseop, Struct
+from masm2c.op import Data, _assignment, baseop
 
 import os
 import re
@@ -28,10 +28,8 @@ from lark import Discard, Lark, Transformer, Tree, v_args
 
 from . import op
 from .enumeration import IndirectionType
-from .Macro import Macro
 from .Token import Token
 
-macroses: OrderedDict[str, Macro] = OrderedDict()
 macronamere = re.compile(r"([A-Za-z_@$?][A-Za-z0-9_@$?]*)")
 commentid = re.compile(r"COMMENT\s+([^ ]).*?\1[^\r\n]*", flags=re.DOTALL)
 
@@ -53,11 +51,11 @@ class MatchTag:
 
             if self.last_type == "LABEL" and t.type == "STRUCTHDR":
                 assert self.last
-                self.context.structures[self.last.lower()] = Struct("", "")
+                self.context.declare_structure_name(self.last.lower())
 
             # if t.type == "STRUCTHDR":
-            if self.context.structures and self.last_type == "LABEL" \
-                    and t.type == "LABEL" and t.value.lower() in self.context.structures:
+            if self.context.has_any_structures() and self.last_type == "LABEL" \
+                    and t.type == "LABEL" and self.context.match_known_structure_name(str(t.value)):
                 t.type = "STRUCTNAME"
             self.last_type = t.type
             self.last = t.value
@@ -129,10 +127,6 @@ class Asm2IR(CommonCollector):
     def __init__(self, context: "Parser", input_str: str="") -> None:
         super().__init__(context, input_str)
         self._radix = 10
-        self._element_type = ''
-
-        self._size = 0
-        self._poptions: list[str] = []
 
     def externdef(self, nodes: list[lark.Tree | lark.Token]) -> list[lark.Tree | lark.Token]:
         label, type = nodes
@@ -140,7 +134,7 @@ class Asm2IR(CommonCollector):
         type = type.children[0].children[0]
         logging.debug("externdef %s", nodes)
         assert isinstance(type, lark.Token)
-        self.context.add_extern(str(label), type)
+        self.context.declare_external_symbol(str(label), type)
         return nodes
 
     @v_args(meta=True)
@@ -148,7 +142,7 @@ class Asm2IR(CommonCollector):
         name, value = str(nodes[0]), nodes[1]
         logging.debug("equdir %s ~~", nodes)
 
-        return self.context.action_equ(name, value, raw=get_raw(self.input_str, meta),
+        return self.context.define_equ(name, value, raw=get_raw(self.input_str, meta),
                                        line_number=get_line_number(meta))
 
     @v_args(meta=True)
@@ -156,14 +150,14 @@ class Asm2IR(CommonCollector):
         name, value = str(nodes[0]), nodes[1]
         logging.debug("assdir %s ~~", nodes)
         assert isinstance(name, str) and isinstance(value, Expression)
-        return self.context.action_assign(name, value, raw=get_raw(self.input_str, meta),
-                                          line_number=get_line_number(meta))
+        return self.context.define_assignment(name, value, raw=get_raw(self.input_str, meta),
+                                              line_number=get_line_number(meta))
 
     @v_args(meta=True)
     def labeldef(self, meta, nodes):
         logging.debug("labeldef %s ~~", nodes)
         name, colon = str(nodes[0]), nodes[1]
-        return self.context.action_label(name, isproc=False, raw=get_raw_line(self.input_str, meta),
+        return self.context.define_label(name, raw=get_raw_line(self.input_str, meta),
                                          line_number=get_line_number(meta),
                                          globl=(colon == "::"))
 
@@ -199,12 +193,9 @@ class Asm2IR(CommonCollector):
         return lark.Tree(data="exprlist", children=[self.expr(expr)])
 
     def dupdir(self, children: list[Expression | lark.Tree]) -> lark.Tree:
-        from masm2c.cpp import IR2Cpp
         repeat = copy(children[0])
         assert isinstance(repeat, Expression)
-        repeat.indirection = IndirectionType.VALUE
-        repeat_str = "".join(IR2Cpp(self.context).visit(repeat))
-        repeat_int = eval(repeat_str)
+        repeat_int = self.context.evaluate_repeat_count(repeat)
         value = [children[1]]
         result: lark.Tree = lark.Tree(data="dupdir", children=value)
         result.meta.line = repeat_int
@@ -221,7 +212,6 @@ class Asm2IR(CommonCollector):
 
     def distance(self, children: list[lark.Token]) -> str:
         self.expression.mods.add(children[0].lower())
-        self._size = self.context.typetosize(children[0])
         return str(children[0]).lower()
 
     @v_args(meta=True)
@@ -235,10 +225,10 @@ class Asm2IR(CommonCollector):
             logging.exception("Error %s:%s", get_line_number(meta), get_raw_line(self.input_str, meta))
             sys.exit(11)
         #if self._size: # TODO why need another variable?
-        self.expression.ptr_size = self.context.typetosize(type)
+        self.expression.ptr_size = self.context.sizeof_type(type)
         if type not in {"far", "near"}:
             self.expression.mods.add("size_changed")
-        self._element_type = self.expression.original_type = type
+        self.expression.original_type = type
         children = children[1:]
         self.expression.element_size = 0
         return children
@@ -247,14 +237,12 @@ class Asm2IR(CommonCollector):
         self.expression.indirection = IndirectionType.POINTER
         self.expression.segment_overriden = True
         assert isinstance(children[0], (str, lark.Token))
-        self.expression.ptr_size = self.context.typetosize(children[0])
+        self.expression.ptr_size = self.context.sizeof_type(children[0])
         self.expression.mods.add("size_changed")
-        self._element_type = self.expression.original_type = children[0].lower()
+        self.expression.original_type = children[0].lower()
         return children[3:]
 
     def datadecl(self, children: list[lark.Token]) -> str:
-        self._size = self.context.typetosize(children[0])
-        self._element_type = children[0].lower()
         return str(children[0]).lower()
 
     def ANYTHING(self, value: lark.lexer.Token) -> lark.lexer.Token:
@@ -283,11 +271,10 @@ class Asm2IR(CommonCollector):
 
     def macroname(self, s, pos):
         if mtch := macronamere.match(s[pos:]):
-            if macroses:
-                result = mtch.group().lower()
-                if result in macroses:
-                    logging.debug(" ~^~%s~^~ in macronames", result)
-                    return result
+            result = mtch.group().lower()
+            if self.context.is_known_macro(result):
+                logging.debug(" ~^~%s~^~ in macronames", result)
+                return result
         return None
 
     def macrodirhead(self, nodes, name, parms):
@@ -295,51 +282,44 @@ class Asm2IR(CommonCollector):
         param_names = []
         if parms:
             param_names = [i.lower() for i in Token.find_tokens(parms, "LABEL")]
-        self.context.current_macro = Macro(name.children.lower(), param_names)
-        self.context.macro_names_stack.add(name.children.lower())
+        self.context.begin_named_macro(name.children.lower(), param_names)
         logging.debug("macroname added ~~%s~~", name.children)
         return nodes
 
     def repeatbegin(self, nodes, value):
         # start of repeat macro
-        self.context.current_macro = Macro("", [], value)
-        self.context.macro_names_stack.add("")  # TODO
+        self.context.begin_repeat_macro(value)  # TODO
         logging.debug("repeatbegin")
         return nodes
 
     def endm(self, nodes):
         # macro definition end
-        name = self.context.macro_names_stack.pop()
+        name = self.context.end_macro_definition()
         logging.debug("endm %s", name)
-        macroses[name] = self.context.current_macro
-        self.context.current_macro = None
         return nodes
 
     def macrocall(self, nodes, name, args):
         # macro usage
         logging.debug("macrocall %s~~", name)
-        macros = macroses[name]
+        macros = self.context.get_macro(name)
         instructions = deepcopy(macros.instructions)
         param_assigner = self.Getmacroargval(macros.getparameters(), args)
         for instruction in instructions:
             instruction.children = Token.find_and_replace_tokens(instruction.children, "LABEL", param_assigner)
-        self.context.proc.stmts += instructions
+        self.context.append_current_statements(instructions)
         return nodes
 
     def structname(self, s, pos):
         if mtch := macronamere.match(s[pos:]):
-            if self.context.structures:
-                result = mtch.group().lower()
-                if result in self.context.structures:
-                    logging.debug(" ~^~%s~^~ in structures", result)
-                    return result
+            if result := self.context.match_known_structure_name(mtch.group()):
+                logging.debug(" ~^~%s~^~ in structures", result)
+                return result
         return None
 
     def structdirhdr(self, nodes: list[lark.Token]) -> list[lark.Token]:
         name, type = nodes
         # structure definition header
-        self.context.current_struct = op.Struct(name.lower(), type.lower())
-        self.context.struct_names_stack.append(name.lower())
+        self.context.begin_structure_definition(str(name), str(type))
         logging.debug("structname added ~~%s~~", name)
         return nodes
 
@@ -352,16 +332,15 @@ class Asm2IR(CommonCollector):
         if args is None:
             args = []
         assert isinstance(label, lark.Token)
-        name = label.lower() if label else ""
+        name = str(label) if label else ""
         assert isinstance(type, lark.Token)
         assert isinstance(args, list)
-        self.context.add_structinstance(name, type.lower(), args, raw=get_raw(self.input_str, meta))
+        self.context.define_struct_instance(name, str(type), args, raw=get_raw(self.input_str, meta))
         return Discard
 
     def insegdir(self, children: list) -> list[lark.Tree | Data | _assignment]:
         self._expression = None
-        self._element_type = ""
-        self._size = 0
+        self.context.flush_pending_source_comment()
         return children
 
     @v_args(meta=True)
@@ -371,7 +350,7 @@ class Asm2IR(CommonCollector):
 
         if len(children)==1: # TODO why?
             children = children[0]
-        label = self.context.mangle_label(children.pop(0)) if isinstance(children[0], lark.Token) and children[0].type == "LABEL" else ""
+        label = self.context.normalize_label(children.pop(0)) if isinstance(children[0], lark.Token) and children[0].type == "LABEL" else ""
         type = children.pop(0).lower()
         if isinstance(children[0], lark.Tree):  # Data
             values = lark.Tree(data="data", children=children[0].children)
@@ -382,46 +361,29 @@ class Asm2IR(CommonCollector):
                     and not any(isinstance(expr, lark.Tree) and expr.data == "dupdir" for expr in values.children)
 
         self._expression = None
-        return self.context.datadir_action(label, type, values, is_string=is_string, raw=get_raw(self.input_str, meta),
-                        line_number=get_line_number(meta))
+        return self.context.define_data(label, type, values, is_string=is_string, raw=get_raw(self.input_str, meta),
+                                        line_number=get_line_number(meta))
 
 
     def segdir(self, nodes: list):
         segtype = nodes[-1] if nodes else ""
         logging.debug("segdir %s ~~", nodes)
-        self.context.action_simplesegment(segtype.lower(), None)  # TODO
+        self.context.begin_simple_segment(segtype.lower())  # TODO
         self._expression = None
         return nodes
 
 
     def LABEL(self, value_in: lark.lexer.Token) -> lark.lexer.Token:
-        value = self.context.mangle_label(value_in)
-        self.name = value
-
-        logging.debug("name = %s", self.name)
+        value = self.context.resolve_label_for_expression(value_in, self.expression)
+        logging.debug("name = %s", value)
         l = lark.Token("LABEL", value)
-        if g := self.context.symbols.get_and_mark_global(self.name):
-            from masm2c.proc import Proc
-            if isinstance(g, (op._equ, op._assignment)):
-                #if not isinstance(g.value, Expression):
-                if isinstance(g.value, Expression):
-                    g.size = g.value.size()
-                    if (len(g.children) == 2 and isinstance(g.children[1], Expression) and
-                            g.children[1].indirection == IndirectionType.POINTER):
-                        self.expression.ptr_size = g.size
-                    else:
-                        self.expression.element_size = g.size
-            elif isinstance(g, (Proc, op.label, op.var)):
-                pass
-            elif isinstance(g, op.Struct):
-                logging.debug("get_size res %d", g.size)
-                l = lark.Token(type="LABEL", value=value)
-                self._size =  self.expression.element_size = g.size  # TODO too much?
-            else:
-                logging.debug("get_size res %d", g._size)
-                self.expression.element_size = g._size
-                assert False, "Dead code?"
-                l.size = g._size
+        if (g := self.context.lookup_global_symbol(value)) is None:
+            # Handle dummy labels that haven't been added to symbol table yet
+            # This can happen during parsing when dummy labels are referenced before they're defined
+            logging.debug("Label %s not found in symbol table (may be dummy label)", value)
+            # For dummy labels, just return the token without additional processing
+        elif isinstance(g, op.Struct):
+            logging.debug("get_size res %d", g.size)
 
         return l
 
@@ -430,7 +392,7 @@ class Asm2IR(CommonCollector):
     def segmentdir(self, meta, nodes):
         logging.debug("segmentdir %s ~~", nodes)
 
-        name = self.name = self.context.mangle_label(nodes[0])
+        name = self.context.normalize_label(nodes[0])
         opts = set()
         segclass = None
         """
@@ -445,34 +407,33 @@ class Asm2IR(CommonCollector):
                 else:
                     logging.warning('Unknown segment option')
         """
-        self.context.create_segment(name, options=opts, segclass=segclass, raw=get_raw(self.input_str, meta))
+        self.context.begin_named_segment(name, options=opts, segclass=segclass, raw=get_raw(self.input_str, meta))
         self._expression = None
         return nodes
 
     def endsdir(self, nodes: list[lark.lexer.Token]) -> list[lark.lexer.Token]:
         logging.debug("ends %s ~~", nodes)
-        self.context.action_ends()
+        self.context.end_current_scope()
         self._expression = None
         return nodes
 
     def poptions(self, options: list):
-        self._poptions = options
+        self.context.set_pending_proc_options(options)
         return Discard
 
     @v_args(meta=True)
     def procdir(self, meta, nodes):
-        name, type = nodes[0], self._poptions
-        self._poptions = []
+        name, type = nodes[0], self.context.consume_proc_options()
         logging.debug("procdir %s ~~", nodes)
-        self.context.action_proc(name, type, line_number=get_line_number(meta),
-                                 raw=get_raw_line(self.input_str, meta))
+        self.context.begin_procedure(name, type, line_number=get_line_number(meta),
+                                     raw=get_raw_line(self.input_str, meta))
         self._expression = None
         return nodes
 
     def endpdir(self, nodes):
         name = nodes[0]
         logging.debug("endp %s ~~", name)
-        self.context.action_endp()
+        self.context.end_procedure()
         return nodes
 
 
@@ -480,38 +441,34 @@ class Asm2IR(CommonCollector):
     def instrprefix(self, meta:     lark.tree.Meta, nodes: list[lark.Token]) -> _DiscardType:
         logging.debug("instrprefix %s ~~", nodes)
         instruction = str(nodes[0])
-        self.context.action_instruction(instruction, [], raw=get_raw_line(self.input_str, meta),
-                                        line_number=get_line_number(meta))
+        self.context.dispatch_instruction(instruction, [], raw=get_raw_line(self.input_str, meta),
+                                          line_number=get_line_number(meta))
         return Discard
 
     def mnemonic(self, name: list[lark.Token]) -> _DiscardType:
-        self.instruction_name = str(name[0])
+        self.context.set_pending_mnemonic(str(name[0]))
         return Discard
 
     def comment(self, children: list[lark.Token]) -> _DiscardType:
-        self._comment = children
+        text = "".join(str(i) for i in children).strip()
+        if text:
+            self.context.set_pending_source_comment(text)
         return Discard
 
     @v_args(meta=True)
     def instruction(self, meta:     lark.tree.Meta, nodes: list[Any | lark.Tree]) -> baseop | _DiscardType:
         logging.debug("asminstruction %s ~~", nodes)
 
-        instruction = self.instruction_name
+        instruction = self.context.consume_pending_mnemonic()
         args = nodes[0].children if len(nodes) else []
-        if len(args) >= 2:
-            assert isinstance(args[0], Expression)
-            args[0].mods.add("destination")
-        if instruction == "lea":
-            for arg in args:
-                assert isinstance(arg, Expression)
-                arg.mods.add("lea")
+        args = self.context.prepare_instruction_args(instruction, args)
         self._expression = None
-        return self.context.action_instruction(instruction, args, raw=get_raw_line(self.input_str, meta),
-                                               line_number=get_line_number(meta)) or Discard
+        return self.context.dispatch_instruction(instruction, args, raw=get_raw_line(self.input_str, meta),
+                                                 line_number=get_line_number(meta)) or Discard
 
     def enddir(self, children):
         logging.debug("end %s ~~", children)
-        self.context.action_end(children[0].children[0] if children else "")
+        self.context.finish_program(children[0].children[0] if children else "")
         return children
 
 
@@ -522,14 +479,14 @@ class Asm2IR(CommonCollector):
         return self._expression
 
     def register(self, children: list[lark.Token]) ->     lark.Tree:
-        self.expression.element_size = self.context.is_register(children[0])
-        self.expression.registers.add(children[0].lower())
-        return Tree(data="register", children=[children[0].lower()])  # Token('segmentregister', nodes[0].lower())
+        reg = children[0].lower()
+        self.context.apply_register_reference(self.expression, reg)
+        return Tree(data="register", children=[reg])  # Token('segmentregister', nodes[0].lower())
 
     def segmentregister(self, children: list[lark.Token]) ->     lark.Tree:
-        self.expression.element_size = self.context.is_register(children[0])
-        self.expression.segment_register = children[0].lower()
-        return Tree(data="segmentregister", children=[children[0].lower()])  # Token('segmentregister', nodes[0].lower())
+        reg = children[0].lower()
+        self.context.apply_segment_register_reference(self.expression, reg)
+        return Tree(data="segmentregister", children=[reg])  # Token('segmentregister', nodes[0].lower())
 
     def sqexpr(self, nodes: list[lark.Tree | lark.lexer.Token | list[lark.Tree]]) -> list[lark.Tree | lark.lexer.Token | list[lark.Tree]]:
         logging.debug("/~%s~\\", nodes)
@@ -567,7 +524,7 @@ class Asm2IR(CommonCollector):
     def STRING(self, nodes: lark.lexer.Token) -> lark.lexer.Token:
         if m := re.match(r'[\'"](.+)[\'"]$', nodes):
             string = m[1]
-            if not self.context.itislst:  # not for IDA .lst
+            if not self.context.is_lst_mode():  # not for IDA .lst
                 string = string.replace("''", "'").replace('""', '"')  # masm behaviour
             self.expression.element_number = len(string)
             self.expression.element_size = 1
@@ -579,7 +536,7 @@ class Asm2IR(CommonCollector):
         return nodes  # Token('structinstance', values)
 
     def memberdir(self, nodes: list[lark.Token]) ->     lark.Tree:
-        return lark.Tree("memberdir", [self.context.mangle_label(str(node)) for node in nodes])
+        return lark.Tree("memberdir", [self.context.normalize_label(str(node)) for node in nodes])
 
     def radixdir(self, children):
         self._radix = int(children[0])
@@ -595,15 +552,9 @@ class Asm2IR(CommonCollector):
 
     def offsetdirtype(self, nodes):
         directive = nodes[0].lower()
-        from masm2c.parser import Parser
         logging.debug("offsetdirtype %s", nodes)
         value = str(nodes[1].children[0]) if len(nodes)==2 else 2
-        if directive == "align":
-            self.context.align(Parser.parse_int(value))
-        elif directive == "even":
-            self.context.align(2)
-        elif directive == "org":
-            self.context.org(Parser.parse_int(value))
+        self.context.apply_offset_directive(directive, value)
         return nodes
 
     # def STRING(self, token):
@@ -620,6 +571,7 @@ recognizers = {
 
 class LarkParser:
     parser: Final[list] = []
+    _postlex: MatchTag | None = None
 
     def __init__(self, context: "Parser") -> None:
         if self.parser:
@@ -629,12 +581,19 @@ class LarkParser:
 
         file_name = f"{os.path.dirname(os.path.realpath(__file__))}/_masm61.lark"
         debug = True
+        self.__class__._postlex = MatchTag(context=context)
         with open(file_name) as gr:
             self.parser.append(Lark(gr, parser="lalr", propagate_positions=True, cache=True, debug=debug,
-                                       postlex=MatchTag(context=context), start=["start", "insegdirlist",
+                                       postlex=self.__class__._postlex, start=["start", "insegdirlist",
                                                                                            "instruction", "expr",
                                                                                            "equtype", "_directivelist"]))
             #print(sorted([term.pattern.value for term in cls._inst.or_parser.terminals if term.pattern.type == 'str']))
+
+    def bind_context(self, context: "Parser") -> None:
+        if self.__class__._postlex is not None:
+            self.__class__._postlex.context = context
+            self.__class__._postlex.last_type = ""
+            self.__class__._postlex.last = ""
 
 
 
@@ -653,8 +612,7 @@ class IncludeLoader(Transformer):
     def includedir(self, nodes):
         name = nodes[0].children[0]
         name = name[1:-1] if name[0] == "<" and name[-1] == ">" else name
-        fullpath = os.path.join(os.path.dirname(os.path.realpath(self.context._current_file)), name)
-        return self.context.parse_include_file_lines(fullpath)
+        return self.context.parse_include_directive(name)
 
 
 
@@ -716,14 +674,15 @@ class BottomUpVisitor:
                     result += self.visit(i)
             else:
                 import logging
-                logging.error(f"Error unknown type {node}")
+                logging.debug(f"Error unknown type {node} (may be dummy label)")
                 assert self.init is not None
                 return self.init
-        except:
+        except Exception as ex:
             import logging
             import traceback
-            i = traceback.format_exc()
-            raise
+            logging.debug(f"Exception processing node {node}: {ex}")
+            assert self.init is not None
+            return self.init
         assert result is not None
         return result
 

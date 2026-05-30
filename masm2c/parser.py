@@ -21,13 +21,14 @@
 #
 from masm2c.proc import Proc
 from ast import literal_eval
+from contextlib import contextmanager
 import hashlib
 import logging
 import os
 import re
 import sys
 from collections import OrderedDict
-from copy import deepcopy
+from copy import copy, deepcopy
 from typing import Any, Optional, Final
 
 import jsonpickle
@@ -39,7 +40,6 @@ from masm2c.op import Data, Struct, _assignment, _equ, baseop, label, var
 from masm2c.Token import Token as Token_, Expression
 from .symbol_table import SymbolTable # Added import
 
-from . import cpp as cpp_module
 from . import op
 from .pgparser import (
     Asm2IR,
@@ -49,6 +49,8 @@ from .pgparser import (
     IncludeLoader,
     LarkParser,
 )
+from .Macro import Macro
+from .enumeration import IndirectionType
 
 INTEGERCNST = "integer"
 STRINGCNST = "STRING"
@@ -199,7 +201,7 @@ class Parser:
 
         self.externals_vars: set[str] = set()
         self.externals_procs: set[str] = set()
-        self.__files: set[str] = set()
+        self.macroses: OrderedDict[str, Any] = OrderedDict()
         self.itislst = False
         self.initial_procs_start: set[int] = set()
         self.procs_start: set[int] = set()
@@ -207,6 +209,8 @@ class Parser:
         if not args:
             args = {"mergeprocs": "separate"}
         self.args = args
+        self.arg_renderer_factory = None
+        self.expr_int_evaluator = None
 
         self.next_pass(Parser.c_dummy_label[0])
 
@@ -227,7 +231,7 @@ class Parser:
         self.need_label = True
 
         self.structures: OrderedDict[str, Struct] = OrderedDict()
-        self.macro_names_stack: set[str] = set()
+        self.macro_names_stack: list[str] = []
         self.proc_list: list[str] = []
         self.proc = None
 
@@ -253,6 +257,9 @@ class Parser:
 
         self.current_macro = None
         self.current_struct: Optional[Struct] = None
+        self._pending_proc_options: list[str] = []
+        self._pending_mnemonic = ""
+        self._pending_source_comment = ""
 
         self.struct_names_stack: list[str] = []
 
@@ -450,15 +457,271 @@ class Parser:
         return self
 
     def parse_file_lines(self, file_name):
+        previous_itislst = self.itislst
+        self._switch_file_context(file_name)
+        try:
+            from . import utils
+            content = utils.read_whole_file(file_name)
+            if file_name.lower().endswith(".lst"):  # for .lst provided by IDA move address to comments after ;~
+                # we want exact placement so program could work
+                content = self.extract_addresses_from_lst(file_name, content)
+            result = self.parse_text(content, file_name=file_name)
+            self.process_ast(content, result)
+        finally:
+            self.itislst = previous_itislst
+
+    def _switch_file_context(self, file_name: str) -> tuple[str, str]:
+        previous = (self._current_file, self.__current_file_hash)
         self._current_file = file_name
-        self.__current_file_hash = hashlib.blake2s(os.path.basename(self._current_file).encode("utf8")).hexdigest()
-        from . import utils
-        content = utils.read_whole_file(file_name)
-        if file_name.lower().endswith(".lst"):  # for .lst provided by IDA move address to comments after ;~
-            # we want exact placement so program could work
-            content = self.extract_addresses_from_lst(file_name, content)
-        result = self.parse_text(content, file_name=file_name)
-        self.process_ast(content, result)
+        self.__current_file_hash = hashlib.blake2s(os.path.basename(file_name).encode("utf8")).hexdigest()
+        return previous
+
+    def is_known_macro(self, name: str) -> bool:
+        return name in self.macroses
+
+    def declare_structure_name(self, name: str) -> None:
+        key = name.lower()
+        if key not in self.structures:
+            self.structures[key] = Struct("", "")
+
+    def has_structure(self, name: str) -> bool:
+        return name.lower() in self.structures
+
+    def has_any_structures(self) -> bool:
+        return bool(self.structures)
+
+    def match_known_structure_name(self, name: str) -> str | None:
+        candidate = name.lower()
+        return candidate if self.has_structure(candidate) else None
+
+    def struct_size_hint_for_label(self, label: str) -> int | None:
+        structure_name = self.match_known_structure_name(label)
+        if structure_name is None:
+            return None
+        return self.structures[structure_name].size
+
+    def is_lst_mode(self) -> bool:
+        return self.itislst
+
+    def parse_numeric_value(self, value: str) -> int:
+        return Parser.parse_int(value)
+
+    def evaluate_repeat_count(self, repeat_expression: Expression) -> int:
+        from masm2c.cpp import IR2Cpp
+
+        repeat = copy(repeat_expression)
+        repeat.indirection = IndirectionType.VALUE
+        repeat_str = "".join(IR2Cpp(self).visit(repeat))
+        return eval(repeat_str)
+
+    def normalize_label(self, name: str | lark.Token) -> str:
+        return Parser.mangle_label(name)
+
+    def register_size(self, expr: lark.Token | str) -> int:
+        return Parser.is_register(expr)
+
+    def sizeof_type(self, value_in: str | Token_) -> int:
+        return self.typetosize(value_in)
+
+    def resolve_include_path(self, include_name: str) -> str:
+        return os.path.join(os.path.dirname(os.path.realpath(self._current_file)), include_name)
+
+    def parse_include_directive(self, include_name: str):
+        fullpath = self.resolve_include_path(include_name)
+        return self.parse_include_file_lines(fullpath)
+
+    def apply_offset_directive(self, directive: str, value: str) -> None:
+        if directive == "align":
+            self.align(self.parse_numeric_value(value))
+        elif directive == "even":
+            self.align(2)
+        elif directive == "org":
+            self.org(self.parse_numeric_value(value))
+
+    def dispatch_instruction(self, instruction: str, args: list[Any], *, raw: str, line_number: int):
+        comment = self.consume_pending_source_comment()
+        if comment and comment not in raw:
+            raw = f"{raw} {comment}" if comment.startswith(";") else f"{raw} ; {comment}"
+        return self.action_instruction(instruction, args, raw=raw, line_number=line_number)
+
+    def finish_program(self, entry_label: str) -> None:
+        self.action_end(entry_label)
+
+    def begin_procedure(self, name: str, proc_type: list[str], *, line_number: int, raw: str) -> None:
+        self.action_proc(name, proc_type, line_number=line_number, raw=raw)
+
+    def end_procedure(self) -> None:
+        self.action_endp()
+
+    def begin_simple_segment(self, segtype: str) -> None:
+        self.action_simplesegment(segtype, None)
+
+    def begin_named_segment(self, name: str, *, options: set[str], segclass: str | None, raw: str):
+        return self.create_segment(name, options=options, segclass=segclass, raw=raw)
+
+    def end_current_scope(self) -> None:
+        self.action_ends()
+
+    def define_label(self, name: str, *, raw: str, line_number: int, globl: bool=True) -> None:
+        self.action_label(name, isproc=False, raw=raw, line_number=line_number, globl=globl)
+
+    def declare_external_symbol(self, label: str, symbol_type: Token) -> None:
+        self.add_extern(label, symbol_type)
+
+    def define_equ(self, label: str, value: Expression, *, raw: str, line_number: int):
+        return self.action_equ(label, value, raw=raw, line_number=line_number)
+
+    def define_assignment(self, label: str, value: Expression, *, raw: str, line_number: int):
+        return self.action_assign(label, value, raw=raw, line_number=line_number)
+
+    def define_struct_instance(self, label: str, struct_type: str, args: list[Any], *, raw: str) -> None:
+        self.add_structinstance(label.lower(), struct_type.lower(), args, raw=raw)
+
+    def define_data(self, label: str, data_type: str, values: Tree, *, is_string: bool, raw: str, line_number: int):
+        return self.datadir_action(label, data_type, values, is_string=is_string, raw=raw, line_number=line_number)
+
+    def set_pending_proc_options(self, options: list[str]) -> None:
+        self._pending_proc_options = list(options)
+
+    def consume_proc_options(self) -> list[str]:
+        options = self._pending_proc_options
+        self._pending_proc_options = []
+        return options
+
+    def prepare_instruction_args(self, instruction: str, args: list[Any]) -> list[Any]:
+        if len(args) >= 2 and isinstance(args[0], Expression):
+            args[0].mods.add("destination")
+        if instruction == "lea":
+            for arg in args:
+                if isinstance(arg, Expression):
+                    arg.mods.add("lea")
+        return args
+
+    def set_pending_mnemonic(self, mnemonic: str) -> None:
+        self._pending_mnemonic = mnemonic
+
+    def consume_pending_mnemonic(self) -> str:
+        mnemonic = self._pending_mnemonic
+        self._pending_mnemonic = ""
+        return mnemonic
+
+    def resolve_label_for_expression(self, value_in: Token | str, expr: Expression) -> str:
+        value = self.normalize_label(value_in)
+        if g := self.lookup_global_symbol(value):
+            from masm2c.proc import Proc
+            from .enumeration import IndirectionType
+            if isinstance(g, (op._equ, op._assignment)):
+                if isinstance(g.value, Expression):
+                    g.size = g.value.size()
+                    if (
+                        len(g.children) == 2
+                        and isinstance(g.children[1], Expression)
+                        and g.children[1].indirection == IndirectionType.POINTER
+                    ):
+                        expr.ptr_size = g.size
+                    else:
+                        expr.element_size = g.size
+            elif isinstance(g, (Proc, op.label, op.var)):
+                pass
+            elif isinstance(g, op.Struct):
+                expr.element_size = g.size
+        elif self.has_structure(value):
+            expr.element_size = self.structures[value].size
+        return value
+
+    def apply_register_reference(self, expr: Expression, register_name: str) -> None:
+        reg = register_name.lower()
+        expr.element_size = self.register_size(reg)
+        expr.registers.add(reg)
+
+    def apply_segment_register_reference(self, expr: Expression, register_name: str) -> None:
+        reg = register_name.lower()
+        expr.element_size = self.register_size(reg)
+        expr.segment_register = reg
+
+    def set_pending_source_comment(self, text: str) -> None:
+        self._pending_source_comment = text.strip()
+
+    def consume_pending_source_comment(self) -> str:
+        text = self._pending_source_comment
+        self._pending_source_comment = ""
+        return text
+
+    def flush_pending_source_comment(self, *, line_number: int=0) -> None:
+        text = self.consume_pending_source_comment()
+        if not text:
+            return
+        self.make_sure_proc_exists(line_number, text)
+        assert self.proc
+        o = op._instruction0([])
+        o.cmd = ""
+        o.filename = self._current_file
+        o.raw_line = text
+        o.line_number = line_number
+        o.syntetic = True
+        if self.current_macro:
+            self.current_macro.instructions.append(o)
+        else:
+            self.proc.stmts.append(o)
+
+    def lookup_global_symbol(self, name: str):
+        return self.symbols.get_and_mark_global(name)
+
+    def lookup_mangled_symbol(self, name: str):
+        return self.lookup_global_symbol(self.mangle_label(name))
+
+    def append_current_statement(self, statement: Any) -> None:
+        assert self.proc is not None
+        self.proc.stmts.append(statement)
+
+    def append_current_statements(self, statements: list[Any]) -> None:
+        assert self.proc is not None
+        self.proc.stmts += statements
+
+    def begin_structure_definition(self, name: str, type_name: str) -> None:
+        key = name.lower()
+        self.current_struct = op.Struct(key, type_name.lower())
+        self.struct_names_stack.append(key)
+
+    def begin_named_macro(self, name: str, parameters: list[str]) -> None:
+        macro_name = name.lower()
+        self.begin_macro_definition(macro_name, Macro(macro_name, parameters))
+
+    def begin_repeat_macro(self, repeat: int) -> None:
+        self.begin_macro_definition("", Macro("", [], repeat))
+
+    def begin_macro_definition(self, name: str, macro: Any) -> None:
+        self.current_macro = macro
+        self.macro_names_stack.append(name)
+
+    def end_macro_definition(self) -> str:
+        name = self.macro_names_stack.pop()
+        self.macroses[name] = self.current_macro
+        self.current_macro = None
+        return name
+
+    def get_macro(self, name: str) -> Any:
+        return self.macroses[name]
+
+    @contextmanager
+    def _include_file_context(self, file_name: str):
+        previous = self._switch_file_context(file_name)
+        try:
+            yield
+        finally:
+            self._current_file, self.__current_file_hash = previous
+
+    @contextmanager
+    def _transient_test_parse_state(self):
+        previous_test_mode = self.test_mode
+        previous_segments = self.segments
+        self.test_mode = True
+        self.segments = OrderedDict()
+        try:
+            yield
+        finally:
+            self.test_mode = previous_test_mode
+            self.segments = previous_segments
 
     def extract_addresses_from_lst(self, file_name, content):
         self.itislst = True
@@ -504,13 +767,10 @@ class Parser:
         return segs
 
     def parse_include_file_lines(self, file_name):
-        self.__files.add(self._current_file)
-        self._current_file = file_name
-        from . import utils
-        content = utils.read_whole_file(file_name)
-        result = self.parse_file_inside(content, file_name=file_name)
-        self._current_file = self.__files.pop()
-        return result
+        with self._include_file_context(file_name):
+            from . import utils
+            content = utils.read_whole_file(file_name)
+            return self.parse_file_inside(content, file_name=file_name)
 
     def action_assign(self, label: Token | str, value: Expression, raw: str="", line_number: int=0) -> _assignment:
         """This function is called when the parser encounters an assignment statement
@@ -679,79 +939,89 @@ class Parser:
     """
 
     def action_code(self, line: str) -> baseop:
-        self.test_mode = True
+        previous_need_label = self.need_label
         self.need_label = False
-        self.segments = OrderedDict()
         try:
-            self.test_pre_parse()
-            result = self.parse_text(line + "\n", start_rule="instruction")
-            result = self.process_ast(line, result)
-            assert isinstance(result, baseop)
-        except Exception as e:
-            print(e)
-            logging.exception("Error1")
-            #result = [str(e)]
-            raise
+            with self._transient_test_parse_state():
+                try:
+                    self.test_pre_parse()
+                    result = self.parse_text(line + "\n", start_rule="instruction")
+                    result = self.process_ast(line, result)
+                    assert isinstance(result, baseop)
+                except Exception as e:
+                    print(e)
+                    logging.exception("Error1")
+                    #result = [str(e)]
+                    raise
+        finally:
+            self.need_label = previous_need_label
         return result
 
     def test_size(self, line):
-        self.test_mode = True
-        self.segments = OrderedDict()
-        try:
-            self.test_pre_parse()
-            result = self.parse_text(line, start_rule="expr")
-            expr = self.process_ast(line, result)
-            result = expr.size()
-        except Exception as e:
-            print(e)
-            import traceback
-            logging.exception(traceback.format_exc())
-            result = [str(e)]
-            raise
+        with self._transient_test_parse_state():
+            try:
+                self.test_pre_parse()
+                result = self.parse_text(line, start_rule="expr")
+                expr = self.process_ast(line, result)
+                result = expr.size()
+            except Exception as e:
+                print(e)
+                import traceback
+                logging.exception(traceback.format_exc())
+                result = [str(e)]
+                raise
         return result
 
     def action_data(self, line: str) -> Tree:
         """For tests only."""
-        self.test_mode = True
-        self.segments = OrderedDict()
-        try:
-            self.test_pre_parse()
-            result = self.parse_text(line + "\n", start_rule="insegdirlist")
-            result = self.process_ast(line, result)
-            assert isinstance(result, lark.Tree)
-        except Exception as e:
-            print(e)
-            logging.exception("Error3")
-            #result = [str(e)]
-            raise
+        with self._transient_test_parse_state():
+            try:
+                self.test_pre_parse()
+                result = self.parse_text(line + "\n", start_rule="insegdirlist")
+                result = self.process_ast(line, result)
+                assert isinstance(result, lark.Tree)
+            except Exception as e:
+                print(e)
+                logging.exception("Error3")
+                #result = [str(e)]
+                raise
         return result
 
     def parse_arg(self, line: str, def_size: int=0, destination: bool=False) -> str:
-        from .cpp import Cpp
-        self.test_mode = True
-        self.segments = OrderedDict()
-        try:
-            self.test_pre_parse()
-            expr = self.parse_text(line, start_rule="expr")
-            expr = self.process_ast(line, expr)
-            assert isinstance(expr, Expression)
-            #if destination:
-            #if def_size and expr.element_size == 0:
-            result = Cpp(self).render_instruction_argument(expr, def_size=def_size, destination=destination)
-        except Exception as e:
-            exc_type, exc_obj, exc_tb = sys.exc_info()
-            assert exc_tb
-            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-            print(e, exc_type, fname, exc_tb.tb_lineno)
-            import logging
-            import traceback
+        with self._transient_test_parse_state():
+            try:
+                self.test_pre_parse()
+                expr = self.parse_text(line, start_rule="expr")
+                expr = self.process_ast(line, expr)
+                assert isinstance(expr, Expression)
+                result = self.render_expression(expr, def_size=def_size, destination=destination)
+            except Exception as e:
+                exc_type, exc_obj, exc_tb = sys.exc_info()
+                assert exc_tb
+                fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+                print(e, exc_type, fname, exc_tb.tb_lineno)
+                import logging
+                import traceback
 
-            logging.exception(traceback.format_exc())
-            raise
+                logging.exception(traceback.format_exc())
+                raise
         return result
 
     def parse_include(self, line, file_name=None):
         return self.parse_text(line, file_name=file_name, start_rule="insegdirlist")
+
+    def render_expression(self, expr: Expression, def_size: int=0, destination: bool=False) -> str:
+        renderer_factory = self.arg_renderer_factory
+        if renderer_factory is None:
+            from .cpp import Cpp
+            renderer_factory = Cpp
+        return renderer_factory(self).render_instruction_argument(expr, def_size=def_size, destination=destination)
+
+    def eval_expression_to_int(self, expr: Expression) -> int:
+        evaluator = self.expr_int_evaluator
+        if evaluator is not None:
+            return int(evaluator(self, expr))
+        return int(literal_eval(self.render_expression(expr)))
 
 
 
@@ -889,6 +1159,7 @@ class Parser:
     def parse_text(self, text: str, file_name: str="", start_rule: str="start") -> Tree:
         logging.debug("parsing: [%s]", text)
         try:
+            self.__lex.bind_context(self)
             assert self.__lex.parser[0]
             result = self.__lex.parser[0].parse(text, start=start_rule)
         except UnexpectedToken as ex:
@@ -973,10 +1244,9 @@ class Parser:
         s = self.structures[type]
         number = 1
         if isinstance(args, list) and len(args) > 2 and isinstance(args[1], str) and args[1] == "dup":
-            cpp = cpp_module.Cpp(self)
             expr = Token_.find_tokens(args[0],"expr")
             assert isinstance(expr, Expression)
-            number = literal_eval(cpp.render_instruction_argument(expr))
+            number = self.eval_expression_to_int(expr)
             args = args[3]
         args = Token_.remove_tokens(args, ["structinstance"])
 

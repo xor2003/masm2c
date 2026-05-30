@@ -307,6 +307,9 @@ class Cpp(Gen):
         :param _hpp: The C++ header file
         :return: The extern declaration of the function or variable.
         """
+        m = re.match(r"^char\s+([A-Za-z0-9_]+)\[1\];(?:\s*//.*)?$", _hpp.strip())
+        if m:
+            return f"extern char& {m.group(1)};\n"
         _extern = re.sub(r"^(\w+)\s+([\w\[\]]+)(\[\d+\]);", r"extern \g<1> (& \g<2>)\g<3>;", _hpp)
         _extern = re.sub(r"^(\w+)\s+([\w\[\]]+);", r"extern \g<1>& \g<2>;", _extern)
         return _extern
@@ -317,6 +320,10 @@ class Cpp(Gen):
         :param _hpp: declaration string
         :return: The reference to the same data
         """
+        m = re.match(r"^char\s+([A-Za-z0-9_]+)\[1\];(?:\s*//.*)?$", _hpp.strip())
+        if m:
+            name = m.group(1)
+            return f"char& {name} = m2c::m.{name}[0];\n"
         _reference = re.sub(r"^(\w+)\s+([\w\[\]]+)(\[\d+\]);",
                             r"\g<1> (& \g<2>)\g<3> = m2c::m.\g<2>;", _hpp)
         _reference = re.sub(r"^(\w+)\s+([\w\[\]]+);", r"\g<1>& \g<2> = m2c::m.\g<2>;", _reference)
@@ -1224,8 +1231,30 @@ struct Memory{
 
     def produce_c_data_array(self, data: op.Data) -> tuple[str, str]:
         label, data_ctype, _, r, elements, _ = data.getdata()
+        if self._context.itislst and data_ctype == "char" and elements == 1:
+            value = r[0] if r else 0
+            if isinstance(value, lark.Tree):
+                rc = "".join(self.visit(value))
+            elif isinstance(value, op.Data):
+                rc = self.produce_c_data_single_(value)[0]
+            else:
+                rc = self.convert_char(value)
+            rh = f"{data_ctype} {label}"
+            return rc, rh
         if not any(r):  # all zeros
             r = [0]
+        if elements == 1:
+            single = r[0]
+            if isinstance(single, op.Data):
+                rc = self.produce_c_data_single_(single)[0]
+            elif isinstance(single, lark.Tree):
+                rc = "".join(self.visit(single))
+            elif isinstance(single, list):
+                rc = "".join(str(i) for i in single)
+            else:
+                rc = str(single)
+            rh = f"{data_ctype} {label}"
+            return rc, rh
         rc = "{"
         for i, v in enumerate(r):
             if i != 0:
@@ -1247,6 +1276,10 @@ struct Memory{
     def produce_c_data_zero_string(self, data: op.Data) -> tuple[str, str]:
         label, data_ctype, _, r, elements, size = data.getdata()
         r = flatten(r)
+        if self._context.itislst and size == 1:
+            rc = self.convert_char(r[0] if r else 0)
+            rh = f"char {label}"
+            return rc, rh
         rc = '"' + "".join(self.convert_str(i) for i in r[:-1]) + '"'
         rc = re.sub(r"(\\x[0-9a-f][0-9a-f])([0-9a-fA-F])", r'\g<1>" "\g<2>', rc)  # fix for stupid C hex escapes: \xaef
         rh = f"char {label}[{size}]"
@@ -1255,6 +1288,10 @@ struct Memory{
     def produce_c_data_array_string(self, data: op.Data) -> tuple[str, str]:
         label, data_ctype, _, r, elements, size = data.getdata()
         r = flatten(r)
+        if self._context.itislst and size == 1:
+            rc = self.convert_char(r[0] if r else 0)
+            rh = f"char {label}"
+            return rc, rh
         rc = "{" + ",".join([self.convert_char(i) for i in r]) + "}"
         rh = f"char {label}[{size}]"
         return rc, rh
@@ -1306,16 +1343,16 @@ struct Memory{
         # Produce call table
         if itislst:
             result = """
- bool __dispatch_call(m2c::_offsets __i, struct m2c::_STATE* _state){
-    X86_REGREF
-    if ((__i>>16) == 0) {__i |= ((dd)cs) << 16;}
-    __disp=__i;
-    switch (__i) {
+  bool __dispatch_call(m2c::_offsets __i, struct m2c::_STATE* _state){
+     X86_REGREF
+     if ((__i>>16) == 0) {__i |= ((dd)cs) << 16;}
+     __disp=__i;
+     switch (__i) {
 """
         else:
             result = """
- bool __dispatch_call(m2c::_offsets __disp, struct m2c::_STATE* _state){
-    switch (__disp) {
+  bool __dispatch_call(m2c::_offsets __disp, struct m2c::_STATE* _state){
+     switch (__disp) {
 """
         entries = OrderedDict()
         for k, v in globals:
@@ -1325,6 +1362,21 @@ struct Memory{
                 labels = v.provided_labels
 
                 entries.update({label: (v.name, "__disp") for label in set(labels) if label != v.name})
+            elif isinstance(v, op.label) and v.used:
+                # Add all used labels, not just those provided by procedures
+                k = re.sub(r"[^A-Za-z0-9_]", "_", k)  # need to do it during mangling
+                if k not in entries:  # Only add if not already added
+                    # Find which procedure this label belongs to
+                    proc_name = self.label_to_proc.get(k, k)
+                    entries[k] = (proc_name, "__disp")
+
+        # Ensure labels discovered during grouping/merging are globally dispatchable.
+        # Some labels may not exist as standalone globals after merge, but are still
+        # reachable by indirect jumps/calls through register/memory targets.
+        for label_name, proc_name in self.label_to_proc.items():
+            sanitized_label = re.sub(r"[^A-Za-z0-9_]", "_", label_name)
+            if sanitized_label not in entries:
+                entries[sanitized_label] = (proc_name, "__disp")
 
         # for name in procs:
         #    if not name.startswith('_group'):  # TODO remove dirty hack. properly check for group

@@ -270,10 +270,16 @@ class Gen(TopDownVisitor):
         :param proc_list: a list of procedure names
         :return: A list of procedure names in line number order.
         """
-        line_to_proc = {
-            self._context.symbols.get_global(first_proc_name).line_number: first_proc_name for first_proc_name in
-             proc_list}
-        return [line_to_proc[line_number] for line_number in sorted(line_to_proc.keys())]
+        # Keep all procedures even when multiple entries share the same line number.
+        # Use original parse order as a stable tie-breaker to avoid set-order nondeterminism.
+        original_order = {name: idx for idx, name in enumerate(self._context.proc_list)}
+        return sorted(
+            proc_list,
+            key=lambda proc_name: (
+                self._context.symbols.get_global(proc_name).line_number,
+                original_order.get(proc_name, len(original_order)),
+            ),
+        )
 
     def print_how_procs_merged(self):
         """It prints out the names of the procedures that were merged together."""
@@ -411,6 +417,11 @@ class Gen(TopDownVisitor):
             self.body += self.proc_strategy.function_header(name, entry_point)
 
             self.proc.visit(self, skip)
+            self.body = re.sub(
+                r"(__dispatch_call,\s*)([A-Za-z_][A-Za-z0-9_]*)(\s*[+-]\s*\d+)",
+                r"\1m2c::k\2\3",
+                self.body,
+            )
 
             labels = self.leave_unique_labels(self.proc.provided_labels)
 
