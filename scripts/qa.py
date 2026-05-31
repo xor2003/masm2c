@@ -19,7 +19,7 @@ def run_step(name: str, cmd: list[str]) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Run project quality checks (ruff, mypy, vulture, radon, pytest)."
+        description="Run project quality checks (ruff, mypy, pyright, vulture, radon, pytest)."
     )
     parser.add_argument(
         "--no-pytest",
@@ -36,6 +36,7 @@ def main() -> int:
 
     run_step("Ruff", [sys.executable, "-m", "ruff", "check", "masm2c", "tests"])
     run_step("Mypy", [sys.executable, "-m", "mypy", "masm2c"])
+    run_step("Pyright", [sys.executable, "-m", "pyright", "masm2c"])
     run_step(
         "Vulture",
         [

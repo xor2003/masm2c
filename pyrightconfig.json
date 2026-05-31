@@ -1,0 +1,4 @@
+{
+  "include": ["masm2c"],
+  "typeCheckingMode": "off"
+}
