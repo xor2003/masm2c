@@ -1,4 +1,8 @@
 {
   "include": ["masm2c"],
-  "typeCheckingMode": "off"
+  "typeCheckingMode": "off",
+  "venvPath": ".",
+  "venv": "venv",
+  "pythonVersion": "3.12",
+  "reportMissingImports": "warning"
 }
