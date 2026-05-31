@@ -1321,6 +1321,11 @@ class Parser:
         return self.parse_include(filtered, file_name)
 
     def _predeclare_structure_names(self, content: str) -> None:
+        data_decl_names = {
+            "db", "dw", "dd", "df", "dq", "dt",
+            "byte", "sbyte", "word", "sword", "dword", "sdword",
+            "fword", "qword", "tbyte", "real4", "real8", "real10",
+        }
         for line in content.splitlines():
             code = line.split(";", 1)[0].strip()
             if not code:
@@ -1338,7 +1343,7 @@ class Parser:
                 code,
                 flags=re.IGNORECASE,
             )
-            if mtch:
+            if mtch and mtch.group("stype").lower() not in data_decl_names:
                 self.declare_structure_name(mtch.group("stype"))
 
     def _normalize_struct_instance_rows(self, content: str) -> str:
@@ -1737,7 +1742,25 @@ class Parser:
             with open(f"{name}.json") as infile:
                 logging.info(f" *** Loading {name}.json")
                 j = jsonpickle.decode(infile.read())
-                self.initial_procs_start = self.procs_start = set(j["Jumps"])
+                proc_starts = set(j.get("Jumps", []))
+                for src_addr, code in j.get("Code", {}).items():
+                    try:
+                        src = int(src_addr, 16)
+                    except Exception:
+                        continue
+                    _ = src
+                    edges = code.get("Edges", {})
+                    edge_kinds = code.get("EdgeKinds", {})
+                    for dst_addr, _count in edges.items():
+                        try:
+                            dst = int(dst_addr)
+                        except Exception:
+                            continue
+                        mask = int(edge_kinds.get(dst_addr, 0))
+                        # bit1 (Call) and bit0 (Jump) are useful function-entry hints
+                        if mask & ((1 << 1) | (1 << 0)):
+                            proc_starts.add(dst)
+                self.initial_procs_start = self.procs_start = proc_starts
         except FileNotFoundError:
             pass
 
