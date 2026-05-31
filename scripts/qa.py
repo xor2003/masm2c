@@ -32,6 +32,15 @@ def main() -> int:
         default=80,
         help="Vulture minimum confidence threshold (default: 80).",
     )
+    parser.add_argument(
+        "--min-radon-rank",
+        default="B",
+        choices=["A", "B", "C", "D", "E", "F"],
+        help=(
+            "Lowest Radon rank to report. "
+            "Default B reports only potential complexity problems (B-F)."
+        ),
+    )
     args = parser.parse_args()
 
     run_step("Ruff", [sys.executable, "-m", "ruff", "check", "masm2c", "tests"])
@@ -48,7 +57,10 @@ def main() -> int:
             str(args.min_vulture_confidence),
         ],
     )
-    run_step("Radon CC", [sys.executable, "-m", "radon", "cc", "-s", "-a", "masm2c"])
+    run_step(
+        "Radon CC",
+        [sys.executable, "-m", "radon", "cc", "-s", "-n", args.min_radon_rank, "masm2c"],
+    )
 
     if not args.no_pytest:
         run_step("Pytest", [sys.executable, "-m", "pytest", "-q"])
