@@ -69,6 +69,13 @@ class _PendingParseState:
         self.source_comment = ""
 
 
+@dataclass
+class _ConditionalFrame:
+    parent_active: bool
+    branch_taken: bool
+    current_active: bool
+
+
 class Vector:
     """A 2D vector class with basic vector operations."""
     
@@ -389,7 +396,16 @@ class Parser:
             
         # Register label with procedure and symbol table
         self.proc.add_label(mangled_name, label_obj)
-        self.symbols.set_global(mangled_name, label_obj)
+        existing = self.symbols.get_global(mangled_name)
+        if (
+            existing is not None
+            and self.pass_number == 1
+            and not globl
+            and isinstance(existing, op.label)
+        ):
+            self.symbols.reset_global(mangled_name, label_obj)
+        else:
+            self.symbols.set_global(mangled_name, label_obj)
         
         # Increment ID for next label
         self.__offset_id += 1
@@ -480,6 +496,9 @@ class Parser:
             if file_name.lower().endswith(".lst"):  # for .lst provided by IDA move address to comments after ;~
                 # we want exact placement so program could work
                 content = self.extract_addresses_from_lst(file_name, content)
+            content = self.apply_conditional_assembly(content)
+            self._predeclare_structure_names(content)
+            content = self._normalize_struct_instance_rows(content)
             result = self.parse_text(content, file_name=file_name)
             self.process_ast(content, result)
         finally:
@@ -535,7 +554,10 @@ class Parser:
     def evaluate_repeat_count(self, repeat_expression: Expression) -> int:
         repeat = copy(repeat_expression)
         repeat.indirection = IndirectionType.VALUE
-        return self.eval_expression_to_int(repeat)
+        try:
+            return self.eval_expression_to_int(repeat)
+        except Exception:
+            return 0
 
     def normalize_label(self, name: str | lark.Token) -> str:
         return Parser.mangle_label(name)
@@ -547,7 +569,34 @@ class Parser:
         return self.typetosize(value_in)
 
     def resolve_include_path(self, include_name: str) -> str:
-        return os.path.join(os.path.dirname(os.path.realpath(self._current_file)), include_name)
+        include_norm = include_name.strip().strip('"').strip("'").replace("\\", os.sep)
+        drive_rooted = re.match(r"^[A-Za-z]:[/\\\\]", include_norm) is not None
+        if drive_rooted:
+            include_norm = re.sub(r"^[A-Za-z]:[/\\\\]", "", include_norm, count=1)
+        current_dir = os.path.dirname(os.path.realpath(self._current_file))
+        relative_tail = include_norm.lstrip("/\\")
+
+        direct = os.path.normpath(
+            os.path.join(
+                current_dir,
+                relative_tail if include_norm.startswith(("/", "\\")) or drive_rooted else include_norm,
+            ),
+        )
+        if os.path.exists(direct):
+            return direct
+
+        if include_norm.startswith(("/", "\\")) or drive_rooted:
+            probe_dir = current_dir
+            while True:
+                candidate = os.path.normpath(os.path.join(probe_dir, relative_tail))
+                if os.path.exists(candidate):
+                    return candidate
+                parent = os.path.dirname(probe_dir)
+                if parent == probe_dir:
+                    break
+                probe_dir = parent
+
+        return direct
 
     def parse_include_directive(self, include_name: str):
         fullpath = self.resolve_include_path(include_name)
@@ -588,7 +637,7 @@ class Parser:
     def define_label(self, name: str, *, raw: str, line_number: int, globl: bool=True) -> None:
         self.action_label(name, isproc=False, raw=raw, line_number=line_number, globl=globl)
 
-    def declare_external_symbol(self, label: str, symbol_type: Token) -> None:
+    def declare_external_symbol(self, label: str, symbol_type: Token | str) -> None:
         self.add_extern(label, symbol_type)
 
     def define_equ(self, label: str, value: Expression, *, raw: str, line_number: int):
@@ -733,12 +782,53 @@ class Parser:
     def extract_addresses_from_lst(self, file_name, content):
         self.itislst = True
         segmap = self.read_segments_map(file_name)
+        # MASM listings include banner/page headers that are not source code.
+        # Keep them as comments so line numbering and later diagnostics stay stable.
+        content = re.sub(
+            r"(?m)^\s*(Microsoft \(R\) Macro Assembler[^\r\n]*)$",
+            lambda m: f"; {m.group(1)}",
+            content,
+        )
+        content = re.sub(
+            r"(?m)^([^\t;\r\n].*Page\s+\d+\s*-\s*\d+)\s*$",
+            lambda m: f"; {m.group(1)}",
+            content,
+        )
+        # Remove MASM listing location/object columns.
+        content = re.sub(r"(?m)^\s*=\s*[+-]?[0-9A-F]{1,8}\s+", "", content)
+        content = re.sub(r"(?m)^\s*=\s*[A-Za-z_@$?.][A-Za-z0-9_@$?.]*\s+", "", content)
+        content = re.sub(
+            r"(?m)^\s*[0-9A-F]{4,8}(?:\s+(?!(?:DB|DW|DD|DQ|DT)\b)[0-9A-F]{2,8}/?)*(?:\s+[A-Za-z])?\s+",
+            "",
+            content,
+        )
+        content = re.sub(r"(?m)^\s*[0-9A-F]{2}:\s+(?:[0-9A-F]{2}\s+)+", "", content)
+        content = re.sub(r"(?m)^\s*----(?:\s+[0-9A-F]{1,8})?(?:\s+[A-Za-z])?\s+", "", content)
+        content = re.sub(r"(?m)^\s*[0-9A-F]{1,8}\s+[A-Za-z]\s+(?=[A-Za-z_@$?.]|@@)", "", content)
+        content = re.sub(r"(?m)^\s*[\[\]]\s*$", "", content)
+        content = re.sub(r"(?m)^\s*\[\s*(?=[A-Za-z_@$?.]|DB\b|DW\b|DD\b|DQ\b|DT\b)", "", content)
+        content = re.sub(r"(?m)^\s*[0-9A-F]{2}(?:\s+[0-9A-F]{2})*\s*$", "", content)
+        content = re.sub(r"(?m)^\s*[0-9A-F]{2}\s+(?=[a-z][A-Za-z0-9_@$?.]*\b)", "", content)
+        content = re.sub(r"(?m)^\s*[0-9A-F]{2}\s+(?=[A-Za-z_@$?][A-Za-z0-9_@$?.]*:)", "", content)
+        content = re.sub(
+            r"(?m)^\s*\d+\s+(?=(?:@@|[A-Za-z_@$?.][A-Za-z0-9_@$?.]*:?))",
+            "",
+            content,
+        )
+        content = re.sub(r"(?m)^C\s+", "", content)
+        content = re.sub(r"(?m)^\s*[A-Z]\s+(?=[A-Za-z_@$?.;])", "", content)
+        content = re.sub(r"(?m)^C\s+(?=;)", "", content)
+        if end_match := re.search(r"(?mi)^\s*END\b[^\r\n]*", content):
+            end_pos = end_match.end()
+            content = content[:end_pos] + "\n"
         # Remove structs addresses
-        content = re.sub(r"^[0-9A-F]{8} ?", lambda m: "", content, flags=re.MULTILINE)
+        content = re.sub(r"(?m)^[0-9A-F]{8}(?=\s)\s?", "", content)
         # Move current CS:IP to the end of the string
         content = re.sub(r"^(?P<segment>[_0-9A-Za-z]+):(?P<offset>[0-9A-Fa-f]{4,8})(?P<remain>.*)",
                          lambda m: f'{m.group("remain")} ;~ {segmap.get(m.group("segment"))}:{m.group("offset")}',
                          content, flags=re.MULTILINE)
+        content = re.sub(r"(?m)^C\s+(?=[A-Za-z_@$?.;])", "", content)
+        content = re.sub(r"<([A-Za-z0-9_@$?.]+)>", r"<\1 >", content)
         return content
 
     def read_segments_map(self, file_name):
@@ -748,6 +838,9 @@ class Parser:
         :return: A dictionary of segments and their values.
         """
         map_file = re.sub(r"\.lst$", ".map", file_name, flags=re.I)
+        if not os.path.exists(map_file):
+            logging.warning("Map file %s was not found; keeping lst offsets without segment remap", map_file)
+            return OrderedDict()
         content = self._read_whole_file(map_file).splitlines()
         DOSBOX_START_SEG = int(self.args.get("loadsegment"), 0)
         strgenerator = iter(content)
@@ -848,7 +941,10 @@ class Parser:
         o.element_size = size
         if isinstance(value, Expression) and value.indirection == IndirectionType.POINTER:
             o.original_type = value.original_type
-        self.symbols.set_global(label, o)
+        if self.itislst and self.pass_number == 1 and self.symbols.get_global(label) is not None:
+            self.symbols.reset_global(label, o)
+        else:
+            self.symbols.set_global(label, o)
         self.equs.add(label)
         proc = self.symbols.get_and_mark_global("mainproc")
         proc.stmts.append(o)
@@ -1219,7 +1315,151 @@ class Parser:
         self.__c_extra_dummy_jump_label = 0
 
     def parse_file_inside(self, text, file_name=None):
-        return self.parse_include(text, file_name)
+        filtered = self.apply_conditional_assembly(text)
+        self._predeclare_structure_names(filtered)
+        filtered = self._normalize_struct_instance_rows(filtered)
+        return self.parse_include(filtered, file_name)
+
+    def _predeclare_structure_names(self, content: str) -> None:
+        for line in content.splitlines():
+            code = line.split(";", 1)[0].strip()
+            if not code:
+                continue
+            if hdr := re.match(
+                r"^(?P<name>[A-Za-z_@$?.][A-Za-z0-9_@$?.]*)\s+(?:STRUC|STRUCT|UNION)\b",
+                code,
+                flags=re.IGNORECASE,
+            ):
+                self.declare_structure_name(hdr.group("name"))
+            mtch = re.match(
+                r"^(?P<label>[A-Za-z_@$?.][A-Za-z0-9_@$?.]*)\s+"
+                r"(?P<stype>[A-Za-z_@$?.][A-Za-z0-9_@$?.]*)\s+"
+                r"[A-Za-z0-9_@$?.]+\s+DUP\s*\(",
+                code,
+                flags=re.IGNORECASE,
+            )
+            if mtch:
+                self.declare_structure_name(mtch.group("stype"))
+
+    def _normalize_struct_instance_rows(self, content: str) -> str:
+        rows: list[str] = []
+        for line_no, line in enumerate(content.splitlines(keepends=True), start=1):
+            code = line.split(";", 1)[0]
+            mtch = re.match(r"^(?P<ws>\s*)(?P<name>[A-Za-z_@$?.][A-Za-z0-9_@$?.]*)\s+(?P<rest><.+)$", code)
+            if mtch and self.match_known_structure_name(mtch.group("name")):
+                prefix = f'{mtch.group("ws")}__m2c_structrow_{line_no} '
+                line = prefix + line[len(mtch.group("ws")):]
+            rows.append(line)
+        return "".join(rows)
+
+    def apply_conditional_assembly(self, content: str) -> str:
+        lines = content.splitlines(keepends=True)
+        output: list[str] = []
+        stack: list[_ConditionalFrame] = []
+
+        for line in lines:
+            directive = self._parse_conditional_directive(line)
+            if directive is None:
+                if all(frame.current_active for frame in stack):
+                    output.append(line)
+                continue
+
+            keyword, payload = directive
+            upper = keyword.upper()
+            parent_active = all(frame.current_active for frame in stack)
+
+            if upper in {"IF", "IFE", "IFB", "IFNB", "IFDEF", "IFNDEF", "IFDIF", "IFDIFI", "IFIDN", "IFIDNI", "IF1", "IF2"}:
+                cond = self._evaluate_conditional(upper, payload)
+                active = parent_active and cond
+                stack.append(_ConditionalFrame(parent_active=parent_active, branch_taken=active, current_active=active))
+                continue
+
+            if upper.startswith("ELSEIF"):
+                if not stack:
+                    continue
+                frame = stack[-1]
+                if not frame.parent_active or frame.branch_taken:
+                    frame.current_active = False
+                else:
+                    base = upper[4:]
+                    cond = self._evaluate_conditional(base, payload)
+                    frame.current_active = cond
+                    frame.branch_taken = cond
+                continue
+
+            if upper == "ELSE":
+                if not stack:
+                    continue
+                frame = stack[-1]
+                frame.current_active = frame.parent_active and not frame.branch_taken
+                frame.branch_taken = True
+                continue
+
+            if upper == "ENDIF":
+                if stack:
+                    stack.pop()
+                continue
+
+        return "".join(output)
+
+    def _parse_conditional_directive(self, line: str) -> tuple[str, str] | None:
+        code = line.split(";", 1)[0].strip()
+        if not code:
+            return None
+        match = re.match(r"^(IF(?:E|B|NB|DEF|NDEF|DIF|DIFI|IDN|IDNI|1|2)?|ELSEIF(?:E|B|NB|DEF|NDEF|DIF|DIFI|IDN|IDNI|1|2)?|ELSE|ENDIF)\b(.*)$", code, re.IGNORECASE)
+        if not match:
+            return None
+        return match.group(1), match.group(2).strip()
+
+    def _evaluate_conditional(self, keyword: str, payload: str) -> bool:
+        key = keyword.upper()
+        if key == "IF1":
+            return self.pass_number == 1
+        if key == "IF2":
+            return self.pass_number >= 2
+        if key in {"IF", "IFE"}:
+            expr_val = self._evaluate_conditional_expression(payload)
+            return (expr_val != 0) if key == "IF" else (expr_val == 0)
+        if key in {"IFDEF", "IFNDEF"}:
+            symbol = payload.split()[0] if payload else ""
+            defined = bool(symbol) and self.symbols.get_global(symbol.lower()) is not None
+            return defined if key == "IFDEF" else not defined
+        if key in {"IFB", "IFNB"}:
+            text = self._extract_text_item(payload)
+            is_blank = text.strip() == ""
+            return is_blank if key == "IFB" else not is_blank
+        if key in {"IFIDN", "IFIDNI", "IFDIF", "IFDIFI"}:
+            left, right = self._extract_text_pair(payload)
+            if key in {"IFIDNI", "IFDIFI"}:
+                same = left.lower() == right.lower()
+            else:
+                same = left == right
+            return same if key in {"IFIDN", "IFIDNI"} else not same
+        return False
+
+    def _extract_text_item(self, payload: str) -> str:
+        match = re.search(r"<(.*)>", payload)
+        if match:
+            return match.group(1).strip()
+        return payload.strip()
+
+    def _extract_text_pair(self, payload: str) -> tuple[str, str]:
+        m = re.match(r"\s*<(.*?)>\s*,\s*<(.*?)>\s*$", payload)
+        if m:
+            return m.group(1).strip(), m.group(2).strip()
+        parts = [p.strip() for p in payload.split(",", 1)]
+        if len(parts) == 2:
+            return parts[0], parts[1]
+        return payload.strip(), ""
+
+    def _evaluate_conditional_expression(self, payload: str) -> int:
+        expr = payload.strip()
+        if not expr:
+            return 0
+        try:
+            return int(expr, 0)
+        except ValueError:
+            return 1 if self.symbols.get_global(expr.lower()) is not None else 0
 
     def parse_text(self, text: str, file_name: str="", start_rule: str="start") -> Tree:
         logging.debug("parsing: [%s]", text)
@@ -1340,7 +1580,7 @@ class Parser:
             self.__cur_seg_offset += number * s.getsize()
             self.__binary_data_size += number * s.getsize()
 
-    def add_extern(self, label: str, type: Token) -> None:
+    def add_extern(self, label: str, type: Token | str) -> None:
         strtype = self.mangle_label(type)
         if isinstance(type, Token_):
             strtype = str(type.children)
@@ -1475,7 +1715,11 @@ class Parser:
             logging.debug("endstruct %s", name)
             assert self.current_struct
             self.structures[name] = self.current_struct
-            self.symbols.set_global(name, self.current_struct)
+            existing = self.symbols.get_global(name)
+            if self.itislst and self.pass_number == 1 and isinstance(existing, op.Struct):
+                self.symbols.reset_global(name, self.current_struct)
+            else:
+                self.symbols.set_global(name, self.current_struct)
             self.current_struct = None
         else:
             self.action_endp()

@@ -147,12 +147,23 @@ class Asm2IR(CommonCollector):
         return expr
 
     def externdef(self, nodes: list[lark.Tree | lark.Token]) -> list[lark.Tree | lark.Token]:
-        label, type = nodes
-        assert isinstance(type, lark.Tree)
-        type = type.children[0].children[0]
+        label, symbol_type = nodes
+        resolved_type: str | lark.Token
+        if isinstance(symbol_type, lark.Tree):
+            node = symbol_type
+            while isinstance(node, lark.Tree) and node.children:
+                child = node.children[0]
+                if isinstance(child, lark.Tree):
+                    node = child
+                    continue
+                resolved_type = str(child).lower()
+                break
+            else:
+                resolved_type = "word"
+        else:
+            resolved_type = str(symbol_type).lower()
         logging.debug("externdef %s", nodes)
-        assert isinstance(type, lark.Token)
-        self.context.declare_external_symbol(str(label), type)
+        self.context.declare_external_symbol(str(label), resolved_type)
         return nodes
 
     @v_args(meta=True)
@@ -174,8 +185,15 @@ class Asm2IR(CommonCollector):
     @v_args(meta=True)
     def labeldef(self, meta, nodes):
         logging.debug("labeldef %s ~~", nodes)
-        name, colon = str(nodes[0]), nodes[1]
-        return self.context.define_label(name, raw=get_raw_line(self.input_str, meta),
+        raw = get_raw_line(self.input_str, meta)
+        if len(nodes) >= 2:
+            name, colon = str(nodes[0]), nodes[1]
+        else:
+            mtch = re.match(r"^\s*([A-Za-z_@$?][A-Za-z0-9_@$?]*)\s*(::|:)", raw)
+            if not mtch:
+                raise ValueError(f"cannot recover label name from line: {raw!r}")
+            name, colon = mtch.group(1), mtch.group(2)
+        return self.context.define_label(name, raw=raw,
                                          line_number=get_line_number(meta),
                                          globl=(colon == "::"))
 
@@ -286,18 +304,33 @@ class Asm2IR(CommonCollector):
                 return result
         return None
 
-    def macrodirhead(self, nodes, name, parms):
+    def macrodirhead(self, nodes: list[lark.Tree | lark.Token]):
         # macro definition header
-        param_names = []
-        if parms:
-            param_names = [i.lower() for i in Token.find_tokens(parms, "LABEL")]
-        self.context.begin_named_macro(name.children.lower(), param_names)
-        logging.debug("macroname added ~~%s~~", name.children)
+        name_token = nodes[0]
+        param_names: list[str] = []
+        if len(nodes) > 2:
+            found_params = Token.find_tokens(nodes[2:], "LABEL")
+            if found_params:
+                param_names = [str(i).lower() for i in found_params]
+        macro_name = str(name_token).lower()
+        self.context.begin_named_macro(macro_name, param_names)
+        logging.debug("macroname added ~~%s~~", macro_name)
         return nodes
 
-    def repeatbegin(self, nodes, value):
+    def repeatbegin(self, nodes: list[lark.Tree | lark.Token]):
         # start of repeat macro
-        self.context.begin_repeat_macro(value)  # TODO
+        repeat_value = 0
+        if len(nodes) > 1:
+            repeat_node = nodes[1]
+            if isinstance(repeat_node, Expression):
+                repeat_value = self.context.evaluate_repeat_count(repeat_node)
+            elif isinstance(repeat_node, lark.Tree):
+                integer_tokens = Token.find_tokens(repeat_node.children, "INTEGER")
+                if integer_tokens:
+                    repeat_value = int(str(integer_tokens[0]), 0)
+            elif isinstance(repeat_node, lark.Token):
+                repeat_value = int(str(repeat_node), 0)
+        self.context.begin_repeat_macro(repeat_value)
         logging.debug("repeatbegin")
         return nodes
 
@@ -326,7 +359,10 @@ class Asm2IR(CommonCollector):
         return None
 
     def structdirhdr(self, nodes: list[lark.Token]) -> list[lark.Token]:
-        name, type = nodes
+        if len(nodes) < 2:
+            return nodes
+        name = nodes[0]
+        type = nodes[1]
         # structure definition header
         self.context.begin_structure_definition(str(name), str(type))
         logging.debug("structname added ~~%s~~", name)

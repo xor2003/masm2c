@@ -4,7 +4,7 @@
 U_DOT: "."
 _COMMA: ","
 CHARLIST.1: /[^\r\n\t; ]+/x
-TEXT.1: /[^\r\n]+/x
+TEXT.1: /[^>\r\n]+/x
 STRING: /((?<!')'((?!').+?(?<!'))?'(?!'))|((?<!")"((?!").+?(?<!"))?"(?!"))/
 LABEL: /[A-Za-z@_$?][A-Za-z@_$?0-9]*/
 //MONKEY: /@@|@B|@F/
@@ -23,7 +23,7 @@ WS: /[\t \b\v\f\x1a]+/x
 !comment: /;[^\r\n]*/x
 KEYWORD: /\w+/
 arbitrarytext: /[^\r\n]+/x
-!mnemonic: "AAA"i|"AAD"i|"AAM"i|"AAS"i|"ADC"i|"ADD"i|"AND"i|"CALL"i|"CBW"i|"CLC"i|"CLD"i|"CLI"i|"CMC"i|"CMP"i|"CMPS"i|"CMPSB"i|"CMPSW"i|"CMPXCHG8B"i|"CWD"i|"DAA"i|"DAS"i|"DEC"i|"DIV"i|"ESC"i|"HLT"i|"IDIV"i|"IMUL"i|"IN"i|"INC"i|"INT"i|"INTO"i|"IRET"i|"JA"i|"JAE"i|"JB"i|"JBE"i|"JC"i|"JCXZ"i|"JE"i|"JG"i|"JGE"i|"JL"i|"JLE"i|"JMP"i|"JNA"i|"JNAE"i|"JNB"i|"JNBE"i|"JNC"i|"JNE"i|"JNG"i|"JNGE"i|"JNL"i|"JNLE"i|"JNO"i|"JNP"i|"JNS"i|"JNZ"i|"JO"i|"JP"i|"JPE"i|"JPO"i|"JS"i|"JZ"i|"LAHF"i|"LDS"i|"LEA"i|"LES"i|"LODS"i|"LODSB"i|"LODSW"i|"LOOP"i|"LOOPE"i|"LOOPEW"i|"LOOPNE"i|"LOOPNEW"i|"LOOPNZ"i|"LOOPNZW"i|"LOOPW"i|"LOOPZ"i|"LOOPZW"i|"MOV"i|"MOVS"i|"MOVSB"i|"MOVSW"i|"MUL"i|"NEG"i|"NOP"i|"NOT"i|"OR"i|"OUT"i|"POP"i|"POPF"i|"PUSH"i|"PUSHF"i|"RCL"i|"RCR"i|"RET"i|"RETF"i|"RETN"i|"ROL"i|"ROR"i|"SAHF"i|"SAL"i|"SAR"i|"SBB"i|"SCAS"i|"SCASB"i|"SCASW"i|"SHL"i|"SHR"i|"STC"i|"STD"i|"STI"i|"STOS"i|"STOSB"i|"STOSW"i|"SUB"i|"TEST"i|"WAIT"i|"XCHG"i|"XLAT"i|"XLATB"i|"XOR"i|"BOUND"i|"ENTER"i|"INS"i|"INSB"i|"INSW"i|"LEAVE"i|"OUTS"i|"OUTSB"i|"OUTSW"i|"POPA"i|"PUSHA"i|"PUSHW"i|"BSF"i|"BSR"i|"BT"i|"BTC"i|"BTR"i|"BTS"i|"CDQ"i|"CMPSD"i|"CWDE"i|"INSD"i|"IRETD"i|"IRETDF"i|"IRETF"i|"JECXZ"i|"LFS"i|"LGS"i|"LODSD"i|"LOOPD"i|"LOOPED"i|"LOOPNED"i|"LOOPNZD"i|"LOOPZD"i|"LSS"i|"MOVSD"i|"MOVSX"i|"MOVZX"i|"OUTSD"i|"POPAD"i|"POPFD"i|"PUSHAD"i|"PUSHD"i|"PUSHFD"i|"SCASD"i|"SETA"i|"SETAE"i|"SETB"i|"SETBE"i|"SETC"i|"SETE"i|"SETG"i|"SETGE"i|"SETL"i|"SETLE"i|"SETNA"i|"SETNAE"i|"SETNB"i|"SETNBE"i|"SETNC"i|"SETNE"i|"SETNG"i|"SETNGE"i|"SETNL"i|"SETNLE"i|"SETNO"i|"SETNP"i|"SETNS"i|"SETNZ"i|"SETO"i|"SETP"i|"SETPE"i|"SETPO"i|"SETS"i|"SETZ"i|"SHLD"i|"SHRD"i|"STOSD"i|"BSWAP"i|"CMPXCHG"i|"XADD"i
+!mnemonic: "AAA"i|"AAD"i|"AAM"i|"AAS"i|"ADC"i|"ADD"i|"AND"i|"CALL"i|"CBW"i|"CLC"i|"CLD"i|"CLI"i|"CMC"i|"CMP"i|"CMPS"i|"CMPSB"i|"CMPSW"i|"CMPXCHG8B"i|"CWD"i|"DAA"i|"DAS"i|"DEC"i|"DIV"i|"ESC"i|"HLT"i|"IDIV"i|"IMUL"i|"IN"i|"INC"i|"INT"i|"INTO"i|"IRET"i|"JA"i|"JAE"i|"JB"i|"JBE"i|"JC"i|"JCXZ"i|"JE"i|"JG"i|"JGE"i|"JL"i|"JLE"i|"JMP"i|"JNA"i|"JNAE"i|"JNB"i|"JNBE"i|"JNC"i|"JNE"i|"JNG"i|"JNGE"i|"JNL"i|"JNLE"i|"JNO"i|"JNP"i|"JNS"i|"JNZ"i|"JO"i|"JP"i|"JPE"i|"JPO"i|"JS"i|"JZ"i|"LAHF"i|"LDS"i|"LEA"i|"LES"i|"LODS"i|"LODSB"i|"LODSW"i|"LOOP"i|"LOOPE"i|"LOOPEW"i|"LOOPNE"i|"LOOPNEW"i|"LOOPNZ"i|"LOOPNZW"i|"LOOPW"i|"LOOPZ"i|"LOOPZW"i|"MOV"i|"MOVS"i|"MOVSB"i|"MOVSW"i|"MUL"i|"NEG"i|"NOP"i|"NOT"i|"OR"i|"OUT"i|"POP"i|"POPF"i|"PUSH"i|"PUSHF"i|"RCL"i|"RCR"i|"RET"i|"RETF"i|"RETN"i|"ROL"i|"ROR"i|"SAHF"i|"SAL"i|"SAR"i|"SBB"i|"SCAS"i|"SCASB"i|"SCASW"i|"SHL"i|"SHR"i|"STC"i|"STD"i|"STI"i|"STOS"i|"STOSB"i|"STOSW"i|"SUB"i|"TEST"i|"WAIT"i|"XCHG"i|"XLAT"i|"XLATB"i|"XOR"i|"BOUND"i|"ENTER"i|"INS"i|"INSB"i|"INSW"i|"LEAVE"i|"OUTS"i|"OUTSB"i|"OUTSW"i|"POPA"i|"PUSHA"i|"PUSHW"i|"BSF"i|"BSR"i|"BT"i|"BTC"i|"BTR"i|"BTS"i|"CDQ"i|"CMPSD"i|"CWDE"i|"INSD"i|"IRETD"i|"IRETDF"i|"IRETF"i|"JECXZ"i|"LFS"i|"LGS"i|"LODSD"i|"LOOPD"i|"LOOPED"i|"LOOPNED"i|"LOOPNZD"i|"LOOPZD"i|"LSS"i|"MOVSD"i|"MOVSX"i|"MOVZX"i|"OUTSD"i|"POPAD"i|"POPFD"i|"PUSHAD"i|"PUSHD"i|"PUSHFD"i|"SCASD"i|"SETA"i|"SETAE"i|"SETB"i|"SETBE"i|"SETC"i|"SETE"i|"SETG"i|"SETGE"i|"SETL"i|"SETLE"i|"SETNA"i|"SETNAE"i|"SETNB"i|"SETNBE"i|"SETNC"i|"SETNE"i|"SETNG"i|"SETNGE"i|"SETNL"i|"SETNLE"i|"SETNO"i|"SETNP"i|"SETNS"i|"SETNZ"i|"SETO"i|"SETP"i|"SETPE"i|"SETPO"i|"SETS"i|"SETZ"i|"SHLD"i|"SHRD"i|"STOSD"i|"BSWAP"i|"CMPXCHG"i|"XADD"i|LABEL
 //| F2XM1| FABS| FADD| FADDP| FBLD| FBSTP| FCHS| FCLEX| FCOM| FCOMP| FCOMPP| FDECSTP| FDISI| FDIV| FDIVP| FDIVR| FDIVRP
 //| FENI| FFREE| FIADD| FICOM| FICOMP| FIDIV| FIDIVR| FILD| FIMUL| FINCSTP| FINIT| FIST| FISTP| FISUB| FISUBR| FLD| FLD1
 //| FLDCW| FLDENV| FLDENVW| FLDL2E| FLDL2T| FLDLG2| FLDLN2| FLDPI| FLDZ| FMUL| FMULP| FNCLEX| FNDISI| FNENI| FNINIT
@@ -103,7 +103,9 @@ crefoption: ".CREF"i | ".XCREF"i idlist? | ".NOCREF"i idlist?
 %declare STRUCTNAME
 %declare RECORDNAME
 %declare MACRONAME
-structinstdir: LABEL? STRUCTNAME structinstlist _linereminder
+structinstdir: STRUCTNAME structinstlist _linereminder
+            | LABEL STRUCTNAME structinstlist _linereminder
+            | LABEL LABEL structinstlist _linereminder
 recordinstdir: LABEL? RECORDNAME recordinstlist _linereminder
 //dataitem: datadecl exprlist| LABEL structinstlist| LABEL recordinstlist
 decnumber: _integer_
@@ -247,7 +249,7 @@ instruction: _asminstruction _linereminder
 invokearg: _anyregister "::" register| "ADDR"i expr | expr
 invokedir: "INVOKE"i expr commainvokelist? _linereminder
 invokelist: invokearg | invokearg _commaoeol invokelist
-!labeldef: LABEL ":" | LABEL "::"
+!labeldef: (LABEL|mnemonic) ":" | (LABEL|mnemonic) "::"
 labeldir: LABEL "LABEL"i qualifiedtype _linereminder
 _linereminder: _ENDOFLINE | comment _ENDOFLINE
 listdir: listoption _linereminder
@@ -264,11 +266,12 @@ macrodir: macrodirhead _linereminder macrobody "ENDM"i _linereminder
 macrofor: fordir forparm  _COMMA "<" macroarglist ">" _linereminder macrobody "ENDM"i _linereminder
 macroforc: forcdir LABEL  _COMMA textliteral _linereminder macrobody "ENDM"i _linereminder
 macronamelist: LABEL | LABEL _COMMA macronamelist
-macroparm: LABEL dotdotparmtype?
+macroparamid: LABEL | "ADDR"i
+macroparm: macroparamid dotdotparmtype?
 macroparmlist: macroparm | macroparm _commaoeol macroparmlist
 macrorepeat: repeatbegin _linereminder macrobody "ENDM"i _linereminder
 repeatbegin: repeatdir expr
-macrostmt: instruction | labeldef | _directive| exitmdir| ":" LABEL _linereminder| "GOTO"i LABEL _linereminder
+macrostmt: instruction | labeldef | datadir | _directive| exitmdir| ":" LABEL _linereminder| "GOTO"i LABEL _linereminder
 macrostmtlist: macrostmt+
 macrowhile: "WHILE"i expr _linereminder macrobody "ENDM"i _linereminder
 

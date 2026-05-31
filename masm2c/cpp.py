@@ -210,7 +210,11 @@ class Cpp(Gen):
             return f"seg_offset({original_name.lower()})"
 
         if source_var_size == 0:
-            raise Exception("Invalid variable '%s' size %u" % (name, source_var_size))
+            # EQU-like aliases can be represented as zero-sized vars in symbol tables.
+            # Keep them as scalar symbols instead of treating them as addressable objects.
+            self._expr_state.indirection = IndirectionType.VALUE
+            self._expr_state.is_variable = False
+            return name
 
         self._expr_state.is_variable = True
         if self._middle_size == 0:  # TODO check
@@ -1322,6 +1326,13 @@ struct Memory{
         c_rendered = self.render_instruction_argument(c)
         return f"{cmd.upper()}({a}, {b}, {c_rendered})"
 
+    def _instruction4(self, cmd: str, a0: Expression, a1: Expression, a2: Expression, a3: Expression) -> str:
+        a0_rendered = self.render_instruction_argument(a0)
+        a1_rendered = self.render_instruction_argument(a1)
+        a2_rendered = self.render_instruction_argument(a2)
+        a3_rendered = self.render_instruction_argument(a3)
+        return f"{cmd.upper()}({a0_rendered}, {a1_rendered}, {a2_rendered}, {a3_rendered})"
+
     def return_empty(self, _):
         return []
 
@@ -1451,6 +1462,8 @@ struct Memory{
     def convert_char(self, c: Union[int, str]) -> str:
         if isinstance(c, int) and c not in [10, 13]:
             return str(c)
+        if isinstance(c, str) and len(c) != 1:
+            return c
         return f"'{self.convert_str(c)}'"
 
     def convert_str(self, c: Union[int, str]) -> str:
