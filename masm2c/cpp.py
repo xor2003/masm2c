@@ -451,19 +451,24 @@ class Cpp(Gen):
         else:
             state.needs_dereference = True
             state.is_pointer = True
+            if not state.is_just_label and not self.lea and self._expr_state.indirection == IndirectionType.VALUE:
+                self._expr_state.indirection = IndirectionType.POINTER
             if self._expr_state.indirection == IndirectionType.POINTER:
                 value = ".".join(label)
                 if not state.is_just_label:  # if not just single label
                     if g.elements == 1:  # array generates pointer himself
                         value = f"&{value}"
 
-                    if g.getsize() == 1:  # it is already a byte
+                    if source_var_size == 1:  # it is already a byte
                         value = f"({value})"
                     else:
                         value = f"((db*){value})"
                         state.size_changed = True
+                        self._middle_size = 1
             elif self._expr_state.indirection == IndirectionType.OFFSET:
                 value = f'offset({g.segment},{".".join(label)})'
+            else:
+                value = ".".join(label)
 
             if self._expr_state.work_segment == "cs":
                 self.body += "\tcs=seg_offset(" + g.segment + ");\n"
@@ -473,7 +478,7 @@ class Cpp(Gen):
         state = self._expr_state
         logging.debug("%s", g)
         if not g.implemented:
-            raise InjectCode(g)
+            g.accept(self)
 
         if state.is_just_label:
             value = ".".join(label)

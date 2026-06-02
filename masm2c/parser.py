@@ -999,7 +999,13 @@ class Parser:
                     real_offset=real_offset, real_seg=real_seg,
                     segment=self.__segment.name)
         self.proc_list.append(name)
-        self.symbols.set_global(name, proc)
+        existing = self.symbols.get_global(name)
+        if self.itislst and self.pass_number == 1 and isinstance(existing, op.label):
+            # IDA listings commonly emit a public/global label immediately before
+            # the real PROC header for the same symbol.
+            self.symbols.reset_global(name, proc)
+        else:
+            self.symbols.set_global(name, proc)
         self.__proc_stack.append(proc)
         return proc
 
@@ -1219,20 +1225,22 @@ class Parser:
     ) -> None:
         if not label or isstruct:
             return
-        self.symbols.set_global(
-            label,
-            op.var(
-                binary_width,
-                offset,
-                name=label,
-                segment=self.__segment_name,
-                elements=elements,
-                original_type=data_type,
-                filename=self._current_file,
-                raw=raw,
-                line_number=line_number,
-            ),
+        symbol = op.var(
+            binary_width,
+            offset,
+            name=label,
+            segment=self.__segment_name,
+            elements=elements,
+            original_type=data_type,
+            filename=self._current_file,
+            raw=raw,
+            line_number=line_number,
         )
+        existing = self.symbols.get_global(label)
+        if self.itislst and self.pass_number == 1 and isinstance(existing, (op._assignment, op._equ)):
+            self.symbols.reset_global(label, symbol)
+            return
+        self.symbols.set_global(label, symbol)
 
     def _append_data_record(
             self,
@@ -1328,7 +1336,16 @@ class Parser:
         }
         for line in content.splitlines():
             code = line.split(";", 1)[0].strip()
+            comment = line.split(";", 1)[1].strip() if ";" in line else ""
             if not code:
+                if comment:
+                    lst_struct = re.match(
+                        r"^struct\s+(?P<name>[A-Za-z_@$?.][A-Za-z0-9_@$?.]*)\b",
+                        comment,
+                        flags=re.IGNORECASE,
+                    )
+                    if lst_struct:
+                        self.declare_structure_name(lst_struct.group("name"))
                 continue
             if hdr := re.match(
                 r"^(?P<name>[A-Za-z_@$?.][A-Za-z0-9_@$?.]*)\s+(?:STRUC|STRUCT|UNION)\b",
