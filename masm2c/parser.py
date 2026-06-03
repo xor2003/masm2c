@@ -226,6 +226,11 @@ class Parser:
         self.itislst = False
         self.initial_procs_start: set[int] = set()
         self.procs_start: set[int] = set()
+        self.runtime_code_meta: dict[int, dict[str, Any]] = {}
+        self.runtime_abi_meta: dict[int, dict[str, Any]] = {}
+        self.runtime_meta: dict[str, Any] = {}
+        self.runtime_function_sampling_meta: dict[int, dict[str, Any]] = {}
+        self.runtime_meta_anchor: int | None = None
 
         if not args:
             args = {"mergeprocs": "separate"}
@@ -1669,6 +1674,7 @@ class Parser:
     def _update_runtime_label_state(self, o: baseop, raw: str, line_number: int) -> None:
         assert self.proc
         _, o.real_offset, o.real_seg = self.get_lst_offsets(raw)
+        self._append_runtime_metadata_comment(o)
         if (
             not self.need_label
             and o.real_seg
@@ -1682,6 +1688,139 @@ class Parser:
             logging.warning(f"Flow terminated and it was no label yet line={line_number}")
             if o.real_seg:
                 logging.warning(f"at {o.real_seg:x}:{o.real_offset:x}")
+
+    def _append_runtime_metadata_comment(self, o: baseop) -> None:
+        """Attach compact runtime metadata/ABI hints to raw instruction comment."""
+        if o.real_seg is None:
+            return
+        linear = o.real_seg * 0x10 + o.real_offset
+        parts: list[str] = []
+
+        code = self.runtime_code_meta.get(linear)
+        if code:
+            exec_count = code.get("ExecCount")
+            if code.get("Self"):
+                parts.append("rt-selfmod")
+            accdat = code.get("Accdat", [])
+            if isinstance(accdat, list) and accdat:
+                parts.append(f"rt-accdat={len(accdat)}")
+            size = code.get("Size")
+            if size is not None:
+                parts.append(f"rt-size={size}")
+            modsize = code.get("Modsize")
+            if modsize not in (None, 0):
+                parts.append(f"rt-mod={modsize}")
+            selfvar = code.get("SelfVar", [])
+            if selfvar:
+                parts.append(f"rt-selfvar={len(selfvar)}")
+            edges = code.get("Edges", {})
+            if isinstance(edges, dict) and edges:
+                edge_kinds = code.get("EdgeKinds", {})
+                parts.append(f"rt-edgecnt={len(edges)}")
+                edge_samples = []
+                for dst, count in sorted(edges.items(), key=lambda item: int(item[1]), reverse=True)[:6]:
+                    try:
+                        dst_i = self._parse_rt_addr(dst)
+                        if dst_i is None:
+                            continue
+                        count_i = int(count)
+                        kinds = edge_kinds.get(dst)
+                        if kinds is None and isinstance(edge_kinds, dict):
+                            for edge_key, edge_value in edge_kinds.items():
+                                edge_key_int = self._parse_rt_addr(edge_key)
+                                if edge_key_int == dst_i:
+                                    kinds = edge_value
+                                    break
+                        kinds = self._edge_kind_text(kinds)
+                        edge_samples.append(f"{hex(dst_i)}#{count_i}:{kinds}")
+                    except Exception:
+                        continue
+                if edge_samples:
+                    parts.append("rt-edges=" + ",".join(edge_samples))
+
+        abi = self.runtime_abi_meta.get(linear)
+        if abi and isinstance(abi, dict):
+            if abi.get("CallConv"):
+                parts.append(f"abi-cc={abi.get('CallConv')}")
+            if abi.get("InRegs"):
+                parts.append(f"abi-in={abi.get('InRegs')}")
+            if abi.get("OutRegs"):
+                parts.append(f"abi-out={abi.get('OutRegs')}")
+            if abi.get("ArgStack"):
+                parts.append(f"abi-args={abi.get('ArgStack')}")
+            if abi.get("RetRegs"):
+                parts.append(f"abi-ret={abi.get('RetRegs')}")
+            if abi.get("Confidence") is not None:
+                parts.append(f"abi-conf={abi.get('Confidence')}")
+            if abi.get("Calls") is not None:
+                parts.append(f"abi-calls={abi.get('Calls')}")
+            if abi.get("StackCleanup") not in (None, 0):
+                parts.append(f"abi-stackcleanup={abi.get('StackCleanup')}")
+            if abi.get("Clobbers"):
+                parts.append(f"abi-clob={abi.get('Clobbers')}")
+            if abi.get("Preserved"):
+                parts.append(f"abi-pres={abi.get('Preserved')}")
+            if abi.get("ArgStack") is not None:
+                parts.append(f"abi-argstack={abi.get('ArgStack')}")
+
+        sampling = self.runtime_function_sampling_meta.get(linear)
+        if sampling and isinstance(sampling, dict):
+            calls = sampling.get("Calls")
+            sampled = sampling.get("SampledCalls")
+            if calls is not None:
+                parts.append(f"rt-func-calls={calls}")
+            if sampled is not None:
+                parts.append(f"rt-func-sampled={sampled}")
+            if calls not in (None, 0) and sampled is not None:
+                try:
+                    parts.append(f"rt-func-ratio={sampled / calls:.4f}")
+                except Exception:
+                    pass
+
+        if self.runtime_meta_anchor is not None and linear == self.runtime_meta_anchor:
+            load_seg = self.runtime_meta.get("DosboxLoadSeg")
+            img_size = self.runtime_meta.get("ImageSizeBytes")
+            if load_seg is not None:
+                parts.append(f"rt-loadseg={load_seg}")
+            if img_size is not None:
+                parts.append(f"rt-imagesize={img_size}")
+
+        if parts:
+            extra = " ;~ " + " ".join(str(p) for p in parts)
+            if extra not in o.raw_line:
+                o.raw_line = (o.raw_line or "") + extra
+
+    @staticmethod
+    def _edge_kind_text(value: Any) -> str:
+        try:
+            mask = int(value or 0)
+        except Exception:
+            return "FLOW"
+        tags: list[str] = []
+        if mask & 1:
+            tags.append("JMP")
+        if mask & 2:
+            tags.append("CALL")
+        if mask & 4:
+            tags.append("RET")
+        if mask & 8:
+            tags.append("JCC")
+        return "/".join(tags) if tags else "FLOW"
+
+    @staticmethod
+    def _parse_rt_addr(value: Any) -> int | None:
+        if isinstance(value, int):
+            return value
+        if isinstance(value, str):
+            try:
+                return int(value, 16)
+            except Exception:
+                pass
+            try:
+                return int(value)
+            except Exception:
+                return None
+        return None
 
     def _append_helping_label_if_needed(self, o: baseop, raw: str) -> None:
         assert self.proc
@@ -1754,30 +1893,80 @@ class Parser:
             self.add_call_to_entrypoint()
 
     def parse_rt_info(self, name):
-
         try:
             with open(f"{name}.json") as infile:
                 logging.info(f" *** Loading {name}.json")
                 j = jsonpickle.decode(infile.read())
-                proc_starts = set(j.get("Jumps", []))
-                for src_addr, code in j.get("Code", {}).items():
+                self.runtime_code_meta = {}
+                self.runtime_abi_meta = {}
+                self.runtime_function_sampling_meta = {}
+                self.runtime_meta = j.get("Meta", {}) if isinstance(j, dict) else {}
+                self.runtime_meta_anchor = None
+
+                # Keep segment mapping aligned with runtime metadata when the
+                # caller did not provide a fixed --loadsegment override.
+                if not self.args.get("loadsegment"):
                     try:
-                        src = int(src_addr, 16)
+                        rt_seg = self.runtime_meta.get("DosboxLoadSeg")
+                        if rt_seg is not None:
+                            self.args["loadsegment"] = hex(int(rt_seg))
                     except Exception:
+                        pass
+
+                proc_starts = set()
+                for jump in j.get("Jumps", []):
+                    jump_addr = self._parse_rt_addr(jump)
+                    if jump_addr is not None:
+                        proc_starts.add(jump_addr)
+                for src_addr, code in j.get("Code", {}).items():
+                    src = self._parse_rt_addr(src_addr)
+                    if src is None:
                         continue
-                    _ = src
+                    if isinstance(code, dict):
+                        self.runtime_code_meta[src] = code
                     edges = code.get("Edges", {})
                     edge_kinds = code.get("EdgeKinds", {})
                     for dst_addr, _count in edges.items():
-                        try:
-                            dst = int(dst_addr)
-                        except Exception:
+                        dst = self._parse_rt_addr(dst_addr)
+                        if dst is None:
                             continue
                         mask = int(edge_kinds.get(dst_addr, 0))
                         # bit1 (Call) and bit0 (Jump) are useful function-entry hints
                         if mask & ((1 << 1) | (1 << 0)):
                             proc_starts.add(dst)
+
+                for sample_addr, sample_state in j.get("FunctionSampling", {}).items():
+                    addr = self._parse_rt_addr(sample_addr)
+                    if addr is None:
+                        continue
+                    if not isinstance(sample_state, dict):
+                        continue
+                    self.runtime_function_sampling_meta[addr] = sample_state
+                    proc_starts.add(addr)
+
+                for abi_addr, abi in j.get("Abi", {}).items():
+                    addr = self._parse_rt_addr(abi_addr)
+                    if addr is None:
+                        continue
+                    if isinstance(abi, dict):
+                        self.runtime_abi_meta[addr] = abi
+                        # ABI entries should also be considered function starts.
+                        proc_starts.add(addr)
+                        if addr in self.runtime_function_sampling_meta:
+                            self.runtime_function_sampling_meta[addr].setdefault("FromAbi", True)
+                        else:
+                            self.runtime_function_sampling_meta[addr] = {"FromAbi": True}
+
                 self.initial_procs_start = self.procs_start = proc_starts
+                all_starts = set(proc_starts)
+                if not all_starts:
+                    all_starts = set(j.get("Jumps", []))
+                all_starts |= set(self.runtime_code_meta.keys())
+                if all_starts:
+                    try:
+                        self.runtime_meta_anchor = min(all_starts)
+                    except Exception:
+                        self.runtime_meta_anchor = None
         except FileNotFoundError:
             pass
 
