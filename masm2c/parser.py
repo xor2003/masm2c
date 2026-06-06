@@ -242,6 +242,8 @@ class Parser:
         self.args = args
         self.arg_renderer_factory = None
         self.expr_int_evaluator = None
+        self._include_loader = IncludeLoader(self)
+        self._expr_remover = ExprRemover()
 
         self.next_pass(Parser.c_dummy_label[0])
 
@@ -1539,6 +1541,8 @@ class Parser:
         return result
 
     def _select_parser(self, start_rule: str):
+        if start_rule == "start" and self.__lex.start_parser:
+            return self.__lex.start_parser[0]
         parser_lookup = {
             "expr": self.__lex.expr_parser,
             "instruction": self.__lex.instruction_parser,
@@ -1552,8 +1556,9 @@ class Parser:
         return self.__lex.parser[0]
 
     def process_ast(self, text: str, result: Tree) -> baseop | Expression | lark.Tree:
-        result = IncludeLoader(self).transform(result)
-        result = ExprRemover().transform(result)
+        self._include_loader.context = self
+        result = self._include_loader.transform(result)
+        result = self._expr_remover.transform(result)
         asm2ir = Asm2IR(self, text)
         """
         for e in self.equs:

@@ -1,4 +1,5 @@
-.PHONY: clean clean-test clean-pyc clean-build docs help lint test check ci-qa ci-pytest ci-asmtests ci-qemu-tests ci-integration
+.PHONY: clean clean-test clean-pyc clean-build docs help lint test check ci-qa ci-pytest ci-asmtests ci-qemu-tests ci-integration bench-parser
+.PHONY: bench-parser-postlex bench-parser-cython bench-parser-compare
 .DEFAULT_GOAL := help
 define BROWSER_PYSCRIPT
 import os, webbrowser, sys
@@ -99,6 +100,40 @@ ci-qemu-tests: ## run qemu-based integration tests
 	cd qemu_tests && ./_test.sh
 
 ci-integration: ci-pytest ci-asmtests ci-qemu-tests ## run integration checks used by CI
+
+# parser benchmarks
+bench-parser: ## benchmark parser-only path on asmTests fixtures
+	@python scripts/profile_parser.py asmTests \
+		--engine $${MASM2C_PARSER_ENGINE:-postlex} \
+		--target-seconds $${PARSER_BENCH_TARGET_SECONDS:-60} \
+		$(if $(PARSER_BENCH_RUNS),--runs $(PARSER_BENCH_RUNS),) \
+		--max-runs $${PARSER_BENCH_MAX_RUNS:-500} \
+		--warmup $${PARSER_BENCH_WARMUP:-1} \
+		$(if $(PARSER_BENCH_PROFILE),--profile $(PARSER_BENCH_PROFILE),) \
+		$(if $(PARSER_BENCH_QUIET),--quiet,)
+
+bench-parser-postlex: ## benchmark parser-only path with postlex engine
+	@$(MAKE) bench-parser MASM2C_PARSER_ENGINE=postlex PARSER_BENCH_QUIET=$(PARSER_BENCH_QUIET)
+
+bench-parser-cython: ## benchmark parser-only path with cython engine
+	@$(MAKE) bench-parser MASM2C_PARSER_ENGINE=cython PARSER_BENCH_QUIET=$(PARSER_BENCH_QUIET)
+
+bench-parser-compare: ## compare postlex and cython parser-only timings
+	@echo "duration=$${PARSER_BENCH_TARGET_SECONDS:-60}s"; \
+	postlex_tmp=$$(mktemp); cython_tmp=$$(mktemp); \
+	PARSER_BENCH_QUIET=$${PARSER_BENCH_QUIET} MASM2C_PARSER_ENGINE=postlex \
+		PARSER_BENCH_TARGET_SECONDS=$${PARSER_BENCH_TARGET_SECONDS:-60} \
+		PARSER_BENCH_MAX_RUNS=$${PARSER_BENCH_MAX_RUNS:-500} \
+		python scripts/profile_parser.py asmTests --engine postlex --target-seconds $${PARSER_BENCH_TARGET_SECONDS:-60} \
+		--max-runs $${PARSER_BENCH_MAX_RUNS:-500} --warmup $${PARSER_BENCH_WARMUP:-1} --quiet > $$postlex_tmp; \
+	PARSER_BENCH_QUIET=$${PARSER_BENCH_QUIET} MASM2C_PARSER_ENGINE=cython \
+		PARSER_BENCH_TARGET_SECONDS=$${PARSER_BENCH_TARGET_SECONDS:-60} \
+		PARSER_BENCH_MAX_RUNS=$${PARSER_BENCH_MAX_RUNS:-500} \
+		python scripts/profile_parser.py asmTests --engine cython --target-seconds $${PARSER_BENCH_TARGET_SECONDS:-60} \
+		--max-runs $${PARSER_BENCH_MAX_RUNS:-500} --warmup $${PARSER_BENCH_WARMUP:-1} --quiet > $$cython_tmp; \
+	echo "postlex: $$(grep '^runs=' $$postlex_tmp)"; \
+	echo "cython : $$(grep '^runs=' $$cython_tmp)"; \
+	rm -f $$postlex_tmp $$cython_tmp
 
 TESTS = test_insn_tests
 
