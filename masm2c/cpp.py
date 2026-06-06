@@ -57,6 +57,27 @@ def flatten(s: list) -> list:
     return s[:1] + flatten(s[1:])
 
 
+RT_DATA_OFFSET = 1 << 0
+RT_CODE_OFFSET = 1 << 1
+RT_STRING = 1 << 2
+RT_SEGMENT = 1 << 3
+RT_FAR_POINTER = 1 << 4
+
+
+def _parse_runtime_int(value: Any) -> int | None:
+    try:
+        if isinstance(value, str):
+            try:
+                return int(value, 0)
+            except Exception:
+                if re.search(r"[a-fA-F]", value):
+                    return int(value, 16)
+                return int(value)
+        return int(value)
+    except Exception:
+        return None
+
+
 class _ExprRenderState:
     __slots__ = (
         "needs_dereference",
@@ -166,6 +187,8 @@ class Cpp(Gen):
         #self.__used_data_offsets = set()
         self.__methods: list[str] = []
         self.__pushpop_count = 0
+        self._rt_symbol_exact_by_linear: dict[int, tuple[str, Any]] | None = None
+        self._rt_var_ranges_by_linear: list[tuple[int, int, str, Any]] | None = None
         self._expr_state.is_member = False
 
         self.far = False
@@ -1360,6 +1383,143 @@ struct Memory{
         self._cmdlabel += f"#define {dst} {self.render_instruction_argument(src_render)}\n"
         return ""
 
+    def _runtime_linear_for_data(self, data: Data) -> int | None:
+        linear = getattr(data, "runtime_linear_addr", None)
+        if isinstance(linear, int):
+            return linear
+        real_seg, real_offset = data.getrealaddr()
+        if real_seg is not None and real_offset is not None:
+            return real_seg * 0x10 + real_offset
+        return None
+
+    @staticmethod
+    def _runtime_data_element_size(data: Data, elements: int) -> int:
+        if elements > 0:
+            return max(1, data.getsize() // elements)
+        return data.getsize()
+
+    def _runtime_symbol_linear(self, symbol: Any) -> int | None:
+        if isinstance(symbol, op.var):
+            if symbol.external:
+                return None
+            segment = self._context.segments.get(symbol.segment)
+            if segment is None:
+                return None
+            return segment.offset + symbol.offset
+        if isinstance(symbol, (op.label, Proc)):
+            real_seg = getattr(symbol, "real_seg", None)
+            real_offset = getattr(symbol, "real_offset", None)
+            if real_seg is not None and real_offset is not None:
+                return real_seg * 0x10 + real_offset
+        return None
+
+    @staticmethod
+    def _runtime_var_size(symbol: Any) -> int:
+        if not isinstance(symbol, op.var):
+            return 0
+        element_size = int(getattr(symbol, "size", 0) or 0)
+        elements = int(getattr(symbol, "elements", 1) or 1)
+        if element_size <= 0:
+            return 0
+        return element_size * max(1, elements)
+
+    def _runtime_symbol_tables(self) -> tuple[dict[int, tuple[str, Any]], list[tuple[int, int, str, Any]]]:
+        if self._rt_symbol_exact_by_linear is not None and self._rt_var_ranges_by_linear is not None:
+            return self._rt_symbol_exact_by_linear, self._rt_var_ranges_by_linear
+
+        exact: dict[int, tuple[str, Any]] = {}
+        ranges: list[tuple[int, int, str, Any]] = []
+        for name, symbol in self._context.symbols.get_globals().items():
+            linear = self._runtime_symbol_linear(symbol)
+            if linear is None:
+                continue
+            if isinstance(symbol, op.var):
+                exact[linear] = (name, symbol)
+                total_size = self._runtime_var_size(symbol)
+                if total_size > 0:
+                    ranges.append((linear, linear + total_size, name, symbol))
+            else:
+                exact.setdefault(linear, (name, symbol))
+
+        ranges.sort(key=lambda item: (item[1] - item[0], item[0]))
+        self._rt_symbol_exact_by_linear = exact
+        self._rt_var_ranges_by_linear = ranges
+        return exact, ranges
+
+    def _runtime_symbol_for_linear(self, linear: int) -> tuple[str, Any, int] | None:
+        exact, ranges = self._runtime_symbol_tables()
+        if linear in exact:
+            name, symbol = exact[linear]
+            return name, symbol, 0
+        for start, end, name, symbol in ranges:
+            if start < linear < end:
+                return name, symbol, linear - start
+        return None
+
+    @staticmethod
+    def _runtime_add_delta(expr: str, delta: int) -> str:
+        if delta == 0:
+            return expr
+        return f"({expr} + 0x{delta:x})"
+
+    def _runtime_symbol_reference(self, target_linear: int, value_size: int, flags: int) -> str | None:
+        match = self._runtime_symbol_for_linear(target_linear)
+        if match is None:
+            return None
+        _name, symbol, delta = match
+        if isinstance(symbol, op.var):
+            if flags & RT_FAR_POINTER or value_size >= 4:
+                expr = f"far_offset({symbol.segment},{symbol.name})"
+            elif value_size == 2:
+                expr = f"offset({symbol.segment},{symbol.name})"
+            else:
+                return None
+            return self._runtime_add_delta(expr, delta)
+        if isinstance(symbol, (op.label, Proc)):
+            expr = f"m2c::k{symbol.name.lower()}"
+            if value_size <= 2:
+                expr = f"({expr} & 0xffff)"
+            return self._runtime_add_delta(expr, delta)
+        return None
+
+    @staticmethod
+    def _runtime_value_matches(observed_value: int | None, source_value: int, value_size: int) -> bool:
+        if observed_value is None:
+            return True
+        if value_size <= 0 or value_size >= 8:
+            return observed_value == source_value
+        mask = (1 << (value_size * 8)) - 1
+        return (observed_value & mask) == (source_value & mask)
+
+    def _runtime_pointer_expression_for_value(
+            self,
+            source_linear: int | None,
+            source_value: Any,
+            element_size: int,
+    ) -> str | None:
+        if source_linear is None or not isinstance(source_value, int):
+            return None
+        entries = getattr(self._context, "runtime_pointer_meta", {}).get(source_linear, [])
+        if not entries:
+            return None
+        for entry in sorted(entries, key=lambda item: _parse_runtime_int(item.get("Count")) or 0, reverse=True):
+            if not isinstance(entry, dict):
+                continue
+            value_size = _parse_runtime_int(entry.get("Size")) or element_size
+            if value_size != element_size:
+                continue
+            observed_value = _parse_runtime_int(entry.get("Value"))
+            if not self._runtime_value_matches(observed_value, source_value, value_size):
+                continue
+            target = _parse_runtime_int(entry.get("TargetAddr"))
+            if target is None:
+                continue
+            flags = _parse_runtime_int(entry.get("Flags")) or 0
+            expr = self._runtime_symbol_reference(target, value_size, flags)
+            if expr is not None:
+                return expr
+        return None
+
     def produce_c_data_single_(self, data: Data) -> tuple[str, str, int]:
         """It takes an assembler data and returns a C++ object.
 
@@ -1383,12 +1543,19 @@ struct Memory{
 
     def produce_c_data_number(self, data: op.Data) -> tuple[str, str]:
         label, data_ctype, _, r, elements, size = data.getdata()
-        rc = "".join(str(i) if isinstance(i, int) else "".join(str(x) for x in self.visit(i)) for i in r)
+        source_linear = self._runtime_linear_for_data(data)
+        element_size = self._runtime_data_element_size(data, elements)
+        if len(r) == 1 and isinstance(r[0], int):
+            rc = self._runtime_pointer_expression_for_value(source_linear, r[0], element_size) or str(r[0])
+        else:
+            rc = "".join(str(i) if isinstance(i, int) else "".join(str(x) for x in self.visit(i)) for i in r)
         rh = f"{data_ctype} {label}"
         return rc, rh
 
     def produce_c_data_array(self, data: op.Data) -> tuple[str, str]:
         label, data_ctype, _, r, elements, _ = data.getdata()
+        source_linear = self._runtime_linear_for_data(data)
+        element_size = self._runtime_data_element_size(data, elements)
         if self._context.itislst and data_ctype == "char" and elements == 1:
             value = r[0] if r else 0
             if isinstance(value, lark.Tree):
@@ -1396,7 +1563,7 @@ struct Memory{
             elif isinstance(value, op.Data):
                 rc = self.produce_c_data_single_(value)[0]
             else:
-                rc = self.convert_char(value)
+                rc = self._runtime_pointer_expression_for_value(source_linear, value, element_size) or self.convert_char(value)
             rh = f"{data_ctype} {label}"
             return rc, rh
         if not any(r):  # all zeros
@@ -1410,7 +1577,7 @@ struct Memory{
             elif isinstance(single, list):
                 rc = "".join(str(i) for i in single)
             else:
-                rc = str(single)
+                rc = self._runtime_pointer_expression_for_value(source_linear, single, element_size) or str(single)
             rh = f"{data_ctype} {label}"
             return rc, rh
         rc = "{"
@@ -1426,7 +1593,8 @@ struct Memory{
                 values = [str(i) for i in v]
                 rc += "".join(values)
             else:
-                rc += str(v)
+                element_linear = None if source_linear is None else source_linear + i * element_size
+                rc += self._runtime_pointer_expression_for_value(element_linear, v, element_size) or str(v)
         rc += "}"
         rh = f"{data_ctype} {label}[{elements}]"
         return rc, rh

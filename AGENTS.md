@@ -97,3 +97,5 @@ Additional rule for include/recursion code:
 - The repository is intentionally mixed: production code + reverse-engineering artifacts + historical binaries.
 - Limit scope to relevant package code and targeted tests; do not mass-reformat generated fixture outputs.
 - Keep behavior compatible with MASM 6 style syntax and IDA `.lst` workflows described in `README.md`.
+
+@RTK.md

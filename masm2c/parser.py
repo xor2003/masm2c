@@ -230,6 +230,9 @@ class Parser:
         self.runtime_abi_meta: dict[int, dict[str, Any]] = {}
         self.runtime_meta: dict[str, Any] = {}
         self.runtime_function_sampling_meta: dict[int, dict[str, Any]] = {}
+        self.runtime_data_meta: dict[int, dict[str, Any]] = {}
+        self.runtime_pointer_meta: dict[int, list[dict[str, Any]]] = {}
+        self.runtime_access_site_meta: dict[int, list[dict[str, Any]]] = {}
         self.runtime_meta_anchor: int | None = None
 
         if not args:
@@ -843,11 +846,17 @@ class Parser:
         :return: A dictionary of segments and their values.
         """
         map_file = re.sub(r"\.lst$", ".map", file_name, flags=re.I)
+        loadsegment = self.args.get("loadsegment", "0x1a2")
+        if isinstance(loadsegment, int):
+            DOSBOX_START_SEG = loadsegment
+        elif loadsegment is None:
+            DOSBOX_START_SEG = 0x1A2
+        else:
+            DOSBOX_START_SEG = int(loadsegment, 0)
         if not os.path.exists(map_file):
             logging.warning("Map file %s was not found; keeping lst offsets without segment remap", map_file)
             return OrderedDict()
         content = self._read_whole_file(map_file).splitlines()
-        DOSBOX_START_SEG = int(self.args.get("loadsegment"), 0)
         strgenerator = iter(content)
         segs = OrderedDict()
         for line in strgenerator:
@@ -1261,11 +1270,27 @@ class Parser:
             self.current_struct.append(data)
             return
         _, data.real_offset, data.real_seg = self.get_lst_offsets(raw)
+        self._attach_runtime_data_metadata(data)
         self.__segment.append(data)
         if dummy_label and data_internal_type == op.DataType.NUMBER and binary_width == 1:
             self.merge_data_bytes()
         else:
             self.data_merge_candidates = 0
+
+    def _runtime_linear_for_data(self, data: Data) -> int | None:
+        if data.real_seg is not None and data.real_offset is not None:
+            return data.real_seg * 0x10 + data.real_offset
+        if self.__segment is None:
+            return None
+        return self.__segment.offset + data.offset
+
+    def _attach_runtime_data_metadata(self, data: Data) -> None:
+        linear = self._runtime_linear_for_data(data)
+        if linear is None:
+            return
+        data.runtime_linear_addr = linear
+        data.runtime_data_meta = self.runtime_data_meta.get(linear)
+        data.runtime_pointer_meta = self.runtime_pointer_meta.get(linear, [])
 
     def merge_data_bytes(self) -> None:
         self.data_merge_candidates += 1
@@ -1813,10 +1838,12 @@ class Parser:
             return value
         if isinstance(value, str):
             try:
-                return int(value, 16)
+                return int(value, 0)
             except Exception:
                 pass
             try:
+                if re.search(r"[a-fA-F]", value):
+                    return int(value, 16)
                 return int(value)
             except Exception:
                 return None
@@ -1900,6 +1927,9 @@ class Parser:
                 self.runtime_code_meta = {}
                 self.runtime_abi_meta = {}
                 self.runtime_function_sampling_meta = {}
+                self.runtime_data_meta = {}
+                self.runtime_pointer_meta = {}
+                self.runtime_access_site_meta = {}
                 self.runtime_meta = j.get("Meta", {}) if isinstance(j, dict) else {}
                 self.runtime_meta_anchor = None
 
@@ -1934,6 +1964,28 @@ class Parser:
                         # bit1 (Call) and bit0 (Jump) are useful function-entry hints
                         if mask & ((1 << 1) | (1 << 0)):
                             proc_starts.add(dst)
+
+                for data_addr, data_meta in j.get("Data", {}).items():
+                    addr = self._parse_rt_addr(data_addr)
+                    if addr is None or not isinstance(data_meta, dict):
+                        continue
+                    self.runtime_data_meta[addr] = data_meta
+
+                for pointer_meta in j.get("PointerEvidence", {}).values():
+                    if not isinstance(pointer_meta, dict):
+                        continue
+                    source = self._parse_rt_addr(pointer_meta.get("SourceAddr"))
+                    if source is None:
+                        continue
+                    self.runtime_pointer_meta.setdefault(source, []).append(pointer_meta)
+
+                for access_meta in j.get("AccessSites", {}).values():
+                    if not isinstance(access_meta, dict):
+                        continue
+                    csip = self._parse_rt_addr(access_meta.get("Csip"))
+                    if csip is None:
+                        continue
+                    self.runtime_access_site_meta.setdefault(csip, []).append(access_meta)
 
                 for sample_addr, sample_state in j.get("FunctionSampling", {}).items():
                     addr = self._parse_rt_addr(sample_addr)

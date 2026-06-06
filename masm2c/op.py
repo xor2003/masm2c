@@ -1067,11 +1067,21 @@ class _instruction2(baseop):
 class _instruction3(baseop):
     def __init__(self, args: list[Expression]) -> None:
         super().__init__()
-        
+
         self.children = args
 
     def accept(self, visitor: "Cpp") -> str:
         return visitor._instruction3(self.cmd, *self.children)
+
+
+class _instruction4(baseop):
+    def __init__(self, args: list[Expression]) -> None:
+        super().__init__()
+
+        self.children = args
+
+    def accept(self, visitor: "Cpp") -> str:
+        return visitor._instruction4(self.cmd, *self.children)
 
 
 class _equ(baseop):
