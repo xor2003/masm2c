@@ -105,7 +105,6 @@ crefoption: ".CREF"i | ".XCREF"i idlist? | ".NOCREF"i idlist?
 %declare MACRONAME
 structinstdir: STRUCTNAME structinstlist _linereminder
             | LABEL STRUCTNAME structinstlist _linereminder
-            | LABEL LABEL structinstlist _linereminder
 recordinstdir: LABEL? RECORDNAME recordinstlist _linereminder
 //dataitem: datadecl exprlist| LABEL structinstlist| LABEL recordinstlist
 decnumber: _integer_

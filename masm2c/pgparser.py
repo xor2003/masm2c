@@ -33,6 +33,14 @@ from .Token import Token
 macronamere = re.compile(r"([A-Za-z_@$?][A-Za-z0-9_@$?]*)")
 commentid = re.compile(r"COMMENT\s+([^ ]).*?\1[^\r\n]*", flags=re.DOTALL)
 
+
+def _token_text(token: Any) -> str:
+    return str(token)
+
+
+def _token_lower(token: Any) -> str:
+    return str(token).lower()
+
 class MatchTag:
     __slots__ = ("context", "last_type", "last")
     always_accept = "LABEL", "structinstdir", "STRUCTNAME"
@@ -44,23 +52,30 @@ class MatchTag:
 
     def process(self, stream: Iterator[lark.Token]) -> Iterator[lark.Token]:
         for t in stream:
-            if self.last_type == "LABEL" and t.type == "LABEL" and t.value.lower() in {"struc","struct","union"}:  # HACK workaround
-                t.type = "STRUCTHDR"
-            if t.type == "LABEL" and t.value.lower() in ["ends"]:  # HACK workaround
-                print(self.last_type, self.last)
-                t.type = "endsdir"
+            yield self._process_token(t)
 
-            if self.last_type == "LABEL" and t.type == "STRUCTHDR":
-                assert self.last
-                self.context.declare_structure_name(self.last.lower())
+    def __call__(self, token: lark.Token) -> lark.Token:
+        return self._process_token(token)
 
-            # if t.type == "STRUCTHDR":
-            if self.context.has_any_structures() and self.last_type == "LABEL" \
-                    and t.type == "LABEL" and self.context.match_known_structure_name(str(t.value)):
-                t.type = "STRUCTNAME"
-            self.last_type = t.type
-            self.last = t.value
-            yield t
+    def _process_token(self, token: lark.Token) -> lark.Token:
+        token_text = _token_lower(token.value)
+        if self.last_type == "LABEL" and token.type == "LABEL" and token_text in {"struc", "struct", "union"}:  # HACK workaround
+            token.type = "STRUCTHDR"
+        if token.type == "LABEL" and token_text == "ends":  # HACK workaround
+            token.type = "endsdir"
+
+        if self.last_type == "LABEL" and token.type == "STRUCTHDR":
+            assert self.context
+            self.context.declare_structure_name(self.last)
+
+        # if token.type == "STRUCTHDR":
+        if self.context.has_any_structures() and self.last_type == "LABEL" \
+                and token.type == "LABEL" and self.context.match_known_structure_name(_token_text(token.value)):
+            token.type = "STRUCTNAME"
+
+        self.last_type = token.type
+        self.last = _token_text(token.value)
+        return token
 
 def get_line_number(meta: lark.tree.Meta) -> int:
     """It returns the line number of the current position in the input string.
@@ -238,8 +253,10 @@ class Asm2IR(CommonCollector):
         return nodes[1:]
 
     def distance(self, children: list[lark.Token]) -> str:
-        self.expression.mods.add(children[0].lower())
-        return str(children[0]).lower()
+        token = children[0]
+        token_value = _token_lower(token)
+        self.expression.mods.add(token_value)
+        return token_value
 
     @v_args(meta=True)
     def ptrdir(self, meta: lark.tree.Meta, children: list[str | list[lark.lexer.Token] | lark.lexer.Token | list[lark.Tree] | lark.Tree]) -> list[str | list[lark.lexer.Token] | lark.lexer.Token | list[lark.Tree] | lark.Tree]:
@@ -247,7 +264,7 @@ class Asm2IR(CommonCollector):
             self.expression.indirection = IndirectionType.POINTER
         try:
             assert isinstance(children[0], (str, lark.lexer.Token))
-            type = children[0].lower()  # TODO handle jmp short near abc
+            type = _token_lower(children[0])  # TODO handle jmp short near abc
         except Exception:
             logging.exception("Error %s:%s", get_line_number(meta), get_raw_line(self.input_str, meta))
             sys.exit(11)
@@ -264,9 +281,9 @@ class Asm2IR(CommonCollector):
         self.expression.indirection = IndirectionType.POINTER
         self.expression.segment_overriden = True
         assert isinstance(children[0], (str, lark.Token))
-        self.expression.ptr_size = self.context.sizeof_type(children[0])
+        self.expression.ptr_size = self.context.sizeof_type(_token_text(children[0]))
         self.expression.mods.add("size_changed")
-        self.expression.original_type = children[0].lower()
+        self.expression.original_type = _token_lower(children[0])
         return children[3:]
 
     def datadecl(self, children: list[lark.Token]) -> str:
@@ -370,17 +387,22 @@ class Asm2IR(CommonCollector):
 
     @v_args(meta=True)
     def structinstdir(self, meta:     lark.tree.Meta, nodes: list[lark.Tree | lark.lexer.Token]) -> _DiscardType:
-        label, type, values = nodes
-        logging.debug("structinstdir %s %s %s", label, type, values)
+        logging.debug("structinstdir %s", nodes)
+        label = None
+        if len(nodes) == 2:
+            struct_type, values = nodes
+        elif len(nodes) == 3:
+            label, struct_type, values = nodes
+        else:
+            raise ValueError(f"Unexpected structinstdir node count: {len(nodes)}")
         assert isinstance(values, lark.Tree)
         args = values.children[0]
         if args is None:
             args = []
-        assert isinstance(label, lark.Token)
-        name = str(label) if label else ""
-        assert isinstance(type, lark.Token)
+        name = str(label) if isinstance(label, lark.lexer.Token) else ""
+        assert isinstance(struct_type, lark.Token)
         assert isinstance(args, list)
-        self.context.define_struct_instance(name, str(type), args, raw=get_raw(self.input_str, meta))
+        self.context.define_struct_instance(name, _token_text(struct_type), args, raw=get_raw(self.input_str, meta))
         return Discard
 
     def insegdir(self, children: list) -> list[lark.Tree | Data | _assignment]:
@@ -397,7 +419,7 @@ class Asm2IR(CommonCollector):
         if len(children)==1: # TODO why?
             children = children[0]
         label = self.context.normalize_label(children.pop(0)) if isinstance(children[0], lark.Token) and children[0].type == "LABEL" else ""
-        type = children.pop(0).lower()
+        type = _token_lower(children.pop(0))
         if isinstance(children[0], lark.Tree):  # Data
             values = lark.Tree(data="data", children=children[0].children)
         else:
@@ -414,7 +436,7 @@ class Asm2IR(CommonCollector):
     def segdir(self, nodes: list):
         segtype = nodes[-1] if nodes else ""
         logging.debug("segdir %s ~~", nodes)
-        self.context.begin_simple_segment(segtype.lower())  # TODO
+        self.context.begin_simple_segment(_token_lower(segtype))
         self._clear_expression()
         return nodes
 
@@ -445,9 +467,9 @@ class Asm2IR(CommonCollector):
         if options:
             for o in options:
                 if isinstance(o, str):
-                    opts.add(o.lower())
+                    opts.add(_token_lower(o))
                 elif isinstance(o, lark.Tree) and o.data == 'label':
-                    segclass = o.children[0].lower()
+                    segclass = _token_lower(o.children[0])
                     if segclass[0] in ['"', "'"] and segclass[0] == segclass[-1]:
                         segclass = segclass[1:-1]
                 else:
@@ -525,12 +547,12 @@ class Asm2IR(CommonCollector):
         return self._expression
 
     def register(self, children: list[lark.Token]) ->     lark.Tree:
-        reg = children[0].lower()
+        reg = _token_lower(children[0])
         self.context.apply_register_reference(self.expression, reg)
         return Tree(data="register", children=[reg])  # Token('segmentregister', nodes[0].lower())
 
     def segmentregister(self, children: list[lark.Token]) ->     lark.Tree:
-        reg = children[0].lower()
+        reg = _token_lower(children[0])
         self.context.apply_segment_register_reference(self.expression, reg)
         return Tree(data="segmentregister", children=[reg])  # Token('segmentregister', nodes[0].lower())
 
@@ -591,13 +613,13 @@ class Asm2IR(CommonCollector):
 
     def maked(self, nodes):
         # TODO dirty workaround for now
-        if nodes[0].lower() == "size":
+        if _token_lower(nodes[0]) == "size":
             return [f"sizeof({nodes[1].children.lower()})"]
         else:
             return nodes
 
     def offsetdirtype(self, nodes):
-        directive = nodes[0].lower()
+        directive = _token_lower(nodes[0])
         logging.debug("offsetdirtype %s", nodes)
         value = str(nodes[1].children[0]) if len(nodes)==2 else 2
         self.context.apply_offset_directive(directive, value)
@@ -618,6 +640,8 @@ recognizers = {
 class LarkParser:
     parser: Final[list] = []
     _postlex: MatchTag | None = None
+    _lexer_callback: MatchTag | None = None
+    _lark_cython_plugins: Any | None = None
 
     def __init__(self, context: "Parser") -> None:
         if self.parser:
@@ -627,12 +651,36 @@ class LarkParser:
 
         file_name = f"{os.path.dirname(os.path.realpath(__file__))}/_masm61.lark"
         debug = True
-        self.__class__._postlex = MatchTag(context=context)
+        if self.__class__._lark_cython_plugins is None:
+            try:
+                from lark_cython import plugins as lark_cython_plugins  # type: ignore[import-not-found]
+            except Exception:
+                lark_cython_plugins = None
+            self.__class__._lark_cython_plugins = lark_cython_plugins
+        if self.__class__._postlex is None:
+            self.__class__._postlex = MatchTag(context=context)
+            self.__class__._lexer_callback = MatchTag(context=context)
+        else:
+            self.__class__._postlex.context = context
+            if self.__class__._lexer_callback is not None:
+                self.__class__._lexer_callback.context = context
+
+        use_postlex = self.__class__._lark_cython_plugins is None
+        lark_kwargs = {
+            "parser": "lalr",
+            "propagate_positions": True,
+            "cache": True,
+            "debug": debug,
+            "start": ["start", "insegdirlist", "instruction", "expr", "equtype", "_directivelist"],
+        }
+        if use_postlex:
+            lark_kwargs["postlex"] = self.__class__._postlex
+        else:
+            assert self.__class__._lexer_callback is not None
+            lark_kwargs["lexer_callbacks"] = {"LABEL": self.__class__._lexer_callback}
+            lark_kwargs["_plugins"] = self.__class__._lark_cython_plugins
         with open(file_name) as gr:
-            self.parser.append(Lark(gr, parser="lalr", propagate_positions=True, cache=True, debug=debug,
-                                       postlex=self.__class__._postlex, start=["start", "insegdirlist",
-                                                                                           "instruction", "expr",
-                                                                                           "equtype", "_directivelist"]))
+            self.parser.append(Lark(gr, **lark_kwargs))
             #print(sorted([term.pattern.value for term in cls._inst.or_parser.terminals if term.pattern.type == 'str']))
 
     def bind_context(self, context: "Parser") -> None:
@@ -640,6 +688,10 @@ class LarkParser:
             self.__class__._postlex.context = context
             self.__class__._postlex.last_type = ""
             self.__class__._postlex.last = ""
+        if self.__class__._lexer_callback is not None:
+            self.__class__._lexer_callback.context = context
+            self.__class__._lexer_callback.last_type = ""
+            self.__class__._lexer_callback.last = ""
 
 
 
@@ -758,7 +810,7 @@ class AsmData2IR(TopDownVisitor):  # TODO HACK Remove it. !For missing funcitons
         return list(result)
 
     def LABEL(self, tree: lark.lexer.Token) -> list[lark.Token]:
-        return [lark.Token(type="LABEL", value=tree.lower())]  # TODO HACK
+        return [lark.Token(type="LABEL", value=_token_lower(tree))]  # TODO HACK
 
     def bypass(self, tree:     lark.Tree) -> list[    lark.Tree]:
         return [tree]

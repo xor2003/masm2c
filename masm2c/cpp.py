@@ -45,7 +45,7 @@ from lark import lark
 from . import op
 from masm2c.proc import Proc
 from .enumeration import IndirectionType
-from .gen import Gen, InjectCode, mangle_asm_labels
+from .gen import Gen, mangle_asm_labels
 from .pgparser import LABEL, MEMBERDIR, REGISTER, SQEXPR, Asm2IR
 
 

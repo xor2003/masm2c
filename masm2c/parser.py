@@ -1288,9 +1288,9 @@ class Parser:
         linear = self._runtime_linear_for_data(data)
         if linear is None:
             return
-        data.runtime_linear_addr = linear
-        data.runtime_data_meta = self.runtime_data_meta.get(linear)
-        data.runtime_pointer_meta = self.runtime_pointer_meta.get(linear, [])
+        data.runtime_linear_addr = linear  # type: ignore[attr-defined]
+        data.runtime_data_meta = self.runtime_data_meta.get(linear)  # type: ignore[attr-defined]
+        data.runtime_pointer_meta = self.runtime_pointer_meta.get(linear, [])  # type: ignore[attr-defined]
 
     def merge_data_bytes(self) -> None:
         self.data_merge_candidates += 1
@@ -1718,12 +1718,13 @@ class Parser:
         """Attach compact runtime metadata/ABI hints to raw instruction comment."""
         if o.real_seg is None:
             return
+        if o.real_offset is None:
+            return
         linear = o.real_seg * 0x10 + o.real_offset
         parts: list[str] = []
 
         code = self.runtime_code_meta.get(linear)
         if code:
-            exec_count = code.get("ExecCount")
             if code.get("Self"):
                 parts.append("rt-selfmod")
             accdat = code.get("Accdat", [])
