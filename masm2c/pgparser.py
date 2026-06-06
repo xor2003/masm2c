@@ -41,6 +41,13 @@ def _token_text(token: Any) -> str:
 def _token_lower(token: Any) -> str:
     return str(token).lower()
 
+
+def _is_token(token: Any) -> bool:
+    return (
+        hasattr(token, "type")
+        and hasattr(token, "value")
+    )
+
 class MatchTag:
     __slots__ = ("context", "last_type", "last")
     always_accept = "LABEL", "structinstdir", "STRUCTNAME"
@@ -50,14 +57,14 @@ class MatchTag:
         self.last_type = ""
         self.last = ""
 
-    def process(self, stream: Iterator[lark.Token]) -> Iterator[lark.Token]:
+    def process(self, stream: Iterator[Any]) -> Iterator[Any]:
         for t in stream:
             yield self._process_token(t)
 
-    def __call__(self, token: lark.Token) -> lark.Token:
+    def __call__(self, token: Any) -> Any:
         return self._process_token(token)
 
-    def _process_token(self, token: lark.Token) -> lark.Token:
+    def _process_token(self, token: Any) -> Any:
         token_text = _token_lower(token.value)
         if self.last_type == "LABEL" and token.type == "LABEL" and token_text in {"struc", "struct", "union"}:  # HACK workaround
             token.type = "STRUCTHDR"
@@ -263,7 +270,7 @@ class Asm2IR(CommonCollector):
         if self.expression.indirection == IndirectionType.VALUE:  # set above
             self.expression.indirection = IndirectionType.POINTER
         try:
-            assert isinstance(children[0], (str, lark.lexer.Token))
+            assert isinstance(children[0], str) or _is_token(children[0])
             type = _token_lower(children[0])  # TODO handle jmp short near abc
         except Exception:
             logging.exception("Error %s:%s", get_line_number(meta), get_raw_line(self.input_str, meta))
@@ -280,7 +287,7 @@ class Asm2IR(CommonCollector):
     def ptrdir2(self, children: list[lark.Tree | lark.lexer.Token]) -> list[lark.Tree | lark.lexer.Token]:  # tasm?
         self.expression.indirection = IndirectionType.POINTER
         self.expression.segment_overriden = True
-        assert isinstance(children[0], (str, lark.Token))
+        assert isinstance(children[0], str) or _is_token(children[0])
         self.expression.ptr_size = self.context.sizeof_type(_token_text(children[0]))
         self.expression.mods.add("size_changed")
         self.expression.original_type = _token_lower(children[0])
@@ -345,7 +352,7 @@ class Asm2IR(CommonCollector):
                 integer_tokens = Token.find_tokens(repeat_node.children, "INTEGER")
                 if integer_tokens:
                     repeat_value = int(str(integer_tokens[0]), 0)
-            elif isinstance(repeat_node, lark.Token):
+            elif _is_token(repeat_node):
                 repeat_value = int(str(repeat_node), 0)
         self.context.begin_repeat_macro(repeat_value)
         logging.debug("repeatbegin")
@@ -399,10 +406,10 @@ class Asm2IR(CommonCollector):
         args = values.children[0]
         if args is None:
             args = []
-        name = str(label) if isinstance(label, lark.lexer.Token) else ""
-        assert isinstance(struct_type, lark.Token)
+        name = _token_text(label) if _is_token(label) else ""
+        struct_type_name = _token_text(struct_type)
         assert isinstance(args, list)
-        self.context.define_struct_instance(name, _token_text(struct_type), args, raw=get_raw(self.input_str, meta))
+        self.context.define_struct_instance(name, struct_type_name, args, raw=get_raw(self.input_str, meta))
         return Discard
 
     def insegdir(self, children: list) -> list[lark.Tree | Data | _assignment]:
@@ -418,12 +425,19 @@ class Asm2IR(CommonCollector):
 
         if len(children)==1: # TODO why?
             children = children[0]
-        label = self.context.normalize_label(children.pop(0)) if isinstance(children[0], lark.Token) and children[0].type == "LABEL" else ""
+        label = self.context.normalize_label(children.pop(0)) if _is_token(children[0]) and children[0].type == "LABEL" else ""
         type = _token_lower(children.pop(0))
-        if isinstance(children[0], lark.Tree):  # Data
-            values = lark.Tree(data="data", children=children[0].children)
+        values_node = None
+        for item in children:
+            if isinstance(item, lark.Tree):
+                values_node = item
+                break
+        if values_node is None:
+            values_node = lark.Tree(data="data", children=[])
+        if values_node.data != "data":
+            values = lark.Tree(data="data", children=values_node.children)
         else:
-            values = children[0][2:3][0]
+            values = values_node
 
         is_string = any("string" in expr.mods for expr in values.children if isinstance(expr, Expression) and expr.data == "expr") \
                     and not any(isinstance(expr, lark.Tree) and expr.data == "dupdir" for expr in values.children)
@@ -574,7 +588,7 @@ class Asm2IR(CommonCollector):
         logging.debug("offset /~%s~\\", nodes)
         self.expression.indirection = IndirectionType.OFFSET
         self.expression.element_size = 2
-        if isinstance(nodes[0], lark.Token):  # for labels, not for memberdir
+        if _is_token(nodes[0]):  # for labels, not for memberdir
             nodes = [nodes[0]]
         return lark.Tree("offsetdir", nodes)
 
@@ -647,12 +661,11 @@ class LarkParser:
     _lexer_callback: MatchTag | None = None
     _lark_cython_plugins: Any | None = None
     _parser_engine: str | None = None
+    start_parser: Final[list] = []
     instruction_parser: Final[list] = []
     equtype_parser: Final[list] = []
     insegdirlist_parser: Final[list] = []
     directivelist_parser: Final[list] = []
-    start_parser: Final[list] = []
-
     @classmethod
     def _configured_parser_engine(cls) -> str:
         if cls._parser_engine is None:
@@ -674,8 +687,8 @@ class LarkParser:
         logging.debug("Allocated LarkParser instance")
 
         file_name = f"{os.path.dirname(os.path.realpath(__file__))}/_masm61.lark"
-        debug = True
         parser_engine = self.__class__._configured_parser_engine()
+        debug = parser_engine != self._PARSER_ENGINE_FORCE_CYTHON
 
         if self.__class__._lark_cython_plugins is None and parser_engine != self._PARSER_ENGINE_FORCE_POSTLEX:
             try:
@@ -701,8 +714,6 @@ class LarkParser:
             "cache": True,
             "debug": debug,
         }
-        if not use_postlex:
-            lark_kwargs["cache"] = False
         if use_postlex:
             lark_kwargs["start"] = [
                 "start",
@@ -724,21 +735,11 @@ class LarkParser:
             grammar = gr.read()
         self.parser.append(Lark(grammar, **lark_kwargs))
         if not use_postlex:
-            start_postlex_kwargs = {
-                "parser": "lalr",
-                "propagate_positions": True,
-                "cache": False,
-                "debug": debug,
-                "start": "start",
-                "postlex": self.__class__._postlex,
-            }
-            self.start_parser.append(Lark(grammar, **start_postlex_kwargs))
-
             def _build_expr_parser(start: str) -> None:
                 start_kwargs = {
                     "parser": "lalr",
                     "propagate_positions": True,
-                    "cache": False,
+                    "cache": True,
                     "debug": debug,
                     "start": start,
                     "postlex": self.__class__._postlex,
@@ -758,6 +759,23 @@ class LarkParser:
 
             for helper_start in ["expr", "instruction", "equtype", "insegdirlist", "_directivelist"]:
                 _build_expr_parser(helper_start)
+
+            fallback_kwargs = {
+                "parser": "lalr",
+                "propagate_positions": True,
+                "cache": True,
+                "debug": debug,
+                "start": [
+                    "start",
+                    "insegdirlist",
+                    "instruction",
+                    "expr",
+                    "equtype",
+                    "_directivelist",
+                ],
+                "postlex": self.__class__._postlex,
+            }
+            self.start_parser.append(Lark(grammar, **fallback_kwargs))
             #print(sorted([term.pattern.value for term in cls._inst.or_parser.terminals if term.pattern.type == 'str']))
 
     def bind_context(self, context: "Parser") -> None:
@@ -803,7 +821,7 @@ class TopDownVisitor:
                     result += getattr(self, node.data)(node)
                 else:
                     result = self.visit(node.children, result)
-            elif isinstance(node, lark.Token):
+            elif _is_token(node):
                 if hasattr(self, node.type):
                     result += getattr(self, node.type)(node)
                 else:
@@ -840,7 +858,7 @@ class BottomUpVisitor:
                 result = self.visit(node.children)
                 if hasattr(self, node.data):
                     result = getattr(self, node.data)(node, result)
-            elif isinstance(node, lark.Token):
+            elif _is_token(node):
                 if hasattr(self, node.type):
                     result += getattr(self, node.type)(node)
             elif isinstance(node, list):

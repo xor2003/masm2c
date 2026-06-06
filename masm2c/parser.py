@@ -29,7 +29,7 @@ import sys
 from collections import OrderedDict
 from copy import copy, deepcopy
 from dataclasses import dataclass, field
-from typing import Any, Optional, Final
+from typing import Any, Optional, Final, cast
 from collections.abc import Callable
 
 import jsonpickle  # type: ignore[import-untyped]
@@ -49,6 +49,8 @@ from .pgparser import (
     ExprRemover,
     IncludeLoader,
     LarkParser,
+    _is_token,
+    _token_lower,
 )
 from .Macro import Macro
 from .enumeration import IndirectionType
@@ -348,13 +350,16 @@ class Parser:
         if not is_string_type:
             return op.DataType.ARRAY if elements_count > 1 else op.DataType.NUMBER
         args = data.children
+        last_value = None
+        if args and isinstance(args[-1], Tree) and args[-1].children:
+            last_value = args[-1].children[-1]
         return (
             op.DataType.ZERO_STRING
             if elements_count >= 2
                and not (isinstance(args[-1], Tree) and args[-1].data == "dupdir")
-               and isinstance(args[-1].children[-1], lark.Token)
-               and args[-1].children[-1].type == "INTEGER"
-               and args[-1].children[-1].value == "0"
+            and _is_token(last_value)
+            and cast(Token, last_value).type == "INTEGER"
+            and cast(Token, last_value).value == "0"
             else op.DataType.ARRAY_STRING
         )
 
@@ -1515,33 +1520,36 @@ class Parser:
 
     def parse_text(self, text: str, file_name: str="", start_rule: str="start") -> Tree:
         logging.debug("parsing: [%s]", text)
+        parser = self._select_parser(start_rule)
         try:
             self.__lex.bind_context(self)
-            parser = self.__lex.parser[0]
-            if self.__lex.expr_parser and start_rule == "expr":
-                parser = self.__lex.expr_parser[0]
-            if self.__lex.instruction_parser and start_rule == "instruction":
-                parser = self.__lex.instruction_parser[0]
-            if self.__lex.equtype_parser and start_rule == "equtype":
-                parser = self.__lex.equtype_parser[0]
-            if self.__lex.insegdirlist_parser and start_rule == "insegdirlist":
-                parser = self.__lex.insegdirlist_parser[0]
-            if self.__lex.directivelist_parser and start_rule == "_directivelist":
-                parser = self.__lex.directivelist_parser[0]
-            assert parser
             result = parser.parse(text, start=start_rule)
-        except TypeError as ex:
-            if start_rule != "start" or not self.__lex.start_parser:
-                raise
-            if "an integer is required" not in str(ex):
-                raise
-            logging.debug("Falling back to post-lexer start parser after cython parse failure: %s", ex)
-            parser = self.__lex.start_parser[0]
-            result = parser.parse(text, start=start_rule)
-        except UnexpectedToken as ex:
-            logging.exception("UnexpectedToken: [%s] line=%s column=%s", ex.token, ex.line, ex.column)
+        except (UnexpectedToken, KeyError, TypeError) as ex:
+            if self.__lex.start_parser and parser is not self.__lex.start_parser[0]:
+                try:
+                    logging.debug("Primary parser failed (%s), retrying with post-lex fallback for start=%s", type(ex).__name__, start_rule)
+                    return self.__lex.start_parser[0].parse(text, start=start_rule)
+                except Exception as ex_fallback:
+                    logging.debug("Post-lex fallback also failed (%s): %s", type(ex_fallback).__name__, ex_fallback)
+            if isinstance(ex, UnexpectedToken):
+                logging.exception("Parse failure: [%s] line=%s column=%s", ex.token, getattr(ex, "line", "?"), getattr(ex, "column", "?"))
+            else:
+                logging.exception("Parse failure: %s", ex)
             sys.exit(9)
         return result
+
+    def _select_parser(self, start_rule: str):
+        parser_lookup = {
+            "expr": self.__lex.expr_parser,
+            "instruction": self.__lex.instruction_parser,
+            "equtype": self.__lex.equtype_parser,
+            "insegdirlist": self.__lex.insegdirlist_parser,
+            "_directivelist": self.__lex.directivelist_parser,
+        }
+        selected = parser_lookup.get(start_rule, self.__lex.parser)
+        if selected:
+            return selected[0]
+        return self.__lex.parser[0]
 
     def process_ast(self, text: str, result: Tree) -> baseop | Expression | lark.Tree:
         result = IncludeLoader(self).transform(result)
@@ -1558,12 +1566,12 @@ class Parser:
 
     @staticmethod
     def mangle_label(name: str | lark.Token) -> str:
-        name = name.lower()  # ([A-Za-z@_\$\?][A-Za-z0-9@_\$\?]*)
+        name = _token_lower(name)  # ([A-Za-z@_\$\?][A-Za-z0-9@_\$\?]*)
         return name.replace("@", "arb").replace("?", "que").replace("$", "dol")
 
     @staticmethod
     def is_register(expr: lark.Token | str) -> int:
-        expr = expr.lower()
+        expr = _token_lower(expr)
         size = 0
         if expr in {"al", "bl", "cl", "dl", "ah", "bh", "ch", "dh"}:
             logging.debug("is reg res 1")
@@ -1888,16 +1896,16 @@ class Parser:
 
     def handle_local_asm_jumps(self, instruction: str | Token, args: list[Expression | Any]) -> None:
         if (
-            (instruction.lower().startswith("j") or instruction.lower().startswith("loop"))
+            (_token_lower(instruction).startswith("j") or _token_lower(instruction).startswith("loop"))
             and len(args) == 1
             and isinstance(args[0], lark.Tree)
             and isinstance(args[0].children, list)
-            and isinstance(args[0].children[0], lark.Token)
+            and _is_token(args[0].children[0])
             and args[0].children[0].type == "LABEL"
         ):
-            if args[0].children[0].lower() == "arbf":  # @f
+            if _token_lower(args[0].children[0]) == "arbf":  # @f
                 args[0].children[0] = f"dummylabel{self.__c_dummy_jump_label + 1!s}"
-            elif args[0].children[0].lower() == "arbb":  # @b
+            elif _token_lower(args[0].children[0]) == "arbb":  # @b
                 args[0].children[0] = f"dummylabel{self.__c_dummy_jump_label!s}"
 
     def collect_labels(self, target: set[str], operation: baseop) -> None:
