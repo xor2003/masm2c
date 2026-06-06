@@ -1517,8 +1517,27 @@ class Parser:
         logging.debug("parsing: [%s]", text)
         try:
             self.__lex.bind_context(self)
-            assert self.__lex.parser[0]
-            result = self.__lex.parser[0].parse(text, start=start_rule)
+            parser = self.__lex.parser[0]
+            if self.__lex.expr_parser and start_rule == "expr":
+                parser = self.__lex.expr_parser[0]
+            if self.__lex.instruction_parser and start_rule == "instruction":
+                parser = self.__lex.instruction_parser[0]
+            if self.__lex.equtype_parser and start_rule == "equtype":
+                parser = self.__lex.equtype_parser[0]
+            if self.__lex.insegdirlist_parser and start_rule == "insegdirlist":
+                parser = self.__lex.insegdirlist_parser[0]
+            if self.__lex.directivelist_parser and start_rule == "_directivelist":
+                parser = self.__lex.directivelist_parser[0]
+            assert parser
+            result = parser.parse(text, start=start_rule)
+        except TypeError as ex:
+            if start_rule != "start" or not self.__lex.start_parser:
+                raise
+            if "an integer is required" not in str(ex):
+                raise
+            logging.debug("Falling back to post-lexer start parser after cython parse failure: %s", ex)
+            parser = self.__lex.start_parser[0]
+            result = parser.parse(text, start=start_rule)
         except UnexpectedToken as ex:
             logging.exception("UnexpectedToken: [%s] line=%s column=%s", ex.token, ex.line, ex.column)
             sys.exit(9)

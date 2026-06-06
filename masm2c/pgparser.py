@@ -638,10 +638,34 @@ recognizers = {
 
 
 class LarkParser:
+    _PARSER_ENGINE_FORCE_POSTLEX = "postlex"
+    _PARSER_ENGINE_FORCE_CYTHON = "cython"
+
     parser: Final[list] = []
+    expr_parser: Final[list] = []
     _postlex: MatchTag | None = None
     _lexer_callback: MatchTag | None = None
     _lark_cython_plugins: Any | None = None
+    _parser_engine: str | None = None
+    instruction_parser: Final[list] = []
+    equtype_parser: Final[list] = []
+    insegdirlist_parser: Final[list] = []
+    directivelist_parser: Final[list] = []
+    start_parser: Final[list] = []
+
+    @classmethod
+    def _configured_parser_engine(cls) -> str:
+        if cls._parser_engine is None:
+            mode = os.getenv("MASM2C_PARSER_ENGINE", "").strip().lower()
+            if mode in {"", "auto"}:
+                cls._parser_engine = "auto"
+            elif mode in {"postlex", "python", "reference", "lalr"}:
+                cls._parser_engine = cls._PARSER_ENGINE_FORCE_POSTLEX
+            elif mode in {"cython", "lark-cython", "lark_cython", "lark-cy"}:
+                cls._parser_engine = cls._PARSER_ENGINE_FORCE_CYTHON
+            else:
+                cls._parser_engine = "auto"
+        return cls._parser_engine
 
     def __init__(self, context: "Parser") -> None:
         if self.parser:
@@ -651,12 +675,17 @@ class LarkParser:
 
         file_name = f"{os.path.dirname(os.path.realpath(__file__))}/_masm61.lark"
         debug = True
-        if self.__class__._lark_cython_plugins is None:
+        parser_engine = self.__class__._configured_parser_engine()
+
+        if self.__class__._lark_cython_plugins is None and parser_engine != self._PARSER_ENGINE_FORCE_POSTLEX:
             try:
-                from lark_cython import plugins as lark_cython_plugins  # type: ignore[import-not-found]
+                from lark_cython import plugins as lark_cython_plugins  # type: ignore[import-not-found, import-untyped]
             except Exception:
                 lark_cython_plugins = None
             self.__class__._lark_cython_plugins = lark_cython_plugins
+            if parser_engine == self._PARSER_ENGINE_FORCE_CYTHON and lark_cython_plugins is None:
+                raise RuntimeError("MASM2C_PARSER_ENGINE=cython requested but lark_cython is not installed")
+
         if self.__class__._postlex is None:
             self.__class__._postlex = MatchTag(context=context)
             self.__class__._lexer_callback = MatchTag(context=context)
@@ -665,14 +694,26 @@ class LarkParser:
             if self.__class__._lexer_callback is not None:
                 self.__class__._lexer_callback.context = context
 
-        use_postlex = self.__class__._lark_cython_plugins is None
+        use_postlex = self.__class__._lark_cython_plugins is None or parser_engine == self._PARSER_ENGINE_FORCE_POSTLEX
         lark_kwargs = {
             "parser": "lalr",
             "propagate_positions": True,
             "cache": True,
             "debug": debug,
-            "start": ["start", "insegdirlist", "instruction", "expr", "equtype", "_directivelist"],
         }
+        if not use_postlex:
+            lark_kwargs["cache"] = False
+        if use_postlex:
+            lark_kwargs["start"] = [
+                "start",
+                "insegdirlist",
+                "instruction",
+                "expr",
+                "equtype",
+                "_directivelist",
+            ]
+        else:
+            lark_kwargs["start"] = "start"
         if use_postlex:
             lark_kwargs["postlex"] = self.__class__._postlex
         else:
@@ -680,7 +721,43 @@ class LarkParser:
             lark_kwargs["lexer_callbacks"] = {"LABEL": self.__class__._lexer_callback}
             lark_kwargs["_plugins"] = self.__class__._lark_cython_plugins
         with open(file_name) as gr:
-            self.parser.append(Lark(gr, **lark_kwargs))
+            grammar = gr.read()
+        self.parser.append(Lark(grammar, **lark_kwargs))
+        if not use_postlex:
+            start_postlex_kwargs = {
+                "parser": "lalr",
+                "propagate_positions": True,
+                "cache": False,
+                "debug": debug,
+                "start": "start",
+                "postlex": self.__class__._postlex,
+            }
+            self.start_parser.append(Lark(grammar, **start_postlex_kwargs))
+
+            def _build_expr_parser(start: str) -> None:
+                start_kwargs = {
+                    "parser": "lalr",
+                    "propagate_positions": True,
+                    "cache": False,
+                    "debug": debug,
+                    "start": start,
+                    "postlex": self.__class__._postlex,
+                }
+                if start == "expr":
+                    self.expr_parser.append(Lark(grammar, **start_kwargs))
+                elif start == "instruction":
+                    self.instruction_parser.append(Lark(grammar, **start_kwargs))
+                elif start == "equtype":
+                    self.equtype_parser.append(Lark(grammar, **start_kwargs))
+                elif start == "insegdirlist":
+                    self.insegdirlist_parser.append(Lark(grammar, **start_kwargs))
+                elif start == "_directivelist":
+                    self.directivelist_parser.append(Lark(grammar, **start_kwargs))
+                else:
+                    raise RuntimeError(f"unsupported cython helper start rule: {start}")
+
+            for helper_start in ["expr", "instruction", "equtype", "insegdirlist", "_directivelist"]:
+                _build_expr_parser(helper_start)
             #print(sorted([term.pattern.value for term in cls._inst.or_parser.terminals if term.pattern.type == 'str']))
 
     def bind_context(self, context: "Parser") -> None:
