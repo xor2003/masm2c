@@ -58,6 +58,29 @@ from .enumeration import IndirectionType
 INTEGERCNST = "integer"
 STRINGCNST = "STRING"
 
+_REGEX_STRUCT_COMMENT = re.compile(
+    r"^struct\s+(?P<name>[A-Za-z_@$?.][A-Za-z0-9_@$?.]*)\b",
+    flags=re.IGNORECASE,
+)
+_REGEX_STRUCT_HDR = re.compile(
+    r"^(?P<name>[A-Za-z_@$?.][A-Za-z0-9_@$?.]*)\s+(?:STRUC|STRUCT|UNION)\b",
+    flags=re.IGNORECASE,
+)
+_REGEX_STRUCT_INSTANCE = re.compile(
+    r"^(?P<label>[A-Za-z_@$?.][A-Za-z0-9_@$?.]*)\s+"
+    r"(?P<stype>[A-Za-z_@$?.][A-Za-z0-9_@$?.]*)\s+"
+    r"[A-Za-z0-9_@$?.]+\s+DUP\s*\(",
+    flags=re.IGNORECASE,
+)
+_REGEX_STRUCT_INSTANCE_LINE = re.compile(
+    r"^(?P<ws>\s*)(?P<name>[A-Za-z_@$?.][A-Za-z0-9_@$?.]*)\s+(?P<rest><.+)$",
+)
+_DATA_DECL_NAMES = {
+    "db", "dw", "dd", "df", "dq", "dt",
+    "byte", "sbyte", "word", "sword", "dword", "sdword",
+    "fword", "qword", "tbyte", "real4", "real8", "real10",
+}
+
 
 @dataclass
 class _PendingParseState:
@@ -211,6 +234,7 @@ def dump_object(value: Struct | label | Proc | var | _equ | _assignment) -> str:
 
 class Parser:
     c_dummy_label: Final[list] = [0]
+    _file_cache: dict[str, tuple[float, str]] = {}
 
     def __init__(self, args: Optional[dict] = None) -> None:
         """Assembler parser."""
@@ -244,6 +268,7 @@ class Parser:
         self.expr_int_evaluator = None
         self._include_loader = IncludeLoader(self)
         self._expr_remover = ExprRemover()
+        self._asm2ir = Asm2IR(self)
 
         self.next_pass(Parser.c_dummy_label[0])
 
@@ -525,10 +550,21 @@ class Parser:
         self.__current_file_hash = hashlib.blake2s(os.path.basename(file_name).encode("utf8")).hexdigest()
         return previous
 
-    @staticmethod
-    def _read_whole_file(file_name: str) -> str:
+    def _read_whole_file(self, file_name: str) -> str:
         from . import utils
-        return utils.read_whole_file(file_name)
+
+        try:
+            mtime = os.path.getmtime(file_name)
+        except OSError:
+            return utils.read_whole_file(file_name)
+
+        cache_entry = self.__class__._file_cache.get(file_name)
+        if cache_entry and cache_entry[0] == mtime:
+            return cache_entry[1]
+
+        content = utils.read_whole_file(file_name)
+        self.__class__._file_cache[file_name] = (mtime, content)
+        return content
 
     def is_known_macro(self, name: str) -> bool:
         return name in self.macroses
@@ -1366,45 +1402,26 @@ class Parser:
         return self.parse_include(filtered, file_name)
 
     def _predeclare_structure_names(self, content: str) -> None:
-        data_decl_names = {
-            "db", "dw", "dd", "df", "dq", "dt",
-            "byte", "sbyte", "word", "sword", "dword", "sdword",
-            "fword", "qword", "tbyte", "real4", "real8", "real10",
-        }
         for line in content.splitlines():
             code = line.split(";", 1)[0].strip()
             comment = line.split(";", 1)[1].strip() if ";" in line else ""
             if not code:
                 if comment:
-                    lst_struct = re.match(
-                        r"^struct\s+(?P<name>[A-Za-z_@$?.][A-Za-z0-9_@$?.]*)\b",
-                        comment,
-                        flags=re.IGNORECASE,
-                    )
+                    lst_struct = _REGEX_STRUCT_COMMENT.match(comment)
                     if lst_struct:
                         self.declare_structure_name(lst_struct.group("name"))
                 continue
-            if hdr := re.match(
-                r"^(?P<name>[A-Za-z_@$?.][A-Za-z0-9_@$?.]*)\s+(?:STRUC|STRUCT|UNION)\b",
-                code,
-                flags=re.IGNORECASE,
-            ):
+            if hdr := _REGEX_STRUCT_HDR.match(code):
                 self.declare_structure_name(hdr.group("name"))
-            mtch = re.match(
-                r"^(?P<label>[A-Za-z_@$?.][A-Za-z0-9_@$?.]*)\s+"
-                r"(?P<stype>[A-Za-z_@$?.][A-Za-z0-9_@$?.]*)\s+"
-                r"[A-Za-z0-9_@$?.]+\s+DUP\s*\(",
-                code,
-                flags=re.IGNORECASE,
-            )
-            if mtch and mtch.group("stype").lower() not in data_decl_names:
+            mtch = _REGEX_STRUCT_INSTANCE.match(code)
+            if mtch and mtch.group("stype").lower() not in _DATA_DECL_NAMES:
                 self.declare_structure_name(mtch.group("stype"))
 
     def _normalize_struct_instance_rows(self, content: str) -> str:
         rows: list[str] = []
         for line_no, line in enumerate(content.splitlines(keepends=True), start=1):
             code = line.split(";", 1)[0]
-            mtch = re.match(r"^(?P<ws>\s*)(?P<name>[A-Za-z_@$?.][A-Za-z0-9_@$?.]*)\s+(?P<rest><.+)$", code)
+            mtch = _REGEX_STRUCT_INSTANCE_LINE.match(code)
             if mtch and self.match_known_structure_name(mtch.group("name")):
                 prefix = f'{mtch.group("ws")}__m2c_structrow_{line_no} '
                 line = prefix + line[len(mtch.group("ws")):]
@@ -1557,16 +1574,18 @@ class Parser:
 
     def process_ast(self, text: str, result: Tree) -> baseop | Expression | lark.Tree:
         self._include_loader.context = self
+        self._asm2ir.context = self
+        self._asm2ir.input_str = text
+        self._asm2ir._clear_expression()
         result = self._include_loader.transform(result)
         result = self._expr_remover.transform(result)
-        asm2ir = Asm2IR(self, text)
         """
         for e in self.equs:
             g = self.get_and_mark_global(e)
             if not isinstance(g.value, Expression):
-                g.value = asm2ir.transform(g.value)
+                g.value = self._asm2ir.transform(g.value)
         """
-        result = asm2ir.transform(result)
+        result = self._asm2ir.transform(result)
         return result
 
     @staticmethod

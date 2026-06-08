@@ -688,7 +688,7 @@ class LarkParser:
 
         file_name = f"{os.path.dirname(os.path.realpath(__file__))}/_masm61.lark"
         parser_engine = self.__class__._configured_parser_engine()
-        debug = parser_engine != self._PARSER_ENGINE_FORCE_CYTHON
+        debug = os.getenv("MASM2C_PARSER_DEBUG", "0").lower() in {"1", "true", "yes", "on"}
 
         if self.__class__._lark_cython_plugins is None and parser_engine != self._PARSER_ENGINE_FORCE_POSTLEX:
             try:
