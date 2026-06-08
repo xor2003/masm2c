@@ -671,7 +671,7 @@ class LarkParser:
         if cls._parser_engine is None:
             mode = os.getenv("MASM2C_PARSER_ENGINE", "").strip().lower()
             if mode in {"", "auto"}:
-                cls._parser_engine = "auto"
+                cls._parser_engine = cls._PARSER_ENGINE_FORCE_CYTHON
             elif mode in {"postlex", "python", "reference", "lalr"}:
                 cls._parser_engine = cls._PARSER_ENGINE_FORCE_POSTLEX
             elif mode in {"cython", "lark-cython", "lark_cython", "lark-cy"}:

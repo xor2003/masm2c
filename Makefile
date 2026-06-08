@@ -104,7 +104,7 @@ ci-integration: ci-pytest ci-asmtests ci-qemu-tests ## run integration checks us
 # parser benchmarks
 bench-parser: ## benchmark parser-only path on asmTests fixtures
 	@python scripts/profile_parser.py asmTests \
-		--engine $${MASM2C_PARSER_ENGINE:-postlex} \
+		--engine $${MASM2C_PARSER_ENGINE:-cython} \
 		--target-seconds $${PARSER_BENCH_TARGET_SECONDS:-60} \
 		$(if $(PARSER_BENCH_RUNS),--runs $(PARSER_BENCH_RUNS),) \
 		--max-runs $${PARSER_BENCH_MAX_RUNS:-500} \
