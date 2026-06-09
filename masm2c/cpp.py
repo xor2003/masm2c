@@ -149,8 +149,9 @@ class SeparateProcStrategy:
 
     def write_declarations(self, procs, context):
         result = ""
+        is_listing_source = context.is_listing_source()
         for p in sorted(procs):  # TODO only if used or public
-            if p == "mainproc" and not context.itislst:  # and not context.main_file:
+            if p == "mainproc" and not is_listing_source:  # and not context.main_file:
                 result += "static "
             result += "bool %s(m2c::_offsets, struct m2c::_STATE*);\n" % self.renderer.mangle_label(p)
 
@@ -202,6 +203,9 @@ class Cpp(Gen):
                              op.DataType.ARRAY_STRING: self.produce_c_data_array_string,
                              op.DataType.OBJECT: self.produce_c_data_object,
                              }
+
+    def _is_listing_source(self) -> bool:
+        return self._context.is_listing_source()
 
     def convert_label_(self, original_name: Token) -> str:
         """Converts a label to its corresponding value.
@@ -983,7 +987,7 @@ class Cpp(Gen):
 {self.render_function_wrappers_c()}
 {self.render_entrypoint_c()}
 {self.write_procedures(banner, header_fname)}
-{self.produce_global_jump_table(list(self._context.symbols.get_globals().items()), self._context.itislst)}
+{self.produce_global_jump_table(list(self._context.symbols.get_globals().items()), self._is_listing_source())}
 
         #include <algorithm>
         #include <iterator>
@@ -1040,7 +1044,7 @@ class Cpp(Gen):
         cpp_segment_file = None
         for name in self._procs:
             proc_text, segment = self._render_procedure(name)
-            if self._context.itislst and segment != last_segment:  # If .lst write to separate segments. Open new if changed
+            if self._is_listing_source() and segment != last_segment:  # If .lst write to separate segments. Open new if changed
                 last_segment = segment
                 if cpp_segment_file:
                     cpp_segment_file.close()
@@ -1556,7 +1560,7 @@ struct Memory{
         label, data_ctype, _, r, elements, _ = data.getdata()
         source_linear = self._runtime_linear_for_data(data)
         element_size = self._runtime_data_element_size(data, elements)
-        if self._context.itislst and data_ctype == "char" and elements == 1:
+        if self._is_listing_source() and data_ctype == "char" and elements == 1:
             value = r[0] if r else 0
             if isinstance(value, lark.Tree):
                 rc = "".join(self.visit(value))
@@ -1602,7 +1606,7 @@ struct Memory{
     def produce_c_data_zero_string(self, data: op.Data) -> tuple[str, str]:
         label, data_ctype, _, r, elements, size = data.getdata()
         r = flatten(r)
-        if self._context.itislst and size == 1:
+        if self._is_listing_source() and size == 1:
             rc = self.convert_char(r[0] if r else 0)
             rh = f"char {label}"
             return rc, rh
@@ -1614,7 +1618,7 @@ struct Memory{
     def produce_c_data_array_string(self, data: op.Data) -> tuple[str, str]:
         label, data_ctype, _, r, elements, size = data.getdata()
         r = flatten(r)
-        if self._context.itislst and size == 1:
+        if self._is_listing_source() and size == 1:
             rc = self.convert_char(r[0] if r else 0)
             rh = f"char {label}"
             return rc, rh

@@ -227,7 +227,7 @@ fordir: "FOR"i | "IRP"i
 forparm: LABEL dotdotforparmtype?
 forparmtype: "REQ"i | "=" textliteral
 ?frameexpr: "SEG"i LABEL | "DGROUP"i ":" LABEL| segmentregister ":" LABEL| LABEL
-_generaldir: modeldir | segorderdir | namedir| includelibdir | commentdir| groupdir | assumedir| structdir | typedefdir| externdir | publicdir | commdir | prototypedir| equdir | assdir | textdir| contextdir | optiondir | processordir| radixdir | titledir | pagedir | listdir | crefdir | echodir| ifdir | errordir | includedir | macrodir | macrocall | macrorepeat | purgedir| macrowhile | macrofor | macroforc| aliasdir | recorddir | smartdir
+_generaldir: modeldir | segorderdir | namedir| includelibdir | commentdir| groupdir | assumedir| structdir | typedefdir| externdir | publicdir | commdir | prototypedir| equdir | assdir | textdir| contextdir | optiondir | processordir| syntaxdir| radixdir | titledir | pagedir | listdir | crefdir | echodir| ifdir | errordir | includedir | macrodir | macrocall | macrorepeat | purgedir| macrowhile | macrofor | macroforc| aliasdir | recorddir | smartdir
 groupdir : LABEL "GROUP"i segidlist
 idlist: LABEL | LABEL _COMMA idlist
 ifcexpr: ".IF"i cexpr
@@ -296,6 +296,7 @@ parmtype: "REQ"i | "=" textliteral| "VARARG"i
 poptions: distance?  langtype?  ovisibility?
 procdir: LABEL "PROC"i poptions  brmacroarglist?  usesregs? procparmlist? commaparmidvararg? _linereminder
 processordir: processor _linereminder | coprocessor _linereminder
+syntaxdir: ".INTEL_SYNTAX"i LABEL? _linereminder | ".ATT_SYNTAX"i LABEL? _linereminder
 procparmlist: commaparmlist
 protoarg : LABEL? ":" qualifiedtype
 protoarglist: commaprotolist

@@ -56,6 +56,12 @@ def get_opt_flags(script_dir: Path) -> str:
     return proc.stdout.strip()
 
 
+def generated_cpp_sources(work_dir: Path, base: str) -> list[str]:
+    sources = [f"{base}.cpp"]
+    sources.extend(path.name for path in sorted(work_dir.glob(f"{base}_*.cpp")))
+    return sources
+
+
 def prepare_case_workspace(script_dir: Path, name: str) -> Path:
     base = name.rsplit(".", 1)[0]
     work_root = script_dir / ".test-work"
@@ -112,7 +118,7 @@ def run_case(script_dir: Path, name: str, logs_dir: Path, cxx: str, opt_flags: s
     compile_cmd = [
         cxx,
         "_data.cpp",
-        f"{base}.cpp",
+        *generated_cpp_sources(work_dir, base),
         str(repo_root / "asm.o"),
         str(repo_root / "memmgr.o"),
         str(repo_root / "shadowstack.o"),

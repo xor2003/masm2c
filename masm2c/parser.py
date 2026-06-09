@@ -72,6 +72,11 @@ _REGEX_STRUCT_INSTANCE = re.compile(
     r"[A-Za-z0-9_@$?.]+\s+DUP\s*\(",
     flags=re.IGNORECASE,
 )
+_REGEX_STRUCT_INSTANCE_SIMPLE = re.compile(
+    r"^(?P<label>[A-Za-z_@$?.][A-Za-z0-9_@$?.]*)\s+"
+    r"(?P<stype>[A-Za-z_@$?.][A-Za-z0-9_@$?.]*)\s+<",
+    flags=re.IGNORECASE,
+)
 _REGEX_STRUCT_INSTANCE_LINE = re.compile(
     r"^(?P<ws>\s*)(?P<name>[A-Za-z_@$?.][A-Za-z0-9_@$?.]*)\s+(?P<rest><.+)$",
 )
@@ -250,6 +255,7 @@ class Parser:
         self.externals_procs: set[str] = set()
         self.macroses: OrderedDict[str, Any] = OrderedDict()
         self.itislst = False
+        self.source_is_lst = False
         self.initial_procs_start: set[int] = set()
         self.procs_start: set[int] = set()
         self.runtime_code_meta: dict[int, dict[str, Any]] = {}
@@ -593,6 +599,9 @@ class Parser:
     def is_lst_mode(self) -> bool:
         return self.itislst
 
+    def is_listing_source(self) -> bool:
+        return self.source_is_lst or self.itislst
+
     def parse_numeric_value(self, value: str) -> int:
         return Parser.parse_int(value)
 
@@ -832,6 +841,7 @@ class Parser:
 
     def extract_addresses_from_lst(self, file_name, content):
         self.itislst = True
+        self.source_is_lst = True
         segmap = self.read_segments_map(file_name)
         # MASM listings include banner/page headers that are not source code.
         # Keep them as comments so line numbering and later diagnostics stay stable.
@@ -1416,6 +1426,9 @@ class Parser:
             mtch = _REGEX_STRUCT_INSTANCE.match(code)
             if mtch and mtch.group("stype").lower() not in _DATA_DECL_NAMES:
                 self.declare_structure_name(mtch.group("stype"))
+            simple_mtch = _REGEX_STRUCT_INSTANCE_SIMPLE.match(code)
+            if simple_mtch and simple_mtch.group("stype").lower() not in _DATA_DECL_NAMES:
+                self.declare_structure_name(simple_mtch.group("stype"))
 
     def _normalize_struct_instance_rows(self, content: str) -> str:
         rows: list[str] = []

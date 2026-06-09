@@ -28,6 +28,11 @@ class ParserSymbolDirectivesTest(unittest.TestCase):
         aa.assert_called_once_with("v", expr, raw="v = 1", line_number=10)
         self.assertEqual(out, "ok")
 
+    def test_intel_syntax_directive_is_accepted(self):
+        parser = Parser([])
+        tree = parser.parse_text(".intel_syntax noprefix\nend\n")
+        parser.process_ast(".intel_syntax noprefix\nend\n", tree)
+
 
 if __name__ == "__main__":
     unittest.main()

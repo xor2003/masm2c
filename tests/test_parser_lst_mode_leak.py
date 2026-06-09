@@ -16,6 +16,7 @@ class ParserLstModeLeakTest(unittest.TestCase):
                         parser.parse_file_lines("x.lst")
 
         self.assertFalse(parser.itislst)
+        self.assertTrue(parser.is_listing_source())
 
 
 if __name__ == "__main__":

@@ -82,7 +82,7 @@ class Gen(TopDownVisitor):
         :param labels: a list of labels to be processed
         :return: A list of labels.
         """
-        if not self._context.itislst:
+        if not self._context.is_listing_source():
             return labels
         uniq_labels = OrderedDict()
         for label in labels:
