@@ -11,7 +11,7 @@ authors = [
 ]
 dependencies = [
     "jsonpickle>=3.4.2",
-    "lark-cython>=0.0.17",
+    "lark>=1.2.2",
 ]
 requires-python = ">=3.9"
 readme = "README.md"
@@ -46,6 +46,9 @@ test = [
     "coverage>=7.6.4",
     "mock>=5.1.0",
     "pytest>=8.3.3",
+]
+cython = [
+    "lark-cython>=0.0.17",
 ]
 
 [project.urls]

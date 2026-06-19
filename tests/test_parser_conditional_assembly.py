@@ -38,6 +38,15 @@ class ParserConditionalAssemblyTest(unittest.TestCase):
         self.assertNotIn("mov cx,6", out)
         self.assertNotIn("mov cx,7", out)
 
+    def test_labeled_if_with_masm_eq_operator(self):
+        parser = Parser([])
+        src = "@@: IF OPT_PHOTO EQ 1\nmov ax,1\nENDIF\nmov ax,2\n"
+
+        out = parser.apply_conditional_assembly(src)
+
+        self.assertNotIn("mov ax,1", out)
+        self.assertIn("mov ax,2", out)
+
 
 if __name__ == "__main__":
     unittest.main()

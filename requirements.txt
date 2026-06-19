@@ -1,5 +1,4 @@
 lark
-lark-cython
 jsonpickle
 pytest
 mock

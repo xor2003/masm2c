@@ -50,7 +50,7 @@ def _is_token(token: Any) -> bool:
 
 class MatchTag:
     __slots__ = ("context", "last_type", "last")
-    always_accept = "LABEL", "structinstdir", "STRUCTNAME"
+    always_accept = "LABEL", "structinstdir", "STRUCTNAME", "RECORDNAME"
 
     def __init__(self, context: "Parser") -> None:
         self.context = context
@@ -79,6 +79,8 @@ class MatchTag:
         if self.context.has_any_structures() and self.last_type == "LABEL" \
                 and token.type == "LABEL" and self.context.match_known_structure_name(_token_text(token.value)):
             token.type = "STRUCTNAME"
+        if token.type == "LABEL" and self.context.match_known_record_name(_token_text(token.value)):
+            token.type = "RECORDNAME"
 
         self.last_type = token.type
         self.last = _token_text(token.value)
@@ -190,7 +192,11 @@ class Asm2IR(CommonCollector):
 
     @v_args(meta=True)
     def equdir(self, meta: lark.tree.Meta, nodes: list[lark.Tree | lark.Token]):
-        name, value = str(nodes[0]), nodes[1]
+        pending_name = self.context.consume_pending_mnemonic()
+        if pending_name:
+            name, value = pending_name, nodes[0]
+        else:
+            name, value = str(nodes[0]), nodes[1]
         logging.debug("equdir %s ~~", nodes)
 
         return self.context.define_equ(name, cast(Expression, value), raw=get_raw(self.input_str, meta),
@@ -358,10 +364,12 @@ class Asm2IR(CommonCollector):
         logging.debug("repeatbegin")
         return nodes
 
-    def endm(self, nodes):
+    def macend(self, nodes):
         # macro definition end
+        if not self.context.macro_names_stack:
+            return nodes
         name = self.context.end_macro_definition()
-        logging.debug("endm %s", name)
+        logging.debug("macend %s", name)
         return nodes
 
     def macrocall(self, nodes, name, args):
@@ -425,7 +433,10 @@ class Asm2IR(CommonCollector):
 
         if len(children)==1: # TODO why?
             children = children[0]
-        label = self.context.normalize_label(children.pop(0)) if _is_token(children[0]) and children[0].type == "LABEL" else ""
+        pending_label = self.context.consume_pending_mnemonic()
+        label = self.context.normalize_label(pending_label) if pending_label else ""
+        if not label and _is_token(children[0]) and children[0].type == "LABEL":
+            label = self.context.normalize_label(children.pop(0))
         type = _token_lower(children.pop(0))
         values_node = None
         for item in children:
@@ -671,8 +682,8 @@ class LarkParser:
         if cls._parser_engine is None:
             mode = os.getenv("MASM2C_PARSER_ENGINE", "").strip().lower()
             if mode in {"", "auto"}:
-                cls._parser_engine = cls._PARSER_ENGINE_FORCE_CYTHON
-            elif mode in {"postlex", "python", "reference", "lalr"}:
+                cls._parser_engine = cls._PARSER_ENGINE_FORCE_POSTLEX
+            elif mode in {"postlex", "python", "reference", "lalr", "lark"}:
                 cls._parser_engine = cls._PARSER_ENGINE_FORCE_POSTLEX
             elif mode in {"cython", "lark-cython", "lark_cython", "lark-cy"}:
                 cls._parser_engine = cls._PARSER_ENGINE_FORCE_CYTHON
@@ -803,7 +814,12 @@ class IncludeLoader(Transformer):
         self.context = context
 
     def includedir(self, nodes):
-        name = nodes[0].children[0]
+        if isinstance(nodes, Tree):
+            nodes = nodes.children
+        name = nodes[0]
+        while isinstance(name, Tree):
+            name = name.children[0]
+        name = str(name)
         name = name[1:-1] if name[0] == "<" and name[-1] == ">" else name
         return self.context.parse_include_directive(name)
 

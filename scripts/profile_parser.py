@@ -22,7 +22,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Benchmark parser-only throughput")
     parser.add_argument("cases_dir", nargs="?", default="asmTests", help="Directory with .asm/.lst fixtures")
     parser.add_argument("--passes", type=int, default=2, help="Parser passes per file")
-    parser.add_argument("--engine", default="cython", help="Parser engine: postlex or cython")
+    parser.add_argument("--engine", default="postlex", help="Parser engine: postlex or cython")
     parser.add_argument(
         "--runs",
         type=int,

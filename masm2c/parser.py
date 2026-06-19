@@ -80,6 +80,11 @@ _REGEX_STRUCT_INSTANCE_SIMPLE = re.compile(
 _REGEX_STRUCT_INSTANCE_LINE = re.compile(
     r"^(?P<ws>\s*)(?P<name>[A-Za-z_@$?.][A-Za-z0-9_@$?.]*)\s+(?P<rest><.+)$",
 )
+_REGEX_STRUCT_DUP_INSTANCE_LINE = re.compile(
+    r"^(?P<ws>\s*)(?P<name>[A-Za-z_@$?.][A-Za-z0-9_@$?.]*)\s+"
+    r"(?P<rest>[A-Za-z0-9_@$?.]+\s+DUP\s*\(.+)$",
+    flags=re.IGNORECASE,
+)
 _DATA_DECL_NAMES = {
     "db", "dw", "dd", "df", "dq", "dt",
     "byte", "sbyte", "word", "sword", "dword", "sdword",
@@ -104,6 +109,12 @@ class _ConditionalFrame:
     parent_active: bool
     branch_taken: bool
     current_active: bool
+
+
+@dataclass
+class _TextMacro:
+    parameters: list[str]
+    body: list[str]
 
 
 class Vector:
@@ -254,6 +265,7 @@ class Parser:
         self.externals_vars: set[str] = set()
         self.externals_procs: set[str] = set()
         self.macroses: OrderedDict[str, Any] = OrderedDict()
+        self._text_macros: dict[str, _TextMacro] = {}
         self.itislst = False
         self.source_is_lst = False
         self.initial_procs_start: set[int] = set()
@@ -295,6 +307,8 @@ class Parser:
         self.need_label = True
 
         self.structures: OrderedDict[str, Struct] = OrderedDict()
+        self.record_names: set[str] = set()
+        self.record_defs: dict[str, list[int]] = {}
         self.macro_names_stack: list[str] = []
         self.proc_list: list[str] = []
         self.proc = None
@@ -322,6 +336,7 @@ class Parser:
         self.current_macro = None
         self.current_struct: Optional[Struct] = None
         self._pending = _PendingParseState()
+        self._text_macro_expansion_id = 0
 
         self.struct_names_stack: list[str] = []
 
@@ -542,7 +557,16 @@ class Parser:
             if file_name.lower().endswith(".lst"):  # for .lst provided by IDA move address to comments after ;~
                 # we want exact placement so program could work
                 content = self.extract_addresses_from_lst(file_name, content)
+            content = self._join_continued_lines(content)
+            content = self._wrap_bare_data_table(content)
             content = self.apply_conditional_assembly(content)
+            self._preload_text_macros(content, set())
+            content = self._strip_text_macro_definitions(content)
+            content = self._expand_repeat_blocks(content)
+            content = self._expand_text_macros(content)
+            content = self._expand_repeat_blocks(content)
+            content = self._trim_trailing_lines_after_end(content)
+            self._predeclare_included_structure_names(content, set())
             self._predeclare_structure_names(content)
             content = self._normalize_struct_instance_rows(content)
             result = self.parse_text(content, file_name=file_name)
@@ -579,6 +603,16 @@ class Parser:
         key = name.lower()
         if key not in self.structures:
             self.structures[key] = Struct("", "")
+
+    def declare_record_name(self, name: str) -> None:
+        self.record_names.add(name.lower())
+
+    def declare_record_definition(self, name: str, widths: list[int]) -> None:
+        self.declare_record_name(name)
+        self.record_defs[name.lower()] = widths
+
+    def match_known_record_name(self, name: str) -> bool:
+        return name.lower() in self.record_names
 
     def has_structure(self, name: str) -> bool:
         return name.lower() in self.structures
@@ -645,16 +679,15 @@ class Parser:
         if os.path.exists(direct):
             return direct
 
-        if include_norm.startswith(("/", "\\")) or drive_rooted:
-            probe_dir = current_dir
-            while True:
-                candidate = os.path.normpath(os.path.join(probe_dir, relative_tail))
-                if os.path.exists(candidate):
-                    return candidate
-                parent = os.path.dirname(probe_dir)
-                if parent == probe_dir:
-                    break
-                probe_dir = parent
+        probe_dir = current_dir
+        while True:
+            candidate = os.path.normpath(os.path.join(probe_dir, relative_tail))
+            if os.path.exists(candidate):
+                return candidate
+            parent = os.path.dirname(probe_dir)
+            if parent == probe_dir:
+                break
+            probe_dir = parent
 
         return direct
 
@@ -1008,7 +1041,10 @@ class Parser:
         o.element_size = size
         if isinstance(value, Expression) and value.indirection == IndirectionType.POINTER:
             o.original_type = value.original_type
-        if self.itislst and self.pass_number == 1 and self.symbols.get_global(label) is not None:
+        existing = self.symbols.get_global(label)
+        if self.itislst and self.pass_number == 1 and existing is not None:
+            self.symbols.reset_global(label, o)
+        elif self.pass_number == 1 and isinstance(existing, op._equ):
             self.symbols.reset_global(label, o)
         else:
             self.symbols.set_global(label, o)
@@ -1406,10 +1442,347 @@ class Parser:
         self.__c_extra_dummy_jump_label = 0
 
     def parse_file_inside(self, text, file_name=None):
+        text = self._join_continued_lines(text)
         filtered = self.apply_conditional_assembly(text)
+        self._collect_text_macros_from_content(filtered)
+        self._preload_text_macros(filtered, set())
+        filtered = self._strip_text_macro_definitions(filtered)
+        filtered = self._expand_repeat_blocks(filtered)
+        filtered = self._expand_text_macros(filtered)
+        filtered = self._expand_repeat_blocks(filtered)
+        filtered = self._trim_trailing_lines_after_end(filtered)
+        self._predeclare_included_structure_names(filtered, set())
         self._predeclare_structure_names(filtered)
         filtered = self._normalize_struct_instance_rows(filtered)
         return self.parse_include(filtered, file_name)
+
+    def _preload_text_macros(self, content: str, seen: set[str]) -> None:
+        self._collect_text_macros_from_content(content)
+        for line in content.splitlines():
+            code = line.split(";", 1)[0].strip()
+            match = re.match(r"^INCLUDE\s+(.+)$", code, re.IGNORECASE)
+            if not match:
+                continue
+            include_path = self.resolve_include_path(match.group(1).strip())
+            if include_path in seen or not os.path.exists(include_path):
+                continue
+            seen.add(include_path)
+            include_content = self.apply_conditional_assembly(self._join_continued_lines(self._read_whole_file(include_path)))
+            previous = self._switch_file_context(include_path)
+            try:
+                self._preload_text_macros(include_content, seen)
+            finally:
+                self._current_file, self.__current_file_hash = previous
+
+    def _collect_text_macros_from_content(self, content: str) -> None:
+        lines = content.splitlines(keepends=True)
+        i = 0
+        while i < len(lines):
+            header = re.match(
+                r"^\s*(?P<name>[A-Za-z_@$?][A-Za-z0-9_@$?]*)\s+MACRO\b(?P<params>[^\r\n;]*)",
+                lines[i],
+                re.IGNORECASE,
+            )
+            if not header:
+                i += 1
+                continue
+            body: list[str] = []
+            i += 1
+            depth = 1
+            while i < len(lines):
+                if self._starts_macro_like_block(lines[i]):
+                    depth += 1
+                if re.match(r"^\s*ENDM\b", lines[i], re.IGNORECASE):
+                    depth -= 1
+                    if depth == 0:
+                        break
+                body.append(lines[i])
+                i += 1
+            params = [
+                param.strip().split(":", 1)[0].split("=", 1)[0].lower()
+                for param in header.group("params").split(",")
+                if param.strip()
+            ]
+            self._text_macros[header.group("name").lower()] = _TextMacro(params, body)
+            i += 1
+
+    @staticmethod
+    def _starts_macro_like_block(line: str) -> bool:
+        code = line.split(";", 1)[0].strip()
+        return bool(
+            re.match(r"^[A-Za-z_@$?][A-Za-z0-9_@$?]*\s+MACRO\b", code, re.IGNORECASE)
+            or re.match(r"^(?:REPT|REPEAT|IRP|IRPC|WHILE)\b", code, re.IGNORECASE)
+        )
+
+    def _strip_text_macro_definitions(self, content: str) -> str:
+        rows: list[str] = []
+        lines = content.splitlines(keepends=True)
+        i = 0
+        while i < len(lines):
+            if not re.match(r"^\s*[A-Za-z_@$?][A-Za-z0-9_@$?]*\s+MACRO\b", lines[i], re.IGNORECASE):
+                rows.append(lines[i])
+                i += 1
+                continue
+            i += 1
+            depth = 1
+            while i < len(lines) and depth:
+                if self._starts_macro_like_block(lines[i]):
+                    depth += 1
+                if re.match(r"^\s*ENDM\b", lines[i], re.IGNORECASE):
+                    depth -= 1
+                i += 1
+        return "".join(rows)
+
+    def _expand_repeat_blocks(self, content: str, symbols: dict[str, int] | None = None) -> str:
+        rows: list[str] = []
+        lines = content.splitlines(keepends=True)
+        i = 0
+        symbols = symbols if symbols is not None else {}
+        while i < len(lines):
+            line = lines[i]
+            code = line.split(";", 1)[0].strip()
+            assignment = re.match(r"^(?P<name>[A-Za-z_@$?][A-Za-z0-9_@$?]*)\s*=\s*(?P<expr>.+)$", code)
+            if assignment:
+                symbols[assignment.group("name").lower()] = self._eval_repeat_expression(
+                    assignment.group("expr"),
+                    symbols,
+                )
+                rows.append(line)
+                i += 1
+                continue
+
+            repeat = re.match(r"^\s*(?:REPT|REPEAT)\s+(?P<count>[^;\r\n]+)", line, re.IGNORECASE)
+            if not repeat:
+                rows.append(line)
+                i += 1
+                continue
+
+            count = max(0, self._eval_repeat_expression(repeat.group("count"), symbols))
+            i += 1
+            body: list[str] = []
+            depth = 1
+            while i < len(lines) and depth:
+                if re.match(r"^\s*(?:REPT|REPEAT)\b", lines[i], re.IGNORECASE):
+                    depth += 1
+                if re.match(r"^\s*ENDM\b", lines[i], re.IGNORECASE):
+                    depth -= 1
+                    if depth == 0:
+                        i += 1
+                        break
+                if depth:
+                    body.append(lines[i])
+                i += 1
+            for _ in range(count):
+                rows.extend(self._expand_repeat_iteration(body, symbols))
+        return "".join(rows)
+
+    def _expand_repeat_iteration(self, body: list[str], symbols: dict[str, int]) -> list[str]:
+        rows: list[str] = []
+        for line in body:
+            code = line.split(";", 1)[0].strip()
+            assignment = re.match(r"^(?P<name>[A-Za-z_@$?][A-Za-z0-9_@$?]*)\s*=\s*(?P<expr>.+)$", code)
+            if assignment:
+                symbols[assignment.group("name").lower()] = self._eval_repeat_expression(
+                    assignment.group("expr"),
+                    symbols,
+                )
+                continue
+            rows.append(self._substitute_repeat_percent_expressions(line, symbols))
+        return self._expand_repeat_blocks("".join(rows), symbols).splitlines(keepends=True)
+
+    @staticmethod
+    def _substitute_repeat_percent_expressions(line: str, symbols: dict[str, int]) -> str:
+        def replace(match: re.Match[str]) -> str:
+            return str(symbols.get(match.group("name").lower(), 0))
+
+        return re.sub(r"%(?P<name>[A-Za-z_@$?][A-Za-z0-9_@$?]*)", replace, line)
+
+    @staticmethod
+    def _eval_repeat_expression(expression: str, symbols: dict[str, int]) -> int:
+        rendered = expression
+        for name, value in sorted(symbols.items(), key=lambda item: len(item[0]), reverse=True):
+            rendered = re.sub(rf"\b{re.escape(name)}\b", str(value), rendered, flags=re.IGNORECASE)
+        rendered = rendered.replace("/", "//")
+        try:
+            return int(eval(rendered, {"__builtins__": {}}, {}))
+        except Exception:
+            return 0
+
+    def _expand_text_macros(self, content: str) -> str:
+        expanded = content
+        for _ in range(20):
+            next_expanded, changed = self._expand_text_macros_once(expanded)
+            expanded = next_expanded
+            if not changed:
+                return expanded
+        return expanded
+
+    def _expand_text_macros_once(self, content: str) -> tuple[str, bool]:
+        changed = False
+        rows: list[str] = []
+        lines = content.splitlines(keepends=True)
+        i = 0
+        while i < len(lines):
+            line = lines[i]
+            if re.match(r"^\s*[A-Za-z_@$?][A-Za-z0-9_@$?]*\s+MACRO\b", line, re.IGNORECASE):
+                rows.append(line)
+                i += 1
+                while i < len(lines):
+                    rows.append(lines[i])
+                    if re.match(r"^\s*ENDM\b", lines[i], re.IGNORECASE):
+                        i += 1
+                        break
+                    i += 1
+                continue
+            code, sep, comment = line.partition(";")
+            match = re.match(
+                r"^(?P<ws>\s*)(?:(?P<label>(?:@@|[A-Za-z_@$?][A-Za-z0-9_@$?]*)\s*:)\s*)?"
+                r"(?P<name>[A-Za-z_@$?][A-Za-z0-9_@$?]*)(?P<args>\b[^\r\n]*)$",
+                code,
+            )
+            if not match:
+                rows.append(line)
+                i += 1
+                continue
+            macro = self._text_macros.get(match.group("name").lower())
+            if macro is None:
+                rows.append(line)
+                i += 1
+                continue
+            if split_lines := self._split_chained_macro_invocation(line, match):
+                rows.extend(split_lines)
+                changed = True
+                i += 1
+                continue
+            changed = True
+            args = self._split_macro_args(match.group("args").strip())
+            replacements = dict(zip(macro.parameters, args))
+            self._text_macro_expansion_id += 1
+            local_replacements = self._local_macro_replacements(macro.body, self._text_macro_expansion_id)
+            replacements.update(local_replacements)
+            label = (match.group("label") or "").strip().rstrip(":")
+            for body_line in macro.body:
+                if re.match(r"^\s*LOCAL\b", body_line, re.IGNORECASE):
+                    continue
+                rendered = self._substitute_text_macro_args(body_line.lstrip(), replacements)
+                if label:
+                    rows.append(f"{match.group('ws')}{label}:\t{rendered}")
+                    label = ""
+                else:
+                    rows.append(match.group("ws") + rendered)
+            if sep and comment.strip():
+                rows.append(f"{match.group('ws')};{comment}")
+            i += 1
+        return "".join(rows), changed
+
+    def _split_chained_macro_invocation(self, line: str, match: re.Match[str]) -> list[str]:
+        if not self._text_macros:
+            return []
+        names = "|".join(re.escape(name) for name in sorted(self._text_macros, key=len, reverse=True))
+        split = re.search(rf"\s+\band\b\s+(?=(?:{names})\b)", match.group("args"), re.IGNORECASE)
+        if split is None:
+            return []
+        first_args = match.group("args")[: split.start()].strip()
+        rest = match.group("args")[split.end():].strip()
+        line_end = "\n" if line.endswith("\n") else ""
+        label = f"{match.group('label').strip().rstrip(':')}: " if match.group("label") else ""
+        return [
+            f"{match.group('ws')}{label}{match.group('name')} {first_args}{line_end}",
+            f"{match.group('ws')}{rest}{line_end}",
+        ]
+
+    @staticmethod
+    def _split_macro_args(text: str) -> list[str]:
+        if not text:
+            return []
+        args: list[str] = []
+        current: list[str] = []
+        angle_depth = 0
+        paren_depth = 0
+        for char in text:
+            if char == "<":
+                angle_depth += 1
+            elif char == ">" and angle_depth:
+                angle_depth -= 1
+            elif char == "(":
+                paren_depth += 1
+            elif char == ")" and paren_depth:
+                paren_depth -= 1
+            if char == "," and angle_depth == 0 and paren_depth == 0:
+                args.append("".join(current).strip())
+                current = []
+            else:
+                current.append(char)
+        args.append("".join(current).strip())
+        return args
+
+    @staticmethod
+    def _substitute_text_macro_args(line: str, replacements: dict[str, str]) -> str:
+        result = line
+        for name, value in replacements.items():
+            result = re.sub(rf"&{re.escape(name)}\b", value, result, flags=re.IGNORECASE)
+            result = re.sub(rf"\b{re.escape(name)}&", value, result, flags=re.IGNORECASE)
+            result = re.sub(rf"\b{re.escape(name)}\b", value, result, flags=re.IGNORECASE)
+        return result
+
+    @staticmethod
+    def _local_macro_replacements(body: list[str], expansion_id: int) -> dict[str, str]:
+        replacements: dict[str, str] = {}
+        for line in body:
+            match = re.match(r"^\s*LOCAL\s+(?P<names>[^;\r\n]+)", line, re.IGNORECASE)
+            if not match:
+                continue
+            for name in match.group("names").split(","):
+                local_name = name.strip()
+                if local_name:
+                    replacements[local_name.lower()] = f"__m2c_macrolocal_{expansion_id}_{local_name.lstrip('_')}"
+        return replacements
+
+    def _join_continued_lines(self, content: str) -> str:
+        rows: list[str] = []
+        pending = ""
+        for line in content.splitlines(keepends=True):
+            body = line[:-1] if line.endswith("\n") else line
+            newline = "\n" if line.endswith("\n") else ""
+            code = body.split(";", 1)[0]
+            stripped = code.rstrip()
+            if stripped.endswith("\\"):
+                backslash_index = body.find("\\", len(stripped) - 1)
+                pending += body[:backslash_index].rstrip() + " "
+                continue
+            rows.append(pending + body + newline)
+            pending = ""
+        if pending:
+            rows.append(pending)
+        return "".join(rows)
+
+    @staticmethod
+    def _trim_trailing_lines_after_end(content: str) -> str:
+        lines = content.splitlines(keepends=True)
+        last_end_index: int | None = None
+        for index, line in enumerate(lines):
+            code = line.split(";", 1)[0].replace("\x1a", "").strip()
+            if re.match(r"^END(?:\s+.+)?$", code, re.IGNORECASE):
+                last_end_index = index
+        if last_end_index is None:
+            return content
+        trailing = lines[last_end_index + 1:]
+        if all(not line.split(";", 1)[0].replace("\x1a", "").strip() for line in trailing):
+            return "".join(lines[:last_end_index + 1])
+        return content
+
+    def _wrap_bare_data_table(self, content: str) -> str:
+        code_lines = []
+        for line in content.splitlines():
+            code = line.split(";", 1)[0].strip()
+            if code:
+                code_lines.append(code)
+        if not code_lines:
+            return content
+        data_decl_pattern = "|".join(re.escape(name) for name in sorted(_DATA_DECL_NAMES, key=len, reverse=True))
+        if not all(re.match(rf"^(?:{data_decl_pattern})\b", line, re.IGNORECASE) for line in code_lines):
+            return content
+        return f"_DATA segment para public 'DATA'\n{content.rstrip()}\n_DATA ends\nend\n"
 
     def _predeclare_structure_names(self, content: str) -> None:
         for line in content.splitlines():
@@ -1423,6 +1796,16 @@ class Parser:
                 continue
             if hdr := _REGEX_STRUCT_HDR.match(code):
                 self.declare_structure_name(hdr.group("name"))
+            if record := re.match(
+                r"^(?P<name>[A-Za-z_@$?.][A-Za-z0-9_@$?.]*)\s+RECORD\b(?P<bits>.*)$",
+                code,
+                re.IGNORECASE,
+            ):
+                widths = [
+                    int(width)
+                    for width in re.findall(r":\s*([0-9]+)", record.group("bits"))
+                ]
+                self.declare_record_definition(record.group("name"), widths)
             mtch = _REGEX_STRUCT_INSTANCE.match(code)
             if mtch and mtch.group("stype").lower() not in _DATA_DECL_NAMES:
                 self.declare_structure_name(mtch.group("stype"))
@@ -1430,16 +1813,81 @@ class Parser:
             if simple_mtch and simple_mtch.group("stype").lower() not in _DATA_DECL_NAMES:
                 self.declare_structure_name(simple_mtch.group("stype"))
 
+    def _predeclare_included_structure_names(self, content: str, seen: set[str]) -> None:
+        for line in content.splitlines():
+            code = line.split(";", 1)[0].strip()
+            match = re.match(r"^INCLUDE\s+(.+)$", code, re.IGNORECASE)
+            if not match:
+                continue
+            include_path = self.resolve_include_path(match.group(1).strip())
+            if include_path in seen or not os.path.exists(include_path):
+                continue
+            seen.add(include_path)
+            include_content = self._join_continued_lines(self._read_whole_file(include_path))
+            include_content = self.apply_conditional_assembly(include_content)
+            self._predeclare_structure_names(include_content)
+            previous = self._switch_file_context(include_path)
+            try:
+                self._predeclare_included_structure_names(include_content, seen)
+            finally:
+                self._current_file, self.__current_file_hash = previous
+
     def _normalize_struct_instance_rows(self, content: str) -> str:
         rows: list[str] = []
         for line_no, line in enumerate(content.splitlines(keepends=True), start=1):
             code = line.split(";", 1)[0]
-            mtch = _REGEX_STRUCT_INSTANCE_LINE.match(code)
+            mtch = _REGEX_STRUCT_INSTANCE_LINE.match(code) or _REGEX_STRUCT_DUP_INSTANCE_LINE.match(code)
             if mtch and self.match_known_structure_name(mtch.group("name")):
-                prefix = f'{mtch.group("ws")}__m2c_structrow_{line_no} '
+                prefix = f'{mtch.group("ws")}__m2c_structrow_{self.__current_file_hash[:8]}_{line_no} '
                 line = prefix + line[len(mtch.group("ws")):]
+            elif record_line := self._rewrite_record_instance_line(line, line_no):
+                line = record_line
             rows.append(line)
         return "".join(rows)
+
+    def _rewrite_record_instance_line(self, line: str, line_no: int) -> str:
+        code, sep, comment = line.partition(";")
+        match = re.match(
+            r"^(?P<ws>\s*)(?:(?P<label>[A-Za-z_@$?.][A-Za-z0-9_@$?.]*)\s+)?"
+            r"(?P<name>[A-Za-z_@$?.][A-Za-z0-9_@$?.]*)\s+(?P<value>.+?)\s*$",
+            code,
+            re.IGNORECASE,
+        )
+        if not match or not self.match_known_record_name(match.group("name")):
+            return ""
+        packed = self._pack_record_value(match.group("name"), match.group("value"))
+        if not packed:
+            return ""
+        label = match.group("label") or f"__m2c_recordrow_{self.__current_file_hash[:8]}_{line_no}"
+        suffix = f";{comment}" if sep else ""
+        newline = "\n" if line.endswith("\n") else ""
+        return f"{match.group('ws')}{label} DB {packed}{suffix}{newline}"
+
+    def _pack_record_value(self, name: str, value: str) -> str:
+        dup_match = re.match(r"(?P<count>.+?)\s+DUP\s*\(\s*<(?P<args>.*)>\s*\)\s*$", value, re.IGNORECASE)
+        if dup_match:
+            packed = self._pack_record_args(name, self._split_macro_args(dup_match.group("args")))
+            return f"{dup_match.group('count').strip()} DUP({packed})" if packed else ""
+        simple_match = re.match(r"<(?P<args>.*)>\s*$", value)
+        if simple_match:
+            return self._pack_record_args(name, self._split_macro_args(simple_match.group("args")))
+        return ""
+
+    def _pack_record_args(self, name: str, args: list[str]) -> str:
+        widths = self.record_defs.get(name.lower())
+        if not widths:
+            return ""
+        padded_args = [*args, *(["0"] * max(0, len(widths) - len(args)))]
+        shift = sum(widths)
+        parts: list[str] = []
+        for width, arg in zip(widths, padded_args):
+            shift -= width
+            value = arg.strip() or "0"
+            if shift:
+                parts.append(f"(({value}) * {1 << shift})")
+            else:
+                parts.append(f"({value})")
+        return " + ".join(parts)
 
     def apply_conditional_assembly(self, content: str) -> str:
         lines = content.splitlines(keepends=True)
@@ -1495,7 +1943,13 @@ class Parser:
         code = line.split(";", 1)[0].strip()
         if not code:
             return None
-        match = re.match(r"^(IF(?:E|B|NB|DEF|NDEF|DIF|DIFI|IDN|IDNI|1|2)?|ELSEIF(?:E|B|NB|DEF|NDEF|DIF|DIFI|IDN|IDNI|1|2)?|ELSE|ENDIF)\b(.*)$", code, re.IGNORECASE)
+        match = re.match(
+            r"^(?:(?:@@|[A-Za-z_@$?][A-Za-z0-9_@$?]*)\s*:\s*)?"
+            r"(IF(?:E|B|NB|DEF|NDEF|DIF|DIFI|IDN|IDNI|1|2)?|"
+            r"ELSEIF(?:E|B|NB|DEF|NDEF|DIF|DIFI|IDN|IDNI|1|2)?|ELSE|ENDIF)\b(.*)$",
+            code,
+            re.IGNORECASE,
+        )
         if not match:
             return None
         return match.group(1), match.group(2).strip()
@@ -1545,10 +1999,23 @@ class Parser:
         expr = payload.strip()
         if not expr:
             return 0
+        relops = {
+            "EQ": "==",
+            "NE": "!=",
+            "LT": "<",
+            "LE": "<=",
+            "GT": ">",
+            "GE": ">=",
+        }
+        for old, new in relops.items():
+            expr = re.sub(rf"\b{old}\b", new, expr, flags=re.IGNORECASE)
+        expr = re.sub(r"\b([01]+)b\b", lambda match: str(int(match.group(1), 2)), expr, flags=re.IGNORECASE)
+        expr = re.sub(r"\b([0-9A-F]+)h\b", lambda match: str(int(match.group(1), 16)), expr, flags=re.IGNORECASE)
+        expr = re.sub(r"\b[A-Za-z_@$?][A-Za-z0-9_@$?]*\b", "0", expr)
         try:
-            return int(expr, 0)
-        except ValueError:
-            return 1 if self.symbols.get_global(expr.lower()) is not None else 0
+            return int(bool(eval(expr, {"__builtins__": {}}, {})))
+        except Exception:
+            return 0
 
     def parse_text(self, text: str, file_name: str="", start_rule: str="start") -> Tree:
         logging.debug("parsing: [%s]", text)

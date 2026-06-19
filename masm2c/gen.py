@@ -15,7 +15,7 @@ import jsonpickle  # type: ignore[import-untyped]
 from lark import lark
 
 from masm2c import op
-from masm2c.Token import Expression
+from masm2c.Token import Expression, Token as Token_
 from masm2c.pgparser import TopDownVisitor
 
 if TYPE_CHECKING:
@@ -48,6 +48,37 @@ class Gen(TopDownVisitor):
         return expr.size()
 
 
+    def _calculate_struct_alias_member_size(self, struct_type: str, alias: str, seen: set[str] | None = None) -> int:
+        seen = seen or set()
+        alias = alias.lower()
+        if alias in seen:
+            return 0
+        seen.add(alias)
+        struct = self._context.symbols.get_global(struct_type)
+        alias_symbol = self._context.symbols.get_global(alias)
+        if not isinstance(struct, op.Struct) or not isinstance(alias_symbol, (op._equ, op._assignment)):
+            return 0
+        referenced_labels = Token_.find_tokens(alias_symbol.value, "LABEL") or []
+        for referenced_label in referenced_labels:
+            referenced_name = str(referenced_label).lower()
+            try:
+                return struct.getitem(referenced_name).getsize()
+            except KeyError:
+                if size := self._calculate_struct_alias_member_size(struct_type, referenced_name, seen):
+                    return size
+        return alias_symbol.size
+
+    def _calculate_known_struct_member_size(self, member: str) -> int:
+        for struct_name, symbol in self._context.symbols.get_globals().items():
+            if not isinstance(symbol, op.Struct):
+                continue
+            try:
+                return symbol.getitem(member).getsize()
+            except KeyError:
+                if size := self._calculate_struct_alias_member_size(struct_name, member):
+                    return size
+        return 0
+
     def calculate_member_size(self, label: list[str]) -> int:
         """
         Calculate the size of a member.
@@ -56,23 +87,33 @@ class Gen(TopDownVisitor):
         :return: The size of the member
         """
         g = self._context.symbols.get_global(label[0])
+        if g is None:
+            return 0
         type = label[0] if isinstance(g, op.Struct) else g.original_type
 
         try:
-           for member in label[1:]:
-               if (g := self._context.symbols.get_global(type)) is None:
-                   raise KeyError(type)
-               if isinstance(g, op.Struct):
-                   g = g.getitem(member)
-                   type = g.data  # type: ignore[union-attr]
-               else:
-                   return g._size
+            for member in label[1:]:
+                if (g := self._context.symbols.get_global(type)) is None:
+                    raise KeyError(type)
+                if isinstance(g, op.Struct):
+                    try:
+                        g = g.getitem(member)
+                    except KeyError:
+                        if size := self._calculate_struct_alias_member_size(type, member):
+                            return size
+                        raise
+                    type = g.data  # type: ignore[union-attr]
+                else:
+                    return g._size
         except KeyError as ex:
-           logging.debug("Didn't found for %s %s will try workaround", label, ex.args)
-           # if members are global as with M510 or tasm try to find last member size
-           g = self._context.symbols.get_global(label[-1])
+            logging.debug("Didn't found for %s %s will try workaround", label, ex.args)
+            # If members are global as with M510 or TASM, use that. Otherwise
+            # infer from any known struct member with this name.
+            g = self._context.symbols.get_global(label[-1])
+            if g is None or getattr(g, "size", 0) == 0:
+                return self._calculate_known_struct_member_size(label[-1])
 
-        return g.size
+        return g.size if g is not None else 0
 
 
 

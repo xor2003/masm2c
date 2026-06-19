@@ -1,10 +1,10 @@
-?start: _directivelist?  enddir
+?start: _directivelist?  enddir?
 //%ignore " "
 
 U_DOT: "."
 _COMMA: ","
-CHARLIST.1: /[^\r\n\t; ]+/x
-TEXT.1: /[^>\r\n]+/x
+CHARLIST.1: /[^\r\n\t; <>]+/x
+TEXT.1: /[^<>\r\n]+/x
 STRING: /((?<!')'((?!').+?(?<!'))?'(?!'))|((?<!")"((?!").+?(?<!"))?"(?!"))/
 LABEL: /[A-Za-z@_$?][A-Za-z@_$?0-9]*/
 //MONKEY: /@@|@B|@F/
@@ -98,7 +98,7 @@ crefdir: crefoption _linereminder
 crefoption: ".CREF"i | ".XCREF"i idlist? | ".NOCREF"i idlist?
 //datadecl: DB | DW | DD | DF | DQ | DT | DATATYPE
 //datadir: LABEL? dataitem _linereminder
-!datadir: LABEL? datadecl exprlist _linereminder | structinstdir | recordinstdir
+!datadir: (LABEL|mnemonic)? datadecl exprlist _linereminder | structinstdir | recordinstdir
 //datadir: LABEL? datadecl exprlist _linereminder | LABEL? LABEL structinstlist _linereminder
 %declare STRUCTNAME
 %declare RECORDNAME
@@ -148,7 +148,7 @@ MULOP: ("*"| "/" | "MOD"i)
 RELOP: ("EQ"i|"NE"i|"LT"i|"LE"i|"GT"i|"GE"i)
 //OROP: ("OR"i|"XOR"i)
 SHOP.1: ("SHR"i | "SHL"i)
-WORDOP: ("HIGH"i|"LOW"i|"HIGHWORD"i|"LOWWORD"i)
+WORDOP.1: /(?i:HIGHWORD|LOWWORD|HIGH|LOW)(?![A-Za-z0-9_@$?])/
 !ptrdir2: "LARGE"i segmentregister ":" e10 // ("LARGE"i|"SMALL"i|"SHORT"i)
 
 ?e01: e02 | e01 "OR"i e02 -> ordir
@@ -161,7 +161,7 @@ WORDOP: ("HIGH"i|"LOW"i|"HIGHWORD"i|"LOWWORD"i)
 | e06 SHOP e07 -> shiftdir
 ?e07: SIGN e07 -> unadddir
 | e08
-?e08: WORDOP e09
+?e08: WORDOP e09 -> wordopdir
 | e09
 ?e09: "OFFSET"i e10 -> offsetdir
 | "SEG"i e10 -> seg
@@ -206,7 +206,7 @@ enddir: "END"i expr?  _linereminder?
 endpdir: LABEL "ENDP"i _linereminder
 endsdir: LABEL "ENDS"i _linereminder
 eqconstexpr: "=" expr
-equdir: LABEL "EQU"i equtype _linereminder
+equdir: (LABEL|mnemonic) "EQU"i equtype _linereminder
 ?equtype: expr| textliteral
 errordir: erroropt _linereminder
 erroropt: ".ERR"i textitem? | ".ERRE"i expr opttext? | ".ERRNZ"i expr opttext? | ".ERRB"i textitem opttext? | ".ERRNB"i textitem opttext? | ".ERRDEF"i LABEL  opttext? | ".ERRNDEF"i LABEL opttext? | ".ERRDIF"i textitem _COMMA textitem  opttext? | ".ERRDIFI"i textitem _COMMA textitem  opttext? | ".ERRIDN"i textitem _COMMA textitem  opttext? | ".ERRIDNI"i textitem _COMMA textitem  opttext? | ".ERR1"i textitem? | ".ERR2"i textitem?
@@ -261,18 +261,19 @@ macroarglist: macroarg | macroarg _COMMA macroarglist
 macrobody: locallist? macrostmtlist
 macrocall: MACRONAME  "(" macroarglist ")" | MACRONAME macroarglist? _linereminder
 macrodirhead: LABEL "MACRO"i macroparmlist?
-macrodir: macrodirhead _linereminder macrobody "ENDM"i _linereminder
-macrofor: fordir forparm  _COMMA "<" macroarglist ">" _linereminder macrobody "ENDM"i _linereminder
-macroforc: forcdir LABEL  _COMMA textliteral _linereminder macrobody "ENDM"i _linereminder
+macrodir: macrodirhead _linereminder macrobody? macend _linereminder
+macrofor: fordir forparm  _COMMA "<" macroarglist ">" _linereminder macrobody? "ENDM"i _linereminder
+macroforc: forcdir LABEL  _COMMA textliteral _linereminder macrobody? "ENDM"i _linereminder
 macronamelist: LABEL | LABEL _COMMA macronamelist
 macroparamid: LABEL | "ADDR"i
 macroparm: macroparamid dotdotparmtype?
 macroparmlist: macroparm | macroparm _commaoeol macroparmlist
-macrorepeat: repeatbegin _linereminder macrobody "ENDM"i _linereminder
+macrorepeat: repeatbegin _linereminder macrobody? macend _linereminder
 repeatbegin: repeatdir expr
+macend: "ENDM"i
 macrostmt: instruction | labeldef | datadir | _directive| exitmdir| ":" LABEL _linereminder| "GOTO"i LABEL _linereminder
 macrostmtlist: macrostmt+
-macrowhile: "WHILE"i expr _linereminder macrobody "ENDM"i _linereminder
+macrowhile: "WHILE"i expr _linereminder macrobody? "ENDM"i _linereminder
 
 modeldir: ".MODEL"i memoption commamodeloptlist? _linereminder
 modelopt: langtype| stackoption | "OS_DOS"i
@@ -316,7 +317,7 @@ radixdir: ".RADIX"i expr _linereminder
 recordconst_: "{" exprlist "}"| oldrecordinstance
 oldrecordinstance: "<" exprlist ">"
 recordconst: LABEL recordconst_
-recorddir: LABEL "RECORD"i bitdeflist _linereminder
+recorddir: (LABEL|RECORDNAME) "RECORD"i bitdeflist _linereminder
 recordinstance_: "{"  _linereminder? exprlist _linereminder?  "}"
 recordinstance: recordinstance_ | oldrecordinstance | expr "DUP"i "(" recordinstance ")"
 recordinstlist: recordinstance | recordinstance _commaoeol recordinstlist

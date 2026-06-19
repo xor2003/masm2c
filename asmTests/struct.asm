@@ -43,6 +43,7 @@ db 0ffh
 ts TRANSFORMEDSHAPE < 6, <7, 8, 9>, 10 >
 
 fff e <>
+e 2 dup(<11, 12>)
 
 
 sti                             ; Set The Interrupt Flag

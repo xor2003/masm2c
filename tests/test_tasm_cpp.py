@@ -37,6 +37,17 @@ class CppTest(unittest.TestCase):
     def test_args_20090(self):
         assert self.parser.parse_arg("+40h", def_size=0, destination=False) == "0x40"
 
+    def test_args_20095(self):
+        assert self.parser.parse_arg("NOT(RED_AUT)", def_size=1, destination=False) == "~(red_aut)"
+        assert self.parser.parse_arg("NOT (HFLG_REL_CHAFF+HFLG_REL_FLARE)", def_size=1, destination=False) == "~(hflg_rel_chaff+hflg_rel_flare)"
+
+    def test_args_20096(self):
+        assert self.parser.parse_arg("LOW T_100Hz", def_size=1, destination=False) == "t_100hz & 0xff"
+        assert self.parser.parse_arg("HIGH T_100Hz", def_size=1, destination=False) == "(t_100hz >> 8) & 0xff"
+
+    def test_convert_str_accepts_string_chunks(self):
+        assert self.cpp.convert_str("abc") == "abc"
+
     #def test_args_20100(self):
 
     #def test_args_20110(self):

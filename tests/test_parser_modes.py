@@ -7,12 +7,12 @@ from masm2c.pgparser import LarkParser
 
 
 class ParserModesTest(unittest.TestCase):
-    def test_parser_engine_defaults_to_cython(self):
+    def test_parser_engine_defaults_to_lark_postlex(self):
         original_engine = LarkParser._parser_engine
         try:
             LarkParser._parser_engine = None
             with patch.dict(os.environ, {}, clear=True):
-                self.assertEqual(LarkParser._configured_parser_engine(), "cython")
+                self.assertEqual(LarkParser._configured_parser_engine(), "postlex")
         finally:
             LarkParser._parser_engine = original_engine
 

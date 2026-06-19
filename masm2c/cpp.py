@@ -1659,12 +1659,13 @@ struct Memory{
         elif isinstance(c, str):
             # logging.debug "~~ " + r[i] + str(ord(r[i]))
             # for c in string:
+            if len(c) != 1:
+                return "".join(self.convert_str(char) for char in c)
 
             if c in ["'", '"', "\\"]:
                 vvv = "\\" + c
             elif ord(c) > 127:
-                t = c.encode("cp437", "backslashreplace")
-                vvv = "\\" + hex(ord(t))[1:]
+                vvv = f"\\x{c.encode('cp437', 'backslashreplace')[0]:02x}"
             elif c == "\0":
                 vvv = "\\0"
             else:
@@ -1914,38 +1915,63 @@ struct Memory{
             value_str = self.convert_member_offset(g, label)
             return [lark.Token("memberdir", value_str)]
 
+        if isinstance(name, list):
+            return ["".join(str(part) for part in self.visit(name))]
+        if isinstance(name, lark.Tree):
+            return ["".join(str(part) for part in self.visit(name))]
+
         assert isinstance(name, str)
         if (g := self._context.symbols.get_global(name)) is None:
             return [name]
         if isinstance(g, op.var):
             logging.debug("it is var %s", g.size)
-            if self._expr_state.element_size == 2:
+            offset_size = self._expr_state.element_size
+            if offset_size not in {2, 4}:
+                offset_size = 2
+            if offset_size == 2:
                 return [f"offset({g.segment},{g.name})"]
-            elif self._expr_state.element_size == 4:
-                return [f"far_offset({g.segment},{g.name})"]
-            else:
-                raise ValueError("Unknown offset size %s", self._expr_state.element_size)
+            return [f"far_offset({g.segment},{g.name})"]
         elif isinstance(g, (Proc, op.label)):
             logging.debug("it is proc")
             return [f"m2c::k{g.name}"]
+        elif isinstance(g, (op._equ, op._assignment)):
+            return ["".join(str(part) for part in self.visit(g.value))]
         else:
             raise ValueError("Unknown type for offsetdir %s", type(g))
 
+    def _render_operator_children(self, children: list[Any]) -> list[str]:
+        return [
+            child if isinstance(child, str) else "".join(str(part) for part in self.visit(child))
+            for child in children
+        ]
+
     def notdir(self, tree: Tree) -> list[Union[str, Token]]:
-        assert isinstance(tree.children, list) and all(isinstance(child, str) for child in tree.children)
-        return ["~", *tree.children]
+        return ["~", *self._render_operator_children(tree.children)]
+
+    def wordopdir(self, tree: Tree) -> list[str]:
+        operator = str(tree.children[0]).lower()
+        value = self._render_operator_children(tree.children[1:])[0]
+        if operator == "low":
+            return [f"({value} & 0xff)"]
+        if operator == "high":
+            return [f"(({value} >> 8) & 0xff)"]
+        if operator == "lowword":
+            return [f"({value} & 0xffff)"]
+        if operator == "highword":
+            return [f"(({value} >> 16) & 0xffff)"]
+        raise ValueError(f"Unknown word operator {operator}")
 
     def ordir(self, tree: Tree) -> list[Union[str, Token]]:
-        assert isinstance(tree.children, list) and all(isinstance(child, str) for child in tree.children)
-        return [tree.children[0], " | ", tree.children[1]]
+        left, right = self._render_operator_children(tree.children)
+        return [left, " | ", right]
 
     def xordir(self, tree):
-        assert isinstance(tree.children, list) and all(isinstance(child, str) for child in tree.children)
-        return [tree.children[0], " ^ ", tree.children[1]]
+        left, right = self._render_operator_children(tree.children)
+        return [left, " ^ ", right]
 
     def anddir(self, tree):
-        assert isinstance(tree.children, list) and all(isinstance(child, str) for child in tree.children)
-        return [tree.children[0], " & ", tree.children[1]]
+        left, right = self._render_operator_children(tree.children)
+        return [left, " & ", right]
 
     def sizearg(self, tree: Tree) -> list[str]:
         return [f"sizeof({tree.children[0]})"]
