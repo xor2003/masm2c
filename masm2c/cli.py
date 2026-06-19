@@ -247,6 +247,12 @@ def process(name, args):
     return generator
 
 
+def should_merge_data_segments(files: list[str]) -> bool:
+    """Multi-module builds need linked segment merging even when some inputs are listings."""
+    asm_sources = [file for file in files if file.lower().endswith((".asm", ".lst"))]
+    return not (len(asm_sources) == 1 and asm_sources[0].lower().endswith(".lst"))
+
+
 def main() -> None:
     """Main entry point allowing external calls.
 
@@ -263,19 +269,17 @@ def main() -> None:
     args: argparse.Namespace = parse_args(sys.argv[1:])
     logging.info(f"Masm source to C++ translator V{__version__} {__license__}")
     # Process .asm
-    merge_data_segments = True
     files = []
     for pattern in args.filenames:
         files.extend(glob.glob(pattern))
 
     for i in files:
-        if i.lower().endswith(".lst"):
-            merge_data_segments = False
         if i.lower().endswith(".asm") or i.lower().endswith(".lst"):
             setup_logging(i, args.loglevel)
             process(i, vars(args))
 
     # Process .seg files
+    merge_data_segments = should_merge_data_segments(files)
     generator = Cpp(Parser(vars(args)), merge_data_segments=merge_data_segments)
     generator.convert_segment_files_into_datacpp(files)
 

@@ -38,7 +38,7 @@ if TYPE_CHECKING:
 import os
 import re
 from collections import OrderedDict
-from copy import copy
+from copy import copy, deepcopy
 
 from lark import lark
 
@@ -62,6 +62,7 @@ RT_CODE_OFFSET = 1 << 1
 RT_STRING = 1 << 2
 RT_SEGMENT = 1 << 3
 RT_FAR_POINTER = 1 << 4
+CPP_STRUCT_TAG_REQUIRED = {"clock"}
 
 
 def _parse_runtime_int(value: Any) -> int | None:
@@ -103,7 +104,7 @@ class _ExprRenderState:
     def reset(self) -> None:
         self.needs_dereference = False
         self.is_pointer = False
-        self.struct_type = None
+        self.struct_type: str | None = None
         self.is_variable = False
         self.is_label = False
         self.is_just_label = False
@@ -127,12 +128,13 @@ class SeparateProcStrategy:
         return f" // Procedure {name}() start\n{self.renderer.mangle_label(name)}()\n{{\n"
 
     def function_header(self, name, entry_point=""):
+        linkage = self.renderer.function_linkage(name)
         header = """
 
- bool %s(m2c::_offsets _i, struct m2c::_STATE* _state){
+ %sbool %s(m2c::_offsets _i, struct m2c::_STATE* _state){
     X86_REGREF
     __disp = _i;
-""" % self.renderer.mangle_label(name)
+""" % (linkage, self.renderer.mangle_label(name))
 
         if entry_point != "":
             header += """
@@ -149,11 +151,11 @@ class SeparateProcStrategy:
 
     def write_declarations(self, procs, context):
         result = ""
-        is_listing_source = context.is_listing_source()
         for p in sorted(procs):  # TODO only if used or public
-            if p == "mainproc" and not is_listing_source:  # and not context.main_file:
-                result += "static "
-            result += "bool %s(m2c::_offsets, struct m2c::_STATE*);\n" % self.renderer.mangle_label(p)
+            result += "%sbool %s(m2c::_offsets, struct m2c::_STATE*);\n" % (
+                self.renderer.function_linkage(p),
+                self.renderer.mangle_label(p),
+            )
 
         for i in sorted(context.externals_procs):
             v = context.symbols.get_global(i)
@@ -161,7 +163,7 @@ class SeparateProcStrategy:
                 result += f"extern bool {v.name}(m2c::_offsets, struct m2c::_STATE*);\n"
 
         result += """
-bool __dispatch_call(m2c::_offsets __disp, struct m2c::_STATE* _state);
+static bool __dispatch_call(m2c::_offsets __disp, struct m2c::_STATE* _state);
 """
         return result
 
@@ -190,6 +192,7 @@ class Cpp(Gen):
         self.__pushpop_count = 0
         self._rt_symbol_exact_by_linear: dict[int, tuple[str, Any]] | None = None
         self._rt_var_ranges_by_linear: list[tuple[int, int, str, Any]] | None = None
+        self._assignments: dict[str, Expression] = {}
         self._expr_state.is_member = False
 
         self.far = False
@@ -204,6 +207,9 @@ class Cpp(Gen):
                              op.DataType.OBJECT: self.produce_c_data_object,
                              }
 
+    def function_linkage(self, name: str) -> str:
+        return "" if name in getattr(self._context, "public_symbols", set()) else "static "
+
     def _is_listing_source(self) -> bool:
         return self._context.is_listing_source()
 
@@ -216,6 +222,10 @@ class Cpp(Gen):
         :rtype: str
         """
         name = str(original_name)
+        if self._is_old_struct_member_offset_context(name):
+            return self._old_struct_member_offset_constant_name(name)
+        if name in self._assignments:
+            return self.render_instruction_argument(self._assignments[name])
         if (g := self._context.symbols.get_and_mark_global(name)) is None:
             return name
 
@@ -226,7 +236,21 @@ class Cpp(Gen):
             return self.convert_label_var(g, name, original_name)
         elif isinstance(g, op.label):
             return f"m2c::k{name}" if self._expr_state.data_label_size or not self.itisjump else name
+        elif isinstance(g, op._assignment):
+            if self._context.test_mode:
+                self._apply_assignment_symbol_state(g)
+                return name
+            return self.render_instruction_argument(g.value)
         return name
+
+    def _apply_assignment_symbol_state(self, symbol: op._assignment) -> None:
+        expr = symbol.value
+        state = self._expr_state
+        size = expr.size() or expr.ptr_size or expr.element_size
+        if size:
+            state.variable_size = size
+        if expr.original_type:
+            state.struct_type = expr.original_type
 
     def convert_label_var(self, g, name, original_name) -> str:
         logging.debug("Variable detected. Size: %s", g.size)
@@ -333,13 +357,62 @@ class Cpp(Gen):
                     data_hpp_file += rendered["data_hpp_decl"]
                     data_cpp_file += rendered["data_cpp_ref"]
                     hpp_file += rendered["extern_hpp_decl"]
+                for alias in self._iter_data_aliases_for_segment(segment):
+                    data_cpp_file += self._render_data_alias_reference(alias)
+                    hpp_file += self._render_data_alias_extern(alias)
             return cpp_file, data_hpp_file, data_cpp_file, hpp_file
         finally:
             self._expr_state.data_label_size = prev_data_label_size
 
+    def _iter_data_aliases_for_segment(self, segment: Any):
+        segment_names = set(getattr(segment, "segment_aliases", {segment.name: 0}))
+        for alias in getattr(self._context, "data_aliases", []):
+            if alias.segment in segment_names:
+                yield alias
+
+    def _render_data_alias_reference(self, alias: op.var) -> str:
+        c_type = self._data_alias_c_type(alias)
+        return f"{c_type}& {alias.name}=*(({c_type}*)(&{alias.segment}+0x{alias.offset:x}));\n"
+
+    def _render_data_alias_extern(self, alias: op.var) -> str:
+        return f"extern {self._data_alias_c_type(alias)}& {alias.name};\n"
+
+    @staticmethod
+    def _data_alias_c_type(alias: op.var) -> str:
+        type_map = {
+            "db": "db",
+            "byte": "byte",
+            "sbyte": "byte",
+            "dw": "dw",
+            "word": "word",
+            "sword": "word",
+            "near": "word",
+            "near16": "word",
+            "dd": "dd",
+            "dword": "dword",
+            "sdword": "dword",
+            "far": "dword",
+            "far16": "dword",
+            "far32": "dword",
+            "df": "df",
+            "fword": "fword",
+            "dq": "dq",
+            "qword": "qword",
+            "dt": "dt",
+            "tbyte": "tbyte",
+            "real4": "real4",
+            "real8": "real8",
+            "real10": "real10",
+        }
+        return type_map.get(alias.original_type, alias.original_type)
+
     def _emit_segment_binding_declarations(self, segment: Any) -> tuple[str, str]:
-        data_cpp = f"db& {segment.name}=*((db*)&m2c::m+0x{segment.offset:x});\n"
-        hpp = f"extern db& {segment.name};\n"
+        data_cpp = ""
+        hpp = ""
+        aliases = getattr(segment, "segment_aliases", {segment.name: 0})
+        for name, relative_offset in aliases.items():
+            data_cpp += f"db& {name}=*((db*)&m2c::m+0x{segment.offset + relative_offset:x});\n"
+            hpp += f"extern db& {name};\n"
         return data_cpp, hpp
 
     def _render_data_declaration(self, data: Data) -> dict[str, str]:
@@ -370,13 +443,19 @@ class Cpp(Gen):
             value: str,
             type_and_name: str,
     ) -> tuple[str, str, str, str]:
-        match = re.match(r"^(\w+)\s+(\w+)(\[\d+\])?;\n", type_and_name)
+        match = re.match(r"^((?:struct\s+)?\w+)\s+(\w+)(\[\d+\])?;\n", type_and_name)
         if not match:
             logging.error(f"Failed to parse {value} {type_and_name}")
             return "", type_and_name, "", ""
 
         name = match[2]
-        type_and_size = re.sub(r"^(?P<type>\w+)\s+\w+(\[\d+\])?;\n", r"\g<type> tmp999\g<2>", type_and_name)
+        if name.startswith("dummy") and value == "":
+            return "", "", "", ""
+        type_and_size = re.sub(
+            r"^(?P<type>(?:struct\s+)?\w+)\s+\w+(\[\d+\])?;\n",
+            r"\g<type> tmp999\g<2>",
+            type_and_name,
+        )
         cpp_init = self._build_data_assignment(name, value, type_and_size, bool(match[3]))
         data_cpp_ref = self._generate_dataref_from_declaration_c(type_and_name)
         extern_hpp_decl = self._generate_extern_from_declaration_c(type_and_name)
@@ -386,6 +465,8 @@ class Cpp(Gen):
         return cpp_init, type_and_name, extern_hpp_decl, data_cpp_ref
 
     def _build_data_assignment(self, name: str, value: str, type_and_size: str, is_array: bool) -> str:
+        if value == "":
+            return ""
         if name.startswith("dummy") and value == "0":
             return ""
         if is_array:
@@ -408,8 +489,12 @@ class Cpp(Gen):
         m = re.match(r"^char\s+([A-Za-z0-9_]+)\[1\];(?:\s*//.*)?$", _hpp.strip())
         if m:
             return f"extern char& {m.group(1)};\n"
-        _extern = re.sub(r"^(\w+)\s+([\w\[\]]+)(\[\d+\]);", r"extern \g<1> (& \g<2>)\g<3>;", _hpp)
-        _extern = re.sub(r"^(\w+)\s+([\w\[\]]+);", r"extern \g<1>& \g<2>;", _extern)
+        _extern = re.sub(
+            r"^((?:struct\s+)?\w+)\s+([\w\[\]]+)(\[\d+\]);",
+            r"extern \g<1> (& \g<2>)\g<3>;",
+            _hpp,
+        )
+        _extern = re.sub(r"^((?:struct\s+)?\w+)\s+([\w\[\]]+);", r"extern \g<1>& \g<2>;", _extern)
         return _extern
 
     def _generate_dataref_from_declaration_c(self, _hpp):
@@ -422,10 +507,29 @@ class Cpp(Gen):
         if m:
             name = m.group(1)
             return f"char& {name} = m2c::m.{name}[0];\n"
-        _reference = re.sub(r"^(\w+)\s+([\w\[\]]+)(\[\d+\]);",
+        _reference = re.sub(r"^((?:struct\s+)?\w+)\s+([\w\[\]]+)(\[\d+\]);",
                             r"\g<1> (& \g<2>)\g<3> = m2c::m.\g<2>;", _hpp)
-        _reference = re.sub(r"^(\w+)\s+([\w\[\]]+);", r"\g<1>& \g<2> = m2c::m.\g<2>;", _reference)
+        _reference = re.sub(
+            r"^((?:struct\s+)?\w+)\s+([\w\[\]]+);",
+            r"\g<1>& \g<2> = m2c::m.\g<2>;",
+            _reference,
+        )
         return _reference
+
+    @staticmethod
+    def _flatten_data_values(values: list[Any]) -> list[Any]:
+        result: list[Any] = []
+        for value in values:
+            if isinstance(value, list):
+                if len(value) == 1:
+                    result.extend(Cpp._flatten_data_values(value))
+                elif all(isinstance(item, str) and len(item) == 1 for item in value):
+                    result.extend(value)
+                else:
+                    result.append(value)
+            else:
+                result.append(value)
+        return result
 
     def memberdir(self, tree: Tree) -> list[str]:
         assert isinstance(tree.children, list) and all(isinstance(child, str)for child in tree.children)
@@ -436,6 +540,9 @@ class Cpp(Gen):
         state = self._expr_state
         state.struct_type = None
         value = ".".join(label)
+
+        if label and label[0].startswith("__memptr_"):
+            return self._convert_pointer_member(label)
 
         if self._expr_state.indirection == IndirectionType.OFFSET and (g := self._context.symbols.get_global(label[0])):
             return self.convert_member_offset(g, label)
@@ -458,8 +565,27 @@ class Cpp(Gen):
 
         return value
 
+    def _convert_pointer_member(self, label: list[str]) -> str:
+        state = self._expr_state
+        base = label[0].removeprefix("__memptr_")
+        member = label[-1]
+        member_size = state.element_size or self._middle_size or self._calculate_known_struct_member_size(member) or 1
+        state.variable_size = member_size
+        if self._middle_size == 0:
+            self._middle_size = member_size
+        state.is_variable = False
+        state.is_label = False
+        state.is_pointer = False
+        state.needs_dereference = False
+        state.indirection = IndirectionType.VALUE
+        c_type = {1: "db", 2: "dw", 4: "dd", 8: "dq"}.get(member_size, "db")
+        return f"*(({c_type}*)raddr({state.work_segment},{base}+{self._old_struct_member_offset_constant_name(member)}))"
+
     def _convert_member_var(self, g, label):
         state = self._expr_state
+        self._promote_scalar_external_member_base(g, label)
+        if alias_member := self._render_struct_alias_member(g, label):
+            return alias_member
         source_var_size = self.calculate_member_size(label)
         if source_var_size == 0:
             raise Exception(f"invalid var {label} size {source_var_size}")
@@ -501,6 +627,39 @@ class Cpp(Gen):
                 self.body += "\tcs=seg_offset(" + g.segment + ");\n"
         return value
 
+    def _render_struct_alias_member(self, g: op.var, label: list[str]) -> str:
+        if len(label) < 2 or g.original_type not in self._context.structures:
+            return ""
+        struct = self._context.structures[g.original_type]
+        member = label[1]
+        try:
+            struct.getitem(member)
+            return ""
+        except KeyError:
+            pass
+        member_size = self._calculate_struct_alias_member_size(g.original_type, member)
+        if member_size == 0:
+            return ""
+        if member_size > 2 and member.endswith(("_hi", "_lo")):
+            member_size = 2
+        c_type = {1: "db", 2: "dw", 4: "dd", 8: "dq"}.get(member_size, "db")
+        state = self._expr_state
+        state.variable_size = member_size
+        state.is_variable = True
+        state.is_label = True
+        state.is_pointer = False
+        state.needs_dereference = False
+        state.indirection = IndirectionType.VALUE
+        return f"*(({c_type}*)((db*)&{g.name}+{member}))"
+
+    def _promote_scalar_external_member_base(self, g: op.var, label: list[str]) -> None:
+        if not g.external or len(label) < 2 or g.original_type in self._context.structures:
+            return
+        inferred_type = self.infer_struct_type_for_member(label[1])
+        if inferred_type:
+            g.original_type = inferred_type
+            g.size = self._context.typetosize(inferred_type)
+
     def _convert_member_equ(self, g, label):
         state = self._expr_state
         logging.debug("%s", g)
@@ -508,6 +667,8 @@ class Cpp(Gen):
             g.accept(self)
 
         if state.is_just_label:
+            value = ".".join(label)
+        elif not isinstance(g.value, Expression):
             value = ".".join(label)
         else:
             state.struct_type = g.value.original_type
@@ -752,27 +913,50 @@ class Cpp(Gen):
         if self.isrelativejump(label):
             return "{;}"
         label_str, _ = self.jump_post(label)  # TODO
+        if dispatch := self._conditional_cross_proc_dispatch(label_str, "GET_ZF()"):
+            return dispatch
         return f"JZ({label_str})"
 
     def _jnz(self, label: Expression) -> str:
         label_str, _ = self.jump_post(label)
+        if dispatch := self._conditional_cross_proc_dispatch(label_str, "!GET_ZF()"):
+            return dispatch
         return f"JNZ({label_str})"
 
     def _jbe(self, label: Expression) -> str:
         label_str, _ = self.jump_post(label)
+        if dispatch := self._conditional_cross_proc_dispatch(label_str, "GET_CF() || GET_ZF()"):
+            return dispatch
         return f"JBE({label_str})"
 
     def _ja(self, label: Expression) -> str:
         label_str, far = self.jump_post(label)
+        if dispatch := self._conditional_cross_proc_dispatch(label_str, "!GET_CF() && !GET_ZF()"):
+            return dispatch
         return f"JA({label_str})"
 
     def _jc(self, label: Expression) -> str:
         label_str, far = self.jump_post(label)
+        if dispatch := self._conditional_cross_proc_dispatch(label_str, "GET_CF()"):
+            return dispatch
         return f"JC({label_str})"
 
     def _jnc(self, label: Expression) -> str:
         label_str, far = self.jump_post(label)
+        if dispatch := self._conditional_cross_proc_dispatch(label_str, "!GET_CF()"):
+            return dispatch
         return f"JNC({label_str})"
+
+    def _conditional_cross_proc_dispatch(self, label: str, condition: str) -> str:
+        if not self._context.args or self._context.args.get("mergeprocs") != "separate":
+            return ""
+        label = str(label)
+        target_proc = self.label_to_proc.get(label)
+        proc = getattr(self, "proc", None)
+        current_proc = proc if isinstance(proc, str) else getattr(proc, "name", "")
+        if not target_proc or not current_proc or target_proc == current_proc:
+            return ""
+        return f"if ({condition}) return __dispatch_call(m2c::k{label}, _state);"
 
     """
     def _push(self, regs):
@@ -966,6 +1150,7 @@ class Cpp(Gen):
 
     def save_cpp_files(self, fname):
         cpp_assigns, _, _, cpp_extern = self.render_data_c(self._context.segments)
+        equates = self.produce_equates()
 
         header_id = f"__M2C_{self._namespace.upper().replace('-', '_').replace('.', '_')}_STUBS_H__"
 
@@ -1020,7 +1205,11 @@ class Cpp(Gen):
 #include "asm.h"
 
 {self.produce_structures(self._context.structures)}
+{equates}
 {cpp_extern}
+#if __has_include("_equates.h")
+#include "_equates.h"
+#endif
 {self.produce_label_offsets()}
 {self.proc_strategy.write_declarations(self._procs + list(self.grouped), self._context)}
 {self.produce_externals(self._context)}
@@ -1036,12 +1225,20 @@ class Cpp(Gen):
 
         logging.info("\n".join(self.__failed))
 
-        self.write_segment_file(self._context.segments, self._context.structures, fname)
+        self.write_segment_file(
+            self._context.segments,
+            self._context.structures,
+            fname,
+            self._context.data_aliases,
+            self.export_equates(),
+        )
 
     def write_procedures(self, banner, header_fname):
         cpp_file_text = ""
+        split_segment_includes: list[str] = []
         last_segment = None
         cpp_segment_file = None
+        self.generate_label_to_proc_map()
         for name in self._procs:
             proc_text, segment = self._render_procedure(name)
             if self._is_listing_source() and segment != last_segment:  # If .lst write to separate segments. Open new if changed
@@ -1050,6 +1247,7 @@ class Cpp(Gen):
                     cpp_segment_file.close()
 
                 cpp_segment_fname = f"{self._namespace.lower()}_{segment}.cpp"
+                split_segment_includes.append(cpp_segment_fname)
                 logging.info(f" *** Generating output file in C++ {cpp_segment_fname}")
                 cpp_segment_file = open(cpp_segment_fname, "w", encoding=self.__codeset)
                 cpp_segment_file.write(f"""{banner}
@@ -1066,7 +1264,60 @@ class Cpp(Gen):
         if cpp_segment_file:
             cpp_segment_file.close()
 
+        if split_segment_includes:
+            cpp_file_text += "\n".join(f'#include "{name}"' for name in split_segment_includes)
+            cpp_file_text += "\n"
+
         return cpp_file_text
+
+    def produce_equates(self) -> str:
+        result = ""
+        for symbol in self._context.symbols.get_globals().values():
+            if not isinstance(symbol, op._equ) or symbol.implemented:
+                continue
+            result += self.render_equate_definition(symbol.name, symbol)
+            symbol.implemented = True
+        self._cmdlabel = ""
+        return result
+
+    def export_equates(self) -> list[tuple[str, str]]:
+        equates: list[tuple[str, str]] = []
+        public_symbols: set[str] = getattr(self._context, "public_symbols", set())
+        for symbol in self._context.symbols.get_globals().values():
+            if not isinstance(symbol, op._equ) or not isinstance(symbol.value, Expression):
+                continue
+            if symbol.name not in public_symbols:
+                continue
+            rendered = self.render_equate_value(symbol)
+            if rendered and not self._is_module_local_equate_value(rendered):
+                equates.append((symbol.name, rendered))
+        return equates
+
+    @staticmethod
+    def _is_module_local_equate_value(rendered: str) -> bool:
+        return any(token in rendered for token in ("sizeof(", "offset(", "far_offset(", "seg_offset("))
+
+    def render_equate_definition(self, name: str, symbol: op._equ) -> str:
+        if isinstance(symbol.value, str):
+            return f"#define {name} {symbol.value}\n"
+        rendered = self.render_equate_value(symbol)
+        if not rendered:
+            return ""
+        if rendered.startswith("sizeof("):
+            return f"static const int {name} = (int){rendered};\n"
+        if not re.search(r"[A-Za-z_]", rendered):
+            return f"static const int {name} = {rendered};\n"
+        return f"#define {name} ({rendered})\n"
+
+    def render_equate_value(self, symbol: op._equ) -> str:
+        src = symbol.value
+        if not isinstance(src, Expression):
+            return ""
+        if struct_size := self._equ_struct_size_name(src):
+            return f"sizeof({struct_size})"
+        src_render = self._clone_expression_for_render(src)
+        src_render.indirection = IndirectionType.VALUE
+        return self.render_instruction_argument(src_render)
 
     def render_entrypoint_c(self):
         if not self._context.main_file:
@@ -1076,7 +1327,7 @@ class Cpp(Gen):
         g = self._context.symbols.get_global(self._context.entry_point)
         if isinstance(g, op.label) and self._context.entry_point not in self.grouped:
             entry_point_text = f"""
-             bool {self._context.entry_point}(m2c::_offsets, struct m2c::_STATE* _state){{return {self.label_to_proc[g.name]}(m2c::k{self._context.entry_point}, _state);}}
+             bool {self.mangle_label(self._context.entry_point)}(m2c::_offsets, struct m2c::_STATE* _state){{return {self.label_to_proc[g.name]}(m2c::k{self._context.entry_point}, _state);}}
             """
 
         entry_point_text += f"""namespace m2c{{ m2cf* _ENTRY_POINT_ = &{self.mangle_label(self._context.entry_point)};}}
@@ -1084,12 +1335,30 @@ class Cpp(Gen):
         return entry_point_text
 
     def render_function_wrappers_c(self):
-        return "".join(
+        grouped_wrappers = "".join(
             f"""
- bool {self.renderer.mangle_label(p)}(m2c::_offsets, struct m2c::_STATE* _state){{return {self.groups[p]}(m2c::k{p}, _state);}}
+ {self.function_linkage(p)}bool {self.renderer.mangle_label(p)}(m2c::_offsets, struct m2c::_STATE* _state){{return {self.groups[p]}(m2c::k{p}, _state);}}
 """
             for p in sorted(self.grouped)
         )
+        label_wrappers = "".join(
+            f"""
+ bool {self.renderer.mangle_label(name)}(m2c::_offsets, struct m2c::_STATE* _state){{return {owner}(m2c::k{name}, _state);}}
+"""
+            for name, owner in sorted(self._public_label_wrapper_targets().items())
+        )
+        return grouped_wrappers + label_wrappers
+
+    def _public_label_wrapper_targets(self) -> dict[str, str]:
+        targets: dict[str, str] = {}
+        for name, symbol in self._context.symbols.get_globals().items():
+            if not isinstance(symbol, op.label) or not symbol.globl:
+                continue
+            owner = self.label_to_proc.get(symbol.name)
+            if not owner or owner == name or name in self._procs or name in self.grouped:
+                continue
+            targets[name] = owner
+        return targets
 
     def convert_segment_files_into_datacpp(self, asm_files):
         """It reads .seg files, and writes the data segments to _data.cpp/h file.
@@ -1105,7 +1374,17 @@ class Cpp(Gen):
         :param structures: a list of structures that are defined in the program
         """
         logging.info(" *** Producing _data.cpp and _data.h files")
-        _, data_h, data_cpp_reference, _ = self.render_data_c(segments)
+        segments = self._deduplicate_memory_field_labels(segments)
+        previous_segments = self._context.segments
+        previous_structures = self._context.structures
+        self._context.segments = segments
+        self._context.structures = structures
+        try:
+            _, data_h, data_cpp_reference, _ = self.render_data_c(segments)
+        finally:
+            self._context.segments = previous_segments
+            self._context.structures = previous_structures
+        self._write_equates_header(getattr(self._context, "exported_equates", []))
         fname = "_data.cpp"
         header = "_data.h"
         with open(fname, "w", encoding=self.__codeset) as fd:
@@ -1131,6 +1410,41 @@ db(& heap)[HEAP_SIZE]=m.heap;
 """ + self.produce_structures(structures) + self.produce_data(data_h) + """
 #endif
 """)
+
+    def _write_equates_header(self, equates: list[tuple[str, str]]) -> None:
+        with open("_equates.h", "w", encoding=self.__codeset) as f:
+            f.write("#ifndef __M2C_EQUATES_H__\n#define __M2C_EQUATES_H__\n\n")
+            for name, value in equates:
+                f.write(f"#ifndef {name}\n#define {name} ({value})\n#endif\n")
+            f.write("\n#endif\n")
+
+    def _deduplicate_memory_field_labels(self, segments: OrderedDict) -> OrderedDict:
+        result = deepcopy(segments)
+        seen: set[str] = set()
+        for segment in result.values():
+            for data in segment.getdata():
+                if not data.label:
+                    continue
+                label = data.label.lower()
+                if label not in seen:
+                    seen.add(label)
+                    continue
+                data.label = self._unique_memory_field_label(data, seen)
+                seen.add(data.label.lower())
+        return result
+
+    @staticmethod
+    def _unique_memory_field_label(data: Data, seen: set[str]) -> str:
+        base = data.label.lower()
+        source = os.path.splitext(os.path.basename(data.filename or ""))[0].lower()
+        suffix_parts = [part for part in (source, f"{data.offset:x}", str(data.line_number)) if part]
+        suffix = "_".join(re.sub(r"[^A-Za-z0-9_]", "_", part) for part in suffix_parts) or "dup"
+        candidate = f"{base}__{suffix}"
+        index = 2
+        while candidate.lower() in seen:
+            candidate = f"{base}__{suffix}_{index}"
+            index += 1
+        return candidate
 
     def produce_label_offsets(self):
         labeloffsets = """namespace m2c{
@@ -1159,7 +1473,8 @@ static const dd kbegin = 0x1001;
 {struc_type} {name} {{
 """
             for member in v.getdata().values():
-                structures += f"  {member.data_type} {member.label};\n"
+                array_suffix = f"[{member.elements}]" if member.elements > 1 else ""
+                structures += f"  {member.data_type} {member.label}{array_suffix};\n"
             structures += """};
 """
         if strucs:
@@ -1167,7 +1482,42 @@ static const dd kbegin = 0x1001;
 #pragma pack(pop)
 
 """
+        structures += self._produce_old_struct_member_offsets()
         return structures
+
+    def _produce_old_struct_member_offsets(self) -> str:
+        offsets = getattr(self._context, "old_struct_member_offsets", {})
+        if not offsets:
+            return ""
+        result = ""
+        for member_name, (struct_name, _offset) in offsets.items():
+            const_name = self._old_struct_member_offset_constant_name(member_name)
+            result += f"static const word {const_name} = offsetof({struct_name}, {member_name});\n"
+        return f"{result}\n"
+
+    def _old_struct_member_offset_constant_name(self, member_name: str) -> str:
+        member_name = str(member_name).lower()
+        offsets = getattr(self._context, "old_struct_member_offsets", {})
+        if member_name not in offsets:
+            return member_name
+        global_symbol = self._context.symbols.get_global(member_name)
+        if (global_symbol is not None and not isinstance(global_symbol, op.Struct)) or self._data_label_exists(member_name):
+            return f"__m2c_member_{member_name}"
+        return member_name
+
+    def _is_old_struct_member_offset_context(self, name: str) -> bool:
+        if str(name).lower() not in getattr(self._context, "old_struct_member_offsets", {}):
+            return False
+        state = self._expr_state
+        return state.indirection == IndirectionType.POINTER and not state.is_just_label
+
+    def _data_label_exists(self, label: str) -> bool:
+        label = str(label).lower()
+        for segment in self._context.segments.values():
+            for data in segment.getdata():
+                if data.label.lower() == label:
+                    return True
+        return False
 
     def produce_data(self, hdata_bin):
         data_head = """
@@ -1194,8 +1544,20 @@ struct Memory{
         for i in context.externals_vars:
             v = context.symbols.get_global(i)
             if v.used:
-                data += f"extern {v.original_type} {v.name};\n"
+                data += f"extern {self._cpp_external_type(v.original_type)}& {v.name};\n"
         return data
+
+    def _cpp_external_type(self, data_ctype: str) -> str:
+        aliases = {
+            "byte": "db",
+            "sbyte": "char",
+            "word": "dw",
+            "sword": "short",
+            "dword": "dd",
+            "sdword": "int",
+            "qword": "dq",
+        }
+        return self._cpp_data_type(aliases.get(data_ctype.lower(), data_ctype))
 
     def _lea(self, dst: Expression, src: Expression) -> str:
         src_render = self._clone_expression_for_render(src)
@@ -1302,6 +1664,7 @@ struct Memory{
             indirection=render_expr.indirection,
             is_jump=self.itisjump,
             is_call=self.itiscall,
+            assignments=self._assignments,
         )
         result = "".join(ir2cpp.visit(render_expr))
         rendered = result[1:-1] if self.check_parentesis(result) else result
@@ -1332,6 +1695,24 @@ struct Memory{
             return "{;}"
 
         label, _ = self.jump_post(label_expr)
+        condition = {
+            "JZ": "GET_ZF()",
+            "JE": "GET_ZF()",
+            "JNZ": "!GET_ZF()",
+            "JNE": "!GET_ZF()",
+            "JBE": "GET_CF() || GET_ZF()",
+            "JNA": "GET_CF() || GET_ZF()",
+            "JA": "!GET_CF() && !GET_ZF()",
+            "JNBE": "!GET_CF() && !GET_ZF()",
+            "JC": "GET_CF()",
+            "JB": "GET_CF()",
+            "JNAE": "GET_CF()",
+            "JNC": "!GET_CF()",
+            "JNB": "!GET_CF()",
+            "JAE": "!GET_CF()",
+        }.get(cmd.upper())
+        if condition and (dispatch := self._conditional_cross_proc_dispatch(label, condition)):
+            return dispatch
         assert self._context.args
         if self._context.args.get("mergeprocs") == "separate" and cmd.upper() == "JMP":
             if label == "__dispatch_call":
@@ -1342,7 +1723,9 @@ struct Memory{
                     target_proc_name = self.label_to_proc[g.name]
                 elif isinstance(g, Proc):
                     target_proc_name = g.name
-                if target_proc_name and self.proc.name != target_proc_name:
+                proc = getattr(self, "proc", None)
+                current_proc = proc if isinstance(proc, str) else getattr(proc, "name", "")
+                if target_proc_name and current_proc != target_proc_name:
                     if g.name == target_proc_name:
                         return f"return {g.name}(0, _state);"
                     return f"return {target_proc_name}(m2c::k{label}, _state);"
@@ -1370,21 +1753,28 @@ struct Memory{
 
     def _assignment(self, stmt):
         dst, src = stmt
-        asm2ir = Asm2IR(self._context, "")
         if not isinstance(src, Expression):
-            src = asm2ir.transform(src)
-
-        src_render = self._clone_expression_for_render(src)
-        src_render.indirection = IndirectionType.VALUE
-        self._cmdlabel += f"#undef {dst}\n#define {dst} {self.render_instruction_argument(src_render)}\n"
+            src = Asm2IR(self._context, "").transform(src)
+        self._assignments[dst] = self._clone_expression_for_render(src)
         return ""
 
     def _equ(self, dst: str):
         assert isinstance(dst, str)
-        src = self._context.symbols.get_global(dst).value
-        src_render = self._clone_expression_for_render(src)
-        src_render.indirection = IndirectionType.VALUE
-        self._cmdlabel += f"#define {dst} {self.render_instruction_argument(src_render)}\n"
+        symbol = self._context.symbols.get_global(dst)
+        assert isinstance(symbol, op._equ)
+        self._cmdlabel += self.render_equate_definition(dst, symbol)
+        return ""
+
+    def _equ_struct_size_name(self, src: Expression) -> str:
+        if not isinstance(src, Expression) or len(src.children) != 1:
+            return ""
+        child = src.children[0]
+        if not isinstance(child, lark.Token) or child.type != LABEL:
+            return ""
+        name = str(child)
+        symbol = self._context.symbols.get_global(name)
+        if isinstance(symbol, op.Struct):
+            return symbol.name
         return ""
 
     def _runtime_linear_for_data(self, data: Data) -> int | None:
@@ -1547,17 +1937,29 @@ struct Memory{
 
     def produce_c_data_number(self, data: op.Data) -> tuple[str, str]:
         label, data_ctype, _, r, elements, size = data.getdata()
+        r = self._flatten_data_values(r)
         source_linear = self._runtime_linear_for_data(data)
         element_size = self._runtime_data_element_size(data, elements)
         if len(r) == 1 and isinstance(r[0], int):
             rc = self._runtime_pointer_expression_for_value(source_linear, r[0], element_size) or str(r[0])
+        elif len(r) == 1 and data_ctype in {"db", "char"} and isinstance(r[0], str) and len(r[0]) == 1:
+            rc = self.convert_char(r[0])
         else:
             rc = "".join(str(i) if isinstance(i, int) else "".join(str(x) for x in self.visit(i)) for i in r)
+        rc = self._replace_current_location_symbol(rc, data)
         rh = f"{data_ctype} {label}"
         return rc, rh
 
+    @staticmethod
+    def _replace_current_location_symbol(value: str, data: op.Data, element_index: int = 0, element_size: int = 0) -> str:
+        if "$" not in value:
+            return value
+        current_offset = data.offset + element_index * element_size
+        return value.replace("$", str(current_offset))
+
     def produce_c_data_array(self, data: op.Data) -> tuple[str, str]:
         label, data_ctype, _, r, elements, _ = data.getdata()
+        r = self._flatten_data_values(r)
         source_linear = self._runtime_linear_for_data(data)
         element_size = self._runtime_data_element_size(data, elements)
         if self._is_listing_source() and data_ctype == "char" and elements == 1:
@@ -1568,6 +1970,7 @@ struct Memory{
                 rc = self.produce_c_data_single_(value)[0]
             else:
                 rc = self._runtime_pointer_expression_for_value(source_linear, value, element_size) or self.convert_char(value)
+            rc = self._replace_current_location_symbol(rc, data)
             rh = f"{data_ctype} {label}"
             return rc, rh
         if not any(r):  # all zeros
@@ -1579,9 +1982,13 @@ struct Memory{
             elif isinstance(single, lark.Tree):
                 rc = "".join(self.visit(single))
             elif isinstance(single, list):
-                rc = "".join(str(i) for i in single)
+                rc = ",".join(
+                    self.convert_char(i) if isinstance(i, str) or data_ctype == "char" else str(i)
+                    for i in single
+                )
             else:
                 rc = self._runtime_pointer_expression_for_value(source_linear, single, element_size) or str(single)
+            rc = self._replace_current_location_symbol(rc, data)
             rh = f"{data_ctype} {label}"
             return rc, rh
         rc = "{"
@@ -1592,13 +1999,19 @@ struct Memory{
                 c = self.produce_c_data_single_(v)[0]
                 rc += c
             elif isinstance(v, lark.Tree):
-                rc += "".join(self.visit(v))
+                element_value = "".join(self.visit(v))
+                rc += self._replace_current_location_symbol(element_value, data, i, element_size)
             elif isinstance(v, list):
                 values = [str(i) for i in v]
-                rc += "".join(values)
+                element_value = "".join(values)
+                rc += self._replace_current_location_symbol(element_value, data, i, element_size)
             else:
                 element_linear = None if source_linear is None else source_linear + i * element_size
-                rc += self._runtime_pointer_expression_for_value(element_linear, v, element_size) or str(v)
+                element_value = (
+                    self._runtime_pointer_expression_for_value(element_linear, v, element_size)
+                    or (self.convert_char(v) if isinstance(v, str) or data_ctype == "char" else str(v))
+                )
+                rc += self._replace_current_location_symbol(element_value, data, i, element_size)
         rc += "}"
         rh = f"{data_ctype} {label}[{elements}]"
         return rc, rh
@@ -1606,6 +2019,7 @@ struct Memory{
     def produce_c_data_zero_string(self, data: op.Data) -> tuple[str, str]:
         label, data_ctype, _, r, elements, size = data.getdata()
         r = flatten(r)
+        size = max(size, len(r))
         if self._is_listing_source() and size == 1:
             rc = self.convert_char(r[0] if r else 0)
             rh = f"char {label}"
@@ -1618,6 +2032,7 @@ struct Memory{
     def produce_c_data_array_string(self, data: op.Data) -> tuple[str, str]:
         label, data_ctype, _, r, elements, size = data.getdata()
         r = flatten(r)
+        size = max(size, len(r))
         if self._is_listing_source() and size == 1:
             rc = self.convert_char(r[0] if r else 0)
             rh = f"char {label}"
@@ -1631,10 +2046,19 @@ struct Memory{
         rc = []
         for i in data.getmembers():
             c, _, _ = self.produce_c_data_single_(i)
+            if c == "":
+                c = "0"
             rc += [c]
         rc_str = "{" + ",".join(rc) + "}"
-        rh = f"{data_ctype} {label}"
+        rh = f"{self._cpp_data_type(data_ctype)} {label}"
         return rc_str, rh
+
+    def _cpp_data_type(self, data_ctype: str) -> str:
+        if data_ctype in CPP_STRUCT_TAG_REQUIRED or (
+            data_ctype in getattr(self._context, "structures", {}) and self._data_label_exists(data_ctype)
+        ):
+            return f"struct {data_ctype}"
+        return data_ctype
 
     def convert_char(self, c: Union[int, str]) -> str:
         if isinstance(c, int) and c not in [10, 13]:
@@ -1676,7 +2100,7 @@ struct Memory{
         # Produce call table
         if itislst:
             result = """
-  bool __dispatch_call(m2c::_offsets __i, struct m2c::_STATE* _state){
+  static bool __dispatch_call(m2c::_offsets __i, struct m2c::_STATE* _state){
      X86_REGREF
      if ((__i>>16) == 0) {__i |= ((dd)cs) << 16;}
      __disp=__i;
@@ -1684,7 +2108,7 @@ struct Memory{
 """
         else:
             result = """
-  bool __dispatch_call(m2c::_offsets __disp, struct m2c::_STATE* _state){
+  static bool __dispatch_call(m2c::_offsets __disp, struct m2c::_STATE* _state){
      switch (__disp) {
 """
         entries = OrderedDict()
@@ -1934,16 +2358,23 @@ struct Memory{
         elif isinstance(g, (Proc, op.label)):
             logging.debug("it is proc")
             return [f"m2c::k{g.name}"]
-        elif isinstance(g, (op._equ, op._assignment)):
+        elif isinstance(g, (op._equ, op._assignment)) and isinstance(g.value, Expression):
             return ["".join(str(part) for part in self.visit(g.value))]
+        elif isinstance(g, (op._equ, op._assignment)):
+            return [g.original_name]
         else:
             raise ValueError("Unknown type for offsetdir %s", type(g))
 
     def _render_operator_children(self, children: list[Any]) -> list[str]:
-        return [
-            child if isinstance(child, str) else "".join(str(part) for part in self.visit(child))
-            for child in children
-        ]
+        rendered = []
+        for child in children:
+            if isinstance(child, lark.Token):
+                rendered.append("".join(str(part) for part in self.visit(child)))
+            elif isinstance(child, str):
+                rendered.append(child)
+            else:
+                rendered.append("".join(str(part) for part in self.visit(child)))
+        return rendered
 
     def notdir(self, tree: Tree) -> list[Union[str, Token]]:
         return ["~", *self._render_operator_children(tree.children)]
@@ -1973,8 +2404,23 @@ struct Memory{
         left, right = self._render_operator_children(tree.children)
         return [left, " & ", right]
 
+    def _render_known_size_operator(self, target: Any, *, total: bool) -> str:
+        if isinstance(target, Tree):
+            rendered = "".join(str(part) for part in self.visit(target))
+            return f"sizeof({rendered})"
+        name = str(target).lower()
+        symbol = self._context.symbols.get_global(name)
+        if isinstance(symbol, op.var):
+            return str(symbol.size * symbol.elements if total else symbol.size)
+        if isinstance(symbol, op.Struct):
+            return f"sizeof({name})" if total else str(symbol.size)
+        return f"sizeof({target})"
+
     def sizearg(self, tree: Tree) -> list[str]:
-        return [f"sizeof({tree.children[0]})"]
+        return [self._render_known_size_operator(tree.children[0], total=True)]
+
+    def sizeofdir(self, tree: Tree) -> list[str]:
+        return [self._render_known_size_operator(tree.children[0], total=False)]
 
 
 class IR2Cpp(Cpp):
@@ -1986,12 +2432,15 @@ class IR2Cpp(Cpp):
         indirection: IndirectionType = IndirectionType.VALUE,
         is_jump: bool = False,
         is_call: bool = False,
+        assignments: dict[str, Expression] | None = None,
     ) -> None:
         super().__init__(context=parser)
         self.lea = lea
         self._expr_state.indirection = indirection
         self.itisjump = is_jump
         self.itiscall = is_call
+        if assignments is not None:
+            self._assignments = assignments
 
 
 

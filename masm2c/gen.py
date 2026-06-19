@@ -15,6 +15,7 @@ import jsonpickle  # type: ignore[import-untyped]
 from lark import lark
 
 from masm2c import op
+from masm2c.enumeration import IndirectionType
 from masm2c.Token import Expression, Token as Token_
 from masm2c.pgparser import TopDownVisitor
 
@@ -45,7 +46,51 @@ class Gen(TopDownVisitor):
 
 
     def calculate_size(self, expr: Expression) -> int:
-        return expr.size()
+        size = expr.size()
+        if size:
+            return size
+        if expr.indirection == IndirectionType.POINTER:
+            label_size = self._pointer_alias_size(expr)
+        else:
+            label_size = self._symbolic_label_size(expr)
+        if label_size:
+            return label_size
+        from masm2c.parser import ExprSizeCalculator, Vector
+
+        return ExprSizeCalculator(init=Vector(0, 0), context=self._context).visit(expr).values[0]
+
+    def _symbolic_label_size(self, node) -> int:
+        if isinstance(node, Expression):
+            return max((self._symbolic_label_size(child) for child in node.children), default=0)
+        if isinstance(node, lark.Tree):
+            if node.data in {"register", "segmentregister"} and node.children:
+                return self._context.register_size(str(node.children[0]))
+            return max((self._symbolic_label_size(child) for child in node.children), default=0)
+        if isinstance(node, list):
+            return max((self._symbolic_label_size(child) for child in node), default=0)
+        if getattr(node, "type", None) != "LABEL":
+            return 0
+        symbol = self._context.symbols.get_global(node)
+        if not isinstance(symbol, (op._assignment, op._equ)) or not isinstance(symbol.value, Expression):
+            return 0
+        return (
+            symbol.value.size()
+            or symbol.value.ptr_size
+            or symbol.value.element_size
+            or self._symbolic_label_size(symbol.value)
+        )
+
+    def _pointer_alias_size(self, node) -> int:
+        if isinstance(node, (Expression, lark.Tree)):
+            return max((self._pointer_alias_size(child) for child in node.children), default=0)
+        if isinstance(node, list):
+            return max((self._pointer_alias_size(child) for child in node), default=0)
+        if getattr(node, "type", None) != "LABEL":
+            return 0
+        symbol = self._context.symbols.get_global(node)
+        if not isinstance(symbol, (op._assignment, op._equ)) or not isinstance(symbol.value, Expression):
+            return 0
+        return symbol.value.ptr_size
 
 
     def _calculate_struct_alias_member_size(self, struct_type: str, alias: str, seen: set[str] | None = None) -> int:
@@ -58,6 +103,8 @@ class Gen(TopDownVisitor):
         alias_symbol = self._context.symbols.get_global(alias)
         if not isinstance(struct, op.Struct) or not isinstance(alias_symbol, (op._equ, op._assignment)):
             return 0
+        if not isinstance(alias_symbol.value, Expression):
+            return alias_symbol.size
         referenced_labels = Token_.find_tokens(alias_symbol.value, "LABEL") or []
         for referenced_label in referenced_labels:
             referenced_name = str(referenced_label).lower()
@@ -78,6 +125,20 @@ class Gen(TopDownVisitor):
                 if size := self._calculate_struct_alias_member_size(struct_name, member):
                     return size
         return 0
+
+    def infer_struct_type_for_member(self, member: str) -> str:
+        matches: list[str] = []
+        member = member.lower()
+        for struct_name, symbol in self._context.symbols.get_globals().items():
+            if not isinstance(symbol, op.Struct):
+                continue
+            try:
+                symbol.getitem(member)
+                matches.append(struct_name)
+            except KeyError:
+                if self._calculate_struct_alias_member_size(struct_name, member):
+                    matches.append(struct_name)
+        return matches[0] if len(matches) == 1 else ""
 
     def calculate_member_size(self, label: list[str]) -> int:
         """
@@ -363,21 +424,64 @@ class Gen(TopDownVisitor):
                 labels.add(label_name)
         return labels
 
-    def write_segment_file(self, segments, structs, fname):
+    def write_segment_file(self, segments, structs, fname, data_aliases=None, equates=None):
         jsonpickle.set_encoder_options("json", indent=2)
         with open(self.segment_sidecar_path(fname), "wb") as f:
-            pickle.dump((segments, structs), f)
+            pickle.dump((segments, structs, data_aliases or [], equates or []), f)
 
     def read_segment_files(self, asm_files):
         logging.info(" *** Merging .seg files")
         segments = OrderedDict()
         structs = OrderedDict()
+        data_aliases = []
+        equates = []
         for file in asm_files:
             file = self.segment_sidecar_path(file)
             logging.info(f"     Merging data from {file}")
             with open(file, "rb") as f:
-                segments, structures = self.merge_segments(segments, structs, *pickle.load(f))
+                sidecar = pickle.load(f)
+                if len(sidecar) == 2:
+                    newsegments, newstructs = sidecar
+                    newaliases = []
+                    newequates = []
+                elif len(sidecar) == 3:
+                    newsegments, newstructs, newaliases = sidecar
+                    newequates = []
+                else:
+                    newsegments, newstructs, newaliases, newequates = sidecar
+                segments, structures = self.merge_segments(segments, structs, newsegments, newstructs)
+                data_aliases.extend(newaliases)
+                equates.extend(newequates)
+        self._context.data_aliases = self._deduplicate_data_alias_names(data_aliases)
+        self._context.exported_equates = self._deduplicate_equates(equates)
         return segments, structures
+
+    @staticmethod
+    def _deduplicate_equates(equates):
+        result = OrderedDict()
+        for name, value in equates:
+            result[str(name)] = str(value)
+        return list(result.items())
+
+    @staticmethod
+    def _deduplicate_data_alias_names(data_aliases):
+        seen: set[str] = set()
+        for alias in data_aliases:
+            name = alias.name.lower()
+            if name not in seen:
+                seen.add(name)
+                continue
+            source = os.path.splitext(os.path.basename(getattr(alias, "filename", "") or ""))[0].lower()
+            suffix_parts = [part for part in (source, alias.segment, f"{alias.offset:x}") if part]
+            suffix = "_".join(re.sub(r"[^A-Za-z0-9_]", "_", part) for part in suffix_parts) or "dup"
+            candidate = f"{name}__{suffix}"
+            index = 2
+            while candidate.lower() in seen:
+                candidate = f"{name}__{suffix}_{index}"
+                index += 1
+            alias.name = candidate
+            seen.add(candidate.lower())
+        return data_aliases
 
     @staticmethod
     def segment_sidecar_path(source_path: str) -> str:
@@ -405,10 +509,18 @@ class Gen(TopDownVisitor):
             if segclass and ispublic and self.merge_data_segments:
                 if segclass not in allsegments:
                     allsegments[segclass] = segment_value
+                    self._segment_aliases(allsegments[segclass]).setdefault(segment_value.name, 0)
                 else:
+                    self._segment_aliases(allsegments[segclass]).setdefault(segment_value.name, allsegments[segclass].getsize())
                     data = segment_value.getdata()
                     for d in data:
                         allsegments[segclass].append(d)
+            elif self.merge_data_segments and segment_name in allsegments and (
+                segment_value.getsize() > 0 or allsegments[segment_name].getsize() > 0
+            ):
+                self._check_for_segment_overwrite(allsegments, segment_name, segment_value)
+                for data in segment_value.getdata():
+                    allsegments[segment_name].append(data)
             else:
                 self._check_for_segment_overwrite(allsegments, segment_name, segment_value)
                 allsegments[segment_name] = segment_value
@@ -416,6 +528,12 @@ class Gen(TopDownVisitor):
         self._check_for_struct_overwrite(allstructs, newstructs)
         allstructs.update(newstructs)
         return allsegments, allstructs
+
+    @staticmethod
+    def _segment_aliases(segment):
+        if not hasattr(segment, "segment_aliases"):
+            segment.segment_aliases = {segment.name: 0}
+        return segment.segment_aliases
 
     def _check_for_segment_overwrite(self, allsegments, segment_name, segment_value):
         if segment_name in allsegments and (segment_value.getsize() > 0 or allsegments[segment_name].getsize() > 0):
@@ -472,7 +590,9 @@ class Gen(TopDownVisitor):
                 self.body,
             )
 
-            labels = self.leave_unique_labels(self.proc.provided_labels)
+            labels = set(self.proc.provided_labels)
+            labels.update(label for label, proc_name in self.label_to_proc.items() if proc_name == name)
+            labels.update(label for label, proc_name in self.groups.items() if proc_name == name)
 
             offsets = self.make_enums_and_labels(labels)
             self.body += self.produce_jump_table(offsets)
@@ -598,15 +718,37 @@ def guess_int_size(v: int) -> int:
     return size
 
 
+CPP_KEYWORDS = {
+    "alignas", "alignof", "and", "and_eq", "asm", "auto", "bitand", "bitor", "bool",
+    "break", "case", "catch", "char", "char16_t", "char32_t", "class", "compl", "concept",
+    "const", "consteval", "constexpr", "constinit", "const_cast", "continue", "co_await",
+    "co_return", "co_yield", "decltype", "default", "delete", "do", "double", "dynamic_cast",
+    "else", "enum", "explicit", "export", "extern", "false", "float", "for", "friend",
+    "goto", "if", "inline", "int", "long", "mutable", "namespace", "new", "noexcept",
+    "not", "not_eq", "nullptr", "operator", "or", "or_eq", "private", "protected",
+    "public", "register", "reinterpret_cast", "requires", "return", "short", "signed",
+    "sizeof", "static", "static_assert", "static_cast", "struct", "switch", "template",
+    "this", "thread_local", "throw", "true", "try", "typedef", "typeid", "typename",
+    "union", "unsigned", "using", "virtual", "void", "volatile", "wchar_t", "while",
+    "xor", "xor_eq",
+    "alarm", "tan",
+}
+
+
+def avoid_cpp_keyword(name: str) -> str:
+    return f"asm_{name}" if name.lower() in CPP_KEYWORDS else name
+
+
 def mangle_asm_labels(name: str) -> str:
     """Modifies assembler functions to be acceptable for other languages.
 
     :param name: the name of assembler the function
     :return: The name of the C function.
     """
-    if name == "main":
+    if name.lower() == "main":
         name = "asmmain"
-    return name.replace("$", "_tmp").replace("?", "que")
+    name = name.replace("$", "_tmp").replace("?", "que")
+    return avoid_cpp_keyword(name)
 
 
 class SkipCode(Exception):

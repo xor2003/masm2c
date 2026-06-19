@@ -7,6 +7,8 @@ CHARLIST.1: /[^\r\n\t; <>]+/x
 TEXT.1: /[^<>\r\n]+/x
 STRING: /((?<!')'((?!').+?(?<!'))?'(?!'))|((?<!")"((?!").+?(?<!"))?"(?!"))/
 LABEL: /[A-Za-z@_$?][A-Za-z@_$?0-9]*/
+LABELKW.3: "LABEL"i
+LABELALIAS.3: "__MASM2C_LABEL_ALIAS"
 //MONKEY: /@@|@B|@F/
 
 COMMENTKW: "COMMENT"i /\s+(?P<delim>\S).+?(?P=delim)[^\r\n]*/isx
@@ -166,7 +168,7 @@ WORDOP.1: /(?i:HIGHWORD|LOWWORD|HIGH|LOW)(?![A-Za-z0-9_@$?])/
 ?e09: "OFFSET"i e10 -> offsetdir
 | "SEG"i e10 -> seg
 | "LROFFSET"i e10
-| "TYPE"i e10
+| "TYPE"i e10 -> sizeofdir
 | "THIS"i e10
 | e09 "PTR"i e10 -> ptrdir // | "NEAR"i "PTR"i e10 | "FAR"i "PTR"i e10
 | ptrdir2
@@ -249,7 +251,7 @@ invokearg: _anyregister "::" register| "ADDR"i expr | expr
 invokedir: "INVOKE"i expr commainvokelist? _linereminder
 invokelist: invokearg | invokearg _commaoeol invokelist
 !labeldef: (LABEL|mnemonic) ":" | (LABEL|mnemonic) "::"
-labeldir: LABEL "LABEL"i qualifiedtype _linereminder
+labeldir: LABELALIAS LABEL qualifiedtype _linereminder
 _linereminder: _ENDOFLINE | comment _ENDOFLINE
 listdir: listoption _linereminder
 localdef: "LOCAL"i idlist _linereminder
@@ -364,7 +366,7 @@ textmacrodir: "CATSTR"i textlist? | "TEXTEQU"i textlist? | "SIZESTR"i textitem| 
 textstartcomma: expr  _COMMA
 titledir: titletype arbitrarytext _linereminder
 titletype: "TITLE"i | "SUBTITLE"i | "SUBTTL"i
-?type: LABEL| distance| datadecl
+?type: LABEL| STRUCTNAME| distance| datadecl
 typedefdir: LABEL "TYPEDEF"i qualifier
 untildir: ".UNTIL"i cexpr _linereminder | ".UNTILCXZ"i cxzexpr?  _linereminder
 usesregs: "USES"i allreglist

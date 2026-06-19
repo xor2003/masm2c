@@ -9,7 +9,9 @@ class PgParserExternDefTest(unittest.TestCase):
         content = "EXTERNDEF RunLenDecode:FAR\n"
         tree = parser.parse_text(content, start_rule="_directivelist")
         parser.process_ast(content, tree)
-        self.assertIn("runlendecode", parser.externals_vars)
+        self.assertIn("runlendecode", parser.externals_procs)
+        self.assertNotIn("runlendecode", parser.externals_vars)
+        self.assertTrue(parser.symbols.get_global("runlendecode").far)
 
 
 if __name__ == "__main__":

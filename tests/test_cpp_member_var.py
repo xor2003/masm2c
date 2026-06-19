@@ -33,7 +33,7 @@ def test_convert_member_equ_materializes_assignment_alias_before_member_access()
 
     assert result == ""
     assert assign.implemented is True
-    assert "#define var_8" in cpp._cmdlabel
+    assert "var_8" in cpp._assignments
     assert cpp._expr_state.struct_type == "framestruc"
     assert cpp._expr_state.need_pointer_to_member == ["var_8", "_ds"]
 

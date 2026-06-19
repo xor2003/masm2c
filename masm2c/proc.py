@@ -187,10 +187,10 @@ class Proc:
         self.stmts.append(o)
 
     @staticmethod
-    def create_equ_op(label: str, value: Expression, line_number: int) -> _equ:  # TODO Move it to parser
+    def create_equ_op(label: str, value: Expression | str, line_number: int) -> _equ:  # TODO Move it to parser
         logging.debug("%s %s", label, value)
         o = op._equ(label)
-        if ptrdir := Token.find_tokens(value, PTRDIR):
+        if isinstance(value, Expression) and (ptrdir := Token.find_tokens(value, PTRDIR)):
             if isinstance(ptrdir[0], Token):
                 assert isinstance(ptrdir[0].children, str)
                 o.original_type = ptrdir[0].children.lower()
@@ -283,8 +283,9 @@ class Proc:
 
             try:  # trying to add command and comment
                 if stmt.raw_line or stmt.line_number != 0:
+                    raw_line = " ".join(str(stmt.raw_line).splitlines())
                     visitor.body += "\t// " + str(stmt.line_number) \
-                                   + " " + stmt.raw_line + "\n"
+                                   + " " + raw_line + "\n"
             except AttributeError:
                 logging.warning(f"Some attributes missing while setting comment for {stmt}")
 

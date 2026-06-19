@@ -39,6 +39,7 @@ from lark.tree import Tree
 
 from masm2c.op import Data, Struct, _assignment, _equ, baseop, label, var
 from masm2c.Token import Token as Token_, Expression
+from masm2c.gen import avoid_cpp_keyword
 from .symbol_table import SymbolTable # Added import
 
 from . import op
@@ -199,10 +200,20 @@ class ExprSizeCalculator(BottomUpVisitor):
             if self.element_size < 1:
                 self.element_size = g.size
             return Vector(self.element_size, 1)
-        elif isinstance(g, (op._assignment, op._equ)):
+        elif isinstance(g, (op._assignment, op._equ)) and isinstance(g.value, Expression):
             self.element_size = g.value.size()
+            if self.element_size < 1:
+                self.element_size = self.visit(g.value).values[0]
             return Vector(self.element_size, 1)
         return None
+
+    def register(self, tree: Tree, size: Vector) -> Vector:
+        context = self.kwargs["context"]
+        self.element_size = context.register_size(tree.children[0])
+        return Vector(self.element_size, 1)
+
+    def segmentregister(self, tree: Tree, size: Vector) -> Vector:
+        return self.register(tree, size)
 
     def memberdir(self, tree: Tree, size: Vector) -> Vector:
         label = tree.children
@@ -303,6 +314,8 @@ class Parser:
 
         self.procs_start = self.initial_procs_start
         self.segments = OrderedDict()
+        self.data_aliases: list[op.var] = []
+        self.public_symbols: set[str] = set()
         self.flow_terminated = True
         self.need_label = True
 
@@ -312,6 +325,8 @@ class Parser:
         self.macro_names_stack: list[str] = []
         self.proc_list: list[str] = []
         self.proc = None
+        self.old_struct_fields = False
+        self.old_struct_member_offsets: OrderedDict[str, tuple[str, int]] = OrderedDict()
 
         self.__offset_id = 0x1111
         self.entry_point = "mainproc_begin"
@@ -337,6 +352,7 @@ class Parser:
         self.current_struct: Optional[Struct] = None
         self._pending = _PendingParseState()
         self._text_macro_expansion_id = 0
+        self._text_equates: dict[str, str] = {}
 
         self.struct_names_stack: list[str] = []
 
@@ -437,7 +453,9 @@ class Parser:
         self.make_sure_proc_exists(line_number, raw)
         
         assert self.proc, "No current procedure for label"
-        
+        if mangled_name in self.public_symbols:
+            globl = True
+
         # Create label object
         label_obj = op.label(
             mangled_name,
@@ -518,8 +536,14 @@ class Parser:
             self.data_merge_candidates = 0
             logging.warning(f"Maybe wrong offset current:{self.__binary_data_size:x} should be:{pointer:x} ~{raw}~")
 
-    def get_dummy_label(self) -> str:
-        return f"dummy{self.__current_file_hash[0]}_{hex(self.__binary_data_size)[2:]}"
+    def get_dummy_label(self, line_number: int = 0) -> str:
+        if self.test_mode:
+            return f"dummy{self.__current_file_hash[0]}_{hex(self.__binary_data_size)[2:]}"
+        segment = re.sub(r"[^A-Za-z0-9_]", "_", getattr(self, "_Parser__segment_name", "") or "noseg")
+        parts = [self.__current_file_hash[:8], segment, hex(self.__binary_data_size)[2:]]
+        if line_number:
+            parts.append(str(line_number))
+        return "dummy" + "_".join(parts)
 
     def get_dummy_jumplabel(self):
         self.__c_dummy_jump_label += 1
@@ -565,6 +589,7 @@ class Parser:
             content = self._expand_repeat_blocks(content)
             content = self._expand_text_macros(content)
             content = self._expand_repeat_blocks(content)
+            content = self._expand_text_equates(content)
             content = self._trim_trailing_lines_after_end(content)
             self._predeclare_included_structure_names(content, set())
             self._predeclare_structure_names(content)
@@ -646,7 +671,7 @@ class Parser:
             raise ValueError(f"Invalid radix {radix}; expected 2..16")
 
     def evaluate_repeat_count(self, repeat_expression: Expression) -> int:
-        repeat = copy(repeat_expression)
+        repeat = self._resolve_assignment_symbols(copy(repeat_expression), resolve_equ=True)
         repeat.indirection = IndirectionType.VALUE
         try:
             return self.eval_expression_to_int(repeat)
@@ -703,6 +728,14 @@ class Parser:
         elif directive == "org":
             self.org(self.parse_numeric_value(value))
 
+    def apply_option_directive(self, options: list[str]) -> None:
+        for option in options:
+            normalized = option.lower()
+            if normalized in {"m510", "oldstructs", "noscoped"}:
+                self.old_struct_fields = True
+            elif normalized in {"nom510", "nooldstructs", "scoped"}:
+                self.old_struct_fields = False
+
     def dispatch_instruction(self, instruction: str, args: list[Any], *, raw: str, line_number: int):
         comment = self.consume_pending_source_comment()
         if comment and comment not in raw:
@@ -733,7 +766,10 @@ class Parser:
     def declare_external_symbol(self, label: str, symbol_type: Token | str) -> None:
         self.add_extern(label, symbol_type)
 
-    def define_equ(self, label: str, value: Expression, *, raw: str, line_number: int):
+    def declare_public_symbols(self, labels: list[str]) -> None:
+        self.public_symbols.update(self.mangle_label(label) for label in labels)
+
+    def define_equ(self, label: str, value: Expression | str, *, raw: str, line_number: int):
         return self.action_equ(label, value, raw=raw, line_number=line_number)
 
     def define_assignment(self, label: str, value: Expression, *, raw: str, line_number: int):
@@ -744,6 +780,25 @@ class Parser:
 
     def define_data(self, label: str, data_type: str, values: Tree, *, is_string: bool, raw: str, line_number: int):
         return self.datadir_action(label, data_type, values, is_string=is_string, raw=raw, line_number=line_number)
+
+    def define_data_alias(self, label: str, data_type: str, *, raw: str, line_number: int) -> op.var:
+        self.adjust_offset_to_real(raw, label)
+        label = self.mangle_label(label)
+        data_type = data_type.lower()
+        alias = op.var(
+            self.typetosize(data_type),
+            self.__cur_seg_offset,
+            name=label,
+            segment=self.__segment_name,
+            elements=1,
+            original_type=data_type,
+            filename=self._current_file,
+            raw=raw,
+            line_number=line_number,
+        )
+        self.symbols.set_global(label, alias)
+        self.data_aliases.append(alias)
+        return alias
 
     def set_pending_proc_options(self, options: list[str]) -> None:
         self._pending.proc_options = list(options)
@@ -1000,6 +1055,8 @@ class Parser:
         :return: The assignment operation.
         """
         label = self.mangle_label(label)
+        value = self._resolve_assignment_symbols(value)
+        self._preserve_assignment_ptr_metadata(value, raw)
 
         # if self.has_global(label):
         assert self.proc
@@ -1010,6 +1067,45 @@ class Parser:
         self.proc.stmts.append(o)
         self.equs.add(label)
         return o
+
+    def _preserve_assignment_ptr_metadata(self, value: Expression, raw: str) -> None:
+        if value.ptr_size or value.original_type:
+            return
+        match = re.search(r"\b(?P<type>[A-Za-z_][A-Za-z0-9_]*)\s+PTR\b", raw, flags=re.IGNORECASE)
+        if not match:
+            return
+        pointer_type = self.mangle_label(match.group("type"))
+        value.original_type = pointer_type
+        value.indirection = IndirectionType.POINTER
+        value.mods.add("size_changed")
+        if pointer_type in self.structures:
+            return
+        try:
+            value.ptr_size = self.typetosize(pointer_type)
+        except Exception:
+            value.ptr_size = 0
+
+    def _resolve_assignment_symbols(self, value: Any, seen: set[str] | None = None, *, resolve_equ: bool = False) -> Any:
+        seen = seen or set()
+        if isinstance(value, Token) and value.type == "LABEL":
+            name = self.mangle_label(value)
+            if name in seen:
+                return value
+            symbol = self.symbols.get_global(name)
+            if isinstance(symbol, op._assignment) or (
+                resolve_equ and isinstance(symbol, op._equ) and isinstance(symbol.value, Expression)
+            ):
+                return self._resolve_assignment_symbols(deepcopy(symbol.value), seen | {name}, resolve_equ=resolve_equ)
+            return value
+        if isinstance(value, Tree):
+            resolved = deepcopy(value)
+            resolved.children = [
+                self._resolve_assignment_symbols(child, seen, resolve_equ=resolve_equ) for child in resolved.children
+            ]
+            return resolved
+        if isinstance(value, list):
+            return [self._resolve_assignment_symbols(child, seen, resolve_equ=resolve_equ) for child in value]
+        return value
 
     def action_assign_test(self, label: str="", value: str="", line_number: int=0) -> None:
         raw = value
@@ -1034,7 +1130,6 @@ class Parser:
         label = self.mangle_label(label)
         size = value.size() if isinstance(value, Expression) else 0
 
-        assert isinstance(value, Expression)
         o = Proc.create_equ_op(label, value, line_number=line_number)
         o.filename = self._current_file
         o.raw_line = raw.rstrip()
@@ -1276,6 +1371,7 @@ class Parser:
 
         data_internal_type = self.identify_data_internal_type(args, elements, is_string)
         array = AsmData2IR().visit(args)
+        array = self._resolve_assignment_symbols(array)
         if data_internal_type == op.DataType.ARRAY and not any(array) and not isstruct:  # all zeros
             array = [0]
 
@@ -1285,7 +1381,7 @@ class Parser:
         dummy_label = False
         if not label:
             dummy_label = True
-            label = self.get_dummy_label()
+            label = self.get_dummy_label(line_number)
 
         if isstruct:
             data_type = "struct data"
@@ -1356,6 +1452,7 @@ class Parser:
     ) -> None:
         if isstruct:
             assert self.current_struct
+            self._remember_old_struct_member_offset(data)
             self.current_struct.append(data)
             return
         _, data.real_offset, data.real_seg = self.get_lst_offsets(raw)
@@ -1405,6 +1502,13 @@ class Parser:
 
         self.data_merge_candidates = 0
 
+    def _remember_old_struct_member_offset(self, data: Data) -> None:
+        if not self.old_struct_fields or not data.label:
+            return
+        assert self.current_struct
+        offset = 0 if self.current_struct.gettype() == op.Struct.UNION else self.current_struct.getsize()
+        self.old_struct_member_offsets.setdefault(data.label.lower(), (self.current_struct.name, offset))
+
     def adjust_offset_to_real(self, raw: str, label: str) -> None:
         absolute_offset, real_offset, _ = self.get_lst_offsets(raw)
         if self.itislst and real_offset and real_offset > 0xffff:  # IDA issue
@@ -1450,6 +1554,7 @@ class Parser:
         filtered = self._expand_repeat_blocks(filtered)
         filtered = self._expand_text_macros(filtered)
         filtered = self._expand_repeat_blocks(filtered)
+        filtered = self._expand_text_equates(filtered)
         filtered = self._trim_trailing_lines_after_end(filtered)
         self._predeclare_included_structure_names(filtered, set())
         self._predeclare_structure_names(filtered)
@@ -1607,6 +1712,76 @@ class Parser:
             return int(eval(rendered, {"__builtins__": {}}, {}))
         except Exception:
             return 0
+
+    def _expand_text_equates(self, content: str) -> str:
+        rows: list[str] = []
+        for line in content.splitlines(keepends=True):
+            body = line[:-1] if line.endswith("\n") else line
+            newline = "\n" if line.endswith("\n") else ""
+            if self._remember_text_equate_line(body):
+                rows.append(line)
+                continue
+
+            code, sep, comment = body.partition(";")
+            self._forget_shadowed_text_equate(code)
+            rows.append(self._substitute_text_equates_in_code(code) + (sep + comment if sep else "") + newline)
+        return "".join(rows)
+
+    def _remember_text_equate_line(self, line: str) -> bool:
+        match = re.match(
+            r"^\s*(?P<name>[A-Za-z_@$?][A-Za-z0-9_@$?]*)\s+EQU\s*<(?P<text>[^<>]*)>\s*(?:;.*)?$",
+            line,
+            re.IGNORECASE,
+        )
+        if not match:
+            return False
+        self._text_equates[match.group("name").lower()] = match.group("text")
+        return True
+
+    def _forget_shadowed_text_equate(self, code: str) -> None:
+        match = re.match(
+            r"^\s*(?P<name>[A-Za-z_@$?][A-Za-z0-9_@$?]*)\s*(?:=\s*|\s+EQU\b)",
+            code,
+            re.IGNORECASE,
+        )
+        if match:
+            self._text_equates.pop(match.group("name").lower(), None)
+
+    def _substitute_text_equates_in_code(self, code: str) -> str:
+        if not self._text_equates:
+            return code
+
+        result: list[str] = []
+        i = 0
+        while i < len(code):
+            char = code[i]
+            if char in {"'", '"'}:
+                end = self._quoted_text_end(code, i)
+                result.append(code[i:end])
+                i = end
+                continue
+            match = re.match(r"[A-Za-z_@$?][A-Za-z0-9_@$?]*", code[i:])
+            if match:
+                token = match.group(0)
+                result.append(self._text_equates.get(token.lower(), token))
+                i += len(token)
+                continue
+            result.append(char)
+            i += 1
+        return "".join(result)
+
+    @staticmethod
+    def _quoted_text_end(code: str, start: int) -> int:
+        quote = code[start]
+        i = start + 1
+        while i < len(code):
+            if code[i] == quote:
+                if i + 1 < len(code) and code[i + 1] == quote:
+                    i += 2
+                    continue
+                return i + 1
+            i += 1
+        return len(code)
 
     def _expand_text_macros(self, content: str) -> str:
         expanded = content
@@ -2018,6 +2193,7 @@ class Parser:
             return 0
 
     def parse_text(self, text: str, file_name: str="", start_rule: str="start") -> Tree:
+        text = self._normalize_label_alias_directives(text)
         logging.debug("parsing: [%s]", text)
         parser = self._select_parser(start_rule)
         try:
@@ -2052,6 +2228,21 @@ class Parser:
             return selected[0]
         return self.__lex.parser[0]
 
+    @staticmethod
+    def _normalize_label_alias_directives(text: str) -> str:
+        label = r"[A-Za-z@_$?][A-Za-z@_$?0-9]*"
+        pattern = re.compile(
+            rf"^(?P<indent>[ \t]*)(?P<name>{label})[ \t]+LABEL[ \t]+(?P<type>[^;\r\n]+?)(?P<comment>[ \t]*;[^\r\n]*)?$",
+            re.IGNORECASE | re.MULTILINE,
+        )
+
+        def repl(match: re.Match[str]) -> str:
+            data_type = match.group("type").strip()
+            comment = match.group("comment") or ""
+            return f"{match.group('indent')}__MASM2C_LABEL_ALIAS {match.group('name')} {data_type}{comment}"
+
+        return pattern.sub(repl, text)
+
     def process_ast(self, text: str, result: Tree) -> baseop | Expression | lark.Tree:
         self._include_loader.context = self
         self._asm2ir.context = self
@@ -2071,7 +2262,7 @@ class Parser:
     @staticmethod
     def mangle_label(name: str | lark.Token) -> str:
         name = _token_lower(name)  # ([A-Za-z@_\$\?][A-Za-z0-9@_\$\?]*)
-        return name.replace("@", "arb").replace("?", "que").replace("$", "dol")
+        return avoid_cpp_keyword(name.replace("@", "arb").replace("?", "que").replace("$", "dol"))
 
     @staticmethod
     def is_register(expr: lark.Token | str) -> int:
@@ -2168,6 +2359,15 @@ class Parser:
         if isinstance(type, Token_):
             strtype = str(type.children)
         label = self.mangle_label(label)
+        if strtype in {"near", "near16", "near32", "far", "far16", "far32"}:
+            far = strtype.startswith("far")
+            strtype = "proc"
+        else:
+            far = False
+        if strtype == "abs":
+            # MASM ABS externs are absolute symbols, commonly public EQU values
+            # from another module. They are not storage and must not link as vars.
+            return
         if strtype not in ["proc"]:
             binary_width = self.typetosize(type)
             self.symbols.reset_global(label, op.var(binary_width, 0, name=label, segment=self.__segment_name,
@@ -2176,7 +2376,7 @@ class Parser:
         else:  # Proc
             # if self.__separate_proc:
             self.externals_procs.add(label)
-            proc = Proc(label, extern=True)
+            proc = Proc(label, extern=True, far=far)
             logging.debug("procedure %s, extern", label)
             self.symbols.reset_global(label, proc)
 
@@ -2386,7 +2586,7 @@ class Parser:
         if self.need_label and self.proc.stmts:
             label_name = f"ret_{o.real_seg:x}_{o.real_offset:x}" if o.real_seg else self.get_extra_dummy_jumplabel()
             logging.warning(f"Adding helping label {label_name}")
-            self.action_label(label_name, raw=raw)
+            self.action_label(label_name, raw=raw, globl=False)
 
     def _finalize_instruction_state(self, o: baseop) -> None:
         assert self.proc

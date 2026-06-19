@@ -426,6 +426,7 @@ class Segment:
         self.options: set[str] = options or set()
         self.segclass = segclass
         self.seglabels = {self.name}
+        self.segment_aliases: dict[str, int] = {self.name: 0}
         self.size = 0  # Check if needed
         self.comment = comment
 
@@ -1093,7 +1094,7 @@ class _equ(baseop):
         self.original_type = ""
         self.implemented = False
         self.size = 0
-        self.value: Expression
+        self.value: Expression | str
         self.element_size = 0
 
     def gettype(self):

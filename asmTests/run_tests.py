@@ -57,9 +57,16 @@ def get_opt_flags(script_dir: Path) -> str:
 
 
 def generated_cpp_sources(work_dir: Path, base: str) -> list[str]:
-    sources = [f"{base}.cpp"]
-    sources.extend(path.name for path in sorted(work_dir.glob(f"{base}_*.cpp")))
-    return sources
+    candidates = [work_dir / f"{base}.cpp", *sorted(work_dir.glob(f"{base}_*.cpp"))]
+    included: set[str] = set()
+    for source in candidates:
+        if not source.exists():
+            continue
+        for line in source.read_text(encoding="utf-8", errors="replace").splitlines():
+            stripped = line.strip()
+            if stripped.startswith('#include "') and stripped.endswith('.cpp"'):
+                included.add(stripped.removeprefix('#include "').removesuffix('"'))
+    return [source.name for source in candidates if source.exists() and source.name not in included]
 
 
 def prepare_case_workspace(script_dir: Path, name: str) -> Path:
