@@ -19,6 +19,33 @@ cmp bh, 0
 mov al, 3
 jne failure
 
+mov dx, 3c4h
+mov al, 2
+out dx, al
+inc dx
+in al, dx
+cmp al, 0fh
+mov al, 4
+jne failure
+
+dec dx
+mov al, 4
+out dx, al
+inc dx
+in al, dx
+cmp al, 0eh
+mov al, 5
+jne failure
+
+mov dx, 3ceh
+mov al, 5
+out dx, al
+inc dx
+in al, dx
+cmp al, 40h
+mov al, 6
+jne failure
+
 mov ax, 3
 int 10h
 

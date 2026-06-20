@@ -244,6 +244,15 @@ struct HostHardware {
 
 static HostHardware host;
 
+static void vga_set_mode13_defaults() {
+	host.vga.seq_regs[2] = 0x0f; // map mask: all planes writable
+	host.vga.seq_regs[4] = 0x0e; // extended memory, odd/even disabled, chain-4 enabled
+	host.vga.gc_regs[4] = 0x00;  // read map select
+	host.vga.gc_regs[5] = 0x40;  // 256-color shift mode, write mode 0
+	host.vga.crtc_regs[0x0c] = 0;
+	host.vga.crtc_regs[0x0d] = 0;
+}
+
 static bool m2c_stats_enabled() {
 	const char *enabled = std::getenv("M2C_VGA_STATS");
 	return enabled && *enabled;
@@ -367,7 +376,7 @@ static void configure_sdl_vga_window(int width, int height) {
 		);
 	}
 	if (!renderer && window) {
-		renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+		renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
 		if (!renderer) {
 			renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_SOFTWARE);
 		}
@@ -433,12 +442,24 @@ static uint32_t vga_color_to_argb(db color) {
 	return 0xff000000u | (static_cast<uint32_t>(r) << 16) | (static_cast<uint32_t>(g) << 8) | b;
 }
 
+static bool vga_mode13_chain4_enabled() {
+	return host.vga.current_mode == 0x13 && (host.vga.seq_regs[4] & 0x08) != 0;
+}
+
+static db vga_mode13_visible_color(size_t start, int x, int y) {
+	if (vga_mode13_chain4_enabled()) {
+		const size_t byte_offset = (start + y * 320 + x) % VGA_WINDOW_SIZE;
+		return vgaMode13Pixels[byte_offset];
+	}
+	const size_t byte_offset = (start + y * 80 + x / 4) % VGA_WINDOW_SIZE;
+	return vgaMode13Pixels[byte_offset * 4 + (x & 3)];
+}
+
 static size_t vga_count_nonzero_at_start(size_t start, bool require_visible_palette) {
 	size_t count = 0;
 	for (int y = 0; y < 200; ++y) {
 		for (int x = 0; x < 320; ++x) {
-			const size_t byte_offset = (start + y * 80 + x / 4) % VGA_WINDOW_SIZE;
-			const db color = vgaMode13Pixels[byte_offset * 4 + (x & 3)];
+			const db color = vga_mode13_visible_color(start, x, y);
 			if (color == 0) {
 				continue;
 			}
@@ -456,8 +477,7 @@ static void vga_dump_top_visible_colors(size_t start) {
 	std::fill(counts, counts + 256, 0);
 	for (int y = 0; y < 200; ++y) {
 		for (int x = 0; x < 320; ++x) {
-			const size_t byte_offset = (start + y * 80 + x / 4) % VGA_WINDOW_SIZE;
-			const db color = vgaMode13Pixels[byte_offset * 4 + (x & 3)];
+			const db color = vga_mode13_visible_color(start, x, y);
 			++counts[color];
 		}
 	}
@@ -489,9 +509,59 @@ static void vga_dump_top_visible_colors(size_t start) {
 	std::fprintf(stderr, "\n");
 }
 
+static void vga_maybe_dump_frame() {
+	static bool dumped = false;
+	static unsigned frame_count = 0;
+	++frame_count;
+	if (dumped) {
+		return;
+	}
+	const char *path = std::getenv("M2C_VGA_DUMP_FRAME");
+	if (!path || !*path) {
+		return;
+	}
+	const char *frame_at_value = std::getenv("M2C_VGA_DUMP_FRAME_AT");
+	const unsigned frame_at = frame_at_value && *frame_at_value
+		? static_cast<unsigned>(std::strtoul(frame_at_value, NULL, 10))
+		: 0;
+	if (frame_at != 0 && frame_count < frame_at) {
+		return;
+	}
+
+	size_t lit_pixels = 0;
+	for (int i = 0; i < vga_logical_width * vga_logical_height; ++i) {
+		if ((vgaSdlFrame[i] & 0x00ffffffu) != 0) {
+			++lit_pixels;
+		}
+	}
+	if (lit_pixels == 0) {
+		return;
+	}
+
+	FILE *f = std::fopen(path, "wb");
+	if (!f) {
+		log_error("could not write M2C_VGA_DUMP_FRAME=%s\n", path);
+		dumped = true;
+		return;
+	}
+	std::fprintf(f, "P6\n%d %d\n255\n", vga_logical_width, vga_logical_height);
+	for (int i = 0; i < vga_logical_width * vga_logical_height; ++i) {
+		const uint32_t pixel = vgaSdlFrame[i];
+		const unsigned char rgb[3] = {
+			static_cast<unsigned char>((pixel >> 16) & 0xff),
+			static_cast<unsigned char>((pixel >> 8) & 0xff),
+			static_cast<unsigned char>(pixel & 0xff),
+		};
+		std::fwrite(rgb, 1, sizeof(rgb), f);
+	}
+	std::fclose(f);
+	std::fprintf(stderr, "vga dumped frame #%u to %s lit=%zu\n", frame_count, path, lit_pixels);
+	dumped = true;
+}
+
 static size_t vga_crtc_start_byte_offset() {
 	const size_t crtc_start = (static_cast<size_t>(host.vga.crtc_regs[0x0c]) << 8) | host.vga.crtc_regs[0x0d];
-	if (host.vga.current_mode == 0x13 && host.vga.seq_regs[2] != 0) {
+	if (host.vga.current_mode == 0x13 && (host.vga.seq_regs[4] & 0x08) == 0) {
 		return (crtc_start * 2) % VGA_WINDOW_SIZE;
 	}
 	return crtc_start % VGA_WINDOW_SIZE;
@@ -509,11 +579,12 @@ static void vga_maybe_dump_stats(size_t crtc_start) {
 	}
 	std::fprintf(
 		stderr,
-		"vga stats #%u mode=%02x crtc=%04zx seq2=%02x gc5=%02x visible=%zu visible-lit=%zu p0=%zu p4000=%zu p8000=%zu pc000=%zu\n",
+		"vga stats #%u mode=%02x crtc=%04zx seq2=%02x seq4=%02x gc5=%02x visible=%zu visible-lit=%zu p0=%zu p4000=%zu p8000=%zu pc000=%zu\n",
 		dump_count,
 		host.vga.current_mode,
 		crtc_start,
 		host.vga.seq_regs[2],
+		host.vga.seq_regs[4],
 		host.vga.gc_regs[5],
 		vga_count_nonzero_at_start(crtc_start, false),
 		vga_count_nonzero_at_start(crtc_start, true),
@@ -550,8 +621,7 @@ static void vga_render_indexed_frame() {
 		for (int x = 0; x < vga_logical_width; ++x) {
 			db color = 0;
 			if (host.vga.current_mode == 0x13 && vga_logical_width == 320) {
-				const size_t byte_offset = (crtc_start + y * 80 + x / 4) % VGA_WINDOW_SIZE;
-				color = vgaMode13Pixels[byte_offset * 4 + (x & 3)];
+				color = vga_mode13_visible_color(crtc_start, x, y);
 			} else {
 				color = vgaPlanarPixels[y * 640 + x];
 			}
@@ -560,6 +630,7 @@ static void vga_render_indexed_frame() {
 	}
 
 	SDL_UpdateTexture(vgaTexture, NULL, vgaSdlFrame, vga_logical_width * static_cast<int>(sizeof(uint32_t)));
+	vga_maybe_dump_frame();
 	SDL_RenderClear(renderer);
 	SDL_RenderCopy(renderer, vgaTexture, NULL, NULL);
 }
@@ -574,7 +645,10 @@ void vga_present_pending() {
 }
 
 static bool vga_is_planar_mode() {
-	return host.vga.seq_regs[2] != 0;
+	if (host.vga.current_mode == 0x13) {
+		return !vga_mode13_chain4_enabled();
+	}
+	return true;
 }
 
 static bool vga_mode13_address(size_t offset, size_t *page_offset) {
@@ -599,6 +673,9 @@ db vga_read_byte_value_from_memory(const db *d) {
 	size_t page_offset = 0;
 	if (!vga_mode13_address(offset, &page_offset)) {
 		return *d;
+	}
+	if (vga_mode13_chain4_enabled()) {
+		return vgaMode13Pixels[page_offset];
 	}
 	vga_latch_mode13_byte(page_offset, vgaReadLatch);
 	const db read_plane = host.vga.gc_regs[4] & 0x03;
@@ -637,6 +714,30 @@ static const db *vga_latch_for_mode13_write() {
 		return latch;
 	}
 	return vgaReadLatch;
+}
+
+static void vga_write_mode13_chain4_byte(size_t offset, db value) {
+	if (!ensure_sdl_vga_window(320, 200)) {
+		return;
+	}
+
+	size_t page_offset = 0;
+	if (!vga_mode13_address(offset, &page_offset)) {
+		return;
+	}
+	db map_mask = host.vga.seq_regs[2] & 0x0f;
+	if (!map_mask) {
+		map_mask = 0x0f;
+	}
+	const db plane = page_offset & 0x03;
+	if ((map_mask & (1 << plane)) == 0) {
+		return;
+	}
+	vgaMode13Pixels[page_offset] = value;
+	vga_render_dirty = true;
+	if (++vga_render_writes >= VGA_RENDER_WRITE_FLUSH_THRESHOLD) {
+		vga_present_pending();
+	}
 }
 
 static void vga_write_mode13_planar_byte(size_t offset, db value) {
@@ -725,16 +826,7 @@ void vga_write_pixel_from_memory(db *d, db color) {
 		vga_write_planar_byte(di, color);
 		return;
 	}
-	if (!ensure_sdl_vga_window(320, 200)) {
-		return;
-	}
-	if (di < 320 * 200) {
-		vgaMode13Pixels[di * 4] = color;
-	}
-	vga_render_dirty = true;
-	if (++vga_render_writes >= VGA_RENDER_WRITE_FLUSH_THRESHOLD) {
-		vga_present_pending();
-	}
+	vga_write_mode13_chain4_byte(di, color);
 }
  #endif
 #endif
@@ -1580,6 +1672,7 @@ X86_REGREF
 			}
 			case 0x13: {
 				log_debug2("Switch to VGA\n");
+				vga_set_mode13_defaults();
 #ifdef __DJGPP__
         call_dos_realint(_state, a);
 #endif
