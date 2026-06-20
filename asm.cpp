@@ -328,6 +328,14 @@ static void configure_sdl_vga_window(int width, int height) {
 	vga_logical_height = height;
 }
 
+static bool ensure_sdl_vga_window(int width, int height) {
+	if (renderer && vga_logical_width == width && vga_logical_height == height) {
+		return true;
+	}
+	configure_sdl_vga_window(width, height);
+	return renderer != NULL;
+}
+
 void init_sdl_vga_window() {
 	configure_sdl_vga_window(320, 200);
 	std::fill(vgaPlanarPixels, vgaPlanarPixels + 640 * 200, 0);
@@ -568,8 +576,7 @@ static const db *vga_latch_for_mode13_write() {
 }
 
 static void vga_write_mode13_planar_byte(size_t offset, db value) {
-	configure_sdl_vga_window(320, 200);
-	if (!renderer) {
+	if (!ensure_sdl_vga_window(320, 200)) {
 		return;
 	}
 
@@ -602,8 +609,7 @@ static void vga_write_planar_byte(size_t offset, db value) {
 		return;
 	}
 
-	configure_sdl_vga_window(640, 200);
-	if (!renderer) {
+	if (!ensure_sdl_vga_window(640, 200)) {
 		return;
 	}
 
@@ -655,7 +661,9 @@ void vga_write_pixel_from_memory(db *d, db color) {
 		vga_write_planar_byte(di, color);
 		return;
 	}
-	configure_sdl_vga_window(320, 200);
+	if (!ensure_sdl_vga_window(320, 200)) {
+		return;
+	}
 	if (di < 320 * 200) {
 		vgaMode13Pixels[di * 4] = color;
 	}
