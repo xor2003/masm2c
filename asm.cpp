@@ -1207,6 +1207,23 @@ X86_REGREF
 	}
 	data &= 0xff;
 	switch(address & 0xffff) {
+	case 0x00:
+	case 0x01:
+	case 0x02:
+	case 0x03:
+	case 0x04:
+	case 0x05:
+	case 0x06:
+	case 0x07:
+	case 0x08:
+	case 0x09:
+	case 0x0a:
+	case 0x0b:
+	case 0x0c:
+	case 0x0d:
+	case 0x0e:
+	case 0x0f:
+		break; // 8237 DMA controller ports; hosted runtime does not execute DMA transfers.
 	case 0x20:
 	case 0x21:
 		break;
@@ -1218,6 +1235,8 @@ X86_REGREF
 	case 0x61:
 		host.ppi_port_b = data;
 		break;
+	case 0x64:
+		break; // 8042 keyboard controller command port.
 	case 0x3c0:
 		if (host.vga.attr_waiting_for_index) {
 			host.vga.attr_index = data & 0x1f;
