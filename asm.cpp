@@ -58,6 +58,7 @@ SOFTWARE.
 #include <chrono>
 #include <cstdio>
 #include <cstdint>
+#include <cstdlib>
 #include <thread>
 
 #ifndef NOCURSES
@@ -122,7 +123,15 @@ static struct __fl __eflags;
     static unsigned vga_render_writes;
     static int vga_logical_width = 320;
     static int vga_logical_height = 200;
+    static const size_t VGA_WINDOW_SIZE = 0x20000;
     static db vgaPlanarPixels[640 * 200];
+    static db vgaMode13Pixels[VGA_WINDOW_SIZE * 4];
+    static db vgaReadLatch[4];
+    static db vgaPendingReadLatch[4][4];
+    static size_t vgaPendingReadLatchCount;
+    static size_t vgaPendingReadLatchNext;
+    static uint32_t vgaSdlFrame[640 * 200];
+    static SDL_Texture *vgaTexture;
 
 db vgaRamPaddingBefore[VGARAM_SIZE];
 db vgaRam[VGARAM_SIZE];
@@ -196,6 +205,8 @@ struct HostVga {
 	db gc_regs[0x100] = {};
 	db crtc_regs[0x100] = {};
 	db attr_regs[0x100] = {};
+	size_t dac_read_index = 0;
+	size_t dac_write_index = 0;
 	db current_mode = 3;
 };
 
@@ -273,10 +284,15 @@ static void configure_sdl_vga_window(int width, int height) {
 			return;
 		}
 	}
-	if (window && (vga_logical_width != width || vga_logical_height != height)) {
+	const bool logical_size_changed = vga_logical_width != width || vga_logical_height != height;
+	if (window && logical_size_changed) {
 		SDL_SetWindowSize(window, width * scale, height * scale);
 	}
 	if (renderer) {
+		if (logical_size_changed && vgaTexture) {
+			SDL_DestroyTexture(vgaTexture);
+			vgaTexture = NULL;
+		}
 		SDL_RenderSetLogicalSize(renderer, width, height);
 	}
 	vga_logical_width = width;
@@ -285,6 +301,13 @@ static void configure_sdl_vga_window(int width, int height) {
 
 void init_sdl_vga_window() {
 	configure_sdl_vga_window(320, 200);
+	std::fill(vgaPlanarPixels, vgaPlanarPixels + 640 * 200, 0);
+	std::fill(vgaMode13Pixels, vgaMode13Pixels + VGA_WINDOW_SIZE * 4, 0);
+	std::fill(vgaReadLatch, vgaReadLatch + 4, 0);
+	std::fill(&vgaPendingReadLatch[0][0], &vgaPendingReadLatch[0][0] + 16, 0);
+	std::fill(vgaSdlFrame, vgaSdlFrame + 640 * 200, 0xff000000u);
+	vgaPendingReadLatchCount = 0;
+	vgaPendingReadLatchNext = 0;
 	if (!renderer) {
 		return;
 	}
@@ -295,8 +318,115 @@ void init_sdl_vga_window() {
 	vga_render_writes = 0;
 }
 
+static uint8_t vga_dac_to_sdl(db value) {
+	if (value > 63) {
+		return value;
+	}
+	return static_cast<uint8_t>((value << 2) | (value >> 4));
+}
+
+static uint32_t vga_color_to_argb(db color) {
+	const size_t index = 3 * color;
+	const uint8_t r = vga_dac_to_sdl(vgaPalette[index + 2]);
+	const uint8_t g = vga_dac_to_sdl(vgaPalette[index + 1]);
+	const uint8_t b = vga_dac_to_sdl(vgaPalette[index]);
+	return 0xff000000u | (static_cast<uint32_t>(r) << 16) | (static_cast<uint32_t>(g) << 8) | b;
+}
+
+static size_t vga_count_nonzero_at_start(size_t start, bool require_visible_palette) {
+	size_t count = 0;
+	for (int y = 0; y < 200; ++y) {
+		for (int x = 0; x < 320; ++x) {
+			const size_t byte_offset = (start + y * 80 + x / 4) % VGA_WINDOW_SIZE;
+			const db color = vgaMode13Pixels[byte_offset * 4 + (x & 3)];
+			if (color == 0) {
+				continue;
+			}
+			if (require_visible_palette && (vga_color_to_argb(color) & 0x00ffffffu) == 0) {
+				continue;
+			}
+			++count;
+		}
+	}
+	return count;
+}
+
+static size_t vga_crtc_start_byte_offset() {
+	const size_t crtc_start = (static_cast<size_t>(host.vga.crtc_regs[0x0c]) << 8) | host.vga.crtc_regs[0x0d];
+	if (host.vga.current_mode == 0x13 && host.vga.seq_regs[2] != 0) {
+		return (crtc_start * 2) % VGA_WINDOW_SIZE;
+	}
+	return crtc_start % VGA_WINDOW_SIZE;
+}
+
+static void vga_maybe_dump_stats(size_t crtc_start) {
+	static unsigned dump_count = 0;
+	const char *enabled = std::getenv("M2C_VGA_STATS");
+	if (!enabled || !*enabled) {
+		return;
+	}
+	++dump_count;
+	if (dump_count != 1 && dump_count % 30 != 0) {
+		return;
+	}
+	std::fprintf(
+		stderr,
+		"vga stats #%u mode=%02x crtc=%04zx seq2=%02x gc5=%02x visible=%zu visible-lit=%zu p0=%zu p4000=%zu p8000=%zu pc000=%zu\n",
+		dump_count,
+		host.vga.current_mode,
+		crtc_start,
+		host.vga.seq_regs[2],
+		host.vga.gc_regs[5],
+		vga_count_nonzero_at_start(crtc_start, false),
+		vga_count_nonzero_at_start(crtc_start, true),
+		vga_count_nonzero_at_start(0x0000, false),
+		vga_count_nonzero_at_start(0x4000, false),
+		vga_count_nonzero_at_start(0x8000, false),
+		vga_count_nonzero_at_start(0xc000, false)
+	);
+}
+
+static void vga_render_indexed_frame() {
+	if (!renderer) {
+		return;
+	}
+	if (!vgaTexture) {
+		vgaTexture = SDL_CreateTexture(
+			renderer,
+			SDL_PIXELFORMAT_ARGB8888,
+			SDL_TEXTUREACCESS_STREAMING,
+			vga_logical_width,
+			vga_logical_height
+		);
+		if (!vgaTexture) {
+			log_error("SDL_CreateTexture failed: %s\n", SDL_GetError());
+			return;
+		}
+	}
+
+	const size_t crtc_start = vga_crtc_start_byte_offset();
+	vga_maybe_dump_stats(crtc_start);
+	for (int y = 0; y < vga_logical_height; ++y) {
+		for (int x = 0; x < vga_logical_width; ++x) {
+			db color = 0;
+			if (host.vga.current_mode == 0x13 && vga_logical_width == 320) {
+				const size_t byte_offset = (crtc_start + y * 80 + x / 4) % VGA_WINDOW_SIZE;
+				color = vgaMode13Pixels[byte_offset * 4 + (x & 3)];
+			} else {
+				color = vgaPlanarPixels[y * 640 + x];
+			}
+			vgaSdlFrame[y * vga_logical_width + x] = vga_color_to_argb(color);
+		}
+	}
+
+	SDL_UpdateTexture(vgaTexture, NULL, vgaSdlFrame, vga_logical_width * static_cast<int>(sizeof(uint32_t)));
+	SDL_RenderClear(renderer);
+	SDL_RenderCopy(renderer, vgaTexture, NULL, NULL);
+}
+
 void vga_present_pending() {
 	if (renderer && vga_render_dirty) {
+		vga_render_indexed_frame();
 		SDL_RenderPresent(renderer);
 		vga_render_dirty = false;
 		vga_render_writes = 0;
@@ -307,7 +437,89 @@ static bool vga_is_planar_mode() {
 	return host.vga.seq_regs[2] != 0;
 }
 
+static bool vga_mode13_address(size_t offset, size_t *page_offset) {
+	if (offset >= VGA_WINDOW_SIZE) {
+		return false;
+	}
+	*page_offset = offset;
+	return true;
+}
+
+static void vga_latch_mode13_byte(size_t page_offset, db *latch) {
+	for (int plane = 0; plane < 4; ++plane) {
+		latch[plane] = vgaMode13Pixels[page_offset * 4 + plane];
+	}
+}
+
+void vga_read_bytes_from_memory(const db *d, size_t size) {
+	if (host.vga.current_mode != 0x13) {
+		return;
+	}
+	vgaPendingReadLatchCount = 0;
+	vgaPendingReadLatchNext = 0;
+	for (size_t i = 0; i < size && i < 4; ++i) {
+		const size_t offset = (d + i) - ((const db*)&m) - 0xa0000;
+		size_t page_offset = 0;
+		if (!vga_mode13_address(offset, &page_offset)) {
+			continue;
+		}
+		vga_latch_mode13_byte(page_offset, vgaReadLatch);
+		vga_latch_mode13_byte(page_offset, vgaPendingReadLatch[vgaPendingReadLatchCount]);
+		++vgaPendingReadLatchCount;
+	}
+}
+
+void vga_read_byte_from_memory(const db *d) {
+	vga_read_bytes_from_memory(d, 1);
+}
+
+static const db *vga_latch_for_mode13_write() {
+	if (vgaPendingReadLatchNext < vgaPendingReadLatchCount) {
+		const db *latch = vgaPendingReadLatch[vgaPendingReadLatchNext++];
+		if (vgaPendingReadLatchNext >= vgaPendingReadLatchCount) {
+			vgaPendingReadLatchCount = 0;
+			vgaPendingReadLatchNext = 0;
+		}
+		return latch;
+	}
+	return vgaReadLatch;
+}
+
+static void vga_write_mode13_planar_byte(size_t offset, db value) {
+	configure_sdl_vga_window(320, 200);
+	if (!renderer) {
+		return;
+	}
+
+	size_t page_offset = 0;
+	if (!vga_mode13_address(offset, &page_offset)) {
+		return;
+	}
+	db map_mask = host.vga.seq_regs[2] & 0x0f;
+	if (!map_mask) {
+		map_mask = 0x0f;
+	}
+	const bool write_mode_1 = (host.vga.gc_regs[5] & 0x03) == 1;
+	const db *write_latch = write_mode_1 ? vga_latch_for_mode13_write() : vgaReadLatch;
+	for (int plane = 0; plane < 4; ++plane) {
+		if ((map_mask & (1 << plane)) == 0) {
+			continue;
+		}
+		const db pixel = write_mode_1 ? write_latch[plane] : value;
+		vgaMode13Pixels[page_offset * 4 + plane] = pixel;
+	}
+	vga_render_dirty = true;
+	if (++vga_render_writes >= 4096) {
+		vga_present_pending();
+	}
+}
+
 static void vga_write_planar_byte(size_t offset, db value) {
+	if (host.vga.current_mode == 0x13) {
+		vga_write_mode13_planar_byte(offset, value);
+		return;
+	}
+
 	configure_sdl_vga_window(640, 200);
 	if (!renderer) {
 		return;
@@ -342,8 +554,6 @@ static void vga_write_planar_byte(size_t offset, db value) {
 				pixel &= ~plane_mask;
 			}
 		}
-		SDL_SetRenderDrawColor(renderer, vgaPalette[3 * pixel + 2], vgaPalette[3 * pixel + 1], vgaPalette[3 * pixel], 255);
-		SDL_RenderDrawPoint(renderer, x, y);
 	}
 	vga_render_dirty = true;
 	if (++vga_render_writes >= 1024) {
@@ -364,8 +574,9 @@ void vga_write_pixel_from_memory(db *d, db color) {
 		return;
 	}
 	configure_sdl_vga_window(320, 200);
-	SDL_SetRenderDrawColor(renderer, vgaPalette[3 * color + 2], vgaPalette[3 * color + 1], vgaPalette[3 * color], 255);
-	SDL_RenderDrawPoint(renderer, di % 320, di / 320);
+	if (di < 320 * 200) {
+		vgaMode13Pixels[di * 4] = color;
+	}
 	vga_render_dirty = true;
 	if (++vga_render_writes >= 4096) {
 		vga_present_pending();
@@ -832,7 +1043,15 @@ void asm2C_OUT(int16_t address, int data,_STATE* _state) {
 	outportb(address, data);
 #else
 X86_REGREF
-	static int indexPalette = 0;
+	if ((data & ~0xff) != 0) {
+		const int port = address & 0xffff;
+		if (port == 0x3c4 || port == 0x3ce || port == 0x3d4) {
+			asm2C_OUT(address, data & 0xff, _state);
+			asm2C_OUT(address + 1, (data >> 8) & 0xff, _state);
+			return;
+		}
+	}
+	data &= 0xff;
 	switch(address & 0xffff) {
 	case 0x20:
 	case 0x21:
@@ -859,15 +1078,21 @@ X86_REGREF
 	case 0x3c5:
 		host.vga.seq_regs[host.vga.seq_index] = data;
 		break;
+	case 0x3c7:
+		host.vga.dac_read_index = (static_cast<size_t>(data) * 3) % (256 * 3);
+		break;
 	case 0x3c8:
-		indexPalette=data;
+		host.vga.dac_write_index = (static_cast<size_t>(data) * 3) % (256 * 3);
 		break;
 	case 0x3c9:
-		if (indexPalette<768) {
-			vgaPalette[indexPalette]=data;
-			indexPalette++;
+		if (host.vga.dac_write_index < 256 * 3) {
+			vgaPalette[host.vga.dac_write_index]=data;
+			host.vga.dac_write_index = (host.vga.dac_write_index + 1) % (256 * 3);
+  #if SDL_MAJOR_VERSION == 2 && !defined(NOSDL) && M2CDEBUG != -1
+			vga_render_dirty = true;
+  #endif
 		} else {
-			log_error("error: indexPalette>767 %d\n",indexPalette);
+			log_error("error: dac_write_index>767 %zu\n", host.vga.dac_write_index);
 		}
 		break;
 	case 0x3ce:
@@ -920,6 +1145,12 @@ X86_REGREF
 		return host.vga.seq_regs[host.vga.seq_index];
 	case 0x3cf:
 		return host.vga.gc_regs[host.vga.gc_index];
+	case 0x3c9:
+		{
+			const db value = vgaPalette[host.vga.dac_read_index];
+			host.vga.dac_read_index = (host.vga.dac_read_index + 1) % (256 * 3);
+			return value;
+		}
 	case 0x3d4:
 		return host.vga.crtc_index;
 	case 0x3DA:

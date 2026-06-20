@@ -155,6 +155,8 @@ extern db vgaPalette[256*3];
 
 #if SDL_MAJOR_VERSION == 2 && !defined(NOSDL) && M2CDEBUG != -1
     void init_sdl_vga_window();
+    void vga_read_byte_from_memory(const db *d);
+    void vga_read_bytes_from_memory(const db *d, size_t size);
     void vga_write_pixel_from_memory(db *d, db color);
     void vga_present_pending();
 #endif
@@ -411,16 +413,46 @@ template<class S>
     inline void set_type(const S &) {
     }
 
+    static inline void notify_vga_memory_read(const db *d, size_t size) {
+  #if SDL_MAJOR_VERSION == 2 && !defined(NOSDL) && M2CDEBUG != -1
+        const db *vga_begin = ((db*)&m) + 0xa0000;
+        const db *vga_end = ((db*)&m) + 0xc0000;
+        if (m2c::isaddrbelongtom(d) && d < vga_end && d + size > vga_begin) {
+            const db *start = d < vga_begin ? vga_begin : d;
+            const db *end = d + size > vga_end ? vga_end : d + size;
+            m2c::vga_read_bytes_from_memory(start, static_cast<size_t>(end - start));
+        }
+  #else
+        (void)d;
+        (void)size;
+  #endif
+    }
+
 inline db getdata(const db& s)
-{ return s; }
+{
+    notify_vga_memory_read(&s, sizeof(s));
+    return s;
+}
 inline dw getdata(const dw& s)
-{ return s; }
+{
+    notify_vga_memory_read((const db*)&s, sizeof(s));
+    return s;
+}
 inline dd getdata(const dd& s)
-{ return s; }
+{
+    notify_vga_memory_read((const db*)&s, sizeof(s));
+    return s;
+}
 inline char getdata(const char& s)
-{ return s; }
+{
+    notify_vga_memory_read((const db*)&s, sizeof(s));
+    return s;
+}
 inline short int getdata(const short int& s)
-{ return s; }
+{
+    notify_vga_memory_read((const db*)&s, sizeof(s));
+    return s;
+}
 inline int getdata(const int& s)
 { return s; }
 inline long getdata(const long& s)
@@ -432,27 +464,40 @@ inline dd getdata(const __int64& s)
 }
 #endif
 
+    static inline void notify_vga_memory_write(db *d, size_t size) {
+  #if SDL_MAJOR_VERSION == 2 && !defined(NOSDL) && M2CDEBUG != -1
+        for (size_t i = 0; i < size; ++i) {
+            db *p = d + i;
+            if (m2c::isaddrbelongtom(p) && p < ((db*)&m) + 0xc0000 && p >= ((db*)&m) + 0xa0000) {
+                m2c::vga_write_pixel_from_memory(p, *p);
+            }
+        }
+  #else
+        (void)d;
+        (void)size;
+  #endif
+    }
+
     static inline void setdata(db *d, db s) {
 		*d = s;
-  #if SDL_MAJOR_VERSION == 2 && !defined(NOSDL) && M2CDEBUG != -1
-	if (m2c::isaddrbelongtom(d) && d < ((db*)&m) + 0xc0000 && d >= ((db*)&m) + 0xa0000) {
-        m2c::vga_write_pixel_from_memory(d, s);
-    }
-  #endif
+        notify_vga_memory_write(d, sizeof(*d));
 	{
 	}
     }
 
     static inline void setdata(char *d, db s) {
            *d = s;
+           notify_vga_memory_write((db*)d, sizeof(*d));
     }
 
     static inline void setdata(dw *d, dw s) {
            *d = s;
+           notify_vga_memory_write((db*)d, sizeof(*d));
     }
 
     static inline void setdata(dd *d, dd s) {
         *d = s;
+        notify_vga_memory_write((db*)d, sizeof(*d));
     }
 #endif
 
