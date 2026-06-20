@@ -355,7 +355,7 @@ class Cpp(Gen):
                 hpp_file += segment_hpp
 
                 for data in segment.getdata():
-                    rendered = self._render_data_declaration(data)
+                    rendered = self._render_data_declaration(data, segment)
                     cpp_file += rendered["cpp_init"]
                     data_hpp_file += rendered["data_hpp_decl"]
                     data_cpp_file += rendered["data_cpp_ref"]
@@ -418,7 +418,7 @@ class Cpp(Gen):
             hpp += f"extern db& {name};\n"
         return data_cpp, hpp
 
-    def _render_data_declaration(self, data: Data) -> dict[str, str]:
+    def _render_data_declaration(self, data: Data, segment: Any | None = None) -> dict[str, str]:
         value, type_and_name, _ = self.produce_c_data_single_(data)
         type_and_name += ";\n"
         cpp_init = ""
@@ -431,7 +431,7 @@ class Cpp(Gen):
                 type_and_name,
                 extern_hpp_decl,
                 data_cpp_ref,
-            ) = self._render_data_assignment_and_refs(data, value, type_and_name)
+            ) = self._render_data_assignment_and_refs(data, value, type_and_name, segment)
 
         return {
             "cpp_init": cpp_init,
@@ -445,6 +445,7 @@ class Cpp(Gen):
             data: Data,
             value: str,
             type_and_name: str,
+            segment: Any | None = None,
     ) -> tuple[str, str, str, str]:
         match = re.match(r"^((?:struct\s+)?\w+)\s+(\w+)(\[\d+\])?;\n", type_and_name)
         if not match:
@@ -460,7 +461,7 @@ class Cpp(Gen):
             type_and_name,
         )
         cpp_init = self._build_data_assignment(name, value, type_and_size, bool(match[3]))
-        data_cpp_ref = self._generate_dataref_from_declaration_c(type_and_name)
+        data_cpp_ref = self._generate_dataref_from_declaration_c(type_and_name, data, segment)
         extern_hpp_decl = self._generate_extern_from_declaration_c(type_and_name)
         if cpp_init:
             cpp_init, type_and_name = self._append_real_address_comment(data, cpp_init, type_and_name)
@@ -500,12 +501,19 @@ class Cpp(Gen):
         _extern = re.sub(r"^((?:struct\s+)?\w+)\s+([\w\[\]]+);", r"extern \g<1>& \g<2>;", _extern)
         return _extern
 
-    def _generate_dataref_from_declaration_c(self, _hpp):
+    def _generate_dataref_from_declaration_c(
+            self,
+            _hpp: str,
+            data: Data | None = None,
+            segment: Any | None = None,
+    ) -> str:
         """It takes a C++ declaration and returns a reference to the same variable.
 
         :param _hpp: declaration string
         :return: The reference to the same data
         """
+        if data is not None and segment is not None:
+            return self._generate_linear_dataref_from_declaration_c(_hpp, data, segment)
         m = re.match(r"^char\s+([A-Za-z0-9_]+)\[1\];(?:\s*//.*)?$", _hpp.strip())
         if m:
             name = m.group(1)
@@ -518,6 +526,26 @@ class Cpp(Gen):
             _reference,
         )
         return _reference
+
+    @staticmethod
+    def _generate_linear_dataref_from_declaration_c(_hpp: str, data: Data, segment: Any) -> str:
+        match = re.match(
+            r"^(?P<type>(?:struct\s+)?\w+)\s+(?P<name>\w+)(?P<array>\[\d+\])?;\s*(?://.*)?$",
+            _hpp.strip(),
+        )
+        if not match:
+            logging.error("Failed to parse data declaration for reference: %s", _hpp)
+            return ""
+
+        c_type = match["type"]
+        name = match["name"]
+        array_suffix = match["array"] or ""
+        address = f"&{segment.name}+0x{data.offset:x}"
+        if c_type == "char" and array_suffix == "[1]":
+            return f"char& {name} = *((char*)({address}));\n"
+        if array_suffix:
+            return f"{c_type} (& {name}){array_suffix} = *(({c_type} (*){array_suffix})({address}));\n"
+        return f"{c_type}& {name} = *(({c_type}*)({address}));\n"
 
     @staticmethod
     def _flatten_data_values(values: list[Any]) -> list[Any]:

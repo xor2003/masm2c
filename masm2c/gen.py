@@ -552,7 +552,7 @@ class Gen(TopDownVisitor):
                     allsegments[segclass] = segment_value
                     self._segment_aliases(allsegments[segclass]).setdefault(segment_value.name, 0)
                 else:
-                    merge_offset = allsegments[segclass].getsize()
+                    merge_offset = self._segment_extent(allsegments[segclass])
                     self._segment_aliases(allsegments[segclass]).setdefault(segment_value.name, merge_offset)
                     data = segment_value.getdata()
                     for d in data:
@@ -562,7 +562,7 @@ class Gen(TopDownVisitor):
                 segment_value.getsize() > 0 or allsegments[segment_name].getsize() > 0
             ):
                 self._check_for_segment_overwrite(allsegments, segment_name, segment_value)
-                merge_offset = allsegments[segment_name].getsize()
+                merge_offset = self._segment_extent(allsegments[segment_name])
                 for data in segment_value.getdata():
                     self._relocate_data_record(data, merge_offset)
                     allsegments[segment_name].append(data)
@@ -580,15 +580,22 @@ class Gen(TopDownVisitor):
             segclass = segment_value.segclass
             ispublic = segment_value.options and "public" in segment_value.options
             if segclass and ispublic and self.merge_data_segments:
-                merge_offset = allsegments[segclass].getsize() if segclass in allsegments else 0
+                merge_offset = self._segment_extent(allsegments[segclass]) if segclass in allsegments else 0
                 relocations[segment_name] = (segclass, merge_offset)
             elif self.merge_data_segments and segment_name in allsegments and (
                 segment_value.getsize() > 0 or allsegments[segment_name].getsize() > 0
             ):
-                relocations[segment_name] = (segment_name, allsegments[segment_name].getsize())
+                relocations[segment_name] = (segment_name, self._segment_extent(allsegments[segment_name]))
             else:
                 relocations[segment_name] = (segment_name, 0)
         return relocations
+
+    @staticmethod
+    def _segment_extent(segment) -> int:
+        return max(
+            [segment.getsize(), *(data.offset + data.getsize() for data in segment.getdata())],
+            default=0,
+        )
 
     @staticmethod
     def _relocate_data_record(data, merge_offset: int) -> None:

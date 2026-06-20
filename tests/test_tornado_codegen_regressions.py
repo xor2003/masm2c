@@ -371,6 +371,24 @@ class CppDataInitTest(unittest.TestCase):
         self.assertEqual(segments["data"].segment_aliases["wpndata"], 2)
         self.assertEqual(segments["data"].getdata()[1].offset, 2)
 
+    def test_merged_public_segment_data_references_use_relocated_linear_offsets(self):
+        first = op.Segment("data", 0, options={"public"}, segclass="data")
+        first.append(op.Data("first", "dw", op.DataType.NUMBER, [1], 1, 2))
+        second = op.Segment("paldata", 0, options={"public"}, segclass="data")
+        second.append(op.Data("palette", "db", op.DataType.ARRAY, [1, 2, 3], 3, 3))
+        cpp = Cpp(Parser([]), merge_data_segments=True)
+
+        segments, _ = cpp.merge_segments(
+            OrderedDict([("data", first)]),
+            OrderedDict(),
+            OrderedDict([("paldata", second)]),
+            OrderedDict(),
+        )
+        _, _, data_cpp, _ = cpp.render_data_c(segments)
+
+        self.assertIn("db& paldata=*((db*)&m2c::m+0x2);", data_cpp)
+        self.assertIn("db (& palette)[3] = *((db (*)[3])(&data+0x2));", data_cpp)
+
     def test_duplicate_public_segment_data_offsets_are_relocated_during_merge(self):
         first = op.Segment("data", 0, options={"public"}, segclass="data")
         first.append(op.Data("jumpinitlist", "dw", op.DataType.NUMBER, [0], 1, 2, offset=0x14A))
@@ -380,7 +398,24 @@ class CppDataInitTest(unittest.TestCase):
 
         segments, _ = cpp.merge_segments(OrderedDict([("data", first)]), OrderedDict(), OrderedDict([("data", second)]), OrderedDict())
 
-        self.assertEqual(segments["data"].getdata()[1].offset, 0x182)
+        self.assertEqual(segments["data"].getdata()[1].offset, 0x2CC)
+
+    def test_public_segment_merge_uses_extent_not_record_size(self):
+        first = op.Segment("paldata", 0, options={"public"}, segclass="data")
+        first.append(op.Data("vga_infra_red", "db", op.DataType.ARRAY, [0], 104, 104, offset=0xA42))
+        second = op.Segment("data", 0, options={"public"}, segclass="data")
+        second.append(op.Data("rotateswitch", "dw", op.DataType.NUMBER, [0], 1, 2, offset=0x8E))
+        cpp = Cpp(Parser([]), merge_data_segments=True)
+
+        segments, _ = cpp.merge_segments(
+            OrderedDict([("data", first)]),
+            OrderedDict(),
+            OrderedDict([("data", second)]),
+            OrderedDict(),
+        )
+
+        self.assertEqual(segments["data"].segment_aliases["data"], 0xAAA)
+        self.assertEqual(segments["data"].getdata()[1].offset, 0xB38)
 
     def test_duplicate_public_segment_label_aliases_are_relocated_when_reading_sidecars(self):
         with TemporaryDirectory() as tmp:
@@ -404,7 +439,7 @@ class CppDataInitTest(unittest.TestCase):
 
                 alias = merger._context.data_aliases[0]
                 self.assertEqual(alias.segment, "data")
-                self.assertEqual(alias.offset, 0x182)
+                self.assertEqual(alias.offset, 0x2CC)
             finally:
                 os.chdir(old_cwd)
 
@@ -467,7 +502,7 @@ class CppDataInitTest(unittest.TestCase):
                 self.assertIn('#include "_data.h"', data_cpp)
                 self.assertNotIn("localref = m2c::m.localref", data_cpp)
                 self.assertIn('#include "_data.h"', data_refs)
-                self.assertIn("dw& localref = m2c::m.localref;", data_refs)
+                self.assertIn("dw& localref = *((dw*)(&data+0x0));", data_refs)
                 self.assertIn("extern dw& localref;", data_h)
                 self.assertIn('#include "_data_types.h"', data_h)
                 self.assertIn('#include "asm.h"', data_types)

@@ -920,6 +920,8 @@ X86_REGREF
 		return host.vga.seq_regs[host.vga.seq_index];
 	case 0x3cf:
 		return host.vga.gc_regs[host.vga.gc_index];
+	case 0x3d4:
+		return host.vga.crtc_index;
 	case 0x3DA:
 		host.vga.attr_waiting_for_index = true;
   #if SDL_MAJOR_VERSION == 2 && !defined(NOSDL) && M2CDEBUG != -1
