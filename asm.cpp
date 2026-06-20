@@ -1500,6 +1500,17 @@ X86_REGREF
 
 
 	switch(a) {
+	case 0x80:
+	case 0x81:
+		/* Hosted Tornado builds load DOS sound driver binaries and invoke them
+		   through private interrupts. The binaries are not executed here; expose
+		   a deterministic no-op driver so translated sound code does not fall
+		   into the generic unsupported interrupt path. */
+		if (ah == 0x05 || ah == 0x14) {
+			al = 0; // Tornado treats AL == 55h as "card missing".
+		}
+		AFFECT_CF(0);
+		return;
 	case 0x10:
 	{
 		switch(ah)
