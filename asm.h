@@ -156,6 +156,7 @@ extern db vgaPalette[256*3];
 #if SDL_MAJOR_VERSION == 2 && !defined(NOSDL) && M2CDEBUG != -1
     void init_sdl_vga_window();
     void vga_read_byte_from_memory(const db *d);
+    db vga_read_byte_value_from_memory(const db *d);
     void vga_read_bytes_from_memory(const db *d, size_t size);
     void vga_write_pixel_from_memory(db *d, db color);
     void vga_present_pending();
@@ -428,29 +429,66 @@ template<class S>
   #endif
     }
 
+    static inline bool is_vga_memory_range(const db *d, size_t size) {
+  #if SDL_MAJOR_VERSION == 2 && !defined(NOSDL) && M2CDEBUG != -1
+        const db *vga_begin = ((db*)&m) + 0xa0000;
+        const db *vga_end = ((db*)&m) + 0xc0000;
+        return m2c::isaddrbelongtom(d) && d < vga_end && d + size > vga_begin;
+  #else
+        (void)d;
+        (void)size;
+        return false;
+  #endif
+    }
+
+    static inline db read_vga_or_memory_byte(const db *p) {
+  #if SDL_MAJOR_VERSION == 2 && !defined(NOSDL) && M2CDEBUG != -1
+        if (is_vga_memory_range(p, 1)) {
+            return m2c::vga_read_byte_value_from_memory(p);
+        }
+  #endif
+        return *p;
+    }
+
 inline db getdata(const db& s)
 {
-    notify_vga_memory_read(&s, sizeof(s));
-    return s;
+    const db *p = &s;
+    return read_vga_or_memory_byte(p);
 }
 inline dw getdata(const dw& s)
 {
-    notify_vga_memory_read((const db*)&s, sizeof(s));
+    const db *p = (const db*)&s;
+    if (is_vga_memory_range(p, sizeof(s))) {
+        return static_cast<dw>(read_vga_or_memory_byte(p))
+            | (static_cast<dw>(read_vga_or_memory_byte(p + 1)) << 8);
+    }
     return s;
 }
 inline dd getdata(const dd& s)
 {
-    notify_vga_memory_read((const db*)&s, sizeof(s));
+    const db *p = (const db*)&s;
+    if (is_vga_memory_range(p, sizeof(s))) {
+        return static_cast<dd>(read_vga_or_memory_byte(p))
+            | (static_cast<dd>(read_vga_or_memory_byte(p + 1)) << 8)
+            | (static_cast<dd>(read_vga_or_memory_byte(p + 2)) << 16)
+            | (static_cast<dd>(read_vga_or_memory_byte(p + 3)) << 24);
+    }
     return s;
 }
 inline char getdata(const char& s)
 {
-    notify_vga_memory_read((const db*)&s, sizeof(s));
-    return s;
+    const db *p = (const db*)&s;
+    return static_cast<char>(read_vga_or_memory_byte(p));
 }
 inline short int getdata(const short int& s)
 {
-    notify_vga_memory_read((const db*)&s, sizeof(s));
+    const db *p = (const db*)&s;
+    if (is_vga_memory_range(p, sizeof(s))) {
+        return static_cast<short int>(
+            static_cast<dw>(read_vga_or_memory_byte(p))
+            | (static_cast<dw>(read_vga_or_memory_byte(p + 1)) << 8)
+        );
+    }
     return s;
 }
 inline int getdata(const int& s)

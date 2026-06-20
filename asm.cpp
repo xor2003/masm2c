@@ -451,6 +451,20 @@ static void vga_latch_mode13_byte(size_t page_offset, db *latch) {
 	}
 }
 
+db vga_read_byte_value_from_memory(const db *d) {
+	if (host.vga.current_mode != 0x13) {
+		return *d;
+	}
+	const size_t offset = d - ((const db*)&m) - 0xa0000;
+	size_t page_offset = 0;
+	if (!vga_mode13_address(offset, &page_offset)) {
+		return *d;
+	}
+	vga_latch_mode13_byte(page_offset, vgaReadLatch);
+	const db read_plane = host.vga.gc_regs[4] & 0x03;
+	return vgaReadLatch[read_plane];
+}
+
 void vga_read_bytes_from_memory(const db *d, size_t size) {
 	if (host.vga.current_mode != 0x13) {
 		return;
