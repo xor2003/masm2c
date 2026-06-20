@@ -94,7 +94,7 @@ ci-pytest: ## run project pytest suite
 	python -m pytest -q
 
 ci-asmtests: ## run asm translation/regression tests
-	python asmTests/run_tests.py --jobs $${JOBS:-1}
+	python asmTests/run_tests.py $${JOBS:+--jobs $$JOBS}
 
 ci-qemu-tests: ## run qemu-based integration tests
 	cd qemu_tests && ./_test.sh

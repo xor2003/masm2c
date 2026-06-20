@@ -27,8 +27,10 @@ except Exception:
     pass
 
 import argparse
+import concurrent.futures
 import glob
 import logging
+import os
 import re
 import sys
 
@@ -42,6 +44,10 @@ __copyright__ = "x0r"
 __license__ = "GPL2+"
 
 _logger = logging.getLogger(__name__)
+
+
+def default_jobs() -> int:
+    return max(1, int(os.environ.get("JOBS", os.cpu_count() or 1)))
 
 
 def tracefunc(frame, event, arg, indent=None):
@@ -101,6 +107,14 @@ def parse_args(args):
         type=int,
         choices=[1, 2],
         default=2,
+    )
+    aparser.add_argument(
+        "-j",
+        "--jobs",
+        dest="jobs",
+        help="How many source files to translate in parallel (default: CPU count)",
+        type=int,
+        default=default_jobs(),
     )
     aparser.add_argument(
         "-lo",
@@ -247,10 +261,44 @@ def process(name, args):
     return generator
 
 
+def _process_source_worker(name: str, args: dict) -> str:
+    setup_logging(name, args["loglevel"])
+    process(name, args)
+    return name
+
+
 def should_merge_data_segments(files: list[str]) -> bool:
     """Multi-module builds need linked segment merging even when some inputs are listings."""
     asm_sources = [file for file in files if file.lower().endswith((".asm", ".lst"))]
     return not (len(asm_sources) == 1 and asm_sources[0].lower().endswith(".lst"))
+
+
+def source_files(files: list[str]) -> list[str]:
+    return [file for file in files if file.lower().endswith((".asm", ".lst"))]
+
+
+def process_source_files(files: list[str], args: argparse.Namespace) -> None:
+    sources = source_files(files)
+    if not sources:
+        return
+
+    args_dict = vars(args)
+    jobs = max(1, min(args.jobs, len(sources)))
+    if jobs == 1:
+        for source in sources:
+            _process_source_worker(source, args_dict)
+        return
+
+    logging.info("Translating %d source files with %d workers", len(sources), jobs)
+    with concurrent.futures.ProcessPoolExecutor(max_workers=jobs) as executor:
+        futures = {executor.submit(_process_source_worker, source, args_dict): source for source in sources}
+        for future in concurrent.futures.as_completed(futures):
+            source = futures[future]
+            try:
+                future.result()
+            except Exception:
+                logging.exception("Failed translating %s", source)
+                raise
 
 
 def main() -> None:
@@ -273,10 +321,7 @@ def main() -> None:
     for pattern in args.filenames:
         files.extend(glob.glob(pattern))
 
-    for i in files:
-        if i.lower().endswith(".asm") or i.lower().endswith(".lst"):
-            setup_logging(i, args.loglevel)
-            process(i, vars(args))
+    process_source_files(files, args)
 
     # Process .seg files
     merge_data_segments = should_merge_data_segments(files)

@@ -63,6 +63,7 @@ RT_STRING = 1 << 2
 RT_SEGMENT = 1 << 3
 RT_FAR_POINTER = 1 << 4
 CPP_STRUCT_TAG_REQUIRED = {"clock"}
+DATA_REF_LINES_PER_FILE = 2000
 
 
 def _parse_runtime_int(value: Any) -> int | None:
@@ -177,6 +178,7 @@ class Cpp(Gen):
         :param outfile: Output filename
         """
         self._expr_state = _ExprRenderState()
+        self._data_label_renames: list[tuple[str, str, str]] = []
         super().__init__(context, outfile=outfile, merge_data_segments=merge_data_segments)
         self.proc_strategy = SeparateProcStrategy(self)
         self.renderer: Gen = self
@@ -1214,6 +1216,7 @@ class Cpp(Gen):
 
 {self.produce_structures(self._context.structures)}
 {equates}
+{self._module_data_rename_header()}
 {cpp_extern}
 #if __has_include("_equates.h")
 #include "_equates.h"
@@ -1387,16 +1390,19 @@ class Cpp(Gen):
         self._context.segments = segments
         self._context.structures = structures
         try:
-            _, data_h, data_cpp_reference, _ = self.render_data_c(segments)
+            _, data_h, data_cpp_reference, data_externs = self.render_data_c(segments)
         finally:
             self._context.segments = previous_segments
             self._context.structures = previous_structures
         self._write_equates_header(getattr(self._context, "exported_equates", []))
+        self._write_data_renames_header()
+        self._write_data_reference_chunks(data_cpp_reference)
         fname = "_data.cpp"
         header = "_data.h"
+        types_header = "_data_types.h"
         with open(fname, "w", encoding=self.__codeset) as fd:
-            fd.write(f"""#include "_data.h"
-namespace m2c{{
+            fd.write("""#include "_data.h"
+namespace m2c{
 
 struct Memory m;
 
@@ -1404,19 +1410,45 @@ struct Memory types;
 
 db(& stack)[STACK_SIZE]=m.stack;
 db(& heap)[HEAP_SIZE]=m.heap;
-}}
-{data_cpp_reference}
+}
 
+""")
+
+        with open(types_header, "w", encoding=self.__codeset) as th:
+            th.write("""
+#ifndef ___DATA_TYPES_H__
+#define ___DATA_TYPES_H__
+#include "asm.h"
+""" + self.produce_structures(structures) + """
+#endif
 """)
 
         with open(header, "w", encoding=self.__codeset) as hd:
             hd.write("""
 #ifndef ___DATA_H__
 #define ___DATA_H__
-#include "asm.h"
-""" + self.produce_structures(structures) + self.produce_data(data_h) + """
+#include "_data_types.h"
+""" + self.produce_data(data_h) + data_externs + """
 #endif
 """)
+
+    def _write_data_reference_chunks(self, data_cpp_reference: str) -> None:
+        self._remove_old_data_reference_chunks()
+        lines = data_cpp_reference.splitlines()
+        if not lines:
+            return
+        for index in range(0, len(lines), DATA_REF_LINES_PER_FILE):
+            chunk = lines[index:index + DATA_REF_LINES_PER_FILE]
+            chunk_name = f"_data_refs_{index // DATA_REF_LINES_PER_FILE:03d}.cpp"
+            with open(chunk_name, "w", encoding=self.__codeset) as fd:
+                fd.write('#include "_data.h"\n')
+                fd.write("\n".join(chunk))
+                fd.write("\n")
+
+    def _remove_old_data_reference_chunks(self) -> None:
+        for name in os.listdir("."):
+            if re.fullmatch(r"_data_refs_\d{3}\.cpp", name):
+                os.remove(name)
 
     def _write_equates_header(self, equates: list[tuple[str, str]]) -> None:
         with open("_equates.h", "w", encoding=self.__codeset) as f:
@@ -1425,8 +1457,36 @@ db(& heap)[HEAP_SIZE]=m.heap;
                 f.write(f"#ifndef {name}\n#define {name} ({value})\n#endif\n")
             f.write("\n#endif\n")
 
+    def _write_data_renames_header(self) -> None:
+        with open("_data_renames.h", "w", encoding=self.__codeset) as f:
+            f.write("#ifndef __M2C_DATA_RENAMES_H__\n#define __M2C_DATA_RENAMES_H__\n\n")
+            for module_macro, old_name, new_name in self._data_label_renames:
+                f.write(
+                    f"#if defined({module_macro})\n"
+                    f"#ifndef {old_name}\n"
+                    f"#define {old_name} {new_name}\n"
+                    "#endif\n"
+                    "#endif\n\n"
+                )
+            f.write("#endif\n")
+
+    def _module_data_rename_header(self) -> str:
+        module_macro = self._module_macro_name(self._namespace)
+        return (
+            f"#define {module_macro} 1\n"
+            '#if __has_include("_data_renames.h")\n'
+            '#include "_data_renames.h"\n'
+            "#endif\n"
+        )
+
+    @staticmethod
+    def _module_macro_name(name: str) -> str:
+        normalized = re.sub(r"[^A-Za-z0-9_]", "_", name).upper()
+        return f"M2C_MODULE_{normalized or 'UNKNOWN'}"
+
     def _deduplicate_memory_field_labels(self, segments: OrderedDict) -> OrderedDict:
         result = deepcopy(segments)
+        self._data_label_renames = []
         seen: set[str] = set()
         for segment in result.values():
             for data in segment.getdata():
@@ -1436,7 +1496,12 @@ db(& heap)[HEAP_SIZE]=m.heap;
                 if label not in seen:
                     seen.add(label)
                     continue
+                old_label = data.label.lower()
                 data.label = self._unique_memory_field_label(data, seen)
+                module = os.path.splitext(os.path.basename(data.filename or ""))[0]
+                self._data_label_renames.append(
+                    (self._module_macro_name(module), old_label, data.label.lower())
+                )
                 seen.add(data.label.lower())
         return result
 

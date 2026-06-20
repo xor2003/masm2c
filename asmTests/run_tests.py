@@ -69,6 +69,10 @@ def generated_cpp_sources(work_dir: Path, base: str) -> list[str]:
     return [source.name for source in candidates if source.exists() and source.name not in included]
 
 
+def generated_data_sources(work_dir: Path) -> list[str]:
+    return ["_data.cpp", *(source.name for source in sorted(work_dir.glob("_data_refs_*.cpp")))]
+
+
 def prepare_case_workspace(script_dir: Path, name: str) -> Path:
     base = name.rsplit(".", 1)[0]
     work_root = script_dir / ".test-work"
@@ -124,7 +128,7 @@ def run_case(script_dir: Path, name: str, logs_dir: Path, cxx: str, opt_flags: s
 
     compile_cmd = [
         cxx,
-        "_data.cpp",
+        *generated_data_sources(work_dir),
         *generated_cpp_sources(work_dir, base),
         str(repo_root / "asm.o"),
         str(repo_root / "memmgr.o"),
@@ -195,7 +199,8 @@ def summarize(results: Iterable[CaseResult], logs_dir: Path) -> int:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description="Run asmTests suite")
-    ap.add_argument("--jobs", "-j", type=int, default=int(os.environ.get("JOBS", "1")), help="parallel jobs")
+    default_jobs = int(os.environ.get("JOBS", str(os.cpu_count() or 1)))
+    ap.add_argument("--jobs", "-j", type=int, default=default_jobs, help="parallel jobs")
     ap.add_argument("--filter", default="", help="substring filter for case names")
     args = ap.parse_args()
 

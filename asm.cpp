@@ -118,6 +118,11 @@ static struct __fl __eflags;
  #if SDL_MAJOR_VERSION == 2
     SDL_Renderer *renderer;
     SDL_Window *window;
+    static bool vga_render_dirty;
+    static unsigned vga_render_writes;
+    static int vga_logical_width = 320;
+    static int vga_logical_height = 200;
+    static db vgaPlanarPixels[640 * 200];
 
 db vgaRamPaddingBefore[VGARAM_SIZE];
 db vgaRam[VGARAM_SIZE];
@@ -220,6 +225,154 @@ struct HostHardware {
 };
 
 static HostHardware host;
+
+#ifndef NOSDL
+ #if SDL_MAJOR_VERSION == 2
+static int sdl_vga_scale(int width, int height) {
+	const char *forced_scale = getenv("M2C_SDL_SCALE");
+	if (forced_scale && *forced_scale) {
+		int scale = atoi(forced_scale);
+		return scale > 0 ? scale : 1;
+	}
+
+	SDL_DisplayMode mode;
+	if (SDL_GetCurrentDisplayMode(0, &mode) == 0 && mode.w > 0 && mode.h > 0) {
+		int scale_x = mode.w / width;
+		int scale_y = mode.h / height;
+		int scale = scale_x < scale_y ? scale_x : scale_y;
+		return scale > 0 ? scale : 1;
+	}
+
+	return 4;
+}
+
+static void configure_sdl_vga_window(int width, int height) {
+	if ((SDL_WasInit(SDL_INIT_VIDEO) & SDL_INIT_VIDEO) == 0) {
+		SDL_Init(SDL_INIT_VIDEO);
+	}
+
+	SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
+	const int scale = sdl_vga_scale(width, height);
+	if (!window) {
+		window = SDL_CreateWindow(
+			"masm2c VGA",
+			SDL_WINDOWPOS_CENTERED,
+			SDL_WINDOWPOS_CENTERED,
+			width * scale,
+			height * scale,
+			SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE
+		);
+	}
+	if (!renderer && window) {
+		renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+		if (!renderer) {
+			renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_SOFTWARE);
+		}
+		if (!renderer) {
+			log_error("SDL_CreateRenderer failed: %s\n", SDL_GetError());
+			return;
+		}
+	}
+	if (window && (vga_logical_width != width || vga_logical_height != height)) {
+		SDL_SetWindowSize(window, width * scale, height * scale);
+	}
+	if (renderer) {
+		SDL_RenderSetLogicalSize(renderer, width, height);
+	}
+	vga_logical_width = width;
+	vga_logical_height = height;
+}
+
+void init_sdl_vga_window() {
+	configure_sdl_vga_window(320, 200);
+	if (!renderer) {
+		return;
+	}
+	SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+	SDL_RenderClear(renderer);
+	SDL_RenderPresent(renderer);
+	vga_render_dirty = false;
+	vga_render_writes = 0;
+}
+
+void vga_present_pending() {
+	if (renderer && vga_render_dirty) {
+		SDL_RenderPresent(renderer);
+		vga_render_dirty = false;
+		vga_render_writes = 0;
+	}
+}
+
+static bool vga_is_planar_mode() {
+	return host.vga.seq_regs[2] != 0;
+}
+
+static void vga_write_planar_byte(size_t offset, db value) {
+	configure_sdl_vga_window(640, 200);
+	if (!renderer) {
+		return;
+	}
+
+	const size_t page_offset = offset % 0x4000;
+	const int y = page_offset / 80;
+	const int x0 = (page_offset % 80) * 8;
+	if (y < 0 || y >= 200) {
+		return;
+	}
+
+	db map_mask = host.vga.seq_regs[2] & 0x0f;
+	if (!map_mask) {
+		map_mask = 0x0f;
+	}
+	for (int bit = 0; bit < 8; ++bit) {
+		const int x = x0 + bit;
+		if (x >= 640) {
+			break;
+		}
+		const db source_bit = (value >> (7 - bit)) & 1;
+		db &pixel = vgaPlanarPixels[y * 640 + x];
+		for (int plane = 0; plane < 4; ++plane) {
+			const db plane_mask = 1 << plane;
+			if ((map_mask & plane_mask) == 0) {
+				continue;
+			}
+			if (source_bit) {
+				pixel |= plane_mask;
+			} else {
+				pixel &= ~plane_mask;
+			}
+		}
+		SDL_SetRenderDrawColor(renderer, vgaPalette[3 * pixel + 2], vgaPalette[3 * pixel + 1], vgaPalette[3 * pixel], 255);
+		SDL_RenderDrawPoint(renderer, x, y);
+	}
+	vga_render_dirty = true;
+	if (++vga_render_writes >= 1024) {
+		vga_present_pending();
+	}
+}
+
+void vga_write_pixel_from_memory(db *d, db color) {
+	if (!renderer) {
+		init_sdl_vga_window();
+	}
+	if (!renderer) {
+		return;
+	}
+	const size_t di = d - ((db*)&m) - 0xa0000;
+	if (vga_is_planar_mode()) {
+		vga_write_planar_byte(di, color);
+		return;
+	}
+	configure_sdl_vga_window(320, 200);
+	SDL_SetRenderDrawColor(renderer, vgaPalette[3 * color + 2], vgaPalette[3 * color + 1], vgaPalette[3 * color], 255);
+	SDL_RenderDrawPoint(renderer, di % 320, di / 320);
+	vga_render_dirty = true;
+	if (++vga_render_writes >= 4096) {
+		vga_present_pending();
+	}
+}
+ #endif
+#endif
 
 static int host_clamp_int(int value, int min_value, int max_value) {
 	if (value < min_value) {
@@ -765,6 +918,9 @@ X86_REGREF
 		return host.vga.gc_regs[host.vga.gc_index];
 	case 0x3DA:
 		host.vga.attr_waiting_for_index = true;
+  #if SDL_MAJOR_VERSION == 2 && !defined(NOSDL) && M2CDEBUG != -1
+		vga_present_pending();
+  #endif
 		if (vblTick) {
 			vblTick = 0;
 			return 0;
@@ -975,11 +1131,12 @@ X86_REGREF
 #ifndef NOSDL
  #if SDL_MAJOR_VERSION == 2
 
-				SDL_Init(SDL_INIT_VIDEO);
-				SDL_CreateWindowAndRenderer(320, 200, 0, &window, &renderer);
-				SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-				SDL_RenderClear(renderer);
-			        SDL_RenderPresent(renderer);
+				init_sdl_vga_window();
+				if (renderer) {
+					SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+					SDL_RenderClear(renderer);
+					SDL_RenderPresent(renderer);
+				}
  #endif
 #endif
 				//stackDump(_state);
@@ -1004,11 +1161,12 @@ X86_REGREF
 #ifndef NOSDL
  #if SDL_MAJOR_VERSION == 2
 
-				SDL_Init(SDL_INIT_VIDEO);
-				SDL_CreateWindowAndRenderer(320, 200, 0, &window, &renderer);
-				SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-				SDL_RenderClear(renderer);
-			        SDL_RenderPresent(renderer);
+				init_sdl_vga_window();
+				if (renderer) {
+					SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+					SDL_RenderClear(renderer);
+					SDL_RenderPresent(renderer);
+				}
  #endif
 #endif
 				//stackDump(_state);

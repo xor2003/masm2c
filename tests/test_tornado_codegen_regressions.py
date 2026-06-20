@@ -377,12 +377,45 @@ class CppDataInitTest(unittest.TestCase):
         segment = op.Segment("data", 0)
         segment.append(op.Data("local", "dw", op.DataType.NUMBER, [1], 1, 2, filename="A.ASM", line_number=10))
         segment.append(op.Data("local", "dw", op.DataType.NUMBER, [2], 1, 2, filename="B.ASM", line_number=20))
+        cpp = Cpp(Parser([]))
 
-        segments = Cpp(Parser([]))._deduplicate_memory_field_labels(OrderedDict([("data", segment)]))
+        segments = cpp._deduplicate_memory_field_labels(OrderedDict([("data", segment)]))
 
         labels = [data.label for data in segments["data"].getdata()]
         self.assertEqual(labels[0], "local")
         self.assertEqual(labels[1], "local__b_0_20")
+        self.assertEqual(cpp._data_label_renames, [("M2C_MODULE_B", "local", "local__b_0_20")])
+
+    def test_duplicate_memory_field_label_renames_are_emitted_for_modules(self):
+        with TemporaryDirectory() as tmp:
+            cwd = os.getcwd()
+            os.chdir(tmp)
+            try:
+                segment = op.Segment("data", 0)
+                segment.append(op.Data("localref", "dw", op.DataType.NUMBER, [1], 1, 2, filename="A.ASM", line_number=10))
+                segment.append(op.Data("localref", "dw", op.DataType.NUMBER, [2], 1, 2, filename="B.ASM", line_number=20))
+                cpp = Cpp(Parser([]), outfile="b")
+
+                cpp.write_data_segments_cpp(OrderedDict([("data", segment)]), OrderedDict())
+
+                renames = Path("_data_renames.h").read_text(encoding="utf-8")
+                data_cpp = Path("_data.cpp").read_text(encoding="utf-8")
+                data_refs = Path("_data_refs_000.cpp").read_text(encoding="utf-8")
+                data_h = Path("_data.h").read_text(encoding="utf-8")
+                data_types = Path("_data_types.h").read_text(encoding="utf-8")
+                self.assertIn("#if defined(M2C_MODULE_B)", renames)
+                self.assertIn("#define localref localref__b_0_20", renames)
+                self.assertIn('#include "_data.h"', data_cpp)
+                self.assertNotIn("localref = m2c::m.localref", data_cpp)
+                self.assertIn('#include "_data.h"', data_refs)
+                self.assertIn("dw& localref = m2c::m.localref;", data_refs)
+                self.assertIn("extern dw& localref;", data_h)
+                self.assertIn('#include "_data_types.h"', data_h)
+                self.assertIn('#include "asm.h"', data_types)
+                self.assertIn("#define M2C_MODULE_B 1", cpp._module_data_rename_header())
+                self.assertIn('#include "_data_renames.h"', cpp._module_data_rename_header())
+            finally:
+                os.chdir(cwd)
 
     def test_external_data_offset_uses_linked_reference_address(self):
         external = op.var(1, 0xA042, "pilotpanel", segment="default_seg", external=True, original_type="byte")

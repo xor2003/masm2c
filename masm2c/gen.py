@@ -39,6 +39,8 @@ class Gen(TopDownVisitor):
         self.lea = False
         self._work_segment = "ds"
         self.isvariable = False  # only address or variable
+        self._warned_segment_overwrites: set[str] = set()
+        self._warned_struct_overwrites: set[str] = set()
 
         self.dispatch: str = ""
         self.prefix: str = ""
@@ -577,8 +579,9 @@ class Gen(TopDownVisitor):
         if segment_name in allsegments and (segment_value.getsize() > 0 or allsegments[segment_name].getsize() > 0):
             old = jsonpickle.encode(allsegments[segment_name], unpicklable=False)
             new = jsonpickle.encode(segment_value, unpicklable=False)
-            if old != new:
-                logging.error("Overwritting segment %s", segment_name)
+            if old != new and segment_name not in self._warned_segment_overwrites:
+                logging.warning("Overwriting segment %s during merge", segment_name)
+                self._warned_segment_overwrites.add(segment_name)
 
     def _check_for_struct_overwrite(self, allstructs: dict, newstructs: dict):
         if allstructs != newstructs and set(allstructs.keys()) & set(newstructs.keys()):
@@ -587,8 +590,9 @@ class Gen(TopDownVisitor):
                     continue
                 old = jsonpickle.encode(allstructs[struct_name], unpicklable=False)
                 new = jsonpickle.encode(struct_value, unpicklable=False)
-                if old != new:
-                    logging.error(f"Overwriting structure {struct_name}")
+                if old != new and struct_name not in self._warned_struct_overwrites:
+                    logging.warning("Overwriting structure %s during merge", struct_name)
+                    self._warned_struct_overwrites.add(struct_name)
 
     def _render_procedure(self, name, def_skip=0):
         """It takes a procedure name, and returns a C++ string containing for that procedure.

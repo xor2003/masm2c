@@ -153,6 +153,12 @@ namespace m2c {
 
 extern db vgaPalette[256*3];
 
+#if SDL_MAJOR_VERSION == 2 && !defined(NOSDL) && M2CDEBUG != -1
+    void init_sdl_vga_window();
+    void vga_write_pixel_from_memory(db *d, db color);
+    void vga_present_pending();
+#endif
+
     extern struct Memory m;
 
     extern size_t debug;
@@ -429,15 +435,9 @@ inline dd getdata(const __int64& s)
     static inline void setdata(db *d, db s) {
 		*d = s;
   #if SDL_MAJOR_VERSION == 2 && !defined(NOSDL) && M2CDEBUG != -1
-	if (m2c::isaddrbelongtom(d) && d < ((db*)&m) + 0xc0000 && d >= ((db*)&m) + 0xa0000)
-		{ 
-          dw di = d - ((db*)&m) - 0xa0000;
-//  printf("x=%d y=%d c=%d\n",di%320, di/320,s);
-	  SDL_SetRenderDrawColor(renderer, vgaPalette[3*s+2], vgaPalette[3*s+1], vgaPalette[3*s], 255); 
-          SDL_RenderDrawPoint(renderer, di%320, di/320); \
-  	  SDL_RenderPresent(renderer); 
-                 } 
-	else 
+	if (m2c::isaddrbelongtom(d) && d < ((db*)&m) + 0xc0000 && d >= ((db*)&m) + 0xa0000) {
+        m2c::vga_write_pixel_from_memory(d, s);
+    }
   #endif
 	{
 	}
