@@ -327,7 +327,7 @@ class Parser:
         self.proc_list: list[str] = []
         self.proc = None
         self.old_struct_fields = False
-        self.old_struct_member_offsets: OrderedDict[str, tuple[str, int]] = OrderedDict()
+        self.old_struct_member_offsets: OrderedDict[str, tuple[str, int, int]] = OrderedDict()
 
         self.__offset_id = 0x1111
         self.entry_point = "mainproc_begin"
@@ -905,9 +905,9 @@ class Parser:
         assert self.proc is not None
         self.proc.stmts += statements
 
-    def begin_structure_definition(self, name: str, type_name: str) -> None:
+    def begin_structure_definition(self, name: str, type_name: str, alignment: int = 1) -> None:
         key = name.lower()
-        self.current_struct = op.Struct(key, type_name.lower())
+        self.current_struct = op.Struct(key, type_name.lower(), alignment)
         self.struct_names_stack.append(key)
 
     def begin_named_macro(self, name: str, parameters: list[str]) -> None:
@@ -1395,6 +1395,7 @@ class Parser:
         data = op.Data(label, type, data_internal_type, array, elements, size, filename=self._current_file,
                        raw_line=raw,
                        line_number=line_number, comment=data_type, offset=offset)
+        data.alignment = binary_width
         self._append_data_record(data, isstruct, raw, dummy_label, data_internal_type, binary_width)
 
         self.flow_terminated = True
@@ -1509,8 +1510,8 @@ class Parser:
         if not self.old_struct_fields or not data.label:
             return
         assert self.current_struct
-        offset = 0 if self.current_struct.gettype() == op.Struct.UNION else self.current_struct.getsize()
-        self.old_struct_member_offsets.setdefault(data.label.lower(), (self.current_struct.name, offset))
+        offset = self.current_struct.next_member_offset(data)
+        self.old_struct_member_offsets.setdefault(data.label.lower(), (self.current_struct.name, offset, data.getsize()))
 
     def adjust_offset_to_real(self, raw: str, label: str) -> None:
         absolute_offset, real_offset, _ = self.get_lst_offsets(raw)
@@ -2302,17 +2303,45 @@ class Parser:
             size = 0
         return size
 
-    def convert_members(self, data: Data, values: Tree | list[Tree]) -> list[list[int] | Any | int]:
+    def convert_members(self, data: Data, values: Tree | list[Tree]) -> list[Any]:
         if data.isobject():
             if isinstance(values, lark.Tree):
                 values = values.children
-            return [self.convert_members(m, v) for m, v in zip(data.getmembers(), values)]
-        """
+            converted: list[Any] = []
+            value_iter = iter(values)
+            for member in data.getmembers():
+                if member.comment == "struct padding":
+                    converted.append([0] * member.getsize())
+                    continue
+                try:
+                    value = next(value_iter)
+                except StopIteration:
+                    converted.append(member.children)
+                    continue
+                converted.append(self.convert_members(member, value))
+            return converted
         type = data.gettype()
         binary_width = self.typetosize(type)
-        _, _, array = self.process_data_tokens(values, binary_width)
-        """
+        scalar = self._convert_scalar_member_initializer(values, binary_width)
+        if scalar is not None:
+            return [scalar]
         return AsmData2IR().visit(values)
+
+    def _convert_scalar_member_initializer(self, values: Any, binary_width: int) -> int | None:
+        expr = None
+        if isinstance(values, Expression):
+            expr = values
+        elif isinstance(values, lark.Tree) and len(values.children) == 1 and isinstance(values.children[0], Expression):
+            expr = values.children[0]
+        if expr is None:
+            return None
+        try:
+            value = self.eval_expression_to_int(expr)
+        except (NameError, SyntaxError, ValueError):
+            return None
+        if value < 0:
+            value += 1 << (8 * binary_width)
+        return value
 
     def add_structinstance(self, label: str, type: str, args: list[Any | Tree], raw: str="") -> None:
 
@@ -2333,6 +2362,7 @@ class Parser:
         args = Token_.remove_tokens(args, ["structinstance"])
 
         d = op.Data(label, type, op.DataType.OBJECT, args, 1, s.getsize(), comment="struct instance", offset=offset)
+        d.alignment = getattr(s, "alignment", s.getsize())
         members = [deepcopy(i) for i in s.getdata().values()]
         d.setmembers(members)
         args = self.convert_members(d, args)

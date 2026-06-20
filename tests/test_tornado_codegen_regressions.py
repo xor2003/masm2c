@@ -527,12 +527,36 @@ class CppDataInitTest(unittest.TestCase):
 
         self.assertEqual(rendered, "offset(default_seg,pilotpanel)")
 
-    def test_external_offset_loaded_into_dx_updates_segment_register(self):
+    def test_external_offset_loaded_into_dx_sets_temporary_segment_register(self):
         parser = Parser([])
         parser.add_extern("PilotPanel", "BYTE")
         rendered = Proc("mainproc").generate_c_cmd(Cpp(parser), parser.action_code("mov dx, OFFSET PilotPanel"))
 
-        self.assertEqual(rendered, "dx = m2c::near_offset_external(pilotpanel, ds);")
+        self.assertEqual(rendered, "dx = m2c::near_offset_external_for_ds_arg(pilotpanel, ds);")
+
+    def test_external_dx_offset_restores_ds_after_following_call(self):
+        parser = Parser([])
+        parser.add_extern("PilotPanel", "BYTE")
+        parser.add_extern("LoadFile", "FAR")
+        source = (
+            "CODE SEGMENT\n"
+            "main PROC\n"
+            "mov dx, OFFSET PilotPanel\n"
+            "call LoadFile\n"
+            "ret\n"
+            "main ENDP\n"
+            "CODE ENDS\n"
+            "END\n"
+        )
+        tree = parser.parse_text(source)
+        parser.process_ast(source, tree)
+        proc = parser.symbols.get_global("main")
+        self.assertIsInstance(proc, Proc)
+        cpp = Cpp(parser)
+        proc.visit(cpp)
+
+        self.assertIn("R(dx = m2c::near_offset_external_for_ds_arg(pilotpanel, ds););", cpp.body)
+        self.assertIn("J(CALLF(loadfile,0));\tR(m2c::restore_external_offset_ds(ds));", cpp.body)
 
     def test_external_offset_instruction_keeps_ds_for_independent_filename_pointer(self):
         parser = Parser([])
@@ -560,6 +584,56 @@ class CppDataInitTest(unittest.TestCase):
         self.assertIn("dx = offset(data,gameplayin);", rendered)
         self.assertIn("di = m2c::near_offset_external(gameplaydata);", rendered)
         self.assertNotIn("near_offset_external(gameplaydata, ds)", rendered)
+
+    def test_external_offset_loaded_into_si_sets_ds_for_string_reads(self):
+        parser = Parser([])
+        parser.add_extern("CopyBuffer", "BYTE")
+
+        rendered = Proc("mainproc").generate_c_cmd(Cpp(parser), parser.action_code("mov si, OFFSET CopyBuffer"))
+
+        self.assertEqual(rendered, "si = m2c::near_offset_data(copybuffer, ds);")
+
+    def test_internal_offset_in_multi_source_translation_sets_ds_from_linked_symbol(self):
+        parser = Parser({"mergeprocs": "separate", "filenames": ["polyfill.asm", "horizon.asm"]})
+        source = (
+            "DATA SEGMENT\n"
+            "Octant dw 0\n"
+            "OctantBase dw 0\n"
+            "DATA ENDS\n"
+            "CODE SEGMENT\n"
+            "main PROC\n"
+            "mov ax, OFFSET Octant\n"
+            "mov OctantBase, ax\n"
+            "ret\n"
+            "main ENDP\n"
+            "CODE ENDS\n"
+            "END\n"
+        )
+        tree = parser.parse_text(source)
+        parser.process_ast(source, tree)
+        proc = parser.symbols.get_global("main")
+        self.assertIsInstance(proc, Proc)
+        cpp = Cpp(parser)
+        rendered = "\n".join(proc.generate_c_cmd(cpp, stmt) for stmt in proc.stmts)
+
+        self.assertIn("ax = m2c::near_offset_data(octant, ds);", rendered)
+        self.assertIn("octantbase = ax;", rendered)
+
+    def test_internal_seg_in_multi_source_translation_uses_linked_symbol_segment(self):
+        parser = Parser({"mergeprocs": "separate", "filenames": ["polyfill.asm", "horizon.asm"]})
+        parser.symbols.set_global("octant", op.var(2, 0, name="octant", segment="data"))
+
+        rendered = Proc("mainproc").generate_c_cmd(Cpp(parser), parser.action_code("mov dx, SEG Octant"))
+
+        self.assertEqual(rendered, "dx = m2c::segment_of_external(octant);")
+
+    def test_internal_offset_in_single_source_translation_keeps_plain_segment_offset(self):
+        parser = Parser({"mergeprocs": "separate", "filenames": ["polyfill.asm"]})
+        parser.symbols.set_global("octant", op.var(2, 0, name="octant", segment="data"))
+
+        rendered = Proc("mainproc").generate_c_cmd(Cpp(parser), parser.action_code("mov ax, OFFSET Octant"))
+
+        self.assertEqual(rendered, "ax = offset(data,octant);")
 
     def test_plain_ret_in_far_proc_renders_far_return(self):
         parser = Parser([])
@@ -644,6 +718,30 @@ class MasmLabelDirectiveTest(unittest.TestCase):
         self.assertEqual(parser.data_aliases, [])
 
 class Masm510StructCompatibilityTest(unittest.TestCase):
+    def test_struct_alignment_emits_padding_and_aligned_member_offsets(self):
+        parser = Parser([])
+        source = (
+            "OPTION M510\n"
+            "MOBILE STRUCT 2\n"
+            "MOB_NUM DB 0\n"
+            "MOB_TYPE DB 0\n"
+            "MOB_ANIM DB 0\n"
+            "MOB_LINK_PTR DW -1\n"
+            "MOBILE ENDS\n"
+            "MOB_REC_SIZE EQU TYPE MOBILE\n"
+            "END\n"
+        )
+        tree = parser.parse_text(source)
+        parser.process_ast(source, tree)
+
+        structures = Cpp(parser).produce_structures(parser.structures)
+
+        self.assertEqual(parser.structures["mobile"].getsize(), 6)
+        self.assertIn("db __m2c_pad_3_3;", structures)
+        self.assertIn("dw mob_link_ptr;", structures)
+        self.assertIn("static const word mob_link_ptr = offsetof(mobile, mob_link_ptr);", structures)
+        self.assertEqual(parser.eval_expression_to_int(parser.symbols.get_global("mob_rec_size").value), 6)
+
     def test_option_m510_emits_global_struct_member_offset_constants(self):
         parser = Parser([])
         source = (
@@ -1195,6 +1293,24 @@ class Masm510StructCompatibilityTest(unittest.TestCase):
         rendered = parser.parse_arg("[si].MOD_FILENAME", def_size=1)
 
         self.assertEqual(rendered, "*((db*)raddr(ds,si+mod_filename))")
+
+    def test_m510_bracketed_member_uses_member_width_for_store(self):
+        parser = Parser([])
+        source = (
+            "OPTION M510\n"
+            "MOBSORT STRUCT\n"
+            "MSORT_XSEC DW 0\n"
+            "MSORT_YSEC DW 0\n"
+            "MSORT_PTR DW 0\n"
+            "MOBSORT ENDS\n"
+            "END\n"
+        )
+        tree = parser.parse_text(source)
+        parser.process_ast(source, tree)
+
+        rendered = Proc("x").generate_c_cmd(Cpp(parser), parser.action_code("mov MSORT_PTR[bx], -1"))
+
+        self.assertEqual(rendered, "MOV(*(dw*)(raddr(ds,msort_ptr+bx)), -1)")
 
     def test_m510_bracketed_label_member_renders_memory_lvalue(self):
         parser = Parser([])

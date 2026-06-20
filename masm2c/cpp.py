@@ -37,6 +37,7 @@ if TYPE_CHECKING:
 
 import os
 import re
+import glob
 from collections import OrderedDict
 from copy import copy, deepcopy
 
@@ -194,11 +195,13 @@ class Cpp(Gen):
         self.__pushpop_count = 0
         self._rt_symbol_exact_by_linear: dict[int, tuple[str, Any]] | None = None
         self._rt_var_ranges_by_linear: list[tuple[int, int, str, Any]] | None = None
+        self._linked_data_offsets_enabled_cache: bool | None = None
         self._assignments: dict[str, Expression] = {}
         self._expr_state.is_member = False
 
         self.far = False
         self._active_proc_far = False
+        self._pending_external_offset_ds_restore = False
         self._expr_state.reset()
 
         self.itisjump = False
@@ -209,6 +212,41 @@ class Cpp(Gen):
                              op.DataType.ARRAY_STRING: self.produce_c_data_array_string,
                              op.DataType.OBJECT: self.produce_c_data_object,
                              }
+
+    def _linked_data_offsets_enabled(self) -> bool:
+        if self._linked_data_offsets_enabled_cache is not None:
+            return self._linked_data_offsets_enabled_cache
+
+        filenames = self._context.args.get("filenames", []) if isinstance(self._context.args, dict) else []
+        if isinstance(filenames, str):
+            filenames = [filenames]
+
+        sources: list[str] = []
+        for filename in filenames:
+            matches = glob.glob(filename)
+            sources.extend(matches or [filename])
+
+        asm_sources = [source for source in sources if source.lower().endswith((".asm", ".lst"))]
+        self._linked_data_offsets_enabled_cache = len(asm_sources) > 1
+        return self._linked_data_offsets_enabled_cache
+
+    def _should_emit_linked_data_offset(self, symbol: op.var) -> bool:
+        return (
+            not symbol.external
+            and not symbol.issegment
+            and not self._expr_state.data_label_size
+            and self._linked_data_offsets_enabled()
+        )
+
+    def _near_data_offset_expr(self, symbol: op.var, label: str) -> str:
+        if self._should_emit_linked_data_offset(symbol):
+            return f"m2c::near_offset_data({label}, ds)"
+        return f"offset({symbol.segment},{label})"
+
+    def _far_data_offset_expr(self, symbol: op.var, label: str) -> str:
+        if self._should_emit_linked_data_offset(symbol):
+            return f"m2c::far_offset_external({label})"
+        return f"far_offset({symbol.segment},{label})"
 
     def function_linkage(self, name: str) -> str:
         return "" if name in getattr(self._context, "public_symbols", set()) else "static "
@@ -226,6 +264,7 @@ class Cpp(Gen):
         """
         name = str(original_name)
         if self._is_old_struct_member_offset_context(name):
+            self._remember_old_struct_member_size(name)
             return self._old_struct_member_offset_constant_name(name)
         if name in self._assignments:
             return self.render_instruction_argument(self._assignments[name])
@@ -327,7 +366,7 @@ class Cpp(Gen):
                     state.size_changed = True
                     self._middle_size = 1
         elif self._expr_state.indirection == IndirectionType.OFFSET:
-            result = f"offset({g.segment},{g.name})"
+            result = self._near_data_offset_expr(g, g.name)
             state.needs_dereference = False
             state.is_pointer = False
         else:
@@ -650,7 +689,7 @@ class Cpp(Gen):
                         state.size_changed = True
                         self._middle_size = 1
             elif self._expr_state.indirection == IndirectionType.OFFSET:
-                value = f'offset({g.segment},{".".join(label)})'
+                value = self._near_data_offset_expr(g, ".".join(label))
             else:
                 value = ".".join(label)
 
@@ -716,7 +755,7 @@ class Cpp(Gen):
             if g.external and len(label) == 1 and not self._expr_state.data_label_size:
                 value = f"m2c::near_offset_external({joined_label})"
             else:
-                value = f"offset({g.segment},{joined_label})"
+                value = self._near_data_offset_expr(g, joined_label)
         elif isinstance(g, op.Struct):
             value = f'offsetof({label[0]},{".".join(label[1:])})'
         elif isinstance(g, (op._equ, op._assignment)):
@@ -867,6 +906,12 @@ class Cpp(Gen):
         else:
             ret += f"CALL({proc_name},{label_ip})"
         return ret
+
+    def consume_external_offset_ds_restore(self, stmt: op.baseop) -> str:
+        if self._pending_external_offset_ds_restore and stmt.cmd.startswith("call"):
+            self._pending_external_offset_ds_restore = False
+            return "\tR(m2c::restore_external_offset_ds(ds));"
+        return ""
 
     def _render_with_flags(self, expr: Expression, *, is_jump: bool = False, is_call: bool = False) -> str:
         prev_jump, prev_call = self.itisjump, self.itiscall
@@ -1710,7 +1755,7 @@ static const dd kbegin = 0x1001;
         if not offsets:
             return ""
         result = ""
-        for member_name, (struct_name, _offset) in offsets.items():
+        for member_name, (struct_name, _offset, _size) in offsets.items():
             const_name = self._old_struct_member_offset_constant_name(member_name)
             result += f"static const word {const_name} = offsetof({struct_name}, {member_name});\n"
         return f"{result}\n"
@@ -1730,6 +1775,15 @@ static const dd kbegin = 0x1001;
             return False
         state = self._expr_state
         return state.indirection == IndirectionType.POINTER and not state.is_just_label
+
+    def _remember_old_struct_member_size(self, name: str) -> None:
+        member_info = getattr(self._context, "old_struct_member_offsets", {}).get(str(name).lower())
+        if not member_info:
+            return
+        _struct_name, _offset, member_size = member_info
+        self._expr_state.variable_size = member_size
+        if self._middle_size == 0:
+            self._middle_size = member_size
 
     def _data_label_exists(self, label: str) -> bool:
         label = str(label).lower()
@@ -2359,7 +2413,9 @@ struct Memory{
 
         names = self.leave_unique_labels(entries.keys())
         for name in sorted(names):
-            result += "        case m2c::k{}: \t{}({}, _state); break;\n".format(name, *entries[name])
+            result += "        case m2c::k{}: \tif (!{}({}, _state)) return false; break;\n".format(
+                name, *entries[name]
+            )
 
         result += "        default: m2c::log_error(\"Don't know how to call to 0x%x. See \" __FILE__ \" line %d\\n\", __disp, __LINE__);m2c::stackDump(_state); abort();\n"
         result += "     };\n     return true;\n}\n"
@@ -2368,7 +2424,12 @@ struct Memory{
     def _mov(self, dst: Expression, src: Expression) -> str:
         a, b = self.parse2(dst, src)
         if a == "dx" and b.startswith("m2c::near_offset_external(") and b.endswith(")"):
-            b = f"{b[:-1]}, ds)"
+            symbol = b.removeprefix("m2c::near_offset_external(").removesuffix(")")
+            b = f"m2c::near_offset_external_for_ds_arg({symbol}, ds)"
+            self._pending_external_offset_ds_restore = True
+        elif a == "si" and b.startswith("m2c::near_offset_external(") and b.endswith(")"):
+            symbol = b.removeprefix("m2c::near_offset_external(").removesuffix(")")
+            b = f"m2c::near_offset_data({symbol}, ds)"
         mapped_memory_access = "raddr" in a or "raddr" in b
         if mapped_memory_access:
             return f"MOV({a}, {b})"
@@ -2577,10 +2638,10 @@ struct Memory{
             if offset_size == 2:
                 if g.external and not self._expr_state.data_label_size:
                     return [f"m2c::near_offset_external({g.name})"]
-                return [f"offset({g.segment},{g.name})"]
+                return [self._near_data_offset_expr(g, g.name)]
             if g.external and not self._expr_state.data_label_size:
                 return [f"m2c::far_offset_external({g.name})"]
-            return [f"far_offset({g.segment},{g.name})"]
+            return [self._far_data_offset_expr(g, g.name)]
         elif isinstance(g, (Proc, op.label)):
             logging.debug("it is proc")
             return [f"m2c::k{g.name}"]
@@ -2600,6 +2661,8 @@ struct Memory{
         symbol = self._context.symbols.get_and_mark_global(label)
         if isinstance(symbol, op.var):
             if symbol.external:
+                return [f"m2c::segment_of_external({symbol.name})"]
+            if self._should_emit_linked_data_offset(symbol):
                 return [f"m2c::segment_of_external({symbol.name})"]
             return [f"seg_offset({symbol.segment or symbol.name})"]
         if isinstance(symbol, Proc):

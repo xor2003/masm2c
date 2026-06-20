@@ -207,6 +207,8 @@ struct HostVga {
 	db attr_regs[0x100] = {};
 	size_t dac_read_index = 0;
 	size_t dac_write_index = 0;
+	size_t dac_write_start = 0;
+	size_t dac_write_count = 0;
 	db current_mode = 3;
 };
 
@@ -236,6 +238,33 @@ struct HostHardware {
 };
 
 static HostHardware host;
+
+static bool m2c_stats_enabled() {
+	const char *enabled = std::getenv("M2C_VGA_STATS");
+	return enabled && *enabled;
+}
+
+static void vga_maybe_dump_dac_upload() {
+	if (!m2c_stats_enabled() || host.vga.dac_write_start != 0 || host.vga.dac_write_count != 256 * 3) {
+		return;
+	}
+	static unsigned upload_count = 0;
+	++upload_count;
+	std::fprintf(stderr, "vga dac upload #%u:", upload_count);
+	const db colors[] = {0x00, 0x85, 0x96, 0xa0, 0xc0, 0xc1, 0xc2, 0xc3, 0xc4, 0xc5, 0xc6, 0xc7, 0xc8, 0xcf};
+	for (size_t i = 0; i < sizeof(colors) / sizeof(colors[0]); ++i) {
+		const size_t index = static_cast<size_t>(colors[i]) * 3;
+		std::fprintf(
+			stderr,
+			" #%02x(%u,%u,%u)",
+			colors[i],
+			static_cast<unsigned>(vgaPalette[index]),
+			static_cast<unsigned>(vgaPalette[index + 1]),
+			static_cast<unsigned>(vgaPalette[index + 2])
+		);
+	}
+	std::fprintf(stderr, "\n");
+}
 
 #ifndef NOSDL
  #if SDL_MAJOR_VERSION == 2
@@ -327,9 +356,9 @@ static uint8_t vga_dac_to_sdl(db value) {
 
 static uint32_t vga_color_to_argb(db color) {
 	const size_t index = 3 * color;
-	const uint8_t r = vga_dac_to_sdl(vgaPalette[index + 2]);
+	const uint8_t r = vga_dac_to_sdl(vgaPalette[index]);
 	const uint8_t g = vga_dac_to_sdl(vgaPalette[index + 1]);
-	const uint8_t b = vga_dac_to_sdl(vgaPalette[index]);
+	const uint8_t b = vga_dac_to_sdl(vgaPalette[index + 2]);
 	return 0xff000000u | (static_cast<uint32_t>(r) << 16) | (static_cast<uint32_t>(g) << 8) | b;
 }
 
@@ -349,6 +378,44 @@ static size_t vga_count_nonzero_at_start(size_t start, bool require_visible_pale
 		}
 	}
 	return count;
+}
+
+static void vga_dump_top_visible_colors(size_t start) {
+	size_t counts[256];
+	std::fill(counts, counts + 256, 0);
+	for (int y = 0; y < 200; ++y) {
+		for (int x = 0; x < 320; ++x) {
+			const size_t byte_offset = (start + y * 80 + x / 4) % VGA_WINDOW_SIZE;
+			const db color = vgaMode13Pixels[byte_offset * 4 + (x & 3)];
+			++counts[color];
+		}
+	}
+	std::fprintf(stderr, "vga colors:");
+	for (int rank = 0; rank < 8; ++rank) {
+		size_t best_count = 0;
+		int best_color = -1;
+		for (int color = 0; color < 256; ++color) {
+			if (counts[color] > best_count) {
+				best_count = counts[color];
+				best_color = color;
+			}
+		}
+		if (best_color < 0 || best_count == 0) {
+			break;
+		}
+		const size_t index = static_cast<size_t>(best_color) * 3;
+		std::fprintf(
+			stderr,
+			" #%02x=%zu(rgb=%u,%u,%u)",
+			best_color,
+			best_count,
+			static_cast<unsigned>(vgaPalette[index]),
+			static_cast<unsigned>(vgaPalette[index + 1]),
+			static_cast<unsigned>(vgaPalette[index + 2])
+		);
+		counts[best_color] = 0;
+	}
+	std::fprintf(stderr, "\n");
 }
 
 static size_t vga_crtc_start_byte_offset() {
@@ -381,10 +448,11 @@ static void vga_maybe_dump_stats(size_t crtc_start) {
 		vga_count_nonzero_at_start(crtc_start, true),
 		vga_count_nonzero_at_start(0x0000, false),
 		vga_count_nonzero_at_start(0x4000, false),
-		vga_count_nonzero_at_start(0x8000, false),
-		vga_count_nonzero_at_start(0xc000, false)
-	);
-}
+			vga_count_nonzero_at_start(0x8000, false),
+			vga_count_nonzero_at_start(0xc000, false)
+		);
+		vga_dump_top_visible_colors(crtc_start);
+	}
 
 static void vga_render_indexed_frame() {
 	if (!renderer) {
@@ -1097,11 +1165,15 @@ X86_REGREF
 		break;
 	case 0x3c8:
 		host.vga.dac_write_index = (static_cast<size_t>(data) * 3) % (256 * 3);
+		host.vga.dac_write_start = host.vga.dac_write_index;
+		host.vga.dac_write_count = 0;
 		break;
 	case 0x3c9:
 		if (host.vga.dac_write_index < 256 * 3) {
 			vgaPalette[host.vga.dac_write_index]=data;
 			host.vga.dac_write_index = (host.vga.dac_write_index + 1) % (256 * 3);
+			++host.vga.dac_write_count;
+			vga_maybe_dump_dac_upload();
   #if SDL_MAJOR_VERSION == 2 && !defined(NOSDL) && M2CDEBUG != -1
 			vga_render_dirty = true;
   #endif
@@ -1697,13 +1769,16 @@ X86_REGREF
 					stackDump(_state);
 				}
 				file=fopen(fileName, "rb"); //TOFIX, multiple files support
-			log_debug2("Opening file %s -> %p\n",fileName,(void *) file);
-			if (file!=NULL) {
-				eax=1; //TOFIX
-			} else {
-				AFFECT_CF(1);
-				log_error("Error opening file %s\n",fileName);
-			}
+				log_debug2("Opening file %s -> %p\n",fileName,(void *) file);
+				if (m2c_stats_enabled()) {
+					std::fprintf(stderr, "dos open %s -> %p\n", fileName, static_cast<void *>(file));
+				}
+				if (file!=NULL) {
+					eax=1; //TOFIX
+				} else {
+					AFFECT_CF(1);
+					log_error("Error opening file %s\n",fileName);
+				}
 			/*
 			   // [Index]AH = 3Dh - "OPEN" - OPEN EXISTING FILE
 			   Entry:
@@ -1767,6 +1842,16 @@ X86_REGREF
 					log_debug2("Reading OK %p\n",(void *) file);
 				}
 				eax=r;
+				if (m2c_stats_enabled()) {
+					std::fprintf(
+						stderr,
+						"dos read handle=%04x count=%u -> %u buffer=%p\n",
+						bx,
+						static_cast<unsigned>(cx),
+						static_cast<unsigned>(eax),
+						buffer
+					);
+				}
 			}
 			/*
 			   if (ax!=cx) {

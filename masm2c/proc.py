@@ -314,6 +314,7 @@ class Proc:
 
         if full_command:
             full_command = self.set_instruction_compare_subclass(stmt, full_command, visitor._context.itislst)
+            full_command += visitor.consume_external_offset_ds_restore(stmt)
 
         return visitor._cmdlabel + visitor.dispatch + full_command
 

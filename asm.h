@@ -671,6 +671,38 @@ inline dd far_offset_external(const T& symbol) {
     return far_offset_linked_address(static_cast<const void*>(&symbol));
 }
 
+static std::vector<dw> data_offset_saved_ds_stack;
+
+inline size_t mark_data_offset_ds() {
+    return data_offset_saved_ds_stack.size();
+}
+
+inline void restore_data_offset_ds(dw& segment, size_t mark) {
+    while (data_offset_saved_ds_stack.size() > mark) {
+        segment = data_offset_saved_ds_stack.back();
+        data_offset_saved_ds_stack.pop_back();
+    }
+}
+
+template <class T>
+inline dw near_offset_data(const T& symbol, dw& segment) {
+    data_offset_saved_ds_stack.push_back(segment);
+    segment = segment_of_external(symbol);
+    return near_offset_external(symbol);
+}
+
+static dw external_offset_saved_ds;
+
+template <class T>
+inline dw near_offset_external_for_ds_arg(const T& symbol, dw& segment) {
+    external_offset_saved_ds = segment;
+    return near_offset_external(symbol, segment);
+}
+
+inline void restore_external_offset_ds(dw& segment) {
+    segment = external_offset_saved_ds;
+}
+
 
     extern class ShadowStack shadow_stack;
 
@@ -1739,10 +1771,10 @@ throw StackPop(skip);
     }
 /*
 #ifndef SHADOW_STACK
-#define CALL(label, disp) {if (!m2c::CALL_(label, _state, disp)) {__disp=(cs<<16)+eip;goto __dispatch_call;}}
+#define CALL(label, disp) {if (!m2c::CALL_(label, _state, disp)) {return false;}}
 #else
 */
-#define CALL(label, disp) {m2c::CALL_(label, _state, disp);}
+#define CALL(label, disp) {if (!m2c::CALL_(label, _state, disp)) {return false;}}
     static bool CALL_(m2cf *label, struct _STATE *_state, _offsets _i = 0) {
  X86_REGREF
         from_callf = true;
@@ -1754,6 +1786,7 @@ throw StackPop(skip);
 #if DOSBOX_CUSTOM
         if (compare_instructions) eip+=inst_size(cs,eip);
 #endif
+        size_t data_offset_ds_mark = m2c::mark_data_offset_ds();
         dw oldsp=sp;
         PUSH(return_addr);
 
@@ -1767,13 +1800,19 @@ throw StackPop(skip);
  #endif
         _state->call_source = 2;
         try{
-	  label(_i, _state);
+	  if (!label(_i, _state)) {
+              bool ret = sp == oldsp || sp == oldsp + 2;
+              m2c::restore_data_offset_ds(ds, data_offset_ds_mark);
+              return ret;
+          }
  #if M2CDEBUG > 0
             if (sp!=oldsp && sp!=oldsp+2) log_debug("~~old SP %x != SP %x\n",oldsp, sp);
  #endif
  if(return_addr != ip&& ((dw)(ip - return_addr)) > 5 ) {
   log_error("~~Return address not equal to call addr: call from=%x poped ip=%x\n",return_addr,ip);
-return false;
+  bool ret = sp == oldsp || sp == oldsp + 2;
+  m2c::restore_data_offset_ds(ds, data_offset_ds_mark);
+  return ret;
  }
         }
         catch(const StackPop& ex)
@@ -1785,6 +1824,7 @@ shadow_stack.decreasedeep();
  #if M2CDEBUG > 0
   log_debug("~~Rethrowing upper\n");
  #endif
+		m2c::restore_data_offset_ds(ds, data_offset_ds_mark);
 		throw StackPop(ex.deep-1);
              }
              else
@@ -1796,6 +1836,7 @@ shadow_stack.decreasedeep();
              }
 #endif
         }
+       m2c::restore_data_offset_ds(ds, data_offset_ds_mark);
        return true;
     }
 

@@ -488,6 +488,7 @@ class Data(baseop):
         self.align = align
         self.real_seg, self.real_offset = None, None
         self.offset = offset
+        self.alignment = max(1, size)
         self.comment = comment
 
         #self._meta = meta
@@ -540,7 +541,7 @@ class Struct:
     STRUCT: Final[int] = 1
     UNION: Final[int] = 2
 
-    def __init__(self, name: str, dtype: str) -> None:
+    def __init__(self, name: str, dtype: str, alignment: int = 1) -> None:
         """Represent structure.
 
         :param name: Name
@@ -551,14 +552,37 @@ class Struct:
         self.used = True
         self.children: OrderedDict[str, Union[Data, Struct]] = OrderedDict()
         self.size = 0
+        self.alignment = max(1, alignment)
         self.__type = Struct.UNION if dtype.lower() == "union" else Struct.STRUCT
 
     def append(self, data: Data) -> None:
+        if self.__type == Struct.STRUCT:
+            self._append_padding_before(data)
         self.children[data.label.lower()] = data
         if self.__type == Struct.STRUCT:
             self.size += data.getsize()
         else:  # Union
             self.size = max(self.size, data.getsize())
+
+    def _append_padding_before(self, data: Data) -> None:
+        padding = self.padding_before(data)
+        if padding == 0:
+            return
+        label = f"__m2c_pad_{len(self.children)}_{self.size:x}"
+        self.children[label] = Data(label, "db", DataType.ARRAY, [0], padding, padding, comment="struct padding")
+        self.size += padding
+
+    def padding_before(self, data: Data) -> int:
+        if self.__type != Struct.STRUCT:
+            return 0
+        member_alignment = min(max(1, getattr(data, "alignment", data.getsize())), self.alignment)
+        misalignment = self.size % member_alignment
+        return 0 if misalignment == 0 else member_alignment - misalignment
+
+    def next_member_offset(self, data: Data) -> int:
+        if self.__type == Struct.UNION:
+            return 0
+        return self.size + self.padding_before(data)
 
     def getdata(self) -> OrderedDict:
         return self.children
@@ -567,7 +591,10 @@ class Struct:
         return self.children[key.lower()]
 
     def getsize(self) -> int:
-        return self.size
+        if self.__type != Struct.STRUCT:
+            return self.size
+        misalignment = self.size % self.alignment
+        return self.size if misalignment == 0 else self.size + self.alignment - misalignment
 
     def gettype(self):
         return self.__type

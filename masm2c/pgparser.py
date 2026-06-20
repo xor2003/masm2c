@@ -452,10 +452,31 @@ class Asm2IR(CommonCollector):
             return nodes
         name = nodes[0]
         type = nodes[1]
+        alignment = self._structure_alignment(nodes[2:])
         # structure definition header
-        self.context.begin_structure_definition(str(name), str(type))
+        self.context.begin_structure_definition(str(name), str(type), alignment)
         logging.debug("structname added ~~%s~~", name)
         return nodes
+
+    @staticmethod
+    def _structure_alignment(nodes: list[Any]) -> int:
+        for node in nodes:
+            value = Asm2IR._first_integer_token_value(node)
+            if value is not None:
+                return max(1, value)
+        return 1
+
+    @staticmethod
+    def _first_integer_token_value(node: Any) -> int | None:
+        if isinstance(node, lark.Token):
+            if node.type == "INTEGER":
+                return int(str(node), 0)
+            return None
+        for child in getattr(node, "children", []):
+            value = Asm2IR._first_integer_token_value(child)
+            if value is not None:
+                return value
+        return None
 
     @v_args(meta=True)
     def structinstdir(self, meta:     lark.tree.Meta, nodes: list[lark.Tree | lark.lexer.Token]) -> _DiscardType:
