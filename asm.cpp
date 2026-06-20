@@ -54,12 +54,23 @@ SOFTWARE.
 #include <cassert>
 #include <ctime>
 #include <algorithm>
+#include <atomic>
 #include <chrono>
+#include <cstdio>
 #include <cstdint>
+#include <thread>
 
 #ifndef NOCURSES
 #include <curses.h>
 #endif
+
+extern bool gameintr100(m2c::_offsets, struct m2c::_STATE*) __attribute__((weak));
+extern bool gameintr20(m2c::_offsets, struct m2c::_STATE*) __attribute__((weak));
+extern db* key __attribute__((weak));
+extern dw* ticker __attribute__((weak));
+extern dw* frames __attribute__((weak));
+extern dw* countdown __attribute__((weak));
+extern dd* elapsedtime __attribute__((weak));
 
 /* https://commons.wikimedia.org/wiki/File:Table_of_x86_Registers_svg.svg */
 
@@ -141,7 +152,8 @@ dd selectors[NB_SELECTORS];
 
 dd heapPointer;
 struct find_t;
-struct find_t * diskTransferAddr = 0;
+static db defaultDiskTransferArea[128] = {};
+struct find_t * diskTransferAddr = reinterpret_cast<find_t *>(defaultDiskTransferArea);
 //#include "memmgr.c"
 
 
@@ -169,21 +181,16 @@ struct HostMouse {
 	int motion_y = 0;
 };
 
-extern bool gameintr100(m2c::_offsets, struct m2c::_STATE*) __attribute__((weak));
-extern bool gameintr20(m2c::_offsets, struct m2c::_STATE*) __attribute__((weak));
-extern db key[128] __attribute__((weak));
-extern dw ticker __attribute__((weak));
-extern dw frames __attribute__((weak));
-extern dw countdown __attribute__((weak));
-extern dd elapsedtime __attribute__((weak));
-
 struct HostVga {
 	db seq_index = 0;
 	db gc_index = 0;
 	db crtc_index = 0;
+	db attr_index = 0;
+	bool attr_waiting_for_index = true;
 	db seq_regs[0x100] = {};
 	db gc_regs[0x100] = {};
 	db crtc_regs[0x100] = {};
+	db attr_regs[0x100] = {};
 	db current_mode = 3;
 };
 
@@ -197,6 +204,7 @@ struct HostPit {
 struct HostTimer {
 	bool enabled = false;
 	bool in_callback = false;
+	std::atomic<bool> background_running{false};
 	uint64_t last_us = 0;
 	uint64_t accum_us = 0;
 	int divider_20hz = 0;
@@ -228,10 +236,65 @@ static void clamp_host_mouse() {
 	host.mouse.y = host_clamp_int(host.mouse.y, host.mouse.min_y, host.mouse.max_y);
 }
 
+static db* host_key_state() {
+	return &::key ? ::key : nullptr;
+}
+
+static dw* host_ticker_counter() {
+	return &::ticker ? ::ticker : nullptr;
+}
+
+static dw* host_frames_counter() {
+	return &::frames ? ::frames : nullptr;
+}
+
+static dw* host_countdown_counter() {
+	return &::countdown ? ::countdown : nullptr;
+}
+
+static dd* host_elapsed_time() {
+	return &::elapsedtime ? ::elapsedtime : nullptr;
+}
+
+static void host_advance_timer_counters() {
+	if (dw* ticker_counter = host_ticker_counter()) {
+		++*ticker_counter;
+	}
+	if (dw* frames_counter = host_frames_counter()) {
+		++*frames_counter;
+	}
+	dw* countdown_counter = host_countdown_counter();
+	if (countdown_counter && *countdown_counter > 0) {
+		--*countdown_counter;
+	}
+	if (dd* elapsed_time = host_elapsed_time()) {
+		++*elapsed_time;
+	}
+}
+
+static void host_start_timer_thread() {
+	bool expected = false;
+	if (!host.timer.background_running.compare_exchange_strong(expected, true)) {
+		return;
+	}
+	std::thread([] {
+		while (host.timer.background_running.load()) {
+			std::this_thread::sleep_for(std::chrono::milliseconds(10));
+			if (host.timer.enabled) {
+				host_advance_timer_counters();
+			}
+		}
+	}).detach();
+}
+
 static uint64_t host_now_us() {
 	using clock = std::chrono::steady_clock;
 	return std::chrono::duration_cast<std::chrono::microseconds>(
 		clock::now().time_since_epoch()).count();
+}
+
+static db host_to_bcd(int value) {
+	return static_cast<db>(((value / 10) << 4) | (value % 10));
 }
 
 #ifndef NOSDL
@@ -340,29 +403,30 @@ static int sdl_scancode_to_pc(SDL_Scancode scancode) {
 #endif
 
 static void host_set_key(int scan_code, bool pressed) {
-	if (scan_code < 0 || scan_code >= 128 || !&key) {
+	db* keys = host_key_state();
+	if (scan_code < 0 || scan_code >= 128 || keys == nullptr) {
 		return;
 	}
-	key[scan_code] = pressed ? 1 : 0;
+	keys[scan_code] = pressed ? 1 : 0;
 	host.keyboard_scan_code = pressed ? scan_code : (scan_code | 0x80);
 	switch (scan_code) {
 	case 42:
-		key[54] = key[42];
+		keys[54] = keys[42];
 		break;
 	case 54:
-		key[42] = key[54];
+		keys[42] = keys[54];
 		break;
 	case 12:
-		key[74] = key[12];
+		keys[74] = keys[12];
 		break;
 	case 74:
-		key[12] = key[74];
+		keys[12] = keys[74];
 		break;
 	case 13:
-		key[78] = key[13];
+		keys[78] = keys[13];
 		break;
 	case 78:
-		key[13] = key[78];
+		keys[13] = keys[78];
 		break;
 	default:
 		break;
@@ -388,25 +452,13 @@ static void host_run_timer(struct _STATE* _state) {
 	while (host.timer.accum_us >= 10000 && ticks_this_pump < 5) {
 		host.timer.accum_us -= 10000;
 		++ticks_this_pump;
-		if (&ticker) {
-			++ticker;
-		}
-		if (&frames) {
-			++frames;
-		}
-		if (&countdown && countdown > 0) {
-			--countdown;
-		}
-		if (&elapsedtime) {
-			++elapsedtime;
-		}
-		if (gameintr100) {
-			gameintr100(0, _state);
+		if (::gameintr100) {
+			::gameintr100(0, _state);
 		}
 		if (++host.timer.divider_20hz >= 5) {
 			host.timer.divider_20hz = 0;
-			if (gameintr20) {
-				gameintr20(0, _state);
+			if (::gameintr20) {
+				::gameintr20(0, _state);
 			}
 		}
 	}
@@ -529,6 +581,10 @@ void checkIfVgaRamEmpty() {
 }
 
 void stackDump(struct _STATE* _state) {
+	if (!_state) {
+		log_debug("stackDump skipped: no CPU state provided\n");
+		return;
+	}
 X86_REGREF
 
 	log_debug("is_little_endian()=%d\n",isLittle);
@@ -552,7 +608,7 @@ X86_REGREF
 	hexDump(&es,sizeof(dd));
 	log_debug("edi: %x\n",edi);
 	log_debug("es:edi %p\n",(void *) realAddress(edi,es));
-	hexDump((void *) realAddress(edi,es),50);
+	log_debug("es:edi hex dump skipped; diagnostic dumps must not dereference arbitrary emulated addresses\n");
 	log_debug("fs: %d -> %p\n",fs,(void *) realAddress(0,fs));
 	log_debug("gs: %d -> %p\n",gs,(void *) realAddress(0,gs));
 //	log_debug("adress heap: %p\n",(void *) &m.heap);
@@ -636,6 +692,14 @@ X86_REGREF
 	case 0x61:
 		host.ppi_port_b = data;
 		break;
+	case 0x3c0:
+		if (host.vga.attr_waiting_for_index) {
+			host.vga.attr_index = data & 0x1f;
+		} else {
+			host.vga.attr_regs[host.vga.attr_index] = data;
+		}
+		host.vga.attr_waiting_for_index = !host.vga.attr_waiting_for_index;
+		break;
 	case 0x3c4:
 		host.vga.seq_index = data;
 		break;
@@ -693,11 +757,14 @@ X86_REGREF
 		{
 			return 0xff;  // no joystick
 		}
+	case 0x3c1:
+		return host.vga.attr_regs[host.vga.attr_index];
 	case 0x3c5:
 		return host.vga.seq_regs[host.vga.seq_index];
 	case 0x3cf:
 		return host.vga.gc_regs[host.vga.gc_index];
 	case 0x3DA:
+		host.vga.attr_waiting_for_index = true;
 		if (vblTick) {
 			vblTick = 0;
 			return 0;
@@ -1008,37 +1075,50 @@ X86_REGREF
 	}
 	case 0x1A:
 	{
-		switch(ah) {
-		    case 0x02:  /* GET REAL-TIME CLOCK TIME (AT,XT286,PS) */
-		         {
 #ifdef __DJGPP__
-        call_dos_realint(_state, a);
+		call_dos_realint(_state, a);
+		return;
 #else
-
-
-#ifndef __BORLANDC__  //TODO
-#ifndef _WIN32
-				struct tm* loctime;
-		    struct timeval curtime;
-	            gettimeofday(&curtime, 0);
-
- //           curtime.tv_sec += cmos.time_diff;
-        	    loctime = localtime((time_t*)&curtime.tv_sec);
-
-        	    dh = (loctime->tm_sec);
-	            cl = (loctime->tm_min);
-
-	            ch = (loctime->tm_hour);
+		const time_t raw_time = time(nullptr);
+		struct tm local_tm;
+#if defined(_WIN32)
+		localtime_s(&local_tm, &raw_time);
+#else
+		localtime_r(&raw_time, &local_tm);
 #endif
-		    dl = 0;
+		switch (ah) {
+		case 0x00: {
+			const uint32_t seconds = static_cast<uint32_t>(
+				local_tm.tm_hour * 3600 + local_tm.tm_min * 60 + local_tm.tm_sec);
+			const uint32_t ticks = static_cast<uint32_t>(seconds * 18.2065);
+			cx = static_cast<dw>(ticks >> 16);
+			dx = static_cast<dw>(ticks & 0xffff);
+			al = 0;
+			AFFECT_CF(0);
+			return;
+		}
+		case 0x02:
+			ch = host_to_bcd(local_tm.tm_hour);
+			cl = host_to_bcd(local_tm.tm_min);
+			dh = host_to_bcd(local_tm.tm_sec);
+			dl = 0;
+			AFFECT_CF(0);
+			return;
+		case 0x04: {
+			const int year = local_tm.tm_year + 1900;
+			ch = host_to_bcd(year / 100);
+			cl = host_to_bcd(year % 100);
+			dh = host_to_bcd(local_tm.tm_mon + 1);
+			dl = host_to_bcd(local_tm.tm_mday);
+			AFFECT_CF(0);
+			return;
+		}
+		default:
+			log_debug("Unsupported BIOS time INT 1Ah ah:0x%x al:0x%x\n", ah, al);
+			AFFECT_CF(1);
+			return;
+		}
 #endif
-#endif
-			break;
-			}
-
-			        break;
-        		   }
-		break;
 	}
 	case 0x21:
 
@@ -1127,6 +1207,7 @@ X86_REGREF
 				host.timer.last_us = host_now_us();
 				host.timer.accum_us = 0;
 				host.timer.divider_20hz = 0;
+				host_start_timer_thread();
 			}
 			return;
 		}
@@ -1149,24 +1230,48 @@ X86_REGREF
 			return;
 		}
 		case 0x2a:
-		case 0x2b:
-		case 0x2d:
 		{
 #ifdef __DJGPP__
         call_dos_realint(_state, a);
 			return;
+#else
+			const time_t raw_time = time(nullptr);
+			struct tm local_tm;
+#if defined(_WIN32)
+			localtime_s(&local_tm, &raw_time);
+#else
+			localtime_r(&raw_time, &local_tm);
 #endif
-			break;
+			cx = static_cast<dw>(local_tm.tm_year + 1900);
+			dh = static_cast<db>(local_tm.tm_mon + 1);
+			dl = static_cast<db>(local_tm.tm_mday);
+			al = static_cast<db>(local_tm.tm_wday);
+			return;
+#endif
 		}
+		case 0x2b:
+			al = (cx >= 1980 && cx <= 2099 && dh >= 1 && dh <= 12 && dl >= 1 && dl <= 31) ? 0 : 0xff;
+			return;
+		case 0x2d:
+			al = (ch <= 23 && cl <= 59 && dh <= 59 && dl <= 99) ? 0 : 0xff;
+			return;
 		case 0x2c:
 		{
 #ifdef __DJGPP__
         call_dos_realint(_state, a);
 			return;
 #else
-			//MOV(8,8,READDBh(edx),(db)2);
-			// TOFIX
-			dh=0x2;
+			const time_t raw_time = time(nullptr);
+			struct tm local_tm;
+#if defined(_WIN32)
+			localtime_s(&local_tm, &raw_time);
+#else
+			localtime_r(&raw_time, &local_tm);
+#endif
+			ch = static_cast<db>(local_tm.tm_hour);
+			cl = static_cast<db>(local_tm.tm_min);
+			dh = static_cast<db>(local_tm.tm_sec);
+			dl = 0;
 			return;
 #endif
 		}
@@ -1369,7 +1474,12 @@ X86_REGREF
       {
         if (DosMemCheck() != SUCCESS)
            {log_error("after 4a: MCB chain corrupted\n");exit(1);}
-           AFFECT_CF(1);
+#ifndef __DJGPP__
+        log_debug2("Ignoring hosted DOS resize failure es:%x bx:%x rc:%d\n", es, bx, rc);
+        rc = SUCCESS;
+#else
+        AFFECT_CF(1);
+#endif
       }
       ax = es; /* Undocumented MS-DOS behaviour expected by BRUN45! */
 	AFFECT_CF(rc!=SUCCESS);
@@ -1378,12 +1488,25 @@ X86_REGREF
 		case 0x4E: // find first matching file
 		{
 			// cur dir is root
-			log_debug2("Find first file %s\n",(void *) (db *) realAddress(dx, ds));
+			const char *fileName = reinterpret_cast<const char *>(realAddress(dx, ds));
+			log_debug2("Find first file %s\n", fileName);
 #ifdef __DJGPP__
      AFFECT_CF(_dos_findfirst((const char *) raddr(ds, dx), cx,
                                  diskTransferAddr));
 #else
-			strcpy((char*)diskTransferAddr+0x1e,"HACKER4.S3M");
+			FILE *found = fopen(fileName, "rb");
+			if (found == nullptr) {
+				ax = 2;  // file not found
+				AFFECT_CF(1);
+				return;
+			}
+			fclose(found);
+			if (diskTransferAddr == nullptr) {
+				diskTransferAddr = reinterpret_cast<find_t *>(defaultDiskTransferArea);
+			}
+			std::snprintf(reinterpret_cast<char *>(diskTransferAddr) + 0x1e, 13, "%s", fileName);
+			ax = 0;
+			AFFECT_CF(0);
 #endif
 			return;
 		}
@@ -1642,6 +1765,10 @@ X86_REGREF
 			host.mouse.min_y = std::min<int>(cx, dx);
 			host.mouse.max_y = std::max<int>(cx, dx);
 			clamp_host_mouse();
+			return;
+		case 0x0010:
+		case 0x1000:
+			// Define mouse hidden region. The host runtime does not draw a hardware cursor.
 			return;
 		case 0x000b:
 			cx = static_cast<dw>(host.mouse.motion_x);

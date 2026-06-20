@@ -275,6 +275,7 @@ class Parser:
 
         self.externals_vars: set[str] = set()
         self.externals_procs: set[str] = set()
+        self.externals_abs: set[str] = set()
         self.macroses: OrderedDict[str, Any] = OrderedDict()
         self._text_macros: dict[str, _TextMacro] = {}
         self.itislst = False
@@ -463,7 +464,8 @@ class Parser:
             isproc=isproc,
             line_number=self.__offset_id,
             far=far,
-            globl=globl
+            globl=globl,
+            segment=self.__segment.name,
         )
         
         # Extract real addresses from listing if available
@@ -2367,6 +2369,7 @@ class Parser:
         if strtype == "abs":
             # MASM ABS externs are absolute symbols, commonly public EQU values
             # from another module. They are not storage and must not link as vars.
+            self.externals_abs.add(label)
             return
         if strtype not in ["proc"]:
             binary_width = self.typetosize(type)

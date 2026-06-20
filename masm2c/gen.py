@@ -424,10 +424,10 @@ class Gen(TopDownVisitor):
                 labels.add(label_name)
         return labels
 
-    def write_segment_file(self, segments, structs, fname, data_aliases=None, equates=None):
+    def write_segment_file(self, segments, structs, fname, data_aliases=None, equates=None, abs_externs=None):
         jsonpickle.set_encoder_options("json", indent=2)
         with open(self.segment_sidecar_path(fname), "wb") as f:
-            pickle.dump((segments, structs, data_aliases or [], equates or []), f)
+            pickle.dump((segments, structs, data_aliases or [], equates or [], abs_externs or set()), f)
 
     def read_segment_files(self, asm_files):
         logging.info(" *** Merging .seg files")
@@ -435,6 +435,7 @@ class Gen(TopDownVisitor):
         structs = OrderedDict()
         data_aliases = []
         equates = []
+        abs_externs = set()
         for file in asm_files:
             file = self.segment_sidecar_path(file)
             logging.info(f"     Merging data from {file}")
@@ -444,24 +445,61 @@ class Gen(TopDownVisitor):
                     newsegments, newstructs = sidecar
                     newaliases = []
                     newequates = []
+                    newabs_externs = set()
                 elif len(sidecar) == 3:
                     newsegments, newstructs, newaliases = sidecar
                     newequates = []
-                else:
+                    newabs_externs = set()
+                elif len(sidecar) == 4:
                     newsegments, newstructs, newaliases, newequates = sidecar
+                    newabs_externs = set()
+                else:
+                    newsegments, newstructs, newaliases, newequates, newabs_externs = sidecar
                 segments, structures = self.merge_segments(segments, structs, newsegments, newstructs)
                 data_aliases.extend(newaliases)
                 equates.extend(newequates)
+                abs_externs.update(str(name).lower() for name in newabs_externs)
         self._context.data_aliases = self._deduplicate_data_alias_names(data_aliases)
-        self._context.exported_equates = self._deduplicate_equates(equates)
+        reserved_names = self._merged_symbol_names(segments, structures, self._context.data_aliases)
+        self._context.exported_equates = self._deduplicate_equates(equates, abs_externs, reserved_names)
         return segments, structures
 
     @staticmethod
-    def _deduplicate_equates(equates):
+    def _deduplicate_equates(equates, abs_externs=None, reserved_names=None):
+        abs_externs = abs_externs or set()
+        reserved_names = reserved_names or set()
         result = OrderedDict()
-        for name, value in equates:
+        for item in equates:
+            if len(item) == 2:
+                name, value = item
+                public = True
+            else:
+                name, value, public = item
+            normalized_name = str(name).lower()
+            if normalized_name in reserved_names:
+                continue
+            if not public and normalized_name not in abs_externs:
+                continue
             result[str(name)] = str(value)
         return list(result.items())
+
+    @staticmethod
+    def _merged_symbol_names(segments, structures, data_aliases) -> set[str]:
+        names = {str(name).lower() for name in structures.keys()}
+        names.update(str(name).lower() for name in segments.keys())
+        for segment in segments.values():
+            for data in segment.getdata():
+                label = getattr(data, "label", "")
+                if label:
+                    names.add(str(label).lower())
+        for alias in data_aliases:
+            name = getattr(alias, "name", "")
+            if name:
+                names.add(str(name).lower())
+        names.update({
+            "npos",
+        })
+        return names
 
     @staticmethod
     def _deduplicate_data_alias_names(data_aliases):

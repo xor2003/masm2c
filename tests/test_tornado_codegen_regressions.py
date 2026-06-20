@@ -8,6 +8,7 @@ from masm2c import op
 from masm2c.cpp import Cpp
 from masm2c.gen import mangle_asm_labels
 from masm2c.parser import Parser
+from masm2c.proc import Proc
 
 
 class ParserExternDistanceTest(unittest.TestCase):
@@ -27,6 +28,7 @@ class ParserExternDistanceTest(unittest.TestCase):
 
         self.assertNotIn("max_auto_hdg", parser.externals_vars)
         self.assertIsNone(parser.symbols.get_global("max_auto_hdg"))
+        self.assertIn("max_auto_hdg", parser.externals_abs)
 
 
 class CppDataArraySizeTest(unittest.TestCase):
@@ -139,6 +141,60 @@ class CppDataInitTest(unittest.TestCase):
         self.assertEqual(value, "offset(data,target)-2-2")
         self.assertEqual(declaration, "dw rel")
         self.assertEqual(size, 2)
+
+    def test_external_offset_in_data_initializer_does_not_use_register_state(self):
+        parser = Parser([])
+        source = (
+            "EXTRN PolyCount:WORD\n"
+            "DATA SEGMENT\n"
+            "rel dw OFFSET PolyCount\n"
+            "DATA ENDS\n"
+            "END\n"
+        )
+        tree = parser.parse_text(source)
+        parser.process_ast(source, tree)
+        rel = next(d for segment in parser.segments.values() for d in segment.getdata() if d.label == "rel")
+
+        value, declaration, size = Cpp(parser).data(rel)
+
+        self.assertEqual(value, "offset(default_seg,polycount), // rel\n")
+        self.assertEqual(declaration, "dw rel;\n")
+        self.assertEqual(size, 2)
+
+    def test_seg_operator_uses_symbol_segment_not_symbol_value(self):
+        parser = Parser([])
+        parser.symbols.set_global("prog_end", op.var(size=1, offset=0, name="prog_end", segment="stack"))
+
+        rendered = parser.parse_arg("SEG PROG_END")
+
+        self.assertEqual(rendered, "seg_offset(stack)")
+
+    def test_seg_operator_for_external_symbol_uses_linked_reference_address(self):
+        parser = Parser([])
+        parser.symbols.set_global("prog_end", op.var(size=1, offset=0, name="prog_end", segment="default_seg", external=True))
+
+        rendered = parser.parse_arg("SEG PROG_END")
+
+        self.assertEqual(rendered, "m2c::segment_of_external(prog_end)")
+
+    def test_seg_operator_for_code_label_uses_label_segment(self):
+        parser = Parser([])
+        source = (
+            "_TEXT SEGMENT\n"
+            "main PROC\n"
+            "GameIntr20:\n"
+            "mov dx, SEG GameIntr20\n"
+            "ret\n"
+            "main ENDP\n"
+            "_TEXT ENDS\n"
+            "END\n"
+        )
+        tree = parser.parse_text(source)
+        parser.process_ast(source, tree)
+
+        rendered = Proc("main").generate_c_cmd(Cpp(parser), parser.action_code("mov dx, SEG GameIntr20"))
+
+        self.assertEqual(rendered, "dx = seg_offset(_text);")
 
     def test_struct_initializer_empty_fields_render_as_zero(self):
         parser = Parser([])
@@ -327,6 +383,54 @@ class CppDataInitTest(unittest.TestCase):
         labels = [data.label for data in segments["data"].getdata()]
         self.assertEqual(labels[0], "local")
         self.assertEqual(labels[1], "local__b_0_20")
+
+    def test_external_data_offset_uses_linked_reference_address(self):
+        external = op.var(1, 0xA042, "pilotpanel", segment="default_seg", external=True, original_type="byte")
+
+        rendered = Cpp(Parser([])).convert_member_offset(external, ["pilotpanel"])
+
+        self.assertEqual(rendered, "m2c::near_offset_external(pilotpanel, ds)")
+
+    def test_external_data_offset_initializer_does_not_use_register_state(self):
+        external = op.var(1, 0xA042, "pilotpanel", segment="default_seg", external=True, original_type="byte")
+        cpp = Cpp(Parser([]))
+        cpp._expr_state.data_label_size = 2
+
+        rendered = cpp.convert_member_offset(external, ["pilotpanel"])
+
+        self.assertEqual(rendered, "offset(default_seg,pilotpanel)")
+
+    def test_external_offset_instruction_updates_segment_for_near_pointer(self):
+        parser = Parser([])
+        parser.add_extern("PilotPanel", "BYTE")
+        rendered = Proc("mainproc").generate_c_cmd(Cpp(parser), parser.action_code("mov dx, OFFSET PilotPanel"))
+
+        self.assertEqual(rendered, "dx = m2c::near_offset_external(pilotpanel, ds);")
+
+    def test_plain_ret_in_far_proc_renders_far_return(self):
+        parser = Parser([])
+        proc = Proc("loadfile", far=True)
+        cpp = Cpp(parser)
+        cpp.proc = proc
+
+        rendered = proc.generate_c_cmd(cpp, parser.action_code("ret"))
+
+        self.assertEqual(rendered, "RETF(0)")
+
+    def test_plain_ret_in_grouped_far_proc_label_renders_far_return(self):
+        parser = Parser([])
+        far_proc = Proc("createfile", far=True)
+        parser.symbols.set_global("createfile", far_proc)
+        wrapper = Proc("libcode_0_proc", far=False)
+        wrapper.add_label("createfile", op.label("createfile", proc="libcode_0_proc", isproc=False, far=True))
+        wrapper.stmts.append(parser.action_code("ret"))
+        cpp = Cpp(parser)
+        cpp.proc = wrapper
+
+        wrapper.visit(cpp)
+
+        self.assertIn("RETF(0)", cpp.body)
+        self.assertNotIn("RETN(0)", cpp.body)
 
 
 class MasmLabelDirectiveTest(unittest.TestCase):
@@ -647,6 +751,86 @@ class Masm510StructCompatibilityTest(unittest.TestCase):
             finally:
                 os.chdir(old_cwd)
 
+    def test_segment_sidecar_exports_abs_extern_equates_for_aggregate_header(self):
+        with TemporaryDirectory() as tmp:
+            old_cwd = os.getcwd()
+            os.chdir(tmp)
+            try:
+                provider = Parser([])
+                source = "BAUD1200 EQU 6\nEND\n"
+                tree = provider.parse_text(source)
+                provider.process_ast(source, tree)
+                cpp = Cpp(provider, outfile="comms")
+                cpp.write_segment_file(
+                    provider.segments,
+                    provider.structures,
+                    "comms.asm",
+                    [],
+                    cpp.export_equates(),
+                    provider.externals_abs,
+                )
+
+                consumer = Parser([])
+                source = "EXTRN BAUD1200:ABS\nEND\n"
+                tree = consumer.parse_text(source)
+                consumer.process_ast(source, tree)
+                cpp = Cpp(consumer, outfile="control")
+                cpp.write_segment_file(
+                    consumer.segments,
+                    consumer.structures,
+                    "control.asm",
+                    [],
+                    cpp.export_equates(),
+                    consumer.externals_abs,
+                )
+
+                merger = Cpp(Parser([]))
+                merger.write_data_segments_cpp(*merger.read_segment_files(["comms.asm", "control.asm"]))
+
+                self.assertIn("#define baud1200 (6)", Path("_equates.h").read_text(encoding="cp437"))
+            finally:
+                os.chdir(old_cwd)
+
+    def test_segment_sidecar_does_not_export_equate_colliding_with_data_symbol(self):
+        with TemporaryDirectory() as tmp:
+            old_cwd = os.getcwd()
+            os.chdir(tmp)
+            try:
+                provider = Parser([])
+                source = "PUBLIC ZT\nZT EQU 256\nEND\n"
+                tree = provider.parse_text(source)
+                provider.process_ast(source, tree)
+                cpp = Cpp(provider, outfile="equates")
+                cpp.write_segment_file(
+                    provider.segments,
+                    provider.structures,
+                    "equates.asm",
+                    [],
+                    cpp.export_equates(),
+                    provider.externals_abs,
+                )
+
+                data_owner = Parser([])
+                source = "DATA SEGMENT\nZT DW 0\nDATA ENDS\nEND\n"
+                tree = data_owner.parse_text(source)
+                data_owner.process_ast(source, tree)
+                cpp = Cpp(data_owner, outfile="data")
+                cpp.write_segment_file(
+                    data_owner.segments,
+                    data_owner.structures,
+                    "data.asm",
+                    [],
+                    cpp.export_equates(),
+                    data_owner.externals_abs,
+                )
+
+                merger = Cpp(Parser([]))
+                merger.write_data_segments_cpp(*merger.read_segment_files(["equates.asm", "data.asm"]))
+
+                self.assertNotIn("#define zt", Path("_equates.h").read_text(encoding="cp437"))
+            finally:
+                os.chdir(old_cwd)
+
     def test_dummy_labels_use_stable_wide_file_hash_prefix(self):
         parser = Parser([])
         parser._switch_file_context("/tmp/TORNADO/SMOKE.ASM")
@@ -689,6 +873,32 @@ class Masm510StructCompatibilityTest(unittest.TestCase):
 
         self.assertIn("if (GET_ZF()) return __dispatch_call(m2c::kdummylabel1, _state);", rendered)
         self.assertNotIn("JZ(dummylabel1)", rendered)
+
+    def test_table_driven_jump_dispatch_keeps_synthetic_label_id(self):
+        parser = Parser({"mergeprocs": "separate"})
+        source = (
+            "DATA SEGMENT\n"
+            "Switch DW Target\n"
+            "DATA ENDS\n"
+            "CODE SEGMENT\n"
+            "Main PROC FAR\n"
+            "mov bx,0\n"
+            "jmp Switch[bx]\n"
+            "Target: ret\n"
+            "Main ENDP\n"
+            "CODE ENDS\n"
+            "END\n"
+        )
+        tree = parser.parse_text(source)
+        parser.process_ast(source, tree)
+        cpp = Cpp(parser)
+
+        rendered = cpp.write_procedures("", "sample.h")
+
+        self.assertIn("return __dispatch_call(__disp, _state);", rendered)
+        self.assertIn("case m2c::ktarget:", rendered)
+        self.assertIn("m2c::stackDump(_state);", rendered)
+        self.assertNotIn("__disp |= ((dd)cs) << 16", rendered)
 
     def test_assignment_codegen_is_noop(self):
         parser = Parser([])

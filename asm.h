@@ -551,6 +551,25 @@ inline bool MSB(D a)  // get highest bit
 #define RM_OFFSET(addr)       (((size_t)addr) & 0xF)
 #define RM_SEGMENT(addr)      ((((size_t)addr) >> 4) & 0xFFFF)
 
+template <class T>
+inline dw near_offset_external(const T& symbol, dw& segment) {
+    const size_t linear = reinterpret_cast<const db*>(&symbol) - reinterpret_cast<const db*>(&m);
+    segment = RM_SEGMENT(linear);
+    return RM_OFFSET(linear);
+}
+
+template <class T>
+inline dw segment_of_external(const T& symbol) {
+    const size_t linear = reinterpret_cast<const db*>(&symbol) - reinterpret_cast<const db*>(&m);
+    return RM_SEGMENT(linear);
+}
+
+template <class T>
+inline dd far_offset_external(const T& symbol) {
+    const size_t linear = reinterpret_cast<const db*>(&symbol) - reinterpret_cast<const db*>(&m);
+    return static_cast<dd>(RM_OFFSET(linear) | (RM_SEGMENT(linear) << 16));
+}
+
 
     extern class ShadowStack shadow_stack;
 
@@ -1536,6 +1555,8 @@ struct StackPop
         if (!ret) {
             log_error("Warning. Return address wasn't created by native CALL (found %x)\n", ip);
 	}
+#else
+        POP(ip);
 #endif
         esp += i;
  #if M2CDEBUG > 0
@@ -1908,4 +1929,3 @@ extern void print_instruction_direct(Bit16u newcs, Bit32u newip);
 
 
 #endif
-

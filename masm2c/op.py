@@ -896,7 +896,17 @@ class _nop(baseop):
 
 class label(baseop):
 
-    def __init__(self, name: str, *, proc:str, isproc: bool=False, line_number: int=0, far: bool=False, globl: bool=True) -> None:
+    def __init__(
+            self,
+            name: str,
+            *,
+            proc: str,
+            isproc: bool=False,
+            line_number: int=0,
+            far: bool=False,
+            globl: bool=True,
+            segment: str="",
+    ) -> None:
         """Label.
 
         :param name:
@@ -915,6 +925,7 @@ class label(baseop):
         self.used = False
         self.globl = globl
         self.proc = proc
+        self.segment = segment
 
     def accept(self, visitor):
         return visitor._label(self.name, self.isproc)

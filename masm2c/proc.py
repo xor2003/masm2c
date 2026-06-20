@@ -262,32 +262,43 @@ class Proc:
         return result
 
     def visit(self, visitor: Cpp, skip=0):
-        for i in range(skip, len(self.stmts)):
-            stmt = self.stmts[i]
-            from .gen import InjectCode, SkipCode
-            try:
-                full_line = self.generate_full_cmd_line(visitor, stmt)
-                visitor.body += full_line
-            except InjectCode as ex:
-                logging.debug("Injecting code %s before %s", ex.cmd, stmt)
-                s = self.generate_full_cmd_line(visitor, ex.cmd)
-                visitor.body += s
-                s = self.generate_full_cmd_line(visitor, stmt)
-                visitor.body += s
-            except SkipCode:
-                logging.debug("Skipping code %s", stmt)
-            except Exception as ex:
-                logging.exception(f"Exception {ex.args}")
-                logging.exception(f" in {stmt.filename}:{stmt.line_number} {stmt.raw_line}")
-                raise
+        previous_active_proc_far = getattr(visitor, "_active_proc_far", False)
+        visitor._active_proc_far = self.far
+        try:
+            for i in range(skip, len(self.stmts)):
+                stmt = self.stmts[i]
+                if isinstance(stmt, op.label):
+                    symbol = visitor._context.symbols.get_global(stmt.name)
+                    if isinstance(symbol, Proc):
+                        visitor._active_proc_far = symbol.far
+                    elif stmt.name in getattr(visitor, "grouped", set()) or stmt.isproc:
+                        visitor._active_proc_far = stmt.far
+                from .gen import InjectCode, SkipCode
+                try:
+                    full_line = self.generate_full_cmd_line(visitor, stmt)
+                    visitor.body += full_line
+                except InjectCode as ex:
+                    logging.debug("Injecting code %s before %s", ex.cmd, stmt)
+                    s = self.generate_full_cmd_line(visitor, ex.cmd)
+                    visitor.body += s
+                    s = self.generate_full_cmd_line(visitor, stmt)
+                    visitor.body += s
+                except SkipCode:
+                    logging.debug("Skipping code %s", stmt)
+                except Exception as ex:
+                    logging.exception(f"Exception {ex.args}")
+                    logging.exception(f" in {stmt.filename}:{stmt.line_number} {stmt.raw_line}")
+                    raise
 
-            try:  # trying to add command and comment
-                if stmt.raw_line or stmt.line_number != 0:
-                    raw_line = " ".join(str(stmt.raw_line).splitlines())
-                    visitor.body += "\t// " + str(stmt.line_number) \
-                                   + " " + raw_line + "\n"
-            except AttributeError:
-                logging.warning(f"Some attributes missing while setting comment for {stmt}")
+                try:  # trying to add command and comment
+                    if stmt.raw_line or stmt.line_number != 0:
+                        raw_line = " ".join(str(stmt.raw_line).splitlines())
+                        visitor.body += "\t// " + str(stmt.line_number) \
+                                       + " " + raw_line + "\n"
+                except AttributeError:
+                    logging.warning(f"Some attributes missing while setting comment for {stmt}")
+        finally:
+            visitor._active_proc_far = previous_active_proc_far
 
     def generate_full_cmd_line(self, visitor: Cpp, stmt: baseop) -> str:
         prefix = visitor.prefix

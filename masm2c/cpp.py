@@ -196,6 +196,7 @@ class Cpp(Gen):
         self._expr_state.is_member = False
 
         self.far = False
+        self._active_proc_far = False
         self._expr_state.reset()
 
         self.itisjump = False
@@ -681,7 +682,11 @@ class Cpp(Gen):
 
     def convert_member_offset(self, g, label: list[str]):
         if isinstance(g, op.var):
-            value = f'offset({g.segment},{".".join(label)})'
+            joined_label = ".".join(label)
+            if g.external and len(label) == 1 and not self._expr_state.data_label_size:
+                value = f"m2c::near_offset_external({joined_label}, ds)"
+            else:
+                value = f"offset({g.segment},{joined_label})"
         elif isinstance(g, op.Struct):
             value = f'offsetof({label[0]},{".".join(label[1:])})'
         elif isinstance(g, (op._equ, op._assignment)):
@@ -843,6 +848,9 @@ class Cpp(Gen):
 
     def _ret(self, src: list[Union[Expression, Any]]) -> str:
         arg = self.render_instruction_argument(src[0]) if src else "0"
+        proc = getattr(self, "proc", None)
+        if getattr(proc, "far", False) or getattr(self, "_active_proc_far", False):
+            return f"RETF({arg})"
         return f"RETN({arg})"
 
     def _retf(self, src: list[Union[Expression, Any]]) -> str:
@@ -1231,6 +1239,7 @@ class Cpp(Gen):
             fname,
             self._context.data_aliases,
             self.export_equates(),
+            self._context.externals_abs,
         )
 
     def write_procedures(self, banner, header_fname):
@@ -1280,17 +1289,15 @@ class Cpp(Gen):
         self._cmdlabel = ""
         return result
 
-    def export_equates(self) -> list[tuple[str, str]]:
-        equates: list[tuple[str, str]] = []
+    def export_equates(self) -> list[tuple[str, str, bool]]:
+        equates: list[tuple[str, str, bool]] = []
         public_symbols: set[str] = getattr(self._context, "public_symbols", set())
         for symbol in self._context.symbols.get_globals().values():
             if not isinstance(symbol, op._equ) or not isinstance(symbol.value, Expression):
                 continue
-            if symbol.name not in public_symbols:
-                continue
             rendered = self.render_equate_value(symbol)
             if rendered and not self._is_module_local_equate_value(rendered):
-                equates.append((symbol.name, rendered))
+                equates.append((symbol.name, rendered, symbol.name in public_symbols))
         return equates
 
     @staticmethod
@@ -2101,8 +2108,7 @@ struct Memory{
         if itislst:
             result = """
   static bool __dispatch_call(m2c::_offsets __i, struct m2c::_STATE* _state){
-     X86_REGREF
-     if ((__i>>16) == 0) {__i |= ((dd)cs) << 16;}
+  X86_REGREF
      __disp=__i;
      switch (__i) {
 """
@@ -2142,7 +2148,7 @@ struct Memory{
         for name in sorted(names):
             result += "        case m2c::k{}: \t{}({}, _state); break;\n".format(name, *entries[name])
 
-        result += "        default: m2c::log_error(\"Don't know how to call to 0x%x. See \" __FILE__ \" line %d\\n\", __disp, __LINE__);m2c::stackDump(); abort();\n"
+        result += "        default: m2c::log_error(\"Don't know how to call to 0x%x. See \" __FILE__ \" line %d\\n\", __disp, __LINE__);m2c::stackDump(_state); abort();\n"
         result += "     };\n     return true;\n}\n"
         return result
 
@@ -2167,13 +2173,12 @@ struct Memory{
             if ((__disp >> 16) == 0xf000)
             {cs=0xf000;eip=__disp&0xffff;m2c::fix_segs();return false;}  // Jumping to BIOS
         #endif
-            if ((__disp>>16) == 0) {__disp |= ((dd)cs) << 16;}
             switch (__disp) {
         """
         for name, label in offsets:
             logging.debug("%s, %s", name, label)
             result += f"        case m2c::k{name}: \tgoto {label};\n"
-        result += "        default: m2c::log_error(\"Don't know how to jump to 0x%x. See \" __FILE__ \" line %d\\n\", __disp, __LINE__);m2c::stackDump(); abort();\n"
+        result += "        default: m2c::log_error(\"Don't know how to jump to 0x%x. See \" __FILE__ \" line %d\\n\", __disp, __LINE__);m2c::stackDump(_state); abort();\n"
         result += "    };\n}\n"
         return result
 
@@ -2217,7 +2222,9 @@ struct Memory{
 
     def expr(self, tree: Expression) -> str:
         state = self._expr_state
+        prev_data_label_size = state.data_label_size
         state.reset()
+        state.data_label_size = prev_data_label_size
         previous_indirection = state.indirection
         state.indirection = self._effective_indirection_for_expr(tree)
         prev_element_size = state.element_size
@@ -2353,7 +2360,11 @@ struct Memory{
             if offset_size not in {2, 4}:
                 offset_size = 2
             if offset_size == 2:
+                if g.external and not self._expr_state.data_label_size:
+                    return [f"m2c::near_offset_external({g.name}, ds)"]
                 return [f"offset({g.segment},{g.name})"]
+            if g.external and not self._expr_state.data_label_size:
+                return [f"m2c::far_offset_external({g.name})"]
             return [f"far_offset({g.segment},{g.name})"]
         elif isinstance(g, (Proc, op.label)):
             logging.debug("it is proc")
@@ -2364,6 +2375,27 @@ struct Memory{
             return [g.original_name]
         else:
             raise ValueError("Unknown type for offsetdir %s", type(g))
+
+    def seg(self, tree: Tree) -> list[str]:
+        name = tree.children[0]
+        if isinstance(name, lark.Tree):
+            rendered = "".join(str(part) for part in self.visit(name))
+            return [f"seg_offset({rendered})"]
+        label = str(name)
+        symbol = self._context.symbols.get_and_mark_global(label)
+        if isinstance(symbol, op.var):
+            if symbol.external:
+                return [f"m2c::segment_of_external({symbol.name})"]
+            return [f"seg_offset({symbol.segment or symbol.name})"]
+        if isinstance(symbol, Proc):
+            return [f"seg_offset({symbol.segment or label})"]
+        if isinstance(symbol, op.label) and symbol.proc:
+            if getattr(symbol, "segment", ""):
+                return [f"seg_offset({symbol.segment})"]
+            proc = self._context.symbols.get_global(symbol.proc)
+            if isinstance(proc, Proc):
+                return [f"seg_offset({proc.segment or label})"]
+        return [f"seg_offset({label})"]
 
     def _render_operator_children(self, children: list[Any]) -> list[str]:
         rendered = []

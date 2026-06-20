@@ -4,23 +4,26 @@ _TEXT   segment use16 word public 'CODE' ;IGNORE
 assume  cs:_TEXT,ds:_TEXT
 start proc near
 
-mov ax, 13h
-int 10h
+mov dx, 3dah
+in al, dx
 
-mov ah, 0fh
-int 10h
-cmp al, 13h
+mov dx, 3c0h
+mov al, 12h
+out dx, al
+mov al, 34h
+out dx, al
+
+mov dx, 3dah
+in al, dx
+
+mov dx, 3c0h
+mov al, 12h
+out dx, al
+mov dx, 3c1h
+in al, dx
+cmp al, 34h
 mov al, 1
 jne failure
-cmp ah, 80
-mov al, 2
-jne failure
-cmp bh, 0
-mov al, 3
-jne failure
-
-mov ax, 3
-int 10h
 
 xor al, al
 jmp exitLabel
