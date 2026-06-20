@@ -1266,7 +1266,7 @@ X86_REGREF
 		host.vga.crtc_regs[host.vga.crtc_index] = data;
 		break;
 	default:
-		log_debug("unknown OUT %x,%x at %x:%x\n",address, data,cs,eip);
+		log_error("unknown OUT %x,%x at %x:%x\n",address, data,cs,eip);
 		break;
 	}
 #endif
@@ -2385,7 +2385,7 @@ X86_REGREF
 		break;
 	}
 	AFFECT_CF(1);
-	log_debug("Error DOSInt 0x%x ah:0x%x al:0x%x: bx:0x%x not supported.\n",a,ah,al,bx);
+	log_error("Error DOSInt 0x%x ah:0x%x al:0x%x: bx:0x%x not supported.\n",a,ah,al,bx);
 }
 
 //jmp_buf jmpbuffer;
