@@ -47,6 +47,7 @@ clean-test: ## remove test and coverage artifacts
 	rm -fr .tox/
 	rm -f .coverage
 	rm -fr htmlcov/
+	$(MAKE) -C instr_test clean
 
 lint: ## check style with flake8
 	flake8
@@ -82,10 +83,10 @@ dist: clean ## builds source and wheel package
 
 install: clean ## install the package to the active Python's site-packages
 	python setup.py install
-test: $(TESTS)
+test: check
 
-check: test_insn_tests
-	./$<
+check:
+	$(MAKE) -C instr_test test
 
 ci-qa: ## run unified Python quality checks used by CI
 	python scripts/qa.py
@@ -134,10 +135,3 @@ bench-parser-compare: ## compare postlex and cython parser-only timings
 	echo "postlex: $$(grep '^runs=' $$postlex_tmp)"; \
 	echo "cython : $$(grep '^runs=' $$cython_tmp)"; \
 	rm -f $$postlex_tmp $$cython_tmp
-
-TESTS = test_insn_tests
-
-test_insn_tests: test_insn_tests.cpp asm.h asm_16.h asm.cpp
-	$(CXX) $(CXXFLAGS) -I./include -isystem /usr/local/include -Wno-overflow \
-	-L/usr/local/lib -lpthread -lgtest_main \
-	-o $@ $<
