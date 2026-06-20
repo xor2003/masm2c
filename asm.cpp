@@ -895,21 +895,25 @@ int8_t asm2C_IN(int16_t address,_STATE* _state) {
 #else
 X86_REGREF
 	poll_host_events(_state);
-	static bool vblTick = 1;
-		switch(address & 0xffff) {
-		case 0x20:
-		case 0x21:
-			return 0;
-		case 0x40:
-			return host.pit.channel0_latch;
-		case 0x60:
-			return host.keyboard_scan_code;
-	case 0x61:
-		return host.ppi_port_b;
-	case 0x201:
-		{
-			return 0xff;  // no joystick
-		}
+		static bool vblTick = 1;
+			switch(address & 0xffff) {
+			case 0x00:
+				return 0;
+			case 0x20:
+			case 0x21:
+				return 0;
+			case 0x40:
+				return host.pit.channel0_latch;
+			case 0x60:
+				return host.keyboard_scan_code;
+		case 0x61:
+			return host.ppi_port_b;
+		case 0x64:
+			return 0;  // keyboard controller status: no pending host scancode
+		case 0x201:
+			{
+				return 0xff;  // no joystick
+			}
 	case 0x3c1:
 		return host.vga.attr_regs[host.vga.attr_index];
 	case 0x3c5:
@@ -1627,13 +1631,20 @@ X86_REGREF
 	return;
       break;
 
-      /* Set memory block size */
-		    case 0x4a:
-        if (DosMemCheck() != SUCCESS)
-           {log_error("before 4a: MCB chain corrupted\n");exit(1);}
+	      /* Set memory block size */
+			    case 0x4a:
+#ifndef __DJGPP__
+	      /* Hosted builds do not own the DOS PSP MCB chain. Treat resize as
+	       * successful so startup code can release conventional memory. */
+	      ax = es;
+		AFFECT_CF(0);
+		return;
+#else
+	        if (DosMemCheck() != SUCCESS)
+	           {log_error("before 4a: MCB chain corrupted\n");exit(1);}
 
-      if ((rc = DosMemChange(es, bx, &bx)) < 0)
-      {
+	      if ((rc = DosMemChange(es, bx, &bx)) < 0)
+	      {
         if (DosMemCheck() != SUCCESS)
            {log_error("after 4a: MCB chain corrupted\n");exit(1);}
 #ifndef __DJGPP__
@@ -1642,11 +1653,12 @@ X86_REGREF
 #else
         AFFECT_CF(1);
 #endif
-      }
-      ax = es; /* Undocumented MS-DOS behaviour expected by BRUN45! */
-	AFFECT_CF(rc!=SUCCESS);
-	return;
-      break;
+	      }
+	      ax = es; /* Undocumented MS-DOS behaviour expected by BRUN45! */
+		AFFECT_CF(rc!=SUCCESS);
+		return;
+#endif
+	      break;
 		case 0x4E: // find first matching file
 		{
 				// cur dir is root

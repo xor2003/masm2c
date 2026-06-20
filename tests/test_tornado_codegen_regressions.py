@@ -492,12 +492,12 @@ class CppDataInitTest(unittest.TestCase):
 
         self.assertEqual(rendered, "offset(default_seg,pilotpanel)")
 
-    def test_external_offset_instruction_does_not_update_segment_register(self):
+    def test_external_offset_loaded_into_dx_updates_segment_register(self):
         parser = Parser([])
         parser.add_extern("PilotPanel", "BYTE")
         rendered = Proc("mainproc").generate_c_cmd(Cpp(parser), parser.action_code("mov dx, OFFSET PilotPanel"))
 
-        self.assertEqual(rendered, "dx = m2c::near_offset_external(pilotpanel);")
+        self.assertEqual(rendered, "dx = m2c::near_offset_external(pilotpanel, ds);")
 
     def test_external_offset_instruction_keeps_ds_for_independent_filename_pointer(self):
         parser = Parser([])
@@ -888,6 +888,8 @@ class Masm510StructCompatibilityTest(unittest.TestCase):
 
                 data_cpp = Path("_data.cpp").read_text(encoding="cp437")
                 self.assertIn("dw near_offset_linked_address(const void* symbol)", data_cpp)
+                self.assertIn("const size_t linear = anchor->linear +", data_cpp)
+                self.assertIn("linear - ((anchor->linear >> 4) << 4)", data_cpp)
                 self.assertIn("{reinterpret_cast<const db*>(&::data), 0x0}", data_cpp)
                 self.assertIn("{reinterpret_cast<const db*>(&::wsdata), 0x200}", data_cpp)
                 self.assertIn("{reinterpret_cast<const db*>(&::stack), 0x550}", data_cpp)

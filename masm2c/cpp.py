@@ -1573,7 +1573,8 @@ static const LinkedSegmentAnchor* find_linked_segment_anchor(const void* symbol)
 
 dw near_offset_linked_address(const void* symbol) {{
     if (const LinkedSegmentAnchor* anchor = find_linked_segment_anchor(symbol)) {{
-        return static_cast<dw>(reinterpret_cast<const db*>(symbol) - anchor->base);
+        const size_t linear = anchor->linear + (reinterpret_cast<const db*>(symbol) - anchor->base);
+        return static_cast<dw>(linear - ((anchor->linear >> 4) << 4));
     }}
     const size_t linear = reinterpret_cast<const db*>(symbol) - reinterpret_cast<const db*>(&m);
     return static_cast<dw>(RM_OFFSET(linear));
@@ -2338,6 +2339,8 @@ struct Memory{
 
     def _mov(self, dst: Expression, src: Expression) -> str:
         a, b = self.parse2(dst, src)
+        if a == "dx" and b.startswith("m2c::near_offset_external(") and b.endswith(")"):
+            b = f"{b[:-1]}, ds)"
         mapped_memory_access = "raddr" in a or "raddr" in b
         if mapped_memory_access:
             return f"MOV({a}, {b})"
