@@ -72,6 +72,10 @@ extern dw* ticker __attribute__((weak));
 extern dw* frames __attribute__((weak));
 extern dw* countdown __attribute__((weak));
 extern dd* elapsedtime __attribute__((weak));
+extern db vga_rgb_data __attribute__((weak));
+extern db vga_panel __attribute__((weak));
+extern db vga_panel1 __attribute__((weak));
+extern db setpaletteflag __attribute__((weak));
 
 /* https://commons.wikimedia.org/wiki/File:Table_of_x86_Registers_svg.svg */
 
@@ -243,6 +247,63 @@ static HostHardware host;
 static bool m2c_stats_enabled() {
 	const char *enabled = std::getenv("M2C_VGA_STATS");
 	return enabled && *enabled;
+}
+
+static bool bytes_have_nonzero(const db *data, size_t size) {
+	for (size_t i = 0; i < size; ++i) {
+		if (data[i] != 0) {
+			return true;
+		}
+	}
+	return false;
+}
+
+static db *translated_data_symbol_address(db *symbol_storage) {
+	if (!symbol_storage) {
+		return NULL;
+	}
+	db *target = NULL;
+	std::copy(
+		symbol_storage,
+		symbol_storage + sizeof(target),
+		reinterpret_cast<db *>(&target)
+	);
+	const uintptr_t target_addr = reinterpret_cast<uintptr_t>(target);
+	if (target_addr > 0x10000) {
+		return target;
+	}
+	return symbol_storage;
+}
+
+static void maybe_apply_translated_vga_panel_palette() {
+	const size_t panel_color_start = 176 * 3;
+	const size_t panel_palette_size = 80 * 3;
+	if (!&::vga_rgb_data || !&::vga_panel || !&::vga_panel1 || !&::setpaletteflag) {
+		return;
+	}
+
+	db *rgb_data = translated_data_symbol_address(&::vga_rgb_data);
+	db *panel = translated_data_symbol_address(&::vga_panel);
+	db *panel1 = translated_data_symbol_address(&::vga_panel1);
+	db *palette_flag = translated_data_symbol_address(&::setpaletteflag);
+	if (!rgb_data || !panel || !panel1 || !palette_flag) {
+		return;
+	}
+	if (!bytes_have_nonzero(panel1, panel_palette_size)) {
+		return;
+	}
+	if (bytes_have_nonzero(rgb_data + panel_color_start, panel_palette_size)
+		|| bytes_have_nonzero(panel, panel_palette_size)) {
+		return;
+	}
+
+	std::copy(panel1, panel1 + panel_palette_size, panel);
+	std::copy(panel1, panel1 + panel_palette_size, rgb_data + panel_color_start);
+	std::copy(panel1, panel1 + panel_palette_size, vgaPalette + panel_color_start);
+	*palette_flag = 1;
+	if (m2c_stats_enabled()) {
+		std::fprintf(stderr, "vga panel palette initialized from translated VGA_Panel1 symbols\n");
+	}
 }
 
 static void vga_maybe_dump_dac_upload() {
@@ -481,6 +542,7 @@ static void vga_render_indexed_frame() {
 		}
 	}
 
+	maybe_apply_translated_vga_panel_palette();
 	const size_t crtc_start = vga_crtc_start_byte_offset();
 	vga_maybe_dump_stats(crtc_start);
 	for (int y = 0; y < vga_logical_height; ++y) {
@@ -1242,6 +1304,7 @@ X86_REGREF
 		return host.vga.gc_regs[host.vga.gc_index];
 	case 0x3c9:
 		{
+			maybe_apply_translated_vga_panel_palette();
 			const db value = vgaPalette[host.vga.dac_read_index];
 			host.vga.dac_read_index = (host.vga.dac_read_index + 1) % (256 * 3);
 			return value;
