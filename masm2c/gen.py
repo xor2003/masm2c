@@ -457,8 +457,9 @@ class Gen(TopDownVisitor):
                     newabs_externs = set()
                 else:
                     newsegments, newstructs, newaliases, newequates, newabs_externs = sidecar
+                relocations = self._segment_merge_relocations(segments, newsegments)
                 segments, structures = self.merge_segments(segments, structs, newsegments, newstructs)
-                data_aliases.extend(newaliases)
+                data_aliases.extend(self._relocate_data_aliases(newaliases, relocations))
                 equates.extend(newequates)
                 abs_externs.update(str(name).lower() for name in newabs_externs)
         self._context.data_aliases = self._deduplicate_data_alias_names(data_aliases)
@@ -551,15 +552,19 @@ class Gen(TopDownVisitor):
                     allsegments[segclass] = segment_value
                     self._segment_aliases(allsegments[segclass]).setdefault(segment_value.name, 0)
                 else:
-                    self._segment_aliases(allsegments[segclass]).setdefault(segment_value.name, allsegments[segclass].getsize())
+                    merge_offset = allsegments[segclass].getsize()
+                    self._segment_aliases(allsegments[segclass]).setdefault(segment_value.name, merge_offset)
                     data = segment_value.getdata()
                     for d in data:
+                        self._relocate_data_record(d, merge_offset)
                         allsegments[segclass].append(d)
             elif self.merge_data_segments and segment_name in allsegments and (
                 segment_value.getsize() > 0 or allsegments[segment_name].getsize() > 0
             ):
                 self._check_for_segment_overwrite(allsegments, segment_name, segment_value)
+                merge_offset = allsegments[segment_name].getsize()
                 for data in segment_value.getdata():
+                    self._relocate_data_record(data, merge_offset)
                     allsegments[segment_name].append(data)
             else:
                 self._check_for_segment_overwrite(allsegments, segment_name, segment_value)
@@ -568,6 +573,35 @@ class Gen(TopDownVisitor):
         self._check_for_struct_overwrite(allstructs, newstructs)
         allstructs.update(newstructs)
         return allsegments, allstructs
+
+    def _segment_merge_relocations(self, allsegments: OrderedDict, newsegments: OrderedDict) -> dict[str, tuple[str, int]]:
+        relocations: dict[str, tuple[str, int]] = {}
+        for segment_name, segment_value in newsegments.items():
+            segclass = segment_value.segclass
+            ispublic = segment_value.options and "public" in segment_value.options
+            if segclass and ispublic and self.merge_data_segments:
+                merge_offset = allsegments[segclass].getsize() if segclass in allsegments else 0
+                relocations[segment_name] = (segclass, merge_offset)
+            elif self.merge_data_segments and segment_name in allsegments and (
+                segment_value.getsize() > 0 or allsegments[segment_name].getsize() > 0
+            ):
+                relocations[segment_name] = (segment_name, allsegments[segment_name].getsize())
+            else:
+                relocations[segment_name] = (segment_name, 0)
+        return relocations
+
+    @staticmethod
+    def _relocate_data_record(data, merge_offset: int) -> None:
+        if merge_offset:
+            data.offset += merge_offset
+
+    @staticmethod
+    def _relocate_data_aliases(aliases, relocations: dict[str, tuple[str, int]]):
+        for alias in aliases:
+            canonical_segment, merge_offset = relocations.get(alias.segment, (alias.segment, 0))
+            alias.segment = canonical_segment
+            alias.offset += merge_offset
+        return aliases
 
     @staticmethod
     def _segment_aliases(segment):

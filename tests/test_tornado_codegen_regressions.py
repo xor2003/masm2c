@@ -142,6 +142,27 @@ class CppDataInitTest(unittest.TestCase):
         self.assertEqual(declaration, "dw rel")
         self.assertEqual(size, 2)
 
+    def test_even_directive_advances_data_symbol_offset(self):
+        parser = Parser([])
+        source = (
+            "DATA SEGMENT\n"
+            "bytestr db 65,66,0\n"
+            "EVEN\n"
+            "table dw 1234h\n"
+            "DATA ENDS\n"
+            "END\n"
+        )
+        tree = parser.parse_text(source)
+        parser.process_ast(source, tree)
+        segment_data = parser.segments["data"].getdata()
+
+        self.assertEqual([(data.label, data.offset, data.size) for data in segment_data], [
+            ("bytestr", 0, 3),
+            ("dummy0_data_3", 3, 1),
+            ("table", 4, 2),
+        ])
+        self.assertEqual(parser.symbols.get_global("table").offset, 4)
+
     def test_external_offset_in_data_initializer_does_not_use_register_state(self):
         parser = Parser([])
         source = (
@@ -348,6 +369,44 @@ class CppDataInitTest(unittest.TestCase):
 
         self.assertEqual(segments["data"].segment_aliases["data"], 0)
         self.assertEqual(segments["data"].segment_aliases["wpndata"], 2)
+        self.assertEqual(segments["data"].getdata()[1].offset, 2)
+
+    def test_duplicate_public_segment_data_offsets_are_relocated_during_merge(self):
+        first = op.Segment("data", 0, options={"public"}, segclass="data")
+        first.append(op.Data("jumpinitlist", "dw", op.DataType.NUMBER, [0], 1, 2, offset=0x14A))
+        second = op.Segment("data", 0, options={"public"}, segclass="data")
+        second.append(op.Data("gameplaydata", "db", op.DataType.ARRAY, [0], 1, 1, offset=0x180))
+        cpp = Cpp(Parser([]), merge_data_segments=True)
+
+        segments, _ = cpp.merge_segments(OrderedDict([("data", first)]), OrderedDict(), OrderedDict([("data", second)]), OrderedDict())
+
+        self.assertEqual(segments["data"].getdata()[1].offset, 0x182)
+
+    def test_duplicate_public_segment_label_aliases_are_relocated_when_reading_sidecars(self):
+        with TemporaryDirectory() as tmp:
+            old_cwd = os.getcwd()
+            os.chdir(tmp)
+            try:
+                first = op.Segment("data", 0, options={"public"}, segclass="data")
+                first.append(op.Data("jumpinitlist", "dw", op.DataType.NUMBER, [0], 1, 2, offset=0x14A))
+                second = op.Segment("data", 0, options={"public"}, segclass="data")
+                second.append(op.Data("tail", "db", op.DataType.NUMBER, [0], 1, 1, offset=0x180))
+                Cpp(Parser([])).write_segment_file(OrderedDict([("data", first)]), OrderedDict(), "COM_DRVR.ASM", [])
+                Cpp(Parser([])).write_segment_file(
+                    OrderedDict([("data", second)]),
+                    OrderedDict(),
+                    "MAINDATA.ASM",
+                    [op.var(1, 0x180, "gameplaydata", segment="data", elements=1, original_type="byte")],
+                )
+
+                merger = Cpp(Parser([]), merge_data_segments=True)
+                merger.read_segment_files(["COM_DRVR.ASM", "MAINDATA.ASM"])
+
+                alias = merger._context.data_aliases[0]
+                self.assertEqual(alias.segment, "data")
+                self.assertEqual(alias.offset, 0x182)
+            finally:
+                os.chdir(old_cwd)
 
     def test_data_alias_from_merged_segment_alias_is_rendered(self):
         parser = Parser([])
@@ -422,7 +481,7 @@ class CppDataInitTest(unittest.TestCase):
 
         rendered = Cpp(Parser([])).convert_member_offset(external, ["pilotpanel"])
 
-        self.assertEqual(rendered, "m2c::near_offset_external(pilotpanel, ds)")
+        self.assertEqual(rendered, "m2c::near_offset_external(pilotpanel)")
 
     def test_external_data_offset_initializer_does_not_use_register_state(self):
         external = op.var(1, 0xA042, "pilotpanel", segment="default_seg", external=True, original_type="byte")
@@ -433,12 +492,39 @@ class CppDataInitTest(unittest.TestCase):
 
         self.assertEqual(rendered, "offset(default_seg,pilotpanel)")
 
-    def test_external_offset_instruction_updates_segment_for_near_pointer(self):
+    def test_external_offset_instruction_does_not_update_segment_register(self):
         parser = Parser([])
         parser.add_extern("PilotPanel", "BYTE")
         rendered = Proc("mainproc").generate_c_cmd(Cpp(parser), parser.action_code("mov dx, OFFSET PilotPanel"))
 
-        self.assertEqual(rendered, "dx = m2c::near_offset_external(pilotpanel, ds);")
+        self.assertEqual(rendered, "dx = m2c::near_offset_external(pilotpanel);")
+
+    def test_external_offset_instruction_keeps_ds_for_independent_filename_pointer(self):
+        parser = Parser([])
+        parser.add_extern("GamePlayData", "BYTE")
+        source = (
+            "DATA SEGMENT\n"
+            "GamePlayIn db 'GAMEPLAY.IN',0\n"
+            "DATA ENDS\n"
+            "CODE SEGMENT\n"
+            "main PROC\n"
+            "mov dx, OFFSET GamePlayIn\n"
+            "mov di, OFFSET GamePlayData\n"
+            "ret\n"
+            "main ENDP\n"
+            "CODE ENDS\n"
+            "END\n"
+        )
+        tree = parser.parse_text(source)
+        parser.process_ast(source, tree)
+        proc = parser.symbols.get_global("main")
+        self.assertIsInstance(proc, Proc)
+        cpp = Cpp(parser)
+        rendered = "\n".join(proc.generate_c_cmd(cpp, stmt) for stmt in proc.stmts)
+
+        self.assertIn("dx = offset(data,gameplayin);", rendered)
+        self.assertIn("di = m2c::near_offset_external(gameplaydata);", rendered)
+        self.assertNotIn("near_offset_external(gameplaydata, ds)", rendered)
 
     def test_plain_ret_in_far_proc_renders_far_return(self):
         parser = Parser([])
@@ -781,6 +867,31 @@ class Masm510StructCompatibilityTest(unittest.TestCase):
                 merger.write_data_segments_cpp(*merger.read_segment_files(["avionics.asm"]))
 
                 self.assertIn("#define max_auto_hdg (359)", Path("_equates.h").read_text(encoding="cp437"))
+            finally:
+                os.chdir(old_cwd)
+
+    def test_data_cpp_exports_linked_segment_offset_helpers(self):
+        with TemporaryDirectory() as tmp:
+            old_cwd = os.getcwd()
+            os.chdir(tmp)
+            try:
+                data = op.Segment("DATA", 0)
+                data.segment_aliases = {"data": 0, "wsdata": 0x200}
+                data.append(op.Data("x", "db", op.DataType.NUMBER, [0], 1, 1))
+                stack = op.Segment("STACK", 0x550)
+                stack.append(op.Data("y", "db", op.DataType.NUMBER, [0], 1, 1))
+                code = op.Segment("CODE", 0x10, segclass="code")
+                code.append(op.Data("embedded", "db", op.DataType.NUMBER, [0], 1, 1))
+                segments = OrderedDict([("data", data), ("code", code), ("stack", stack)])
+
+                Cpp(Parser([])).write_data_segments_cpp(segments, OrderedDict())
+
+                data_cpp = Path("_data.cpp").read_text(encoding="cp437")
+                self.assertIn("dw near_offset_linked_address(const void* symbol)", data_cpp)
+                self.assertIn("{reinterpret_cast<const db*>(&::data), 0x0}", data_cpp)
+                self.assertIn("{reinterpret_cast<const db*>(&::wsdata), 0x200}", data_cpp)
+                self.assertIn("{reinterpret_cast<const db*>(&::stack), 0x550}", data_cpp)
+                self.assertNotIn("{reinterpret_cast<const db*>(&::code), 0x10}", data_cpp)
             finally:
                 os.chdir(old_cwd)
 

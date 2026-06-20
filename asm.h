@@ -552,22 +552,40 @@ inline bool MSB(D a)  // get highest bit
 #define RM_SEGMENT(addr)      ((((size_t)addr) >> 4) & 0xFFFF)
 
 template <class T>
+inline dw near_offset_external(const T& symbol);
+
+template <class T>
+inline dw near_offset_external(const T& symbol, dw& segment);
+
+template <class T>
+inline dw segment_of_external(const T& symbol);
+
+template <class T>
+inline dd far_offset_external(const T& symbol);
+
+dw near_offset_linked_address(const void* symbol);
+dw segment_of_linked_address(const void* symbol);
+dd far_offset_linked_address(const void* symbol);
+
+template <class T>
+inline dw near_offset_external(const T& symbol) {
+    return near_offset_linked_address(static_cast<const void*>(&symbol));
+}
+
+template <class T>
 inline dw near_offset_external(const T& symbol, dw& segment) {
-    const size_t linear = reinterpret_cast<const db*>(&symbol) - reinterpret_cast<const db*>(&m);
-    segment = RM_SEGMENT(linear);
-    return RM_OFFSET(linear);
+    segment = segment_of_external(symbol);
+    return near_offset_external(symbol);
 }
 
 template <class T>
 inline dw segment_of_external(const T& symbol) {
-    const size_t linear = reinterpret_cast<const db*>(&symbol) - reinterpret_cast<const db*>(&m);
-    return RM_SEGMENT(linear);
+    return segment_of_linked_address(static_cast<const void*>(&symbol));
 }
 
 template <class T>
 inline dd far_offset_external(const T& symbol) {
-    const size_t linear = reinterpret_cast<const db*>(&symbol) - reinterpret_cast<const db*>(&m);
-    return static_cast<dd>(RM_OFFSET(linear) | (RM_SEGMENT(linear) << 16));
+    return far_offset_linked_address(static_cast<const void*>(&symbol));
 }
 
 
@@ -1891,6 +1909,7 @@ dw getscan();
 extern db(& stack)[STACK_SIZE];
 extern db(& heap)[HEAP_SIZE];
 extern  m2cf* _ENTRY_POINT_;
+void Initializer() __attribute__((weak));
 
 #if DOSBOX_CUSTOM
     extern bool Jstart(const char *file, int line, const char *instr);

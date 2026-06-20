@@ -514,8 +514,9 @@ class Parser:
         if num == 0:
             return
         label = self.get_dummy_label()
-        offset = self.__binary_data_size
+        offset = self.__cur_seg_offset
         self.__binary_data_size += num
+        self.__cur_seg_offset += num
         self.data_merge_candidates = 0
 
         self.__segment.append(

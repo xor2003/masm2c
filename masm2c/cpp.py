@@ -686,7 +686,7 @@ class Cpp(Gen):
         if isinstance(g, op.var):
             joined_label = ".".join(label)
             if g.external and len(label) == 1 and not self._expr_state.data_label_size:
-                value = f"m2c::near_offset_external({joined_label}, ds)"
+                value = f"m2c::near_offset_external({joined_label})"
             else:
                 value = f"offset({g.segment},{joined_label})"
         elif isinstance(g, op.Struct):
@@ -1172,6 +1172,7 @@ class Cpp(Gen):
         header_fname = f"{self._namespace.lower()}.h"
 
         logging.info(f" *** Generating output files in C++ {cpp_fname} {header_fname}")
+        initializer_name = self._initializer_function_name(self._namespace)
 
         with open(cpp_fname, "w", encoding=self.__codeset) as cpp_file:
             hpp_file = open(header_fname, "w", encoding=self.__codeset)
@@ -1188,25 +1189,27 @@ class Cpp(Gen):
         #include <iterator>
         #ifdef DOSBOX_CUSTOM
         #include <numeric>
-
          #define MYCOPY(x) {{m2c::set_type(x);m2c::mycopy((db*)&x,(db*)&tmp999,sizeof(tmp999),#x);}}
-
-         namespace m2c {{
-          void   Initializer()
         #else
          #define MYCOPY(x) memcpy(&x,&tmp999,sizeof(tmp999));
+        #endif
+
+         namespace m2c {{
+          void {initializer_name}()
+          {{
+          {cpp_assigns}
+          }}
+         }}
+        #ifdef M2C_LEGACY_STATIC_INITIALIZERS
+        #ifndef DOSBOX_CUSTOM
          namespace {{
           struct Initializer {{
-           Initializer()
-        #endif
-        {{
-        {cpp_assigns}
-        }}
-        #ifndef DOSBOX_CUSTOM
+           Initializer() {{ m2c::{initializer_name}(); }}
           }};
-         static const Initializer i;
+          static const Initializer i;
+         }}
         #endif
-        }}
+        #endif
         """)
         hpp_file.write(f"""{banner}
 #ifndef {header_id}
@@ -1375,9 +1378,9 @@ class Cpp(Gen):
 
         :param asm_files: A list of the assembly files
         """
-        self.write_data_segments_cpp(*self.read_segment_files(asm_files))
+        self.write_data_segments_cpp(*self.read_segment_files(asm_files), asm_files=asm_files)
 
-    def write_data_segments_cpp(self, segments, structures):
+    def write_data_segments_cpp(self, segments, structures, asm_files=None):
         """It writes the _data.cpp and _data.h files.
 
         :param segments: a list of segments, each segment is a list of data items
@@ -1400,6 +1403,8 @@ class Cpp(Gen):
         fname = "_data.cpp"
         header = "_data.h"
         types_header = "_data_types.h"
+        linked_segment_helpers = self._produce_linked_segment_helpers(segments)
+        aggregate_initializer = self._produce_aggregate_initializer(asm_files or [])
         with open(fname, "w", encoding=self.__codeset) as fd:
             fd.write("""#include "_data.h"
 namespace m2c{
@@ -1410,6 +1415,8 @@ struct Memory types;
 
 db(& stack)[STACK_SIZE]=m.stack;
 db(& heap)[HEAP_SIZE]=m.heap;
+""" + linked_segment_helpers + """
+""" + aggregate_initializer + """
 }
 
 """)
@@ -1517,6 +1524,118 @@ db(& heap)[HEAP_SIZE]=m.heap;
             candidate = f"{base}__{suffix}_{index}"
             index += 1
         return candidate
+
+    def _produce_linked_segment_helpers(self, segments: OrderedDict) -> str:
+        anchors = self._linked_segment_anchors(segments)
+        if not anchors:
+            return """
+
+dw near_offset_linked_address(const void* symbol) {
+    const size_t linear = reinterpret_cast<const db*>(symbol) - reinterpret_cast<const db*>(&m);
+    return static_cast<dw>(RM_OFFSET(linear));
+}
+
+dw segment_of_linked_address(const void* symbol) {
+    const size_t linear = reinterpret_cast<const db*>(symbol) - reinterpret_cast<const db*>(&m);
+    return static_cast<dw>(RM_SEGMENT(linear));
+}
+
+dd far_offset_linked_address(const void* symbol) {
+    return static_cast<dd>(near_offset_linked_address(symbol) | (segment_of_linked_address(symbol) << 16));
+}
+"""
+
+        entries = "\n".join(
+            f"    {{reinterpret_cast<const db*>(&::{name}), 0x{linear:x}}},"
+            for linear, name in anchors
+        )
+        return f"""
+
+struct LinkedSegmentAnchor {{
+    const db* base;
+    size_t linear;
+}};
+
+static const LinkedSegmentAnchor linked_segment_anchors[] = {{
+{entries}
+}};
+
+static const LinkedSegmentAnchor* find_linked_segment_anchor(const void* symbol) {{
+    const db* ptr = reinterpret_cast<const db*>(symbol);
+    const LinkedSegmentAnchor* selected = nullptr;
+    for (const LinkedSegmentAnchor& anchor : linked_segment_anchors) {{
+        if (ptr >= anchor.base && (selected == nullptr || anchor.base >= selected->base)) {{
+            selected = &anchor;
+        }}
+    }}
+    return selected;
+}}
+
+dw near_offset_linked_address(const void* symbol) {{
+    if (const LinkedSegmentAnchor* anchor = find_linked_segment_anchor(symbol)) {{
+        return static_cast<dw>(reinterpret_cast<const db*>(symbol) - anchor->base);
+    }}
+    const size_t linear = reinterpret_cast<const db*>(symbol) - reinterpret_cast<const db*>(&m);
+    return static_cast<dw>(RM_OFFSET(linear));
+}}
+
+dw segment_of_linked_address(const void* symbol) {{
+    if (const LinkedSegmentAnchor* anchor = find_linked_segment_anchor(symbol)) {{
+        return static_cast<dw>(anchor->linear >> 4);
+    }}
+    const size_t linear = reinterpret_cast<const db*>(symbol) - reinterpret_cast<const db*>(&m);
+    return static_cast<dw>(RM_SEGMENT(linear));
+}}
+
+dd far_offset_linked_address(const void* symbol) {{
+    return static_cast<dd>(near_offset_linked_address(symbol) | (segment_of_linked_address(symbol) << 16));
+}}
+"""
+
+    @staticmethod
+    def _linked_segment_anchors(segments: OrderedDict) -> list[tuple[int, str]]:
+        anchors_by_linear: dict[int, str] = {}
+        for segment in segments.values():
+            if not segment.getdata() or str(getattr(segment, "segclass", "")).lower() == "code":
+                continue
+            for name, relative_offset in getattr(segment, "segment_aliases", {segment.name: 0}).items():
+                linear = int(segment.offset) + int(relative_offset)
+                anchors_by_linear.setdefault(linear, name)
+        return sorted(anchors_by_linear.items())
+
+    def _produce_aggregate_initializer(self, asm_files: list[str]) -> str:
+        initializer_names: list[str] = []
+        seen: set[str] = set()
+        for filename in asm_files:
+            if not str(filename).lower().endswith((".asm", ".lst")):
+                continue
+            module = os.path.splitext(os.path.basename(str(filename)))[0]
+            name = self._initializer_function_name(module)
+            if name in seen:
+                continue
+            seen.add(name)
+            initializer_names.append(name)
+
+        declarations = "\n".join(f"void {name}();" for name in initializer_names)
+        calls = "\n".join(f"    {name}();" for name in initializer_names)
+        return f"""
+
+{declarations}
+
+void Initializer() {{
+    static bool initialized = false;
+    if (initialized) {{
+        return;
+    }}
+    initialized = true;
+{calls}
+}}
+"""
+
+    @staticmethod
+    def _initializer_function_name(module: str) -> str:
+        normalized = re.sub(r"[^A-Za-z0-9_]", "_", module).lower()
+        return f"Initializer_{normalized or 'unknown'}"
 
     def produce_label_offsets(self):
         labeloffsets = """namespace m2c{
@@ -2426,7 +2545,7 @@ struct Memory{
                 offset_size = 2
             if offset_size == 2:
                 if g.external and not self._expr_state.data_label_size:
-                    return [f"m2c::near_offset_external({g.name}, ds)"]
+                    return [f"m2c::near_offset_external({g.name})"]
                 return [f"offset({g.segment},{g.name})"]
             if g.external and not self._expr_state.data_label_size:
                 return [f"m2c::far_offset_external({g.name})"]

@@ -1435,13 +1435,17 @@ X86_REGREF
 		}
 		case 0x3d: //open
 		{
-			char fileName[1000];
-//			if (path!=NULL) {
-//				sprintf(fileName,"%s/%s",path,(const char *) realAddress(dx, ds));
-//			} else {
-				sprintf(fileName,"%s",(const char *) realAddress(dx, ds));
-//			}
-			file=fopen(fileName, "rb"); //TOFIX, multiple files support
+				char fileName[1000];
+	//			if (path!=NULL) {
+	//				sprintf(fileName,"%s/%s",path,(const char *) realAddress(dx, ds));
+	//			} else {
+					sprintf(fileName,"%s",(const char *) realAddress(dx, ds));
+	//			}
+				if (fileName[0] == '\0') {
+					log_error("Error opening empty filename ds=%04x dx=%04x\n", ds, dx);
+					stackDump(_state);
+				}
+				file=fopen(fileName, "rb"); //TOFIX, multiple files support
 			log_debug2("Opening file %s -> %p\n",fileName,(void *) file);
 			if (file!=NULL) {
 				eax=1; //TOFIX
@@ -1645,10 +1649,14 @@ X86_REGREF
       break;
 		case 0x4E: // find first matching file
 		{
-			// cur dir is root
-			const char *fileName = reinterpret_cast<const char *>(realAddress(dx, ds));
-			log_debug2("Find first file %s\n", fileName);
-#ifdef __DJGPP__
+				// cur dir is root
+				const char *fileName = reinterpret_cast<const char *>(realAddress(dx, ds));
+				log_debug2("Find first file %s\n", fileName);
+				if (fileName[0] == '\0') {
+					log_error("Find first with empty filename ds=%04x dx=%04x\n", ds, dx);
+					stackDump(_state);
+				}
+	#ifdef __DJGPP__
      AFFECT_CF(_dos_findfirst((const char *) raddr(ds, dx), cx,
                                  diskTransferAddr));
 #else
@@ -2325,6 +2333,10 @@ std::this_thread::sleep_for(std::chrono::microseconds(1));
     ds = es = 0x192; // dosbox PSP
     *(dw*)(raddr(0, 0x408)) = 0x378; //LPT
  #endif
+
+    if (m2c::Initializer) {
+        m2c::Initializer();
+    }
 
 //	*(dw *)realAddress(8*4,0)=k_int8old;
 //    int8_thread = std::thread(int8_thread_proc);
