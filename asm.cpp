@@ -123,6 +123,7 @@ static struct __fl __eflags;
     static unsigned vga_render_writes;
     static int vga_logical_width = 320;
     static int vga_logical_height = 200;
+    static const unsigned VGA_RENDER_WRITE_FLUSH_THRESHOLD = 8 * 1024;
     static const size_t VGA_WINDOW_SIZE = 0x20000;
     static db vgaPlanarPixels[640 * 200];
     static db vgaMode13Pixels[VGA_WINDOW_SIZE * 4];
@@ -598,7 +599,7 @@ static void vga_write_mode13_planar_byte(size_t offset, db value) {
 		vgaMode13Pixels[page_offset * 4 + plane] = pixel;
 	}
 	vga_render_dirty = true;
-	if (++vga_render_writes >= 4096) {
+	if (++vga_render_writes >= VGA_RENDER_WRITE_FLUSH_THRESHOLD) {
 		vga_present_pending();
 	}
 }
@@ -644,7 +645,7 @@ static void vga_write_planar_byte(size_t offset, db value) {
 		}
 	}
 	vga_render_dirty = true;
-	if (++vga_render_writes >= 1024) {
+	if (++vga_render_writes >= VGA_RENDER_WRITE_FLUSH_THRESHOLD) {
 		vga_present_pending();
 	}
 }
@@ -668,7 +669,7 @@ void vga_write_pixel_from_memory(db *d, db color) {
 		vgaMode13Pixels[di * 4] = color;
 	}
 	vga_render_dirty = true;
-	if (++vga_render_writes >= 4096) {
+	if (++vga_render_writes >= VGA_RENDER_WRITE_FLUSH_THRESHOLD) {
 		vga_present_pending();
 	}
 }
