@@ -2772,6 +2772,28 @@ std::this_thread::sleep_for(std::chrono::microseconds(1));
 
 }
 
+static void write_dos_command_tail(int argc, char *argv[]) {
+    if (argc < 2) {
+        return;
+    }
+
+    db *psp = ((db *) &m2c::m);
+    size_t tail_len = 0;
+
+    for (int i = 1; i < argc && tail_len < 126; ++i) {
+        if (!argv[i]) {
+            continue;
+        }
+        psp[0x81 + tail_len++] = ' ';
+        for (const char *arg = argv[i]; *arg && tail_len < 126; ++arg) {
+            psp[0x81 + tail_len++] = static_cast<db>(*arg);
+        }
+    }
+
+    psp[0x80] = static_cast<db>(tail_len);
+    psp[0x81 + tail_len] = 0x0d;
+}
+
 int main(int argc, char *argv[]) {
     struct m2c::_STATE state;
     struct m2c::_STATE *_state = &state;
@@ -2814,13 +2836,7 @@ int main(int argc, char *argv[]) {
 
         m2c::init(_state);
 
-        if (argc >= 2) {
-            db s = strlen(argv[1]);
-            *(((db *) &m2c::m) + 0x80) = s + 1;
-            strcpy(((char *) &m2c::m) + 0x81, argv[1]);
-            *(dw *)((db*)&m2c::m + 0x81 + s) = 0xD;
-
-        }
+        write_dos_command_tail(argc, argv);
         (*m2c::_ENTRY_POINT_)((m2c::_offsets) 0, _state);
     }
     catch (const std::exception &e) {

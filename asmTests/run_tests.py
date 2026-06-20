@@ -17,6 +17,10 @@ SKIP_CASES = {
     "popf.asm": "unsupported: call loc_15c4a+1",
 }
 
+CASE_ARGS = {
+    "argv_tail.asm": ["SN", "MN", "QS"],
+}
+
 
 @dataclass
 class CaseResult:
@@ -148,7 +152,7 @@ def run_case(script_dir: Path, name: str, logs_dir: Path, cxx: str, opt_flags: s
         log_file.write_text(output, encoding="utf-8", errors="replace")
         return CaseResult(name=name, status="FAIL", rc=b.returncode, reason=f"exit={b.returncode}", log_file=log_file)
 
-    e = subprocess.run([str(work_dir / base)], cwd=work_dir, capture_output=True, text=True)
+    e = subprocess.run([str(work_dir / base), *CASE_ARGS.get(name, [])], cwd=work_dir, capture_output=True, text=True)
     output_chunks.append(e.stdout)
     output_chunks.append(e.stderr)
     if e.returncode != 0:
