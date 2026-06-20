@@ -427,6 +427,7 @@ inline dd getdata(const __int64& s)
 #endif
 
     static inline void setdata(db *d, db s) {
+		*d = s;
   #if SDL_MAJOR_VERSION == 2 && !defined(NOSDL) && M2CDEBUG != -1
 	if (m2c::isaddrbelongtom(d) && d < ((db*)&m) + 0xc0000 && d >= ((db*)&m) + 0xa0000)
 		{ 
@@ -438,8 +439,7 @@ inline dd getdata(const __int64& s)
                  } 
 	else 
   #endif
-        {
-           *d = s;
+	{
 	}
     }
 

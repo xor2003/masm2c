@@ -53,6 +53,9 @@ SOFTWARE.
 //#include <time.h>
 #include <cassert>
 #include <ctime>
+#include <algorithm>
+#include <chrono>
+#include <cstdint>
 
 #ifndef NOCURSES
 #include <curses.h>
@@ -149,6 +152,314 @@ bool executionFinished;
 db exitCode;
 
 FILE * logDebug=NULL;
+
+struct HostMouse {
+	bool installed = true;
+	bool visible = false;
+	int x = 160;
+	int y = 100;
+	int last_x = 160;
+	int last_y = 100;
+	int min_x = 0;
+	int max_x = 319;
+	int min_y = 0;
+	int max_y = 199;
+	int buttons = 0;
+	int motion_x = 0;
+	int motion_y = 0;
+};
+
+extern bool gameintr100(m2c::_offsets, struct m2c::_STATE*) __attribute__((weak));
+extern bool gameintr20(m2c::_offsets, struct m2c::_STATE*) __attribute__((weak));
+extern db key[128] __attribute__((weak));
+extern dw ticker __attribute__((weak));
+extern dw frames __attribute__((weak));
+extern dw countdown __attribute__((weak));
+extern dd elapsedtime __attribute__((weak));
+
+struct HostVga {
+	db seq_index = 0;
+	db gc_index = 0;
+	db crtc_index = 0;
+	db seq_regs[0x100] = {};
+	db gc_regs[0x100] = {};
+	db crtc_regs[0x100] = {};
+	db current_mode = 3;
+};
+
+struct HostPit {
+	db channel0_latch = 0;
+	bool channel0_waiting_high = false;
+	db channel0_low = 0;
+	uint16_t channel0_divisor = 0;
+};
+
+struct HostTimer {
+	bool enabled = false;
+	bool in_callback = false;
+	uint64_t last_us = 0;
+	uint64_t accum_us = 0;
+	int divider_20hz = 0;
+};
+
+struct HostHardware {
+	HostMouse mouse;
+	HostVga vga;
+	HostPit pit;
+	HostTimer timer;
+	db ppi_port_b = 0;
+	db keyboard_scan_code = 0;
+};
+
+static HostHardware host;
+
+static int host_clamp_int(int value, int min_value, int max_value) {
+	if (value < min_value) {
+		return min_value;
+	}
+	if (value > max_value) {
+		return max_value;
+	}
+	return value;
+}
+
+static void clamp_host_mouse() {
+	host.mouse.x = host_clamp_int(host.mouse.x, host.mouse.min_x, host.mouse.max_x);
+	host.mouse.y = host_clamp_int(host.mouse.y, host.mouse.min_y, host.mouse.max_y);
+}
+
+static uint64_t host_now_us() {
+	using clock = std::chrono::steady_clock;
+	return std::chrono::duration_cast<std::chrono::microseconds>(
+		clock::now().time_since_epoch()).count();
+}
+
+#ifndef NOSDL
+static int sdl_scancode_to_pc(SDL_Scancode scancode) {
+	switch (scancode) {
+	case SDL_SCANCODE_ESCAPE: return 1;
+	case SDL_SCANCODE_1: return 2;
+	case SDL_SCANCODE_2: return 3;
+	case SDL_SCANCODE_3: return 4;
+	case SDL_SCANCODE_4: return 5;
+	case SDL_SCANCODE_5: return 6;
+	case SDL_SCANCODE_6: return 7;
+	case SDL_SCANCODE_7: return 8;
+	case SDL_SCANCODE_8: return 9;
+	case SDL_SCANCODE_9: return 10;
+	case SDL_SCANCODE_0: return 11;
+	case SDL_SCANCODE_MINUS: return 12;
+	case SDL_SCANCODE_EQUALS: return 13;
+	case SDL_SCANCODE_BACKSPACE: return 14;
+	case SDL_SCANCODE_TAB: return 15;
+	case SDL_SCANCODE_Q: return 16;
+	case SDL_SCANCODE_W: return 17;
+	case SDL_SCANCODE_E: return 18;
+	case SDL_SCANCODE_R: return 19;
+	case SDL_SCANCODE_T: return 20;
+	case SDL_SCANCODE_Y: return 21;
+	case SDL_SCANCODE_U: return 22;
+	case SDL_SCANCODE_I: return 23;
+	case SDL_SCANCODE_O: return 24;
+	case SDL_SCANCODE_P: return 25;
+	case SDL_SCANCODE_LEFTBRACKET: return 26;
+	case SDL_SCANCODE_RIGHTBRACKET: return 27;
+	case SDL_SCANCODE_RETURN: return 28;
+	case SDL_SCANCODE_LCTRL:
+	case SDL_SCANCODE_RCTRL: return 29;
+	case SDL_SCANCODE_A: return 30;
+	case SDL_SCANCODE_S: return 31;
+	case SDL_SCANCODE_D: return 32;
+	case SDL_SCANCODE_F: return 33;
+	case SDL_SCANCODE_G: return 34;
+	case SDL_SCANCODE_H: return 35;
+	case SDL_SCANCODE_J: return 36;
+	case SDL_SCANCODE_K: return 37;
+	case SDL_SCANCODE_L: return 38;
+	case SDL_SCANCODE_SEMICOLON: return 39;
+	case SDL_SCANCODE_APOSTROPHE: return 40;
+	case SDL_SCANCODE_GRAVE: return 41;
+	case SDL_SCANCODE_LSHIFT: return 42;
+	case SDL_SCANCODE_BACKSLASH: return 43;
+	case SDL_SCANCODE_Z: return 44;
+	case SDL_SCANCODE_X: return 45;
+	case SDL_SCANCODE_C: return 46;
+	case SDL_SCANCODE_V: return 47;
+	case SDL_SCANCODE_B: return 48;
+	case SDL_SCANCODE_N: return 49;
+	case SDL_SCANCODE_M: return 50;
+	case SDL_SCANCODE_COMMA: return 51;
+	case SDL_SCANCODE_PERIOD: return 52;
+	case SDL_SCANCODE_SLASH: return 53;
+	case SDL_SCANCODE_RSHIFT: return 54;
+	case SDL_SCANCODE_KP_MULTIPLY: return 55;
+	case SDL_SCANCODE_LALT:
+	case SDL_SCANCODE_RALT: return 56;
+	case SDL_SCANCODE_SPACE: return 57;
+	case SDL_SCANCODE_CAPSLOCK: return 58;
+	case SDL_SCANCODE_F1: return 59;
+	case SDL_SCANCODE_F2: return 60;
+	case SDL_SCANCODE_F3: return 61;
+	case SDL_SCANCODE_F4: return 62;
+	case SDL_SCANCODE_F5: return 63;
+	case SDL_SCANCODE_F6: return 64;
+	case SDL_SCANCODE_F7: return 65;
+	case SDL_SCANCODE_F8: return 66;
+	case SDL_SCANCODE_F9: return 67;
+	case SDL_SCANCODE_F10: return 68;
+	case SDL_SCANCODE_NUMLOCKCLEAR: return 69;
+	case SDL_SCANCODE_SCROLLLOCK: return 70;
+	case SDL_SCANCODE_KP_7:
+	case SDL_SCANCODE_HOME: return 71;
+	case SDL_SCANCODE_KP_8:
+	case SDL_SCANCODE_UP: return 72;
+	case SDL_SCANCODE_KP_9:
+	case SDL_SCANCODE_PAGEUP: return 73;
+	case SDL_SCANCODE_KP_MINUS: return 74;
+	case SDL_SCANCODE_KP_4:
+	case SDL_SCANCODE_LEFT: return 75;
+	case SDL_SCANCODE_KP_5: return 76;
+	case SDL_SCANCODE_KP_6:
+	case SDL_SCANCODE_RIGHT: return 77;
+	case SDL_SCANCODE_KP_PLUS: return 78;
+	case SDL_SCANCODE_KP_1:
+	case SDL_SCANCODE_END: return 79;
+	case SDL_SCANCODE_KP_2:
+	case SDL_SCANCODE_DOWN: return 80;
+	case SDL_SCANCODE_KP_3:
+	case SDL_SCANCODE_PAGEDOWN: return 81;
+	case SDL_SCANCODE_KP_0:
+	case SDL_SCANCODE_INSERT: return 82;
+	case SDL_SCANCODE_KP_PERIOD:
+	case SDL_SCANCODE_DELETE: return 83;
+	case SDL_SCANCODE_F11: return 87;
+	case SDL_SCANCODE_F12: return 88;
+	default: return -1;
+	}
+}
+#endif
+
+static void host_set_key(int scan_code, bool pressed) {
+	if (scan_code < 0 || scan_code >= 128 || !&key) {
+		return;
+	}
+	key[scan_code] = pressed ? 1 : 0;
+	host.keyboard_scan_code = pressed ? scan_code : (scan_code | 0x80);
+	switch (scan_code) {
+	case 42:
+		key[54] = key[42];
+		break;
+	case 54:
+		key[42] = key[54];
+		break;
+	case 12:
+		key[74] = key[12];
+		break;
+	case 74:
+		key[12] = key[74];
+		break;
+	case 13:
+		key[78] = key[13];
+		break;
+	case 78:
+		key[13] = key[78];
+		break;
+	default:
+		break;
+	}
+}
+
+static void host_run_timer(struct _STATE* _state) {
+	if (!host.timer.enabled || host.timer.in_callback) {
+		return;
+	}
+	const uint64_t now_us = host_now_us();
+	if (host.timer.last_us == 0) {
+		host.timer.last_us = now_us;
+		return;
+	}
+	uint64_t delta_us = now_us - host.timer.last_us;
+	host.timer.last_us = now_us;
+	delta_us = std::min<uint64_t>(delta_us, 250000);
+	host.timer.accum_us += delta_us;
+
+	host.timer.in_callback = true;
+	int ticks_this_pump = 0;
+	while (host.timer.accum_us >= 10000 && ticks_this_pump < 5) {
+		host.timer.accum_us -= 10000;
+		++ticks_this_pump;
+		if (&ticker) {
+			++ticker;
+		}
+		if (&frames) {
+			++frames;
+		}
+		if (&countdown && countdown > 0) {
+			--countdown;
+		}
+		if (&elapsedtime) {
+			++elapsedtime;
+		}
+		if (gameintr100) {
+			gameintr100(0, _state);
+		}
+		if (++host.timer.divider_20hz >= 5) {
+			host.timer.divider_20hz = 0;
+			if (gameintr20) {
+				gameintr20(0, _state);
+			}
+		}
+	}
+	host.timer.in_callback = false;
+}
+
+static void poll_host_events(struct _STATE* _state) {
+#ifndef NOSDL
+	if ((SDL_WasInit(SDL_INIT_VIDEO) & SDL_INIT_VIDEO) != 0) {
+		SDL_Event event;
+		while (SDL_PollEvent(&event)) {
+			switch (event.type) {
+			case SDL_QUIT:
+				executionFinished = true;
+				jumpToBackGround = true;
+				break;
+			case SDL_MOUSEMOTION:
+				host.mouse.x = event.motion.x;
+				host.mouse.y = event.motion.y;
+				host.mouse.motion_x += event.motion.xrel;
+				host.mouse.motion_y += event.motion.yrel;
+				clamp_host_mouse();
+				break;
+			case SDL_MOUSEBUTTONDOWN:
+			case SDL_MOUSEBUTTONUP: {
+				int bit = 0;
+				if (event.button.button == SDL_BUTTON_LEFT) {
+					bit = 1;
+				} else if (event.button.button == SDL_BUTTON_RIGHT) {
+					bit = 2;
+				} else if (event.button.button == SDL_BUTTON_MIDDLE) {
+					bit = 4;
+				}
+				if (event.type == SDL_MOUSEBUTTONDOWN) {
+					host.mouse.buttons |= bit;
+				} else {
+					host.mouse.buttons &= ~bit;
+				}
+				break;
+			}
+			case SDL_KEYDOWN:
+			case SDL_KEYUP:
+				host_set_key(sdl_scancode_to_pc(event.key.keysym.scancode),
+					event.type == SDL_KEYDOWN);
+				break;
+			default:
+				break;
+			}
+		}
+	}
+#endif
+	host_run_timer(_state);
+}
 
 #define MAX_FMT_SIZE 1024
 void log_error(const char *fmt, ...) {
@@ -313,7 +624,24 @@ void asm2C_OUT(int16_t address, int data,_STATE* _state) {
 #else
 X86_REGREF
 	static int indexPalette = 0;
-	switch(address) {
+	switch(address & 0xffff) {
+	case 0x20:
+	case 0x21:
+		break;
+		case 0x40:
+			host.pit.channel0_latch = data;
+			break;
+	case 0x43:
+		break;
+	case 0x61:
+		host.ppi_port_b = data;
+		break;
+	case 0x3c4:
+		host.vga.seq_index = data;
+		break;
+	case 0x3c5:
+		host.vga.seq_regs[host.vga.seq_index] = data;
+		break;
 	case 0x3c8:
 		indexPalette=data;
 		break;
@@ -324,6 +652,18 @@ X86_REGREF
 		} else {
 			log_error("error: indexPalette>767 %d\n",indexPalette);
 		}
+		break;
+	case 0x3ce:
+		host.vga.gc_index = data;
+		break;
+	case 0x3cf:
+		host.vga.gc_regs[host.vga.gc_index] = data;
+		break;
+	case 0x3d4:
+		host.vga.crtc_index = data;
+		break;
+	case 0x3d5:
+		host.vga.crtc_regs[host.vga.crtc_index] = data;
 		break;
 	default:
 		log_debug("unknown OUT %x,%x at %x:%x\n",address, data,cs,eip);
@@ -337,12 +677,26 @@ int8_t asm2C_IN(int16_t address,_STATE* _state) {
 	return inportb(address);
 #else
 X86_REGREF
+	poll_host_events(_state);
 	static bool vblTick = 1;
-	switch(address) {
+		switch(address & 0xffff) {
+		case 0x20:
+		case 0x21:
+			return 0;
+		case 0x40:
+			return host.pit.channel0_latch;
+		case 0x60:
+			return host.keyboard_scan_code;
+	case 0x61:
+		return host.ppi_port_b;
 	case 0x201:
 		{
 			return 0xff;  // no joystick
 		}
+	case 0x3c5:
+		return host.vga.seq_regs[host.vga.seq_index];
+	case 0x3cf:
+		return host.vga.gc_regs[host.vga.gc_index];
 	case 0x3DA:
 		if (vblTick) {
 			vblTick = 0;
@@ -353,6 +707,8 @@ X86_REGREF
 			return 8;
 		}
 		//break;
+	case 0x3d5:
+		return host.vga.crtc_regs[host.vga.crtc_index];
 	default:
 		log_error("Unknown IN %x at %x:%x\n",address,cs,eip);
 		return 0;
@@ -528,11 +884,12 @@ X86_REGREF
 	case 0x10:
 	{
 		switch(ah)
-		{
-		case 0: { // set mode
-			switch(al)
-			 {
-			case 0x03: {
+			{
+			case 0: { // set mode
+				host.vga.current_mode = al;
+				switch(al)
+				 {
+				case 0x03: {
 #ifndef NOCURSES
 				resize_term(25, 80);
 				clear();
@@ -592,6 +949,12 @@ X86_REGREF
 			 }
 			}
 
+		}
+		case 0x0f: { // get current video mode
+			al = host.vga.current_mode;
+			ah = 80;
+			bh = 0;
+			return;
 		}
 		case 0x02: { // set cursor
 #ifndef NOCURSES
@@ -759,6 +1122,12 @@ X86_REGREF
 		{
 			*(dw *)realAddress(al*4,0)=dx;
 			*(dw *)realAddress(al*4+2,0)=ds;
+			if (al == 0x08) {
+				host.timer.enabled = true;
+				host.timer.last_us = host_now_us();
+				host.timer.accum_us = 0;
+				host.timer.divider_20hz = 0;
+			}
 			return;
 		}
 		case 0x30: // ver
@@ -770,8 +1139,13 @@ X86_REGREF
 		}
 		case 0x35: // Set disk transfer addr
 		{
-			bx=*(dw *)realAddress(al*4,0);
-			es=*(dw *)realAddress(al*4+2,0);
+			if (al == 0x33) {
+				bx = 0x33 * 4;
+				es = 0;
+			} else {
+				bx=*(dw *)realAddress(al*4,0);
+				es=*(dw *)realAddress(al*4+2,0);
+			}
 			return;
 		}
 		case 0x2a:
@@ -1214,13 +1588,73 @@ X86_REGREF
 		}
 		break;
 */
-	case 0x33: // mouse not implemented yet
+	case 0x33:
 	{
 #ifdef __DJGPP__
         call_dos_realint(_state, a);
 			return;
 #endif
-		break;
+			poll_host_events(_state);
+		switch (ax) {
+		case 0x0000:
+			host.mouse.installed = true;
+			host.mouse.visible = false;
+			host.mouse.buttons = 0;
+			host.mouse.motion_x = 0;
+			host.mouse.motion_y = 0;
+			clamp_host_mouse();
+			ax = 0xffff;
+			bx = 2;
+			return;
+		case 0x0001:
+			host.mouse.visible = true;
+			return;
+		case 0x0002:
+			host.mouse.visible = false;
+			return;
+		case 0x0003:
+			bx = host.mouse.buttons;
+			cx = host.mouse.x;
+			dx = host.mouse.y;
+			return;
+		case 0x0004:
+			host.mouse.last_x = host.mouse.x;
+			host.mouse.last_y = host.mouse.y;
+			host.mouse.x = cx;
+			host.mouse.y = dx;
+			clamp_host_mouse();
+			host.mouse.motion_x += host.mouse.x - host.mouse.last_x;
+			host.mouse.motion_y += host.mouse.y - host.mouse.last_y;
+			return;
+		case 0x0005:
+		case 0x0006:
+			ax = host.mouse.buttons;
+			bx = 0;
+			cx = host.mouse.x;
+			dx = host.mouse.y;
+			return;
+		case 0x0007:
+			host.mouse.min_x = std::min<int>(cx, dx);
+			host.mouse.max_x = std::max<int>(cx, dx);
+			clamp_host_mouse();
+			return;
+		case 0x0008:
+			host.mouse.min_y = std::min<int>(cx, dx);
+			host.mouse.max_y = std::max<int>(cx, dx);
+			clamp_host_mouse();
+			return;
+		case 0x000b:
+			cx = static_cast<dw>(host.mouse.motion_x);
+			dx = static_cast<dw>(host.mouse.motion_y);
+			host.mouse.motion_x = 0;
+			host.mouse.motion_y = 0;
+			return;
+		default:
+			log_debug("Unsupported mouse INT 33h ax:0x%x bx:0x%x cx:0x%x dx:0x%x\n", ax, bx, cx, dx);
+			ax = 0;
+			bx = 0;
+			return;
+		}
 	}
 	default:
 #ifdef __DJGPP__
@@ -1683,4 +2117,3 @@ int main(int argc, char *argv[]) {
     }
     return (0);
 }
-
