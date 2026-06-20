@@ -269,7 +269,8 @@ static db *translated_data_symbol_address(db *symbol_storage) {
 		reinterpret_cast<db *>(&target)
 	);
 	const uintptr_t target_addr = reinterpret_cast<uintptr_t>(target);
-	if (target_addr > 0x10000) {
+	const uintptr_t memory_addr = reinterpret_cast<uintptr_t>(&m);
+	if (target_addr >= memory_addr && target_addr - memory_addr < 64u * 1024u * 1024u) {
 		return target;
 	}
 	return symbol_storage;
