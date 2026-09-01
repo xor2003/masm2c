@@ -1,3 +1,5 @@
+
+
 [![C/C++
 CI](https://github.com/xor2003/masm2c/actions/workflows/c-cpp.yml/badge.svg)](https://github.com/xor2003/masm2c/actions/workflows/c-cpp.yml)
 [![Python
@@ -63,7 +65,7 @@ start:
 
 struct Memory m = {
 {0}, // padding
-{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // segment _data
+{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // segment _data
 {'H','e','l','l','o',' ','W','o','r','l','d','!','\n','\r','$'}, // _msg
 ...
 ```
@@ -142,7 +144,7 @@ Features:
 
 **Output Files:**
 
-* **C++ Source Files (.cpp and .h):** These files contain the translated C code equivalent to your assembly source.
+* **C++ Source Files (.cpp and .h):** These files contain the translated C++ code equivalent to your assembly source.
 * **Segment File (.seg):** This file stores information about the segments in your assembly code. It can be used for merging data segments from multiple input files.
 
 **Tips:**
