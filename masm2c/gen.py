@@ -426,10 +426,37 @@ class Gen(TopDownVisitor):
                 labels.add(label_name)
         return labels
 
-    def write_segment_file(self, segments, structs, fname, data_aliases=None, equates=None, abs_externs=None):
+    def write_segment_file(
+        self,
+        segments,
+        structs,
+        fname,
+        data_aliases=None,
+        equates=None,
+        abs_externs=None,
+        code_symbols=None,
+        defined_code_symbols=None,
+        extern_code_symbols=None,
+        defined_code_symbol_offsets=None,
+        code_offset_aliases=None,
+    ):
         jsonpickle.set_encoder_options("json", indent=2)
         with open(self.segment_sidecar_path(fname), "wb") as f:
-            pickle.dump((segments, structs, data_aliases or [], equates or [], abs_externs or set()), f)
+            pickle.dump(
+                (
+                    segments,
+                    structs,
+                    data_aliases or [],
+                    equates or [],
+                    abs_externs or set(),
+                    code_symbols or set(),
+                    defined_code_symbols or set(),
+                    extern_code_symbols or set(),
+                    defined_code_symbol_offsets or {},
+                    code_offset_aliases or [],
+                ),
+                f,
+            )
 
     def read_segment_files(self, asm_files):
         logging.info(" *** Merging .seg files")
@@ -438,6 +465,12 @@ class Gen(TopDownVisitor):
         data_aliases = []
         equates = []
         abs_externs = set()
+        code_symbols = set()
+        defined_code_symbols = set()
+        extern_code_symbols = set()
+        defined_code_symbol_offsets = {}
+        reserved_code_symbol_offsets: set[int] = set()
+        code_offset_aliases = []
         for file in asm_files:
             file = self.segment_sidecar_path(file)
             logging.info(f"     Merging data from {file}")
@@ -448,43 +481,314 @@ class Gen(TopDownVisitor):
                     newaliases = []
                     newequates = []
                     newabs_externs = set()
+                    newcode_symbols = set()
+                    newdefined_code_symbols = set()
+                    newextern_code_symbols = set()
+                    newdefined_code_symbol_offsets = {}
+                    newcode_offset_aliases = []
                 elif len(sidecar) == 3:
                     newsegments, newstructs, newaliases = sidecar
                     newequates = []
                     newabs_externs = set()
+                    newcode_symbols = set()
+                    newdefined_code_symbols = set()
+                    newextern_code_symbols = set()
+                    newdefined_code_symbol_offsets = {}
+                    newcode_offset_aliases = []
                 elif len(sidecar) == 4:
                     newsegments, newstructs, newaliases, newequates = sidecar
                     newabs_externs = set()
-                else:
+                    newcode_symbols = set()
+                    newdefined_code_symbols = set()
+                    newextern_code_symbols = set()
+                    newdefined_code_symbol_offsets = {}
+                    newcode_offset_aliases = []
+                elif len(sidecar) == 5:
                     newsegments, newstructs, newaliases, newequates, newabs_externs = sidecar
+                    newcode_symbols = set()
+                    newdefined_code_symbols = set()
+                    newextern_code_symbols = set()
+                    newdefined_code_symbol_offsets = {}
+                    newcode_offset_aliases = []
+                elif len(sidecar) == 6:
+                    newsegments, newstructs, newaliases, newequates, newabs_externs, newcode_symbols = sidecar
+                    newdefined_code_symbols = set()
+                    newextern_code_symbols = set()
+                    newdefined_code_symbol_offsets = {}
+                    newcode_offset_aliases = []
+                elif len(sidecar) == 7:
+                    newsegments, newstructs, newaliases, newequates, newabs_externs, newcode_symbols, newdefined_code_symbols = sidecar
+                    newextern_code_symbols = set()
+                    newdefined_code_symbol_offsets = {}
+                    newcode_offset_aliases = []
+                elif len(sidecar) == 8:
+                    (
+                        newsegments,
+                        newstructs,
+                        newaliases,
+                        newequates,
+                        newabs_externs,
+                        newcode_symbols,
+                        newdefined_code_symbols,
+                        newextern_code_symbols,
+                    ) = sidecar
+                    newdefined_code_symbol_offsets = {}
+                    newcode_offset_aliases = []
+                elif len(sidecar) == 9:
+                    (
+                        newsegments,
+                        newstructs,
+                        newaliases,
+                        newequates,
+                        newabs_externs,
+                        newcode_symbols,
+                        newdefined_code_symbols,
+                        newextern_code_symbols,
+                        newdefined_code_symbol_offsets,
+                    ) = sidecar
+                    newcode_offset_aliases = []
+                else:
+                    (
+                        newsegments,
+                        newstructs,
+                        newaliases,
+                        newequates,
+                        newabs_externs,
+                        newcode_symbols,
+                        newdefined_code_symbols,
+                        newextern_code_symbols,
+                        newdefined_code_symbol_offsets,
+                        newcode_offset_aliases,
+                    ) = sidecar
                 relocations = self._segment_merge_relocations(segments, newsegments)
                 segments, structures = self.merge_segments(segments, structs, newsegments, newstructs)
                 data_aliases.extend(self._relocate_data_aliases(newaliases, relocations))
-                equates.extend(newequates)
+                code_offset_aliases.extend(self._relocate_data_aliases(newcode_offset_aliases, relocations))
+                code_symbol_merge_offset = self._code_symbol_merge_offset(newsegments, relocations)
+                equates.extend(self._relocate_equates(newequates, relocations, newsegments))
                 abs_externs.update(str(name).lower() for name in newabs_externs)
+                code_symbols.update(str(name).lower() for name in newcode_symbols)
+                defined_code_symbols.update(str(name).lower() for name in newdefined_code_symbols)
+                extern_code_symbols.update(str(name).lower() for name in newextern_code_symbols)
+                reserved_code_symbol_offsets.update(int(offset) for offset in newdefined_code_symbol_offsets.values())
+                defined_code_symbol_offsets.update(
+                    (str(name).lower(), self._relocate_code_symbol_offset(offset, code_symbol_merge_offset))
+                    for name, offset in newdefined_code_symbol_offsets.items()
+                )
+        if self.merge_data_segments:
+            self._layout_public_segment_class_storage(segments)
         self._context.data_aliases = self._deduplicate_data_alias_names(data_aliases)
-        reserved_names = self._merged_symbol_names(segments, structures, self._context.data_aliases)
-        self._context.exported_equates = self._deduplicate_equates(equates, abs_externs, reserved_names)
+        relocated_alias_offsets = {
+            str(alias.name).lower(): int(alias.offset)
+            for alias in code_offset_aliases
+            if getattr(alias, "name", "")
+        }
+        code_offset_alias_names = set(relocated_alias_offsets)
+        relocated_alias_offsets.update(
+            self._data_label_code_offsets(self._context.data_aliases, segments, defined_code_symbol_offsets)
+        )
+        storage_reserved_names = self._merged_symbol_names(segments, structures, self._context.data_aliases)
+        reserved_names = set(storage_reserved_names)
+        reserved_names.update(code_symbols)
+        self._context.exported_equates = self._deduplicate_equates(
+            equates,
+            abs_externs,
+            reserved_names,
+            defined_code_symbols,
+            extern_code_symbols,
+        )
+        requested_public_code_offsets = {
+            str(name).lower()
+            for name in (
+                self._context.args.get("public_code_exports", [])
+                if isinstance(getattr(self._context, "args", None), dict)
+                else []
+            )
+        }
+        exported_code_symbols = extern_code_symbols | requested_public_code_offsets
+        (
+            self._context.exported_code_symbol_offsets,
+            self._context.exported_callable_code_symbol_offsets,
+        ) = self._assign_aggregate_code_offsets(
+            defined_code_symbol_offsets,
+            defined_code_symbols,
+            exported_code_symbols,
+            relocated_alias_offsets,
+            code_offset_alias_names,
+            storage_reserved_names,
+            reserved_code_symbol_offsets,
+        )
+        self._context.all_defined_code_symbol_offsets = {
+            str(name).lower(): int(offset)
+            for name, offset in defined_code_symbol_offsets.items()
+        }
         return segments, structures
 
     @staticmethod
-    def _deduplicate_equates(equates, abs_externs=None, reserved_names=None):
+    def _data_label_code_offsets(data_aliases, segments: OrderedDict, defined_code_symbol_offsets: dict[str, int]):
+        """Return aggregate code-relative offsets for exported data labels."""
+        offsets: dict[str, int] = {}
+        defined = {str(name).lower() for name in defined_code_symbol_offsets}
+        segments_by_name = {str(name).lower(): segment for name, segment in segments.items()}
+        for alias in data_aliases:
+            name = str(getattr(alias, "name", "")).lower()
+            if not name or name not in defined:
+                continue
+            segment_name = str(getattr(alias, "segment", "")).lower()
+            segment = segments_by_name.get(segment_name)
+            if segment is None:
+                continue
+            offsets[name] = int(getattr(segment, "offset", 0)) + int(getattr(alias, "offset", 0))
+        return offsets
+
+    @staticmethod
+    def _relocate_equates(equates, relocations: dict[str, tuple[str, int]], segments: OrderedDict):
+        """Relocate captured code-segment `$` equates from module to aggregate offsets."""
+        relocated = []
+        for item in equates:
+            if len(item) < 5:
+                relocated.append(item)
+                continue
+            name, value, public, segment, location_counter_equate = item[:5]
+            segment_name = str(segment).lower()
+            segment_info = segments.get(segment_name)
+            merge_offset = int(relocations.get(segment_name, (segment_name, 0))[1])
+            if location_counter_equate and merge_offset and segment_info and Gen._is_code_storage_segment(segment_info):
+                value = Gen._relocate_location_counter_equate_value(str(value), merge_offset)
+            relocated.append((name, value, public))
+        return relocated
+
+    @staticmethod
+    def _relocate_location_counter_equate_value(value: str, merge_offset: int) -> str:
+        """Relocate simple captured-offset equate values emitted by the parser."""
+        term = r"(?:0x[0-9a-fA-F]+|\d+)"
+
+        def parse_int(raw: str) -> int:
+            return int(raw, 16) if raw.lower().startswith("0x") else int(raw)
+
+        def render_int(raw: str) -> str:
+            return str(parse_int(raw) + merge_offset)
+
+        if re.fullmatch(term, value):
+            return render_int(value)
+        match = re.fullmatch(rf"({term})\s*-\s*({term})", value)
+        if match:
+            left, right = match.groups()
+            return f"{render_int(left)}-{render_int(right)}"
+        return value
+
+    @staticmethod
+    def _assign_aggregate_code_offsets(
+        defined_code_symbol_offsets: dict[str, int],
+        defined_code_symbols: set[str],
+        exported_code_symbols: set[str],
+        relocated_alias_offsets: dict[str, int],
+        code_offset_alias_names: set[str],
+        reserved_names: set[str],
+        reserved_code_symbol_offsets: set[int] | None = None,
+    ) -> tuple[dict[str, int], dict[str, int]]:
+        """Assign unique aggregate dispatch handles for exported code symbols."""
+        exported_offsets: dict[str, int] = {}
+        callable_offsets: dict[str, int] = {}
+        reserved_offsets = {int(offset) for offset in defined_code_symbol_offsets.values()}
+        reserved_offsets.update(int(offset) for offset in reserved_code_symbol_offsets or set())
+        reserved_offsets.update(int(offset) for offset in relocated_alias_offsets.values())
+        used_offsets: set[int] = set()
+        next_offset = 0x1000
+
+        for name in defined_code_symbol_offsets:
+            if name not in exported_code_symbols:
+                continue
+            if name in reserved_names:
+                exported_offsets[name] = relocated_alias_offsets.get(name, defined_code_symbol_offsets[name])
+                continue
+            if name not in defined_code_symbols:
+                exported_offsets[name] = relocated_alias_offsets.get(name, defined_code_symbol_offsets[name])
+                continue
+            if name in code_offset_alias_names:
+                exported_offsets[name] = relocated_alias_offsets[name]
+                continue
+            while next_offset in reserved_offsets or next_offset in used_offsets:
+                next_offset += 1
+            exported_offsets[name] = next_offset
+            callable_offsets[name] = next_offset
+            used_offsets.add(next_offset)
+            next_offset += 1
+
+        return exported_offsets, callable_offsets
+
+    @staticmethod
+    def _unique_code_symbol_offsets(offsets):
+        result = OrderedDict()
+        used_offsets = set()
+        for name, offset in sorted(offsets.items()):
+            normalized = str(name).lower()
+            if normalized == "main":
+                continue
+            if offset in used_offsets:
+                continue
+            result[normalized] = offset
+            used_offsets.add(offset)
+        return result
+
+    @staticmethod
+    def _deduplicate_equates(
+        equates,
+        abs_externs=None,
+        reserved_names=None,
+        defined_code_symbols=None,
+        extern_code_symbols=None,
+    ):
         abs_externs = abs_externs or set()
         reserved_names = reserved_names or set()
+        defined_code_symbols = defined_code_symbols or set()
+        extern_code_symbols = extern_code_symbols or set()
         result = OrderedDict()
         for item in equates:
             if len(item) == 2:
                 name, value = item
                 public = True
-            else:
+            elif len(item) == 3:
                 name, value, public = item
+            else:
+                name, value, public = item[:3]
             normalized_name = str(name).lower()
-            if normalized_name in reserved_names:
+            is_code_symbol_equate = (
+                public
+                and normalized_name in extern_code_symbols
+                and normalized_name not in defined_code_symbols
+            )
+            if normalized_name in reserved_names and not is_code_symbol_equate:
+                continue
+            if Gen._is_host_reserved_equate_name(normalized_name):
+                continue
+            if Gen._is_module_local_equate_value(str(value)):
+                continue
+            if Gen._is_non_numeric_bare_equate_value(str(value)):
                 continue
             if not public and normalized_name not in abs_externs:
                 continue
-            result[str(name)] = str(value)
-        return list(result.items())
+            result[str(name)] = (str(value), is_code_symbol_equate)
+        return [(name, value, is_code_symbol) for name, (value, is_code_symbol) in result.items()]
+
+    @staticmethod
+    def _is_host_reserved_equate_name(name: str) -> bool:
+        return name.startswith("_") or name in {
+            "bits",
+            "num",
+            "quo",
+            "rem",
+            "string",
+            "val",
+        }
+
+    @staticmethod
+    def _is_module_local_equate_value(value: str) -> bool:
+        return "$" in value or "*(" in value or "&" in value or "m2c::" in value
+
+    @staticmethod
+    def _is_non_numeric_bare_equate_value(value: str) -> bool:
+        return bool(re.fullmatch(r"[A-Za-z_@$?][A-Za-z0-9_@$?]*", value.strip()))
 
     @staticmethod
     def _merged_symbol_names(segments, structures, data_aliases) -> set[str]:
@@ -596,6 +900,73 @@ class Gen(TopDownVisitor):
             [segment.getsize(), *(data.offset + data.getsize() for data in segment.getdata())],
             default=0,
         )
+
+    @classmethod
+    def _code_symbol_merge_offset(
+        cls,
+        segments: OrderedDict,
+        relocations: dict[str, tuple[str, int]],
+    ) -> int:
+        """Return the public code-segment relocation for a module sidecar."""
+        for segment_name, segment in segments.items():
+            if cls._is_code_storage_segment(segment):
+                return int(relocations.get(segment_name, (segment_name, 0))[1])
+        return 0
+
+    @staticmethod
+    def _relocate_code_symbol_offset(offset: int, merge_offset: int) -> int:
+        """Relocate near code offsets while leaving far/listing addresses intact."""
+        offset = int(offset)
+        if not merge_offset or offset > 0xFFFF:
+            return offset
+        return offset + int(merge_offset)
+
+    @classmethod
+    def _layout_public_segment_class_storage(cls, segments: OrderedDict) -> None:
+        occupied: list[tuple[int, int]] = []
+        for segment in segments.values():
+            if not cls._is_code_storage_segment(segment):
+                continue
+            extent = cls._segment_extent(segment)
+            if extent:
+                occupied.append((int(segment.offset), int(segment.offset) + extent))
+
+        next_free = cls._align_storage_offset(max((end for _start, end in occupied), default=0))
+        for segment in segments.values():
+            if cls._is_code_storage_segment(segment) or not cls._is_public_segment_class(segment):
+                continue
+            extent = cls._segment_extent(segment)
+            if not extent:
+                continue
+            start = int(segment.offset)
+            end = start + extent
+            if any(cls._intervals_overlap(start, end, used_start, used_end) for used_start, used_end in occupied):
+                start = next_free
+                end = start + extent
+                segment.offset = start
+                segment.linked_storage_offset_authoritative = True
+            occupied.append((start, end))
+            next_free = cls._align_storage_offset(max(next_free, end))
+
+    @staticmethod
+    def _is_public_segment_class(segment) -> bool:
+        return bool(getattr(segment, "segclass", None) and getattr(segment, "options", None) and "public" in segment.options)
+
+    @classmethod
+    def _is_code_storage_segment(cls, segment) -> bool:
+        if not cls._is_public_segment_class(segment):
+            return False
+        name = str(getattr(segment, "name", "")).lower()
+        segclass = str(getattr(segment, "segclass", "")).lower()
+        return "code" in name or "code" in segclass or name in {"cseg", "codesg"} or segclass in {"cseg", "codesg"}
+
+    @staticmethod
+    def _intervals_overlap(start: int, end: int, used_start: int, used_end: int) -> bool:
+        return start < used_end and used_start < end
+
+    @staticmethod
+    def _align_storage_offset(offset: int) -> int:
+        return (offset + 0x0f) & ~0x0f
 
     @staticmethod
     def _relocate_data_record(data, merge_offset: int) -> None:
@@ -744,7 +1115,11 @@ class Gen(TopDownVisitor):
                     lst.write(f"{global_obj.name} {global_obj.offset}\n")
 
             lst.write(
-                jsonpickle.encode((self._context.symbols.get_globals(), self._context.segments, self._context.structures)))
+                jsonpickle.encode(
+                    (self._context.symbols.get_globals(), self._context.segments, self._context.structures),
+                    max_depth=8,
+                )
+            )
 
 
     def make_enums_and_labels(self, labels):

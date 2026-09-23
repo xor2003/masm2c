@@ -68,7 +68,7 @@ class MatchTag:
         if self.last_type == "LABEL" and token.type == "LABEL" and token_text in {"struc", "struct", "union"}:  # HACK workaround
             token.type = "STRUCTHDR"
         if token.type == "LABEL" and token_text == "ends":  # HACK workaround
-            token.type = "endsdir"
+            token.type = "ENDS"
 
         if self.last_type == "LABEL" and token.type == "STRUCTHDR":
             assert self.context
@@ -170,6 +170,8 @@ class Asm2IR(CommonCollector):
         return expr
 
     def externdef(self, nodes: list[lark.Tree | lark.Token]) -> list[lark.Tree | lark.Token]:
+        if len(nodes) == 1:
+            nodes = [lark.Token("COMMON", "COMMON"), nodes[0]]
         label, symbol_type = nodes
         resolved_type: str | lark.Token
         if isinstance(symbol_type, lark.Tree):
@@ -193,6 +195,8 @@ class Asm2IR(CommonCollector):
         return nodes[0] if nodes else "abs"
 
     def pubdef(self, nodes: list[lark.Tree | lark.Token]) -> str:
+        if not nodes:
+            return "COMMON"
         for node in reversed(nodes):
             if isinstance(node, lark.Token) and node.type == "LABEL":
                 return str(node)
@@ -264,6 +268,8 @@ class Asm2IR(CommonCollector):
             if isinstance(node, lark.Token) and node.type == "LABELALIAS":
                 continue
             payload.append(node)
+        if len(payload) >= 3 and isinstance(payload[1], lark.Token) and str(payload[1]).lower() == "label":
+            payload.pop(1)
         name = str(payload[0])
         data_type_node = payload[1]
         while isinstance(data_type_node, lark.Tree) and data_type_node.children:
@@ -640,9 +646,10 @@ class Asm2IR(CommonCollector):
 
         instruction = self.context.consume_pending_mnemonic()
         args = nodes[0].children if len(nodes) else []
-        args = self.context.prepare_instruction_args(instruction, args)
+        raw_line = get_raw_line(self.input_str, meta)
+        instruction, args = self.context.prepare_instruction(instruction, args, raw=raw_line)
         self._clear_expression()
-        return self.context.dispatch_instruction(instruction, args, raw=get_raw_line(self.input_str, meta),
+        return self.context.dispatch_instruction(instruction, args, raw=raw_line,
                                                  line_number=get_line_number(meta)) or Discard
 
     def enddir(self, children):
@@ -720,7 +727,7 @@ class Asm2IR(CommonCollector):
         return nodes  # Token('LABEL', nodes)
 
     def STRING(self, nodes: lark.lexer.Token) -> lark.lexer.Token:
-        if m := re.match(r'[\'"](.+)[\'"]$', nodes):
+        if m := re.match(r'[\'"](.*)[\'"]$', nodes):
             string = m[1]
             if not self.context.is_lst_mode():  # not for IDA .lst
                 string = string.replace("''", "'").replace('""', '"')  # masm behaviour
@@ -764,7 +771,14 @@ class Asm2IR(CommonCollector):
         return lark.Tree("memberdir", list(parts))
 
     def radixdir(self, children):
-        self.context.set_radix(int(children[0]))
+        radix = children[0]
+        if isinstance(radix, Expression):
+            integers = Token.find_tokens(radix, "INTEGER") or []
+            if len(integers) == 1:
+                radix = int(str(integers[0]), 10)
+            else:
+                radix = self.context.eval_expression_to_int(radix)
+        self.context.set_radix(int(radix))
         return children
 
 
@@ -778,7 +792,7 @@ class Asm2IR(CommonCollector):
     def offsetdirtype(self, nodes):
         directive = _token_lower(nodes[0])
         logging.debug("offsetdirtype %s", nodes)
-        value = str(nodes[1].children[0]) if len(nodes)==2 else 2
+        value = self.context.eval_expression_to_int(nodes[1]) if len(nodes) == 2 else 2
         self.context.apply_offset_directive(directive, value)
         return nodes
 

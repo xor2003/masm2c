@@ -263,10 +263,23 @@ class Proc:
 
     def visit(self, visitor: Cpp, skip=0):
         previous_active_proc_far = getattr(visitor, "_active_proc_far", False)
+        previous_current_stmt = getattr(visitor, "_current_stmt", None)
+        previous_next_stmt = getattr(visitor, "_next_stmt", None)
         visitor._active_proc_far = self.far
         try:
             for i in range(skip, len(self.stmts)):
                 stmt = self.stmts[i]
+                visitor._current_stmt = stmt
+                visitor._next_stmt = next(
+                    (
+                        candidate
+                        for candidate in self.stmts[i + 1:]
+                        if not isinstance(candidate, op.label)
+                        and candidate.cmd.strip()
+                        and not candidate.cmd.strip().startswith(";")
+                    ),
+                    None,
+                )
                 if isinstance(stmt, op.label):
                     symbol = visitor._context.symbols.get_global(stmt.name)
                     if isinstance(symbol, Proc):
@@ -299,6 +312,8 @@ class Proc:
                     logging.warning(f"Some attributes missing while setting comment for {stmt}")
         finally:
             visitor._active_proc_far = previous_active_proc_far
+            visitor._current_stmt = previous_current_stmt
+            visitor._next_stmt = previous_next_stmt
 
     def generate_full_cmd_line(self, visitor: Cpp, stmt: baseop) -> str:
         prefix = visitor.prefix
@@ -315,6 +330,7 @@ class Proc:
         if full_command:
             full_command = self.set_instruction_compare_subclass(stmt, full_command, visitor._context.itislst)
             full_command += visitor.consume_external_offset_ds_restore(stmt)
+            full_command += visitor.consume_code_skip_after_stmt(stmt, command)
 
         return visitor._cmdlabel + visitor.dispatch + full_command
 

@@ -614,6 +614,19 @@ class _call(baseop):
         return visitor._call(*self.children)
 
 
+class _skipbytes(baseop):
+    """Synthetic code op for data bytes that encode an immediate skip."""
+
+    def __init__(self, opcode: int, byte_count: int) -> None:
+        super().__init__()
+        self.opcode = opcode
+        self.byte_count = byte_count
+        self.cmd = "__skipbytes"
+
+    def accept(self, visitor: "Cpp") -> str:
+        return visitor._skipbytes(self.opcode, self.byte_count)
+
+
 class _rep(baseop):
     def __init__(self, args: list[Expression]) -> None:
         super().__init__()

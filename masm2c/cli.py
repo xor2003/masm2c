@@ -27,6 +27,7 @@ except Exception:
     pass
 
 import argparse
+import ast
 import concurrent.futures
 import glob
 import logging
@@ -36,6 +37,7 @@ import sys
 
 from .cpp import Cpp
 from .parser import Parser
+from .Token import Token as Token_
 
 __version__ = "0.9.8"
 
@@ -44,6 +46,19 @@ __copyright__ = "x0r"
 __license__ = "GPL2+"
 
 _logger = logging.getLogger(__name__)
+
+_ASM_IDENTIFIER = r"[A-Za-z_@$?.][A-Za-z0-9_@$?.]*"
+_EQUATE_ASSIGNMENT_RE = re.compile(
+    rf"^\s*(?P<name>{_ASM_IDENTIFIER})\s*(?:=|\bEQU\b)\s*(?P<expr>[^;\r\n]+)",
+    flags=re.IGNORECASE,
+)
+_INCLUDE_RE = re.compile(r"^\s*INCLUDE\s+(?P<path>[^;\r\n]+)", flags=re.IGNORECASE)
+_C_EQUATE_DEFINE_RE = re.compile(
+    rf"^\s*#\s*define\s+(?P<name>{_ASM_IDENTIFIER})\s+(?P<expr>[^\r\n]+)"
+)
+_C_STATIC_CONST_RE = re.compile(
+    rf"^\s*static\s+const\s+(?:int|dd|dw|size_t)\s+(?P<name>{_ASM_IDENTIFIER})\s*=\s*(?P<expr>[^;\r\n]+)"
+)
 
 
 def default_jobs() -> int:
@@ -277,12 +292,264 @@ def source_files(files: list[str]) -> list[str]:
     return [file for file in files if file.lower().endswith((".asm", ".lst"))]
 
 
+def _strip_asm_comment(line: str) -> str:
+    """Return source text before an assembler comment."""
+    return line.split(";", 1)[0]
+
+
+def _resolve_include_path(raw_path: str, current_dir: str) -> str | None:
+    """Resolve an INCLUDE operand relative to the including source file."""
+    include_name = raw_path.strip().strip("\"'<>")
+    if not include_name:
+        return None
+    candidates = [include_name]
+    if not os.path.isabs(include_name):
+        candidates.insert(0, os.path.join(current_dir, include_name))
+    for candidate in candidates:
+        if os.path.isfile(candidate):
+            return candidate
+    return None
+
+
+def _iter_source_and_include_lines(sources: list[str]) -> list[str]:
+    """Read source files plus directly reachable INCLUDE files."""
+    lines: list[str] = []
+    pending = list(sources)
+    seen: set[str] = set()
+    while pending:
+        path = pending.pop()
+        try:
+            real_path = os.path.realpath(path)
+        except OSError:
+            continue
+        if real_path in seen:
+            continue
+        seen.add(real_path)
+        current_dir = os.path.dirname(real_path)
+        try:
+            with open(real_path, encoding="utf-8", errors="ignore") as handle:
+                file_lines = handle.readlines()
+        except OSError:
+            continue
+        for line in file_lines:
+            stripped = _strip_asm_comment(line)
+            lines.append(stripped)
+            if include_match := _INCLUDE_RE.match(stripped):
+                include_path = _resolve_include_path(include_match.group("path"), current_dir)
+                if include_path is not None:
+                    pending.append(include_path)
+    return lines
+
+
+def _iter_existing_equates_header_lines(sources: list[str]) -> list[str]:
+    """Read existing aggregate equates headers that can seed a new translation."""
+    candidates = {os.path.realpath("_equates.h")}
+    for source in sources:
+        candidates.add(os.path.realpath(os.path.join(os.path.dirname(source), "_equates.h")))
+
+    lines: list[str] = []
+    for path in sorted(candidates):
+        try:
+            with open(path, encoding="utf-8", errors="ignore") as handle:
+                lines.extend(handle.readlines())
+        except OSError:
+            continue
+    return lines
+
+
+def _collect_numeric_header_equate_candidates(sources: list[str]) -> dict[str, list[str]]:
+    """Collect simple numeric equates from existing generated headers."""
+    candidates: dict[str, list[str]] = {}
+    for line in _iter_existing_equates_header_lines(sources):
+        match = _C_EQUATE_DEFINE_RE.match(line) or _C_STATIC_CONST_RE.match(line)
+        if not match:
+            continue
+        name = Parser.mangle_label(match.group("name"))
+        expr = match.group("expr").strip()
+        candidates.setdefault(name, []).append(expr)
+    return candidates
+
+
+def _replace_masm_number_suffixes(expr: str) -> str:
+    """Convert MASM numeric suffix literals to Python integer literals."""
+    expr = re.sub(
+        r"(?<![A-Za-z0-9_@$?.])([01]+)[Bb](?![A-Za-z0-9_@$?.])",
+        lambda match: str(int(match.group(1), 2)),
+        expr,
+    )
+    expr = re.sub(
+        r"(?<![A-Za-z0-9_@$?.])([0-9]+)[Dd](?![A-Za-z0-9_@$?.])",
+        r"\1",
+        expr,
+    )
+    expr = re.sub(
+        r"(?<![A-Za-z0-9_@$?.])([0-7]+)[OoQq](?![A-Za-z0-9_@$?.])",
+        lambda match: str(int(match.group(1), 8)),
+        expr,
+    )
+    return re.sub(
+        r"(?<![A-Za-z0-9_@$?.])([0-9][0-9A-Fa-f]*)[Hh](?![A-Za-z0-9_@$?.])",
+        lambda match: str(int(match.group(1), 16)),
+        expr,
+    )
+
+
+def _eval_simple_numeric_equate(expr: str, values: dict[str, int]) -> int | None:
+    """Evaluate simple numeric MASM equate expressions using known symbols."""
+    if any(quote in expr for quote in ("'", '"', "`", "<", ">")):
+        return None
+    expr = _replace_masm_number_suffixes(expr)
+    expr = re.sub(r"\bMOD\b", "%", expr, flags=re.IGNORECASE)
+
+    def replace_identifier(match: re.Match[str]) -> str:
+        name = Parser.mangle_label(match.group(0))
+        if name not in values:
+            raise KeyError(name)
+        return str(values[name])
+
+    try:
+        expr = re.sub(_ASM_IDENTIFIER, replace_identifier, expr)
+    except KeyError:
+        return None
+    if re.search(r"[^0-9\s()+\-*/%]", expr):
+        return None
+    expr = expr.replace("/", "//")
+    try:
+        parsed = ast.parse(expr, mode="eval")
+    except SyntaxError:
+        return None
+
+    def eval_node(node: ast.AST) -> int:
+        if isinstance(node, ast.Expression):
+            return eval_node(node.body)
+        if isinstance(node, ast.Constant) and isinstance(node.value, int):
+            return int(node.value)
+        if isinstance(node, ast.UnaryOp) and isinstance(node.op, (ast.UAdd, ast.USub)):
+            value = eval_node(node.operand)
+            return value if isinstance(node.op, ast.UAdd) else -value
+        if isinstance(node, ast.BinOp) and isinstance(node.op, (ast.Add, ast.Sub, ast.Mult, ast.FloorDiv, ast.Mod)):
+            left = eval_node(node.left)
+            right = eval_node(node.right)
+            if isinstance(node.op, ast.Add):
+                return left + right
+            if isinstance(node.op, ast.Sub):
+                return left - right
+            if isinstance(node.op, ast.Mult):
+                return left * right
+            if right == 0:
+                raise ZeroDivisionError
+            if isinstance(node.op, ast.FloorDiv):
+                return left // right
+            return left % right
+        raise ValueError(type(node).__name__)
+
+    try:
+        return eval_node(parsed)
+    except (ValueError, ZeroDivisionError):
+        return None
+
+
+def collect_code_exports(sources: list[str], args: argparse.Namespace) -> tuple[set[str], set[str]]:
+    """Collect cross-module code symbols from this translation set."""
+    if len(sources) <= 1:
+        return set(), set()
+
+    from . import op
+    from .proc import Proc
+
+    external_exports: set[str] = set()
+    external_offset_consumers: set[str] = set()
+    public_definitions: set[str] = set()
+    unresolved_references: set[str] = set()
+    args_dict = vars(args).copy()
+    saved_counter = Parser.c_dummy_label[0]
+    try:
+        for source in sources:
+            parser = Parser(args_dict.copy())
+            if match := re.match(r"(.+)\.(?:asm|lst)", source.lower()):
+                parser.parse_rt_info(match[1].strip())
+            if args_dict.get("passes") >= 2:
+                parser.parse_file(source)
+                parser.next_pass(saved_counter)
+            parser.parse_file(source)
+            external_exports.update(parser.externals_procs)
+            external_offset_consumers.update(parser.externals_vars)
+            external_offset_consumers.update(parser.externals_abs)
+            known_symbols = set(parser.symbols.get_globals())
+            for symbol in parser.symbols.get_globals().values():
+                if not hasattr(symbol, "stmts"):
+                    continue
+                labels = Token_.find_tokens(getattr(symbol, "stmts", []), "LABEL") or []
+                labels += Token_.find_tokens(getattr(symbol, "stmts", []), "COMMON") or []
+                unresolved_references.update(str(label) for label in labels if str(label) not in known_symbols)
+            for name in parser.public_symbols:
+                if isinstance(parser.symbols.get_global(name), (op.label, Proc)):
+                    public_definitions.add(name)
+    finally:
+        Parser.c_dummy_label[0] = saved_counter
+    return external_exports, public_definitions & (unresolved_references | external_offset_consumers | external_exports)
+
+
+def collect_shared_equates(sources: list[str], args: argparse.Namespace) -> dict[str, str]:
+    """Collect simple numeric equates for sibling modules in this translation set."""
+    if len(sources) <= 1:
+        return {}
+
+    candidates = _collect_numeric_header_equate_candidates(sources)
+    for line in _iter_source_and_include_lines(sources):
+        if match := _EQUATE_ASSIGNMENT_RE.match(line):
+            name = Parser.mangle_label(match.group("name"))
+            expr = match.group("expr").strip()
+            if "$" in expr and name in candidates:
+                continue
+            candidates.setdefault(name, []).append(expr)
+
+    final_expressions = {name: expressions[-1] for name, expressions in candidates.items() if expressions}
+    values: dict[str, int] = {}
+    while True:
+        progress = False
+        for name, expression in final_expressions.items():
+            if name in values:
+                continue
+            value = _eval_simple_numeric_equate(expression, values)
+            if value is None:
+                continue
+            values[name] = value
+            progress = True
+        if not progress:
+            break
+
+    return {name: str(values[name]) for name in final_expressions if name in values}
+
+
+def filter_code_symbol_equates(
+    shared_equates: dict[str, str],
+    external_code_exports: set[str],
+    public_code_exports: set[str],
+) -> dict[str, str]:
+    """Remove numeric seeds for names owned by cross-module code symbols."""
+    code_symbols = external_code_exports | public_code_exports
+    return {name: value for name, value in shared_equates.items() if name not in code_symbols}
+
+
 def process_source_files(files: list[str], args: argparse.Namespace) -> None:
     sources = source_files(files)
     if not sources:
         return
 
-    args_dict = vars(args)
+    args_dict = vars(args).copy()
+    external_code_exports, public_code_exports = collect_code_exports(sources, args)
+    shared_equates = filter_code_symbol_equates(
+        collect_shared_equates(sources, args),
+        external_code_exports,
+        public_code_exports,
+    )
+    args_dict["external_code_exports"] = sorted(external_code_exports)
+    args_dict["public_code_exports"] = sorted(public_code_exports)
+    args_dict["shared_equates"] = shared_equates
+    args.external_code_exports = args_dict["external_code_exports"]
+    args.public_code_exports = args_dict["public_code_exports"]
+    args.shared_equates = shared_equates
     jobs = max(1, min(args.jobs, len(sources)))
     if jobs == 1:
         for source in sources:

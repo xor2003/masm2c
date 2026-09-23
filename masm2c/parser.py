@@ -275,6 +275,7 @@ class Parser:
 
         self.externals_vars: set[str] = set()
         self.externals_procs: set[str] = set()
+        self.extern_code_refs: set[str] = set()
         self.externals_abs: set[str] = set()
         self.macroses: OrderedDict[str, Any] = OrderedDict()
         self._text_macros: dict[str, _TextMacro] = {}
@@ -290,6 +291,7 @@ class Parser:
         self.runtime_pointer_meta: dict[int, list[dict[str, Any]]] = {}
         self.runtime_access_site_meta: dict[int, list[dict[str, Any]]] = {}
         self.runtime_meta_anchor: int | None = None
+        self._current_instruction_raw = ""
 
         if not args:
             args = {"mergeprocs": "separate"}
@@ -316,7 +318,9 @@ class Parser:
         self.procs_start = self.initial_procs_start
         self.segments = OrderedDict()
         self.data_aliases: list[op.var] = []
+        self.code_offset_aliases: list[op.var] = []
         self.public_symbols: set[str] = set()
+        self.extern_code_refs: set[str] = set()
         self.flow_terminated = True
         self.need_label = True
 
@@ -338,10 +342,15 @@ class Parser:
         self.__cur_seg_offset = 0
         self.__c_dummy_jump_label = 0
         self.__c_extra_dummy_jump_label = 0
+        self._armed_short_relative_label = ""
+        self._pending_short_relative_label = ""
+        self._shared_equate_names: set[str] = set()
 
         self.__segment_name = "default_seg"
         self.__segment = op.Segment(self.__segment_name, 0, comment="Artificial initial segment")
         self.segments[self.__segment_name] = self.__segment
+        self.__segment_stack: list[tuple[str, op.Segment, int]] = []
+        self.__segment_offsets: dict[str, int] = {self.__segment_name: self.__cur_seg_offset}
 
         self.proc = self.add_proc("mainproc", "", 0, False)
 
@@ -352,7 +361,10 @@ class Parser:
         self.current_macro = None
         self.current_struct: Optional[Struct] = None
         self._pending = _PendingParseState()
+        self._pending_data_label: str = ""
+        self._last_statement_was_data = False
         self._text_macro_expansion_id = 0
+        self._text_macro_symbols: dict[str, int | str] = {}
         self._text_equates: dict[str, str] = {}
 
         self.struct_names_stack: list[str] = []
@@ -363,6 +375,43 @@ class Parser:
         self.data_merge_candidates = 0
 
         self.equs: set[str] = set()
+        self._seed_shared_equates()
+
+    def _seed_shared_equates(self) -> None:
+        """Seed numeric equates collected from sibling translation units."""
+        shared = self.args.get("shared_equates", {}) if isinstance(self.args, dict) else {}
+        if not isinstance(shared, dict):
+            return
+        for raw_name, raw_value in shared.items():
+            name = self.mangle_label(raw_name)
+            try:
+                value_tree = self.parse_text(str(raw_value), start_rule="expr")
+                value = self.process_ast(str(raw_value), value_tree)
+            except Exception:
+                continue
+            if not isinstance(value, Expression):
+                continue
+            self._shared_equate_names.add(name)
+            try:
+                self._text_macro_symbols[name] = self.eval_expression_to_int(value)
+            except Exception:
+                pass
+            if self.symbols.get_global(name) is not None:
+                continue
+            symbol = Proc.create_equ_op(name, value, line_number=0)
+            symbol.implemented = True
+            self.symbols.set_global(name, symbol)
+            self.equs.add(name)
+
+    def _is_shared_equate_seed(self, name: str) -> bool:
+        """Return true when a symbol is only a sibling-module numeric seed."""
+        return name in self._shared_equate_names and isinstance(self.symbols.get_global(name), op._equ)
+
+    def _clear_shared_equate_seed(self, name: str) -> None:
+        """Drop text-preprocessor state for a shared seed shadowed locally."""
+        if name in self._shared_equate_names:
+            self._text_macro_symbols.pop(name, None)
+            self._shared_equate_names.discard(name)
 
 
     def replace_dollar_w_segoffst(self, v: str) -> str:
@@ -394,6 +443,7 @@ class Parser:
 
     @staticmethod
     def _eval_int_expression(rendered: str) -> int:
+        rendered = re.sub(r"(?<![A-Za-z0-9_])0([0-7]+)(?![A-Za-z0-9_])", r"0o\1", rendered)
         return int(eval(rendered, {"__builtins__": {}}, {}))
 
     @staticmethod
@@ -443,18 +493,16 @@ class Parser:
         """
         logging.debug("Creating label: %s", name)
         
-        # Handle special placeholder labels
-        if name == "arbarb":  # Special case placeholder
-            name = self.get_dummy_jumplabel()
-            
         # Mangle label name for C compatibility
-        mangled_name = self.mangle_label(name)
-        
+        mangled_name = self.normalize_label(name)
+        if mangled_name == "arbarb":  # Special case placeholder for @@ labels
+            mangled_name = self.get_dummy_jumplabel()
         self.need_label = False
         self.make_sure_proc_exists(line_number, raw)
         
         assert self.proc, "No current procedure for label"
-        if mangled_name in self.public_symbols:
+        public_export = mangled_name in self.public_symbols
+        if public_export:
             globl = True
 
         # Create label object
@@ -467,18 +515,35 @@ class Parser:
             globl=globl,
             segment=self.__segment.name,
         )
+        label_obj.public_export = public_export
         
         # Extract real addresses from listing if available
         _, label_obj.real_offset, label_obj.real_seg = self.get_lst_offsets(raw)
-        
         # Update procedure start tracking
         if label_obj.real_seg:
             self.procs_start.discard(label_obj.real_seg * 0x10 + label_obj.real_offset)
             
         # Register label with procedure and symbol table
         self.proc.add_label(mangled_name, label_obj)
+        self._pending_data_label = mangled_name
         existing = self.symbols.get_global(mangled_name)
         if (
+            existing is not None
+            and mangled_name in self._shared_equate_names
+            and not self._is_shared_equate_seed(mangled_name)
+        ):
+            self._clear_shared_equate_seed(mangled_name)
+        if (
+            existing is not None
+            and self.pass_number == 1
+            and isinstance(existing, Proc)
+            and existing.extern
+        ):
+            self.symbols.reset_global(mangled_name, label_obj)
+        elif existing is not None and self.pass_number == 1 and self._is_shared_equate_seed(mangled_name):
+            self._clear_shared_equate_seed(mangled_name)
+            self.symbols.reset_global(mangled_name, label_obj)
+        elif (
             existing is not None
             and self.pass_number == 1
             and not globl
@@ -491,6 +556,73 @@ class Parser:
         # Increment ID for next label
         self.__offset_id += 1
         self.__offset_id += 1
+
+    def _finalize_pending_trailing_data_label(self, offset: int, *, raw: str, line_number: int) -> bool:
+        """Convert a pending post-data label into a zero-width data alias."""
+        if (
+            self.current_macro
+            or self.proc is None
+            or not self._pending_data_label
+            or not self._last_statement_was_data
+        ):
+            return False
+        name = self._pending_data_label
+        if name in self.public_symbols or name.startswith(("dummy", "edummy")):
+            return False
+        previous_index = next(
+            (
+                index for index in range(len(self.proc.stmts) - 1, -1, -1)
+                if isinstance(self.proc.stmts[index], op.label) and self.proc.stmts[index].name == name
+            ),
+            None,
+        )
+        if previous_index is None:
+            return False
+        previous = self.proc.stmts[previous_index]
+        if not isinstance(previous, op.label) or previous.isproc:
+            return False
+        if getattr(previous, "segment", "") != self.__segment.name:
+            return False
+
+        del self.proc.stmts[previous_index]
+        self.proc.provided_labels.discard(name)
+        existing = self.symbols.get_global(name)
+        if existing is previous:
+            self.symbols.symbols.pop(name.lower(), None)
+        self._pending_data_label = ""
+        self._register_trailing_data_label(name, offset=offset, raw=raw, line_number=line_number)
+        return True
+
+    def _register_trailing_data_label(
+            self,
+            name: str,
+            *,
+            offset: int | None = None,
+            raw: str,
+            line_number: int,
+    ) -> None:
+        """Register a label immediately after data as a zero-width data marker."""
+        alias = op.var(
+            1,
+            self.__cur_seg_offset if offset is None else offset,
+            name=name,
+            segment=self.__segment_name,
+            elements=1,
+            original_type="byte",
+            filename=self._current_file,
+            raw=raw,
+            line_number=line_number,
+        )
+        for existing_alias in self.data_aliases:
+            if (
+                existing_alias.name == alias.name
+                and existing_alias.segment == alias.segment
+                and existing_alias.offset == alias.offset
+            ):
+                self.symbols.reset_global(name, existing_alias)
+                return
+        self.data_aliases.append(alias)
+        self.symbols.reset_global(name, alias)
 
     def make_sure_proc_exists(self, line_number: int, raw: str) -> None:
         if self.proc:
@@ -522,6 +654,18 @@ class Parser:
         self.__segment.append(
             op.Data(label, "db", op.DataType.ARRAY, [0], num, num, comment="for alignment", align=True,
                     offset=offset))
+
+    def set_org_offset(self, pointer: int) -> None:
+        if self.itislst:
+            return
+        delta = pointer - self.__cur_seg_offset
+        if delta > 0:
+            self.org(delta)
+            return
+        if delta < 0:
+            self.__cur_seg_offset = pointer
+            self.__binary_data_size = max(0, self.__binary_data_size + delta)
+            self.data_merge_candidates = 0
 
     def move_offset(self, pointer, raw):
         if pointer > self.__binary_data_size:
@@ -588,17 +732,31 @@ class Parser:
             content = self._wrap_bare_data_table(content)
             content = self.apply_conditional_assembly(content)
             self._preload_text_macros(content, set())
-            content = self._strip_text_macro_definitions(content)
-            content = self._expand_repeat_blocks(content)
-            content = self._expand_text_macros(content)
-            content = self._expand_repeat_blocks(content)
+            repeat_symbols = self._preload_repeat_symbols(content, set())
+            content = self._normalize_rinit_alias_directives(content)
+            if self._requires_ordered_text_macro_expansion(content):
+                content = self._expand_text_macros_ordered(content)
+                content = self._expand_repeat_blocks(content, repeat_symbols)
+                content = self._expand_text_macros_ordered(content)
+            else:
+                content = self._strip_text_macro_definitions(content)
+                content = self._expand_repeat_blocks(content, repeat_symbols)
+                content = self._expand_text_macros(content)
+                content = self._expand_repeat_blocks(content, repeat_symbols)
             content = self._expand_text_equates(content)
             content = self._trim_trailing_lines_after_end(content)
             self._predeclare_included_structure_names(content, set())
             self._predeclare_structure_names(content)
             content = self._normalize_struct_instance_rows(content)
-            result = self.parse_text(content, file_name=file_name)
-            self.process_ast(content, result)
+            content = self._close_single_open_final_segment(content)
+            start_rule = "start"
+            parse_content = content
+            if self._has_top_level_label(content):
+                start_rule = "insegdirlist"
+                self._apply_fragment_end_directive(content)
+                parse_content = self._strip_fragment_terminators(content)
+            result = self.parse_text(parse_content, file_name=file_name, start_rule=start_rule)
+            self.process_ast(parse_content, result)
         finally:
             self.itislst = previous_itislst
 
@@ -664,7 +822,9 @@ class Parser:
     def is_listing_source(self) -> bool:
         return self.source_is_lst or self.itislst
 
-    def parse_numeric_value(self, value: str) -> int:
+    def parse_numeric_value(self, value: str | int) -> int:
+        if isinstance(value, int):
+            return value
         return Parser.parse_int(value)
 
     def set_radix(self, radix: int) -> None:
@@ -676,12 +836,98 @@ class Parser:
     def evaluate_repeat_count(self, repeat_expression: Expression) -> int:
         repeat = self._resolve_assignment_symbols(copy(repeat_expression), resolve_equ=True)
         repeat.indirection = IndirectionType.VALUE
+        if (value := self._eval_numeric_expression_tree(repeat)) is not None:
+            return value
         try:
             return self.eval_expression_to_int(repeat)
         except Exception:
             return 0
 
+    def _eval_numeric_expression_tree(self, value: Any) -> int | None:
+        """Evaluate a numeric MASM expression tree without losing precedence."""
+        if isinstance(value, int):
+            return value
+        if isinstance(value, list):
+            if len(value) == 1:
+                return self._eval_numeric_expression_tree(value[0])
+            if len(value) == 3:
+                left = self._eval_numeric_expression_tree(value[0])
+                right = self._eval_numeric_expression_tree(value[2])
+                if left is None or right is None:
+                    return None
+                operator = str(value[1]).lower()
+                if operator == "+":
+                    return left + right
+                if operator == "-":
+                    return left - right
+                if operator == "*":
+                    return left * right
+                if operator in {"/", "div"}:
+                    return left // right
+                if operator in {"mod", "%"}:
+                    return left % right
+            return None
+        if isinstance(value, Expression):
+            if len(value.children) != 1:
+                return None
+            return self._eval_numeric_expression_tree(value.children[0])
+        if isinstance(value, Tree):
+            if value.data in {"expr", "braces", "offsetdir"}:
+                children = [
+                    child
+                    for child in value.children
+                    if not (isinstance(child, Token) and child.type in {"LPAR", "RPAR"})
+                ]
+                if len(children) == 1:
+                    return self._eval_numeric_expression_tree(children[0])
+                return None
+            if value.data == "adddir" and len(value.children) == 3:
+                left = self._eval_numeric_expression_tree(value.children[0])
+                right = self._eval_numeric_expression_tree(value.children[2])
+                if left is None or right is None:
+                    return None
+                return left + right if str(value.children[1]) == "+" else left - right
+            if value.data == "muldir" and len(value.children) == 3:
+                left = self._eval_numeric_expression_tree(value.children[0])
+                right = self._eval_numeric_expression_tree(value.children[2])
+                if left is None or right is None:
+                    return None
+                operator = str(value.children[1]).lower()
+                if operator == "*":
+                    return left * right
+                if operator in {"/", "div"}:
+                    return left // right
+                if operator in {"mod", "%"}:
+                    return left % right
+                return None
+            if value.data == "wordopdir" and len(value.children) >= 2:
+                inner = self._eval_numeric_expression_tree(value.children[-1])
+                if inner is None:
+                    return None
+                op_name = str(value.children[0]).lower()
+                if op_name == "low":
+                    return inner & 0xFF
+                if op_name == "high":
+                    return (inner >> 8) & 0xFF
+                return inner
+            return None
+        if isinstance(value, Token):
+            if value.type in {"INTEGER", "SIGNED_INT", "DECIMAL"}:
+                return self.parse_int(str(value))
+            if value.type == STRINGCNST and len(str(value)) == 1:
+                return ord(str(value))
+            if value.type in {"LABEL", "COMMON"}:
+                symbol = self.symbols.get_global(self.mangle_label(value))
+                if isinstance(symbol, (op._assignment, op._equ)):
+                    return self._eval_numeric_expression_tree(symbol.value)
+            return None
+        return None
+
     def normalize_label(self, name: str | lark.Token) -> str:
+        raw = _token_lower(name)
+        if not self.test_mode and raw.startswith("@") and raw not in {"@@", "@f", "@b"}:
+            scope = self.proc.name if self.proc else "mainproc"
+            return f"{scope}_{Parser.mangle_label(raw)}"
         return Parser.mangle_label(name)
 
     def register_size(self, expr: lark.Token | str) -> int:
@@ -723,13 +969,13 @@ class Parser:
         fullpath = self.resolve_include_path(include_name)
         return self.parse_include_file_lines(fullpath)
 
-    def apply_offset_directive(self, directive: str, value: str) -> None:
+    def apply_offset_directive(self, directive: str, value: str | int) -> None:
         if directive == "align":
             self.align(self.parse_numeric_value(value))
         elif directive == "even":
             self.align(2)
         elif directive == "org":
-            self.org(self.parse_numeric_value(value))
+            self.set_org_offset(self.parse_numeric_value(value))
 
     def apply_option_directive(self, options: list[str]) -> None:
         for option in options:
@@ -770,7 +1016,12 @@ class Parser:
         self.add_extern(label, symbol_type)
 
     def declare_public_symbols(self, labels: list[str]) -> None:
-        self.public_symbols.update(self.mangle_label(label) for label in labels)
+        for label in labels:
+            mangled = self.mangle_label(label)
+            self.public_symbols.add(mangled)
+            existing = self.symbols.get_global(mangled)
+            if isinstance(existing, op.label):
+                existing.public_export = True
 
     def define_equ(self, label: str, value: Expression | str, *, raw: str, line_number: int):
         return self.action_equ(label, value, raw=raw, line_number=line_number)
@@ -788,6 +1039,14 @@ class Parser:
         self.adjust_offset_to_real(raw, label)
         label = self.mangle_label(label)
         data_type = data_type.lower()
+        for existing_alias in self.data_aliases:
+            if (
+                existing_alias.name == label
+                and existing_alias.segment == self.__segment_name
+                and existing_alias.offset == self.__cur_seg_offset
+                and str(existing_alias.original_type).lower() == data_type
+            ):
+                return existing_alias
         alias = op.var(
             self.typetosize(data_type),
             self.__cur_seg_offset,
@@ -799,7 +1058,22 @@ class Parser:
             raw=raw,
             line_number=line_number,
         )
-        self.symbols.set_global(label, alias)
+        existing = self.symbols.get_global(label)
+        if (
+            existing is not None
+            and label in self._shared_equate_names
+            and not self._is_shared_equate_seed(label)
+        ):
+            self._clear_shared_equate_seed(label)
+        if self.pass_number == 1 and isinstance(existing, Proc) and existing.extern:
+            self.symbols.reset_global(label, alias)
+        elif self.pass_number == 1 and self._is_shared_equate_seed(label):
+            self._clear_shared_equate_seed(label)
+            self.symbols.reset_global(label, alias)
+        elif self.pass_number == 1 and isinstance(existing, op.var):
+            pass
+        else:
+            self.symbols.set_global(label, alias)
         self.data_aliases.append(alias)
         return alias
 
@@ -815,6 +1089,29 @@ class Parser:
     def consume_proc_options(self) -> list[str]:
         return self.consume_pending_proc_options()
 
+    def prepare_instruction(
+            self,
+            instruction: str,
+            args: list[Any],
+            *,
+            raw: str = "",
+    ) -> tuple[str, list[Any]]:
+        self._current_instruction_raw = raw
+        normalized_instruction = str(instruction).lower()
+        if normalized_instruction in {"lodsb", "lodsw", "lodsd"}:
+            lods_args = args if self._has_implicit_lods_segment_override_arg(args) else []
+            if not lods_args:
+                lods_args = self._implicit_lods_segment_override_args(normalized_instruction)
+            if lods_args:
+                size = {"lodsb": 1, "lodsw": 2, "lodsd": 4}[normalized_instruction]
+                for arg in lods_args:
+                    if isinstance(arg, Expression):
+                        arg.element_size = size
+                        arg.ptr_size = size
+                instruction = "lods"
+                args = lods_args
+        return instruction, self.prepare_instruction_args(instruction, args)
+
     def prepare_instruction_args(self, instruction: str, args: list[Any]) -> list[Any]:
         if len(args) >= 2 and isinstance(args[0], Expression):
             args[0].mods.add("destination")
@@ -823,6 +1120,36 @@ class Parser:
                 if isinstance(arg, Expression):
                     arg.mods.add("lea")
         return args
+
+    @staticmethod
+    def _has_implicit_lods_segment_override_arg(args: list[Any]) -> bool:
+        return (
+            len(args) == 1
+            and isinstance(args[0], Expression)
+            and args[0].segment_overriden
+            and bool(args[0].registers.intersection({"si", "esi"}))
+        )
+
+    def _implicit_lods_segment_override_args(self, instruction: str) -> list[Expression]:
+        match = re.match(
+            r"^\s*lods[bdw]\s+(?P<segment>cs|ds|es|fs|gs|ss)\s*:\s*\[?\s*(?P<index>e?si)\s*\]?\s*(?:;.*)?$",
+            self._current_instruction_raw,
+            re.IGNORECASE,
+        )
+        if not match:
+            return []
+
+        size = {"lodsb": 1, "lodsw": 2, "lodsd": 4}[instruction]
+        index = match.group("index").lower()
+        expr = Expression()
+        expr.indirection = IndirectionType.POINTER
+        expr.element_size = size
+        expr.ptr_size = size
+        expr.registers.add(index)
+        expr.segment_register = match.group("segment").lower()
+        expr.segment_overriden = True
+        expr.children = [Tree(data="register", children=[index])]
+        return [expr]
 
     def set_pending_mnemonic(self, mnemonic: str) -> None:
         self._pending.mnemonic = mnemonic
@@ -1058,7 +1385,11 @@ class Parser:
         :return: The assignment operation.
         """
         label = self.mangle_label(label)
-        value = self._resolve_assignment_symbols(value)
+        self._last_statement_was_data = False
+        previous = self.symbols.get_global(label)
+        uses_location_counter = self._assignment_uses_location_counter(value)
+        value = self._resolve_assignment_symbols(value, seen={label})
+        value = self._snapshot_self_assignment(value, label, previous)
         self._preserve_assignment_ptr_metadata(value, raw)
 
         # if self.has_global(label):
@@ -1066,10 +1397,160 @@ class Parser:
         o = self.proc.create_assignment_op(label, value, line_number=line_number)
         o.filename = self._current_file
         o.raw_line = raw.rstrip()
+        o.offset = self.__cur_seg_offset
+        o.segment = self.__segment_name
+        o.location_counter_equate = uses_location_counter
         self.symbols.reset_global(label, o)
+        self._register_assignment_data_alias(label, value, raw=raw, line_number=line_number)
         self.proc.stmts.append(o)
         self.equs.add(label)
         return o
+
+    def _assignment_uses_location_counter(self, value: Any, seen: set[str] | None = None) -> bool:
+        """Return true when an assignment depends on a captured `$` value."""
+        seen = seen or set()
+        if Token_.find_tokens(value, "dollar"):
+            return True
+        for token_type in ("LABEL", "COMMON"):
+            for token in Token_.find_tokens(value, token_type) or []:
+                name = self.mangle_label(token)
+                if name in seen:
+                    continue
+                symbol = self.symbols.get_global(name)
+                if isinstance(symbol, (op._assignment, op._equ)) and isinstance(symbol.value, Expression):
+                    if self._assignment_uses_location_counter(symbol.value, seen | {name}):
+                        return True
+        return False
+
+    def _register_assignment_data_alias(
+            self,
+            label: str,
+            value: Expression,
+            *,
+            raw: str = "",
+            line_number: int = 0,
+    ) -> None:
+        """Record `name = data_label + const` assignments as addressable aliases."""
+        target = self._assignment_data_alias_target(value)
+        if not isinstance(target, tuple):
+            return
+        segment, offset, size, original_type = target
+        for existing_alias in self.data_aliases:
+            if (
+                existing_alias.name == label
+                and existing_alias.segment == segment
+                and existing_alias.offset == offset
+            ):
+                return
+        alias = op.var(
+            max(1, size),
+            offset,
+            name=label,
+            segment=segment,
+            elements=1,
+            original_type=original_type or self._alias_type_for_size(size),
+            filename=self._current_file,
+            raw=raw,
+            line_number=line_number,
+        )
+        self.data_aliases.append(alias)
+
+    def _assignment_data_alias_target(self, node: Any) -> tuple[str, int, int, str] | int | None:
+        """Resolve the data target or integer value represented by an assignment expression."""
+        if isinstance(node, Expression):
+            if len(node.children) != 1:
+                return None
+            return self._assignment_data_alias_target(node.children[0])
+        if isinstance(node, Tree):
+            if node.data == "braces":
+                inner_children = [
+                    child
+                    for child in node.children
+                    if not (isinstance(child, Token) and child.type in {"LPAR", "RPAR"})
+                ]
+                if len(inner_children) != 1:
+                    return None
+                return self._assignment_data_alias_target(inner_children[0])
+            if node.data == "adddir" and len(node.children) == 3:
+                return self._combine_alias_expression_parts(
+                    self._assignment_data_alias_target(node.children[0]),
+                    str(node.children[1]),
+                    self._assignment_data_alias_target(node.children[2]),
+                )
+            if node.data == "unadddir" and len(node.children) == 2:
+                value = self._assignment_data_alias_target(node.children[1])
+                if isinstance(value, int):
+                    return value if str(node.children[0]) == "+" else -value
+                return value if str(node.children[0]) == "+" else None
+            if node.data == "muldir" and len(node.children) == 3:
+                left = self._assignment_data_alias_target(node.children[0])
+                right = self._assignment_data_alias_target(node.children[2])
+                if not isinstance(left, int) or not isinstance(right, int):
+                    return None
+                operator = str(node.children[1]).lower()
+                if operator == "*":
+                    return left * right
+                if operator == "/" and right:
+                    return left // right
+                return None
+            if len(node.children) == 1:
+                return self._assignment_data_alias_target(node.children[0])
+            return None
+        if isinstance(node, list):
+            if len(node) != 1:
+                return None
+            return self._assignment_data_alias_target(node[0])
+        if isinstance(node, Token):
+            if node.type == "INTEGER":
+                radix = int(getattr(node, "start_pos", 10) or 10)
+                sign = int(getattr(node, "line", 1) or 1)
+                return sign * int(str(node.value), radix)
+            if node.type in {"LABEL", "COMMON"}:
+                return self._assignment_data_alias_symbol(str(node))
+        return None
+
+    def _assignment_data_alias_symbol(self, name: str) -> tuple[str, int, int, str] | int | None:
+        """Resolve a symbol as either addressable data or a numeric equate."""
+        symbol = self.symbols.get_global(self.mangle_label(name))
+        if isinstance(symbol, op.var) and not symbol.issegment and symbol.segment:
+            return (
+                symbol.segment,
+                int(symbol.offset),
+                max(1, int(symbol.size)),
+                symbol.original_type or self._alias_type_for_size(symbol.size),
+            )
+        if isinstance(symbol, Data) and getattr(symbol, "segment", ""):
+            return (
+                symbol.segment,
+                int(symbol.offset),
+                max(1, int(symbol.size)),
+                getattr(symbol, "data_type", "") or self._alias_type_for_size(symbol.size),
+            )
+        if isinstance(symbol, (op._assignment, op._equ)) and isinstance(symbol.value, Expression):
+            return self._assignment_data_alias_target(symbol.value)
+        return None
+
+    @staticmethod
+    def _combine_alias_expression_parts(
+            left: tuple[str, int, int, str] | int | None,
+            operator: str,
+            right: tuple[str, int, int, str] | int | None,
+    ) -> tuple[str, int, int, str] | int | None:
+        """Combine parsed alias-expression operands without losing the data base."""
+        if isinstance(left, int) and isinstance(right, int):
+            return left + right if operator == "+" else left - right
+        if isinstance(left, tuple) and isinstance(right, int):
+            segment, offset, size, original_type = left
+            return segment, offset + right if operator == "+" else offset - right, size, original_type
+        if operator == "+" and isinstance(left, int) and isinstance(right, tuple):
+            segment, offset, size, original_type = right
+            return segment, offset + left, size, original_type
+        return None
+
+    @staticmethod
+    def _alias_type_for_size(size: int) -> str:
+        """Return a conservative MASM data type name for an alias size."""
+        return {1: "db", 2: "word", 4: "dword"}.get(size, "byte")
 
     def _preserve_assignment_ptr_metadata(self, value: Expression, raw: str) -> None:
         if value.ptr_size or value.original_type:
@@ -1088,9 +1569,44 @@ class Parser:
         except Exception:
             value.ptr_size = 0
 
+    @staticmethod
+    def _integer_token(value: int) -> Token:
+        sign = -1 if value < 0 else 1
+        token = Token("INTEGER", str(abs(value)))
+        token.start_pos = 10
+        token.line = sign
+        token.value = str(abs(value))
+        return token
+
+    @classmethod
+    def _integer_expression(cls, value: int) -> Expression:
+        return Expression("expr", [cls._integer_token(value)])
+
+    def _snapshot_self_assignment(self, value: Any, label: str, previous: Any) -> Any:
+        if not Token_.find_tokens(value, "LABEL"):
+            return value
+        try:
+            previous_value = self.eval_expression_to_int(previous.value) if isinstance(previous, op._assignment) else 0
+        except Exception:
+            previous_value = 0
+        return self._replace_label_tokens_with_integer(value, label, previous_value)
+
+    def _replace_label_tokens_with_integer(self, value: Any, label: str, integer_value: int) -> Any:
+        if isinstance(value, Token) and value.type in {"LABEL", "COMMON"} and self.mangle_label(value) == label:
+            return self._integer_expression(integer_value)
+        if isinstance(value, Tree):
+            replaced = deepcopy(value)
+            replaced.children = [
+                self._replace_label_tokens_with_integer(child, label, integer_value) for child in replaced.children
+            ]
+            return replaced
+        if isinstance(value, list):
+            return [self._replace_label_tokens_with_integer(child, label, integer_value) for child in value]
+        return value
+
     def _resolve_assignment_symbols(self, value: Any, seen: set[str] | None = None, *, resolve_equ: bool = False) -> Any:
         seen = seen or set()
-        if isinstance(value, Token) and value.type == "LABEL":
+        if isinstance(value, Token) and value.type in {"LABEL", "COMMON"}:
             name = self.mangle_label(value)
             if name in seen:
                 return value
@@ -1098,7 +1614,14 @@ class Parser:
             if isinstance(symbol, op._assignment) or (
                 resolve_equ and isinstance(symbol, op._equ) and isinstance(symbol.value, Expression)
             ):
-                return self._resolve_assignment_symbols(deepcopy(symbol.value), seen | {name}, resolve_equ=resolve_equ)
+                if Token_.find_tokens(symbol.value, "dollar") and getattr(symbol, "offset", None) is not None:
+                    return self._integer_expression(int(symbol.offset))
+                resolved_value = self._resolve_assignment_symbols(
+                    deepcopy(symbol.value),
+                    seen | {name},
+                    resolve_equ=resolve_equ,
+                )
+                return resolved_value
             return value
         if isinstance(value, Tree):
             resolved = deepcopy(value)
@@ -1130,12 +1653,16 @@ class Parser:
 
     def action_equ(self, label: str="", value: Expression | str="", raw: str="", line_number: int=0) -> _equ:
         from .enumeration import IndirectionType
+        self._last_statement_was_data = False
         label = self.mangle_label(label)
         size = value.size() if isinstance(value, Expression) else 0
 
         o = Proc.create_equ_op(label, value, line_number=line_number)
         o.filename = self._current_file
         o.raw_line = raw.rstrip()
+        o.offset = self.__cur_seg_offset
+        o.segment = self.__segment_name
+        o.location_counter_equate = Token_.find_tokens(value, "dollar") if isinstance(value, Expression) else False
         o.element_size = size
         if isinstance(value, Expression) and value.indirection == IndirectionType.POINTER:
             o.original_type = value.original_type
@@ -1155,9 +1682,13 @@ class Parser:
         logging.info("     Found segment %s", name)
         name = name.lower()
         self.data_merge_candidates = 0
+        self._remember_current_segment_offset()
+        if self.__segment_name != "default_seg" and name != self.__segment_name:
+            self.__segment_stack.append((self.__segment_name, self.__segment, self.__cur_seg_offset))
         self.__segment_name = name
         if name in self.segments:
             self.__segment = self.segments[name]
+            self.__cur_seg_offset = self.__segment_offsets.get(name, self._segment_end_offset(self.__segment))
         else:
             _, real_offset, real_seg = self.get_lst_offsets(raw)
             if real_seg:
@@ -1173,9 +1704,23 @@ class Parser:
 
             self.__segment = op.Segment(name, offset, options=options, segclass=segclass)
             self.segments[name] = self.__segment
+            self.__segment_offsets[name] = self.__cur_seg_offset
 
             self.symbols.set_global(name, op.var(binary_width, offset, name, issegment=True))
         return self.__segment
+
+    def _remember_current_segment_offset(self) -> None:
+        """Store the current location counter for the active segment."""
+        if self.__segment_name:
+            self.__segment_offsets[self.__segment_name] = self.__cur_seg_offset
+
+    @staticmethod
+    def _segment_end_offset(segment: op.Segment) -> int:
+        """Return the byte offset immediately after a segment's known data."""
+        end = 0
+        for data in segment.getdata():
+            end = max(end, int(data.offset) + int(data.getsize()))
+        return end
 
     def action_proc(self, name, type, line_number=0, raw=""):
         logging.info("      Found proc %s", name)
@@ -1201,7 +1746,18 @@ class Parser:
                     segment=self.__segment.name)
         self.proc_list.append(name)
         existing = self.symbols.get_global(name)
-        if self.itislst and self.pass_number == 1 and isinstance(existing, op.label):
+        if (
+            existing is not None
+            and name in self._shared_equate_names
+            and not self._is_shared_equate_seed(name)
+        ):
+            self._clear_shared_equate_seed(name)
+        if self.pass_number == 1 and isinstance(existing, Proc) and existing.extern:
+            self.symbols.reset_global(name, proc)
+        elif self.pass_number == 1 and self._is_shared_equate_seed(name):
+            self._clear_shared_equate_seed(name)
+            self.symbols.reset_global(name, proc)
+        elif self.itislst and self.pass_number == 1 and isinstance(existing, op.label):
             # IDA listings commonly emit a public/global label immediately before
             # the real PROC header for the same symbol.
             self.symbols.reset_global(name, proc)
@@ -1237,7 +1793,14 @@ class Parser:
 
     def action_endseg(self):
         logging.debug("segment %s ends", self.__segment_name)
-        self.__segment_name = "default_seg"
+        self._finalize_pending_trailing_data_label(self.__cur_seg_offset, raw="", line_number=0)
+        self._remember_current_segment_offset()
+        if self.__segment_stack:
+            self.__segment_name, self.__segment, self.__cur_seg_offset = self.__segment_stack.pop()
+        else:
+            self.__segment_name = "default_seg"
+            self.__segment = self.segments[self.__segment_name]
+            self.__cur_seg_offset = self.__segment_offsets.get(self.__segment_name, 0)
 
     def action_include(self, name):
         logging.info("including %s", name)
@@ -1348,7 +1911,7 @@ class Parser:
         evaluator = self.expr_int_evaluator
         if evaluator is not None:
             return int(evaluator(self, expr))
-        rendered = self.render_expression(expr)
+        rendered = self.replace_dollar_w_segoffst(self.render_expression(expr))
         try:
             return int(literal_eval(rendered))
         except (SyntaxError, ValueError):
@@ -1367,6 +1930,12 @@ class Parser:
 
         offset = self.__cur_seg_offset
         if not isstruct:
+            self._finalize_pending_trailing_data_label(offset, raw=raw, line_number=line_number)
+            self._mark_pending_public_data_label_offset(offset)
+            if not label:
+                label = self._consume_previous_standalone_data_label()
+                if not label:
+                    self._mark_pending_public_data_label_offset(offset)
             self._prepare_nonstruct_data_context(raw, label, line_number, args)
             offset = self.__cur_seg_offset
 
@@ -1375,6 +1944,14 @@ class Parser:
         data_internal_type = self.identify_data_internal_type(args, elements, is_string)
         array = AsmData2IR().visit(args)
         array = self._resolve_assignment_symbols(array)
+        numeric_array = [self._eval_numeric_expression_tree(value) for value in array]
+        if (
+            data_internal_type in {op.DataType.ARRAY_STRING, op.DataType.ZERO_STRING}
+            and numeric_array
+            and all(value is not None for value in numeric_array)
+        ):
+            array = cast(list[Any], numeric_array)
+            data_internal_type = op.DataType.ARRAY if len(array) > 1 else op.DataType.NUMBER
         if data_internal_type == op.DataType.ARRAY and not any(array) and not isstruct:  # all zeros
             array = [0]
 
@@ -1397,15 +1974,146 @@ class Parser:
                        line_number=line_number, comment=data_type, offset=offset)
         data.alignment = binary_width
         self._append_data_record(data, isstruct, raw, dummy_label, data_internal_type, binary_width)
+        self._append_code_skip_op_if_needed(data, isstruct, dummy_label)
 
         self.flow_terminated = True
+        self._last_statement_was_data = not isstruct
         return data  # c, h, size
+
+    _CODE_SKIP_IMMEDIATE_BYTES = {
+        0x0D: 2,  # OR AX, imm16
+        0x3C: 1,  # CMP AL, imm8
+        **{opcode: 1 for opcode in range(0xB0, 0xB8)},  # MOV r8, imm8
+        **{opcode: 2 for opcode in range(0xB8, 0xC0)},  # MOV r16, imm16
+    }
+
+    def _append_code_skip_op_if_needed(self, data: Data, isstruct: bool, dummy_label: bool) -> None:
+        """Emit a synthetic op for code bytes that swallow following opcode bytes."""
+        if isstruct or not dummy_label or self.current_macro or self.proc is None:
+            return
+        if not self._current_segment_is_code():
+            return
+        if "skip" not in data.raw_line.lower():
+            return
+        if data.data_type.lower() != "db" or data.getsize() != 1:
+            return
+        opcode = self._single_data_byte(data)
+        if opcode is None:
+            return
+        byte_count = self._CODE_SKIP_IMMEDIATE_BYTES.get(opcode)
+        if byte_count is None:
+            return
+        skip = op._skipbytes(opcode, byte_count)
+        skip.filename = data.filename
+        skip.raw_line = data.raw_line
+        skip.line_number = data.line_number
+        skip.offset = data.offset
+        skip.segment = self.__segment_name
+        self.proc.stmts.append(skip)
+        self.flow_terminated = False
+
+    def _current_segment_is_code(self) -> bool:
+        """Return true when the active segment is intended to hold code."""
+        segclass = str(getattr(self.__segment, "segclass", "") or "").strip("'\"").lower()
+        if "code" in segclass:
+            return True
+        name = self.__segment_name.lower()
+        return name in {"code", "cseg", "codesg", "_text"} or name.endswith("code")
+
+    @staticmethod
+    def _single_data_byte(data: Data) -> int | None:
+        """Return a single byte value from a one-byte DB record."""
+        if not data.children:
+            return None
+        value = data.children[0]
+        if isinstance(value, int):
+            return value & 0xff
+        try:
+            return int(value) & 0xff
+        except (TypeError, ValueError):
+            return None
+
+    def _consume_previous_standalone_data_label(self) -> str:
+        if self.current_macro or self.proc is None or not self._pending_data_label:
+            return ""
+        name = self._pending_data_label
+        self._pending_data_label = ""
+        previous_index = next(
+            (
+                index for index in range(len(self.proc.stmts) - 1, -1, -1)
+                if isinstance(self.proc.stmts[index], op.label) and self.proc.stmts[index].name == name
+            ),
+            None,
+        )
+        if previous_index is None:
+            return ""
+        previous = self.proc.stmts[previous_index]
+        if not isinstance(previous, op.label) or previous.isproc:
+            return ""
+        if getattr(previous, "segment", "") != self.__segment.name:
+            return ""
+        if getattr(previous, "public_export", False):
+            return ""
+
+        del self.proc.stmts[previous_index]
+        self.proc.provided_labels.discard(name)
+        existing = self.symbols.get_global(name)
+        if existing is previous:
+            self.symbols.symbols.pop(name.lower(), None)
+        return name
+
+    def _mark_pending_public_data_label_offset(self, offset: int) -> None:
+        """Record the storage offset for a public label immediately before data."""
+        if self.current_macro or self.proc is None or not self._pending_data_label:
+            return
+        name = self._pending_data_label
+        previous = next(
+            (
+                stmt for stmt in reversed(self.proc.stmts)
+                if isinstance(stmt, op.label) and stmt.name == name
+            ),
+            None,
+        )
+        if previous is None or previous.isproc:
+            return
+        if getattr(previous, "segment", "") != self.__segment.name:
+            return
+        if not getattr(previous, "public_export", False):
+            return
+        if not getattr(previous, "real_seg", 0):
+            self._register_public_data_label_alias(name, offset, raw=previous.raw_line, line_number=previous.line_number)
+        self._pending_data_label = ""
+
+    def _register_public_data_label_alias(self, name: str, offset: int, *, raw: str, line_number: int) -> None:
+        """Record a public code-segment data label for merge relocation."""
+        for existing_alias in self.code_offset_aliases:
+            if (
+                existing_alias.name == name
+                and existing_alias.segment == self.__segment_name
+                and existing_alias.offset == offset
+            ):
+                return
+        self.code_offset_aliases.append(
+            op.var(
+                1,
+                offset,
+                name=name,
+                segment=self.__segment_name,
+                elements=1,
+                original_type="byte",
+                filename=self._current_file,
+                raw=raw,
+                line_number=line_number,
+            )
+        )
 
     def _compute_data_layout(self, data_type: str, args: Tree) -> tuple[int, int, int]:
         binary_width = self.typetosize(data_type)
         calc = ExprSizeCalculator(element_size=binary_width, init=Vector(0, 0), context=self)
         size, elements = calc.visit(args).values
-        if size == 0:
+        if binary_width and elements:
+            size = binary_width * elements
+        elif size == 0:
             size = binary_width * elements
         return binary_width, size, elements
 
@@ -1440,7 +2148,13 @@ class Parser:
             line_number=line_number,
         )
         existing = self.symbols.get_global(label)
+        if self.pass_number == 1 and isinstance(existing, Proc) and existing.extern:
+            self.symbols.reset_global(label, symbol)
+            return
         if self.itislst and self.pass_number == 1 and isinstance(existing, (op._assignment, op._equ)):
+            self.symbols.reset_global(label, symbol)
+            return
+        if self.pass_number == 1 and isinstance(existing, op.label):
             self.symbols.reset_global(label, symbol)
             return
         self.symbols.set_global(label, symbol)
@@ -1548,16 +2262,25 @@ class Parser:
         self.__binary_data_size = 0
         self.__c_dummy_jump_label = 0
         self.__c_extra_dummy_jump_label = 0
+        self._armed_short_relative_label = ""
+        self._pending_short_relative_label = ""
 
     def parse_file_inside(self, text, file_name=None):
         text = self._join_continued_lines(text)
         filtered = self.apply_conditional_assembly(text)
         self._collect_text_macros_from_content(filtered)
         self._preload_text_macros(filtered, set())
-        filtered = self._strip_text_macro_definitions(filtered)
-        filtered = self._expand_repeat_blocks(filtered)
-        filtered = self._expand_text_macros(filtered)
-        filtered = self._expand_repeat_blocks(filtered)
+        repeat_symbols = self._preload_repeat_symbols(filtered, set())
+        filtered = self._normalize_rinit_alias_directives(filtered)
+        if self._requires_ordered_text_macro_expansion(filtered):
+            filtered = self._expand_text_macros_ordered(filtered)
+            filtered = self._expand_repeat_blocks(filtered, repeat_symbols)
+            filtered = self._expand_text_macros_ordered(filtered)
+        else:
+            filtered = self._strip_text_macro_definitions(filtered)
+            filtered = self._expand_repeat_blocks(filtered, repeat_symbols)
+            filtered = self._expand_text_macros(filtered)
+            filtered = self._expand_repeat_blocks(filtered, repeat_symbols)
         filtered = self._expand_text_equates(filtered)
         filtered = self._trim_trailing_lines_after_end(filtered)
         self._predeclare_included_structure_names(filtered, set())
@@ -1582,6 +2305,42 @@ class Parser:
                 self._preload_text_macros(include_content, seen)
             finally:
                 self._current_file, self.__current_file_hash = previous
+
+    def _preload_repeat_symbols(self, content: str, seen: set[str]) -> dict[str, int]:
+        symbols: dict[str, int] = {}
+        self._collect_repeat_symbols_from_content(content, symbols, seen)
+        return symbols
+
+    def _collect_repeat_symbols_from_content(
+            self,
+            content: str,
+            symbols: dict[str, int],
+            seen: set[str],
+    ) -> None:
+        for line in content.splitlines():
+            code = line.split(";", 1)[0].strip()
+            include = re.match(r"^INCLUDE\s+(.+)$", code, re.IGNORECASE)
+            if include:
+                include_path = self.resolve_include_path(include.group(1).strip())
+                if include_path in seen or not os.path.exists(include_path):
+                    continue
+                seen.add(include_path)
+                include_content = self.apply_conditional_assembly(
+                    self._join_continued_lines(self._read_whole_file(include_path))
+                )
+                previous = self._switch_file_context(include_path)
+                try:
+                    self._collect_repeat_symbols_from_content(include_content, symbols, seen)
+                finally:
+                    self._current_file, self.__current_file_hash = previous
+                continue
+
+            assignment = re.match(r"^(?P<name>[A-Za-z_@$?][A-Za-z0-9_@$?]*)\s*=\s*(?P<expr>.+)$", code)
+            if assignment:
+                symbols[assignment.group("name").lower()] = self._eval_repeat_expression(
+                    assignment.group("expr"),
+                    symbols,
+                )
 
     def _collect_text_macros_from_content(self, content: str) -> None:
         lines = content.splitlines(keepends=True)
@@ -1642,6 +2401,27 @@ class Parser:
                 i += 1
         return "".join(rows)
 
+    @staticmethod
+    def _requires_ordered_text_macro_expansion(content: str) -> bool:
+        names: set[str] = set()
+        macro_depth = 0
+        for line in content.splitlines():
+            if macro_depth:
+                if re.match(r"^\s*ENDM\b", line, re.IGNORECASE):
+                    macro_depth = max(0, macro_depth - 1)
+                elif re.match(r"^\s*[A-Za-z_@$?][A-Za-z0-9_@$?]*\s+MACRO\b", line, re.IGNORECASE):
+                    macro_depth += 1
+                continue
+            match = re.match(r"^\s*(?P<name>[A-Za-z_@$?][A-Za-z0-9_@$?]*)\s+MACRO\b", line, re.IGNORECASE)
+            if not match:
+                continue
+            name = match.group("name").lower()
+            if name in names:
+                return True
+            names.add(name)
+            macro_depth = 1
+        return False
+
     def _expand_repeat_blocks(self, content: str, symbols: dict[str, int] | None = None) -> str:
         rows: list[str] = []
         lines = content.splitlines(keepends=True)
@@ -1662,7 +2442,7 @@ class Parser:
 
             repeat = re.match(r"^\s*(?:REPT|REPEAT)\s+(?P<count>[^;\r\n]+)", line, re.IGNORECASE)
             if not repeat:
-                rows.append(line)
+                rows.append(self._substitute_repeat_percent_expressions(line, symbols))
                 i += 1
                 continue
 
@@ -1695,12 +2475,19 @@ class Parser:
                     assignment.group("expr"),
                     symbols,
                 )
+                rows.append(line)
                 continue
             rows.append(self._substitute_repeat_percent_expressions(line, symbols))
-        return self._expand_repeat_blocks("".join(rows), symbols).splitlines(keepends=True)
+        expanded = "".join(rows)
+        if re.search(r"^\s*(?:REPT|REPEAT)\b", expanded, re.IGNORECASE | re.MULTILINE):
+            return self._expand_repeat_blocks(expanded, symbols).splitlines(keepends=True)
+        return rows
 
     @staticmethod
     def _substitute_repeat_percent_expressions(line: str, symbols: dict[str, int]) -> str:
+        if re.match(r"^\s*%OUT\b", line, flags=re.IGNORECASE):
+            return line
+
         def replace(match: re.Match[str]) -> str:
             return str(symbols.get(match.group("name").lower(), 0))
 
@@ -1787,6 +2574,42 @@ class Parser:
             i += 1
         return len(code)
 
+    def _expand_text_macros_ordered(self, content: str) -> str:
+        rows: list[str] = []
+        lines = content.splitlines(keepends=True)
+        i = 0
+        while i < len(lines):
+            header = re.match(
+                r"^\s*(?P<name>[A-Za-z_@$?][A-Za-z0-9_@$?]*)\s+MACRO\b(?P<params>[^\r\n;]*)",
+                lines[i],
+                re.IGNORECASE,
+            )
+            if not header:
+                rows.append(self._expand_text_macros(lines[i]))
+                i += 1
+                continue
+
+            body: list[str] = []
+            i += 1
+            depth = 1
+            while i < len(lines):
+                if self._starts_macro_like_block(lines[i]):
+                    depth += 1
+                if re.match(r"^\s*ENDM\b", lines[i], re.IGNORECASE):
+                    depth -= 1
+                    if depth == 0:
+                        i += 1
+                        break
+                body.append(lines[i])
+                i += 1
+            params = [
+                param.strip().split(":", 1)[0].split("=", 1)[0].lower()
+                for param in header.group("params").split(",")
+                if param.strip()
+            ]
+            self._text_macros[header.group("name").lower()] = _TextMacro(params, body)
+        return "".join(rows)
+
     def _expand_text_macros(self, content: str) -> str:
         expanded = content
         for _ in range(20):
@@ -1820,11 +2643,13 @@ class Parser:
                 code,
             )
             if not match:
+                self._remember_text_macro_assignment_from_line(line)
                 rows.append(line)
                 i += 1
                 continue
             macro = self._text_macros.get(match.group("name").lower())
             if macro is None:
+                self._remember_text_macro_assignment_from_line(line)
                 rows.append(line)
                 i += 1
                 continue
@@ -1835,24 +2660,221 @@ class Parser:
                 continue
             changed = True
             args = self._split_macro_args(match.group("args").strip())
-            replacements = dict(zip(macro.parameters, args))
+            replacements = {
+                parameter: args[index] if index < len(args) else ""
+                for index, parameter in enumerate(macro.parameters)
+            }
             self._text_macro_expansion_id += 1
             local_replacements = self._local_macro_replacements(macro.body, self._text_macro_expansion_id)
             replacements.update(local_replacements)
             label = (match.group("label") or "").strip().rstrip(":")
+            body_rows: list[str] = []
             for body_line in macro.body:
                 if re.match(r"^\s*LOCAL\b", body_line, re.IGNORECASE):
                     continue
                 rendered = self._substitute_text_macro_args(body_line.lstrip(), replacements)
                 if label:
-                    rows.append(f"{match.group('ws')}{label}:\t{rendered}")
+                    body_rows.append(f"{match.group('ws')}{label}:\t{rendered}")
                     label = ""
                 else:
-                    rows.append(match.group("ws") + rendered)
+                    body_rows.append(match.group("ws") + rendered)
+            expanded_body = self._normalize_rinit_alias_directives("".join(body_rows))
+            rows.append(self._expand_text_macro_control_blocks(expanded_body))
             if sep and comment.strip():
                 rows.append(f"{match.group('ws')};{comment}")
             i += 1
         return "".join(rows), changed
+
+    def _expand_text_macro_control_blocks(self, content: str) -> str:
+        lines = content.splitlines(keepends=True)
+        output: list[str] = []
+        stack: list[_ConditionalFrame] = []
+        i = 0
+        while i < len(lines):
+            line = lines[i]
+            irpc = self._parse_irpc_directive(line)
+            if irpc is not None:
+                symbol, text = irpc
+                body, i = self._collect_macro_block_body(lines, i + 1)
+                if all(frame.current_active for frame in stack):
+                    for char in text:
+                        replacements = {symbol.lower(): char}
+                        expanded = "".join(
+                            self._substitute_text_macro_args(body_line, replacements)
+                            for body_line in body
+                        )
+                        output.append(self._expand_text_macro_control_blocks(expanded))
+                continue
+
+            directive = self._parse_conditional_directive(line)
+            if directive is not None:
+                keyword, payload = directive
+                upper = keyword.upper()
+                parent_active = all(frame.current_active for frame in stack)
+                if upper in {"IF", "IFE", "IFB", "IFNB", "IFDEF", "IFNDEF", "IFDIF", "IFDIFI", "IFIDN", "IFIDNI", "IF1", "IF2"}:
+                    cond = self._evaluate_text_macro_conditional(upper, payload)
+                    active = parent_active and cond
+                    stack.append(_ConditionalFrame(parent_active=parent_active, branch_taken=active, current_active=active))
+                    i += 1
+                    continue
+                if upper.startswith("ELSEIF"):
+                    if stack:
+                        frame = stack[-1]
+                        if not frame.parent_active or frame.branch_taken:
+                            frame.current_active = False
+                        else:
+                            cond = self._evaluate_text_macro_conditional(upper[4:], payload)
+                            frame.current_active = cond
+                            frame.branch_taken = cond
+                    i += 1
+                    continue
+                if upper == "ELSE":
+                    if stack:
+                        frame = stack[-1]
+                        frame.current_active = frame.parent_active and not frame.branch_taken
+                        frame.branch_taken = True
+                    i += 1
+                    continue
+                if upper == "ENDIF":
+                    if stack:
+                        stack.pop()
+                    i += 1
+                    continue
+
+            if all(frame.current_active for frame in stack):
+                rendered = self._render_text_macro_symbols_in_line(line)
+                self._remember_text_macro_assignment_from_line(rendered)
+                output.append(rendered)
+            i += 1
+        return "".join(output)
+
+    @staticmethod
+    def _parse_irpc_directive(line: str) -> tuple[str, str] | None:
+        code = line.split(";", 1)[0].strip()
+        match = re.match(
+            r"^(?:IRPC|FORC)\s+(?P<symbol>[A-Za-z_@$?][A-Za-z0-9_@$?]*)\s*,\s*<(?P<text>.*)>\s*$",
+            code,
+            re.IGNORECASE,
+        )
+        if not match:
+            return None
+        return match.group("symbol"), match.group("text")
+
+    def _collect_macro_block_body(self, lines: list[str], start: int) -> tuple[list[str], int]:
+        body: list[str] = []
+        depth = 1
+        i = start
+        while i < len(lines):
+            if self._starts_macro_like_block(lines[i]):
+                depth += 1
+            if re.match(r"^\s*ENDM\b", lines[i], re.IGNORECASE):
+                depth -= 1
+                if depth == 0:
+                    return body, i + 1
+            if depth:
+                body.append(lines[i])
+            i += 1
+        return body, i
+
+    def _remember_text_macro_assignment_from_line(self, line: str) -> None:
+        code = line.split(";", 1)[0].strip()
+        match = re.match(r"^(?P<name>[A-Za-z_@$?][A-Za-z0-9_@$?]*)\s*=\s*(?P<expr>.+)$", code)
+        if not match:
+            return
+        value = self._evaluate_text_macro_expression(match.group("expr"))
+        if value is not None:
+            self._text_macro_symbols[match.group("name").lower()] = value
+
+    def _evaluate_text_macro_conditional(self, keyword: str, payload: str) -> bool:
+        key = keyword.upper()
+        if key in {"IF", "IFE"}:
+            value = self._evaluate_text_macro_expression(payload)
+            numeric = self._text_macro_value_to_int(value)
+            return (numeric != 0) if key == "IF" else (numeric == 0)
+        if key in {"IFDEF", "IFNDEF"}:
+            symbol = payload.split()[0] if payload else ""
+            defined = bool(symbol) and (
+                symbol.lower() in self._text_macro_symbols
+                or self.symbols.get_global(symbol.lower()) is not None
+            )
+            return defined if key == "IFDEF" else not defined
+        return self._evaluate_conditional(key, payload)
+
+    def _evaluate_text_macro_expression(self, expression: str) -> int | str | None:
+        expr = expression.strip()
+        if not expr:
+            return 0
+        quoted = re.fullmatch(r"""(["'])(.*)\1""", expr)
+        if quoted:
+            return quoted.group(2)
+        rendered = self._render_text_macro_symbols(expr, include_plain=True)
+        rendered = re.sub(r"\b([01]+)b\b", lambda match: str(int(match.group(1), 2)), rendered, flags=re.IGNORECASE)
+        rendered = re.sub(r"\b([0-9A-F]+)h\b", lambda match: str(int(match.group(1), 16)), rendered, flags=re.IGNORECASE)
+        rendered = re.sub(r"\b([0-9]+)[dq]\b", r"\1", rendered, flags=re.IGNORECASE)
+        rendered = re.sub(r"\b([0-7]+)[oq]\b", lambda match: str(int(match.group(1), 8)), rendered, flags=re.IGNORECASE)
+        rendered = rendered.replace("/", "//")
+        try:
+            return int(eval(rendered, {"__builtins__": {}}, {}))
+        except Exception:
+            return None
+
+    @staticmethod
+    def _text_macro_value_to_int(value: int | str | None) -> int:
+        if isinstance(value, int):
+            return value
+        if isinstance(value, str):
+            return ord(value[0]) if value else 0
+        return 0
+
+    def _render_text_macro_symbols_in_line(self, line: str) -> str:
+        body = line[:-1] if line.endswith("\n") else line
+        newline = "\n" if line.endswith("\n") else ""
+        code, sep, comment = body.partition(";")
+        match = re.match(r"^(?P<prefix>\s*[A-Za-z_@$?][A-Za-z0-9_@$?]*\s*=\s*)(?P<expr>.+)$", code)
+        if match:
+            code = match.group("prefix") + self._render_text_macro_symbols(match.group("expr"))
+        elif re.match(
+            r"^\s*(?:(?:@@|[A-Za-z_@$?][A-Za-z0-9_@$?]*)\s*:?\s+)?"
+            r"(?:DB|DW|DD|DF|DQ|DT|BYTE|WORD|DWORD)\b",
+            code,
+            re.IGNORECASE,
+        ):
+            code = self._render_text_macro_symbols(code)
+        return code + (sep + comment if sep else "") + newline
+
+    def _render_text_macro_symbols(self, code: str, *, include_plain: bool = False) -> str:
+        if not self._text_macro_symbols:
+            return code
+        result: list[str] = []
+        i = 0
+        while i < len(code):
+            char = code[i]
+            if char in {"'", '"'}:
+                end = self._quoted_text_end(code, i)
+                result.append(code[i:end])
+                i = end
+                continue
+            match = re.match(r"[A-Za-z_@$?][A-Za-z0-9_@$?]*", code[i:])
+            if match:
+                token = match.group(0)
+                if i > 0 and code[i - 1] == "%":
+                    result.append(token)
+                    i += len(token)
+                    continue
+                if not include_plain and not token.startswith("$"):
+                    result.append(token)
+                    i += len(token)
+                    continue
+                value = self._text_macro_symbols.get(token.lower())
+                if value is None:
+                    result.append(token)
+                else:
+                    result.append(str(self._text_macro_value_to_int(value)))
+                i += len(token)
+                continue
+            result.append(char)
+            i += 1
+        return "".join(result)
 
     def _split_chained_macro_invocation(self, line: str, match: re.Match[str]) -> list[str]:
         if not self._text_macros:
@@ -1897,8 +2919,18 @@ class Parser:
 
     @staticmethod
     def _substitute_text_macro_args(line: str, replacements: dict[str, str]) -> str:
+        def replace_paste(match: re.Match[str]) -> str:
+            parts = [part for part in match.group(0).split("&") if part]
+            return "".join(replacements.get(part.lower(), part) for part in parts)
+
         result = line
+        result = re.sub(
+            r"&?[A-Za-z_@$?][A-Za-z0-9_@$?]*(?:&[A-Za-z_@$?][A-Za-z0-9_@$?]*)+&?",
+            replace_paste,
+            result,
+        )
         for name, value in replacements.items():
+            result = re.sub(rf"&{re.escape(name)}&", value, result, flags=re.IGNORECASE)
             result = re.sub(rf"&{re.escape(name)}\b", value, result, flags=re.IGNORECASE)
             result = re.sub(rf"\b{re.escape(name)}&", value, result, flags=re.IGNORECASE)
             result = re.sub(rf"\b{re.escape(name)}\b", value, result, flags=re.IGNORECASE)
@@ -1949,6 +2981,93 @@ class Parser:
         if all(not line.split(";", 1)[0].replace("\x1a", "").strip() for line in trailing):
             return "".join(lines[:last_end_index + 1])
         return content
+
+    @staticmethod
+    def _strip_fragment_terminators(content: str) -> str:
+        lines = content.splitlines(keepends=True)
+        label = r"[A-Za-z@_$?][A-Za-z@_$?0-9]*"
+        segment_stack: list[str] = []
+        kept: list[str] = []
+        for line in lines:
+            code = line.split(";", 1)[0].replace("\x1a", "").strip()
+            if re.match(r"^END(?:\s+.+)?$", code, re.IGNORECASE):
+                continue
+            segment = re.match(rf"^({label})\s+SEGMENT\b", code, re.IGNORECASE)
+            if segment:
+                segment_stack.append(segment.group(1).lower())
+                kept.append(line)
+                continue
+            ends = re.match(rf"^({label})\s+ENDS\b", code, re.IGNORECASE)
+            if ends:
+                name = ends.group(1).lower()
+                if segment_stack and segment_stack[-1] == name:
+                    segment_stack.pop()
+                    kept.append(line)
+                    continue
+                if not segment_stack:
+                    continue
+                kept.append(line)
+                continue
+            kept.append(line)
+        return "".join(kept)
+
+    @staticmethod
+    def _close_single_open_final_segment(content: str) -> str:
+        lines = content.splitlines(keepends=True)
+        label = r"[A-Za-z@_$?][A-Za-z@_$?0-9]*"
+        segment_stack: list[str] = []
+        final_end_index: int | None = None
+        for index, line in enumerate(lines):
+            code = line.split(";", 1)[0].replace("\x1a", "").strip()
+            segment = re.match(rf"^({label})\s+SEGMENT\b", code, re.IGNORECASE)
+            if segment:
+                segment_stack.append(segment.group(1))
+                continue
+            ends = re.match(rf"^({label})\s+ENDS\b", code, re.IGNORECASE)
+            if ends and segment_stack and segment_stack[-1].lower() == ends.group(1).lower():
+                segment_stack.pop()
+                continue
+            if re.match(r"^END(?:\s+.+)?$", code, re.IGNORECASE):
+                final_end_index = index
+
+        if len(segment_stack) != 1:
+            return content
+
+        segment_name = segment_stack[-1]
+        synthetic = f"{segment_name} ENDS ;__MASM2C_SYNTHETIC\n"
+        if final_end_index is None:
+            return content + ("\n" if content and not content.endswith(("\n", "\r")) else "") + synthetic
+        return "".join(lines[:final_end_index] + [synthetic] + lines[final_end_index:])
+
+    def _apply_fragment_end_directive(self, content: str) -> None:
+        for line in reversed(content.splitlines()):
+            code = line.split(";", 1)[0].replace("\x1a", "").strip()
+            if not code:
+                continue
+            match = re.match(r"^END(?:\s+(?P<label>[A-Za-z@_$?][A-Za-z@_$?0-9]*))?$", code, re.IGNORECASE)
+            if match and match.group("label"):
+                self.finish_program(match.group("label"))
+            return
+
+    @staticmethod
+    def _has_top_level_label(content: str) -> bool:
+        segment_stack: list[str] = []
+        label = r"[A-Za-z@_$?][A-Za-z@_$?0-9]*"
+        for line in content.splitlines():
+            code = line.split(";", 1)[0].strip()
+            if not code:
+                continue
+            segment = re.match(rf"^({label})\s+SEGMENT\b", code, re.IGNORECASE)
+            if segment:
+                segment_stack.append(segment.group(1).lower())
+                continue
+            ends = re.match(rf"^({label})\s+ENDS\b", code, re.IGNORECASE)
+            if ends and segment_stack and segment_stack[-1] == ends.group(1).lower():
+                segment_stack.pop()
+                continue
+            if not segment_stack and re.match(rf"^{label}\s*:", code):
+                return True
+        return False
 
     def _wrap_bare_data_table(self, content: str) -> str:
         code_lines = []
@@ -2072,8 +3191,18 @@ class Parser:
         lines = content.splitlines(keepends=True)
         output: list[str] = []
         stack: list[_ConditionalFrame] = []
+        macro_depth = 0
 
         for line in lines:
+            if self._starts_macro_like_block(line):
+                macro_depth += 1
+                output.append(line)
+                continue
+            if macro_depth:
+                output.append(line)
+                if re.match(r"^\s*ENDM\b", line, re.IGNORECASE):
+                    macro_depth -= 1
+                continue
             directive = self._parse_conditional_directive(line)
             if directive is None:
                 if all(frame.current_active for frame in stack):
@@ -2190,6 +3319,7 @@ class Parser:
             expr = re.sub(rf"\b{old}\b", new, expr, flags=re.IGNORECASE)
         expr = re.sub(r"\b([01]+)b\b", lambda match: str(int(match.group(1), 2)), expr, flags=re.IGNORECASE)
         expr = re.sub(r"\b([0-9A-F]+)h\b", lambda match: str(int(match.group(1), 16)), expr, flags=re.IGNORECASE)
+        expr = re.sub(r"\b([0-9]+)d\b", r"\1", expr, flags=re.IGNORECASE)
         expr = re.sub(r"\b[A-Za-z_@$?][A-Za-z0-9_@$?]*\b", "0", expr)
         try:
             return int(bool(eval(expr, {"__builtins__": {}}, {})))
@@ -2197,6 +3327,8 @@ class Parser:
             return 0
 
     def parse_text(self, text: str, file_name: str="", start_rule: str="start") -> Tree:
+        text = self._normalize_title_directives(text)
+        text = self._normalize_rinit_alias_directives(text)
         text = self._normalize_label_alias_directives(text)
         logging.debug("parsing: [%s]", text)
         parser = self._select_parser(start_rule)
@@ -2233,6 +3365,19 @@ class Parser:
         return self.__lex.parser[0]
 
     @staticmethod
+    def _normalize_title_directives(text: str) -> str:
+        pattern = re.compile(
+            r"^(?P<indent>[ \t]*)(?P<directive>TITLE|SUBTITLE|SUBTTL)(?=[ \t;]|$)(?P<body>[^\r\n]*)(?P<newline>\r?\n?)",
+            re.IGNORECASE | re.MULTILINE,
+        )
+
+        def repl(match: re.Match[str]) -> str:
+            body = match.group("body")
+            return f"{match.group('indent')};{match.group('directive')}{body}{match.group('newline')}"
+
+        return pattern.sub(repl, text)
+
+    @staticmethod
     def _normalize_label_alias_directives(text: str) -> str:
         label = r"[A-Za-z@_$?][A-Za-z@_$?0-9]*"
         pattern = re.compile(
@@ -2240,10 +3385,41 @@ class Parser:
             re.IGNORECASE | re.MULTILINE,
         )
 
+        macro_depth = 0
+        lines: list[str] = []
+        macro_start = re.compile(rf"^\s*{label}\s+MACRO(?=[ \t;\r\n]|$)", re.IGNORECASE)
+        macro_end = re.compile(r"^\s*ENDM(?=[ \t;\r\n]|$)", re.IGNORECASE)
+
         def repl(match: re.Match[str]) -> str:
             data_type = match.group("type").strip()
             comment = match.group("comment") or ""
             return f"{match.group('indent')}__MASM2C_LABEL_ALIAS {match.group('name')} {data_type}{comment}"
+
+        for line in text.splitlines(keepends=True):
+            if macro_start.match(line):
+                macro_depth += 1
+                lines.append(line)
+                continue
+            if macro_depth:
+                lines.append(line)
+                if macro_end.match(line):
+                    macro_depth = max(0, macro_depth - 1)
+                continue
+            lines.append(pattern.sub(repl, line))
+        return "".join(lines)
+
+    @staticmethod
+    def _normalize_rinit_alias_directives(text: str) -> str:
+        label = r"[A-Za-z@_$?][A-Za-z@_$?0-9]*"
+        pattern = re.compile(
+            rf"^(?P<indent>[ \t]*)RINIT[ \t]+(?P<name>{label})[ \t]*,"
+            rf"(?P<size>[^;\r\n]*)(?P<comment>[ \t]*;[^\r\n]*)?$",
+            re.IGNORECASE | re.MULTILINE,
+        )
+
+        def repl(match: re.Match[str]) -> str:
+            original = match.group(0)
+            return f"{match.group('indent')}__MASM2C_LABEL_ALIAS {match.group('name')} WORD\n{original}"
 
         return pattern.sub(repl, text)
 
@@ -2402,6 +3578,12 @@ class Parser:
             # from another module. They are not storage and must not link as vars.
             self.externals_abs.add(label)
             return
+        if self._is_shared_equate_seed(label):
+            # Some MASM sources declare public absolute equates as WORD externs
+            # in consumers. Keep the numeric seed from the provider instead of
+            # treating the symbol as external storage.
+            self.externals_abs.add(label)
+            return
         if strtype not in ["proc"]:
             binary_width = self.typetosize(type)
             self.symbols.reset_global(label, op.var(binary_width, 0, name=label, segment=self.__segment_name,
@@ -2433,14 +3615,21 @@ class Parser:
         proc.stmts.append(o)
 
     def action_instruction(self, instruction: str, args: list[Expression | Any], raw: str="", line_number: int=0) -> baseop | None:
+        self._pending_data_label = ""
+        self._last_statement_was_data = False
+        self._armed_short_relative_label = ""
         self.handle_local_asm_jumps(instruction, args)
         self.make_sure_proc_exists(line_number, raw)
         op = self._build_instruction_op(instruction, args, raw, line_number)
         if op is None:
             return None
+        self._register_direct_external_code_ref(op)
+        self._register_offset_external_code_ref(op)
+        self._register_provisional_external_code_target(op)
         self._update_runtime_label_state(op, raw, line_number)
         self._append_helping_label_if_needed(op, raw)
         self._finalize_instruction_state(op)
+        self._append_pending_short_relative_label(raw)
         return op
 
     def _build_instruction_op(
@@ -2633,6 +3822,9 @@ class Parser:
         self.collect_labels(self.proc.used_labels, o)
 
     def handle_local_asm_jumps(self, instruction: str | Token, args: list[Expression | Any]) -> None:
+        if label := self._rewrite_short_relative_skip_jump(instruction, args):
+            self._armed_short_relative_label = label
+            return
         if (
             (_token_lower(instruction).startswith("j") or _token_lower(instruction).startswith("loop"))
             and len(args) == 1
@@ -2645,6 +3837,129 @@ class Parser:
                 args[0].children[0] = f"dummylabel{self.__c_dummy_jump_label + 1!s}"
             elif _token_lower(args[0].children[0]) == "arbb":  # @b
                 args[0].children[0] = f"dummylabel{self.__c_dummy_jump_label!s}"
+
+    def _rewrite_short_relative_skip_jump(self, instruction: str | Token, args: list[Expression | Any]) -> str:
+        """Rewrite MASM's `Jcc SHORT $+3` skip idiom to a real synthetic label.
+
+        MASM uses `$` as the current instruction offset. For a two-byte short
+        conditional jump, `$+3` targets the byte immediately after the following
+        one-byte instruction, most commonly `RET`. C code generation cannot keep
+        that address-relative form, so the parser turns it into `Jcc edummylabelN`
+        and asks `_append_pending_short_relative_label` to place that label after
+        the next parsed instruction.
+        """
+        if (
+            not (_token_lower(instruction).startswith("j") or _token_lower(instruction).startswith("loop"))
+            or len(args) != 1
+            or not isinstance(args[0], Expression)
+            or not self._is_short_current_offset_plus(args[0], 3)
+        ):
+            return ""
+        label_name = self.get_extra_dummy_jumplabel()
+        args[0].children = [Token("LABEL", label_name)]
+        return label_name
+
+    @staticmethod
+    def _is_short_current_offset_plus(expr: Expression, delta: int) -> bool:
+        """Return whether an expression is exactly `$ + delta`.
+
+        The grammar produces different trees for `SHORT $+3` and bare `$+3`,
+        so this accepts both the `ptrdir3(dol)` and `dollar` forms while still
+        rejecting other relative expressions that codegen intentionally treats
+        as no-op jumps.
+        """
+        if not expr.children or not isinstance(expr.children[0], Tree):
+            return False
+        add = expr.children[0]
+        if add.data != "adddir" or len(add.children) != 3:
+            return False
+        current, sign, amount = add.children
+        if str(sign) != "+" or str(amount).lower().rstrip("h") != str(delta):
+            return False
+        if isinstance(current, Tree) and current.data == "dollar":
+            return True
+        if (
+            isinstance(current, Tree)
+            and current.data == "ptrdir3"
+            and len(current.children) == 1
+            and _is_token(current.children[0])
+            and current.children[0].type == "LABEL"
+        ):
+            return _token_lower(current.children[0]) == "dol"
+        return False
+
+    def _append_pending_short_relative_label(self, raw: str) -> None:
+        """Place a synthetic label after the instruction skipped by `$+3`.
+
+        This method is called after every instruction is appended. The label
+        armed by the current jump becomes pending for the next instruction; the
+        previously pending label is emitted after the current instruction.
+        """
+        label_to_append = self._pending_short_relative_label
+        # Move the label armed by the current instruction into the pending slot
+        # so it is emitted after exactly one following instruction.
+        self._pending_short_relative_label = self._armed_short_relative_label
+        self._armed_short_relative_label = ""
+        if label_to_append:
+            self.action_label(label_to_append, raw=raw, globl=False)
+
+    def _register_provisional_external_code_target(self, operation: baseop) -> None:
+        if self.test_mode:
+            return
+        if operation.cmd not in {"call", "jmp"}:
+            return
+        labels = Token_.find_tokens(operation.children[0], "LABEL") if operation.children else []
+        if not labels:
+            return
+        name = str(labels[0])
+        if self._is_local_or_synthetic_label(name) or self.symbols.get_global(name) is not None:
+            return
+        proc = Proc(name, extern=True)
+        self.symbols.set_global(name, proc)
+        self.externals_procs.add(name)
+        self.extern_code_refs.add(name)
+
+    def _register_direct_external_code_ref(self, operation: baseop) -> None:
+        if operation.cmd not in {"call", "jmp"} or not operation.children:
+            return
+        labels = Token_.find_tokens(operation.children[0], "LABEL") or []
+        if len(labels) != 1:
+            return
+        name = str(labels[0])
+        symbol = self.symbols.get_global(name)
+        if isinstance(symbol, Proc) and symbol.extern:
+            self.extern_code_refs.add(name)
+
+    def _register_offset_external_code_ref(self, operation: baseop) -> None:
+        for name in self._offset_label_names(operation.children):
+            symbol = self.symbols.get_global(name)
+            if isinstance(symbol, Proc) and symbol.extern and name.startswith("dol"):
+                self.extern_code_refs.add(name)
+
+    def _offset_label_names(self, value: Any) -> list[str]:
+        if isinstance(value, Tree):
+            if value.data == "offsetdir":
+                return [str(label) for label in (Token_.find_tokens(value, "LABEL") or [])]
+            names: list[str] = []
+            for child in value.children:
+                names.extend(self._offset_label_names(child))
+            return names
+        if isinstance(value, list):
+            names: list[str] = []
+            for child in value:
+                names.extend(self._offset_label_names(child))
+            return names
+        return []
+
+    @staticmethod
+    def _is_local_or_synthetic_label(name: str) -> bool:
+        lower = name.lower()
+        return (
+            lower == "dol"
+            or lower.startswith("dummylabel")
+            or lower.startswith("quequel")
+            or "_arb" in lower
+        )
 
     def collect_labels(self, target: set[str], operation: baseop) -> None:
         for arg in operation.children:
@@ -2676,7 +3991,9 @@ class Parser:
                 self.symbols.set_global(name, self.current_struct)
             self.current_struct = None
         else:
-            self.action_endp()
+            self._finalize_pending_trailing_data_label(self.__cur_seg_offset, raw="", line_number=0)
+            if not self.__segment_stack:
+                self.action_endp()
             self.action_endseg()
 
     def action_end(self, label):

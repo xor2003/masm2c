@@ -4,6 +4,10 @@
 U_DOT: "."
 _COMMA: ","
 CHARLIST.1: /[^\r\n\t; <>]+/x
+RADIXVALUE.2: /[0-9]+/
+TITLEKW.3: /(?i:TITLE)(?=[ \t;\r\n]|\Z)/
+SUBTITLEKW.3: /(?i:SUBTITLE)(?=[ \t;\r\n]|\Z)/
+SUBTTLKW.3: /(?i:SUBTTL)(?=[ \t;\r\n]|\Z)/
 TEXT.1: /[^<>\r\n]+/x
 STRING: /((?<!')'((?!').+?(?<!'))?'(?!'))|((?<!")"((?!").+?(?<!"))?"(?!"))/
 LABEL: /[A-Za-z@_$?][A-Za-z@_$?0-9]*/
@@ -190,6 +194,7 @@ dir3: "WIDTH"i LABEL
 | recordconst
 | STRING
 | _integer_
+| "COMMON"i
 | type
 | dollar
 | _anyregister
@@ -200,13 +205,13 @@ expr: ".TYPE"i e01
 | e01
 sizearg: e10
 
-echodir: "ECHO"i arbitrarytext _linereminder | ".OUT"i arbitrarytext _linereminder
+echodir: "ECHO"i arbitrarytext _linereminder | ".OUT"i arbitrarytext _linereminder | "%OUT"i arbitrarytext _linereminder
 elsedirectivelist: ".ELSE"i _linereminder insegdir+
 elseifblock: elseifstatement _linereminder insegdir+ elseifblock?
 elseifstatement: "ELSEIF"i expr| "ELSEIFE"i expr| "ELSEIFB"i textitem| "ELSEIFNB"i textitem | "ELSEIFDEF"i LABEL| "ELSEIFNDEF"i LABEL| "ELSEIFDIF"i textitem _COMMA textitem| "ELSEIFDIFI"i textitem _COMMA textitem| "ELSEIFIDN"i textitem _COMMA textitem| "ELSEIFIDNI"i textitem _COMMA textitem| "ELSEIF1"i | "ELSEIF2"i
 enddir: "END"i expr?  _linereminder?
 endpdir: LABEL "ENDP"i _linereminder
-endsdir: LABEL "ENDS"i _linereminder
+endsdir: (LABEL|STRUCTNAME) "ENDS"i _linereminder
 eqconstexpr: "=" expr
 equdir: (LABEL|mnemonic) "EQU"i equtype _linereminder
 ?equtype: expr| textliteral
@@ -214,7 +219,7 @@ errordir: erroropt _linereminder
 erroropt: ".ERR"i textitem? | ".ERRE"i expr opttext? | ".ERRNZ"i expr opttext? | ".ERRB"i textitem opttext? | ".ERRNB"i textitem opttext? | ".ERRDEF"i LABEL  opttext? | ".ERRNDEF"i LABEL opttext? | ".ERRDIF"i textitem _COMMA textitem  opttext? | ".ERRDIFI"i textitem _COMMA textitem  opttext? | ".ERRIDN"i textitem _COMMA textitem  opttext? | ".ERRIDNI"i textitem _COMMA textitem  opttext? | ".ERR1"i textitem? | ".ERR2"i textitem?
 exitdir: ".EXIT"i expr?  _linereminder
 exitmdir: "EXITM"i textitem? _linereminder
-externdef: langtype?  LABEL altidq? ":" externtype
+externdef: langtype?  (LABEL|"COMMON"i) altidq? ":" externtype
 externdir: externkey externlist _linereminder
 externkey: "EXTRN"i | "EXTERN"i | "EXTERNDEF"i
 externlist: externdef | externdef _commaoeol externlist
@@ -239,7 +244,7 @@ includedir: "INCLUDE"i filespec _linereminder
 includelibdir: "INCLUDELIB"i filespec _linereminder
 insegdir: labeldef _insegmentdir | _insegmentdir
 insegdirlist: insegdir+
-_insegmentdir: instruction| datadir| controldir| startupdir| exitdir| offsetdir| labeldir| procdir  localdirlist? endpdir| procdir  localdirlist? insegdir+ endpdir| invokedir| _generaldir | _linereminder
+_insegmentdir: instruction| datadir| controldir| startupdir| exitdir| offsetdir| labeldir| procdir  localdirlist? endpdir| procdir  localdirlist? insegdir+ endpdir| invokedir| _segmentdef | _generaldir | _linereminder
 
 _asminstruction: instrprefix? mnemonic  exprlist?
 //| PUSH allreglist
@@ -250,8 +255,8 @@ instruction: _asminstruction _linereminder
 invokearg: _anyregister "::" register| "ADDR"i expr | expr
 invokedir: "INVOKE"i expr commainvokelist? _linereminder
 invokelist: invokearg | invokearg _commaoeol invokelist
-!labeldef: (LABEL|mnemonic) ":" | (LABEL|mnemonic) "::"
-labeldir: LABELALIAS LABEL qualifiedtype _linereminder
+!labeldef: (LABEL|mnemonic|"COMMON"i) ":" | (LABEL|mnemonic|"COMMON"i) "::"
+labeldir: LABELALIAS LABEL qualifiedtype _linereminder | LABEL LABELKW qualifiedtype _linereminder
 _linereminder: _ENDOFLINE | comment _ENDOFLINE
 listdir: listoption _linereminder
 localdef: "LOCAL"i idlist _linereminder
@@ -267,13 +272,13 @@ macrodir: macrodirhead _linereminder macrobody? macend _linereminder
 macrofor: fordir forparm  _COMMA "<" macroarglist ">" _linereminder macrobody? "ENDM"i _linereminder
 macroforc: forcdir LABEL  _COMMA textliteral _linereminder macrobody? "ENDM"i _linereminder
 macronamelist: LABEL | LABEL _COMMA macronamelist
-macroparamid: LABEL | "ADDR"i
+macroparamid: LABEL | "ADDR"i | "SIZE"i
 macroparm: macroparamid dotdotparmtype?
 macroparmlist: macroparm | macroparm _commaoeol macroparmlist
 macrorepeat: repeatbegin _linereminder macrobody? macend _linereminder
 repeatbegin: repeatdir expr
 macend: "ENDM"i
-macrostmt: instruction | labeldef | datadir | _directive| exitmdir| ":" LABEL _linereminder| "GOTO"i LABEL _linereminder
+macrostmt: instruction | labeldef | labeldir | datadir | _directive| exitmdir| ":" LABEL _linereminder| "GOTO"i LABEL _linereminder
 macrostmtlist: macrostmt+
 macrowhile: "WHILE"i expr _linereminder macrobody? "ENDM"i _linereminder
 
@@ -306,14 +311,14 @@ protoarglist: commaprotolist
 protolist: protoarg | protoarg _commaoeol protolist
 protospec: LABEL | distance?   langtype? protoarglist? commaidvararg?
 prototypedir: LABEL "PROTO"i protospec
-pubdef: langtype?  LABEL
+pubdef: langtype?  (LABEL|"COMMON"i)
 publicdir: "PUBLIC"i publist _linereminder
 publist: pubdef | pubdef _commaoeol publist
 purgedir: "PURGE"i macronamelist
 qualifiedtype: distance? "PTR"i qualifiedtype? | type
 qualifier: "PROTO"i protospec | qualifiedtype
 //QUOTE: "'"" | "\""
-radixdir: ".RADIX"i expr _linereminder
+radixdir: ".RADIX"i RADIXVALUE _linereminder
 //readonly: READONLY
 //oldrecordfieldlist: exprlist
 recordconst_: "{" exprlist "}"| oldrecordinstance
@@ -365,7 +370,7 @@ textliteral: "<" TEXT ">"
 textmacrodir: "CATSTR"i textlist? | "TEXTEQU"i textlist? | "SIZESTR"i textitem| "SUBSTR"i textitem  _COMMA expr commatextlen| "INSTR"i textstartcomma? textitem  _COMMA textitem
 textstartcomma: expr  _COMMA
 titledir: titletype arbitrarytext _linereminder
-titletype: "TITLE"i | "SUBTITLE"i | "SUBTTL"i
+titletype: TITLEKW | SUBTITLEKW | SUBTTLKW
 ?type: LABEL| STRUCTNAME| distance| datadecl
 typedefdir: LABEL "TYPEDEF"i qualifier
 untildir: ".UNTIL"i cexpr _linereminder | ".UNTILCXZ"i cxzexpr?  _linereminder
