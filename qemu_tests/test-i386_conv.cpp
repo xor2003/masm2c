@@ -3318,52 +3318,52 @@ XADD(*(db*)&op1,*(db*)&op0);
 
 
     { dd op0, op1, op2; op0 = i2l(0x12345678); op1 = i2l(0xfbca7654); op2 = i2l(0xfbca7654);
-eax=op2;CMPXCHG(*(dd*)&op1,*(dd*)&op0);op2=eax;
+eax=op2;CMPXCHG(*(dd*)&op1,*(dd*)&op0);
  printf("%-10s EAX=%08lx A=%08lx C=%08lx\n", "cmpxchgl", op2, op0, op1);};
     { dd op0, op1, op2; op0 = i2l(0x12345678); op1 = i2l(0xfbca7654); op2 = i2l(0xfbca7654);
-eax=op2;CMPXCHG(*(dw*)&op1,*(dw*)&op0);op2=eax;
+eax=op2;CMPXCHG(*(dw*)&op1,*(dw*)&op0);
  printf("%-10s EAX=%08lx A=%08lx C=%08lx\n", "cmpxchgw", op2, op0, op1);};
     { dd op0, op1, op2; op0 = i2l(0x12345678); op1 = i2l(0xfbca7654); op2 = i2l(0xfbca7654);
-eax=op2;CMPXCHG(*(db*)&op1,*(db*)&op0);op2=eax;
+eax=op2;CMPXCHG(*(db*)&op1,*(db*)&op0);
  printf("%-10s EAX=%08lx A=%08lx C=%08lx\n", "cmpxchgb", op2, op0, op1);};
 
 
 
 
     { dd op0, op1, op2; op0 = i2l(0x12345678); op1 = i2l(0xfbca7654); op2 = i2l(0xfffefdfc);
-eax=op2;CMPXCHG(*(dd*)&op1,*(dd*)&op0);op2=eax;
+eax=op2;CMPXCHG(*(dd*)&op1,*(dd*)&op0);
  printf("%-10s EAX=%08lx A=%08lx C=%08lx\n", "cmpxchgl", op2, op0, op1);};
     { dd op0, op1, op2; op0 = i2l(0x12345678); op1 = i2l(0xfbca7654); op2 = i2l(0xfffefdfc);
-eax=op2;CMPXCHG(*(dw*)&op1,*(dw*)&op0);op2=eax;
+eax=op2;CMPXCHG(*(dw*)&op1,*(dw*)&op0);
  printf("%-10s EAX=%08lx A=%08lx C=%08lx\n", "cmpxchgw", op2, op0, op1);};
     { dd op0, op1, op2; op0 = i2l(0x12345678); op1 = i2l(0xfbca7654); op2 = i2l(0xfffefdfc);
-eax=op2;CMPXCHG(*(db*)&op1,*(db*)&op0);op2=eax;
+eax=op2;CMPXCHG(*(db*)&op1,*(db*)&op0);
  printf("%-10s EAX=%08lx A=%08lx C=%08lx\n", "cmpxchgb", op2, op0, op1);};
 
 
 
 
     { dd op0, op1, op2; op0 = i2l(0x12345678); op1 = i2l(0xfbca7654); op2 = i2l(0xfbca7654);
-eax=op2;CMPXCHG(*(dd*)&op1,*(dd*)&op0);op2=eax;
+eax=op2;CMPXCHG(*(dd*)&op1,*(dd*)&op0);
  printf("%-10s EAX=%08lx A=%08lx C=%08lx\n", "cmpxchgl", op2, op0, op1);};
     { dd op0, op1, op2; op0 = i2l(0x12345678); op1 = i2l(0xfbca7654); op2 = i2l(0xfbca7654);
-eax=op2;CMPXCHG(*(dw*)&op1,*(dw*)&op0);op2=eax;
+eax=op2;CMPXCHG(*(dw*)&op1,*(dw*)&op0);
  printf("%-10s EAX=%08lx A=%08lx C=%08lx\n", "cmpxchgw", op2, op0, op1);};
     { dd op0, op1, op2; op0 = i2l(0x12345678); op1 = i2l(0xfbca7654); op2 = i2l(0xfbca7654);
-eax=op2;CMPXCHG(*(db*)&op1,*(db*)&op0);op2=eax;
+eax=op2;CMPXCHG(*(db*)&op1,*(db*)&op0);
  printf("%-10s EAX=%08lx A=%08lx C=%08lx\n", "cmpxchgb", op2, op0, op1);};
 
 
 
 
     { dd op0, op1, op2; op0 = i2l(0x12345678); op1 = i2l(0xfbca7654); op2 = i2l(0xfffefdfc);
-eax=op2;CMPXCHG(*(dd*)&op1,*(dd*)&op0);op2=eax;
+eax=op2;CMPXCHG(*(dd*)&op1,*(dd*)&op0);
  printf("%-10s EAX=%08lx A=%08lx C=%08lx\n", "cmpxchgl", op2, op0, op1);};
     { dd op0, op1, op2; op0 = i2l(0x12345678); op1 = i2l(0xfbca7654); op2 = i2l(0xfffefdfc);
-eax=op2;CMPXCHG(*(dw*)&op1,*(dw*)&op0);op2=eax;
+eax=op2;CMPXCHG(*(dw*)&op1,*(dw*)&op0);
  printf("%-10s EAX=%08lx A=%08lx C=%08lx\n", "cmpxchgw", op2, op0, op1);};
     { dd op0, op1, op2; op0 = i2l(0x12345678); op1 = i2l(0xfbca7654); op2 = i2l(0xfffefdfc);
-eax=op2;CMPXCHG(*(db*)&op1,*(db*)&op0);op2=eax;
+eax=op2;CMPXCHG(*(db*)&op1,*(db*)&op0);
  printf("%-10s EAX=%08lx A=%08lx C=%08lx\n", "cmpxchgb", op2, op0, op1);};
 
     {
@@ -3402,11 +3402,11 @@ X86_REGREF
     // asm ("xlat" : "=a" (res) : "b" (table), "0" (res));
     printf("xlat: EAX=%08lx\n", res);
 
-    {dd m2c_pop_esp_v;PUSH((dd)0x12345432);PUSH((dd)0x9abcdef);POP(m2c_pop_esp_v);*(dd*)m2c::stack_raddr_(ss,esp)=m2c_pop_esp_v;POP(res);}
+    {dd m2c_pop_esp_v;PUSH((dd)12345432);PUSH((dd)0x9abcdef);POP(m2c_pop_esp_v);*(dd*)m2c::stack_raddr_(ss,esp)=m2c_pop_esp_v;POP(res);}
     printf("popl esp=%08lx\n", res);
 
 
-    // asm volatile ("pushl $12345432 ; pushl $0x9abcdef ; popw (%%esp) ; addl $2, %%esp ; popl %0" : "=g" (res));
+    {dw m2c_pop_esp_w;PUSH((dd)12345432);PUSH((dd)0x9abcdef);POP(m2c_pop_esp_w);*(dw*)m2c::stack_raddr_(ss,esp)=m2c_pop_esp_w;esp+=2;POP(res);}
     printf("popw esp=%08lx\n", res);
 
 }

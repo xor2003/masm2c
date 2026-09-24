@@ -3463,7 +3463,7 @@ shrdw      A=12345678 B=21ad3d34 C=0000001f R=1234acf0 CCIN=0000 CC=0080
 shrdl      A=82345679 B=813f3421 C=00000000 R=82345679 CCIN=0000 CC=0000
 shrdw      A=82345679 B=813f3421 C=00000000 R=82345679 CCIN=0000 CC=0000
 shrdl      A=82345679 B=813f3421 C=00000001 R=c11a2b3c CCIN=0000 CC=0081
-shrdw      A=82345679 B=813f3421 C=00000001 R=8234ab3c CCIN=0000 CC=0081
+shrdw      A=82345679 B=813f3421 C=00000001 R=8234ab3c CCIN=0000 CC=0881
 shrdl      A=82345679 B=813f3421 C=00000002 R=608d159e CCIN=0000 CC=0000
 shrdw      A=82345679 B=813f3421 C=00000002 R=8234559e CCIN=0000 CC=0000
 shrdl      A=82345679 B=813f3421 C=00000003 R=30468acf CCIN=0000 CC=0000
@@ -4162,6 +4162,14 @@ jA         1
 setA       1
 jA         0
 setA       0
+jP         1
+setP       1
+jP         0
+setP       0
+jNP        0
+setNP      0
+jNP        1
+setNP      1
 jO         0
 setO       0
 jO         1
@@ -4396,8 +4404,8 @@ repnz cmpsb ESI=000007ff EDI=0000080f EAX=12345678 ECX=00000010 EFL=0040
 repnz cmpsw ESI=000007fe EDI=0000080e EAX=12345678 ECX=00000010 EFL=0040
 repnz cmpsl ESI=000007fc EDI=0000080c EAX=12345678 ECX=00000010 EFL=0040
 xlat: EAX=12345688
-popl esp=12345688
-popw esp=12345688
+popl esp=09abcdef
+popw esp=00bc6058
 lea 0x4000 = 00004000
 lea (%%eax) = 00000001
 lea (%%ebx) = 00000002
@@ -4458,5 +4466,5 @@ lea 0x4000(%%bx,%%di) = 00004022
 cbw        A=8234a6f8 R=8234fff8
 cwde       A=8234a6f8 R=ffffa6f8
 cwd        A=8234a6f8 R=8234a6f8:8345ffff
-unimp cdq        A=8234a6f8 R=8234a6f8:8345a1f2
+cdq        A=8234a6f8 R=8234a6f8:ffffffff
 bswapl    : A=12345678 R=78563412
