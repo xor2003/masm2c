@@ -229,6 +229,7 @@ stopIt:                        /* reached from FIRST_FIT on match */
   foundSeg->m_psp = 1; //cu_psp;     /* the new block is for current process */
   foundSeg->m_name[0] = '\0';
 
+fprintf(stderr,"[MCB alloc seg=%x zero %x..%x]\n",(unsigned)FP_SEG(foundSeg),(unsigned)(FP_SEG(foundSeg)+1),(unsigned)(FP_SEG(foundSeg)+1+foundSeg->m_size));
 memset(((char*)foundSeg)+16,0,(foundSeg->m_size)*16);
   *para = FP_SEG(foundSeg);
   return SUCCESS;

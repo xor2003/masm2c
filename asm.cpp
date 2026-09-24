@@ -317,6 +317,7 @@ bool is_dos_terminate_vector(dw segment, dw offset) {
 	if (segment != host.current_psp || offset != 0) {
 		return false;
 	}
+	log_error("terminate vector hit at %x:%x\n", segment, offset);
 	jumpToBackGround = true;
 	executionFinished = true;
 	exitCode = 0;
@@ -1387,6 +1388,7 @@ bool host_try_overlay_retf(_offsets __disp, _STATE* _state, bool* out_result) {
 	// still the driver's code segment. Route both into tnd_overlay_call.
 	if (tnd_code_seg &&
 	    (tseg == tnd_code_seg || (tseg == 0 && _state->cs == tnd_code_seg))) {
+		log_error("tnd call disp=%x cs=%x\n", __disp, _state->cs);
 		*out_result = tnd_overlay_call(__disp, _state);
 		return true;
 	}
@@ -2665,7 +2667,18 @@ X86_REGREF
 #endif
 	}
 	case 0x21:
-
+		{
+		static dd tnd_img_guard = 0;
+		if (tnd_seg) {
+			db* gp = (db*)host_physical_address(tnd_seg, 0);
+			dd cur = *(dd*)gp;
+			if (cur != tnd_img_guard)
+				log_error("imgchg ah=%02x %08x->%08x ds=%x dx=%x es=%x at %x:%x\n", ah, tnd_img_guard, cur, ds, dx, es, cs, eip);
+			tnd_img_guard = cur;
+		}
+		if (ah == 0x48 || ah == 0x49 || ah == 0x4b || ah == 0x4c || ah == 0x09 || ah == 0x4a || ah == 0x3f)
+			log_error("int21 ah=%02x bx=%x dx=%x es=%x ds=%x at %x:%x\n", ah, bx, dx, es, ds, cs, eip);
+		}
 #ifdef __DJGPP__
 		switch(ah)
 		{
@@ -3207,7 +3220,11 @@ X86_REGREF
 					log_debug("TANDYSND bound: image %x code %x\n", tnd_seg, tnd_code_seg);
 				}
 			}
-			log_debug("EXEC overlay %s loaded at %x (relocs %d)\n", fname, loadseg, nreloc);
+			log_error("EXEC overlay %s loaded at %x fsz=%ld hsize=%x nreloc=%d img=%02x%02x%02x%02x base=%p\n",
+				fname, loadseg, fsz, (unsigned)hsize, (int)nreloc,
+				((db*)host_physical_address(loadseg,0))[0], ((db*)host_physical_address(loadseg,0))[1],
+				((db*)host_physical_address(loadseg,0))[2], ((db*)host_physical_address(loadseg,0))[3],
+				(void*)host_physical_address(loadseg,0));
 			AFFECT_CF(0);
 			return;
 		}
