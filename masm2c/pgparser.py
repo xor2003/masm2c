@@ -3,7 +3,7 @@ Handle the parsing of MASM code using the Lark library.
 It defines grammar rules, actions for different types of instructions and directives,
 and transforms the parsed tree into an intermediate representation (IR) for further processing.
 """
-from typing import TYPE_CHECKING, Any, Optional, Final
+from typing import TYPE_CHECKING, Any, Optional, Final, TypeGuard
 
 if TYPE_CHECKING:
     from masm2c.parser import Parser, Vector
@@ -41,7 +41,7 @@ def _token_lower(token: Any) -> str:
     return str(token).lower()
 
 
-def _is_token(token: Any) -> bool:
+def _is_token(token: Any) -> TypeGuard[lark.lexer.Token]:
     return (
         hasattr(token, "type")
         and hasattr(token, "value")

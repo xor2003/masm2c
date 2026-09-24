@@ -1,7 +1,17 @@
 import unittest
+from argparse import Namespace
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from unittest import mock
 
-from masm2c.cli import default_jobs, parse_args, should_merge_data_segments, source_files
+from masm2c.cli import (
+    collect_shared_equates,
+    default_jobs,
+    filter_code_symbol_equates,
+    parse_args,
+    should_merge_data_segments,
+    source_files,
+)
 
 
 class CliArgsTest(unittest.TestCase):
@@ -38,6 +48,103 @@ class CliArgsTest(unittest.TestCase):
 
     def test_source_files_include_asm_and_lst_only(self):
         self.assertEqual(source_files(["main.asm", "overlay.lst", "data.seg"]), ["main.asm", "overlay.lst"])
+
+    def test_collect_shared_equates_scans_simple_numeric_assignments(self):
+        with TemporaryDirectory() as tmpdir:
+            main = Path(tmpdir) / "main.asm"
+            sibling = Path(tmpdir) / "sibling.asm"
+            main.write_text(
+                "NMKEYT=14\n"
+                "NMCOMT=4\n"
+                "NMPENT=1\n"
+                "NMSTRT=4\n"
+                "NUMTRP=NMKEYT+NMCOMT+NMPENT+NMSTRT\n"
+                "END\n",
+                encoding="utf-8",
+            )
+            sibling.write_text("OTHER = 3 * NUMTRP\nEND\n", encoding="utf-8")
+
+            shared = collect_shared_equates([str(main), str(sibling)], Namespace())
+
+        self.assertEqual(shared["numtrp"], "23")
+        self.assertEqual(shared["other"], "69")
+
+    def test_collect_shared_equates_skips_complex_textual_assignments(self):
+        with TemporaryDirectory() as tmpdir:
+            main = Path(tmpdir) / "main.asm"
+            sibling = Path(tmpdir) / "sibling.asm"
+            main.write_text("MASK = 1 OR 2\nTEXT EQU <abc>\nEND\n", encoding="utf-8")
+            sibling.write_text("OTHER = 4\nEND\n", encoding="utf-8")
+
+            shared = collect_shared_equates([str(main), str(sibling)], Namespace())
+
+        self.assertNotIn("mask", shared)
+        self.assertNotIn("text", shared)
+        self.assertEqual(shared["other"], "4")
+
+    def test_collect_shared_equates_seeds_from_existing_equates_header(self):
+        with TemporaryDirectory() as tmpdir:
+            main = Path(tmpdir) / "main.asm"
+            sibling = Path(tmpdir) / "sibling.asm"
+            header = Path(tmpdir) / "_equates.h"
+            main.write_text("TEMPST LABEL WORD\nDB STRSIZ*NUMTMP DUP(?)\nEND\n", encoding="utf-8")
+            sibling.write_text("END\n", encoding="utf-8")
+            header.write_text(
+                "#define strsiz (3)\n"
+                "static const int numtmp = (10);\n",
+                encoding="utf-8",
+            )
+
+            shared = collect_shared_equates([str(main), str(sibling)], Namespace())
+
+        self.assertEqual(shared["strsiz"], "3")
+        self.assertEqual(shared["numtmp"], "10")
+
+    def test_collect_shared_equates_source_assignment_overrides_header_seed(self):
+        with TemporaryDirectory() as tmpdir:
+            main = Path(tmpdir) / "main.asm"
+            sibling = Path(tmpdir) / "sibling.asm"
+            header = Path(tmpdir) / "_equates.h"
+            main.write_text("SIZE = 4\nEND\n", encoding="utf-8")
+            sibling.write_text("END\n", encoding="utf-8")
+            header.write_text("#define size (3)\n", encoding="utf-8")
+
+            shared = collect_shared_equates([str(main), str(sibling)], Namespace())
+
+        self.assertEqual(shared["size"], "4")
+
+    def test_collect_shared_equates_keeps_header_seed_for_location_counter_assignment(self):
+        with TemporaryDirectory() as tmpdir:
+            main = Path(tmpdir) / "main.asm"
+            sibling = Path(tmpdir) / "sibling.asm"
+            header = Path(tmpdir) / "_equates.h"
+            main.write_text("RAMLOW = $\nEND\n", encoding="utf-8")
+            sibling.write_text("END\n", encoding="utf-8")
+            header.write_text("#define ramlow (256)\n", encoding="utf-8")
+
+            shared = collect_shared_equates([str(main), str(sibling)], Namespace())
+
+        self.assertEqual(shared["ramlow"], "256")
+
+    def test_filter_code_symbol_equates_removes_code_export_name(self):
+        shared = {"window": "0", "ramlow": "256"}
+
+        filtered = filter_code_symbol_equates(shared, set(), {"window"})
+
+        self.assertEqual(filtered, {"ramlow": "256"})
+
+    def test_collect_shared_equates_uses_last_numeric_assignment(self):
+        with TemporaryDirectory() as tmpdir:
+            main = Path(tmpdir) / "main.asm"
+            sibling = Path(tmpdir) / "sibling.asm"
+            main.write_text("STRSIZ = 4\nSTRSIZ = 3\nNUMTMP = 3\nNUMTMP = 10\nEND\n", encoding="utf-8")
+            sibling.write_text("TOTAL = STRSIZ * NUMTMP\nEND\n", encoding="utf-8")
+
+            shared = collect_shared_equates([str(main), str(sibling)], Namespace())
+
+        self.assertEqual(shared["strsiz"], "3")
+        self.assertEqual(shared["numtmp"], "10")
+        self.assertEqual(shared["total"], "30")
 
 
 if __name__ == "__main__":

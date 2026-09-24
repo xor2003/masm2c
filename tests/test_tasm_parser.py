@@ -437,7 +437,7 @@ h_array db '^',10,10
         self.assertEqual(*self.doTest("repne lodsb", "LODSB"))
 
     def test_instr_1350(self):
-        self.assertEqual(*self.doTest("call    dword ptr [ebx-4]", "CALLF(__dispatch_call,*(dd*)(raddr(ds,ebx-4)))"))
+        self.assertEqual(*self.doTest("call    dword ptr [ebx-4]", "CALLF(__dispatch_call_ext,*(dd*)(raddr(ds,ebx-4)))"))
 
     def test_instr_1360(self):
         self.assertEqual(*self.doTest("call    exec_adc", "CALL(exec_adc,0)"))
@@ -446,7 +446,7 @@ h_array db '^',10,10
         self.assertEqual(*self.doTest("call    printf", "CALL(__dispatch_call,printf)"))
 
     def test_instr_1375(self):  # TODO is it right?
-        self.assertEqual(*self.doTest("call    [test_bcd_ofs]", "CALL(__dispatch_call,test_bcd_ofs)"))
+        self.assertEqual(*self.doTest("call    [test_bcd_ofs]", "CALL(__dispatch_call_ext,test_bcd_ofs)"))
 
     def test_instr_1380(self):
         self.assertEqual(*self.doTest("btr eax,0", "BTR(eax, 0)"))
@@ -473,7 +473,7 @@ h_array db '^',10,10
         self.assertEqual(*self.doTest("inc singlebyte", "INC(singlebyte)"))
 
     def test_instr_1460(self):
-        self.assertEqual(*self.doTest("jmp [cs:wordtable+ax]", "return __dispatch_call(__disp, _state);"))
+        self.assertEqual(*self.doTest("jmp [cs:wordtable+ax]", "return __dispatch_call_ext(__disp, _state);"))
 
     def test_instr_1470(self):
         self.assertEqual(*self.doTest("mov a,5", "*(a) = 5;"))
@@ -515,7 +515,7 @@ h_array db '^',10,10
         self.assertEqual(*self.doTest("bts     cx, dx", "BTS(cx, dx)"))
 
     def test_instr_1600(self):
-        self.assertEqual(*self.doTest("jmp cs:[bx]", "return __dispatch_call(__disp, _state);"))
+        self.assertEqual(*self.doTest("jmp cs:[bx]", "return __dispatch_call_ext(__disp, _state);"))
 
     def test_instr_1610(self):
         self.assertEqual(*self.doTest("call exec_adc", "CALL(exec_adc,0)"))
@@ -527,7 +527,7 @@ h_array db '^',10,10
         self.assertEqual(*self.doTest("mov ax, (offset extrn_struc_inst.game_oppttypedw+0AA8h)", "ax = offset(default_seg,extrn_struc_inst.game_oppttypedw)+0x0AA8;"))
 
     def test_instr_1640(self):
-        self.assertEqual(*self.doTest("lea     si, [bx+di+TRANSSHAPESTRUC.ts_rotv_membr_strinst]", "si = bx+di+offsetof(transshapestruc,ts_rotv_membr_strinst)"))
+        self.assertEqual(*self.doTest("lea     si, [bx+di+TRANSSHAPESTRUC.ts_rotv_membr_strinst]", "si = bx+di+offsetof(struct transshapestruc,ts_rotv_membr_strinst)"))
 
     def test_instr_1650(self):
         self.assertEqual(*self.doTest("lea     ax, [si+(size TRANSSHAPESTRUC)]", "ax = si+(sizeof(transshapestruc))"))
@@ -542,13 +542,13 @@ h_array db '^',10,10
         self.assertEqual(*self.doTest("push    [bp+asgN_Aptr_in_struc.ts_rotv_membr_strinst.vxdw]", "PUSH(((transshapestruc*)raddr(ss,bp+asgn_aptr_in_struc))->ts_rotv_membr_strinst.vxdw)"))
 
     def test_instr_1690(self):
-        self.assertEqual(*self.doTest("add     word ptr [bx+transshapestruc.ts_rotv_membr_strinst], ax", "ADD(*(dw*)(raddr(ds,bx+offsetof(transshapestruc,ts_rotv_membr_strinst))), ax)"))
+        self.assertEqual(*self.doTest("add     word ptr [bx+transshapestruc.ts_rotv_membr_strinst], ax", "ADD(*(dw*)(raddr(ds,bx+offsetof(struct transshapestruc,ts_rotv_membr_strinst))), ax)"))
 
     def test_instr_1700(self):
         self.assertEqual(*self.doTest("mov ax, (offset extrn_struc_inst.game_oppTTypeDW+0AA8h)", "ax = offset(default_seg,extrn_struc_inst.game_oppttypedw)+0x0AA8;"))
 
     def test_instr_1710(self):
-        self.assertEqual(*self.doTest("adc     word ptr [bx+(transshapestruc.ts_rotv_membr_strinst+2)], dx", "ADC(*(dw*)(raddr(ds,bx+(offsetof(transshapestruc,ts_rotv_membr_strinst)+2))), dx)"))
+        self.assertEqual(*self.doTest("adc     word ptr [bx+(transshapestruc.ts_rotv_membr_strinst+2)], dx", "ADC(*(dw*)(raddr(ds,bx+(offsetof(struct transshapestruc,ts_rotv_membr_strinst)+2))), dx)"))
 
     def test_instr_1720(self):
         self.assertEqual(*self.doTest("add     extrn_struc_inst.game_oppTTypeDW[di], 10h", "ADD(*(dw*)(((db*)&extrn_struc_inst.game_oppttypedw)+di), 0x10)"))
@@ -557,10 +557,10 @@ h_array db '^',10,10
         self.assertEqual(*self.doTest("inc     extrn_struc_inst.game_oppTTypeDW", "INC(extrn_struc_inst.game_oppttypedw)"))
 
     def test_instr_1740(self):
-        self.assertEqual(*self.doTest("mov     dx, word ptr [bx+(gameinfostruc.game_oppTTypeDW+2)]", "MOV(dx, *(dw*)(raddr(ds,bx+(offsetof(gameinfostruc,game_oppttypedw)+2))))"))
+        self.assertEqual(*self.doTest("mov     dx, word ptr [bx+(gameinfostruc.game_oppTTypeDW+2)]", "MOV(dx, *(dw*)(raddr(ds,bx+(offsetof(struct gameinfostruc,game_oppttypedw)+2))))"))
 
     def test_instr_1750(self):
-        self.assertEqual(*self.doTest("add     ax, gameInfoStruc.game_oppTTypeDW", "ADD(ax, offsetof(gameinfostruc,game_oppttypedw))"))
+        self.assertEqual(*self.doTest("add     ax, gameInfoStruc.game_oppTTypeDW", "ADD(ax, offsetof(struct gameinfostruc,game_oppttypedw))"))
 
     def test_instr_1760(self):
         self.assertEqual(*self.doTest("adc     dx, word ptr [bp+asgn_aptr_in_struc.ts_rectptr+0Eh]", "ADC(dx, ((transshapestruc*)raddr(ss,bp+0x0E+asgn_aptr_in_struc))->ts_rectptr)"))
@@ -569,7 +569,7 @@ h_array db '^',10,10
         self.assertEqual(*self.doTest("bts eax,0", "BTS(eax, 0)"))
 
     def test_instr_1780(self):
-        self.assertEqual(*self.doTest("sub     ax, es:[bx+di+(transshapestruc.ts_rotv_membr_strinst+24h)]", "SUB(ax, *(dw*)(raddr(es,bx+di+(offsetof(transshapestruc,ts_rotv_membr_strinst)+0x24))))"))
+        self.assertEqual(*self.doTest("sub     ax, es:[bx+di+(transshapestruc.ts_rotv_membr_strinst+24h)]", "SUB(ax, *(dw*)(raddr(es,bx+di+(offsetof(struct transshapestruc,ts_rotv_membr_strinst)+0x24))))"))
 
     def test_instr_1790(self):
         self.assertEqual(*self.doTest("cmp al, '\\'", "CMP(al, '\\\\')"))
@@ -581,7 +581,7 @@ h_array db '^',10,10
         self.assertEqual(*self.doTest("mov     ax, word ptr cs:extrn_struc_inst.game_opponentmaterial+2", "ax = *(dw*)(((db*)&extrn_struc_inst.game_opponentmaterial)+2);"))
 
     def test_instr_1820(self):
-        self.assertEqual(*self.doTest("mov     al, byte ptr [bx+GAMEINFOSTRUC.game_oppttypedw]", "MOV(al, *(raddr(ds,bx+offsetof(gameinfostruc,game_oppttypedw))))"))
+        self.assertEqual(*self.doTest("mov     al, byte ptr [bx+GAMEINFOSTRUC.game_oppttypedw]", "MOV(al, *(raddr(ds,bx+offsetof(struct gameinfostruc,game_oppttypedw))))"))
 
     def test_instr_1840(self):
         self.assertEqual(*self.doTest("mov     ax, fs:8", "MOV(ax, *(dw*)(raddr(fs,8)))"))
@@ -869,7 +869,7 @@ h_array db '^',10,10
         self.assertEqual(*self.doTest("cmp eax,000f3h", "CMP(eax, 0x000f3)"))
 
     def test_instr_2800(self):
-        self.assertEqual(*self.doTest("call dx", "CALL(__dispatch_call,dx)"))
+        self.assertEqual(*self.doTest("call dx", "CALL(__dispatch_call_ext,dx)"))
 
     def test_instr_2810(self):
         self.assertEqual(*self.doTest("INC [wordarray]", "INC(*(wordarray))"))
@@ -1031,7 +1031,7 @@ h_array db '^',10,10
         self.assertEqual(*self.doTest("cmp word ptr [singlequad+2],25", "CMP(*(dw*)(((db*)&singlequad)+2), 25)"))
 
     def test_instr_3360(self):
-        self.assertEqual(*self.doTest("call [cs:wordtable+ax]", "CALL(__dispatch_call,*(dw*)(((db*)&wordtable)+ax))"))
+        self.assertEqual(*self.doTest("call [cs:wordtable+ax]", "CALL(__dispatch_call_ext,*(dw*)(((db*)&wordtable)+ax))"))
 
     def test_instr_3370(self):
         self.assertEqual(*self.doTest("cmp word ptr [singlequad+2],50", "CMP(*(dw*)(((db*)&singlequad)+2), 50)"))
@@ -1547,6 +1547,15 @@ h_array db '^',10,10
     def test_instr_5260(self):
         self.assertEqual(*self.doTest("lodsb", "LODSB"))
 
+    def test_instr_5261(self):
+        self.assertEqual(*self.doTest("lodsb cs:[si]", "LODS(*(raddr(cs,si)),si,1)"))
+
+    def test_instr_5262(self):
+        self.assertEqual(*self.doTest("lodsw cs:[si]", "LODS(*(dw*)(raddr(cs,si)),si,2)"))
+
+    def test_instr_5263(self):
+        self.assertEqual(*self.doTest("lodsd fs:[esi]", "LODS(*(dd*)(raddr(fs,esi)),esi,4)"))
+
     def test_instr_5270(self):
         self.assertEqual(*self.doTest("lodsd", "LODSD"))
 
@@ -1770,7 +1779,7 @@ h_array db '^',10,10
         self.assertEqual(*self.doTest("mov     [esp+8], i      ; s1", "MOV(*(dd*)(raddr(ss,esp+8)), i)"))
 
     def test_instr_6010(self):
-        self.assertEqual(*self.doTest("MOV ds, _data", "ds = seg_offset(_data);"))
+        self.assertEqual(*self.doTest("MOV ds, _data", "m2c::set_segment_register(ds, seg_offset(_data));"))
 
     def test_instr_6020(self):
         self.assertEqual(*self.doTest("mov     [esp+8], i", "MOV(*(dd*)(raddr(ss,esp+8)), i)"))
@@ -2658,7 +2667,7 @@ h_array db '^',10,10
         self.assertEqual(*self.doTest("mov dl,[edi]", "MOV(dl, *(raddr(ds,edi)))"))
 
     def test_instr_9050(self):
-        self.assertEqual(*self.doTest("mov ds, _data", "ds = seg_offset(_data);"))
+        self.assertEqual(*self.doTest("mov ds, _data", "m2c::set_segment_register(ds, seg_offset(_data));"))
 
     def test_instr_9060(self):
         self.assertEqual(*self.doTest("mov ds:[edi],cl", "MOV(*(raddr(ds,edi)), cl)"))
@@ -2784,7 +2793,7 @@ h_array db '^',10,10
         self.assertEqual(*self.doTest("mov edx,offset _msg             ; DS:EDX -> $ Terminated String", "edx = offset(_data,_msg);"))
 
     def test_instr_9470(self):
-        self.assertEqual(*self.doTest("mov es,ax", "es = ax;"))
+        self.assertEqual(*self.doTest("mov es,ax", "m2c::set_segment_register(es, ax);"))
 
     def test_instr_9480(self):
         self.assertEqual(*self.doTest("mov esi,offset str1", "esi = offset(_data,str1);"))
@@ -2989,16 +2998,45 @@ h_array db '^',10,10
     def test_instr_10920(self):
         self.assertEqual(*self.doTest("push    [bp+arg_2]", "PUSH(*(dw*)(raddr(ss,bp+arg_2)))"))
 
+    def test_instr_10921(self):
+        self.assertEqual(*self.doTest("push    cs:stmdsp[si]", "PUSH(*(dw*)(raddr(cs,stmdsp+si)))"))
+
+    def test_instr_10922(self):
+        self.assertEqual(*self.doTest("push    [si]", "PUSH(*(dw*)(raddr(ds,si)))"))
+
+    def test_instr_10923(self):
+        parser = Parser([])
+        parser.test_mode = True
+        source = "or al, al\njnz short $+3\nret\ncmp al, ch\n"
+        tree = parser.parse_text(source, start_rule="insegdirlist")
+        parser.process_ast(source, tree)
+
+        cpp_renderer = cpp.Cpp(parser)
+        cpp_renderer.proc = parser.proc
+        generated = "\n".join(
+            parser.proc.generate_full_cmd_line(cpp_renderer, stmt)
+            for stmt in parser.proc.stmts
+        )
+
+        branch = generated.index("JNZ(edummylabel1)")
+        skipped_ret = generated.index("RETN(0)")
+        target_label = generated.index("edummylabel1:")
+        after_target = generated.index("CMP(al, ch)")
+        self.assertLess(branch, skipped_ret)
+        self.assertLess(skipped_ret, target_label)
+        self.assertLess(target_label, after_target)
+        self.assertNotIn("J({;})", generated)
+
     def test_instr_10930(self):
         self.assertEqual(*self.doTest("les     di, [bp+arg_4]", "LES(di, *(dd*)(raddr(ss,bp+arg_4)))"))
 
     def test_instr_10940(self):
         self.cpp._context.itislst = True
-        assert self.proc.generate_full_cmd_line(self.cpp, self.parser.action_code("mov ss,ax")) == "\tS(ss = ax;);"
+        assert self.proc.generate_full_cmd_line(self.cpp, self.parser.action_code("mov ss,ax")) == "\tS(m2c::set_segment_register(ss, ax););"
         self.cpp._context.itislst = False
 
     def test_instr_10950(self):
-        self.assertEqual(*self.doTest("jmp far ptr 0:0", "return __dispatch_call(__disp, _state);"))
+        self.assertEqual(*self.doTest("jmp far ptr 0:0", "return __dispatch_call_ext(__disp, _state);"))
 
     def test_instr_10960(self):  # TODO!!! Actually it should go there the memory points
         self.assertEqual(*self.doTest("call far ptr 0:0", "CALLF(__dispatch_call,0)"))

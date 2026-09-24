@@ -22,8 +22,14 @@ class ParserDataTest(unittest.TestCase):
         assert self.convert_data(line="Dw seg default_seg") == ("seg_offset(default_seg), // dummy0_0\n", "dw dummy0_0;\n", 2)
 
     def test_data_10011(self):
-        self.parser.action_label(far=False, name="@df@@@@8", isproc=False)
-        assert self.convert_data(line="dw @df@@@@8") == ("m2c::karbdfarbarbarbarb8, // dummy0_0\n", "dw dummy0_0;\n", 2)
+        # '@' labels normalize unscoped only in test mode; register it the same
+        # way the parse path would see it.
+        self.parser.test_mode = True
+        try:
+            self.parser.action_label(far=False, name="@df@@@@8", isproc=False)
+        finally:
+            self.parser.test_mode = False
+        assert self.convert_data(line="dw @df@@@@8") == ("m2c::kglobal_arbdfarbarbarbarb8, // dummy0_0\n", "dw dummy0_0;\n", 2)
 
     def test_data_10010(self):
         assert self.convert_data(line="ASCII DB '00000000',0Dh,0Ah,'$' ; buffer for ASCII string") == ("{'0','0','0','0','0','0','0','0','\\r','\\n','$'}, // ascii\n", "char ascii[11];\n", 11)

@@ -110,6 +110,18 @@ db heap[HEAP_SIZE];
 };
 
 struct Memory m;
+
+std::vector<NativeReturnMark> native_return_marks;
+std::vector<NativeReturnMark> native_return_values;
+size_t native_return_next_id = 0;
+size_t native_return_call_depth = 0;
+bool suppress_native_return_push_transfer = false;
+bool executionFinished = false;
+bool dispatch_external_code(_offsets __disp, _STATE* _state, bool* handled) {
+    (void)__disp; (void)_state;
+    if (handled) *handled = false;
+    return false;
+}
 }
 
 db(& stack)[STACK_SIZE]=m2c::m.stack;

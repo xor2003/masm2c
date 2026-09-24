@@ -27,7 +27,9 @@ SOFTWARE.
 
 #ifndef __BORLANDC__
  #ifndef _WIN32
+  #include <sys/select.h>
   #include <sys/time.h>
+  #include <unistd.h>
  #endif
  #ifndef __DJGPP__
   #ifndef NOSDL
@@ -60,6 +62,10 @@ SOFTWARE.
 #include <cstdint>
 #include <cstdlib>
 #include <thread>
+
+#ifndef M2C_LOAD_SEG
+#define M2C_LOAD_SEG 0x192
+#endif
 
 #ifndef NOCURSES
 #include <curses.h>
@@ -155,11 +161,34 @@ namespace m2c {
 #endif
 bool defered_irqs=false;
   size_t counter = 0;
+    std::vector<NativeReturnMark> native_return_marks;
+    std::vector<NativeReturnMark> native_return_values;
+    size_t native_return_next_id = 0;
+    size_t native_return_call_depth = 0;
+    bool suppress_native_return_push_transfer = false;
 
     db _indent=0;
     const char *_str="";
     bool fix_segs(){return true;}
-    void interpret_unknown_callf(dw cs, dd eip, db source){assert(0);}
+void interpret_unknown_callf(dw cs, dd eip, db source){assert(0);}
+    __attribute__((weak)) db* linked_code_segment_raddr(dw, dw){return nullptr;}
+    __attribute__((weak)) db* linked_data_segment_raddr(dw, dw){return nullptr;}
+    __attribute__((weak)) void set_segment_register(dw& reg, dw value){reg = value;}
+    __attribute__((weak)) void copy_linked_program_segment_prefix(dw, const void*, size_t) {}
+    bool host_try_overlay_retf(_offsets __disp, _STATE* _state, bool* out_result);
+    __attribute__((weak)) bool dispatch_external_code(_offsets __disp, _STATE* _state, bool* handled) {
+        bool res = true;
+        if (host_try_overlay_retf(__disp, _state, &res)) {
+            if (handled) {
+                *handled = true;
+            }
+            return res;
+        }
+        if (handled) {
+            *handled = false;
+        }
+        return true;
+    }
 
 
 ShadowStack shadow_stack;
@@ -201,6 +230,13 @@ struct HostMouse {
 };
 
 struct HostVga {
+	static const int TEXT_PAGES = 8;
+	static const int TEXT_ROWS = 25;
+	static const int TEXT_COLS = 80;
+	struct TextCell {
+		db ch = ' ';
+		db attr = 0x07;
+	};
 	db seq_index = 0;
 	db gc_index = 0;
 	db crtc_index = 0;
@@ -214,7 +250,13 @@ struct HostVga {
 	size_t dac_write_index = 0;
 	size_t dac_write_start = 0;
 	size_t dac_write_count = 0;
+	db cursor_start = 0;
+	db cursor_end = 0;
 	db current_mode = 3;
+	db active_page = 0;
+	db cursor_row[TEXT_PAGES] = {};
+	db cursor_col[TEXT_PAGES] = {};
+	TextCell text[TEXT_PAGES][TEXT_ROWS][TEXT_COLS] = {};
 };
 
 struct HostPit {
@@ -228,6 +270,7 @@ struct HostTimer {
 	bool enabled = false;
 	bool in_callback = false;
 	std::atomic<bool> background_running{false};
+	std::atomic<bool> irq_running{false};
 	uint64_t last_us = 0;
 	uint64_t accum_us = 0;
 	int divider_20hz = 0;
@@ -238,11 +281,103 @@ struct HostHardware {
 	HostVga vga;
 	HostPit pit;
 	HostTimer timer;
+	dw current_psp = M2C_LOAD_SEG;
 	db ppi_port_b = 0;
 	db keyboard_scan_code = 0;
+	dw keyboard_buffer[16] = {};
+	db keyboard_head = 0;
+	db keyboard_tail = 0;
+	// Segments populated by EXEC AL=03h overlay loads (e.g. MSC sound drivers).
+	// Their x86 code is not translated; far calls into them are treated as
+	// no-ops by dispatch_external_code, which emulates the driver's retf.
+	std::vector<std::pair<dw, dw>> overlay_segs;
 };
 
 static HostHardware host;
+
+bool is_dos_terminate_vector(dw segment, dw offset) {
+	// 0:0 is the sentinel pushed for synthesized interrupt frames (IVT IRQ
+	// delivery); reaching it means unwind to C++, not program termination.
+	if (segment == 0 && offset == 0) {
+		return true;
+	}
+	if (segment != host.current_psp || offset != 0) {
+		return false;
+	}
+	jumpToBackGround = true;
+	executionFinished = true;
+	exitCode = 0;
+	return true;
+}
+
+static db* host_physical_address(dw segment, dw offset) {
+	return reinterpret_cast<db*>(&m2c::m) + (static_cast<size_t>(segment) << 4) + offset;
+}
+
+static db host_text_page(db page) {
+	return page < HostVga::TEXT_PAGES ? page : 0;
+}
+
+static db host_text_row(db row) {
+	return row < HostVga::TEXT_ROWS ? row : HostVga::TEXT_ROWS - 1;
+}
+
+static db host_text_col(db col) {
+	return col < HostVga::TEXT_COLS ? col : HostVga::TEXT_COLS - 1;
+}
+
+static void host_text_clear_page(db page, db attr = 0x07) {
+	page = host_text_page(page);
+	for (int row = 0; row < HostVga::TEXT_ROWS; ++row) {
+		for (int col = 0; col < HostVga::TEXT_COLS; ++col) {
+			host.vga.text[page][row][col].ch = ' ';
+			host.vga.text[page][row][col].attr = attr;
+		}
+	}
+	host.vga.cursor_row[page] = 0;
+	host.vga.cursor_col[page] = 0;
+}
+
+static void host_text_clear_all(db attr = 0x07) {
+	for (int page = 0; page < HostVga::TEXT_PAGES; ++page) {
+		host_text_clear_page(static_cast<db>(page), attr);
+	}
+}
+
+static void host_text_scroll_up_window(db page, db attr, db top, db left, db bottom, db right, db lines) {
+	page = host_text_page(page);
+	top = host_text_row(top);
+	bottom = host_text_row(bottom);
+	left = host_text_col(left);
+	right = host_text_col(right);
+	if (top > bottom || left > right) {
+		return;
+	}
+	if (lines == 0 || lines > bottom - top + 1) {
+		lines = static_cast<db>(bottom - top + 1);
+	}
+	for (int row = top; row <= bottom; ++row) {
+		const int src_row = row + lines;
+		for (int col = left; col <= right; ++col) {
+			if (src_row <= bottom) {
+				host.vga.text[page][row][col] = host.vga.text[page][src_row][col];
+			} else {
+				host.vga.text[page][row][col].ch = ' ';
+				host.vga.text[page][row][col].attr = attr;
+			}
+		}
+	}
+}
+
+static void host_text_write(db page, db row, db col, db ch, db attr, dw count) {
+	page = host_text_page(page);
+	size_t pos = static_cast<size_t>(host_text_row(row)) * HostVga::TEXT_COLS + host_text_col(col);
+	const size_t cells = HostVga::TEXT_ROWS * HostVga::TEXT_COLS;
+	for (dw n = 0; n < count && pos < cells; ++n, ++pos) {
+		host.vga.text[page][pos / HostVga::TEXT_COLS][pos % HostVga::TEXT_COLS].ch = ch;
+		host.vga.text[page][pos / HostVga::TEXT_COLS][pos % HostVga::TEXT_COLS].attr = attr;
+	}
+}
 
 static void vga_set_mode13_defaults() {
 	host.vga.seq_regs[2] = 0x0f; // map mask: all planes writable
@@ -426,6 +561,174 @@ void init_sdl_vga_window() {
 	vga_render_dirty = false;
 	vga_render_writes = 0;
 }
+
+// ---------------------------------------------------------------------------
+// Tandy 3-voice sound (SN76496 / NCR8496 compatible) on I/O port 0xC0.
+// Chip model borrowed from MAME's sn76496 (via dosbox-staging), rendered
+// through an SDL2 audio stream. Tandy PSG clock = 14318180/4 = 3579545 Hz.
+namespace m2c_snd {
+
+constexpr int SND_CLOCK = 3579545;
+constexpr int SND_MAX_OUTPUT = 0x7fff;
+// Counter decrement ("tick") rate: MAME runs the stream at clock/2 and
+// subdivides by m_clock_divider (8), so tone/noise counters tick at clock/16.
+constexpr double SND_TICK_HZ = SND_CLOCK / 16.0;
+
+// NCR8496 (Tandy) parameters: feedback 0x8000, taps D/E via 0x02/0x20,
+// XNOR noise feedback, data-writes to odd/noise regs ignored.
+constexpr int SND_FEEDBACK_MASK = 0x8000;
+constexpr int SND_TAP1 = 0x02;
+constexpr int SND_TAP2 = 0x20;
+constexpr bool SND_NEGATE = true;
+
+struct Sn76496 {
+	int32_t reg[8] = {};
+	int last_reg = 0;
+	int32_t period[4] = {};
+	int32_t count[4] = {};
+	int output[4] = {};
+	int32_t volume[4] = {};
+	int32_t vol_table[16] = {};
+	uint32_t rng = 0;
+	double tick_accum = 0.0;
+	bool started = false;
+};
+
+static Sn76496 snd;
+static SDL_AudioDeviceID snd_dev = 0;
+static double snd_ticks_per_sample = 0.0;
+
+static void snd_reset() {
+	double out = SND_MAX_OUTPUT / 4; // per-channel headroom
+	int gain = 16;
+	while (gain-- > 0) {
+		out *= 1.023292992; // +0.2 dB per step
+	}
+	for (int i = 0; i < 15; ++i) {
+		snd.vol_table[i] = static_cast<int32_t>(out) < SND_MAX_OUTPUT / 4
+			? static_cast<int32_t>(out)
+			: SND_MAX_OUTPUT / 4;
+		out /= 1.258925412; // -2 dB per step
+	}
+	snd.vol_table[15] = 0;
+	for (int i = 0; i < 8; ++i) snd.reg[i] = 0;
+	for (int i = 0; i < 4; ++i) {
+		snd.volume[i] = 0;
+		snd.period[i] = 0;
+		snd.count[i] = 0;
+		snd.output[i] = 0;
+	}
+	snd.last_reg = 3; // sega_style_psg default
+	snd.rng = SND_FEEDBACK_MASK;
+	snd.output[3] = snd.rng & 1;
+	snd.tick_accum = 0.0;
+}
+
+static bool snd_in_noise_mode() { return (snd.reg[6] & 4) != 0; }
+
+static void snd_write(uint8_t data) {
+	int r;
+	if (data & 0x80) {
+		r = (data & 0x70) >> 4;
+		snd.last_reg = r;
+		if (r == 6 && ((data & 0x04) != (snd.reg[6] & 0x04))) snd.rng = SND_FEEDBACK_MASK;
+		snd.reg[r] = (snd.reg[r] & 0x3f0) | (data & 0x0f);
+	} else {
+		r = snd.last_reg;
+		if ((r & 1) || (r == 6)) return; // NCR8496 ignores data writes to vol/noise regs
+	}
+	const int c = r >> 1;
+	switch (r) {
+	case 0: case 2: case 4: // tone frequency
+		if (!(data & 0x80)) snd.reg[r] = (snd.reg[r] & 0x0f) | ((data & 0x3f) << 4);
+		snd.period[c] = snd.reg[r] != 0 ? snd.reg[r] : 0x400;
+		if (r == 4 && (snd.reg[6] & 0x03) == 0x03) snd.period[3] = snd.period[2] << 1;
+		break;
+	case 1: case 3: case 5: case 7: // volume
+		snd.volume[c] = snd.vol_table[data & 0x0f];
+		if (!(data & 0x80)) snd.reg[r] = (snd.reg[r] & 0x3f0) | (data & 0x0f);
+		break;
+	case 6: // noise frequency/mode
+		if (!(data & 0x80)) snd.reg[r] = (snd.reg[r] & 0x3f0) | (data & 0x0f);
+		{
+			const int n = snd.reg[6];
+			snd.period[3] = ((n & 3) == 3) ? (snd.period[2] << 1) : (1 << (5 + (n & 3)));
+		}
+		break;
+	}
+}
+
+// One counter-decrement step (the MAME "new divided clock" block).
+static void snd_tick() {
+	for (int i = 0; i < 3; ++i) {
+		if (--snd.count[i] <= 0) {
+			snd.output[i] ^= 1;
+			snd.count[i] = snd.period[i];
+		}
+	}
+	if (--snd.count[3] <= 0) {
+		if (((snd.rng & SND_TAP1) != 0) !=
+		    ((static_cast<int32_t>(snd.rng & SND_TAP2) != SND_TAP2) && snd_in_noise_mode())) {
+			snd.rng >>= 1;
+			snd.rng |= SND_FEEDBACK_MASK;
+		} else {
+			snd.rng >>= 1;
+		}
+		snd.output[3] = snd.rng & 1;
+		snd.count[3] = snd.period[3];
+	}
+}
+
+static int snd_sample() {
+	int out = (snd.output[0] ? snd.volume[0] : 0)
+	        + (snd.output[1] ? snd.volume[1] : 0)
+	        + (snd.output[2] ? snd.volume[2] : 0)
+	        + (snd.output[3] ? snd.volume[3] : 0);
+	return SND_NEGATE ? -out : out;
+}
+
+static void snd_sdl_callback(void*, Uint8* stream, int len) {
+	int16_t* out = reinterpret_cast<int16_t*>(stream);
+	const int samples = len / static_cast<int>(sizeof(int16_t));
+	for (int i = 0; i < samples; ++i) {
+		snd.tick_accum += snd_ticks_per_sample;
+		while (snd.tick_accum >= 1.0) {
+			snd.tick_accum -= 1.0;
+			snd_tick();
+		}
+		out[i] = static_cast<int16_t>(snd_sample());
+	}
+}
+
+static void snd_init() {
+	if (snd.started) {
+		return;
+	}
+	snd.started = true;
+	snd_reset();
+	if ((SDL_WasInit(SDL_INIT_AUDIO) & SDL_INIT_AUDIO) == 0) {
+		SDL_InitSubSystem(SDL_INIT_AUDIO);
+	}
+	SDL_AudioSpec want = {};
+	want.freq = 22050;
+	want.format = AUDIO_S16SYS;
+	want.channels = 1;
+	want.samples = 512;
+	want.callback = snd_sdl_callback;
+	SDL_AudioSpec got = {};
+	snd_dev = SDL_OpenAudioDevice(nullptr, 0, &want, &got, 0);
+	if (snd_dev == 0) {
+		log_error("Tandy SDL_OpenAudioDevice failed: %s\n", SDL_GetError());
+		return;
+	}
+	snd_ticks_per_sample = SND_TICK_HZ / got.freq;
+	SDL_PauseAudioDevice(snd_dev, 0);
+	log_debug("Tandy sound: SDL audio %d Hz\n", got.freq);
+}
+
+} // namespace m2c_snd
+
+void tandy_snd_write(db data) { m2c_snd::snd_init(); SDL_LockAudioDevice(m2c_snd::snd_dev); m2c_snd::snd_write(data); SDL_UnlockAudioDevice(m2c_snd::snd_dev); }
 
 static uint8_t vga_dac_to_sdl(db value) {
 	if (value > 63) {
@@ -831,6 +1134,10 @@ void vga_write_pixel_from_memory(db *d, db color) {
  #endif
 #endif
 
+#ifdef NOSDL
+void tandy_snd_write(db) {}
+#endif
+
 static int host_clamp_int(int value, int min_value, int max_value) {
 	if (value < min_value) {
 		return min_value;
@@ -848,6 +1155,123 @@ static void clamp_host_mouse() {
 
 static db* host_key_state() {
 	return &::key ? ::key : nullptr;
+}
+
+static bool host_keyboard_buffer_empty() {
+	return host.keyboard_head == host.keyboard_tail;
+}
+
+static bool host_keyboard_buffer_full() {
+	return static_cast<db>((host.keyboard_tail + 1) % 16) == host.keyboard_head;
+}
+
+static bool host_keyboard_push(dw bios_key) {
+	if (bios_key == 0 || host_keyboard_buffer_full()) {
+		return false;
+	}
+	host.keyboard_buffer[host.keyboard_tail] = bios_key;
+	host.keyboard_tail = static_cast<db>((host.keyboard_tail + 1) % 16);
+	return true;
+}
+
+static bool host_keyboard_peek(dw* bios_key) {
+	if (host_keyboard_buffer_empty()) {
+		return false;
+	}
+	*bios_key = host.keyboard_buffer[host.keyboard_head];
+	return true;
+}
+
+static bool host_keyboard_pop(dw* bios_key) {
+	if (!host_keyboard_peek(bios_key)) {
+		return false;
+	}
+	host.keyboard_head = static_cast<db>((host.keyboard_head + 1) % 16);
+	return true;
+}
+
+static db host_ascii_to_pc_scan(db ch) {
+	switch (ch) {
+	case 0x1b: return 0x01;
+	case '1': case '!': return 0x02;
+	case '2': case '@': return 0x03;
+	case '3': case '#': return 0x04;
+	case '4': case '$': return 0x05;
+	case '5': case '%': return 0x06;
+	case '6': case '^': return 0x07;
+	case '7': case '&': return 0x08;
+	case '8': case '*': return 0x09;
+	case '9': case '(': return 0x0a;
+	case '0': case ')': return 0x0b;
+	case '-': case '_': return 0x0c;
+	case '=': case '+': return 0x0d;
+	case '\b': return 0x0e;
+	case '\t': return 0x0f;
+	case 'q': case 'Q': return 0x10;
+	case 'w': case 'W': return 0x11;
+	case 'e': case 'E': return 0x12;
+	case 'r': case 'R': return 0x13;
+	case 't': case 'T': return 0x14;
+	case 'y': case 'Y': return 0x15;
+	case 'u': case 'U': return 0x16;
+	case 'i': case 'I': return 0x17;
+	case 'o': case 'O': return 0x18;
+	case 'p': case 'P': return 0x19;
+	case '[': case '{': return 0x1a;
+	case ']': case '}': return 0x1b;
+	case '\r': case '\n': return 0x1c;
+	case 'a': case 'A': return 0x1e;
+	case 's': case 'S': return 0x1f;
+	case 'd': case 'D': return 0x20;
+	case 'f': case 'F': return 0x21;
+	case 'g': case 'G': return 0x22;
+	case 'h': case 'H': return 0x23;
+	case 'j': case 'J': return 0x24;
+	case 'k': case 'K': return 0x25;
+	case 'l': case 'L': return 0x26;
+	case ';': case ':': return 0x27;
+	case '\'': case '"': return 0x28;
+	case '`': case '~': return 0x29;
+	case '\\': case '|': return 0x2b;
+	case 'z': case 'Z': return 0x2c;
+	case 'x': case 'X': return 0x2d;
+	case 'c': case 'C': return 0x2e;
+	case 'v': case 'V': return 0x2f;
+	case 'b': case 'B': return 0x30;
+	case 'n': case 'N': return 0x31;
+	case 'm': case 'M': return 0x32;
+	case ',': case '<': return 0x33;
+	case '.': case '>': return 0x34;
+	case '/': case '?': return 0x35;
+	case ' ': return 0x39;
+	default: return 0;
+	}
+}
+
+static dw host_stdin_char_to_bios_key(db ch) {
+	const db ascii = ch == '\n' ? '\r' : ch;
+	return static_cast<dw>((static_cast<dw>(host_ascii_to_pc_scan(ascii)) << 8) | ascii);
+}
+
+static db host_keyboard_shift_flags() {
+	const db* keys = host_key_state();
+	if (keys == nullptr) {
+		return 0;
+	}
+	db flags = 0;
+	if (keys[54]) {
+		flags |= 0x01;
+	}
+	if (keys[42]) {
+		flags |= 0x02;
+	}
+	if (keys[29]) {
+		flags |= 0x04;
+	}
+	if (keys[56]) {
+		flags |= 0x08;
+	}
+	return flags;
 }
 
 static dw* host_ticker_counter() {
@@ -893,6 +1317,86 @@ static void host_start_timer_thread() {
 			if (host.timer.enabled) {
 				host_advance_timer_counters();
 			}
+		}
+	}).detach();
+}
+
+// The translated program's main state, captured in init(). The IRQ thread
+// consults its IF flag so guest cli sections are honored while polling the
+// IVT for handlers installed with direct vector writes (no int 21h AH=25h).
+static _STATE* host_irq_main_state = nullptr;
+
+static void host_fire_ivt(int intno, _STATE* _state) {
+	X86_REGREF
+	const dw off = *(dw*)host_physical_address(0, intno * 4);
+	const dw seg = *(dw*)host_physical_address(0, intno * 4 + 2);
+	if ((off | seg) == 0 || seg >= 0xa000) {
+		return;
+	}
+	if (host_irq_main_state && !host_irq_main_state->IF) {
+		return;
+	}
+	// stack[] is only used before the program installs its own stack, so its
+	// top is free for the interrupt frame. IRET lowers to RETF(0) here, which
+	// pops ip then cs; ip==0 is the sentinel that unwinds back to C++.
+	ss = seg_offset(stack);
+	esp = STACK_SIZE - 8;
+	*(dw*)m2c::stack_raddr_(ss, (dw)esp) = 0;
+	*(dw*)m2c::stack_raddr_(ss, (dw)(esp + 2)) = 0;
+	cs = seg;
+	eip = off;
+#ifdef SHADOW_STACK
+	// Isolate the handler's bookkeeping on this thread: its pushes/rets must
+	// not perturb the interrupted code's call-depth accounting.
+	const ShadowStack::SavedState saved_shadow = m2c::shadow_stack.save_state();
+#endif
+	try {
+		(*m2c::_ENTRY_POINT_)(static_cast<_offsets>((static_cast<dd>(seg) << 16) | off), _state);
+	} catch (const m2c::StackPop&) {
+		// An IRET/RETF inside the handler unwound past the synthesized frame;
+		// that is the normal way back to C++, not an error.
+	}
+#ifdef SHADOW_STACK
+	m2c::shadow_stack.restore_state(saved_shadow);
+#endif
+}
+
+// Far call/jump targets inside EXEC-loaded overlay regions (sound drivers)
+// have no translated code. The drivers end with `retf`, which pops the
+// caller's cs:ip frame. Emulate that by popping the frame and returning
+// true: the C++ call chain then unwinds to the statement after the original
+// far call, which is exactly where the driver's retf would resume.
+bool host_try_overlay_retf(_offsets __disp, _STATE* _state, bool* out_result) {
+	const dw tseg = static_cast<dw>(__disp >> 16);
+	for (const auto& r : host.overlay_segs) {
+		if (tseg < r.first || tseg >= r.second) {
+			continue;
+		}
+		X86_REGREF
+		dw ret_ip = 0, ret_cs = 0;
+		POP(ret_ip);
+		POP(ret_cs);
+		log_debug2("overlay entry %x:%x emulated as retf to %x:%x\n",
+			tseg, (dw)(__disp & 0xffff), ret_cs, ret_ip);
+		*out_result = true;
+		return true;
+	}
+	return false;
+}
+
+static void host_start_irq_thread() {
+	bool expected = false;
+	if (!host.timer.irq_running.compare_exchange_strong(expected, true)) {
+		return;
+	}
+	std::thread([] {
+		_STATE irq_state;
+		std::memset(&irq_state, 0, sizeof(irq_state));
+		while (host.timer.irq_running.load()) {
+			std::this_thread::sleep_for(std::chrono::milliseconds(55));
+			++*(dd*)host_physical_address(0x40, 0x6c); // BIOS tick count
+			host_fire_ivt(0x08, &irq_state);
+			host_fire_ivt(0x1c, &irq_state);
 		}
 	}).detach();
 }
@@ -1043,6 +1547,80 @@ static void host_set_key(int scan_code, bool pressed) {
 	}
 }
 
+#ifndef NOSDL
+static db sdl_keycode_to_bios_ascii(SDL_Keycode keycode, SDL_Keymod modifiers) {
+	const bool shifted = (modifiers & KMOD_SHIFT) != 0;
+	if (keycode >= SDLK_a && keycode <= SDLK_z) {
+		const int letter = keycode - SDLK_a;
+		return static_cast<db>((shifted ? 'A' : 'a') + letter);
+	}
+	if (keycode >= SDLK_0 && keycode <= SDLK_9) {
+		static const char normal[] = "0123456789";
+		static const char shifted_digits[] = ")!@#$%^&*(";
+		const int digit = keycode - SDLK_0;
+		return static_cast<db>((shifted ? shifted_digits : normal)[digit]);
+	}
+	switch (keycode) {
+	case SDLK_SPACE: return ' ';
+	case SDLK_RETURN:
+	case SDLK_KP_ENTER: return '\r';
+	case SDLK_ESCAPE: return 0x1b;
+	case SDLK_BACKSPACE: return '\b';
+	case SDLK_TAB: return '\t';
+	case SDLK_MINUS: return shifted ? '_' : '-';
+	case SDLK_EQUALS: return shifted ? '+' : '=';
+	case SDLK_LEFTBRACKET: return shifted ? '{' : '[';
+	case SDLK_RIGHTBRACKET: return shifted ? '}' : ']';
+	case SDLK_BACKSLASH: return shifted ? '|' : '\\';
+	case SDLK_SEMICOLON: return shifted ? ':' : ';';
+	case SDLK_QUOTE: return shifted ? '"' : '\'';
+	case SDLK_COMMA: return shifted ? '<' : ',';
+	case SDLK_PERIOD: return shifted ? '>' : '.';
+	case SDLK_SLASH: return shifted ? '?' : '/';
+	case SDLK_BACKQUOTE: return shifted ? '~' : '`';
+	default: return 0;
+	}
+}
+
+static dw sdl_key_event_to_bios_key(const SDL_KeyboardEvent& event) {
+	const int scan_code = sdl_scancode_to_pc(event.keysym.scancode);
+	if (scan_code < 0 || scan_code > 0xff) {
+		return 0;
+	}
+	return static_cast<dw>((scan_code << 8) | sdl_keycode_to_bios_ascii(event.keysym.sym, SDL_GetModState()));
+}
+#endif
+
+// The game timer handlers are far procedures ending in RETF/IRET. Like a real
+// interrupt, push a frame onto the current stack: the handler's final far
+// return pops it and unwinds to C++ (is_dos_terminate_vector treats 0:0 as the
+// synthesized-frame sentinel). The whole CPU state is restored afterwards: an
+// interrupt must not leak the popped sentinel values (cs=0, eip=0) or an
+// unbalanced sp into the interrupted code.
+static void host_run_timer_handler(m2cf* handler, struct _STATE* _state) {
+	const struct _STATE saved = *_state;
+	m2c::suppress_native_return_push_transfer = true;
+	PUSH_((dw)0, _state); // flags slot (IRET) / padding (RETF)
+	PUSH_((dw)0, _state); // sentinel cs
+	PUSH_((dw)0, _state); // sentinel ip=0 -> unwind to C++
+	m2c::suppress_native_return_push_transfer = false;
+#ifdef SHADOW_STACK
+	// Isolate the handler's bookkeeping: its pushes/rets must not perturb the
+	// interrupted code's call-depth accounting (spurious StackPop unwinds).
+	const ShadowStack::SavedState saved_shadow = m2c::shadow_stack.save_state();
+#endif
+	try {
+		handler(0, _state);
+	} catch (const m2c::StackPop&) {
+		// A RETF inside the handler unwound past the interrupt entry frame.
+		// The emulated state is restored below either way.
+	}
+	*_state = saved;
+#ifdef SHADOW_STACK
+	m2c::shadow_stack.restore_state(saved_shadow);
+#endif
+}
+
 static void host_run_timer(struct _STATE* _state) {
 	if (!host.timer.enabled || host.timer.in_callback) {
 		return;
@@ -1063,19 +1641,70 @@ static void host_run_timer(struct _STATE* _state) {
 		host.timer.accum_us -= 10000;
 		++ticks_this_pump;
 		if (::gameintr100) {
-			::gameintr100(0, _state);
+			host_run_timer_handler(::gameintr100, _state);
 		}
 		if (++host.timer.divider_20hz >= 5) {
 			host.timer.divider_20hz = 0;
 			if (::gameintr20) {
-				::gameintr20(0, _state);
+				host_run_timer_handler(::gameintr20, _state);
 			}
 		}
 	}
 	host.timer.in_callback = false;
 }
 
+static void poll_host_stdin() {
+#if !defined(_WIN32) && !defined(__DJGPP__)
+	if (host_keyboard_buffer_full()) {
+		return;
+	}
+	fd_set readfds;
+	FD_ZERO(&readfds);
+	FD_SET(STDIN_FILENO, &readfds);
+	timeval timeout = {0, 0};
+	const int ready = select(STDIN_FILENO + 1, &readfds, NULL, NULL, &timeout);
+	if (ready <= 0 || !FD_ISSET(STDIN_FILENO, &readfds)) {
+		return;
+	}
+
+	unsigned char ch = 0;
+	const ssize_t count = read(STDIN_FILENO, &ch, 1);
+	if (count <= 0) {
+		return;
+	}
+	host_keyboard_push(host_stdin_char_to_bios_key(ch));
+#endif
+}
+
+#ifndef NOCURSES
+static void host_render_text_memory() {
+	if (host.vga.current_mode > 3 && host.vga.current_mode != 7) {
+		return;
+	}
+	static db shadow[80 * 25 * 2] = {};
+	const db *vram = reinterpret_cast<const db*>(&m) +
+		(static_cast<size_t>(host.vga.current_mode == 7 ? 0xB0000 : 0xB8000));
+	if (std::memcmp(vram, shadow, sizeof(shadow)) == 0) {
+		return;
+	}
+	std::memcpy(shadow, vram, sizeof(shadow));
+	for (int pos = 0; pos < 80 * 25; ++pos) {
+		const db ch = vram[pos * 2] ? vram[pos * 2] : ' ';
+		const db attr = vram[pos * 2 + 1];
+		const int pair = ((attr >> 4) & 0x0f) * 16 + (attr & 0x0f);
+		mvaddch(pos / 80, pos % 80, ch | COLOR_PAIR(pair));
+	}
+	const db page = host_text_page(host.vga.active_page);
+	move(host.vga.cursor_row[page], host.vga.cursor_col[page]);
+	refresh();
+}
+#endif
+
 static void poll_host_events(struct _STATE* _state) {
+	poll_host_stdin();
+#ifndef NOCURSES
+	host_render_text_memory();
+#endif
 #ifndef NOSDL
 	if ((SDL_WasInit(SDL_INIT_VIDEO) & SDL_INIT_VIDEO) != 0) {
 		SDL_Event event;
@@ -1113,6 +1742,9 @@ static void poll_host_events(struct _STATE* _state) {
 			case SDL_KEYUP:
 				host_set_key(sdl_scancode_to_pc(event.key.keysym.scancode),
 					event.type == SDL_KEYDOWN);
+				if (event.type == SDL_KEYDOWN && event.key.repeat == 0) {
+					host_keyboard_push(sdl_key_event_to_bios_key(event.key));
+				}
 				break;
 			default:
 				break;
@@ -1121,6 +1753,17 @@ static void poll_host_events(struct _STATE* _state) {
 	}
 #endif
 	host_run_timer(_state);
+}
+
+static bool host_keyboard_wait(struct _STATE* _state, dw* bios_key) {
+	while (!executionFinished) {
+		poll_host_events(_state);
+		if (host_keyboard_pop(bios_key)) {
+			return true;
+		}
+		std::this_thread::sleep_for(std::chrono::milliseconds(1));
+	}
+	return false;
 }
 
 #define MAX_FMT_SIZE 1024
@@ -1329,6 +1972,10 @@ X86_REGREF
 		break;
 	case 0x64:
 		break; // 8042 keyboard controller command port.
+	case 0xc0:
+	case 0xc1:
+		tandy_snd_write(data);
+		break; // Tandy SN76496/NCR8496 sound chip.
 	case 0x3c0:
 		if (host.vga.attr_waiting_for_index) {
 			host.vga.attr_index = data & 0x1f;
@@ -1410,6 +2057,14 @@ X86_REGREF
 			}
 	case 0x3c1:
 		return host.vga.attr_regs[host.vga.attr_index];
+	case 0x3c4:
+		{
+			static const int disable_ega = std::getenv("M2C_DISABLE_EGA") ? 1 : 0;
+			if (disable_ega) {
+				return 0;
+			}
+			return host.vga.seq_index;
+		}
 	case 0x3c5:
 		return host.vga.seq_regs[host.vga.seq_index];
 	case 0x3cf:
@@ -1422,6 +2077,8 @@ X86_REGREF
 			return value;
 		}
 	case 0x3d4:
+		return host.vga.crtc_index;
+	case 0x3b4:
 		return host.vga.crtc_index;
 	case 0x3DA:
 		host.vga.attr_waiting_for_index = true;
@@ -1438,6 +2095,8 @@ X86_REGREF
 		}
 		//break;
 	case 0x3d5:
+		return host.vga.crtc_regs[host.vga.crtc_index];
+	case 0x3b5:
 		return host.vga.crtc_regs[host.vga.crtc_index];
 	default:
 		log_error("Unknown IN %x at %x:%x\n",address,cs,eip);
@@ -1632,13 +2291,14 @@ X86_REGREF
 				 {
 				case 0x03: {
 #ifndef NOCURSES
-				resize_term(25, 80);
-				clear();
-				refresh();
+					resize_term(25, 80);
+					clear();
+					refresh();
 #endif
-				log_debug2("Switch to text mode\n");
-				return;
-			}
+					host_text_clear_all();
+					log_debug2("Switch to text mode\n");
+					return;
+				}
 			
 			case 0x04: {
 				log_debug2("Switch to CGA\n");
@@ -1661,15 +2321,16 @@ X86_REGREF
 				return;
 			}
 
-			case 0x83: {
+				case 0x83: {
 #ifndef NOCURSES
 
-				resize_term(25, 80);
-				refresh();
+					resize_term(25, 80);
+					refresh();
 #endif
-				log_debug2("Switch to text mode\n");
-				return;
-			}
+					host_text_clear_all();
+					log_debug2("Switch to text mode\n");
+					return;
+				}
 			case 0x13: {
 				log_debug2("Switch to VGA\n");
 				vga_set_mode13_defaults();
@@ -1693,17 +2354,20 @@ X86_REGREF
 			 }
 			}
 
-		}
-		case 0x0f: { // get current video mode
-			al = host.vga.current_mode;
-			ah = 80;
-			bh = 0;
-			return;
-		}
-		case 0x02: { // set cursor
+			}
+			case 0x0f: { // get current video mode
+				al = host.vga.current_mode;
+				ah = 80;
+				bh = host.vga.active_page;
+				return;
+			}
+			case 0x02: { // set cursor
+				const db page = host_text_page(bh);
+				host.vga.cursor_row[page] = host_text_row(dh);
+				host.vga.cursor_col[page] = host_text_col(dl);
 #ifndef NOCURSES
-			    int y,x;
-				if (dh >= getmaxy(stdscr) || dl >= getmaxx(stdscr))
+				    int y,x;
+					if (dh >= getmaxy(stdscr) || dl >= getmaxx(stdscr))
 				{
 					curs_set(0);
 				}
@@ -1714,8 +2378,58 @@ X86_REGREF
 					refresh();
 				}
 #endif
+					return;
+			}
+			case 0x03: { // get cursor position and shape
+				const db page = host_text_page(bh);
+				ch = host.vga.cursor_start;
+				cl = host.vga.cursor_end;
+				dh = host.vga.cursor_row[page];
+				dl = host.vga.cursor_col[page];
 				return;
-		}
+			}
+			case 0x05: { // select active display page
+				host.vga.active_page = host_text_page(al);
+				return;
+			}
+			case 0x06: { // scroll up / clear window
+				host_text_scroll_up_window(host.vga.active_page, bh, ch, cl, dh, dl, al);
+#ifndef NOCURSES
+				if (al == 0) {
+					clear();
+					refresh();
+				}
+#endif
+				return;
+			}
+			case 0x08: { // read character and attribute at cursor
+				const db page = host_text_page(bh);
+				const db row = host.vga.cursor_row[page];
+				const db col = host.vga.cursor_col[page];
+				const HostVga::TextCell &cell = host.vga.text[page][row][col];
+				al = cell.ch;
+				ah = cell.attr;
+				return;
+			}
+			case 0x01: { // set cursor shape
+				host.vga.cursor_start = ch;
+				host.vga.cursor_end = cl;
+				return;
+			}
+			case 0x09: { // write character and attribute at cursor
+				const db page = host_text_page(bh);
+				host_text_write(page, host.vga.cursor_row[page], host.vga.cursor_col[page], al, bl, cx);
+#ifndef NOCURSES
+				for (dw n = 0; n < cx; ++n) {
+					addch(al);
+				}
+				refresh();
+#endif
+				return;
+			}
+			case 0x0b: { // set background/border color
+				return;
+			}
 		case 0x11: {        //set charset size
 			switch(al)
 			{
@@ -1736,6 +2450,85 @@ X86_REGREF
 			}
 			break;
 		}
+		case 0x10: {
+				switch (al) {
+				case 0x03:
+					// Toggle intensity/blink. Hosted text output does not model
+					// attribute blinking.
+					return;
+				case 0x00: // set individual palette (attribute) register: BL=index, BH=value
+					host.vga.attr_regs[bl & 0x1f] = bh;
+					return;
+				case 0x01: // set overscan (border) color register: BH=value
+					host.vga.attr_regs[0x11] = bh;
+					return;
+				case 0x02: { // set all palette registers + overscan: ES:DX -> 17 bytes
+					db *src = host_physical_address(es, dx);
+					if (src) {
+						std::copy(src, src + 17, host.vga.attr_regs);
+					}
+					return;
+				}
+				case 0x07: // read individual palette register: BL=index -> BH
+					bh = host.vga.attr_regs[bl & 0x1f];
+					return;
+				case 0x08: // read overscan register -> BH
+					bh = host.vga.attr_regs[0x11];
+					return;
+				case 0x09: { // read all palette registers + overscan: ES:DX -> 17 bytes
+					db *dst = host_physical_address(es, dx);
+					if (dst) {
+						std::copy(host.vga.attr_regs, host.vga.attr_regs + 17, dst);
+					}
+					return;
+				}
+				case 0x10: { // set individual DAC color register: BX=reg, DH=red, CH=green, CL=blue
+					if (bx < 256) {
+						vgaPalette[bx * 3 + 0] = dh;
+						vgaPalette[bx * 3 + 1] = ch;
+						vgaPalette[bx * 3 + 2] = cl;
+#if SDL_MAJOR_VERSION == 2 && !defined(NOSDL) && M2CDEBUG != -1
+						vga_render_dirty = true;
+#endif
+					}
+					return;
+				}
+				case 0x12: { // set block of DAC color registers: ES:DX -> RGB triples, BX=first, CX=count
+					db *src = host_physical_address(es, dx);
+					if (src) {
+						for (dw i = 0; i < cx && (bx + i) < 256; ++i) {
+							vgaPalette[(bx + i) * 3 + 0] = src[i * 3 + 0];
+							vgaPalette[(bx + i) * 3 + 1] = src[i * 3 + 1];
+							vgaPalette[(bx + i) * 3 + 2] = src[i * 3 + 2];
+						}
+#if SDL_MAJOR_VERSION == 2 && !defined(NOSDL) && M2CDEBUG != -1
+						vga_render_dirty = true;
+#endif
+					}
+					return;
+				}
+				case 0x15: { // read individual DAC color register: BX=reg -> DH=red, CH=green, CL=blue
+					if (bx < 256) {
+						dh = vgaPalette[bx * 3 + 0];
+						ch = vgaPalette[bx * 3 + 1];
+						cl = vgaPalette[bx * 3 + 2];
+					}
+					return;
+				}
+				case 0x17: { // read block of DAC color registers: ES:DX -> buffer, BX=first, CX=count
+					db *dst = host_physical_address(es, dx);
+					if (dst) {
+						for (dw i = 0; i < cx && (bx + i) < 256; ++i) {
+							dst[i * 3 + 0] = vgaPalette[(bx + i) * 3 + 0];
+							dst[i * 3 + 1] = vgaPalette[(bx + i) * 3 + 1];
+							dst[i * 3 + 2] = vgaPalette[(bx + i) * 3 + 2];
+						}
+					}
+					return;
+				}
+				}
+			break;
+		}
 		case 0x1a: {        //vga
 			switch(al)
 			{
@@ -1746,7 +2539,13 @@ X86_REGREF
 			}
 			}
 			break;
-		}
+			}
+			case 0xef: {
+				// OEM BIOS extension. Hosted mode has no adapter-specific action to
+				// perform, but the call must report success.
+				AFFECT_CF(0);
+				return;
+			}
 		}
 		break;
 	}
@@ -1797,6 +2596,52 @@ X86_REGREF
 		}
 #endif
 	}
+	case 0x16:
+	{
+#ifdef __DJGPP__
+		call_dos_realint(_state, a);
+		return;
+#else
+		poll_host_events(_state);
+		dw bios_key = 0;
+		switch (ah) {
+		case 0x00:
+		case 0x10:
+			if (host_keyboard_wait(_state, &bios_key)) {
+				ax = bios_key;
+				AFFECT_ZF(0);
+			} else {
+				ax = 0;
+				AFFECT_ZF(1);
+			}
+			return;
+		case 0x01:
+		case 0x11:
+			if (host_keyboard_peek(&bios_key)) {
+				ax = bios_key;
+				AFFECT_ZF(0);
+			} else {
+				ax = 0;
+				AFFECT_ZF(1);
+			}
+			return;
+		case 0x02:
+			al = host_keyboard_shift_flags();
+			return;
+		case 0x05:
+			al = host_keyboard_push(cx) ? 0 : 1;
+			return;
+		case 0x12:
+			ax = host_keyboard_shift_flags();
+			return;
+		default:
+			log_debug("Unsupported BIOS keyboard INT 16h ah:0x%x al:0x%x\n", ah, al);
+			ax = 0;
+			AFFECT_ZF(1);
+			return;
+		}
+#endif
+	}
 	case 0x21:
 
 #ifdef __DJGPP__
@@ -1834,6 +2679,30 @@ X86_REGREF
 #endif
 		switch(ah)
 		{
+		case 0x06: // Direct console I/O
+		{
+#ifdef __DJGPP__
+			call_dos_realint(_state, a);
+#else
+			if (dl == 0xff) {
+				poll_host_events(_state);
+				dw bios_key = 0;
+				if (host_keyboard_pop(&bios_key)) {
+					al = static_cast<db>(bios_key & 0xff);
+					AFFECT_ZF(0);
+				} else {
+					al = 0;
+					AFFECT_ZF(1);
+				}
+			} else {
+				std::putchar(dl);
+				std::fflush(stdout);
+				al = dl;
+				AFFECT_ZF(0);
+			}
+#endif
+			return;
+		}
 		case 0x9:
 		{
 			char * s=(char *) realAddress(dx,ds);
@@ -1875,22 +2744,35 @@ X86_REGREF
 			diskTransferAddr=(find_t *)realAddress(dx,ds);
 			return;
 		}
-		case 0x25: // Set disk transfer addr
-		{
-			*(dw *)realAddress(al*4,0)=dx;
-			*(dw *)realAddress(al*4+2,0)=ds;
+			case 0x25: // Set disk transfer addr
+			{
+				*(dw *)realAddress(al*4,0)=dx;
+				*(dw *)realAddress(al*4+2,0)=ds;
 			if (al == 0x08) {
 				host.timer.enabled = true;
 				host.timer.last_us = host_now_us();
 				host.timer.accum_us = 0;
 				host.timer.divider_20hz = 0;
 				host_start_timer_thread();
+				}
+				return;
 			}
-			return;
-		}
-		case 0x30: // ver
-		{
-			ax=5;
+				case 0x26:
+					/* DOS "create PSP": copy the current program segment prefix
+					 * into the segment supplied in DX. */
+					{
+						const void* psp = host_physical_address(host.current_psp, 0);
+						if (m2c::copy_linked_program_segment_prefix) {
+							m2c::copy_linked_program_segment_prefix(dx, psp, 0x100);
+						} else {
+							std::memmove(host_physical_address(dx, 0), psp, 0x100);
+						}
+					}
+				AFFECT_CF(0);
+				return;
+			case 0x30: // ver
+			{
+				ax=5;
                         bx=0xff00;
                         cx=0;
 			return;
@@ -1971,6 +2853,7 @@ X86_REGREF
 				}
 				if (file!=NULL) {
 					eax=1; //TOFIX
+					AFFECT_CF(0);
 				} else {
 					AFFECT_CF(1);
 					log_error("Error opening file %s\n",fileName);
@@ -2073,7 +2956,7 @@ X86_REGREF
 
 			 */
 			int seek = 0;
-			switch(ah) {
+			switch(al) {
 			case 0x0:
 				seek = SEEK_SET;
 				break;
@@ -2089,6 +2972,10 @@ X86_REGREF
 			if (fseek(file,offset,seek)!=0) {
 				log_error("Error seeking\n");
 				AFFECT_CF(1);
+			} else {
+				const long pos = ftell(file);
+				dx = (dw)((pos >> 16) & 0xffff);
+				ax = (dw)(pos & 0xffff);
 			}
 			return;
 		}
@@ -2186,9 +3073,13 @@ X86_REGREF
 		AFFECT_CF(rc!=SUCCESS);
 		return;
 #endif
-	      break;
-		case 0x4E: // find first matching file
-		{
+		      break;
+			case 0x51:
+				bx = host.current_psp;
+				AFFECT_CF(0);
+				return;
+			case 0x4E: // find first matching file
+			{
 				// cur dir is root
 				const char *fileName = reinterpret_cast<const char *>(realAddress(dx, ds));
 				log_debug2("Find first file %s\n", fileName);
@@ -2225,6 +3116,57 @@ X86_REGREF
 #else
 			AFFECT_CF(1);
 #endif
+			return;
+		}
+		case 0x4b: // EXEC - load overlay (AL=03h); code runs via dispatch_external_code
+		{
+			if (al != 0x03) {
+				AFFECT_CF(1);
+				ax = 1;
+				return;
+			}
+			const dw loadseg = *(dw*)realAddress(bx, es);
+			const dw relocfactor = *(dw*)realAddress(bx + 2, es);
+			const char* fname = (const char*)realAddress(dx, ds);
+			FILE* ovf = fopen(fname, "rb");
+			if (!ovf) {
+				AFFECT_CF(1);
+				ax = 2;
+				return;
+			}
+			db hdr[0x20];
+			bool bad = fread(hdr, 1, 0x20, ovf) != 0x20 || hdr[0] != 'M' || (hdr[1] != 'Z' && hdr[1] != 'M');
+			dw hsize = 0, nreloc = 0; dw reloff = 0;
+			if (!bad) {
+				hsize = (*(dw*)(hdr + 8)) * 16;
+				nreloc = *(dw*)(hdr + 6);
+				reloff = *(dw*)(hdr + 0x18);
+			}
+			fseek(ovf, 0, SEEK_END);
+			const long fsz = ftell(ovf);
+			if (!bad && hsize < fsz) {
+				fseek(ovf, hsize, SEEK_SET);
+				db* base = (db*)host_physical_address(loadseg, 0);
+				bad = fread(base, 1, fsz - hsize, ovf) != (size_t)(fsz - hsize);
+				for (dw i = 0; !bad && i < nreloc; ++i) {
+					db rent[4];
+					fseek(ovf, reloff + i * 4, SEEK_SET);
+					if (fread(rent, 1, 4, ovf) != 4) { bad = true; break; }
+					const dw roff = *(dw*)rent;
+					const dw rseg = *(dw*)(rent + 2);
+					dw* w = (dw*)host_physical_address(loadseg + rseg, roff);
+					*w += relocfactor;
+				}
+			}
+			fclose(ovf);
+			if (bad) {
+				AFFECT_CF(1);
+				ax = 8;
+				return;
+			}
+			host.overlay_segs.push_back({loadseg, (dw)(loadseg + (fsz - hsize + 15) / 16 + 8)});
+			log_debug("EXEC overlay %s loaded at %x (relocs %d)\n", fname, loadseg, nreloc);
+			AFFECT_CF(0);
 			return;
 		}
 		case 0x4c:
@@ -2870,13 +3812,21 @@ std::this_thread::sleep_for(std::chrono::microseconds(1));
  #else
     esp = 0;
     sp = STACK_SIZE - 4;
-    ds = es = 0x192; // dosbox PSP
+    cs = ds = es = M2C_LOAD_SEG; // DOS PSP/load segment for hosted COM-style runs
     *(dw*)(raddr(0, 0x408)) = 0x378; //LPT
+    /* DOS loader fills PSP:0002 with the top of the program's memory block
+       ("top of memory", in paragraphs). Programs like GW-BASIC copy the
+       control block into their data segment and read CPMMEM from offset 2.
+       Report 640K - the top of conventional memory on the emulated PC. */
+    *(dw*)(host_physical_address(host.current_psp, 2)) = 0xA000;
  #endif
 
     if (m2c::Initializer) {
         m2c::Initializer();
     }
+
+    host_irq_main_state = _state;
+    if (!std::getenv("M2C_NO_IRQ")) host_start_irq_thread();
 
 //	*(dw *)realAddress(8*4,0)=k_int8old;
 //    int8_thread = std::thread(int8_thread_proc);
@@ -2896,25 +3846,26 @@ std::this_thread::sleep_for(std::chrono::microseconds(1));
 }
 
 static void write_dos_command_tail(int argc, char *argv[]) {
-    if (argc < 2) {
-        return;
-    }
-
-    db *psp = ((db *) &m2c::m);
+    db tail[126] = {};
     size_t tail_len = 0;
 
     for (int i = 1; i < argc && tail_len < 126; ++i) {
         if (!argv[i]) {
             continue;
         }
-        psp[0x81 + tail_len++] = ' ';
+        tail[tail_len++] = ' ';
         for (const char *arg = argv[i]; *arg && tail_len < 126; ++arg) {
-            psp[0x81 + tail_len++] = static_cast<db>(*arg);
+            tail[tail_len++] = static_cast<db>(*arg);
         }
     }
 
+    db *psp = ((db *) &m2c::m) + (static_cast<size_t>(m2c::host.current_psp) << 4);
     psp[0x80] = static_cast<db>(tail_len);
+    for (size_t i = 0; i < tail_len; ++i) {
+        psp[0x81 + i] = tail[i];
+    }
     psp[0x81 + tail_len] = 0x0d;
+    m2c::copy_linked_program_segment_prefix(m2c::host.current_psp, psp, 0x100);
 }
 
 int main(int argc, char *argv[]) {

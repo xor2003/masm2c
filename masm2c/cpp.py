@@ -167,6 +167,7 @@ class SeparateProcStrategy:
 
         result += """
 static bool __dispatch_call(m2c::_offsets __disp, struct m2c::_STATE* _state);
+static bool __dispatch_call_ext(m2c::_offsets __disp, struct m2c::_STATE* _state);
 """
         return result
 
@@ -337,11 +338,16 @@ class Cpp(Gen):
         if name in self._assignments:
             if (
                 isinstance(symbol := self._context.symbols.get_global(name), (op._equ, op._assignment))
+                and self._contains_location_counter(getattr(symbol, "value", None))
                 and (folded := self._fold_location_counter_expression(symbol)) is not None
             ):
                 return folded
             return self.render_instruction_argument(self._assignments[name])
         if (g := self._context.symbols.get_and_mark_global(name)) is None:
+            if str(name).lower() in getattr(self._context, "old_struct_member_offsets", {}):
+                return self._old_struct_member_offset_constant_name(name)
+            if str(name).lower() in getattr(self._context, "externals_abs", ()):
+                return str(name)
             if self._is_cross_module_code_export(name) and not self.itisjump:
                 return f"m2c::k{self.sanitize_label_name(name)}"
             if self._is_continuation_module() and len(name) > 1 and not self.itisjump:
@@ -371,16 +377,18 @@ class Cpp(Gen):
                 return symbolic_offset
             if (folded := self._fold_location_counter_expression(g)) is not None:
                 return folded
-            return self.render_instruction_argument(g.value)
+            return self._parenthesize_compound(self.render_instruction_argument(g.value))
         elif isinstance(g, op._equ):
             if self.itiscall or self.itisjump:
                 if (target := self._code_equate_target(g)) is not None:
                     return target
+            if self._context.test_mode:
+                return g.name
             if (symbolic_offset := self._render_single_base_offset_expression(g.value)) is not None:
                 return symbolic_offset
             if (folded := self._fold_location_counter_expression(g)) is not None:
                 return folded
-            return self.render_equate_value(g)
+            return self._parenthesize_compound(self.render_equate_value(g))
         elif isinstance(g, op.Struct):
             return str(g.size)
         return name
@@ -575,6 +583,12 @@ class Cpp(Gen):
                     data_cpp_file += rendered["data_cpp_ref"]
                     hpp_file += rendered["extern_hpp_decl"]
                 for alias in self._iter_data_aliases_for_segment(segment, segment_name):
+                    # An alias whose name resolves to a merged field is the same
+                    # EXTRN->definition binding a linker would make; emitting a
+                    # second declaration (often with a different width) is a
+                    # conflicting redeclaration.
+                    if alias.name.lower() in getattr(self, "_merged_field_label_names", ()):
+                        continue
                     data_cpp_file += self._render_data_alias_reference(alias)
                     hpp_file += self._render_data_alias_extern(alias)
             return cpp_file, data_hpp_file, data_cpp_file, hpp_file
@@ -878,13 +892,26 @@ class Cpp(Gen):
             value = self._convert_member_var(g, label)
         elif isinstance(g, op.Struct):
             #if self._expr_state.is_just_member:
-            value = f'offsetof({label[0]},{".".join(label[1:])})'
+            value = self._offsetof_expr(label[0], ".".join(label[1:]))
 
         if self._expr_state.indirection == IndirectionType.POINTER and state.needs_dereference and state.struct_type:
             state.is_member = True
             state.needs_dereference = False
 
         return value
+
+    def _offsetof_expr(self, type_name: str, members: str) -> str:
+        """Render offsetof with an elaborated struct/union tag so that names
+        hidden by C library functions (e.g. clock()) still resolve."""
+        tag = "struct"
+        structures = getattr(self._context, "structures", None) or {}
+        struct = structures.get(type_name) or structures.get(str(type_name).lower())
+        if isinstance(struct, op.Struct) and struct.gettype() == op.Struct.UNION:
+            tag = "union"
+        return f"offsetof({tag} {type_name},{members})"
+
+    def _offsetof_decl(self, type_name: str, members: str) -> str:
+        return self._offsetof_expr(type_name, members).replace(",", ", ", 1)
 
     def _convert_pointer_member(self, label: list[str]) -> str:
         state = self._expr_state
@@ -1004,13 +1031,16 @@ class Cpp(Gen):
         if isinstance(g, op.var):
             joined_label = ".".join(label)
             if g.external and len(label) == 1 and not self._expr_state.data_label_size:
-                value = f"m2c::near_offset_external({joined_label})"
+                if self._is_cross_module_code_export(joined_label):
+                    value = f"m2c::k{self.sanitize_label_name(joined_label)}"
+                else:
+                    value = f"m2c::near_offset_external({joined_label})"
             else:
                 value = self._near_data_offset_expr(g, joined_label)
         elif isinstance(g, op.Struct):
-            value = f'offsetof({label[0]},{".".join(label[1:])})'
+            value = self._offsetof_expr(label[0], ".".join(label[1:]))
         elif isinstance(g, (op._equ, op._assignment)):
-            value = f'({label[0]})+offsetof({g.original_type},{".".join(label[1:])})'
+            value = f'({label[0]})+{self._offsetof_expr(g.original_type, ".".join(label[1:]))}'
         else:
             raise Exception(f"Not handled type {type(g)!s}")
 
@@ -1050,7 +1080,9 @@ class Cpp(Gen):
             return expr
         if self._is_mangled_internal_code_label(expr):
             return f"m2c::k{self.sanitize_label_name(expr)}"
-        return f"m2c::near_offset_external({self.sanitize_label_name(expr)})"
+        if expr.startswith(("dummy", "edummy")):
+            return f"m2c::near_offset_external({self.sanitize_label_name(expr)})"
+        return f"m2c::k{self.sanitize_label_name(expr)}"
 
     @staticmethod
     def render_new_pointer_size(itispointer: bool, expr: str, target_size: int) -> str:
@@ -1100,10 +1132,36 @@ class Cpp(Gen):
             #   exact value
             # seg:offset - in sub __dispatch_call disp= seg:offset ?
             # if self._context.has_global(name):
-            self.dispatch += f"__disp={name};\n"
-            name = "__dispatch_call"
+            if self._is_indirect_dispatch_expr(name):
+                # Near indirect targets (jmp word ptr [x], jmp ax) hold the
+                # bare aggregate/local code offset that OFFSET and code-pointer
+                # tables store; far targets already carry seg:off in a dd read.
+                self.dispatch += f"__disp={name};\n"
+                name = "__dispatch_call_ext"
+            else:
+                self.dispatch += f"__disp={name};\n"
+                name = "__dispatch_call"
 
         return name, far
+
+    _DISPATCH_INDIRECT_REGS = {
+        "ax", "bx", "cx", "dx", "si", "di", "bp", "sp",
+        "ah", "al", "bh", "bl", "ch", "cl", "dh", "dl",
+        "eax", "ebx", "ecx", "edx", "esi", "edi", "ebp", "esp",
+    }
+
+    def _is_indirect_dispatch_expr(self, rendered: str) -> bool:
+        """Return true when a call/jump target is a register or memory expression.
+
+        Indirect targets carry aggregate (linked) code offsets: OFFSET emits
+        ``m2c::kglobal_*`` constants and code-pointer tables store them too.
+        Bare identifiers and ``label+const`` expressions instead produce
+        module-local ``m2c::k*`` offsets handled by the local dispatch switch.
+        """
+        text = rendered.strip()
+        if text.lower() in self._DISPATCH_INDIRECT_REGS:
+            return True
+        return "raddr" in text or "*" in text or "[" in text
 
     def get_global_far(self, name: str) -> bool:  # TODO Remove this!!!
         """Convert argument tokens which for jump operations into C string
@@ -1143,7 +1201,7 @@ class Cpp(Gen):
                 proc_name = self.label_to_proc[g.name]
             elif isinstance(g, op.var):
                 label_ip = proc_name
-                proc_name = "__dispatch_call"
+                proc_name = "__dispatch_call_ext"
 
             # calls feat purpose:
         # * grouped sub wrapper, exact subs  - direct name for external references
@@ -1160,7 +1218,11 @@ class Cpp(Gen):
         #   memory reference
         # seg:offset  - __dispatch_call disp= seg:offset
         else:
-            proc_name, label_ip = "__dispatch_call", proc_name
+            if self._is_indirect_dispatch_expr(proc_name):
+                label_ip = proc_name
+                proc_name = "__dispatch_call_ext"
+            else:
+                proc_name, label_ip = "__dispatch_call", proc_name
 
         proc_name = self.mangle_label(proc_name)
         inline_return_ip = self._inline_data_return_ip_after_current_call()
@@ -1729,6 +1791,13 @@ class Cpp(Gen):
             hpp_file = open(header_fname, "w", encoding=self.__codeset)
 
             cpp_file.write(f"""{banner}
+        /* Include STL headers before generated headers: MASM EQUs can coin
+           names like "count" that would otherwise macro-break <algorithm>. */
+        #include <algorithm>
+        #include <iterator>
+        #ifdef DOSBOX_CUSTOM
+        #include <numeric>
+        #endif
 	        #include \"{header_fname}\"
 
 	{self.render_function_wrappers_c()}
@@ -1804,6 +1873,7 @@ class Cpp(Gen):
             self.export_external_code_symbol_names(),
             self.export_defined_code_symbol_offsets(),
             getattr(self._context, "code_offset_aliases", []),
+            module_name=self._namespace,
         )
 
     def export_code_symbol_names(self) -> set[str]:
@@ -1913,34 +1983,31 @@ class Cpp(Gen):
     def write_procedures(self, banner, header_fname):
         cpp_file_text = ""
         split_segment_includes: list[str] = []
-        last_segment = None
-        cpp_segment_file = None
+        segment_texts: dict[str, str] = {}
         self.generate_label_to_proc_map()
         for name in self._procs:
             proc_text, segment = self._render_procedure(name)
             proc_text = self._postprocess_rendered_procedure(proc_text)
-            if self._is_listing_source() and segment != last_segment:  # If .lst write to separate segments. Open new if changed
-                last_segment = segment
-                if cpp_segment_file:
-                    cpp_segment_file.close()
-
-                cpp_segment_fname = f"{self._namespace.lower()}_{segment}.cpp"
-                split_segment_includes.append(cpp_segment_fname)
-                logging.info(f" *** Generating output file in C++ {cpp_segment_fname}")
-                cpp_segment_file = open(cpp_segment_fname, "w", encoding=self.__codeset)
-                cpp_segment_file.write(f"""{banner}
-#include "{header_fname}"
-
-                """)
-
-            if cpp_segment_file:
-                cpp_segment_file.write(f"{proc_text}\n")
+            if self._is_listing_source():  # If .lst write to separate segments
+                if segment not in segment_texts:
+                    segment_texts[segment] = ""
+                    cpp_segment_fname = f"{self._namespace.lower()}_{segment}.cpp"
+                    split_segment_includes.append(cpp_segment_fname)
+                segment_texts[segment] += f"{proc_text}\n"
             else:
                 cpp_file_text += f"{proc_text}\n"
             self.__proc_done.append(name)
             self.__methods.append(name)
-        if cpp_segment_file:
-            cpp_segment_file.close()
+
+        for i, segment in enumerate(segment_texts):
+            cpp_segment_fname = split_segment_includes[i]
+            logging.info(f" *** Generating output file in C++ {cpp_segment_fname}")
+            with open(cpp_segment_fname, "w", encoding=self.__codeset) as cpp_segment_file:
+                cpp_segment_file.write(f"""{banner}
+#include "{header_fname}"
+
+                """)
+                cpp_segment_file.write(segment_texts[segment])
 
         if split_segment_includes:
             cpp_file_text += "\n".join(f'#include "{name}"' for name in split_segment_includes)
@@ -1962,8 +2029,8 @@ class Cpp(Gen):
         self._cmdlabel = ""
         return result
 
-    def export_equates(self) -> list[tuple[str, str, bool]]:
-        equates: list[tuple[str, str, bool]] = []
+    def export_equates(self) -> list[tuple[str, str, bool, str, bool]]:
+        equates: list[tuple[str, str, bool, str, bool]] = []
         public_symbols: set[str] = getattr(self._context, "public_symbols", set())
         for symbol in self._context.symbols.get_globals().values():
             if not isinstance(symbol, (op._equ, op._assignment)):
@@ -1997,6 +2064,8 @@ class Cpp(Gen):
     def render_equate_definition(self, name: str, symbol: op._equ) -> str:
         if isinstance(symbol.value, str):
             return f"#define {name} {symbol.value}\n"
+        if (alias := self._equ_alias_target(symbol)) is not None:
+            return f"#define {name} ({alias})\n"
         rendered = self.render_equate_value(symbol)
         if not rendered:
             return ""
@@ -2008,6 +2077,20 @@ class Cpp(Gen):
         if not re.search(r"[A-Za-z_]", rendered):
             return f"static const int {name} = {rendered};\n"
         return f"#define {name} ({rendered})\n"
+
+    def _equ_alias_target(self, symbol: op._equ) -> str | None:
+        """Return the label name for a bare EQU alias to another equate."""
+        value = symbol.value
+        if not isinstance(value, Expression) or len(value.children) != 1:
+            return None
+        child = value.children[0]
+        if isinstance(child, list) and len(child) == 1:
+            child = child[0]
+        if isinstance(child, Token) and child.type == "LABEL":
+            target = self._context.symbols.get_global(str(child).lower())
+            if isinstance(target, (op._equ, op._assignment)) and target is not symbol:
+                return str(child).lower()
+        return None
 
     def render_equate_value(self, symbol: Union[op._equ, op._assignment]) -> str:
         src = symbol.value
@@ -2057,6 +2140,10 @@ class Cpp(Gen):
     def _label_wrapper_targets(self) -> dict[str, tuple[str, bool]]:
         targets: dict[str, tuple[str, bool]] = {}
         entry_point = getattr(self._context, "entry_point", "")
+        externally_referenced = (
+            self._data_referenced_code_symbol_names()
+            | self._instruction_offset_referenced_code_symbol_names()
+        )
         for proc_name in self._procs:
             proc = self._context.symbols.get_global(proc_name)
             if not proc or not hasattr(proc, "stmts"):
@@ -2065,7 +2152,9 @@ class Cpp(Gen):
                 if not isinstance(symbol, op.label):
                     continue
                 name = symbol.name
-                if name == entry_point or self._is_internal_label_wrapper_name(name):
+                if name == entry_point:
+                    continue
+                if self._is_internal_label_wrapper_name(name) and name not in externally_referenced:
                     continue
                 owner = self.label_to_proc.get(name)
                 if not owner or owner == name or name in self._procs or name in self.grouped:
@@ -2214,8 +2303,14 @@ db(& heap)[HEAP_SIZE]=m.heap;
                 f"            return {function}(0, _state);",
             ])
         lines.extend([
-            "        default:",
+            "        default: {",
+            "            bool res = true;",
+            "            if (host_try_overlay_retf(__disp, _state, &res)) {",
+            "                if (handled) { *handled = true; }",
+            "                return res;",
+            "            }",
             "            return true;",
+            "        }",
             "    }",
             "}",
             "",
@@ -2266,17 +2361,44 @@ db(& heap)[HEAP_SIZE]=m.heap;
             for name, value in code_offset_equates:
                 if self.sanitize_label_name(name) not in code_equate_names:
                     code_equates.append((name, value))
-            if code_equates:
+            code_renames = getattr(self._context, "code_label_renames", []) or []
+            qualified_constants = sorted({
+                str(new)
+                for _macro, old, new in code_renames
+                if str(old).startswith("kglobal_")
+            })
+            if code_equates or qualified_constants:
+                exported_offsets = getattr(self._context, "exported_code_symbol_offsets", {}) or {}
                 f.write("\n")
                 self._write_known_code_equate_externs(f, code_equates)
                 f.write("\nnamespace m2c{\n")
                 for name, value in code_equates:
                     label = self.sanitize_label_name(str(name))
                     guard = self.code_equate_guard_name(label)
+                    global_offset = exported_offsets.get(str(name).lower())
+                    global_value = f"0x{int(global_offset):x}" if global_offset is not None else value
                     f.write(f"#ifndef {guard}\n#define {guard} 1\n")
                     f.write(f"static const dd k{label} = ({value});\n#endif\n")
-                    f.write(f"static const dd {self.global_code_offset_constant(label)} = ({value});\n")
+                    f.write(f"static const dd {self.global_code_offset_constant(label)} = ({global_value});\n")
+                for constant in qualified_constants:
+                    qualified = self.sanitize_label_name(constant[len("kglobal_"):])
+                    offset = exported_offsets.get(qualified)
+                    if offset is None:
+                        continue
+                    f.write(f"static const dd {constant} = (0x{int(offset):x});\n")
                 f.write("}\n")
+            # Module-scoped renames for code symbols defined in several merged
+            # modules.  Emitted after every kglobal_* constant so the macros
+            # only rewrite use sites (function definitions, dispatch tables),
+            # never the constant declarations above.
+            for module_macro, old_name, new_name in code_renames:
+                f.write(
+                    f"\n#if defined({module_macro})\n"
+                    f"#ifndef {old_name}\n"
+                    f"#define {old_name} {new_name}\n"
+                    "#endif\n"
+                    "#endif\n"
+                )
             f.write("\n#endif\n")
 
     @staticmethod
@@ -2380,14 +2502,9 @@ db(& heap)[HEAP_SIZE]=m.heap;
                 continue
             if label in getattr(self._context, "externals_procs", set()):
                 continue
-            data_label = self._data_label_exists(label)
-            public_export = bool(getattr(symbol, "public_export", False))
-            if not data_label:
-                guard = self.code_equate_guard_name(label)
-                result += f"#ifndef {guard}\n#define {guard} 1\n"
-                result += f"static const dd k{label} = 0x{offset:x};\n#endif\n"
-            else:
-                result += f"static const dd k{label} = 0x{offset:x};\n"
+            guard = self.code_equate_guard_name(label)
+            result += f"#ifndef {guard}\n#define {guard} 1\n"
+            result += f"static const dd k{label} = 0x{offset:x};\n#endif\n"
         result += "}\n"
         data_aliases = self._module_data_offset_aliases()
         return result + data_aliases + "\n", "\n"
@@ -2406,7 +2523,9 @@ db(& heap)[HEAP_SIZE]=m.heap;
                 if label in emitted:
                     continue
                 emitted.add(label)
-                result += f"static const dd k{label} = (m2c::near_offset_external(::{label}));\n"
+                guard = self.code_equate_guard_name(label)
+                result += f"#ifndef {guard}\n#define {guard} 1\n"
+                result += f"static const dd k{label} = (m2c::near_offset_external(::{label}));\n#endif\n"
                 aliases += f"#ifndef {label}\n#define {label} m2c::k{label}\n#endif\n"
         if not emitted:
             return ""
@@ -2436,6 +2555,7 @@ db(& heap)[HEAP_SIZE]=m.heap;
                     (self._module_macro_name(module), old_label, data.label.lower())
                 )
                 seen.add(data.label.lower())
+        self._merged_field_label_names = seen
         return result
 
     @staticmethod
@@ -2470,7 +2590,8 @@ dd far_offset_linked_address(const void* symbol) {
     return static_cast<dd>(near_offset_linked_address(symbol) | (segment_of_linked_address(symbol) << 16));
 }
 
-void copy_linked_program_segment_prefix(dw, const void*, size_t) {
+void copy_linked_program_segment_prefix(dw segment, const void* source, size_t size) {
+    std::memmove((db*)&m + (static_cast<size_t>(segment) << 4), source, size);
 }
 """
 
@@ -2478,6 +2599,12 @@ void copy_linked_program_segment_prefix(dw, const void*, size_t) {
             f"    {{reinterpret_cast<const db*>(&::{name}), 0x{linear:x}, {str(is_data).lower()}}},"
             for linear, name, is_data in anchors
         )
+        linked_data_raddr_body = """    for (const LinkedSegmentAnchor& anchor : linked_segment_anchors) {
+        if (anchor.is_data && segment == static_cast<dw>(anchor.linear >> 4)) {
+            return const_cast<db*>(anchor.base) + offset;
+        }
+    }
+    return nullptr;"""
         return f"""
 
 struct LinkedSegmentAnchor {{
@@ -2514,6 +2641,9 @@ static const LinkedSegmentAnchor* primary_linked_data_anchor() {{
 }}
 
 static bool is_linked_data_runtime_segment(dw segment) {{
+    if (segment == 0) {{
+        return false;
+    }}
     if (segment == linked_data_runtime_segment) {{
         return true;
     }}
@@ -2543,15 +2673,7 @@ static void remember_linked_data_runtime_segment(dw segment) {{
 }}
 
 db* linked_data_segment_raddr(dw segment, dw offset) {{
-    const LinkedSegmentAnchor* anchor = primary_linked_data_anchor();
-    if (anchor == nullptr) {{
-        return nullptr;
-    }}
-    const dw linked_segment = static_cast<dw>(anchor->linear >> 4);
-    if (segment != linked_segment && !is_linked_data_runtime_segment(segment)) {{
-        return nullptr;
-    }}
-    return const_cast<db*>(anchor->base) + offset;
+{linked_data_raddr_body}
 }}
 
 void set_segment_register(dw& reg, dw value) {{
@@ -2589,12 +2711,7 @@ void copy_linked_program_segment_prefix(dw segment, const void* source, size_t s
         }}
     }}
     if (!copied) {{
-        for (const LinkedSegmentAnchor& anchor : linked_segment_anchors) {{
-            if (anchor.linear != 0 && anchor.is_data) {{
-                std::memmove(const_cast<db*>(anchor.base), source, size);
-                break;
-            }}
-        }}
+        std::memmove((db*)&m + (static_cast<size_t>(segment) << 4), source, size);
     }}
 }}
 """
@@ -2632,8 +2749,8 @@ void copy_linked_program_segment_prefix(dw segment, const void* source, size_t s
         all_segments = sorted({segment for _, segments_key in range_groups for segment in segments_key})
         segment_guard = self._render_segment_reject_guard(all_segments)
         range_lines: list[str] = []
-        for (linear_base, runtime_segments), intervals in sorted(range_groups.items()):
-            segment_match = "" if list(runtime_segments) == all_segments else f"{self._render_segment_match(runtime_segments)} && "
+        for (linear_base, runtime_segment_key), intervals in sorted(range_groups.items()):
+            segment_match = "" if list(runtime_segment_key) == all_segments else f"{self._render_segment_match(runtime_segment_key)} && "
             for start, end in self._merge_intervals(intervals):
                 range_lines.append(
                     f"    if ({segment_match}offset >= 0x{start:x} && offset < 0x{end:x}) "
@@ -2693,12 +2810,27 @@ db* linked_code_segment_raddr(dw segment, dw offset) {{
         return merged
 
     def _produce_aggregate_initializer(self, asm_files: list[str]) -> str:
+        sources = [str(f) for f in asm_files if str(f).lower().endswith((".asm", ".lst", ".seg"))]
+        by_basename: dict[str, list[str]] = {}
+        for source in sources:
+            base = os.path.splitext(os.path.basename(source))[0].lower()
+            by_basename.setdefault(base, []).append(source)
+        module_names: dict[str, str] = {}
+        for base, paths in by_basename.items():
+            if len(paths) < 2:
+                continue
+            for path in paths:
+                parent = os.path.basename(os.path.dirname(os.path.abspath(path))).lower() or "mod"
+                module_names[path] = re.sub(r"[^A-Za-z0-9_]", "_", f"{parent}_{base}")
+        sidecar_names = getattr(self._context, "merged_module_names", None) or {}
         initializer_names: list[str] = []
         seen: set[str] = set()
-        for filename in asm_files:
-            if not str(filename).lower().endswith((".asm", ".lst")):
-                continue
-            module = os.path.splitext(os.path.basename(str(filename)))[0]
+        for filename in sources:
+            module = (
+                sidecar_names.get(filename)
+                or module_names.get(filename)
+                or os.path.splitext(os.path.basename(filename))[0]
+            )
             name = self._initializer_function_name(module)
             if name in seen:
                 continue
@@ -2781,7 +2913,7 @@ static const dd kbegin = 0x1001;
         result = ""
         for member_name, (struct_name, _offset, _size) in offsets.items():
             const_name = self._old_struct_member_offset_constant_name(member_name)
-            result += f"static const word {const_name} = offsetof({struct_name}, {member_name});\n"
+            result += f"static const word {const_name} = {self._offsetof_decl(struct_name, member_name)};\n"
         return f"{result}\n"
 
     def _old_struct_member_offset_constant_name(self, member_name: str) -> str:
@@ -2840,18 +2972,20 @@ struct Memory{
     def produce_externals(self, context):
         data = "\n"
         external_proc_data_refs = getattr(context, "external_proc_data_refs", {})
-        declared = set()
+        declared = set(getattr(self, "_merged_field_label_names", ()))
         for i in context.externals_vars:
             v = context.symbols.get_global(i)
             if v.used:
-                declared.add(v.name)
+                if v.name.lower() in declared:
+                    continue
+                declared.add(v.name.lower())
                 data += (
                     f"#ifndef {v.name}\n"
                     f"extern {self._cpp_external_type(v.original_type)}& {v.name};\n"
                     "#endif\n"
                 )
         for name, original_type in sorted(external_proc_data_refs.items()):
-            if name in declared:
+            if name.lower() in declared:
                 continue
             data += (
                 f"#ifndef {name}\n"
@@ -3007,6 +3141,23 @@ struct Memory{
         rendered = result[1:-1] if self.check_parentesis(result) else result
         return rendered, ir2cpp._expr_state
 
+    @staticmethod
+    def _parenthesize_compound(rendered: str) -> str:
+        """Wrap a rendered expression in parens when it has a top-level binary op.
+
+        Equate/assignment values are substituted inline into enclosing
+        expressions; ``A - (B - C)`` must not flatten into ``A - B - C``.
+        """
+        depth = 0
+        for ch in rendered:
+            if ch in "([":
+                depth += 1
+            elif ch in ")]":
+                depth -= 1
+            elif depth == 0 and ch in "+-*/%<>&|^":
+                return f"({rendered})"
+        return rendered
+
     def check_parentesis(self, string: str) -> bool:
         """Check if first ( matches the last one.
 
@@ -3056,8 +3207,8 @@ struct Memory{
             return dispatch
         assert self._context.args
         if self._context.args.get("mergeprocs") in {"persegment", "separate", "single"} and cmd.upper() == "JMP":
-            if label == "__dispatch_call":
-                return "return __dispatch_call(__disp, _state);"
+            if label in {"__dispatch_call", "__dispatch_call_ext"}:
+                return f"return {label}(__disp, _state);"
             if g := self._context.symbols.get_global(label):
                 target_proc_name = None
                 if isinstance(g, op.label) and g.name in self.label_to_proc:
@@ -3293,7 +3444,7 @@ struct Memory{
             rc = self.convert_char(r[0])
         else:
             rc = "".join(str(i) if isinstance(i, int) else self._render_data_value_part(i, data_ctype) for i in r)
-        rc = self._replace_current_location_symbol(rc, data)
+        rc = self._mask_arithmetic_data_element(self._replace_current_location_symbol(rc, data), data_ctype)
         rh = f"{data_ctype} {label}"
         return rc, rh
 
@@ -3332,7 +3483,7 @@ struct Memory{
                 rc = self._render_data_value_part(single, data_ctype)
             else:
                 rc = self._runtime_pointer_expression_for_value(source_linear, single, element_size) or str(single)
-            rc = self._replace_current_location_symbol(rc, data)
+            rc = self._mask_arithmetic_data_element(self._replace_current_location_symbol(rc, data), data_ctype)
             rh = f"{data_ctype} {label}"
             return rc, rh
         rc = "{"
@@ -3343,17 +3494,19 @@ struct Memory{
                 c = self.produce_c_data_single_(v)[0]
                 rc += c
             elif isinstance(v, lark.Tree):
-                element_value = "".join(self.visit(v))
+                element_value = self._mask_arithmetic_data_element("".join(self.visit(v)), data_ctype)
                 rc += self._replace_current_location_symbol(element_value, data, i, element_size)
             elif isinstance(v, list):
-                element_value = self._render_data_value_part(v, data_ctype)
+                element_value = self._mask_arithmetic_data_element(
+                    self._render_data_value_part(v, data_ctype), data_ctype)
                 rc += self._replace_current_location_symbol(element_value, data, i, element_size)
             else:
                 element_linear = None if source_linear is None else source_linear + i * element_size
                 element_value = (
                     self._runtime_pointer_expression_for_value(element_linear, v, element_size)
-                    or (self.convert_char(v) if isinstance(v, str) or data_ctype == "char" else str(v))
+                    or (self.convert_char(v) if isinstance(v, str) or data_ctype == "char" else self._render_int_for_ctype(v, data_ctype))
                 )
+                element_value = self._mask_arithmetic_data_element(element_value, data_ctype)
                 rc += self._replace_current_location_symbol(element_value, data, i, element_size)
         rc += "}"
         rh = f"{data_ctype} {label}[{elements}]"
@@ -3383,6 +3536,56 @@ struct Memory{
             return "".join(str(part) for part in self.visit(value))
         if convert_strings and (isinstance(value, str) or data_ctype == "char"):
             return self.convert_char(value)
+        if isinstance(value, int):
+            return self._render_int_for_ctype(value, data_ctype)
+        return str(value)
+
+    _CTYPE_RANGES = {
+        "db": (0, 0xFF), "byte": (0, 0xFF), "char": (-0x80, 0x7F), "sbyte": (-0x80, 0x7F),
+        "dw": (0, 0xFFFF), "word": (0, 0xFFFF), "sword": (-0x8000, 0x7FFF),
+        "dd": (0, 0xFFFFFFFF), "dword": (0, 0xFFFFFFFF), "sdword": (-0x80000000, 0x7FFFFFFF),
+        "dq": (0, 0xFFFFFFFFFFFFFFFF), "qword": (0, 0xFFFFFFFFFFFFFFFF),
+    }
+
+    @classmethod
+    def _mask_arithmetic_data_element(cls, rendered: str, data_ctype: str) -> str:
+        """Wrap a purely-arithmetic element render in a C cast when its constant
+        value overflows the target type, so it truncates like MASM instead of
+        tripping C++11 narrowing."""
+        c_type = {
+            "byte": "db", "char": "db", "sbyte": "db",
+            "word": "dw", "sword": "dw", "near": "dw", "near16": "dw",
+            "dword": "dd", "sdword": "dd", "far": "dd", "far16": "dd", "far32": "dd",
+            "qword": "dq",
+        }.get(data_ctype, data_ctype)
+        if c_type not in {"db", "dw", "dd", "dq"}:
+            return rendered
+        if not re.fullmatch(r"[0-9a-fA-FxXhHdDoObB()+\-*/%&|^~<>\s]+", rendered) or not re.search(
+            r"[()+\-*/%&|^~<>]", rendered
+        ):
+            return rendered
+        bounds = cls._CTYPE_RANGES.get(data_ctype, cls._CTYPE_RANGES.get(c_type))
+        try:
+            value = eval(rendered, {"__builtins__": {}}, {})  # noqa: S307 - arithmetic-only charset above
+        except Exception:
+            value = None
+        if bounds is not None and isinstance(value, (int, float)) and bounds[0] <= int(value) <= bounds[1]:
+            return rendered
+        return f"{c_type}({rendered})"
+
+    @staticmethod
+    def _render_int_for_ctype(value: int, data_ctype: str) -> str:
+        if not isinstance(value, int):
+            return str(value)
+        ranges = {
+            "db": (0, 0xFF), "byte": (0, 0xFF), "char": (-0x80, 0x7F), "sbyte": (-0x80, 0x7F),
+            "dw": (0, 0xFFFF), "word": (0, 0xFFFF), "sword": (-0x8000, 0x7FFF),
+            "dd": (0, 0xFFFFFFFF), "dword": (0, 0xFFFFFFFF), "sdword": (-0x80000000, 0x7FFFFFFF),
+            "dq": (0, 0xFFFFFFFFFFFFFFFF), "qword": (0, 0xFFFFFFFFFFFFFFFF),
+        }
+        bounds = ranges.get(data_ctype)
+        if bounds is not None and not (bounds[0] <= value <= bounds[1]):
+            return f"{data_ctype}({value})"
         return str(value)
 
     @staticmethod
@@ -3448,7 +3651,11 @@ struct Memory{
         return data_ctype
 
     def convert_char(self, c: Union[int, str]) -> str:
-        if isinstance(c, int) and c not in [10, 13]:
+        if isinstance(c, int):
+            if c in [10, 13]:
+                return f"'{self.convert_str(c)}'"
+            if c < -128 or c > 127:
+                return f"'\\x{c & 0xff:02x}'"
             return str(c)
         if not isinstance(c, str):
             return "0"
@@ -3535,7 +3742,16 @@ struct Memory{
         #    if not name.startswith('_group'):  # TODO remove dirty hack. properly check for group
 
         names = self.leave_unique_labels(entries.keys())
+        # Multiple labels may share the same cs:ip (e.g. an IDA 'segNNN_YYY_proc'
+        # alias for a proc entry). Emit only one case per offset value.
+        label_offsets = self.export_defined_code_symbol_offsets()
+        emitted_offsets: set[int] = set()
         for name in sorted(names):
+            off = label_offsets.get(name)
+            if off is not None:
+                if off in emitted_offsets:
+                    continue
+                emitted_offsets.add(off)
             line = "        case m2c::k{}: \tif (!{}({}, _state)) return false; break;\n".format(
                 name, *entries[name]
             )
@@ -3545,6 +3761,18 @@ struct Memory{
 
         result += "        default: { bool handled = false; if (!m2c::dispatch_external_code(__disp, _state, &handled)) return false; if (handled) break; m2c::log_error(\"Don't know how to call to 0x%x. See \" __FILE__ \" line %d\\n\", __disp, __LINE__);m2c::stackDump(_state); abort(); }\n"
         result += "     };\n     return true;\n}\n"
+        result += """
+  static bool __dispatch_call_ext(m2c::_offsets __disp, struct m2c::_STATE* _state){
+     // Indirect call/jump targets hold aggregate (linked) code offsets
+     // (OFFSET emits m2c::kglobal_* and code tables store the same space),
+     // so resolve them through the aggregate dispatcher before falling back
+     // to this module's local offset switch.
+     bool handled = false;
+     bool ok = m2c::dispatch_external_code(__disp, _state, &handled);
+     if (handled) return ok;
+     return __dispatch_call(__disp, _state);
+}
+"""
         return result
 
     def _mov(self, dst: Expression, src: Expression) -> str:
@@ -3567,6 +3795,10 @@ struct Memory{
         # Produce jump table
         result = """
             assert(0);
+            __dispatch_call_ext:
+            { bool handled = false;
+              bool ok = m2c::dispatch_external_code(__disp, _state, &handled);
+              if (handled) return ok; }
             __dispatch_call:
         #ifdef DOSBOX_CUSTOM
             if ((__disp >> 16) == 0xf000)
@@ -3574,8 +3806,15 @@ struct Memory{
         #endif
             switch (__disp) {
         """
+        label_offsets = self.export_defined_code_symbol_offsets()
+        emitted_offsets: set[int] = set()
         for name, label in offsets:
             logging.debug("%s, %s", name, label)
+            off = label_offsets.get(name)
+            if off is not None:
+                if off in emitted_offsets:
+                    continue
+                emitted_offsets.add(off)
             result += f"        case m2c::k{name}: \tgoto {label};\n"
         if self.proc and self.proc.name in set(self.groups.values()):
             result += "        default: return __dispatch_call(__disp, _state);\n"
@@ -3629,6 +3868,9 @@ struct Memory{
         state.data_label_size = prev_data_label_size
         previous_indirection = state.indirection
         state.indirection = self._effective_indirection_for_expr(tree)
+        prev_work_segment = state.work_segment
+        if tree.segment_register:
+            state.work_segment = tree.segment_register
         prev_element_size = state.element_size
         state.element_size = tree.element_size
         try:
@@ -3638,6 +3880,7 @@ struct Memory{
         finally:
             state.indirection = previous_indirection
             state.element_size = prev_element_size
+            state.work_segment = prev_work_segment
 
     def _effective_indirection_for_expr(self, tree: Expression) -> IndirectionType:
         effective_indirection = tree.indirection
@@ -3679,7 +3922,8 @@ struct Memory{
         ) and ("lea" not in tree.mods or "destination" in tree.mods):
             result = self.convert_sqbr_reference(tree.segment_register, result, effective_ptr_size)
         if state.is_member:
-            result = f"(({state.struct_type}*)raddr({state.work_segment},{result}"
+            member_segment = tree.segment_register or state.work_segment
+            result = f"(({state.struct_type}*)raddr({member_segment},{result}"
         if state.needs_dereference:
             state.needs_dereference = False
             result = f"*{result}" if result[0] == "(" and result[-1] == ")" else f"*({result})"
@@ -3801,7 +4045,7 @@ struct Memory{
                 return [symbolic_offset]
             if (folded := self._fold_location_counter_expression(g)) is not None:
                 return [folded]
-            return ["".join(str(part) for part in self.visit(g.value))]
+            return [self._parenthesize_compound("".join(str(part) for part in self.visit(g.value)))]
         elif isinstance(g, (op._equ, op._assignment)):
             return [g.original_name]
         else:
@@ -3830,15 +4074,68 @@ struct Memory{
                 return [f"seg_offset({proc.segment or label})"]
         return [f"seg_offset({label})"]
 
-    def _render_operator_children(self, children: list[Any]) -> list[str]:
-        rendered = []
-        for child in children:
-            if isinstance(child, lark.Token):
-                rendered.append("".join(str(part) for part in self.visit(child)))
-            elif isinstance(child, str):
-                rendered.append(child)
+    # Approximate C++ precedence of rendered operator nodes (higher binds tighter).
+    _EXPR_NODE_PRECEDENCE = {
+        "memberdir": 95, "sqexpr2": 95, "braces": 95,
+        "unadddir": 80, "notdir": 80, "wordopdir": 80,
+        "offsetdir": 80, "seg": 80, "ptrdir": 80, "segoverride": 80,
+        "muldir": 70,
+        "adddir": 60,
+        "shiftdir": 55,
+        "reldir": 40,
+        "anddir": 30,
+        "xordir": 25,
+        "ordir": 20,
+    }
+
+    @classmethod
+    def _expression_operand_precedence(cls, child: Any) -> int | None:
+        """Return the C++ precedence of a rendered operand node, if it is an operator."""
+        node = child
+        while True:
+            if isinstance(node, Expression) and len(node.children) == 1:
+                node = node.children[0]
+            elif isinstance(node, list) and len(node) == 1:
+                node = node[0]
             else:
-                rendered.append("".join(str(part) for part in self.visit(child)))
+                break
+        if isinstance(node, lark.Tree):
+            return cls._EXPR_NODE_PRECEDENCE.get(node.data)
+        return None
+
+    _NONASSOCIATIVE_OPERATOR_TOKENS = frozenset({
+        "-", "/", "%", "MOD", "SHL", "SHR", "<<", ">>",
+        "<", ">", "<=", ">=", "==", "!=",
+        "EQ", "NE", "LT", "LE", "GT", "GE",
+    })
+
+    def _render_operator_children(self, children: list[Any], parent_data: str = "") -> list[str]:
+        parent_precedence = self._EXPR_NODE_PRECEDENCE.get(parent_data, 0)
+        operator_token = ""
+        if len(children) > 1:
+            middle = children[1]
+            operator_token = str(middle).strip().upper() if isinstance(middle, (lark.Token, str)) else ""
+        nonassociative = operator_token in self._NONASSOCIATIVE_OPERATOR_TOKENS
+        rendered = []
+        for index, child in enumerate(children):
+            if isinstance(child, lark.Token):
+                rendered_child = "".join(str(part) for part in self.visit(child))
+            elif isinstance(child, str):
+                rendered_child = child
+            else:
+                rendered_child = "".join(str(part) for part in self.visit(child))
+            if index != 1 and parent_precedence:
+                # Keep substituted expressions grouped: `A - (B - C)` must not
+                # flatten into `A - B - C`. Wrap when the operand binds looser
+                # than the parent operator, or when it sits on the right side
+                # of a non-associative operator of the same precedence.
+                child_precedence = self._expression_operand_precedence(child)
+                if child_precedence is not None and (
+                    child_precedence < parent_precedence
+                    or (index > 1 and nonassociative and child_precedence <= parent_precedence)
+                ):
+                    rendered_child = f"({rendered_child})"
+            rendered.append(rendered_child)
         return rendered
 
     def dollar(self, _tree: Tree) -> list[str]:
@@ -3853,7 +4150,7 @@ struct Memory{
             folded := self._eval_asm_int_expression(tree, None)
         ) is not None:
             return [str(folded)]
-        left, operator, right = self._render_operator_children(tree.children)
+        left, operator, right = self._render_operator_children(tree.children, "adddir")
         return [f"{left}{operator}{right}"]
 
     def muldir(self, tree: Tree) -> list[str]:
@@ -3865,7 +4162,7 @@ struct Memory{
             folded := self._eval_asm_int_expression(tree, None)
         ) is not None:
             return [str(folded)]
-        left, operator, right = self._render_operator_children(tree.children)
+        left, operator, right = self._render_operator_children(tree.children, "muldir")
         return [f"{left}{operator}{right}"]
 
     def _should_fold_inline_int_expression(self, node: Any) -> bool:
@@ -3907,8 +4204,8 @@ struct Memory{
             return None
         if isinstance(node, Token):
             if node.type == "INTEGER":
-                value = self._eval_asm_int_expression(node, None)
-                return None if value is None else str(value)
+                int_value = self._eval_asm_int_expression(node, None)
+                return None if int_value is None else str(int_value)
             if node.type in {"LABEL", "COMMON"}:
                 return self._known_symbol_offset_expression(str(node))
             return None
@@ -4036,6 +4333,11 @@ struct Memory{
                 if value is None:
                     return None
                 return value if str(node.children[0]) == "+" else -value
+            if node.data in {
+                "size", "sizeofdir", "offsetdir", "segdir", "memberdir",
+                "sqexpr", "sqexpr2", "wordopdir", "typedefdir", "dollar2",
+            }:
+                return None
             if len(node.children) == 1:
                 return self._eval_asm_int_expression(node.children[0], current_offset)
             return None
@@ -4062,11 +4364,11 @@ struct Memory{
         return None
 
     def notdir(self, tree: Tree) -> list[Union[str, Token]]:
-        return ["~", *self._render_operator_children(tree.children)]
+        return ["~", *self._render_operator_children(tree.children, "notdir")]
 
     def wordopdir(self, tree: Tree) -> list[str]:
         operator = str(tree.children[0]).lower()
-        value = self._render_operator_children(tree.children[1:])[0]
+        value = self._render_operator_children(tree.children[1:], "wordopdir")[0]
         if operator == "low":
             return [f"({value} & 0xff)"]
         if operator == "high":
@@ -4078,21 +4380,21 @@ struct Memory{
         raise ValueError(f"Unknown word operator {operator}")
 
     def shiftdir(self, tree: Tree) -> list[str]:
-        left, operator, right = self._render_operator_children(tree.children)
+        left, operator, right = self._render_operator_children(tree.children, "shiftdir")
         if str(operator).lower() == "shl":
             return [f"({left} << {right})"]
         return [f"({left} >> {right})"]
 
     def ordir(self, tree: Tree) -> list[Union[str, Token]]:
-        left, right = self._render_operator_children(tree.children)
+        left, right = self._render_operator_children(tree.children, "ordir")
         return [left, " | ", right]
 
     def xordir(self, tree):
-        left, right = self._render_operator_children(tree.children)
+        left, right = self._render_operator_children(tree.children, "xordir")
         return [left, " ^ ", right]
 
     def anddir(self, tree):
-        left, right = self._render_operator_children(tree.children)
+        left, right = self._render_operator_children(tree.children, "anddir")
         return [left, " & ", right]
 
     def _render_known_size_operator(self, target: Any, *, total: bool) -> str:

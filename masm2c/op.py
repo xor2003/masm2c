@@ -488,6 +488,7 @@ class Data(baseop):
         self.align = align
         self.real_seg, self.real_offset = None, None
         self.offset = offset
+        self.segment = ""
         self.alignment = max(1, size)
         self.comment = comment
 
@@ -575,7 +576,7 @@ class Struct:
     def padding_before(self, data: Data) -> int:
         if self.__type != Struct.STRUCT:
             return 0
-        member_alignment = min(max(1, getattr(data, "alignment", data.getsize())), self.alignment)
+        member_alignment = min(max(1, getattr(data, "alignment", data.getsize())), getattr(self, "alignment", 1))
         misalignment = self.size % member_alignment
         return 0 if misalignment == 0 else member_alignment - misalignment
 
@@ -593,8 +594,9 @@ class Struct:
     def getsize(self) -> int:
         if self.__type != Struct.STRUCT:
             return self.size
-        misalignment = self.size % self.alignment
-        return self.size if misalignment == 0 else self.size + self.alignment - misalignment
+        alignment = getattr(self, "alignment", 1)
+        misalignment = self.size % alignment
+        return self.size if misalignment == 0 else self.size + alignment - misalignment
 
     def gettype(self):
         return self.__type
@@ -622,6 +624,8 @@ class _skipbytes(baseop):
         self.opcode = opcode
         self.byte_count = byte_count
         self.cmd = "__skipbytes"
+        self.offset = 0
+        self.segment = ""
 
     def accept(self, visitor: "Cpp") -> str:
         return visitor._skipbytes(self.opcode, self.byte_count)
@@ -966,6 +970,7 @@ class label(baseop):
         self.globl = globl
         self.proc = proc
         self.segment = segment
+        self.public_export = False
 
     def accept(self, visitor):
         return visitor._label(self.name, self.isproc)
@@ -1147,6 +1152,9 @@ class _equ(baseop):
         self.size = 0
         self.value: Expression | str
         self.element_size = 0
+        self.offset = 0
+        self.segment = ""
+        self.location_counter_equate: bool | list | None = False
 
     def gettype(self):
         return self.original_type
@@ -1170,6 +1178,9 @@ class _assignment(baseop):
         self.implemented = False
         self.size = 0
         self.value: Expression
+        self.offset = 0
+        self.segment = ""
+        self.location_counter_equate: bool | list | None = False
 
     def gettype(self):
         return self.original_type

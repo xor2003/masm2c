@@ -4,9 +4,6 @@ _TEXT segment use16 word public 'CODE' ;IGNORE
 assume cs:_TEXT
 start proc near
 
-xor ax, ax
-mov ds, ax
-
 mov al, 1
 cmp byte ptr ds:[80h], 9
 jne failure

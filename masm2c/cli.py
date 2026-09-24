@@ -34,6 +34,9 @@ import logging
 import os
 import re
 import sys
+import traceback
+
+from typing import Any
 
 from .cpp import Cpp
 from .parser import Parser
@@ -206,7 +209,10 @@ def setup_logging(name, loglevel):
 
 
 def process(name, args):
-    if m := re.match(r"(.+)\.(?:asm|lst)", name.lower()):
+    module_names = args.get("module_names") or {}
+    if name in module_names:
+        outname = module_names[name]
+    elif m := re.match(r"(.+)\.(?:asm|lst)", name.lower()):
         outname = m[1].strip()
     else:
         outname = ""
@@ -278,7 +284,13 @@ def process(name, args):
 
 def _process_source_worker(name: str, args: dict) -> str:
     setup_logging(name, args["loglevel"])
-    process(name, args)
+    try:
+        process(name, args)
+    except Exception:
+        # Some exception types (e.g. lark.VisitError) do not survive pickling
+        # back to the parent process.  Re-raise a picklable error that carries
+        # the full traceback text so the failure is diagnosable.
+        raise RuntimeError(f"Failed translating {name}\n{traceback.format_exc()}") from None
     return name
 
 
@@ -466,12 +478,16 @@ def collect_code_exports(sources: list[str], args: argparse.Namespace) -> tuple[
     try:
         for source in sources:
             parser = Parser(args_dict.copy())
-            if match := re.match(r"(.+)\.(?:asm|lst)", source.lower()):
-                parser.parse_rt_info(match[1].strip())
-            if args_dict.get("passes") >= 2:
+            try:
+                if match := re.match(r"(.+)\.(?:asm|lst)", source.lower()):
+                    parser.parse_rt_info(match[1].strip())
+                if (args_dict.get("passes") or 0) >= 2:
+                    parser.parse_file(source)
+                    parser.next_pass(saved_counter)
                 parser.parse_file(source)
-                parser.next_pass(saved_counter)
-            parser.parse_file(source)
+            except (Exception, SystemExit):
+                logging.exception("Failed collecting exports from %s", source)
+                continue
             external_exports.update(parser.externals_procs)
             external_offset_consumers.update(parser.externals_vars)
             external_offset_consumers.update(parser.externals_abs)
@@ -479,8 +495,8 @@ def collect_code_exports(sources: list[str], args: argparse.Namespace) -> tuple[
             for symbol in parser.symbols.get_globals().values():
                 if not hasattr(symbol, "stmts"):
                     continue
-                labels = Token_.find_tokens(getattr(symbol, "stmts", []), "LABEL") or []
-                labels += Token_.find_tokens(getattr(symbol, "stmts", []), "COMMON") or []
+                labels: list[Any] = list(Token_.find_tokens(getattr(symbol, "stmts", []), "LABEL") or [])
+                labels += list(Token_.find_tokens(getattr(symbol, "stmts", []), "COMMON") or [])
                 unresolved_references.update(str(label) for label in labels if str(label) not in known_symbols)
             for name in parser.public_symbols:
                 if isinstance(parser.symbols.get_global(name), (op.label, Proc)):
@@ -532,12 +548,30 @@ def filter_code_symbol_equates(
     return {name: value for name, value in shared_equates.items() if name not in code_symbols}
 
 
+def module_names_for_sources(sources: list[str]) -> dict[str, str]:
+    """Return distinct module names for sources sharing the same basename."""
+    by_basename: dict[str, list[str]] = {}
+    for source in sources:
+        base = os.path.splitext(os.path.basename(source))[0].lower()
+        by_basename.setdefault(base, []).append(source)
+    names: dict[str, str] = {}
+    for base, paths in by_basename.items():
+        if len(paths) < 2:
+            continue
+        for path in paths:
+            parent = os.path.basename(os.path.dirname(os.path.abspath(path))).lower() or "mod"
+            names[path] = re.sub(r"[^A-Za-z0-9_]", "_", f"{parent}_{base}")
+    return names
+
+
 def process_source_files(files: list[str], args: argparse.Namespace) -> None:
     sources = source_files(files)
     if not sources:
         return
 
     args_dict = vars(args).copy()
+    args_dict["module_names"] = module_names_for_sources(sources)
+    args.module_names = args_dict["module_names"]
     external_code_exports, public_code_exports = collect_code_exports(sources, args)
     shared_equates = filter_code_symbol_equates(
         collect_shared_equates(sources, args),
@@ -551,9 +585,21 @@ def process_source_files(files: list[str], args: argparse.Namespace) -> None:
     args.public_code_exports = args_dict["public_code_exports"]
     args.shared_equates = shared_equates
     jobs = max(1, min(args.jobs, len(sources)))
+    failed: list[str] = []
     if jobs == 1:
         for source in sources:
-            _process_source_worker(source, args_dict)
+            try:
+                _process_source_worker(source, args_dict)
+            except SystemExit:
+                if len(sources) == 1:
+                    raise
+                logging.exception("Failed translating %s", source)
+                failed.append(source)
+            except Exception:
+                logging.exception("Failed translating %s", source)
+                failed.append(source)
+        if failed:
+            logging.error("%d source file(s) failed: %s", len(failed), ", ".join(failed))
         return
 
     logging.info("Translating %d source files with %d workers", len(sources), jobs)
@@ -563,9 +609,11 @@ def process_source_files(files: list[str], args: argparse.Namespace) -> None:
             source = futures[future]
             try:
                 future.result()
-            except Exception:
+            except (Exception, SystemExit):
                 logging.exception("Failed translating %s", source)
-                raise
+                failed.append(source)
+    if failed:
+        logging.error("%d source file(s) failed: %s", len(failed), ", ".join(failed))
 
 
 def main() -> None:

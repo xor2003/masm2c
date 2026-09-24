@@ -1,10 +1,12 @@
 import unittest
 import os
+from argparse import Namespace
 from collections import OrderedDict
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from masm2c import op
+from masm2c.cli import collect_code_exports
 from masm2c.cpp import Cpp
 from masm2c.gen import mangle_asm_labels
 from masm2c.parser import Parser
@@ -141,6 +143,83 @@ class CppDataInitTest(unittest.TestCase):
         self.assertEqual(value, "offset(data,target)-2-2")
         self.assertEqual(declaration, "dw rel")
         self.assertEqual(size, 2)
+
+    def test_macro_if_decimal_suffix_reserves_distinct_storage(self):
+        source = (
+            "DSEG SEGMENT PUBLIC 'DATASG'\n"
+            "R MACRO NAME,SIZE\n"
+            "    PUBLIC NAME\n"
+            "NAME LABEL WORD\n"
+            "IF SIZE\n"
+            "    DB SIZE DUP(?)\n"
+            "ENDIF\n"
+            "ENDM\n"
+            "    R MSWSIZ,2D\n"
+            "    R MSWFLG,1D\n"
+            "    R CSWSIZ,2D\n"
+            "DSEG ENDS\n"
+            "END\n"
+        )
+        with TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "macro_if_decimal.asm"
+            path.write_text(source, encoding="utf-8")
+            parser = Parser([])
+            parser.parse_file(str(path))
+        segment_data = parser.segments["dseg"].getdata()
+        aliases = {alias.name: alias for alias in parser.data_aliases}
+
+        self.assertEqual(
+            [(data.offset, data.size) for data in segment_data],
+            [
+                (0, 2),
+                (2, 1),
+                (3, 2),
+            ],
+        )
+        self.assertEqual(aliases["mswsiz"].offset, 0)
+        self.assertEqual(aliases["mswflg"].offset, 2)
+        self.assertEqual(aliases["cswsiz"].offset, 3)
+
+    def test_macro_dup_reservation_can_use_shared_equate_count(self):
+        source = (
+            "DSEG SEGMENT PUBLIC 'DATASG'\n"
+            "R MACRO NAME,SIZE\n"
+            "    PUBLIC NAME\n"
+            "NAME LABEL WORD\n"
+            "IF SIZE\n"
+            "    DB SIZE DUP(?)\n"
+            "ENDIF\n"
+            "ENDM\n"
+            "    R TRPTBL,3*NUMTRP\n"
+            "    R ONGSBF,1\n"
+            "DSEG ENDS\n"
+            "END\n"
+        )
+        with TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "macro_shared_equ.asm"
+            path.write_text(source, encoding="utf-8")
+            parser = Parser({"shared_equates": {"numtrp": "14+4+1+4"}})
+            parser.parse_file(str(path))
+
+        segment_data = parser.segments["dseg"].getdata()
+        aliases = {alias.name: alias for alias in parser.data_aliases}
+
+        self.assertEqual([(data.offset, data.size) for data in segment_data], [(0, 69), (69, 1)])
+        self.assertEqual(aliases["trptbl"].offset, 0)
+        self.assertEqual(aliases["ongsbf"].offset, 69)
+
+    def test_local_label_can_override_shared_equate_seed(self):
+        source = (
+            "CODE SEGMENT\n"
+            "STPTRP:\n"
+            "ret\n"
+            "CODE ENDS\n"
+            "END\n"
+        )
+        parser = Parser({"shared_equates": {"stptrp": "7"}})
+        parser.process_ast(source, parser.parse_text(source))
+
+        self.assertIsInstance(parser.symbols.get_global("stptrp"), op.label)
 
     def test_even_directive_advances_data_symbol_offset(self):
         parser = Parser([])
@@ -361,32 +440,51 @@ class CppDataInitTest(unittest.TestCase):
     def test_public_segment_class_merge_preserves_segment_alias_offsets(self):
         first = op.Segment("data", 0, options={"public"}, segclass="data")
         first.append(op.Data("first", "dw", op.DataType.NUMBER, [1], 1, 2))
-        second = op.Segment("wpndata", 0, options={"public"}, segclass="data")
+        second = op.Segment("data", 0, options={"public"}, segclass="data")
         second.append(op.Data("weaponlist", "dw", op.DataType.NUMBER, [2], 1, 2))
         cpp = Cpp(Parser([]), merge_data_segments=True)
 
-        segments, _ = cpp.merge_segments(OrderedDict([("data", first)]), OrderedDict(), OrderedDict([("wpndata", second)]), OrderedDict())
+        segments, _ = cpp.merge_segments(OrderedDict([("data", first)]), OrderedDict(), OrderedDict([("data", second)]), OrderedDict())
 
-        self.assertEqual(segments["data"].segment_aliases["data"], 0)
-        self.assertEqual(segments["data"].segment_aliases["wpndata"], 2)
+        self.assertEqual([data.label for data in segments["data"].getdata()], ["first", "weaponlist"])
         self.assertEqual(segments["data"].getdata()[1].offset, 2)
+
+    def test_public_data_segment_class_storage_is_laid_out_after_code(self):
+        with TemporaryDirectory() as tmp:
+            old_cwd = os.getcwd()
+            os.chdir(tmp)
+            try:
+                code = op.Segment("cseg", 0, options={"public"}, segclass="codesg")
+                code.append(op.Data("opcode_table", "db", op.DataType.ARRAY, [0] * 0x21, 0x21, 0x21))
+                data = op.Segment("dseg", 0, options={"public"}, segclass="datasg")
+                data.append(op.Data("begdsg", "dw", op.DataType.NUMBER, [0], 1, 2))
+
+                writer = Cpp(Parser([]))
+                writer.write_segment_file(OrderedDict([("cseg", code)]), OrderedDict(), "CODE.ASM")
+                writer.write_segment_file(OrderedDict([("dseg", data)]), OrderedDict(), "DATA.ASM")
+
+                segments, _ = Cpp(Parser([]), merge_data_segments=True).read_segment_files(["CODE.ASM", "DATA.ASM"])
+
+                self.assertEqual(segments["codesg"].offset, 0)
+                self.assertEqual(segments["dseg"].offset, 0x30)
+            finally:
+                os.chdir(old_cwd)
 
     def test_merged_public_segment_data_references_use_relocated_linear_offsets(self):
         first = op.Segment("data", 0, options={"public"}, segclass="data")
         first.append(op.Data("first", "dw", op.DataType.NUMBER, [1], 1, 2))
-        second = op.Segment("paldata", 0, options={"public"}, segclass="data")
+        second = op.Segment("data", 0, options={"public"}, segclass="data")
         second.append(op.Data("palette", "db", op.DataType.ARRAY, [1, 2, 3], 3, 3))
         cpp = Cpp(Parser([]), merge_data_segments=True)
 
         segments, _ = cpp.merge_segments(
             OrderedDict([("data", first)]),
             OrderedDict(),
-            OrderedDict([("paldata", second)]),
+            OrderedDict([("data", second)]),
             OrderedDict(),
         )
         _, _, data_cpp, _ = cpp.render_data_c(segments)
 
-        self.assertIn("db& paldata=*((db*)&m2c::m+0x2);", data_cpp)
         self.assertIn("db (& palette)[3] = *((db (*)[3])(&data+0x2));", data_cpp)
 
     def test_duplicate_public_segment_data_offsets_are_relocated_during_merge(self):
@@ -403,19 +501,18 @@ class CppDataInitTest(unittest.TestCase):
     def test_public_segment_merge_uses_extent_not_record_size(self):
         first = op.Segment("paldata", 0, options={"public"}, segclass="data")
         first.append(op.Data("vga_infra_red", "db", op.DataType.ARRAY, [0], 104, 104, offset=0xA42))
-        second = op.Segment("data", 0, options={"public"}, segclass="data")
+        second = op.Segment("paldata", 0, options={"public"}, segclass="data")
         second.append(op.Data("rotateswitch", "dw", op.DataType.NUMBER, [0], 1, 2, offset=0x8E))
         cpp = Cpp(Parser([]), merge_data_segments=True)
 
         segments, _ = cpp.merge_segments(
-            OrderedDict([("data", first)]),
+            OrderedDict([("paldata", first)]),
             OrderedDict(),
-            OrderedDict([("data", second)]),
+            OrderedDict([("paldata", second)]),
             OrderedDict(),
         )
 
-        self.assertEqual(segments["data"].segment_aliases["data"], 0xAAA)
-        self.assertEqual(segments["data"].getdata()[1].offset, 0xB38)
+        self.assertEqual(segments["paldata"].getdata()[1].offset, 0xB38)
 
     def test_duplicate_public_segment_label_aliases_are_relocated_when_reading_sidecars(self):
         with TemporaryDirectory() as tmp:
@@ -449,14 +546,59 @@ class CppDataInitTest(unittest.TestCase):
         segment.segment_aliases["wpndata"] = 2
         parser.segments = OrderedDict([("data", segment)])
         parser.data_aliases = [
-            op.var(2, 0, "weaponlist", segment="wpndata", elements=1, original_type="word")
+            op.var(2, 0, "weaponlist", segment="wpndata", elements=1, original_type="word"),
+            op.var(2, 4, "canonical_weapon", segment="data", elements=1, original_type="word"),
         ]
 
         _, _, data_cpp, hpp = Cpp(parser).render_data_c(parser.segments)
 
+        self.assertIn("db& data=*((db*)&m2c::m+0x0);", data_cpp)
         self.assertIn("db& wpndata=*((db*)&m2c::m+0x2);", data_cpp)
         self.assertIn("word& weaponlist=*((word*)(&wpndata+0x0));", data_cpp)
+        self.assertIn("word& canonical_weapon=*((word*)(&data+0x4));", data_cpp)
         self.assertIn("extern word& weaponlist;", hpp)
+        self.assertIn("extern word& canonical_weapon;", hpp)
+
+    def test_rinit_macro_call_registers_data_alias(self):
+        parser = Parser([])
+        source = """DATA SEGMENT PUBLIC 'DATA'
+RINIT F_EDIT,1
+DB 0
+DATA ENDS
+END
+"""
+        tree = parser.parse_text(source)
+        parser.process_ast(source, tree)
+
+        aliases = {alias.name: alias for alias in parser.data_aliases}
+        self.assertIn("f_edit", aliases)
+        self.assertEqual(aliases["f_edit"].offset, 0)
+        self.assertEqual(aliases["f_edit"].original_type, "word")
+
+    def test_rinit_inside_expanded_macro_registers_data_alias(self):
+        source = """DATA SEGMENT PUBLIC 'DATA'
+RINIT MACRO NAME,SIZE
+PUBLIC NAME
+NAME LABEL WORD
+ENDM
+PDIRAM MACRO
+RINIT KEYSW,1
+DB 0
+ENDM
+PDIRAM
+DATA ENDS
+END
+"""
+        with TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "nested_rinit.asm"
+            path.write_text(source)
+            parser = Parser([])
+            parser.parse_file(str(path))
+
+        aliases = {alias.name: alias for alias in parser.data_aliases}
+        self.assertIn("keysw", aliases)
+        self.assertEqual(aliases["keysw"].offset, 0)
+        self.assertEqual(aliases["keysw"].original_type, "word")
 
     def test_duplicate_data_alias_names_are_renamed_for_aggregate_data(self):
         first = op.var(1, 0x10, "setupdol", segment="data", original_type="byte", filename="A.ASM")
@@ -527,14 +669,36 @@ class CppDataInitTest(unittest.TestCase):
 
         self.assertEqual(rendered, "offset(default_seg,pilotpanel)")
 
-    def test_external_offset_loaded_into_dx_sets_temporary_segment_register(self):
+    def test_external_offset_loaded_into_dx_is_pure_offset_value(self):
         parser = Parser([])
         parser.add_extern("PilotPanel", "BYTE")
         rendered = Proc("mainproc").generate_c_cmd(Cpp(parser), parser.action_code("mov dx, OFFSET PilotPanel"))
 
-        self.assertEqual(rendered, "dx = m2c::near_offset_external_for_ds_arg(pilotpanel, ds);")
+        self.assertEqual(rendered, "dx = m2c::near_offset_external(pilotpanel);")
 
-    def test_external_dx_offset_restores_ds_after_following_call(self):
+    def test_external_proc_offset_is_available_to_indirect_dispatch(self):
+        source = (
+            "CSEG segment public 'CODE'\n"
+            "EXTRN $FLGOC:NEAR,INTXT:NEAR\n"
+            "MOV SI,OFFSET $FLGOC\n"
+            "MOV BX,OFFSET INTXT\n"
+            "CSEG ends\n"
+            "END\n"
+        )
+        with TemporaryDirectory() as tmp:
+            asm = Path(tmp) / "extern_offset.asm"
+            asm.write_text(source, encoding="ascii")
+            parser = Parser([])
+            parser.parse_file_lines(str(asm))
+
+            dispatch = Cpp(parser).produce_global_jump_table(parser.symbols.get_globals().items(), False)
+
+        self.assertIn("dolflgoc", parser.extern_code_refs)
+        self.assertNotIn("intxt", parser.extern_code_refs)
+        self.assertIn("case m2c::kdolflgoc:", dispatch)
+        self.assertNotIn("case m2c::kintxt:", dispatch)
+
+    def test_external_dx_offset_does_not_restore_ds_after_following_call(self):
         parser = Parser([])
         parser.add_extern("PilotPanel", "BYTE")
         parser.add_extern("LoadFile", "FAR")
@@ -555,8 +719,36 @@ class CppDataInitTest(unittest.TestCase):
         cpp = Cpp(parser)
         proc.visit(cpp)
 
-        self.assertIn("R(dx = m2c::near_offset_external_for_ds_arg(pilotpanel, ds););", cpp.body)
-        self.assertIn("J(CALLF(loadfile,0));\tR(m2c::restore_external_offset_ds(ds));", cpp.body)
+        self.assertIn("R(dx = m2c::near_offset_external(pilotpanel););", cpp.body)
+        self.assertIn("J(CALLF(loadfile,0));", cpp.body)
+        self.assertNotIn("restore_external_offset_ds(ds)", cpp.body)
+
+    def test_linked_data_offset_does_not_change_ds_before_following_call(self):
+        parser = Parser({"mergeprocs": "separate", "filenames": ["a.asm", "b.asm"]})
+        parser.add_extern("PrintText", "NEAR")
+        source = (
+            "DATA SEGMENT\n"
+            "Message db 'READY',0\n"
+            "DATA ENDS\n"
+            "CODE SEGMENT\n"
+            "main PROC\n"
+            "mov bx, OFFSET Message\n"
+            "call PrintText\n"
+            "ret\n"
+            "main ENDP\n"
+            "CODE ENDS\n"
+            "END\n"
+        )
+        tree = parser.parse_text(source)
+        parser.process_ast(source, tree)
+        proc = parser.symbols.get_global("main")
+        self.assertIsInstance(proc, Proc)
+        cpp = Cpp(parser)
+        proc.visit(cpp)
+
+        self.assertIn("R(bx = m2c::near_offset_external(message););", cpp.body)
+        self.assertIn("J(CALL(printtext,0));", cpp.body)
+        self.assertNotIn("restore_data_offset_ds(ds)", cpp.body)
 
     def test_external_offset_instruction_keeps_ds_for_independent_filename_pointer(self):
         parser = Parser([])
@@ -585,15 +777,15 @@ class CppDataInitTest(unittest.TestCase):
         self.assertIn("di = m2c::near_offset_external(gameplaydata);", rendered)
         self.assertNotIn("near_offset_external(gameplaydata, ds)", rendered)
 
-    def test_external_offset_loaded_into_si_sets_ds_for_string_reads(self):
+    def test_external_offset_loaded_into_si_is_pure_offset_value(self):
         parser = Parser([])
         parser.add_extern("CopyBuffer", "BYTE")
 
         rendered = Proc("mainproc").generate_c_cmd(Cpp(parser), parser.action_code("mov si, OFFSET CopyBuffer"))
 
-        self.assertEqual(rendered, "si = m2c::near_offset_data(copybuffer, ds);")
+        self.assertEqual(rendered, "si = m2c::near_offset_external(copybuffer);")
 
-    def test_internal_offset_in_multi_source_translation_sets_ds_from_linked_symbol(self):
+    def test_internal_offset_in_multi_source_translation_uses_linked_offset_value(self):
         parser = Parser({"mergeprocs": "separate", "filenames": ["polyfill.asm", "horizon.asm"]})
         source = (
             "DATA SEGMENT\n"
@@ -616,8 +808,59 @@ class CppDataInitTest(unittest.TestCase):
         cpp = Cpp(parser)
         rendered = "\n".join(proc.generate_c_cmd(cpp, stmt) for stmt in proc.stmts)
 
-        self.assertIn("ax = m2c::near_offset_data(octant, ds);", rendered)
+        self.assertIn("ax = m2c::near_offset_external(octant);", rendered)
         self.assertIn("octantbase = ax;", rendered)
+
+    def test_internal_dx_offset_in_multi_source_translation_does_not_change_ds(self):
+        parser = Parser({"mergeprocs": "separate", "filenames": ["polyfill.asm", "horizon.asm"]})
+        source = (
+            "DATA SEGMENT\n"
+            "Buf db 32 dup (0)\n"
+            "DATA ENDS\n"
+            "CODE SEGMENT\n"
+            "main PROC\n"
+            "mov dx, OFFSET Buf\n"
+            "mov al, [bx]\n"
+            "ret\n"
+            "main ENDP\n"
+            "CODE ENDS\n"
+            "END\n"
+        )
+        tree = parser.parse_text(source)
+        parser.process_ast(source, tree)
+        proc = parser.symbols.get_global("main")
+        self.assertIsInstance(proc, Proc)
+        cpp = Cpp(parser)
+        rendered = "\n".join(proc.generate_c_cmd(cpp, stmt) for stmt in proc.stmts)
+
+        self.assertIn("dx = m2c::near_offset_external(buf);", rendered)
+        self.assertNotIn("near_offset_external_for_ds_arg(buf, ds)", rendered)
+        self.assertNotIn("near_offset_data(buf, ds)", rendered)
+
+    def test_internal_si_offset_in_multi_source_translation_does_not_change_ds(self):
+        parser = Parser({"mergeprocs": "separate", "filenames": ["polyfill.asm", "horizon.asm"]})
+        source = (
+            "DATA SEGMENT\n"
+            "Buf db 32 dup (0)\n"
+            "DATA ENDS\n"
+            "CODE SEGMENT\n"
+            "main PROC\n"
+            "mov si, OFFSET Buf\n"
+            "lodsb\n"
+            "ret\n"
+            "main ENDP\n"
+            "CODE ENDS\n"
+            "END\n"
+        )
+        tree = parser.parse_text(source)
+        parser.process_ast(source, tree)
+        proc = parser.symbols.get_global("main")
+        self.assertIsInstance(proc, Proc)
+        cpp = Cpp(parser)
+        rendered = "\n".join(proc.generate_c_cmd(cpp, stmt) for stmt in proc.stmts)
+
+        self.assertIn("si = m2c::near_offset_external(buf);", rendered)
+        self.assertNotIn("near_offset_data(buf, ds)", rendered)
 
     def test_internal_seg_in_multi_source_translation_uses_linked_symbol_segment(self):
         parser = Parser({"mergeprocs": "separate", "filenames": ["polyfill.asm", "horizon.asm"]})
@@ -739,7 +982,7 @@ class Masm510StructCompatibilityTest(unittest.TestCase):
         self.assertEqual(parser.structures["mobile"].getsize(), 6)
         self.assertIn("db __m2c_pad_3_3;", structures)
         self.assertIn("dw mob_link_ptr;", structures)
-        self.assertIn("static const word mob_link_ptr = offsetof(mobile, mob_link_ptr);", structures)
+        self.assertIn("static const word mob_link_ptr = offsetof(struct mobile, mob_link_ptr);", structures)
         self.assertEqual(parser.eval_expression_to_int(parser.symbols.get_global("mob_rec_size").value), 6)
 
     def test_option_m510_emits_global_struct_member_offset_constants(self):
@@ -756,7 +999,7 @@ class Masm510StructCompatibilityTest(unittest.TestCase):
 
         structures = Cpp(parser).produce_structures(parser.structures)
 
-        self.assertIn("static const word vp_pitch = offsetof(viewpoint, vp_pitch);", structures)
+        self.assertIn("static const word vp_pitch = offsetof(struct viewpoint, vp_pitch);", structures)
 
     def test_type_operator_renders_sizeof_for_record_size_equ(self):
         parser = Parser([])
@@ -943,8 +1186,34 @@ class Masm510StructCompatibilityTest(unittest.TestCase):
         wrappers = cpp.render_function_wrappers_c()
 
         self.assertIn(
-            "bool drawfeatures2(m2c::_offsets, struct m2c::_STATE* _state){return drawfeatures1(m2c::kdrawfeatures2, _state);}",
+            "bool drawfeatures2(m2c::_offsets _i, struct m2c::_STATE* _state){return drawfeatures1(_i ? _i : m2c::kdrawfeatures2, _state);}",
             wrappers,
+        )
+
+    def test_public_label_before_inline_data_remains_callable_code(self):
+        parser = Parser([])
+        source = (
+            "PUBLIC Entry\n"
+            "CODE SEGMENT\n"
+            "Start PROC NEAR\n"
+            "ret\n"
+            "Entry:\n"
+            "db 0B1h\n"
+            "ret\n"
+            "Start ENDP\n"
+            "CODE ENDS\n"
+            "END\n"
+        )
+        tree = parser.parse_text(source)
+        parser.process_ast(source, tree)
+        cpp = Cpp(parser, outfile="inline_data")
+        cpp.process()
+
+        self.assertIsInstance(parser.symbols.get_global("entry"), op.label)
+        self.assertNotIn("entry", [data.label for data in parser.segments["code"].getdata()])
+        self.assertIn(
+            "bool entry(m2c::_offsets _i, struct m2c::_STATE* _state){return start(_i ? _i : m2c::kentry, _state);}",
+            cpp.render_function_wrappers_c(),
         )
 
     def test_non_public_procs_are_static_but_public_procs_are_exported(self):
@@ -972,6 +1241,535 @@ class Masm510StructCompatibilityTest(unittest.TestCase):
         self.assertIn("bool exported(m2c::_offsets, struct m2c::_STATE*);", declarations)
         self.assertNotIn("static bool exported", declarations)
 
+    def test_public_proc_uses_weak_linkage_in_multi_file_output(self):
+        parser = Parser({"filenames": ["one.asm", "two.asm"]})
+        source = (
+            "PUBLIC Exported\n"
+            "CODE SEGMENT\n"
+            "Exported PROC NEAR\n"
+            "ret\n"
+            "Exported ENDP\n"
+            "CODE ENDS\n"
+            "END\n"
+        )
+        tree = parser.parse_text(source)
+        parser.process_ast(source, tree)
+        cpp = Cpp(parser, outfile="module")
+        cpp.process()
+
+        declarations = cpp.proc_strategy.write_declarations(cpp._procs + list(cpp.grouped), parser)
+
+        self.assertIn("__attribute__((weak)) bool exported(m2c::_offsets, struct m2c::_STATE*);", declarations)
+
+    def test_public_code_export_proc_uses_weak_linkage(self):
+        parser = Parser({"mergeprocs": "separate", "public_code_exports": ["helper"]})
+        source = (
+            "CODE SEGMENT\n"
+            "PUBLIC Helper\n"
+            "Helper PROC NEAR\n"
+            "ret\n"
+            "Helper ENDP\n"
+            "CODE ENDS\n"
+            "END\n"
+        )
+        tree = parser.parse_text(source)
+        parser.process_ast(source, tree)
+        cpp = Cpp(parser, outfile="module")
+        cpp.process()
+
+        declarations = cpp.proc_strategy.write_declarations(cpp._procs + list(cpp.grouped), parser)
+
+        self.assertIn("__attribute__((weak)) bool helper(m2c::_offsets, struct m2c::_STATE*);", declarations)
+        self.assertNotIn("static bool helper", declarations)
+
+    def test_public_code_export_label_wrapper_uses_weak_linkage(self):
+        parser = Parser({"mergeprocs": "separate", "public_code_exports": ["entry"]})
+        source = (
+            "CODE SEGMENT\n"
+            "PUBLIC Entry\n"
+            "Owner PROC NEAR\n"
+            "ret\n"
+            "Entry LABEL NEAR\n"
+            "ret\n"
+            "Owner ENDP\n"
+            "CODE ENDS\n"
+            "END\n"
+        )
+        tree = parser.parse_text(source)
+        parser.process_ast(source, tree)
+        cpp = Cpp(parser, outfile="module")
+        cpp.process()
+
+        wrappers = cpp.render_function_wrappers_c()
+
+        self.assertIn(
+            "__attribute__((weak)) bool entry(m2c::_offsets _i, struct m2c::_STATE* _state){return owner(_i ? _i : m2c::kentry, _state);}",
+            wrappers,
+        )
+
+    def test_grouped_dispatcher_falls_back_to_module_dispatcher(self):
+        cpp = Cpp(Parser([]))
+        cpp.proc = Proc("_group1")
+        cpp.groups["owner"] = "_group1"
+
+        jump_table = cpp.produce_jump_table([("local", "local")])
+
+        self.assertIn("case m2c::klocal:", jump_table)
+        self.assertIn("default: return __dispatch_call(__disp, _state);", jump_table)
+        self.assertNotIn("Don't know how to jump", jump_table)
+
+    def test_external_code_export_does_not_globalize_non_public_local_collision(self):
+        parser = Parser({"mergeprocs": "separate", "external_code_exports": ["getq"], "public_code_exports": ["getq"]})
+        source = (
+            "CODE SEGMENT\n"
+            "GetQ PROC NEAR\n"
+            "ret\n"
+            "GetQ ENDP\n"
+            "CODE ENDS\n"
+            "END\n"
+        )
+        tree = parser.parse_text(source)
+        parser.process_ast(source, tree)
+        cpp = Cpp(parser, outfile="local_owner")
+        cpp.process()
+
+        declarations = cpp.proc_strategy.write_declarations(cpp._procs + list(cpp.grouped), parser)
+
+        self.assertIn("static bool getq(m2c::_offsets, struct m2c::_STATE*);", declarations)
+        self.assertNotIn("__attribute__((weak)) bool getq", declarations)
+
+    def test_external_code_export_without_public_owner_uses_weak_linkage(self):
+        parser = Parser({"mergeprocs": "separate", "external_code_exports": ["helper"], "public_code_exports": []})
+        source = (
+            "CODE SEGMENT\n"
+            "Helper PROC NEAR\n"
+            "ret\n"
+            "Helper ENDP\n"
+            "CODE ENDS\n"
+            "END\n"
+        )
+        tree = parser.parse_text(source)
+        parser.process_ast(source, tree)
+        cpp = Cpp(parser, outfile="module")
+        cpp.process()
+
+        declarations = cpp.proc_strategy.write_declarations(cpp._procs + list(cpp.grouped), parser)
+
+        self.assertIn("__attribute__((weak)) bool helper(m2c::_offsets, struct m2c::_STATE*);", declarations)
+        self.assertNotIn("static bool helper", declarations)
+
+    def test_continuation_module_owns_public_code_export_label(self):
+        parser = Parser({"mergeprocs": "separate", "public_code_exports": ["target"]})
+        source = (
+            "CODE SEGMENT\n"
+            "Owner PROC NEAR\n"
+            "ret\n"
+            "Target LABEL NEAR\n"
+            "ret\n"
+            "Owner ENDP\n"
+            "CODE ENDS\n"
+            "END\n"
+        )
+        tree = parser.parse_text(source)
+        parser.process_ast(source, tree)
+        cpp = Cpp(parser, outfile="math2")
+        cpp.process()
+
+        wrappers = cpp.render_function_wrappers_c()
+
+        self.assertIn(
+            "__attribute__((weak)) bool target(m2c::_offsets _i, struct m2c::_STATE* _state){return owner(_i ? _i : m2c::ktarget, _state);}",
+            wrappers,
+        )
+
+    def test_public_code_export_offset_renders_as_aggregate_code_constant(self):
+        parser = Parser({"mergeprocs": "separate", "public_code_exports": ["shared_table"]})
+        source = (
+            "CODE SEGMENT\n"
+            "main PROC NEAR\n"
+            "mov bx, OFFSET Shared_Table\n"
+            "ret\n"
+            "main ENDP\n"
+            "CODE ENDS\n"
+            "END\n"
+        )
+        tree = parser.parse_text(source)
+        parser.process_ast(source, tree)
+        proc = parser.symbols.get_global("main")
+        self.assertIsInstance(proc, Proc)
+        cpp = Cpp(parser)
+        proc.visit(cpp)
+
+        self.assertIn("R(bx = m2c::kglobal_shared_table;)", cpp.body)
+
+    def test_external_var_offset_renders_as_public_code_export_constant(self):
+        parser = Parser({"mergeprocs": "separate", "public_code_exports": ["target"]})
+        source = (
+            "EXTRN Target:BYTE\n"
+            "CODE SEGMENT\n"
+            "main PROC NEAR\n"
+            "mov bx, OFFSET Target\n"
+            "ret\n"
+            "main ENDP\n"
+            "CODE ENDS\n"
+            "END\n"
+        )
+        tree = parser.parse_text(source)
+        parser.process_ast(source, tree)
+        proc = parser.symbols.get_global("main")
+        self.assertIsInstance(proc, Proc)
+
+        rendered = Proc("mainproc").generate_c_cmd(Cpp(parser), proc.stmts[0])
+
+        self.assertEqual("bx = m2c::kglobal_target;", rendered)
+
+    def test_external_var_data_offset_renders_as_public_code_export_constant(self):
+        parser = Parser({"mergeprocs": "separate", "public_code_exports": ["target"]})
+        source = (
+            "EXTRN Target:WORD\n"
+            "DATA SEGMENT\n"
+            "Token db LOW OFFSET Target\n"
+            "DATA ENDS\n"
+            "END\n"
+        )
+        tree = parser.parse_text(source)
+        parser.process_ast(source, tree)
+        data = parser.segments["data"].getdata()[0]
+
+        rendered, _, _ = Cpp(parser).produce_c_data_single_(data)
+
+        self.assertIn("m2c::kglobal_target", rendered)
+
+    def test_local_public_code_data_entry_renders_as_global_code_constant(self):
+        parser = Parser({"mergeprocs": "separate", "external_code_exports": ["target"],
+                         "filenames": ["mod_a.asm", "mod_b.asm"]})
+        source = (
+            "CODE SEGMENT\n"
+            "Table dw Target\n"
+            "Table2 dw OFFSET Target\n"
+            "Target:\n"
+            "ret\n"
+            "CODE ENDS\n"
+            "END\n"
+        )
+        tree = parser.parse_text(source)
+        parser.process_ast(source, tree)
+        rows = parser.segments["code"].getdata()
+        cpp = Cpp(parser)
+
+        rendered = "\n".join(cpp.produce_c_data_single_(row)[0] for row in rows)
+
+        self.assertIn("m2c::kglobal_target", rendered)
+        self.assertNotIn("m2c::ktarget", rendered)
+
+    def test_local_code_label_stored_in_data_is_exported_for_indirect_dispatch(self):
+        parser = Parser({"mergeprocs": "separate"})
+        source = (
+            "CODE SEGMENT\n"
+            "Dispatch dw Handler\n"
+            "Handler:\n"
+            "ret\n"
+            "CODE ENDS\n"
+            "END\n"
+        )
+        tree = parser.parse_text(source)
+        parser.process_ast(source, tree)
+        cpp = Cpp(parser)
+        data = parser.segments["code"].getdata()[0]
+        rendered, _, _ = cpp.produce_c_data_single_(data)
+
+        self.assertIn("handler", cpp.export_external_code_symbol_names())
+        self.assertEqual(cpp.wrapper_linkage("handler"), "__attribute__((weak)) ")
+        self.assertIn("m2c::kglobal_handler", rendered)
+
+    def test_instruction_offset_code_label_uses_local_dispatch_constant(self):
+        parser = Parser({"mergeprocs": "separate"})
+        source = (
+            "CODE SEGMENT\n"
+            "Dispatch dw Handler\n"
+            "mov ax, OFFSET Handler\n"
+            "Handler:\n"
+            "ret\n"
+            "CODE ENDS\n"
+            "END\n"
+        )
+        tree = parser.parse_text(source)
+        parser.process_ast(source, tree)
+        cpp = Cpp(parser)
+
+        parser.symbols.get_global("mainproc").visit(cpp)
+
+        self.assertIn("handler", cpp.export_external_code_symbol_names())
+        self.assertIn("R(ax = m2c::khandler;)", cpp.body)
+        self.assertNotIn("R(ax = m2c::kglobal_handler;)", cpp.body)
+
+    def test_external_proc_does_not_emit_local_code_offset_constant(self):
+        parser = Parser({"mergeprocs": "separate", "public_code_exports": ["target"]})
+        source = (
+            "EXTRN Target:NEAR\n"
+            "CODE SEGMENT\n"
+            "main PROC NEAR\n"
+            "mov bx, OFFSET Target\n"
+            "ret\n"
+            "main ENDP\n"
+            "CODE ENDS\n"
+            "END\n"
+        )
+        tree = parser.parse_text(source)
+        parser.process_ast(source, tree)
+
+        label_offsets = Cpp(parser).produce_label_offsets()
+
+        self.assertNotIn("static const dd ktarget", label_offsets)
+
+    def test_unresolved_external_proc_keeps_local_code_offset_placeholder(self):
+        parser = Parser({"mergeprocs": "separate", "external_code_exports": ["target"]})
+        source = (
+            "EXTRN Target:NEAR\n"
+            "CODE SEGMENT\n"
+            "main PROC NEAR\n"
+            "call Target\n"
+            "ret\n"
+            "main ENDP\n"
+            "CODE ENDS\n"
+            "END\n"
+        )
+        tree = parser.parse_text(source)
+        parser.process_ast(source, tree)
+
+        label_offsets = Cpp(parser).produce_label_offsets()
+
+        self.assertIn("static const dd ktarget", label_offsets)
+
+    def test_equates_header_emits_collision_free_global_code_offset_alias(self):
+        with TemporaryDirectory() as tmp:
+            cwd = os.getcwd()
+            os.chdir(tmp)
+            try:
+                Cpp(Parser([]))._write_equates_header([], set(), {"target": 0x1234})
+
+                header = Path("_equates.h").read_text(encoding="utf-8")
+            finally:
+                os.chdir(cwd)
+
+        self.assertIn("static const dd ktarget = (0x1234);", header)
+        self.assertIn("static const dd kglobal_target = (0x1234);", header)
+
+    def test_defined_proc_exports_code_offset_for_aggregate_equates(self):
+        parser = Parser({"mergeprocs": "separate", "external_code_exports": ["target"]})
+        source = (
+            "PUBLIC Target\n"
+            "CODE SEGMENT\n"
+            "Target PROC NEAR\n"
+            "ret\n"
+            "Target ENDP\n"
+            "CODE ENDS\n"
+            "END\n"
+        )
+        tree = parser.parse_text(source)
+        parser.process_ast(source, tree)
+
+        offsets = Cpp(parser).export_defined_code_symbol_offsets()
+
+        self.assertIn("target", offsets)
+
+    def test_defined_label_exports_code_offset_for_aggregate_equates(self):
+        parser = Parser({"mergeprocs": "separate"})
+        source = (
+            "CODE SEGMENT\n"
+            "Target:\n"
+            "ret\n"
+            "CODE ENDS\n"
+            "END\n"
+        )
+        tree = parser.parse_text(source)
+        parser.process_ast(source, tree)
+
+        offsets = Cpp(parser).export_defined_code_symbol_offsets()
+
+        self.assertIn("target", offsets)
+
+    def test_data_label_exports_offset_for_near_external_aliases(self):
+        parser = Parser({"mergeprocs": "separate"})
+        source = (
+            "DATA SEGMENT\n"
+            "Target LABEL WORD\n"
+            "dw 0\n"
+            "DATA ENDS\n"
+            "END\n"
+        )
+        tree = parser.parse_text(source)
+        parser.process_ast(source, tree)
+
+        offsets = Cpp(parser).export_defined_code_symbol_offsets()
+
+        self.assertIn("target", offsets)
+
+    def test_public_label_before_inline_data_exports_storage_offset(self):
+        parser = Parser({"mergeprocs": "separate"})
+        source = (
+            "PUBLIC Table\n"
+            "CODE SEGMENT\n"
+            "db 0\n"
+            "Table:\n"
+            "dw 1234h\n"
+            "CODE ENDS\n"
+            "END\n"
+        )
+        tree = parser.parse_text(source)
+        parser.process_ast(source, tree)
+
+        offsets = Cpp(parser).export_defined_code_symbol_offsets()
+
+        self.assertEqual(offsets["table"], 1)
+
+    def test_public_table_label_before_labeled_data_exports_storage_offset(self):
+        parser = Parser({"mergeprocs": "separate"})
+        source = (
+            "PUBLIC Table\n"
+            "CODE SEGMENT\n"
+            "Table:\n"
+            "Entry dw 1234h\n"
+            "CODE ENDS\n"
+            "END\n"
+        )
+        tree = parser.parse_text(source)
+        parser.process_ast(source, tree)
+
+        aliases = {alias.name: alias.offset for alias in parser.code_offset_aliases}
+
+        self.assertEqual(aliases["table"], 0)
+
+    def test_collect_code_exports_matches_external_var_to_public_code_label(self):
+        with TemporaryDirectory() as temp_dir:
+            temp = Path(temp_dir)
+            target = temp / "target.asm"
+            target.write_text(
+                "PUBLIC Target\n"
+                "CODE SEGMENT\n"
+                "Target:\n"
+                "db 0\n"
+                "CODE ENDS\n"
+                "END\n",
+                encoding="utf-8",
+            )
+            user = temp / "user.asm"
+            user.write_text(
+                "EXTRN Target:BYTE\n"
+                "CODE SEGMENT\n"
+                "main PROC NEAR\n"
+                "mov bx, OFFSET Target\n"
+                "ret\n"
+                "main ENDP\n"
+                "CODE ENDS\n"
+                "END\n",
+                encoding="utf-8",
+            )
+
+            _, public_code_exports = collect_code_exports(
+                [str(target), str(user)],
+                Namespace(passes=1),
+            )
+
+        self.assertEqual(public_code_exports, {"target"})
+
+    def test_collect_code_exports_matches_external_proc_to_public_proc(self):
+        with TemporaryDirectory() as temp_dir:
+            temp = Path(temp_dir)
+            target = temp / "target.asm"
+            target.write_text(
+                "PUBLIC GetQ\n"
+                "CODE SEGMENT\n"
+                "GetQ PROC NEAR\n"
+                "ret\n"
+                "GetQ ENDP\n"
+                "CODE ENDS\n"
+                "END\n",
+                encoding="utf-8",
+            )
+            user = temp / "user.asm"
+            user.write_text(
+                "EXTRN GetQ:NEAR\n"
+                "CODE SEGMENT\n"
+                "main PROC NEAR\n"
+                "call GetQ\n"
+                "ret\n"
+                "main ENDP\n"
+                "CODE ENDS\n"
+                "END\n",
+                encoding="utf-8",
+            )
+
+            external_exports, public_code_exports = collect_code_exports(
+                [str(target), str(user)],
+                Namespace(passes=1),
+            )
+
+        self.assertIn("getq", external_exports)
+        self.assertEqual(public_code_exports, {"getq"})
+
+    def test_equates_header_emits_aggregate_code_offsets(self):
+        with TemporaryDirectory() as tmp:
+            cwd = os.getcwd()
+            os.chdir(tmp)
+            try:
+                Cpp(Parser([]))._write_equates_header([], set(), {"shared_table": 0x1234})
+
+                equates = Path("_equates.h").read_text(encoding="utf-8")
+            finally:
+                os.chdir(cwd)
+
+        self.assertIn("#define M2C_CODE_EQUATE_shared_table 1", equates)
+        self.assertIn("static const dd kshared_table = (0x1234);", equates)
+
+    def test_external_code_dispatcher_skips_duplicate_offsets(self):
+        parser = Parser([])
+        parser.exported_code_symbol_offsets = {"first": 0x1234, "second": 0x1234}
+
+        dispatcher = Cpp(parser)._produce_external_code_dispatcher()
+
+        self.assertEqual(dispatcher.count("case 0x1234:"), 1)
+
+    def test_external_code_dispatcher_uses_only_callable_offsets(self):
+        parser = Parser([])
+        parser.exported_code_symbol_offsets = {"begdsg": 0x0, "target": 0x1234}
+        parser.exported_callable_code_symbol_offsets = {"target": 0x1234}
+
+        cpp = Cpp(parser)
+        dispatcher = cpp._produce_external_code_dispatcher()
+        declarations = cpp._produce_external_code_declarations()
+
+        self.assertIn("target", dispatcher)
+        self.assertNotIn("begdsg", dispatcher)
+        self.assertIn("target", declarations)
+        self.assertNotIn("begdsg", declarations)
+
+    def test_merged_code_segment_data_offsets_are_not_callable_exports(self):
+        with TemporaryDirectory() as tmp:
+            old_cwd = os.getcwd()
+            os.chdir(tmp)
+            try:
+                segment = op.Segment("CSEG", 0, options={"public"}, segclass="CODESG")
+                segment.append(op.Data("BegDsg", "dw", op.DataType.NUMBER, [0], 1, 2))
+                writer = Cpp(Parser([]))
+                writer.write_segment_file(
+                    OrderedDict([("cseg", segment)]),
+                    OrderedDict(),
+                    "module.asm",
+                    defined_code_symbols={"target"},
+                    extern_code_symbols={"begdsg", "target"},
+                    defined_code_symbol_offsets={"begdsg": 0x0, "target": 0x100b},
+                )
+
+                merger = Cpp(Parser([]), merge_data_segments=True)
+                merger.read_segment_files(["module.asm"])
+
+                self.assertIn("begdsg", merger._context.exported_code_symbol_offsets)
+                self.assertNotIn("begdsg", merger._context.exported_callable_code_symbol_offsets)
+                self.assertIn("target", merger._context.exported_callable_code_symbol_offsets)
+            finally:
+                os.chdir(old_cwd)
+
     def test_external_scalar_data_declares_reference_to_aggregate_storage(self):
         parser = Parser([])
         source = "EXTRN PSP:WORD\nCODE SEGMENT\nmain PROC\nmov PSP, ax\nret\nmain ENDP\nCODE ENDS\nEND\n"
@@ -982,7 +1780,81 @@ class Masm510StructCompatibilityTest(unittest.TestCase):
         declarations = cpp.produce_externals(parser)
 
         self.assertIn("extern dw& psp;", declarations)
-        self.assertNotIn("extern word psp;", declarations)
+
+    def test_near_external_memory_operand_renders_as_data_reference(self):
+        parser = Parser([])
+        source = (
+            "EXTRN Target:NEAR\n"
+            "CODE SEGMENT\n"
+            "main PROC\n"
+            "mov bx, WORD PTR Target\n"
+            "ret\n"
+            "main ENDP\n"
+            "CODE ENDS\n"
+            "END\n"
+        )
+        tree = parser.parse_text(source)
+        parser.process_ast(source, tree)
+        proc = parser.symbols.get_global("main")
+        self.assertIsInstance(proc, Proc)
+        cpp = Cpp(parser)
+
+        rendered = "\n".join(proc.generate_c_cmd(cpp, stmt) for stmt in proc.stmts)
+        declarations = cpp.produce_externals(parser)
+
+        self.assertIn("bx = target;", rendered)
+        self.assertNotIn("raddr(ds,m2c::ktarget)", rendered)
+        self.assertIn("extern dw& target;", declarations)
+        self.assertNotIn("target", cpp.export_external_code_symbol_names())
+
+    def test_near_external_offset_operand_keeps_code_offset_export(self):
+        parser = Parser({"mergeprocs": "separate", "external_code_exports": ["Target"],
+                         "filenames": ["mod_a.asm", "mod_b.asm"]})
+        source = (
+            "EXTRN Target:NEAR\n"
+            "CODE SEGMENT\n"
+            "main PROC\n"
+            "mov bx, OFFSET Target\n"
+            "ret\n"
+            "main ENDP\n"
+            "CODE ENDS\n"
+            "END\n"
+        )
+        tree = parser.parse_text(source)
+        parser.process_ast(source, tree)
+        proc = parser.symbols.get_global("main")
+        self.assertIsInstance(proc, Proc)
+        cpp = Cpp(parser)
+
+        rendered = "\n".join(proc.generate_c_cmd(cpp, stmt) for stmt in proc.stmts)
+
+        self.assertIn("bx = m2c::kglobal_target;", rendered)
+        self.assertNotIn("extern dw& target;", cpp.produce_externals(parser))
+
+    def test_cs_near_external_memory_operand_keeps_code_offset_reference(self):
+        parser = Parser({"mergeprocs": "separate", "external_code_exports": ["Target"]})
+        source = (
+            "EXTRN Target:NEAR\n"
+            "CODE SEGMENT\n"
+            "main PROC\n"
+            "push CS:Target[si]\n"
+            "ret\n"
+            "main ENDP\n"
+            "CODE ENDS\n"
+            "END\n"
+        )
+        tree = parser.parse_text(source)
+        parser.process_ast(source, tree)
+        proc = parser.symbols.get_global("main")
+        self.assertIsInstance(proc, Proc)
+        cpp = Cpp(parser)
+
+        rendered = "\n".join(proc.generate_c_cmd(cpp, stmt) for stmt in proc.stmts)
+
+        self.assertIn("m2c::ktarget", rendered)
+        self.assertNotIn("&target", rendered)
+        self.assertNotIn("extern dw& target;", cpp.produce_externals(parser))
+        self.assertIn("target", cpp.export_external_code_symbol_names())
 
     def test_segment_sidecar_exports_expression_equates_for_aggregate_header(self):
         with TemporaryDirectory() as tmp:
@@ -1023,10 +1895,302 @@ class Masm510StructCompatibilityTest(unittest.TestCase):
                 self.assertIn("dw near_offset_linked_address(const void* symbol)", data_cpp)
                 self.assertIn("const size_t linear = anchor->linear +", data_cpp)
                 self.assertIn("linear - ((anchor->linear >> 4) << 4)", data_cpp)
-                self.assertIn("{reinterpret_cast<const db*>(&::data), 0x0}", data_cpp)
-                self.assertIn("{reinterpret_cast<const db*>(&::wsdata), 0x200}", data_cpp)
-                self.assertIn("{reinterpret_cast<const db*>(&::stack), 0x550}", data_cpp)
+                self.assertIn("{reinterpret_cast<const db*>(&::data), 0x0, true}", data_cpp)
+                self.assertIn("{reinterpret_cast<const db*>(&::wsdata), 0x200, true}", data_cpp)
+                self.assertIn("{reinterpret_cast<const db*>(&::stack), 0x550, true}", data_cpp)
                 self.assertNotIn("{reinterpret_cast<const db*>(&::code), 0x10}", data_cpp)
+            finally:
+                os.chdir(old_cwd)
+
+    def test_linked_data_segment_base_uses_exported_offset_alias(self):
+        with TemporaryDirectory() as tmp:
+            old_cwd = os.getcwd()
+            os.chdir(tmp)
+            try:
+                data = op.Segment("DSEG", 0x1a20, options={"public"}, segclass="DATASG")
+                data.segment_aliases = {"dseg": 0}
+                data.append(op.Data("", "db", op.DataType.ARRAY, [0], 0x100, 0x100, offset=0))
+                data.append(op.Data("value", "dw", op.DataType.NUMBER, [0], 1, 2, offset=0x100))
+                segments = OrderedDict([("datasg", data)])
+                parser = Parser({"filenames": ["one.asm", "two.asm"], "loadsegment": "0x192"})
+                parser.data_aliases = [
+                    op.var(2, 0, "DataStart", segment="datasg", original_type="word"),
+                ]
+                parser.exported_code_symbol_offsets = {"datastart": 0x1EA}
+
+                Cpp(parser).write_data_segments_cpp(segments, OrderedDict())
+
+                data_refs = Path("_data_refs_000.cpp").read_text(encoding="cp437")
+                self.assertIn("db& datasg=*((db*)&m2c::m+0x1b00);", data_refs)
+                self.assertIn("db& dseg=*((db*)&m2c::m+0x1b00);", data_refs)
+                data_cpp = Path("_data.cpp").read_text(encoding="cp437")
+                self.assertIn("{reinterpret_cast<const db*>(&::datasg), 0x1b00, true}", data_cpp)
+            finally:
+                os.chdir(old_cwd)
+
+    def test_relocated_public_data_segment_overrides_exported_offset_alias_base(self):
+        with TemporaryDirectory() as tmp:
+            old_cwd = os.getcwd()
+            os.chdir(tmp)
+            try:
+                code = op.Segment("CSEG", 0, options={"public"}, segclass="CODESG")
+                code.append(op.Data("code_blob", "db", op.DataType.ARRAY, [0], 0x1334, 0x1334, offset=0))
+                data = op.Segment("DSEG", 0x1E0, options={"public"}, segclass="DATASG")
+                data.segment_aliases = {"dseg": 0}
+                data.append(op.Data("data_blob", "db", op.DataType.ARRAY, [0], 0xA92, 0xA92, offset=0))
+                segments = OrderedDict([("codesg", code), ("datasg", data)])
+                Cpp._layout_public_segment_class_storage(segments)
+                parser = Parser({"filenames": ["one.asm", "two.asm"], "loadsegment": "0x192"})
+                parser.data_aliases = [
+                    op.var(2, 0, "DataStart", segment="datasg", original_type="word"),
+                ]
+                parser.exported_code_symbol_offsets = {"datastart": 0x1EA}
+
+                Cpp(parser).write_data_segments_cpp(segments, OrderedDict())
+
+                data_refs = Path("_data_refs_000.cpp").read_text(encoding="cp437")
+                self.assertIn("db& datasg=*((db*)&m2c::m+0x2c60);", data_refs)
+                self.assertIn("db& dseg=*((db*)&m2c::m+0x2c60);", data_refs)
+                self.assertNotIn("db& dseg=*((db*)&m2c::m+0x1b00);", data_refs)
+                data_cpp = Path("_data.cpp").read_text(encoding="cp437")
+                self.assertIn("{reinterpret_cast<const db*>(&::datasg), 0x2c60, true}", data_cpp)
+            finally:
+                os.chdir(old_cwd)
+
+    def test_aggregate_equates_header_uses_all_defined_code_offsets(self):
+        with TemporaryDirectory() as tmp:
+            old_cwd = os.getcwd()
+            os.chdir(tmp)
+            try:
+                data = op.Segment("DSEG", 0, options={"public"}, segclass="DATASG")
+                data.append(op.Data("value", "dw", op.DataType.NUMBER, [0], 1, 2, offset=0))
+                segments = OrderedDict([("datasg", data)])
+                parser = Parser({"filenames": ["one.asm", "two.asm"]})
+                parser.exported_code_symbol_offsets = {}
+                parser.all_defined_code_symbol_offsets = {"chrgtr": 0x1234, "stprdy": 0x1235}
+
+                Cpp(parser).write_data_segments_cpp(segments, OrderedDict())
+
+                equates = Path("_equates.h").read_text(encoding="cp437")
+                self.assertIn("static const dd kchrgtr = (0x1234);", equates)
+                self.assertIn("static const dd kglobal_chrgtr = (0x1234);", equates)
+                self.assertIn("static const dd kstprdy = (0x1235);", equates)
+                self.assertIn("static const dd kglobal_stprdy = (0x1235);", equates)
+            finally:
+                os.chdir(old_cwd)
+
+    def test_extern_near_data_label_offset_uses_relocated_public_data_segment(self):
+        with TemporaryDirectory() as tmp:
+            old_cwd = os.getcwd()
+            os.chdir(tmp)
+            try:
+                code = op.Segment("CSEG", 0, options={"public"}, segclass="CODESG")
+                code.append(op.Data("code_blob", "db", op.DataType.ARRAY, [0], 0x1334, 0x1334, offset=0))
+                data = op.Segment("DSEG", 0x1E0, options={"public"}, segclass="DATASG")
+                data.segment_aliases = {"dseg": 0}
+                data.append(op.Data("begdsg", "dw", op.DataType.NUMBER, [0], 1, 2, offset=0))
+                provider_segments = OrderedDict([("cseg", code), ("dseg", data)])
+                Cpp(Parser([])).write_segment_file(
+                    provider_segments,
+                    OrderedDict(),
+                    "provider.asm",
+                    data_aliases=[op.var(2, 0, "begdsg", segment="dseg", original_type="word")],
+                    defined_code_symbols={"begdsg"},
+                    defined_code_symbol_offsets={"begdsg": 0},
+                )
+                Cpp(Parser([])).write_segment_file(
+                    OrderedDict(),
+                    OrderedDict(),
+                    "consumer.asm",
+                    extern_code_symbols={"begdsg"},
+                )
+
+                merger = Cpp(
+                    Parser({"filenames": ["provider.asm", "consumer.asm"], "loadsegment": "0x192"}),
+                    merge_data_segments=True,
+                )
+                merger.write_data_segments_cpp(*merger.read_segment_files(["provider.asm", "consumer.asm"]))
+
+                equates = Path("_equates.h").read_text(encoding="cp437")
+                self.assertIn("static const dd kglobal_begdsg = (0x1340);", equates)
+                data_refs = Path("_data_refs_000.cpp").read_text(encoding="cp437")
+                self.assertIn("db& dseg=*((db*)&m2c::m+0x2c60);", data_refs)
+            finally:
+                os.chdir(old_cwd)
+
+    def test_location_counter_equates_relocate_with_merged_code_segment(self):
+        with TemporaryDirectory() as tmp:
+            old_cwd = os.getcwd()
+            os.chdir(tmp)
+            try:
+                first = op.Segment("CSEG", 0, options={"public"}, segclass="CODESG")
+                first.append(op.Data("filler", "db", op.DataType.NUMBER, [0] * 0x20, 0x20, 0x20))
+                second = op.Segment("CSEG", 0, options={"public"}, segclass="CODESG")
+                second.append(op.Data("rom_bytes", "db", op.DataType.NUMBER, [0], 1, 1, offset=0x100))
+                writer = Cpp(Parser([]))
+                writer.write_segment_file(OrderedDict([("cseg", first)]), OrderedDict(), "first.asm")
+                writer.write_segment_file(
+                    OrderedDict([("cseg", second)]),
+                    OrderedDict(),
+                    "second.asm",
+                    equates=[
+                        ("copy_start", "256", True, "cseg", True),
+                        ("copy_len", "259-256", True, "cseg", True),
+                        ("plain_count", "75+1", True, "cseg", False),
+                    ],
+                )
+
+                merger = Cpp(Parser([]), merge_data_segments=True)
+                merger.read_segment_files(["first.asm", "second.asm"])
+
+                exported = {name: value for name, value, _is_code in merger._context.exported_equates}
+                self.assertEqual(exported["copy_start"], "288")
+                self.assertEqual(exported["copy_len"], "291-288")
+                self.assertEqual(exported["plain_count"], "75+1")
+            finally:
+                os.chdir(old_cwd)
+
+    def test_linked_code_segment_storage_maps_load_segment_addresses(self):
+        with TemporaryDirectory() as tmp:
+            old_cwd = os.getcwd()
+            os.chdir(tmp)
+            try:
+                code = op.Segment("CODESG", 0, options={"public"}, segclass="CODESG")
+                code.segment_aliases = {"codesg": 0, "cseg": 0}
+                code.append(op.Data("table", "dw", op.DataType.NUMBER, [0], 1, 2))
+                segments = OrderedDict([("codesg", code)])
+                parser = Parser({"filenames": ["one.asm", "two.asm"], "loadsegment": "0x192"})
+
+                Cpp(parser).write_data_segments_cpp(segments, OrderedDict())
+
+                data_refs = Path("_data_refs_000.cpp").read_text(encoding="cp437")
+                self.assertIn("db& codesg=*((db*)&m2c::m+0x1920);", data_refs)
+                self.assertIn("db& cseg=*((db*)&m2c::m+0x1920);", data_refs)
+                data_cpp = Path("_data.cpp").read_text(encoding="cp437")
+                self.assertIn("db* linked_code_segment_raddr(dw segment, dw offset)", data_cpp)
+                self.assertIn("if (segment != 0x192) { return nullptr; }", data_cpp)
+                self.assertIn("if (offset >= 0x0 && offset < 0x2) { return (db*)&m + 0x1920 + offset; }", data_cpp)
+                self.assertIn("void copy_linked_program_segment_prefix(dw segment, const void* source, size_t size)", data_cpp)
+                self.assertIn("static dw linked_data_runtime_segments[8]", data_cpp)
+                self.assertIn("remember_linked_data_runtime_segment(value);", data_cpp)
+                self.assertNotIn("mirror_linked_code_segments", data_cpp)
+            finally:
+                os.chdir(old_cwd)
+
+    def test_linked_code_segment_address_mapping_keeps_overlapping_data_records(self):
+        with TemporaryDirectory() as tmp:
+            old_cwd = os.getcwd()
+            os.chdir(tmp)
+            try:
+                code = op.Segment("CODESG", 0, options={"public"}, segclass="CODESG")
+                code.segment_aliases = {"codesg": 0, "cseg": 0}
+                code.append(op.Data("table", "db", op.DataType.NUMBER, [0, 1, 2, 3], 4, 4))
+                data = op.Segment("DATA", 0x1921)
+                data.append(op.Data("live", "dw", op.DataType.NUMBER, [0], 1, 2))
+                segments = OrderedDict([("codesg", code), ("data", data)])
+                parser = Parser({"filenames": ["one.asm", "two.asm"], "loadsegment": "0x192"})
+
+                Cpp(parser).write_data_segments_cpp(segments, OrderedDict())
+
+                data_cpp = Path("_data.cpp").read_text(encoding="cp437")
+                self.assertIn("if (offset >= 0x0 && offset < 0x4) { return (db*)&m + 0x1920 + offset; }", data_cpp)
+                self.assertIn("{reinterpret_cast<const db*>(&::codesg), 0x1920, false}", data_cpp)
+                self.assertIn("{reinterpret_cast<const db*>(&::data), 0x1921, true}", data_cpp)
+                self.assertIn("anchor.linear != 0 && anchor.is_data", data_cpp)
+                self.assertIn("segment == 0 || segment >= 0xa000 || is_linked_data_runtime_segment(segment)", data_cpp)
+                self.assertNotIn("std::memcpy", data_cpp)
+            finally:
+                os.chdir(old_cwd)
+
+    def test_linked_code_segment_address_mapping_uses_array_element_span(self):
+        with TemporaryDirectory() as tmp:
+            old_cwd = os.getcwd()
+            os.chdir(tmp)
+            try:
+                code = op.Segment("CODESG", 0, options={"public"}, segclass="CODESG")
+                code.segment_aliases = {"codesg": 0, "cseg": 0}
+                code.append(op.Data("table", "db", op.DataType.ARRAY, [0], 0x20, 1, offset=0x12F6))
+                segments = OrderedDict([("codesg", code)])
+                parser = Parser({"filenames": ["one.asm", "two.asm"], "loadsegment": "0x192"})
+
+                Cpp(parser).write_data_segments_cpp(segments, OrderedDict())
+
+                data_cpp = Path("_data.cpp").read_text(encoding="cp437")
+                self.assertIn("if (offset >= 0x12f6 && offset < 0x1316) { return (db*)&m + 0x1920 + offset; }", data_cpp)
+            finally:
+                os.chdir(old_cwd)
+
+    def test_merged_public_code_exports_relocate_duplicate_local_offsets(self):
+        with TemporaryDirectory() as tmp:
+            old_cwd = os.getcwd()
+            os.chdir(tmp)
+            try:
+                first = op.Segment("CSEG", 0, options={"public"}, segclass="CODESG")
+                first.append(op.Data("first_table", "db", op.DataType.NUMBER, [0, 1, 2, 3], 4, 4))
+                second = op.Segment("CSEG", 0, options={"public"}, segclass="CODESG")
+                second.append(op.Data("second_table", "db", op.DataType.NUMBER, [0, 1], 2, 2))
+                writer = Cpp(Parser([]))
+                writer.write_segment_file(
+                    OrderedDict([("cseg", first)]),
+                    OrderedDict(),
+                    "first.asm",
+                    defined_code_symbols={"firstproc"},
+                    extern_code_symbols={"firstproc", "secondproc"},
+                    defined_code_symbol_offsets={"firstproc": 0x100b},
+                )
+                writer.write_segment_file(
+                    OrderedDict([("cseg", second)]),
+                    OrderedDict(),
+                    "second.asm",
+                    defined_code_symbols={"secondproc"},
+                    extern_code_symbols={"firstproc", "secondproc"},
+                    defined_code_symbol_offsets={"secondproc": 0x100b},
+                )
+
+                merger = Cpp(Parser([]), merge_data_segments=True)
+                merger.read_segment_files(["first.asm", "second.asm"])
+
+                self.assertIn("firstproc", merger._context.exported_callable_code_symbol_offsets)
+                self.assertIn("secondproc", merger._context.exported_callable_code_symbol_offsets)
+                self.assertNotEqual(
+                    merger._context.exported_callable_code_symbol_offsets["firstproc"],
+                    merger._context.exported_callable_code_symbol_offsets["secondproc"],
+                )
+            finally:
+                os.chdir(old_cwd)
+
+    def test_aggregate_code_exports_avoid_all_module_local_offsets(self):
+        with TemporaryDirectory() as tmp:
+            old_cwd = os.getcwd()
+            os.chdir(tmp)
+            try:
+                first = op.Segment("CSEG", 0, options={"public"}, segclass="CODESG")
+                first.append(op.Data("first_table", "db", op.DataType.NUMBER, [0] * 0x10, 0x10, 0x10))
+                second = op.Segment("CSEG", 0, options={"public"}, segclass="CODESG")
+                second.append(op.Data("second_table", "db", op.DataType.NUMBER, [0], 1, 1))
+                writer = Cpp(Parser([]))
+                writer.write_segment_file(
+                    OrderedDict([("cseg", first)]),
+                    OrderedDict(),
+                    "first.asm",
+                    defined_code_symbols={"target"},
+                    extern_code_symbols={"target"},
+                    defined_code_symbol_offsets={"target": 0x1000},
+                )
+                writer.write_segment_file(
+                    OrderedDict([("cseg", second)]),
+                    OrderedDict(),
+                    "second.asm",
+                    defined_code_symbols={"local_only"},
+                    extern_code_symbols=set(),
+                    defined_code_symbol_offsets={"local_only": 0x1001},
+                )
+
+                merger = Cpp(Parser([]), merge_data_segments=True)
+                merger.read_segment_files(["first.asm", "second.asm"])
+
+                aggregate = merger._context.exported_callable_code_symbol_offsets["target"]
+                self.assertNotIn(aggregate, {0x1000, 0x1001})
             finally:
                 os.chdir(old_cwd)
 
@@ -1110,6 +2274,212 @@ class Masm510StructCompatibilityTest(unittest.TestCase):
             finally:
                 os.chdir(old_cwd)
 
+    def test_masm_macro_redefinition_rept_and_paste_materialize_data_label(self):
+        source = """_DATA segment use16 word public 'DATA'
+INCLUDE CFG.INC
+NDEV MACRO NAM,N
+    DEV NAM&N
+ENDM
+NAMES MACRO
+    NLPT=0
+REPT NMLPT
+    NLPT=NLPT+1
+    NDEV LPT,%NLPT
+ENDM
+ENDM
+NUM=377O
+DEV MACRO NAM
+    PUBLIC $_&NAM
+    $_&NAM=NUM
+    DB "&NAM&"
+    DB OFFSET NUM
+    NUM=NUM-1
+ENDM
+table:
+    NAMES
+    DB 0
+_DATA ends
+END
+"""
+        with TemporaryDirectory() as tmp:
+            path = Path(tmp)
+            (path / "CFG.INC").write_text("NMLPT=2\n", encoding="ascii")
+            asm = path / "sample.asm"
+            asm.write_text(source, encoding="ascii")
+
+            parser = Parser([])
+            parser.parse_file_lines(str(asm))
+            rows = parser.segments["_data"].getdata()
+
+            self.assertEqual([(row.label, row.offset, row.getsize()) for row in rows[:5]], [
+                ("table", 0, 4),
+                (rows[1].label, 4, 1),
+                (rows[2].label, 5, 4),
+                (rows[3].label, 9, 1),
+                (rows[4].label, 10, 1),
+            ])
+            self.assertIsInstance(parser.symbols.get_global("table"), op.var)
+            cpp = Cpp(parser)
+            self.assertEqual(cpp.render_equate_value(parser.symbols.get_global("dol_lpt1")), "0377")
+            self.assertEqual(cpp.render_equate_value(parser.symbols.get_global("dol_lpt2")), "255-1")
+
+    def test_low_offset_octal_literals_keep_numeric_radix(self):
+        parser = Parser([])
+        source = (
+            "DATA SEGMENT\n"
+            "TRMNUL EQU 200O\n"
+            "DATA ENDS\n"
+            "CODE SEGMENT\n"
+            "main PROC\n"
+            "and al, LOW OFFSET 377O-TRMNUL\n"
+            "ret\n"
+            "main ENDP\n"
+            "CODE ENDS\n"
+            "END\n"
+        )
+        tree = parser.parse_text(source)
+        parser.process_ast(source, tree)
+        cpp = Cpp(parser)
+
+        parser.symbols.get_global("main").visit(cpp)
+
+        self.assertIn("AND(al, (0377 & 0xff)-0200)", cpp.body)
+        self.assertNotIn("(377 & 0xff)", cpp.body)
+
+    def test_data_byte_offset_string_plus_constant_is_numeric_expression(self):
+        parser = Parser([])
+        source = (
+            "CODE SEGMENT\n"
+            "Table db OFFSET \"E\"+40\n"
+            "CODE ENDS\n"
+            "END\n"
+        )
+        tree = parser.parse_text(source)
+        parser.process_ast(source, tree)
+        row = parser.segments["code"].getdata()[0]
+        cpp = Cpp(parser)
+
+        value, declaration, size = cpp.produce_c_data_single_(row)
+
+        self.assertEqual(row.getinttype(), op.DataType.NUMBER)
+        self.assertEqual(value, "109")
+        self.assertEqual(declaration, "db table")
+        self.assertEqual(size, 1)
+
+    def test_irpc_reserved_word_macro_materializes_bytes_and_token(self):
+        source = """
+R MACRO RESWRD
+        extrn   RESWRD:NEAR
+        DW      RESWRD
+        QQ=QQ+1
+        PUBLIC  $&RESWRD
+        $&RESWRD=QQ
+ENDM
+Q MACRO RESWRD
+ IFDEF  $&RESWRD
+        $F=0
+  IRPC  XX,<RESWRD>
+   IF   $F
+        $Q="&XX&"
+        DB      "&XX&"
+   ENDIF
+   IFE  $F-1
+        .XLIST
+   ENDIF
+        $F=$F+1
+  ENDM
+        .LIST
+        ORG     $-1
+        DB      $Q+128D
+        DB      $&RESWRD
+ ELSE
+        un_def  RESWRD
+ ENDIF
+ENDM
+QQ=128
+R SYSTEM
+Q SYSTEM
+"""
+        parser = Parser([])
+        parser._collect_text_macros_from_content(source)
+
+        expanded = parser._expand_text_macros(parser._strip_text_macro_definitions(source))
+
+        self.assertNotIn("&XX&", expanded)
+        self.assertNotIn("un_def", expanded)
+        self.assertIn('DB      "Y"', expanded)
+        self.assertIn('DB      "S"', expanded)
+        self.assertIn('DB      "T"', expanded)
+        self.assertIn('DB      "E"', expanded)
+        self.assertIn('DB      "M"', expanded)
+        self.assertIn("DB      77+128D", expanded)
+        self.assertIn("DB      129", expanded)
+
+    def test_org_current_minus_one_rewinds_next_data_offset(self):
+        parser = Parser([])
+        source = (
+            "_DATA segment use16 word public 'DATA'\n"
+            "table db \"A\"\n"
+            "ORG $-1\n"
+            "db 80h\n"
+            "tail db 0\n"
+            "_DATA ends\n"
+            "END\n"
+        )
+
+        with TemporaryDirectory() as tmp:
+            asm = Path(tmp) / "org.asm"
+            asm.write_text(source, encoding="ascii")
+            parser.parse_file_lines(str(asm))
+            rows = parser.segments["_data"].getdata()
+
+            self.assertEqual([(row.label, row.offset, row.getsize()) for row in rows], [
+                ("table", 0, 1),
+                (rows[1].label, 0, 1),
+                ("tail", 1, 1),
+            ])
+
+    def test_code_labels_survive_later_data_label_conversion(self):
+        parser = Parser({"mergeprocs": "separate"})
+        source = (
+            "CODE SEGMENT\n"
+            "start:\n"
+            "    jz keep\n"
+            "keep: mov al,1\n"
+            "table:\n"
+            "    db 1\n"
+            "    ret\n"
+            "CODE ENDS\n"
+            "END start\n"
+        )
+        tree = parser.parse_text(source)
+        parser.process_ast(source, tree)
+
+        proc = parser.symbols.get_global("mainproc")
+        labels = [stmt.name for stmt in proc.stmts if isinstance(stmt, op.label)]
+
+        self.assertIn("start", labels)
+        self.assertIn("keep", labels)
+        self.assertNotIn("table", labels)
+
+    def test_offset_array_plus_constant_renders_offset_not_pointer(self):
+        parser = Parser({"mergeprocs": "separate"})
+        source = (
+            "CODE SEGMENT\n"
+            "arr db 8 dup(?)\n"
+            "start:\n"
+            "    mov bx, OFFSET arr+4\n"
+            "    ret\n"
+            "CODE ENDS\n"
+            "END start\n"
+        )
+        tree = parser.parse_text(source)
+        parser.process_ast(source, tree)
+        rendered = Cpp(parser).write_procedures("", "sample.h")
+
+        self.assertIn("bx = offset(code,arr)+4;", rendered)
+        self.assertNotIn("bx = arr+4;", rendered)
+
     def test_dummy_labels_use_stable_wide_file_hash_prefix(self):
         parser = Parser([])
         parser._switch_file_context("/tmp/TORNADO/SMOKE.ASM")
@@ -1153,6 +2523,53 @@ class Masm510StructCompatibilityTest(unittest.TestCase):
         self.assertIn("if (GET_ZF()) return __dispatch_call(m2c::kdummylabel1, _state);", rendered)
         self.assertNotIn("JZ(dummylabel1)", rendered)
 
+    def test_cross_proc_unconditional_jump_dispatches_in_single_mode(self):
+        parser = Parser({"mergeprocs": "single"})
+        source = (
+            "CODE SEGMENT\n"
+            "First PROC FAR\n"
+            "jmp Next\n"
+            "ret\n"
+            "First ENDP\n"
+            "Next PROC FAR\n"
+            "ret\n"
+            "Next ENDP\n"
+            "CODE ENDS\n"
+            "END\n"
+        )
+        tree = parser.parse_text(source)
+        parser.process_ast(source, tree)
+        cpp = Cpp(parser)
+
+        rendered = cpp.write_procedures("", "sample.h")
+
+        self.assertIn("return next(0, _state);", rendered)
+        self.assertNotIn("J(JMP(next))", rendered)
+
+    def test_cross_proc_local_conditional_jump_dispatches_in_single_mode(self):
+        parser = Parser({"mergeprocs": "single"})
+        source = (
+            "CODE SEGMENT\n"
+            "First PROC FAR\n"
+            "test ax, ax\n"
+            "jz @F\n"
+            "ret\n"
+            "First ENDP\n"
+            "Second PROC FAR\n"
+            "@@: ret\n"
+            "Second ENDP\n"
+            "CODE ENDS\n"
+            "END\n"
+        )
+        tree = parser.parse_text(source)
+        parser.process_ast(source, tree)
+        cpp = Cpp(parser)
+
+        rendered = cpp.write_procedures("", "sample.h")
+
+        self.assertIn("if (GET_ZF()) return __dispatch_call(m2c::kdummylabel1, _state);", rendered)
+        self.assertNotIn("JZ(dummylabel1)", rendered)
+
     def test_table_driven_jump_dispatch_keeps_synthetic_label_id(self):
         parser = Parser({"mergeprocs": "separate"})
         source = (
@@ -1174,7 +2591,7 @@ class Masm510StructCompatibilityTest(unittest.TestCase):
 
         rendered = cpp.write_procedures("", "sample.h")
 
-        self.assertIn("return __dispatch_call(__disp, _state);", rendered)
+        self.assertIn("return __dispatch_call_ext(__disp, _state);", rendered)
         self.assertIn("case m2c::ktarget:", rendered)
         self.assertIn("m2c::stackDump(_state);", rendered)
         self.assertNotIn("__disp |= ((dd)cs) << 16", rendered)
@@ -1227,6 +2644,452 @@ class Masm510StructCompatibilityTest(unittest.TestCase):
 
         self.assertIn("di+32*2-32*2", cpp.body)
         self.assertNotIn("#define", cpp.body)
+
+    def test_parenthesized_location_counter_assignment_folds_to_integer_operand(self):
+        parser = Parser([])
+        source = (
+            "DATA SEGMENT\n"
+            "Table dw 1,2,3,4\n"
+            "TableWords = ($ - Table) / 2\n"
+            "DATA ENDS\n"
+            "CODE SEGMENT\n"
+            "main PROC\n"
+            "cmp al, TableWords\n"
+            "ret\n"
+            "main ENDP\n"
+            "CODE ENDS\n"
+            "END\n"
+        )
+        tree = parser.parse_text(source)
+        parser.process_ast(source, tree)
+        cpp = Cpp(parser)
+
+        parser.symbols.get_global("main").visit(cpp)
+
+        self.assertIn("CMP(al, 4)", cpp.body)
+        self.assertNotIn("$", cpp.body)
+
+    def test_structure_type_symbol_renders_as_type_size_in_instruction_operands(self):
+        parser = Parser([])
+        source = (
+            "PACKET STRUCT\n"
+            "Tag db 0\n"
+            "Value dw 0\n"
+            "PACKET ENDS\n"
+            "CODE SEGMENT\n"
+            "main PROC\n"
+            "mov al, PACKET\n"
+            "add bx, PACKET\n"
+            "ret\n"
+            "main ENDP\n"
+            "CODE ENDS\n"
+            "END\n"
+        )
+        tree = parser.parse_text(source)
+        parser.process_ast(source, tree)
+        cpp = Cpp(parser)
+
+        parser.symbols.get_global("main").visit(cpp)
+
+        self.assertIn("R(al = 3;)", cpp.body)
+        self.assertIn("ADD(bx, 3)", cpp.body)
+
+    def test_equ_alias_to_proc_renders_as_call_target(self):
+        parser = Parser([])
+        source = (
+            "CODE SEGMENT\n"
+            "Target PROC\n"
+            "ret\n"
+            "Target ENDP\n"
+            "ProcAlias EQU Target\n"
+            "main PROC\n"
+            "call ProcAlias\n"
+            "ret\n"
+            "main ENDP\n"
+            "CODE ENDS\n"
+            "END\n"
+        )
+        tree = parser.parse_text(source)
+        parser.process_ast(source, tree)
+        cpp = Cpp(parser)
+
+        parser.symbols.get_global("main").visit(cpp)
+
+        self.assertIn("CALL(target,0)", cpp.body)
+        self.assertNotIn("CALL(procalias,0)", cpp.body)
+
+    def test_call_followed_by_code_data_uses_inline_return_address(self):
+        parser = Parser([])
+        source = (
+            "CODE SEGMENT\n"
+            "EQULTK EQU 0E7h\n"
+            "SYNCHR PROC\n"
+            "ret\n"
+            "SYNCHR ENDP\n"
+            "main PROC\n"
+            "call SYNCHR\n"
+            "db LOW OFFSET EQULTK\n"
+            "ret\n"
+            "main ENDP\n"
+            "CODE ENDS\n"
+            "END\n"
+        )
+        tree = parser.parse_text(source)
+        parser.process_ast(source, tree)
+        cpp = Cpp(parser)
+
+        parser.symbols.get_global("main").visit(cpp)
+
+        self.assertIn("J(CALLI(synchr,0,m2c::near_offset_external(dummy0_code_0_8)));", cpp.body)
+
+    def test_cmpsb_with_source_segment_override_renders_segment_macro(self):
+        parser = Parser([])
+        source = (
+            "CODE SEGMENT\n"
+            "main PROC\n"
+            "cmpsb cs:[si], es:[di]\n"
+            "ret\n"
+            "main ENDP\n"
+            "CODE ENDS\n"
+            "END\n"
+        )
+        tree = parser.parse_text(source)
+        parser.process_ast(source, tree)
+        cpp = Cpp(parser)
+
+        parser.symbols.get_global("main").visit(cpp)
+
+        self.assertIn("R(CMPSB_SEG(cs));", cpp.body)
+
+    def test_data_label_displacement_destination_stays_addressable(self):
+        parser = Parser([])
+        source = (
+            "DATA SEGMENT\n"
+            "Patch LABEL WORD\n"
+            "db 3 dup(?)\n"
+            "DATA ENDS\n"
+            "CODE SEGMENT\n"
+            "main PROC\n"
+            "mov Patch+1, bx\n"
+            "ret\n"
+            "main ENDP\n"
+            "CODE ENDS\n"
+            "END\n"
+        )
+        tree = parser.parse_text(source)
+        parser.process_ast(source, tree)
+        cpp = Cpp(parser)
+
+        parser.symbols.get_global("main").visit(cpp)
+
+        self.assertIn("patch", cpp.body)
+        self.assertIn("+1", cpp.body)
+        self.assertNotIn("R(1 = bx;)", cpp.body)
+
+    def test_data_label_difference_renders_as_offset_difference(self):
+        parser = Parser([])
+        source = (
+            "DATA SEGMENT\n"
+            "Table db 1,2,3\n"
+            "EndTable:\n"
+            "DATA ENDS\n"
+            "CODE SEGMENT\n"
+            "main PROC\n"
+            "mov cx, EndTable - Table\n"
+            "ret\n"
+            "main ENDP\n"
+            "CODE ENDS\n"
+            "END\n"
+        )
+        tree = parser.parse_text(source)
+        parser.process_ast(source, tree)
+        cpp = Cpp(parser)
+
+        parser.symbols.get_global("main").visit(cpp)
+
+        self.assertIn("R(cx = offset(data,endtable)-offset(data,table);)", cpp.body)
+
+    def test_offset_equ_code_label_plus_constant_keeps_symbolic_base(self):
+        parser = Parser([])
+        source = (
+            "CODE SEGMENT\n"
+            "Entry:\n"
+            "BufPtr EQU Entry+128\n"
+            "main PROC\n"
+            "mov bx, OFFSET BufPtr\n"
+            "mov dx, BufPtr\n"
+            "ret\n"
+            "main ENDP\n"
+            "CODE ENDS\n"
+            "END\n"
+        )
+        tree = parser.parse_text(source)
+        parser.process_ast(source, tree)
+        cpp = Cpp(parser)
+
+        parser.symbols.get_global("main").visit(cpp)
+
+        self.assertIn("R(bx = m2c::kentry+128;)", cpp.body)
+        self.assertIn("R(dx = m2c::kentry+128;)", cpp.body)
+        self.assertNotIn("= 128;", cpp.body)
+
+    def test_offset_external_word_keeps_shared_absolute_equate(self):
+        parser = Parser({"shared_equates": {"ramlow": "256"}})
+        source = (
+            "DATA SEGMENT\n"
+            "EXTRN RAMLOW:WORD\n"
+            "DATA ENDS\n"
+            "CODE SEGMENT\n"
+            "main PROC\n"
+            "mov bx, OFFSET RAMLOW\n"
+            "ret\n"
+            "main ENDP\n"
+            "CODE ENDS\n"
+            "END\n"
+        )
+        tree = parser.parse_text(source)
+        parser.process_ast(source, tree)
+        cpp = Cpp(parser)
+
+        parser.symbols.get_global("main").visit(cpp)
+
+        self.assertIn("R(bx = 256;)", cpp.body)
+        self.assertNotIn("near_offset_external(ramlow)", cpp.body)
+
+    def test_unresolved_continuation_data_reference_uses_external_offset(self):
+        parser = Parser({"filenames": ["math1.asm", "math2.asm"], "mergeprocs": "separate"})
+        source = (
+            "CODE SEGMENT\n"
+            "main PROC\n"
+            "mov bx, WORD PTR FacValue\n"
+            "mov WORD PTR FacValue, bx\n"
+            "mov di, OFFSET FacValue\n"
+            "mov si, OFFSET ?CSLAB\n"
+            "ret\n"
+            "main ENDP\n"
+            "CODE ENDS\n"
+            "END\n"
+        )
+        tree = parser.parse_text(source)
+        parser.process_ast(source, tree)
+        cpp = Cpp(parser, "math2.cpp")
+
+        parser.symbols.get_global("main").visit(cpp)
+
+        self.assertIn("raddr(ds,m2c::near_offset_external(facvalue))", cpp.body)
+        self.assertIn("R(di = m2c::near_offset_external(facvalue);)", cpp.body)
+        self.assertIn("R(si = m2c::kquecslab;)", cpp.body)
+        self.assertNotIn("raddr(ds,facvalue)", cpp.body)
+
+    def test_offset_of_materialized_code_label_uses_aggregate_dispatch_constant(self):
+        parser = Parser({
+            "filenames": ["producer.asm", "consumer.asm"],
+            "mergeprocs": "separate",
+        })
+        source = (
+            "CODE SEGMENT\n"
+            "PUBLIC Target\n"
+            "Target:\n"
+            "    ret\n"
+            "main PROC\n"
+            "    mov cx, OFFSET Target\n"
+            "    ret\n"
+            "main ENDP\n"
+            "CODE ENDS\n"
+            "END\n"
+        )
+        tree = parser.parse_text(source)
+        parser.process_ast(source, tree)
+        cpp = Cpp(parser)
+
+        parser.symbols.get_global("main").visit(cpp)
+
+        self.assertIn("R(cx = m2c::kglobal_target;)", cpp.body)
+        self.assertNotIn("R(cx = m2c::ktarget;)", cpp.body)
+
+    def test_nested_segment_restores_outer_location_counter(self):
+        parser = Parser([])
+        source = (
+            "CSEG SEGMENT PUBLIC 'CODESG'\n"
+            "ORG 100h\n"
+            "CopyLen=CopyEnd-CopyStart\n"
+            "StartBytes db 1\n"
+            "CopyStart=$\n"
+            "DSEG SEGMENT PUBLIC 'DATASG'\n"
+            "ORG 2\n"
+            "DataBytes db 2\n"
+            "DSEG ENDS\n"
+            "MoreCode db 3\n"
+            "CopyEnd=$\n"
+            "CSEG ENDS\n"
+            "END\n"
+        )
+
+        tree = parser.parse_text(source)
+        parser.process_ast(source, tree)
+
+        cseg_rows = {data.label: data.offset for data in parser.segments["cseg"].getdata()}
+        dseg_rows = {data.label: data.offset for data in parser.segments["dseg"].getdata()}
+
+        self.assertEqual(cseg_rows["startbytes"], 0x100)
+        self.assertEqual(cseg_rows["morecode"], 0x101)
+        self.assertEqual(dseg_rows["databytes"], 0x2)
+        self.assertEqual(Cpp(parser).render_equate_value(parser.symbols.get_global("copylen")), "258-257")
+
+    def test_two_pass_forward_location_counter_assignment_uses_captured_offsets(self):
+        source = (
+            "CSEG SEGMENT PUBLIC 'CODESG'\n"
+            "ORG 100h\n"
+            "CopyLen=CopyEnd-CopyStart\n"
+            "CopyStart=$\n"
+            "db 1,2,3\n"
+            "CopyEnd=$\n"
+            "CSEG ENDS\n"
+            "END\n"
+        )
+        with TemporaryDirectory() as tmp:
+            asm = Path(tmp) / "copy.asm"
+            asm.write_text(source, encoding="ascii")
+            parser = Parser([])
+            parser.parse_file(str(asm))
+            parser.next_pass(0)
+            parser.parse_file(str(asm))
+
+        self.assertEqual(Cpp(parser).render_equate_value(parser.symbols.get_global("copylen")), "259-256")
+
+    def test_assignment_to_data_label_records_addressable_alias(self):
+        parser = Parser([])
+        source = (
+            "DATA SEGMENT\n"
+            "Base LABEL WORD\n"
+            "db 4 dup(?)\n"
+            "DataAlias = Base + 1\n"
+            "DATA ENDS\n"
+            "END\n"
+        )
+        tree = parser.parse_text(source)
+        parser.process_ast(source, tree)
+
+        aliases = {alias.name: alias for alias in parser.data_aliases}
+
+        self.assertEqual(aliases["dataalias"].segment, "data")
+        self.assertEqual(aliases["dataalias"].offset, 1)
+
+    def test_public_code_label_after_data_is_not_trailing_data_alias(self):
+        parser = Parser([])
+        source = (
+            "CODE SEGMENT\n"
+            "PUBLIC EntryPoint\n"
+            "Table db 1,2,3\n"
+            "EntryPoint:\n"
+            "ret\n"
+            "CODE ENDS\n"
+            "END\n"
+        )
+        tree = parser.parse_text(source)
+        parser.process_ast(source, tree)
+
+        aliases = {alias.name for alias in parser.data_aliases}
+
+        self.assertNotIn("entrypoint", aliases)
+        self.assertIsInstance(parser.symbols.get_global("entrypoint"), op.label)
+
+    def test_code_label_after_code_segment_data_remains_callable(self):
+        parser = Parser([])
+        source = (
+            "CODE SEGMENT\n"
+            "Entry:\n"
+            "call Handler\n"
+            "ret\n"
+            "Table dw OFFSET Target\n"
+            "Handler:\n"
+            "call Target\n"
+            "DATA SEGMENT\n"
+            "EXTRN SomeVar:WORD\n"
+            "DATA ENDS\n"
+            "ret\n"
+            "Target:\n"
+            "ret\n"
+            "CODE ENDS\n"
+            "END Entry\n"
+        )
+        tree = parser.parse_text(source)
+        parser.process_ast(source, tree)
+
+        aliases = {alias.name for alias in parser.data_aliases}
+        rendered = Cpp(parser).write_procedures("", "sample.h")
+
+        self.assertNotIn("handler", aliases)
+        self.assertIsInstance(parser.symbols.get_global("handler"), op.label)
+        self.assertIn("J(CALL(mainproc,m2c::khandler));", rendered)
+        self.assertNotIn("CALL(__dispatch_call,handler)", rendered)
+
+    def test_code_segment_db_skip_opcode_skips_following_byte_on_fallthrough(self):
+        parser = Parser([])
+        source = (
+            "CSEG SEGMENT PUBLIC 'CODESG'\n"
+            "main PROC\n"
+            "start:\n"
+            "mov dx, 1234h\n"
+            "db 260O ; SKIP next opcode byte\n"
+            "SkipTarget:\n"
+            "push dx\n"
+            "mov ax, 1\n"
+            "ret\n"
+            "main ENDP\n"
+            "CSEG ENDS\n"
+            "END\n"
+        )
+        tree = parser.parse_text(source)
+        parser.process_ast(source, tree)
+
+        rendered = Cpp(parser).write_procedures("", "sample.h")
+
+        self.assertIn("R({al = 0x52;goto __m2c_skip_1;});", rendered)
+        self.assertIn("skiptarget:\n", rendered)
+        self.assertIn("R(PUSH(dx));\n__m2c_skip_1:", rendered)
+
+    def test_code_segment_data_byte_without_skip_comment_stays_data_only(self):
+        parser = Parser([])
+        source = (
+            "CSEG SEGMENT PUBLIC 'CODESG'\n"
+            "main PROC\n"
+            "start:\n"
+            "db 271O\n"
+            "ret\n"
+            "main ENDP\n"
+            "CSEG ENDS\n"
+            "END\n"
+        )
+        tree = parser.parse_text(source)
+        parser.process_ast(source, tree)
+
+        rendered = Cpp(parser).write_procedures("", "sample.h")
+
+        self.assertNotIn("__m2c_skip_", rendered)
+
+    def test_code_segment_skip_opcode_can_skip_symbolic_mov_immediate(self):
+        parser = Parser([])
+        source = (
+            "CSEG SEGMENT PUBLIC 'CODESG'\n"
+            "ERRSN EQU 2\n"
+            "ERRNF EQU 1\n"
+            "main PROC\n"
+            "SnErr: mov dl, LOW OFFSET ERRSN\n"
+            "db 271O ; SKIP over next error setter\n"
+            "NfErr: mov dl, LOW OFFSET ERRNF\n"
+            "Done: ret\n"
+            "main ENDP\n"
+            "CSEG ENDS\n"
+            "END\n"
+        )
+        tree = parser.parse_text(source)
+        parser.process_ast(source, tree)
+
+        rendered = Cpp(parser).write_procedures("", "sample.h")
+
+        self.assertIn("R(dl = 2 & 0xff;);", rendered)
+        self.assertIn("R(dl = 1 & 0xff;);\n__m2c_skip_1:", rendered)
 
     def test_member_access_promotes_scalar_external_to_unique_struct_type(self):
         parser = Parser([])
@@ -1349,7 +3212,7 @@ class Masm510StructCompatibilityTest(unittest.TestCase):
         structures = Cpp(parser).produce_structures(parser.structures)
         rendered = parser.parse_arg("TAB_HAS_MOUSE.[si]")
 
-        self.assertIn("static const word __m2c_member_tab_has_mouse = offsetof(tab, tab_has_mouse);", structures)
+        self.assertIn("static const word __m2c_member_tab_has_mouse = offsetof(struct tab, tab_has_mouse);", structures)
         self.assertEqual(rendered, "*((db*)raddr(ds,si+__m2c_member_tab_has_mouse))")
 
     def test_m510_old_struct_member_offset_constant_is_renamed_when_data_label_conflicts(self):
@@ -1369,8 +3232,8 @@ class Masm510StructCompatibilityTest(unittest.TestCase):
 
         structures = Cpp(parser).produce_structures(parser.structures)
 
-        self.assertIn("static const word __m2c_member_dummy8_0 = offsetof(endroute, dummy8_0);", structures)
-        self.assertNotIn("static const word dummy8_0 = offsetof(endroute, dummy8_0);", structures)
+        self.assertIn("static const word __m2c_member_dummy8_0 = offsetof(struct endroute, dummy8_0);", structures)
+        self.assertNotIn("static const word dummy8_0 = offsetof(struct endroute, dummy8_0);", structures)
 
     def test_struct_member_equ_alias_renders_offset_lvalue(self):
         parser = Parser([])
@@ -1389,6 +3252,60 @@ class Masm510StructCompatibilityTest(unittest.TestCase):
         rendered = parser.parse_arg("V_VIEW.VP_ZFT_HI")
 
         self.assertEqual(rendered, "*((dw*)((db*)&v_view+vp_zft_hi))")
+
+    def test_exported_code_symbols_dispatch_by_sidecar_offsets(self):
+        parser = Parser([])
+        label = op.label("shared_handler", proc="mainproc")
+        label.used = True
+        label.public_export = True
+        label.real_offset = 0x2345
+        parser.symbols.set_global("shared_handler", label)
+
+        cpp = Cpp(parser)
+        offsets = cpp.export_defined_code_symbol_offsets()
+
+        self.assertEqual(offsets["shared_handler"], 0x2345)
+
+        parser.exported_code_symbol_offsets = {"shared_handler": 0x2345}
+        parser.exported_callable_code_symbol_offsets = {"shared_handler": 0x2345}
+        declarations = cpp._produce_external_code_declarations()
+        dispatcher = cpp._produce_external_code_dispatcher()
+
+        self.assertIn("extern bool shared_handler(m2c::_offsets, struct m2c::_STATE*);", declarations)
+        self.assertIn("case 0x2345:", dispatcher)
+        self.assertIn("return shared_handler(0, _state);", dispatcher)
+
+    def test_non_public_code_labels_do_not_export_for_merged_dispatch(self):
+        parser = Parser([])
+        label = op.label("local_handler", proc="mainproc")
+        label.used = True
+        label.real_offset = 0x3456
+        parser.symbols.set_global("local_handler", label)
+
+        cpp = Cpp(parser)
+        offsets = cpp.export_defined_code_symbol_offsets()
+        parser.exported_code_symbol_offsets = {}
+        parser.exported_callable_code_symbol_offsets = {}
+
+        self.assertEqual(offsets["local_handler"], 0x3456)
+        self.assertNotIn("local_handler", cpp._produce_external_code_declarations())
+        self.assertNotIn("local_handler", cpp._produce_external_code_dispatcher())
+
+    def test_sidecar_code_offsets_reserve_synthetic_begin_dispatch_id(self):
+        self.assertEqual(Cpp(Parser([])).export_defined_code_symbol_offsets()["begin"], 0x1001)
+
+    def test_aggregate_code_offsets_keep_exported_main_label(self):
+        exported, callable_offsets = Cpp(Parser([]))._assign_aggregate_code_offsets(
+            {"main": 0x2000},
+            {"main"},
+            {"main"},
+            {},
+            set(),
+            set(),
+        )
+
+        self.assertIn("main", exported)
+        self.assertIn("main", callable_offsets)
 
 
 if __name__ == "__main__":

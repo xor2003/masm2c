@@ -92,6 +92,35 @@ _DATA_DECL_NAMES = {
     "fword", "qword", "tbyte", "real4", "real8", "real10",
 }
 
+_INSTRUCTION_MNEMONIC_ALT: Optional[str] = None
+
+
+def _instruction_mnemonic_alt() -> str:
+    """Alternation of every instruction mnemonic declared in the MASM grammar.
+
+    Listing dump bytes can spell data directive keywords ("EB DD jmp ..."):
+    a ``DD`` token followed by an instruction mnemonic is a dumped byte, not a
+    directive, so the hex dump token in front of it must be stripped too.
+    """
+    global _INSTRUCTION_MNEMONIC_ALT
+    if _INSTRUCTION_MNEMONIC_ALT is None:
+        names: list[str] = []
+        try:
+            grammar_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "_masm61.lark")
+            with open(grammar_path, encoding="utf-8") as grammar_file:
+                grammar = grammar_file.read()
+            mnemonic_rule = re.search(r"(?m)^!mnemonic:\s*(.*)$", grammar)
+            if mnemonic_rule:
+                names = sorted(
+                    set(re.findall(r'"([A-Za-z]+)"i', mnemonic_rule.group(1))),
+                    key=len,
+                    reverse=True,
+                )
+        except OSError:
+            names = []
+        _INSTRUCTION_MNEMONIC_ALT = "|".join(names) if names else r"(?!)x"
+    return _INSTRUCTION_MNEMONIC_ALT
+
 
 @dataclass
 class _PendingParseState:
@@ -320,7 +349,8 @@ class Parser:
         self.data_aliases: list[op.var] = []
         self.code_offset_aliases: list[op.var] = []
         self.public_symbols: set[str] = set()
-        self.extern_code_refs: set[str] = set()
+        self.code_label_renames: list[tuple[str, str, str]] = []
+        self.external_proc_data_refs: dict[str, str] = {}
         self.flow_terminated = True
         self.need_label = True
 
@@ -365,6 +395,7 @@ class Parser:
         self._last_statement_was_data = False
         self._text_macro_expansion_id = 0
         self._text_macro_symbols: dict[str, int | str] = {}
+        self._record_pass_through_assignments = True
         self._text_equates: dict[str, str] = {}
 
         self.struct_names_stack: list[str] = []
@@ -458,6 +489,8 @@ class Parser:
             return Parser._parse_hex(v)
         elif re.match(r"^[01]+[Bb]$", v):
             return Parser._parse_binary(v)
+        elif re.match(r"^[+-]?[0-9][0-9A-Fa-f]*[A-Fa-f][0-9A-Fa-f]*$", v):
+            return int(v, 16)
         else:
             return Parser._parse_decimal(v)
 
@@ -525,7 +558,9 @@ class Parser:
             
         # Register label with procedure and symbol table
         self.proc.add_label(mangled_name, label_obj)
-        self._pending_data_label = mangled_name
+        # '@'-style code locals get proc-scoped mangled names and can only ever
+        # be jump targets; they must not attach to a following data item.
+        self._pending_data_label = "" if str(name).lstrip().startswith("@") else mangled_name
         existing = self.symbols.get_global(mangled_name)
         if (
             existing is not None
@@ -540,6 +575,9 @@ class Parser:
             and existing.extern
         ):
             self.symbols.reset_global(mangled_name, label_obj)
+            self.externals_procs.discard(mangled_name)
+            self.extern_code_refs.discard(mangled_name)
+            self.extern_code_refs.discard(name)
         elif existing is not None and self.pass_number == 1 and self._is_shared_equate_seed(mangled_name):
             self._clear_shared_equate_seed(mangled_name)
             self.symbols.reset_global(mangled_name, label_obj)
@@ -572,7 +610,7 @@ class Parser:
         previous_index = next(
             (
                 index for index in range(len(self.proc.stmts) - 1, -1, -1)
-                if isinstance(self.proc.stmts[index], op.label) and self.proc.stmts[index].name == name
+                if isinstance(stmt := self.proc.stmts[index], op.label) and stmt.name == name
             ),
             None,
         )
@@ -841,6 +879,11 @@ class Parser:
         try:
             return self.eval_expression_to_int(repeat)
         except Exception:
+            logging.warning(
+                "Could not evaluate repeat count %r in %s; using 0",
+                self.render_expression(repeat),
+                self._current_file or "<unknown>",
+            )
             return 0
 
     def _eval_numeric_expression_tree(self, value: Any) -> int | None:
@@ -913,6 +956,20 @@ class Parser:
             return None
         if isinstance(value, Token):
             if value.type in {"INTEGER", "SIGNED_INT", "DECIMAL"}:
+                # Processed INTEGER tokens carry digits only in .value with the
+                # radix in .start_pos and the sign in .line (see pgparser.INTEGER).
+                radix = getattr(value, "start_pos", None)
+                sign = getattr(value, "line", None)
+                if (
+                    isinstance(radix, int)
+                    and 2 <= radix <= 16
+                    and sign in (-1, 1)
+                    and re.fullmatch(r"[0-9a-zA-Z]+", str(value))
+                ):
+                    try:
+                        return sign * int(str(value), radix)
+                    except ValueError:
+                        pass
                 return self.parse_int(str(value))
             if value.type == STRINGCNST and len(str(value)) == 1:
                 return ord(str(value))
@@ -966,6 +1023,10 @@ class Parser:
         return direct
 
     def parse_include_directive(self, include_name: str):
+        if self.itislst:
+            # Listing files already carry the include contents inline (marked 'C');
+            # re-reading the include would define its symbols a second time.
+            return
         fullpath = self.resolve_include_path(include_name)
         return self.parse_include_file_lines(fullpath)
 
@@ -1016,8 +1077,8 @@ class Parser:
         self.add_extern(label, symbol_type)
 
     def declare_public_symbols(self, labels: list[str]) -> None:
-        for label in labels:
-            mangled = self.mangle_label(label)
+        for name in labels:
+            mangled = self.mangle_label(name)
             self.public_symbols.add(mangled)
             existing = self.symbols.get_global(mangled)
             if isinstance(existing, op.label):
@@ -1161,7 +1222,19 @@ class Parser:
 
     def resolve_label_for_expression(self, value_in: Token | str, expr: Expression) -> str:
         value = self.normalize_label(value_in)
-        if g := self.lookup_global_symbol(value):
+        g = self.lookup_global_symbol(value)
+        if g is None and str(value_in).lstrip().startswith("@"):
+            # '@'-names defined at top level (e.g. IDA-style proc names) are
+            # scoped to the enclosing implicit 'mainproc', while references
+            # from inside another proc are scoped to that proc.  Fall back to
+            # the top-level scope, then to the unscoped global name.
+            mangled = Parser.mangle_label(value_in)
+            for alt in (f"mainproc_{mangled}", mangled):
+                if alt != value and self.lookup_global_symbol(alt) is not None:
+                    value = alt
+                    g = self.lookup_global_symbol(alt)
+                    break
+        if g:
             from masm2c.proc import Proc
             from .enumeration import IndirectionType
             if isinstance(g, (op._equ, op._assignment)):
@@ -1204,6 +1277,12 @@ class Parser:
     def flush_pending_source_comment(self, *, line_number: int=0) -> None:
         text = self.consume_pending_source_comment()
         if not text:
+            return
+        if self.proc is None:
+            # Defer: a bare comment/annotation must not anchor a synthetic proc
+            # to a non-instruction address. Keep the comment pending so the
+            # next real statement creates the proc named by its own offset.
+            self._pending.source_comment = text
             return
         self.make_sure_proc_exists(line_number, text)
         assert self.proc
@@ -1273,15 +1352,112 @@ class Parser:
             lambda m: f"; {m.group(1)}",
             content,
         )
-        # Remove MASM listing location/object columns.
-        content = re.sub(r"(?m)^\s*=\s*[+-]?[0-9A-F]{1,8}\s+", "", content)
-        content = re.sub(r"(?m)^\s*=\s*[A-Za-z_@$?.][A-Za-z0-9_@$?.]*\s+", "", content)
+        # MASM diagnostic lines embedded in listings: "FILE.ASM(620): warning ..."
         content = re.sub(
-            r"(?m)^\s*[0-9A-F]{4,8}(?:\s+(?!(?:DB|DW|DD|DQ|DT)\b)[0-9A-F]{2,8}/?)*(?:\s+[A-Za-z])?\s+",
+            r"(?mi)^([^\t;\r\n]*\.[A-Za-z0-9]+\(\d+\)\s*:\s*(?:warning|error)[^\r\n]*)$",
+            lambda m: f"; {m.group(1)}",
+            content,
+        )
+        # MASM listing symbol/segment summary tables: section headers,
+        # "Name . . . . Type Value Attr" dot-leader rows, and the
+        # "N Warnings"/"N Errors" trailer are not source code.
+        content = re.sub(
+            r"(?mi)^\s*((?:Segments and Groups|Symbols)\s*:|N a m e[^\r\n]*|\d+\s+(?:Warnings|Errors)\s*)\r?$",
+            lambda m: f"; {m.group(1)}",
+            content,
+        )
+        content = re.sub(
+            r"(?m)^([^\t;\r\n]*\S\s+\.(?:\s*\.)+[^\r\n]*)\r?$",
+            lambda m: f"; {m.group(1)}",
+            content,
+        )
+        # Pure object-dump continuation lines ("   ] 0000 09 01 003A", "  0003 [",
+        # " 03E9 0098 00A8", " 0310 R 0073 00A8") contain no source text. They must
+        # be deleted outright - a blanked line would still break "\" continuations.
+        # Require at least one digit so letter-only names can never match.
+        content = re.sub(
+            r"(?m)^[^\S\r\n]*(?=[^\r\n]*[0-9])(?!.*\bD[BDTQW]\b)(?:[\[\]]|[Rr]|[0-9A-F]{1,8})(?:[^\S\r\n]+(?:[\[\]]|[Rr]|[0-9A-F]{1,8}))*[^\S\r\n]*\r?\n",
             "",
             content,
         )
-        content = re.sub(r"(?m)^\s*[0-9A-F]{2}:\s+(?:[0-9A-F]{2}\s+)+", "", content)
+        # MASM listing rows carry an expansion-depth column ("0300 00  1  DB COL"):
+        # every row with a depth digit is the assembler's own expansion of a
+        # REPT/IRP/MACRO/IF body that the parser expands itself - keeping the row
+        # would double-emit it (e.g. duplicate "PosSubDiv&N:" labels).
+        content = re.sub(
+            r"(?m)^[ \t]*[0-9A-F]{4,8}(?:[^\S\r\n]+(?:[0-9A-F]{2,8}|R\b|C\b))*[^\S\r\n]+[1-9](?=[^\S\r\n])[^\r\n]*\r?\n",
+            "",
+            content,
+        )
+        # A relocatable-operand marker "R" at the end of the byte dump can glue
+        # onto a label that begins in the text column
+        # (" 12B5  A3 0254 RSetCosBrgError:").  The glued name can never be
+        # referenced - split the marker off when the remainder is used
+        # elsewhere in the listing as a symbol.
+        def _split_glued_r_marker_label(m: "re.Match[str]") -> str:
+            label = m.group("label")
+            if re.search(
+                r"(?i)(?<![A-Za-z0-9_@$?.])" + re.escape(label) + r"(?![A-Za-z0-9_@$?.])",
+                content,
+            ):
+                return f"{m.group('head')}{label}:"
+            return m.group(0)
+
+        content = re.sub(
+            r"(?m)^(?P<head>[ \t]*[0-9A-F]{4,8}(?:[ \t]+[0-9A-F]{2,8})+[ \t]+)R(?P<label>[A-Za-z_@$?.][A-Za-z0-9_@$?.]*):",
+            _split_glued_r_marker_label,
+            content,
+        )
+        # Remove MASM listing location/object columns.
+        # "=" equate-value columns may hold multi-token expressions truncated at
+        # the tab column boundary (" = OFFSET MobSortBins+(MSOR\t") or before a
+        # listing marker letter (" = MOB_REC_SIZE+VIEW_REC_SI   C _DRONE_TYPE").
+        content = re.sub(r"(?m)^\s*=\s+[^\t\r\n;]*?(?:\t+|\s+[A-Z]\s+)", "", content)
+        content = re.sub(r"(?m)^\s*=\s*[+-]?[0-9A-F]{1,8}\s+", "", content)
+        content = re.sub(r"(?m)^\s*=\s*[A-Za-z_@$?.][A-Za-z0-9_@$?.]*\s+", "", content)
+        content = re.sub(r"(?m)^\s*=\s*[A-Za-z_@$?.][A-Za-z0-9_@$?.+\-*/()]*\s+", "", content)
+        # Wrapped "=" value columns leave lone expression-tail lines (e.g. "   ZE+DRONE_TYPE").
+        content = re.sub(r"(?m)^\s+[A-Za-z_@$?.][A-Za-z0-9_@$?.]*[+\-*/][A-Za-z0-9_@$?.+\-*/()]*\s*$", "", content)
+        # A byte/word value dump can glue to its label ("0366 FFFEScanOffset DW").
+        # This only applies when the hex run directly follows the offset column:
+        # with a separate dump token ("0000 00  AAAMode1 DB") the whole token is
+        # the label. Dump width matches the directive: DB=2, DW=4, DD=8, DQ=16,
+        # DT=20 hex digits; keep a >=3-char label tail.
+        for _width in (2, 4, 8, 16, 20):
+            _dir = {2: "DB", 4: "DW", 8: "DD", 16: "DQ", 20: "DT"}[_width]
+            content = re.sub(
+                r"(?m)^(\s*[0-9A-F]{4,8}[^\S\r\n]+)[0-9A-F]{%d}(?=[A-Za-z_@$?.][A-Za-z0-9_@$?.]{2,}[^\S\r\n]+%s\b)" % (_width, _dir),
+                r"\1",
+                content,
+            )
+        # A dump token immediately before a data directive only counts when its
+        # width matches the directive (DB=2, DW=4, DD=8, DQ=16, DT=20); a
+        # different width is a real label ("000C 0000 A1 DW 0"). The "directive"
+        # itself is a dumped byte when an instruction mnemonic follows it
+        # ("04A2 EB DD  jmp Print$Loop"; "F7 DD  XNeg1: neg bp" label form).
+        _mnem = _instruction_mnemonic_alt()
+        content = re.sub(
+            r"(?m)^\s*[0-9A-F]{4,8}(?:\s+(?:[0-9][0-9A-F]{1,7}/?|(?!(?:DB|DW|DD|DQ|DT)\b)(?:[0-9A-F]{2}(?=[^\S\r\n]+DB\b)|[0-9A-F]{4}(?=[^\S\r\n]+DW\b)|[0-9A-F]{8}(?=[^\S\r\n]+DD\b)|[0-9A-F]{16}(?=[^\S\r\n]+DQ\b)|[0-9A-F]{20}(?=[^\S\r\n]+DT\b)|[0-9A-F]{2,8}(?=[^\S\r\n]+D[BDTQW]\b[^\S\r\n]+(?:(?i:" + _mnem + r")\b|[A-Za-z_@$?.][A-Za-z0-9_@$?.]*:))|[0-9A-F]{2,8}(?![^\S\r\n]+D[BDTQW]\b))(?!\s*(?:LABEL|PROC|SEGMENT|ENDS|STRUCT|UNION|RECORD|MACRO|ENDM|EQU\b|=|ORG|EVEN|ALIGN|EXTRN|EXTERN|PUBLIC|COMM|INCLUDE|INCLUDELIB|END\b|\S+\s*<))/?|[A-Za-z]|(?:DB|DD)(?=\s+(?:[A-Za-z_@$?.][A-Za-z0-9_@$?.]*\s*<|\d+\s+[A-Za-z_@$?.]))))*\s+",
+            "",
+            content,
+        )
+
+        content = re.sub(r"(?m)^\s*[0-9A-F]{2}:\s+(?:(?:[0-9A-F]{2,8}|R)\s+)+", "", content)
+        # Byte dumps can begin with or contain hex bytes that spell a data
+        # mnemonic ("DD 6A 69  C  DB ...", "DE DD 6A 69  C  DB ..."): when a
+        # single-letter listing marker follows, everything before it is dump.
+        content = re.sub(
+            r"(?m)^\s*(?:(?!(?:DB|DW|DD|DQ|DT)\b)[0-9A-F]{2,8}\s+)*(?:DB|DD|DW|DQ|DT)(?:\s+[0-9A-F]{2,8})*\s+[A-Z]\s+",
+            "",
+            content,
+        )
+        # Long labels can overflow into the listing offset column, gluing them
+        # together (" 0000PrintDebugInfo PROC FAR", " 0000EXPCODE SEGMENT").
+        # 16-bit offsets are exactly 4 hex digits and must contain a digit so
+        # letter-only names like "FACEoff:" survive.
+        # MASM labels can never start with a digit, so a digit-leading 4-hex
+        # token glued to a label char is unambiguously an offset+label split.
+        content = re.sub(r"(?m)^\s*(?=[0-9][0-9A-F]{3}[A-Za-z_@$?.])[0-9][0-9A-F]{3}(?=[A-Za-z_@$?.])", "", content)
         content = re.sub(r"(?m)^\s*----(?:\s+[0-9A-F]{1,8})?(?:\s+[A-Za-z])?\s+", "", content)
         content = re.sub(r"(?m)^\s*[0-9A-F]{1,8}\s+[A-Za-z]\s+(?=[A-Za-z_@$?.]|@@)", "", content)
         content = re.sub(r"(?m)^\s*[\[\]]\s*$", "", content)
@@ -1297,6 +1473,7 @@ class Parser:
         content = re.sub(r"(?m)^C\s+", "", content)
         content = re.sub(r"(?m)^\s*[A-Z]\s+(?=[A-Za-z_@$?.;])", "", content)
         content = re.sub(r"(?m)^C\s+(?=;)", "", content)
+        content = re.sub(r"(?m)^\s*C\s*$", "", content)
         if end_match := re.search(r"(?mi)^\s*END\b[^\r\n]*", content):
             end_pos = end_match.end()
             content = content[:end_pos] + "\n"
@@ -1413,7 +1590,7 @@ class Parser:
             return True
         for token_type in ("LABEL", "COMMON"):
             for token in Token_.find_tokens(value, token_type) or []:
-                name = self.mangle_label(token)
+                name = self.mangle_label(str(token))
                 if name in seen:
                     continue
                 symbol = self.symbols.get_global(name)
@@ -1519,7 +1696,7 @@ class Parser:
                 max(1, int(symbol.size)),
                 symbol.original_type or self._alias_type_for_size(symbol.size),
             )
-        if isinstance(symbol, Data) and getattr(symbol, "segment", ""):
+        if isinstance(symbol, Data) and symbol.segment:
             return (
                 symbol.segment,
                 int(symbol.offset),
@@ -1804,6 +1981,10 @@ class Parser:
 
     def action_include(self, name):
         logging.info("including %s", name)
+        if self.itislst:
+            # Listing files already carry the include contents inline (marked 'C');
+            # re-reading the include would define its symbols a second time.
+            return
         self.parse_file(name)
 
     def action_endp(self):
@@ -2041,7 +2222,7 @@ class Parser:
         previous_index = next(
             (
                 index for index in range(len(self.proc.stmts) - 1, -1, -1)
-                if isinstance(self.proc.stmts[index], op.label) and self.proc.stmts[index].name == name
+                if isinstance(stmt := self.proc.stmts[index], op.label) and stmt.name == name
             ),
             None,
         )
@@ -2250,7 +2431,7 @@ class Parser:
         absolute_offset = 0
         real_seg = 0
         if self.itislst and (m := re.match(
-            r".* ;~ (?P<segment>[0-9A-Fa-f]{4}):(?P<offset>[0-9A-Fa-f]{4})", raw,
+            r".*;~ (?P<segment>[0-9A-Fa-f]{4}):(?P<offset>[0-9A-Fa-f]{4})", raw,
         )):
             real_offset = int(m["offset"], 16)
             real_seg = int(m["segment"], 16)
@@ -2336,6 +2517,12 @@ class Parser:
                 continue
 
             assignment = re.match(r"^(?P<name>[A-Za-z_@$?][A-Za-z0-9_@$?]*)\s*=\s*(?P<expr>.+)$", code)
+            if not assignment:
+                assignment = re.match(
+                    r"^(?P<name>[A-Za-z_@$?][A-Za-z0-9_@$?]*)\s+EQU\s+(?P<expr>[^<].*)$",
+                    code,
+                    re.IGNORECASE,
+                )
             if assignment:
                 symbols[assignment.group("name").lower()] = self._eval_repeat_expression(
                     assignment.group("expr"),
@@ -2380,6 +2567,25 @@ class Parser:
         return bool(
             re.match(r"^[A-Za-z_@$?][A-Za-z0-9_@$?]*\s+MACRO\b", code, re.IGNORECASE)
             or re.match(r"^(?:REPT|REPEAT|IRP|IRPC|WHILE)\b", code, re.IGNORECASE)
+        )
+
+    @staticmethod
+    def _is_text_macro_control_line(line: str) -> bool:
+        """Lines consumed as control flow by macro/conditional expansion.
+
+        A ``label:`` prefix glued onto one of these would be swallowed by the
+        directive processing, so the label must be emitted on its own line.
+        """
+        code = line.split(";", 1)[0].strip()
+        return bool(
+            re.match(
+                r"^(?:IF(?:E|B|NB|DEF|NDEF|DIF|DIFI|IDN|IDNI|1|2)?|"
+                r"ELSEIF(?:E|B|NB|DEF|NDEF|DIF|DIFI|IDN|IDNI|1|2)?|ELSE|ENDIF|"
+                r"REPT|REPEAT|IRP|IRPC|FOR|FORC|WHILE|ENDM|EXITM|GOTO)\b",
+                code,
+                re.IGNORECASE,
+            )
+            or re.match(r"^[A-Za-z_@$?][A-Za-z0-9_@$?]*\s+MACRO\b", code, re.IGNORECASE)
         )
 
     def _strip_text_macro_definitions(self, content: str) -> str:
@@ -2467,21 +2673,75 @@ class Parser:
 
     def _expand_repeat_iteration(self, body: list[str], symbols: dict[str, int]) -> list[str]:
         rows: list[str] = []
+        # Conditional-assembly directives inside a REPT body must be evaluated
+        # inline: "=" symbols (e.g. INDEX) hold their per-iteration value only at
+        # the directive's position in the body.
+        cond_stack: list[list[bool]] = []  # [parent_active, branch_taken, current_active]
         for line in body:
             code = line.split(";", 1)[0].strip()
+            directive = re.match(r"^(IFE?|ELSEIFE?|ELSE|ENDIF)\b\s*(.*)$", code, re.IGNORECASE)
+            if directive:
+                keyword, payload = directive.group(1).upper(), directive.group(2)
+                if keyword.startswith("IF"):
+                    parent_active = all(frame[2] for frame in cond_stack)
+                    cond = bool(self._eval_repeat_conditional(payload, symbols))
+                    if keyword == "IFE":
+                        cond = not cond
+                    current = parent_active and cond
+                    cond_stack.append([parent_active, current, current])
+                elif keyword.startswith("ELSEIF"):
+                    if cond_stack:
+                        frame = cond_stack[-1]
+                        if not frame[0] or frame[1]:
+                            frame[2] = False
+                        else:
+                            cond = bool(self._eval_repeat_conditional(payload, symbols))
+                            if keyword == "ELSEIFE":
+                                cond = not cond
+                            frame[2] = cond
+                            frame[1] = cond
+                elif keyword == "ELSE":
+                    if cond_stack:
+                        frame = cond_stack[-1]
+                        frame[2] = frame[0] and not frame[1]
+                        frame[1] = True
+                elif keyword == "ENDIF":
+                    if cond_stack:
+                        cond_stack.pop()
+                continue
+            if not all(frame[2] for frame in cond_stack):
+                continue
             assignment = re.match(r"^(?P<name>[A-Za-z_@$?][A-Za-z0-9_@$?]*)\s*=\s*(?P<expr>.+)$", code)
             if assignment:
-                symbols[assignment.group("name").lower()] = self._eval_repeat_expression(
+                name = assignment.group("name").lower()
+                symbols[name] = self._eval_repeat_expression(
                     assignment.group("expr"),
                     symbols,
                 )
-                rows.append(line)
+                # '=' lines whose symbol is only consumed through %NAME text
+                # substitution are fully handled at expansion time. Symbols still
+                # referenced by ordinary (non-%) emitted text must reach the
+                # assembler, so the assignment line has to be kept.
+                if self._repeat_symbol_referenced(body, name, symbols):
+                    rows.append(line)
                 continue
             rows.append(self._substitute_repeat_percent_expressions(line, symbols))
         expanded = "".join(rows)
         if re.search(r"^\s*(?:REPT|REPEAT)\b", expanded, re.IGNORECASE | re.MULTILINE):
             return self._expand_repeat_blocks(expanded, symbols).splitlines(keepends=True)
         return rows
+
+    def _repeat_symbol_referenced(self, body: list[str], name: str, symbols: dict[str, int]) -> bool:
+        """Return true when a '='-assigned symbol is used by non-% body text."""
+        needle = re.compile(rf"\b{re.escape(name)}\b", re.IGNORECASE)
+        self_assign = re.compile(rf"^\s*{re.escape(name)}\s*=", re.IGNORECASE)
+        for body_line in body:
+            code = body_line.split(";", 1)[0].strip()
+            if self_assign.match(code):
+                continue
+            if needle.search(self._substitute_repeat_percent_expressions(body_line, symbols)):
+                return True
+        return False
 
     @staticmethod
     def _substitute_repeat_percent_expressions(line: str, symbols: dict[str, int]) -> str:
@@ -2492,6 +2752,12 @@ class Parser:
             return str(symbols.get(match.group("name").lower(), 0))
 
         return re.sub(r"%(?P<name>[A-Za-z_@$?][A-Za-z0-9_@$?]*)", replace, line)
+
+    def _eval_repeat_conditional(self, payload: str, symbols: dict[str, int]) -> int:
+        rendered = payload
+        for name, value in sorted(symbols.items(), key=lambda item: len(item[0]), reverse=True):
+            rendered = re.sub(rf"\b{re.escape(name)}\b", str(value), rendered, flags=re.IGNORECASE)
+        return self._evaluate_conditional_expression(rendered)
 
     @staticmethod
     def _eval_repeat_expression(expression: str, symbols: dict[str, int]) -> int:
@@ -2612,9 +2878,17 @@ class Parser:
 
     def _expand_text_macros(self, content: str) -> str:
         expanded = content
+        first_round = True
         for _ in range(20):
+            # '=' assignments are evaluated once per source occurrence: original
+            # lines are recorded on the first scan, lines emitted by macro bodies
+            # are recorded when _expand_text_macro_control_blocks emits them.
+            # Re-recording on later fixpoint rounds would re-evaluate
+            # self-mutating assignments like NUM=NUM-1 and corrupt the table.
+            self._record_pass_through_assignments = first_round
             next_expanded, changed = self._expand_text_macros_once(expanded)
             expanded = next_expanded
+            first_round = False
             if not changed:
                 return expanded
         return expanded
@@ -2643,13 +2917,15 @@ class Parser:
                 code,
             )
             if not match:
-                self._remember_text_macro_assignment_from_line(line)
+                if self._record_pass_through_assignments:
+                    self._remember_text_macro_assignment_from_line(line)
                 rows.append(line)
                 i += 1
                 continue
             macro = self._text_macros.get(match.group("name").lower())
             if macro is None:
-                self._remember_text_macro_assignment_from_line(line)
+                if self._record_pass_through_assignments:
+                    self._remember_text_macro_assignment_from_line(line)
                 rows.append(line)
                 i += 1
                 continue
@@ -2669,15 +2945,24 @@ class Parser:
             replacements.update(local_replacements)
             label = (match.group("label") or "").strip().rstrip(":")
             body_rows: list[str] = []
+            label_pending = bool(label)
             for body_line in macro.body:
                 if re.match(r"^\s*LOCAL\b", body_line, re.IGNORECASE):
                     continue
                 rendered = self._substitute_text_macro_args(body_line.lstrip(), replacements)
-                if label:
-                    body_rows.append(f"{match.group('ws')}{label}:\t{rendered}")
-                    label = ""
+                if label_pending and not rendered.strip():
+                    continue
+                if label_pending:
+                    if self._is_text_macro_control_line(rendered):
+                        body_rows.append(f"{match.group('ws')}{label}:\n")
+                        body_rows.append(match.group("ws") + rendered)
+                    else:
+                        body_rows.append(f"{match.group('ws')}{label}:\t{rendered}")
+                    label_pending = False
                 else:
                     body_rows.append(match.group("ws") + rendered)
+            if label_pending:
+                body_rows.append(f"{match.group('ws')}{label}:\n")
             expanded_body = self._normalize_rinit_alias_directives("".join(body_rows))
             rows.append(self._expand_text_macro_control_blocks(expanded_body))
             if sep and comment.strip():
@@ -3132,9 +3417,57 @@ class Parser:
 
     def _normalize_struct_instance_rows(self, content: str) -> str:
         rows: list[str] = []
+        code_only: str | None = None
         for line_no, line in enumerate(content.splitlines(keepends=True), start=1):
             code = line.split(";", 1)[0]
             mtch = _REGEX_STRUCT_INSTANCE_LINE.match(code) or _REGEX_STRUCT_DUP_INSTANCE_LINE.match(code)
+            if not mtch and self.is_listing_source():
+                # Listing data-dump words may survive before an anonymous
+                # struct instance (e.g. "0244 0000 F800 TNODE <0,-2048>");
+                # strip leading hex columns and retry.  A hex-shaped label
+                # ("A10 OBJECTHEADER <...>") is kept when it sits in the
+                # narrow label column or is referenced as a symbol elsewhere.
+                dump_match = re.match(
+                    r"^(?P<ws>\s*)(?P<dumps>(?:[0-9A-Fa-f]+[ \t]+)+?)(?P<rest>[A-Za-z_@$?.].*)$",
+                    code,
+                )
+                if dump_match:
+                    rest = dump_match.group("rest")
+                    for rx in (_REGEX_STRUCT_INSTANCE_LINE, _REGEX_STRUCT_DUP_INSTANCE_LINE):
+                        mtch = rx.match(rest)
+                        if mtch and self.match_known_structure_name(mtch.group("name")):
+                            break
+                        mtch = None
+                    if mtch:
+                        last = re.search(r"([0-9A-Fa-f]+)([ \t]+)$", dump_match.group("dumps"))
+                        tok, gap = last.group(1), last.group(2)
+                        struct_name = mtch.group("name")
+                        if len(gap) <= 2:
+                            is_label = True
+                        else:
+                            if code_only is None:
+                                code_only = "\n".join(
+                                    row.split(";", 1)[0] for row in content.splitlines()
+                                )
+                            is_label = bool(
+                                re.search(
+                                    rf"\b{re.escape(tok)}\b(?!\s+{re.escape(struct_name)}\b)",
+                                    code_only,
+                                )
+                            )
+                        if is_label:
+                            suffix = line[len(code):]
+                            if code.endswith("\n"):
+                                suffix = "\n" + suffix
+                            rows.append(f"{dump_match.group('ws')}{tok} {rest}{suffix}")
+                            continue
+                        ws = dump_match.group("ws")
+                        suffix = line[len(code):]
+                        if code.endswith("\n"):
+                            suffix = "\n" + suffix
+                        prefix = f"{ws}__m2c_structrow_{self.__current_file_hash[:8]}_{line_no} "
+                        rows.append(prefix + rest + suffix)
+                        continue
             if mtch and self.match_known_structure_name(mtch.group("name")):
                 prefix = f'{mtch.group("ws")}__m2c_structrow_{self.__current_file_hash[:8]}_{line_no} '
                 line = prefix + line[len(mtch.group("ws")):]
@@ -3344,6 +3677,12 @@ class Parser:
                     logging.debug("Post-lex fallback also failed (%s): %s", type(ex_fallback).__name__, ex_fallback)
             if isinstance(ex, UnexpectedToken):
                 logging.exception("Parse failure: [%s] line=%s column=%s", ex.token, getattr(ex, "line", "?"), getattr(ex, "column", "?"))
+                try:
+                    _lines = text.splitlines()
+                    _ln = getattr(ex, "line", 0) or 0
+                    logging.error("Failed source text around line %s: %r", _ln, _lines[_ln - 1] if 0 < _ln <= len(_lines) else "?")
+                except Exception:
+                    pass
             else:
                 logging.exception("Parse failure: %s", ex)
             sys.exit(9)
@@ -3530,7 +3869,18 @@ class Parser:
 
         s = self.structures[type]
         number = 1
-        if isinstance(args, list) and len(args) > 2 and isinstance(args[1], str) and args[1] == "dup":
+        if (
+            isinstance(args, list)
+            and args
+            and isinstance(args[0], Tree)
+            and args[0].data == "structdup"
+            and len(args[0].children) >= 2
+        ):
+            dup_children = args[0].children
+            number = self.evaluate_repeat_count(cast(Expression, dup_children[0]))
+            inst_list = dup_children[1]
+            args = inst_list.children if isinstance(inst_list, Tree) else inst_list
+        elif isinstance(args, list) and len(args) > 2 and isinstance(args[1], str) and args[1] == "dup":
             expr = Token_.find_tokens(args[0],"expr")
             assert isinstance(expr, Expression)
             number = self.eval_expression_to_int(expr)
@@ -3556,7 +3906,13 @@ class Parser:
         else:
             self.adjust_offset_to_real(raw, label)
             if label:
-                self.symbols.set_global(label,
+                if self.pass_number == 1 and self._is_shared_equate_seed(label):
+                    self._clear_shared_equate_seed(label)
+                    self.symbols.reset_global(label,
+                                op.var(number * s.getsize(), self.__cur_seg_offset, label, segment=self.__segment_name, \
+                                       original_type=type))
+                else:
+                    self.symbols.set_global(label,
                                 op.var(number * s.getsize(), self.__cur_seg_offset, label, segment=self.__segment_name, \
                                        original_type=type))
             self.__segment.append(d)
@@ -3906,7 +4262,7 @@ class Parser:
     def _register_provisional_external_code_target(self, operation: baseop) -> None:
         if self.test_mode:
             return
-        if operation.cmd not in {"call", "jmp"}:
+        if operation.cmd != "call" and not re.match(r"^(j[a-z]+|loop[a-z]*)$", operation.cmd):
             return
         labels = Token_.find_tokens(operation.children[0], "LABEL") if operation.children else []
         if not labels:
@@ -3920,7 +4276,10 @@ class Parser:
         self.extern_code_refs.add(name)
 
     def _register_direct_external_code_ref(self, operation: baseop) -> None:
-        if operation.cmd not in {"call", "jmp"} or not operation.children:
+        if (
+            operation.cmd != "call"
+            and not re.match(r"^(j[a-z]+|loop[a-z]*)$", operation.cmd)
+        ) or not operation.children:
             return
         labels = Token_.find_tokens(operation.children[0], "LABEL") or []
         if len(labels) != 1:
@@ -3937,15 +4296,14 @@ class Parser:
                 self.extern_code_refs.add(name)
 
     def _offset_label_names(self, value: Any) -> list[str]:
+        names: list[str] = []
         if isinstance(value, Tree):
             if value.data == "offsetdir":
                 return [str(label) for label in (Token_.find_tokens(value, "LABEL") or [])]
-            names: list[str] = []
             for child in value.children:
                 names.extend(self._offset_label_names(child))
             return names
         if isinstance(value, list):
-            names: list[str] = []
             for child in value:
                 names.extend(self._offset_label_names(child))
             return names

@@ -6,9 +6,21 @@
 #if defined(_PROTECTED_MODE)
 //  #define raddr(segment,offset) ((db *)&m2c::m+(db)(offset)+selectors[segment])
 static inline db* raddr_(dw segment,dw offset) {return ((db *)&m+(dw)(offset)+selectors[segment]);}
+static inline db* stack_raddr_(dw segment,dw offset) {return raddr_(segment,offset);}
 #else
  //#define raddr(segment,offset) (((db *)&m2c::m + ((segment)<<4) + (offset) ))
-static inline db* raddr_(dw segment,dw offset) {return (db *)&m + (segment<<4) + offset;}
+	static inline db* raddr_(dw segment,dw offset) {
+	    if (db* linked_code = linked_code_segment_raddr(segment, offset)) {
+	        return linked_code;
+	    }
+	    if (db* linked_data = linked_data_segment_raddr(segment, offset)) {
+	        return linked_data;
+	    }
+	    return (db *)&m + (segment<<4) + offset;
+	}
+	static inline db* stack_raddr_(dw segment,dw offset) {
+	    return (db *)&m + (segment<<4) + offset;
+	}
 #endif
 
  #define offset(segment,name) ((db*)(&name)-(db*)(&segment))
@@ -21,19 +33,22 @@ static inline db* raddr_(dw segment,dw offset) {return (db *)&m + (segment<<4) +
  #define REPE if (cx) {AFFECT_ZFifz(0);};cx++;while (--cx != 0 && GET_ZF())
  #define REPNE if (cx) {AFFECT_ZFifz(1);};cx++;while (--cx != 0 && !GET_ZF())
  #define XLAT {al = *m2c::raddr_(ds,bx+al);}
- #define CMPSB \
+ #define CMPSB CMPSB_SEG(ds)
+ #define CMPSB_SEG(srcseg) \
 	{  \
-			db* src=realAddress(si,ds); db* dest=realAddress(di,es); \
+			db* src=realAddress(si,srcseg); db* dest=realAddress(di,es); \
 			CMP(*src, *dest); di+=(GET_DF()==0)?1:-1; si+=(GET_DF()==0)?1:-1; \
 	}
- #define CMPSW \
+ #define CMPSW CMPSW_SEG(ds)
+ #define CMPSW_SEG(srcseg) \
 	{  \
-			dw* src=(dw*)realAddress(si,ds); dw* dest=(dw*)realAddress(di,es); \
+			dw* src=(dw*)realAddress(si,srcseg); dw* dest=(dw*)realAddress(di,es); \
 			CMP(*src, *dest); di+=(GET_DF()==0)?2:-2; si+=(GET_DF()==0)?2:-2; \
 	}
- #define CMPSD \
+ #define CMPSD CMPSD_SEG(ds)
+ #define CMPSD_SEG(srcseg) \
 	{  \
-			dd* src=(dd*)realAddress(si,ds); dd* dest=(dd*)realAddress(di,es); \
+			dd* src=(dd*)realAddress(si,srcseg); dd* dest=(dd*)realAddress(di,es); \
 			CMP(*src, *dest); di+=(GET_DF()==0)?4:-4; si+=(GET_DF()==0)?4:-4; \
 	}
 
@@ -114,4 +129,3 @@ static inline db* raddr_(dw segment,dw offset) {return (db *)&m + (segment<<4) +
 
 
 #endif
-

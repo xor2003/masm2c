@@ -3,6 +3,8 @@
 
 static inline db* raddr_(dw segment,dd offset) {return reinterpret_cast<db *>(offset);}
 
+static inline db* stack_raddr_(dw segment,dd offset) {return raddr_(segment,offset);}
+
  typedef dd MWORDSIZE;
  #define offset(segment,name) ((size_t)(db*)&name)
 

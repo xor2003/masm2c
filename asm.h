@@ -41,6 +41,7 @@ SOFTWARE.
 
 #include <cstring>
 
+#include <iterator>
 #include <vector>
 
 #ifndef NOSDL
@@ -152,6 +153,7 @@ extern struct SDL_Renderer *renderer;
 namespace m2c {
 
 extern db vgaPalette[256*3];
+extern bool executionFinished;
 
 #if SDL_MAJOR_VERSION == 2 && !defined(NOSDL) && M2CDEBUG != -1
     void init_sdl_vga_window();
@@ -163,6 +165,10 @@ extern db vgaPalette[256*3];
 #endif
 
     extern struct Memory m;
+
+    db* linked_code_segment_raddr(dw segment, dw offset);
+    db* linked_data_segment_raddr(dw segment, dw offset);
+    void set_segment_register(dw& reg, dw value);
 
     extern size_t debug;
 
@@ -267,6 +273,9 @@ int call_source;
 #endif
 
 typedef bool m2cf(_offsets, struct _STATE*); // common masm2c function
+bool dispatch_external_code(_offsets __disp, _STATE* _state, bool* handled);
+bool host_try_overlay_retf(_offsets __disp, _STATE* _state, bool* out_result);
+bool is_dos_terminate_vector(dw segment, dw offset);
 
 template<class S>
     constexpr bool isaddrbelongtom(const S *const a) {
@@ -649,6 +658,145 @@ inline dd far_offset_external(const T& symbol);
 dw near_offset_linked_address(const void* symbol);
 dw segment_of_linked_address(const void* symbol);
 dd far_offset_linked_address(const void* symbol);
+void copy_linked_program_segment_prefix(dw segment, const void* source, size_t size);
+
+struct NativeReturnMark {
+    _STATE* state;
+    dw stack_segment;
+    dw stack_offset;
+    MWORDSIZE return_ip;
+    size_t id;
+    const void* carrier;
+    size_t call_depth;
+};
+
+extern std::vector<NativeReturnMark> native_return_marks;
+extern std::vector<NativeReturnMark> native_return_values;
+extern size_t native_return_next_id;
+extern size_t native_return_call_depth;
+extern bool suppress_native_return_push_transfer;
+
+struct NativeCallDepthScope {
+    NativeCallDepthScope() {
+        ++native_return_call_depth;
+    }
+
+    ~NativeCallDepthScope() {
+        --native_return_call_depth;
+    }
+};
+
+inline void mark_native_return_with_id(
+    _STATE* state,
+    dw stack_segment,
+    dw stack_offset,
+    MWORDSIZE return_ip,
+    size_t id
+) {
+    native_return_marks.push_back({
+        state,
+        stack_segment,
+        stack_offset,
+        return_ip,
+        id,
+        nullptr,
+        native_return_call_depth,
+    });
+}
+
+inline size_t mark_native_return(_STATE* state, dw stack_segment, dw stack_offset, MWORDSIZE return_ip) {
+    const size_t id = ++native_return_next_id;
+    mark_native_return_with_id(state, stack_segment, stack_offset, return_ip, id);
+    return id;
+}
+
+inline bool take_native_return_value(
+    _STATE* state,
+    MWORDSIZE return_ip,
+    const void* carrier = nullptr,
+    size_t* id = nullptr
+) {
+    for (auto it = native_return_values.rbegin(); it != native_return_values.rend(); ++it) {
+        if (
+            it->state != state
+            || it->call_depth != native_return_call_depth
+        ) {
+            continue;
+        }
+        if (carrier) {
+            if (it->carrier != carrier) {
+                continue;
+            }
+        } else if (it->return_ip != return_ip) {
+            continue;
+        }
+        if (id) {
+            *id = it->id;
+        }
+        native_return_values.erase(std::next(it).base());
+        return true;
+    }
+    return false;
+}
+
+inline bool consume_native_return(_STATE* state, dw stack_segment, dw stack_offset, MWORDSIZE return_ip) {
+    for (auto it = native_return_marks.rbegin(); it != native_return_marks.rend(); ++it) {
+        if (
+            it->state != state
+            || it->stack_segment != stack_segment
+            || it->stack_offset != stack_offset
+            || it->call_depth != native_return_call_depth
+        ) {
+            continue;
+        }
+        const bool matched = it->return_ip == return_ip;
+        const size_t id = it->id;
+        native_return_marks.erase(std::next(it).base());
+        (void)id;
+        return matched;
+    }
+    return false;
+}
+
+inline void carry_native_return(
+    _STATE* state,
+    dw stack_segment,
+    dw stack_offset,
+    MWORDSIZE return_ip,
+    const void* carrier
+) {
+    for (auto it = native_return_marks.rbegin(); it != native_return_marks.rend(); ++it) {
+        if (
+            it->state != state
+            || it->stack_segment != stack_segment
+            || it->stack_offset != stack_offset
+            || it->return_ip != return_ip
+            || it->call_depth != native_return_call_depth
+        ) {
+            continue;
+        }
+        const size_t id = it->id;
+        const size_t call_depth = it->call_depth;
+        native_return_marks.erase(std::next(it).base());
+        native_return_values.push_back({state, 0, 0, return_ip, id, carrier, call_depth});
+        return;
+    }
+}
+
+inline void discard_native_return(size_t id) {
+    for (auto it = native_return_marks.rbegin(); it != native_return_marks.rend(); ++it) {
+        if (it->id == id) {
+            native_return_marks.erase(std::next(it).base());
+            return;
+        }
+    }
+    for (auto it = native_return_values.rbegin(); it != native_return_values.rend(); ++it) {
+        if (it->id == id) {
+            native_return_values.erase(std::next(it).base());
+            return;
+        }
+    }
+}
 
 template <class T>
 inline dw near_offset_external(const T& symbol) {
@@ -679,6 +827,13 @@ inline size_t mark_data_offset_ds() {
 
 inline void restore_data_offset_ds(dw& segment, size_t mark) {
     while (data_offset_saved_ds_stack.size() > mark) {
+        segment = data_offset_saved_ds_stack.back();
+        data_offset_saved_ds_stack.pop_back();
+    }
+}
+
+inline void restore_data_offset_ds(dw& segment) {
+    if (!data_offset_saved_ds_stack.empty()) {
         segment = data_offset_saved_ds_stack.back();
         data_offset_saved_ds_stack.pop_back();
     }
@@ -722,9 +877,37 @@ inline void restore_external_offset_ds(dw& segment) {
 #define ISNEGATIVE(f, a) ( (a) & (1 << (m2c::bitsizeof(f)-1)) )
 #define AFFECT_SF(a) m2cflags.setSF(a)
 #define AFFECT_SF_(f, a) {AFFECT_SF(ISNEGATIVE(f,a));}
-#define AFFECT_ZF(a) m2cflags.setZF(a)
-#define AFFECT_ZFifz(a) m2cflags.setZF((a)==0)
-#define AFFECT_PF(a) m2cflags.setPF(a)
+	#define AFFECT_ZF(a) m2cflags.setZF(a)
+	#define AFFECT_ZFifz(a) m2cflags.setZF((a)==0)
+	#define AFFECT_PF(a) m2cflags.setPF(a)
+
+    inline uint64_t operand_mask_for_size(size_t bytes) {
+        return bytes >= 8 ? UINT64_MAX : ((uint64_t)1 << (bytes * 8)) - 1;
+    }
+
+    inline uint64_t sign_mask_for_size(size_t bytes) {
+        return (uint64_t)1 << (bytes * 8 - 1);
+    }
+
+    inline bool even_parity8(db value) {
+        value ^= (db)(value >> 4);
+        value &= 0x0f;
+        return ((0x6996u >> value) & 1u) == 0;
+    }
+
+    inline void set_szp_flags(size_t bytes, uint64_t value, m2c::eflags &m2cflags) {
+        const uint64_t masked = value & operand_mask_for_size(bytes);
+        AFFECT_ZFifz(masked);
+        AFFECT_SF((masked & sign_mask_for_size(bytes)) != 0);
+        AFFECT_PF(even_parity8((db)masked));
+    }
+
+    inline void set_logic_flags(size_t bytes, uint64_t value, m2c::eflags &m2cflags) {
+        AFFECT_CF(false);
+        AFFECT_OF(false);
+        AFFECT_AF(false);
+        set_szp_flags(bytes, value, m2cflags);
+    }
 
 #ifdef DOSBOX_CUSTOM
 
@@ -757,11 +940,19 @@ inline void restore_external_offset_ds(dw& segment) {
 #define POP(a) {m2c::POP_(a, _state);}
 
     template<typename S>
-    OPTINLINE void PUSH_(S a, _STATE *_state)
+    OPTINLINE void PUSH_(const S& a, _STATE *_state)
 {
   X86_REGREF
   dd averytemporary=a;stackPointer-=sizeof(a); 
-		memcpy (m2c::raddr_(ss,stackPointer), &averytemporary, sizeof (a)); 
+			memcpy (m2c::stack_raddr_(ss,stackPointer), &averytemporary, sizeof (a)); 
+  size_t native_return_id = 0;
+  if (
+      !m2c::suppress_native_return_push_transfer
+      && sizeof(a) == sizeof(m2c::MWORDSIZE)
+      && m2c::take_native_return_value(_state, (m2c::MWORDSIZE)a, &a, &native_return_id)
+  ) {
+      m2c::mark_native_return_with_id(_state, ss, stackPointer, (m2c::MWORDSIZE)a, native_return_id);
+  }
  #if M2CDEBUG > 0
  		m2c::log_debug("after push %x\n",stackPointer); 
  #endif
@@ -780,11 +971,15 @@ inline void restore_external_offset_ds(dw& segment) {
   m2c::shadow_stack.pop(_state);
  #endif
 
- #if M2CDEBUG > 0
-     m2c::log_debug("before pop %x\n",stackPointer);
- #endif
-  memcpy (&a, m2c::raddr_(ss,stackPointer), sizeof (a));stackPointer+=sizeof(a);
-}
+	 #if M2CDEBUG > 0
+	     m2c::log_debug("before pop %x\n",stackPointer);
+	#endif
+	  memcpy (&a, m2c::stack_raddr_(ss,stackPointer), sizeof (a));
+  if (sizeof(a) == sizeof(m2c::MWORDSIZE)) {
+      m2c::carry_native_return(_state, ss, stackPointer, (m2c::MWORDSIZE)a, &a);
+  }
+  stackPointer+=sizeof(a);
+	}
 #endif
 
 #define PUSHAD m2c::PUSHAD_(_state)
@@ -852,108 +1047,116 @@ OPTINLINE static void defer_irqs()
 #define STI {CPU_STI();m2c::defer_irqs();}
 #define CLI {CPU_CLI();}
 #else
-#define STI UNIMPLEMENTED
-#define CLI UNIMPLEMENTED
+#define STI AFFECT_IF(1);
+#define CLI AFFECT_IF(0);
 #endif
 
-#define CMP(a, b) m2c::CMP_(a, b, m2cflags)
-template <class D, class S>
-    MYINLINE void CMP_(const D &dest_, const S &src_, m2c::eflags &m2cflags) {
-//printf("\n\n%s %s ",typeid(D).name(),typeid(S).name());
-        auto dest = m2c::getdata(dest_);
-        auto src = m2c::getdata(src_);
-        decltype(dest) result = dest - src;
-		AFFECT_CF(result>dest); 
-        const D highestbitset = (1 << (m2c::bitsizeof(dest) - 1));
-        AFFECT_OF(((dest ^ src) & (dest ^ result)) & highestbitset);
-		AFFECT_ZFifz(result); 
-		AFFECT_SF_(result,result); 
-}
+	#define CMP(a, b) m2c::CMP_(a, b, m2cflags)
+	template <class D, class S>
+	    MYINLINE void CMP_(const D &dest_, const S &src_, m2c::eflags &m2cflags) {
+        const size_t bytes = sizeof(D);
+        const uint64_t mask = m2c::operand_mask_for_size(bytes);
+        const uint64_t sign = m2c::sign_mask_for_size(bytes);
+        const uint64_t dest = (uint64_t)dest_ & mask;
+        const uint64_t src = (uint64_t)src_ & mask;
+        const uint64_t result = (dest - src) & mask;
+        AFFECT_CF(dest < src);
+        AFFECT_OF(((dest ^ src) & (dest ^ result) & sign) != 0);
+        AFFECT_AF(((dest ^ src ^ result) & 0x10u) != 0);
+        m2c::set_szp_flags(bytes, result, m2cflags);
+	}
 
 
-#define OR(a, b) m2c::OR_(a, b, m2cflags)
-template <class D, class S>
-    MYINLINE void OR_(D &dest, const S &src, m2c::eflags &m2cflags) {
-        D result = m2c::getdata(dest) | static_cast<D>(m2c::getdata(src));
-        m2c::setdata(&dest, result);
-        AFFECT_ZFifz(result);
-        AFFECT_SF_(result, result);
-		AFFECT_CF(0);
-		AFFECT_OF(0);
- }
+	#define OR(a, b) m2c::OR_(a, b, m2cflags)
+	template <class D, class S>
+	    MYINLINE void OR_(D &dest, const S &src, m2c::eflags &m2cflags) {
+	        D result = dest | static_cast<D>(src);
+	        dest = result;
+        m2c::set_logic_flags(sizeof(D), result, m2cflags);
+	 }
 
-#define XOR(a, b) m2c::XOR_(a, b, m2cflags)
-template <class D, class S>
-    MYINLINE void XOR_(D &dest, const S &src, m2c::eflags &m2cflags) {
-        D result = m2c::getdata(dest) ^ static_cast<D>(m2c::getdata(src));
-        m2c::setdata(&dest, result);
-        AFFECT_ZFifz(result);
-        AFFECT_SF_(result, result);
-		AFFECT_CF(0);
-		AFFECT_OF(0);
- }
+	#define XOR(a, b) m2c::XOR_(a, b, m2cflags)
+	template <class D, class S>
+	    MYINLINE void XOR_(D &dest, const S &src, m2c::eflags &m2cflags) {
+	        D result = dest ^ static_cast<D>(src);
+	        dest = result;
+        m2c::set_logic_flags(sizeof(D), result, m2cflags);
+	 }
 
-#define AND(a, b) m2c::AND_(a, b, m2cflags)
-template <class D, class S>
-    MYINLINE void AND_(D &dest, const S &src, m2c::eflags &m2cflags) {
-        D result = m2c::getdata(dest) & static_cast<D>(m2c::getdata(src));
-        m2c::setdata(&dest, result);
-        AFFECT_ZFifz(result);
-        AFFECT_SF_(result, result);
-		AFFECT_CF(0);
-		AFFECT_OF(0);
- }
+	#define AND(a, b) m2c::AND_(a, b, m2cflags)
+	template <class D, class S>
+	    MYINLINE void AND_(D &dest, const S &src, m2c::eflags &m2cflags) {
+	        D result = dest & static_cast<D>(src);
+	        dest = result;
+        m2c::set_logic_flags(sizeof(D), result, m2cflags);
+	 }
 
-#define NEG(a) m2c::NEG_(a, m2cflags)
-template <class D>
-    MYINLINE void NEG_(D &a, m2c::eflags &m2cflags) {
-AFFECT_CF((a)!=0);
-		D highestbitset = (1<<( m2c::bitsizeof(a)-1));
-		AFFECT_OF(a==highestbitset);
-		a=-a;
-		AFFECT_ZFifz(a); 
-		AFFECT_SF_(a,a);
-}
+	#define NEG(a) m2c::NEG_(a, m2cflags)
+	template <class D>
+	    MYINLINE void NEG_(D &a, m2c::eflags &m2cflags) {
+        const size_t bytes = sizeof(D);
+        const uint64_t mask = m2c::operand_mask_for_size(bytes);
+        const uint64_t value = (uint64_t)a & mask;
+        const uint64_t result = (0 - value) & mask;
+        AFFECT_CF(value != 0);
+        AFFECT_OF(value == m2c::sign_mask_for_size(bytes));
+        AFFECT_AF(((value ^ result) & 0x10u) != 0);
+        a = static_cast<D>(result);
+        m2c::set_szp_flags(bytes, result, m2cflags);
+	}
 
 #ifdef TEST
 #undef TEST
 #endif
-#define TEST(a, b) m2c::TEST_(a, b, m2cflags)
-template <class D, class S>
-    MYINLINE void TEST_(D &a, const S &b, m2c::eflags &m2cflags) {
-        AFFECT_ZFifz((a) & (b));
-		AFFECT_CF(0);
-		AFFECT_SF_(a,(a)&(b));
-		AFFECT_OF(0);
-}
+	#define TEST(a, b) m2c::TEST_(a, b, m2cflags)
+	template <class D, class S>
+	    MYINLINE void TEST_(D &a, const S &b, m2c::eflags &m2cflags) {
+        const uint64_t result = ((uint64_t)a & (uint64_t)b)
+            & m2c::operand_mask_for_size(sizeof(D));
+        m2c::set_logic_flags(sizeof(D), result, m2cflags);
+	}
 
-#define SHR(a, b) m2c::SHR_(a, b, m2cflags)
-template <class D, class S>
-    MYINLINE void SHR_(D &a, const S &b, m2c::eflags &m2cflags) {
-        if (b) {
-            AFFECT_CF((a >> (b - 1)) & 1);
-            const D highestbitset = (1 << (m2c::bitsizeof(a) - 1));
-                D res=a>>b;
-            AFFECT_OF((b & 0x1f) == 1 ? (a & highestbitset) != 0 : false);
-		AFFECT_ZFifz(res);
-		AFFECT_SF_(res,res);
-                a = res;
-		}
-}
-
-#define SHL(a, b) m2c::SHL_(a, b, m2cflags)
-template <class D, class S>
-    MYINLINE void SHL_(D &a, const S &b, m2c::eflags &m2cflags) {
-        if (b) {
-            AFFECT_CF((a) & (1 << (m2c::bitsizeof(a) - (b))));
-            D olda = a;
-            a = a << b;
-            AFFECT_ZFifz(a);
-            AFFECT_SF_(a, a);
-            D highestbitset = (1 << (m2c::bitsizeof(a) - 1));
-            AFFECT_OF((a ^ olda) & highestbitset);
+	#define SHR(a, b) m2c::SHR_(a, b, m2cflags)
+	template <class D, class S>
+	    MYINLINE void SHR_(D &a, const S &b, m2c::eflags &m2cflags) {
+        uint64_t count = ((uint64_t)b) & 0x1f;
+        if (!count) return;
+        const size_t bytes = sizeof(D);
+        const uint64_t mask = m2c::operand_mask_for_size(bytes);
+        const uint64_t sign = m2c::sign_mask_for_size(bytes);
+        uint64_t value = (uint64_t)a & mask;
+        uint64_t old = value;
+        for (uint64_t index = 0; index < count; ++index) {
+            old = value;
+            AFFECT_CF((old & 1u) != 0);
+            value >>= 1;
         }
-}
+        AFFECT_OF((count == 1) && ((old & sign) != 0));
+        AFFECT_AF(false);
+        a = static_cast<D>(value);
+        m2c::set_szp_flags(bytes, value, m2cflags);
+	}
+
+	#define SHL(a, b) m2c::SHL_(a, b, m2cflags)
+	template <class D, class S>
+	    MYINLINE void SHL_(D &a, const S &b, m2c::eflags &m2cflags) {
+        uint64_t count = ((uint64_t)b) & 0x1f;
+        if (!count) return;
+        const size_t bytes = sizeof(D);
+        const uint64_t mask = m2c::operand_mask_for_size(bytes);
+        const uint64_t sign = m2c::sign_mask_for_size(bytes);
+        uint64_t value = (uint64_t)a & mask;
+        uint64_t old = value;
+        for (uint64_t index = 0; index < count; ++index) {
+            old = value;
+            AFFECT_CF((old & sign) != 0);
+            value = (value << 1) & mask;
+        }
+        AFFECT_OF((count == 1) && (((old ^ value) & sign) != 0));
+        AFFECT_AF(false);
+        a = static_cast<D>(value);
+        m2c::set_szp_flags(bytes, value, m2cflags);
+	}
 
 #define ROR(a, b) m2c::ROR_(a, b, m2cflags)
 template <class D, class S>
@@ -1108,28 +1311,29 @@ AFFECT_CF(((Destination<<m2c::bitsizeof(Destination)+Source) >> (32 - Count)) & 
 		AFFECT_ZFifz(a);\
 		AFFECT_SF_(a,a);}} // TODO optimize
 */
-#define SAR(a, b) m2c::SAR_(a, b, m2cflags)
-template <class D, class S>
-    MYINLINE void SAR_(D &op1, const S &op2, m2c::eflags &m2cflags) {
-if (op2){
-            D lf_var1w = op1;
-            db lf_var2b = op2;
-        AFFECT_CF((op1>>(op2-1))&1);
-	if (lf_var2b>m2c::bitsizeof(op1)) lf_var2b=m2c::bitsizeof(op1);
-		D highestbitset = (1<<( m2c::bitsizeof(op1)-1));
-        D lf_resw;
-	if (lf_var1w & highestbitset) {
-		lf_resw=(lf_var1w >> lf_var2b)|
-		(((D)(-1)) << (m2c::bitsizeof(op1) - lf_var2b));
-	} else {
-		lf_resw=lf_var1w >> lf_var2b;
-    }
-	op1 = lf_resw;								
-        AFFECT_ZFifz(lf_resw);
-        AFFECT_SF_(lf_resw,lf_resw);
-	AFFECT_OF(false);
+	#define SAR(a, b) m2c::SAR_(a, b, m2cflags)
+	template <class D, class S>
+	    MYINLINE void SAR_(D &op1, const S &op2, m2c::eflags &m2cflags) {
+        uint64_t count = ((uint64_t)op2) & 0x1f;
+        if (!count) return;
+        const size_t bytes = sizeof(D);
+        const unsigned bits = (unsigned)(bytes * 8);
+        const uint64_t mask = m2c::operand_mask_for_size(bytes);
+        const uint64_t sign = m2c::sign_mask_for_size(bytes);
+        uint64_t value = (uint64_t)op1 & mask;
+        for (uint64_t index = 0; index < count; ++index) {
+            AFFECT_CF((value & 1u) != 0);
+            value = (value >> 1) | (value & sign);
+            value &= mask;
+            if (index + 1 >= bits) {
+                value = (value & sign) ? mask : 0;
+            }
         }
-}
+        AFFECT_OF(false);
+        AFFECT_AF(false);
+        op1 = static_cast<D>(value);
+        m2c::set_szp_flags(bytes, value, m2cflags);
+	}
 
 #define SAL(a,b) SHL(a,b)
 
@@ -1258,17 +1462,22 @@ if (op2){
 
 #define AAD AAD1(10)
 
-#define ADD(a, b) m2c::ADD_(a, b, m2cflags)
-template <class D, class S>
-    MYINLINE void ADD_(D &dest, const S &src, m2c::eflags &m2cflags) {
- D result=dest+(D)src; 
-		AFFECT_CF(result<dest); 
-        const D highestbitset = (1 << (m2c::bitsizeof(dest) - 1));
-          AFFECT_OF(((dest ^ src ^ highestbitset ) & (result ^ src)) & highestbitset);
-   dest = result;
-		AFFECT_ZFifz(dest); 
-		AFFECT_SF_(dest,dest); 
-}
+	#define ADD(a, b) m2c::ADD_(a, b, m2cflags)
+	template <class D, class S>
+	    MYINLINE void ADD_(D &dest, const S &src, m2c::eflags &m2cflags) {
+        const size_t bytes = sizeof(D);
+        const uint64_t mask = m2c::operand_mask_for_size(bytes);
+        const uint64_t sign = m2c::sign_mask_for_size(bytes);
+        const uint64_t left = (uint64_t)dest & mask;
+        const uint64_t right = (uint64_t)src & mask;
+        const uint64_t result64 = left + right;
+        const uint64_t result = result64 & mask;
+        AFFECT_CF(result64 > mask);
+        AFFECT_OF(((left ^ result) & (right ^ result) & sign) != 0);
+        AFFECT_AF(((left ^ right ^ result) & 0x10u) != 0);
+        dest = static_cast<D>(result);
+        m2c::set_szp_flags(bytes, result, m2cflags);
+	}
 
 
 #define XADD(a,b) {dq averytemporary=(dq)a+(dq)b; \
@@ -1278,43 +1487,57 @@ template <class D, class S>
 		AFFECT_ZFifz(b); \
 		AFFECT_SF_(b,b);}
 
-#define SUB(a, b) m2c::SUB_(a, b, m2cflags)
+	#define SUB(a, b) m2c::SUB_(a, b, m2cflags)
 
-template <class D, class S>
-    MYINLINE void SUB_(D &dest, const S &src, m2c::eflags &m2cflags) {
- dd result=(dest-src) & m2c::MASK[sizeof(dest)]; 
-		AFFECT_CF(result>dest); 
-        const D highestbitset = (1 << (m2c::bitsizeof(dest) - 1));
-          AFFECT_OF(((dest ^ src) & (dest ^ result)) & highestbitset);
-   dest = result;
-		AFFECT_ZFifz(dest); 
-		AFFECT_SF_(dest,dest); 
-}
+	template <class D, class S>
+	    MYINLINE void SUB_(D &dest, const S &src, m2c::eflags &m2cflags) {
+        const size_t bytes = sizeof(D);
+        const uint64_t mask = m2c::operand_mask_for_size(bytes);
+        const uint64_t sign = m2c::sign_mask_for_size(bytes);
+        const uint64_t left = (uint64_t)dest & mask;
+        const uint64_t right = (uint64_t)src & mask;
+        const uint64_t result = (left - right) & mask;
+        AFFECT_CF(left < right);
+        AFFECT_OF(((left ^ right) & (left ^ result) & sign) != 0);
+        AFFECT_AF(((left ^ right ^ result) & 0x10u) != 0);
+        dest = static_cast<D>(result);
+        m2c::set_szp_flags(bytes, result, m2cflags);
+	}
 
-#define ADC(a, b) m2c::ADC_(a, b, m2cflags)
-template <class D, class S>
-    MYINLINE void ADC_(D &dest, const S &src, m2c::eflags &m2cflags) {
- dq result=(dq)dest+(dq)src+(dq)GET_CF(); 
-		AFFECT_CF((result)>m2c::MASK[sizeof(dest)]); 
-        const D highestbitset = (1 << (m2c::bitsizeof(dest) - 1));
-          AFFECT_OF(((dest ^ src ^ highestbitset ) & (result ^ src)) & highestbitset);
-   dest = result;
-		AFFECT_ZFifz(dest); 
-		AFFECT_SF_(dest,dest); 
-}
+	#define ADC(a, b) m2c::ADC_(a, b, m2cflags)
+	template <class D, class S>
+	    MYINLINE void ADC_(D &dest, const S &src, m2c::eflags &m2cflags) {
+        const size_t bytes = sizeof(D);
+        const uint64_t mask = m2c::operand_mask_for_size(bytes);
+        const uint64_t sign = m2c::sign_mask_for_size(bytes);
+        const uint64_t left = (uint64_t)dest & mask;
+        const uint64_t right = (uint64_t)src & mask;
+        const uint64_t rhs = right + (GET_CF() ? 1u : 0u);
+        const uint64_t result64 = left + rhs;
+        const uint64_t result = result64 & mask;
+        AFFECT_CF(result64 > mask);
+        AFFECT_OF(((left ^ result) & (rhs ^ result) & sign) != 0);
+        AFFECT_AF(((left ^ rhs ^ result) & 0x10u) != 0);
+        dest = static_cast<D>(result);
+        m2c::set_szp_flags(bytes, result, m2cflags);
+	}
 
-#define SBB(a, b) m2c::SBB_(a, b, m2cflags)
-template <class D, class S>
-    MYINLINE void SBB_(D &dest, const S &src, m2c::eflags &m2cflags) {
- bool oldCF = GET_CF();
- dq result=((dq)dest-(dq)src-(dq)GET_CF()) & m2c::MASK[sizeof(dest)]; 
-		AFFECT_CF(result>dest || (oldCF && (src==m2c::MASK[sizeof(dest)]) )); 
-        const D highestbitset = (1 << (m2c::bitsizeof(dest) - 1));
-          AFFECT_OF(((dest ^ src) & (dest ^ result)) & highestbitset);
-   dest = result;
-		AFFECT_ZFifz(dest); 
-		AFFECT_SF_(dest,dest); 
-}
+	#define SBB(a, b) m2c::SBB_(a, b, m2cflags)
+	template <class D, class S>
+	    MYINLINE void SBB_(D &dest, const S &src, m2c::eflags &m2cflags) {
+        const size_t bytes = sizeof(D);
+        const uint64_t mask = m2c::operand_mask_for_size(bytes);
+        const uint64_t sign = m2c::sign_mask_for_size(bytes);
+        const uint64_t left = (uint64_t)dest & mask;
+        const uint64_t right = (uint64_t)src & mask;
+        const uint64_t rhs = right + (GET_CF() ? 1u : 0u);
+        const uint64_t result = (left - rhs) & mask;
+        AFFECT_CF(left < rhs);
+        AFFECT_OF(((left ^ rhs) & (left ^ result) & sign) != 0);
+        AFFECT_AF(((left ^ rhs ^ result) & 0x10u) != 0);
+        dest = static_cast<D>(result);
+        m2c::set_szp_flags(bytes, result, m2cflags);
+	}
 
 // TODO: should affects OF, SF, ZF, AF, and PF
 #define INC(a) m2c::INC_(a, m2cflags)
@@ -1405,6 +1628,7 @@ template <class D>
 #define DIV1(a) {if(a) {dw averytemporary=ax;al=averytemporary/(a);ah=averytemporary%(a); AFFECT_OF(false);}}
 #define DIV2(a) {if(a) {dd averytemporary=((((dd)dx)<<16)|ax);ax=averytemporary/(a);dx=averytemporary%(a); AFFECT_OF(false);}}
 #define DIV4(a) {if(a) {uint64_t averytemporary=((((dq)edx)<<32)|eax);eax=averytemporary/(a);edx=averytemporary%(a); AFFECT_OF(false);}}
+#define DIV0(a) DIV1(a)
 
 #define NOT(a) {a= ~(a);};// AFFECT_ZFifz(a) //TODO
 
@@ -1479,8 +1703,26 @@ template <class D>
 #define JO(label) if (GET_OF()) GOTOLABEL(label)
 #define JNO(label) if (!GET_OF()) GOTOLABEL(label)
 
-//#define JP(label) if (GET_PF()) GOTOLABEL(label)
-//#define JNP(label) if (!GET_PF()) GOTOLABEL(label)
+#define JP(label) if (GET_PF()) GOTOLABEL(label)
+#define JPE(label) if (GET_PF()) GOTOLABEL(label)
+#define JNP(label) if (!GET_PF()) GOTOLABEL(label)
+#define JPO(label) if (!GET_PF()) GOTOLABEL(label)
+#ifndef LOOP
+#define LOOP(label) {--cx; if (cx) GOTOLABEL(label);}
+#endif
+#ifndef LOOPE
+#define LOOPE(label) {--cx; if (cx && GET_ZF()) GOTOLABEL(label);}
+#endif
+#ifndef LOOPZ
+#define LOOPZ(label) LOOPE(label)
+#endif
+#ifndef LOOPNE
+#define LOOPNE(label) {--cx; if (cx && !GET_ZF()) GOTOLABEL(label);}
+#endif
+#ifndef LOOPNZ
+#define LOOPNZ(label) LOOPNE(label)
+#endif
+#define HLT {}
 /*
 #if M2CDEBUG >= 3
  #define MOV(dest,src) {log_debug("%s := %x\n",#dest, src); dest = src;}
@@ -1523,6 +1765,8 @@ template <class D, class S>
 
 #define MOVS(dest,src,destreg,srcreg,s)  {dest=src; destreg+=(GET_DF()==0)?s:-s; srcreg+=(GET_DF()==0)?s:-s; }
 //                        {memmove(dest,src,s); dest+=s; src+=s; } \
+
+#define LODS(addr,destreg,s) {memcpy(((db *)&eax), &(addr), s); destreg+=(GET_DF()==0)?s:-s;}
 
 
 #define CBW {ah = ((int8_t)al) < 0?-1:0;} // TODO
@@ -1664,7 +1908,7 @@ struct StackPop
    size_t deep;
 };
 
-#define RETN(i) {if (m2c::RETN_(i, _state)) {return true;} else  {__disp=(cs<<16)+eip;return __dispatch_call(__disp,_state);}}
+#define RETN(i) {if (m2c::RETN_(i, _state)) {return true;} else  {__disp=eip;return __dispatch_call(__disp,_state);}}
 /*
 #else
 #define RETN(i) {m2c::RETN_(i, _state);return true;}
@@ -1680,18 +1924,33 @@ struct StackPop
 #ifdef SHADOW_STACK
         shadow_stack.itisret();
 #endif
-        bool ret(true);
+        bool ret(false);
+        const dw return_ss = ss;
+        const dw return_sp = sp;
 #ifdef SHADOW_STACK
         ret = shadow_stack.itwascall(_state);
         POP(ip);
         int skip = shadow_stack.getneedtoskipcallndclean();
-        if (!ret) {
-            log_error("Warning. Return address wasn't created by native CALL (found %x)\n", ip);
-	}
 #else
         POP(ip);
 #endif
+        const bool native_ret = !ret
+            && (m2c::consume_native_return(_state, return_ss, return_sp, ip)
+                || m2c::take_native_return_value(_state, ip, &ip));
+        ret = ret || native_ret;
+#ifndef SHADOW_STACK
+        if (!ret && ip == 0) {
+            // Dispatcher-entered wrappers do not always have a native CALL marker.
+            // A zero return IP is the C++ continuation sentinel in that path.
+            ret = true;
+        }
+#endif
         esp += i;
+#ifdef SHADOW_STACK
+        if (!ret) {
+            log_error("Warning. Return address wasn't created by native CALL (found %x)\n", ip);
+	}
+#endif
  #if M2CDEBUG > 0
 //log_debug("retn target %x:%x\n", cs,ip);
         if (debug>2) {
@@ -1701,7 +1960,11 @@ struct StackPop
 	}
  #endif
 #ifdef SHADOW_STACK
-        if (skip>0) 
+        // A ret validated by a native-return mark consumed a live call's
+        // return address (e.g. pop reg / push reg around inline data): it
+        // repays one call frame that an earlier non-ret pop over-counted.
+        if (native_ret && skip > 0) --skip;
+        if (skip>0)
           {
  #if M2CDEBUG > 0
 log_debug("~~will throw exception skip call=%d\n",skip);
@@ -1715,7 +1978,7 @@ throw StackPop(skip);
     }
 
 //#define RETF(i) {m2c::RETF_(i); if (ip=='xy') {m2c::shadow_stack.decreasedeep(); return true;} else  {return __dispatch_call((cs<<16)+eip,0);}}
-#define RETF(i) {m2c::RETF_(i, _state); return true;}
+#define RETF(i) {if (m2c::RETF_(i, _state)) {return true;} if (m2c::is_dos_terminate_vector(cs, ip)) {return false;} __disp=(cs<<16)+ip;return __dispatch_call(__disp,_state);}
 
     static bool RETF_(size_t i, struct _STATE *_state) {
         X86_REGREF
@@ -1725,12 +1988,20 @@ throw StackPop(skip);
 
 //        m2c::MWORDSIZE averytemporary9 = 0;
 //        log_error("~~RETF before 1pop\n");
-        bool ret(true);
+        bool ret(false);
 #ifdef SHADOW_STACK
         shadow_stack.itisret();
         ret = shadow_stack.itwascall(_state);
 #endif
+        const dw return_ss = ss;
+        const dw return_sp = sp;
         POP(ip);
+        const bool native_ret = !ret
+            && (m2c::consume_native_return(_state, return_ss, return_sp, ip)
+                || m2c::take_native_return_value(_state, ip, &ip));
+        ret = ret || native_ret;
+        (void)return_ss;
+        (void)return_sp;
 #ifdef SHADOW_STACK
         if (!ret) {
             log_error("Warning. Return address wasn't created by native CALL (found %x)\n", ip);
@@ -1739,6 +2010,9 @@ throw StackPop(skip);
 //        log_error("~~RETF after 1pop\n");
 //        bool need = shadow_stack.needtoskipcalls();
         int skip = shadow_stack.getneedtoskipcallndclean();
+        // A ret validated by a native-return mark repays one call frame that
+        // an earlier non-ret pop over-counted.
+        if (native_ret && skip > 0) --skip;
  #if M2CDEBUG > 0
 log_debug("skip %d\n", skip);
 #endif
@@ -1774,21 +2048,34 @@ throw StackPop(skip);
 #define CALL(label, disp) {if (!m2c::CALL_(label, _state, disp)) {return false;}}
 #else
 */
-#define CALL(label, disp) {if (!m2c::CALL_(label, _state, disp)) {return false;}}
-    static bool CALL_(m2cf *label, struct _STATE *_state, _offsets _i = 0) {
- X86_REGREF
-        from_callf = true;
+	#define CALL(label, disp) {if (!m2c::CALL_(label, _state, disp, #label)) {return false;}}
+	#define CALLI(label, disp, return_ip) {if (!m2c::CALL_(label, _state, disp, #label, (m2c::MWORDSIZE)(return_ip), true)) {return false;}}
+	#define CALLFI(label, disp, return_ip) {PUSH(cs);CALLI(label, disp, return_ip);}
+	    static bool CALL_(
+	        m2cf *label,
+	        struct _STATE *_state,
+	        _offsets _i = 0,
+	        const char* label_name = "",
+	        m2c::MWORDSIZE explicit_return_addr = 0,
+	        bool has_explicit_return_addr = false
+	    ) {
+	 X86_REGREF
+	        from_callf = true;
 #ifdef SHADOW_STACK
-        shadow_stack.itiscall();
+	        shadow_stack.itiscall();
 #endif
 //        m2c::MWORDSIZE averytemporary8 = 'xy';
-        m2c::MWORDSIZE return_addr = ip;
+	        m2c::MWORDSIZE return_addr = has_explicit_return_addr ? explicit_return_addr : ip;
 #if DOSBOX_CUSTOM
         if (compare_instructions) eip+=inst_size(cs,eip);
 #endif
         size_t data_offset_ds_mark = m2c::mark_data_offset_ds();
         dw oldsp=sp;
+        m2c::NativeCallDepthScope native_call_depth_scope;
+        m2c::suppress_native_return_push_transfer = true;
         PUSH(return_addr);
+        m2c::suppress_native_return_push_transfer = false;
+        size_t native_return_id = m2c::mark_native_return(_state, ss, sp, return_addr);
 
  #if M2CDEBUG > 0
         if (debug>2) {
@@ -1798,21 +2085,56 @@ throw StackPop(skip);
             m2c::_str = m2c::log_spaces(m2c::_indent);
         }
  #endif
-        _state->call_source = 2;
-        try{
-	  if (!label(_i, _state)) {
-              bool ret = sp == oldsp || sp == oldsp + 2;
-              m2c::restore_data_offset_ds(ds, data_offset_ds_mark);
-              return ret;
-          }
+	        _state->call_source = 2;
+	        try{
+		  if (!label(_i, _state)) {
+		      if (m2c::executionFinished) {
+			          m2c::discard_native_return(native_return_id);
+			          m2c::restore_data_offset_ds(ds, data_offset_ds_mark);
+		          return false;
+		      }
+	              bool ret = sp == oldsp || sp == oldsp + 2;
+		              m2c::discard_native_return(native_return_id);
+		              m2c::restore_data_offset_ds(ds, data_offset_ds_mark);
+	              return ret;
+	          }
  #if M2CDEBUG > 0
             if (sp!=oldsp && sp!=oldsp+2) log_debug("~~old SP %x != SP %x\n",oldsp, sp);
  #endif
- if(return_addr != ip&& ((dw)(ip - return_addr)) > 5 ) {
-  log_error("~~Return address not equal to call addr: call from=%x poped ip=%x\n",return_addr,ip);
-  bool ret = sp == oldsp || sp == oldsp + 2;
-  m2c::restore_data_offset_ds(ds, data_offset_ds_mark);
-  return ret;
+ while(std::strcmp(label_name, "__dispatch_call") != 0 && sp < oldsp && return_addr != ip&& ((dw)(ip - return_addr)) > 5 ) {
+  const m2c::MWORDSIZE trampoline_ip = ip;
+  bool external_trampoline_handled = false;
+  if (!m2c::dispatch_external_code(trampoline_ip, _state, &external_trampoline_handled)) {
+	      if (std::strcmp(label_name, "mainproc") != 0) {
+	          // Direct wrappers can cross into aggregate-dispatched code and then
+	          // return to a caller-local continuation that the C++ caller owns.
+	          sp = oldsp;
+		          m2c::discard_native_return(native_return_id);
+		          m2c::restore_data_offset_ds(ds, data_offset_ds_mark);
+	          return true;
+	      }
+		      m2c::discard_native_return(native_return_id);
+		      m2c::restore_data_offset_ds(ds, data_offset_ds_mark);
+	      return false;
+	  }
+  if (external_trampoline_handled) {
+      continue;
+  }
+	  if (std::strcmp(label_name, "mainproc") != 0) {
+	      // A direct wrapper call may leave a caller-local continuation on the
+	      // emulated stack. The C++ caller already resumes at the next statement.
+	      sp = oldsp;
+		      m2c::discard_native_return(native_return_id);
+		      m2c::restore_data_offset_ds(ds, data_offset_ds_mark);
+	      return true;
+	  }
+  if (!label(trampoline_ip, _state)) {
+	      log_error("~~Return address not equal to call addr: call from=%x poped ip=%x\n",return_addr,ip);
+	      bool ret = sp == oldsp || sp == oldsp + 2;
+		      m2c::discard_native_return(native_return_id);
+		      m2c::restore_data_offset_ds(ds, data_offset_ds_mark);
+	      return ret;
+	  }
  }
         }
         catch(const StackPop& ex)
@@ -1823,7 +2145,7 @@ shadow_stack.decreasedeep();
              {
  #if M2CDEBUG > 0
   log_debug("~~Rethrowing upper\n");
- #endif
+#endif
 		m2c::restore_data_offset_ds(ds, data_offset_ds_mark);
 		throw StackPop(ex.deep-1);
              }
@@ -1831,14 +2153,15 @@ shadow_stack.decreasedeep();
              {
  #if M2CDEBUG > 0
   log_debug("~~Finished with skipping calls\n");
- #endif
+#endif
 
              }
 #endif
-        }
-       m2c::restore_data_offset_ds(ds, data_offset_ds_mark);
-       return true;
-    }
+	        }
+		       m2c::discard_native_return(native_return_id);
+		       m2c::restore_data_offset_ds(ds, data_offset_ds_mark);
+	       return true;
+	    }
 
 
 #endif
@@ -1924,9 +2247,19 @@ bool is_little_endian();
 #define CMOVZ(a,b) UNIMPLEMENTED
 
 #define JNO(x) UNIMPLEMENTED
+#ifndef JNP
 #define JNP(x) UNIMPLEMENTED
+#endif
 #define JO(x) UNIMPLEMENTED
+#ifndef JP
 #define JP(x) UNIMPLEMENTED
+#endif
+#ifndef JPE
+#define JPE(x) JP(x)
+#endif
+#ifndef JPO
+#define JPO(x) JNP(x)
+#endif
 
 
 #define BSR(dest, src) m2c::BSR_(dest, src, m2cflags)

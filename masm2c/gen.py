@@ -439,6 +439,7 @@ class Gen(TopDownVisitor):
         extern_code_symbols=None,
         defined_code_symbol_offsets=None,
         code_offset_aliases=None,
+        module_name=None,
     ):
         jsonpickle.set_encoder_options("json", indent=2)
         with open(self.segment_sidecar_path(fname), "wb") as f:
@@ -454,6 +455,7 @@ class Gen(TopDownVisitor):
                     extern_code_symbols or set(),
                     defined_code_symbol_offsets or {},
                     code_offset_aliases or [],
+                    module_name,
                 ),
                 f,
             )
@@ -462,6 +464,7 @@ class Gen(TopDownVisitor):
         logging.info(" *** Merging .seg files")
         segments = OrderedDict()
         structs = OrderedDict()
+        structures = structs
         data_aliases = []
         equates = []
         abs_externs = set()
@@ -471,8 +474,22 @@ class Gen(TopDownVisitor):
         defined_code_symbol_offsets = {}
         reserved_code_symbol_offsets: set[int] = set()
         code_offset_aliases = []
-        for file in asm_files:
-            file = self.segment_sidecar_path(file)
+        module_names: dict[str, str] = {}
+        code_symbol_definers: dict[str, list[str]] = {}
+        code_symbol_visible: dict[str, set[str]] = {}
+        merge_args = self._context.args if isinstance(getattr(self._context, "args", None), dict) else {}
+        requested_exports = {
+            str(name).lower()
+            for name in (
+                list(merge_args.get("external_code_exports", []))
+                + list(merge_args.get("public_code_exports", []))
+            )
+        }
+        for source_file in asm_files:
+            file = self.segment_sidecar_path(source_file)
+            if not os.path.exists(file):
+                logging.warning(f"     Skipping missing segment file {file}")
+                continue
             logging.info(f"     Merging data from {file}")
             with open(file, "rb") as f:
                 sidecar = pickle.load(f)
@@ -559,7 +576,27 @@ class Gen(TopDownVisitor):
                         newextern_code_symbols,
                         newdefined_code_symbol_offsets,
                         newcode_offset_aliases,
-                    ) = sidecar
+                    ) = sidecar[:10]
+                if len(sidecar) > 10 and sidecar[10]:
+                    module_names[str(source_file)] = str(sidecar[10])
+                module_label = module_names.get(
+                    str(source_file),
+                    os.path.splitext(os.path.basename(str(source_file)))[0].lower(),
+                )
+                defined_here = {str(name).lower() for name in newdefined_code_symbols}
+                for name in defined_here:
+                    definers = code_symbol_definers.setdefault(name, [])
+                    if module_label not in definers:
+                        definers.append(module_label)
+                # A defined symbol that is also extern/data/offset referenced is
+                # emitted with external (weak) linkage, so same-named definitions
+                # in other modules collide at link time.
+                for name in newextern_code_symbols:
+                    lowered = str(name).lower()
+                    if lowered in defined_here:
+                        code_symbol_visible.setdefault(lowered, set()).add(module_label)
+                for name in defined_here & requested_exports:
+                    code_symbol_visible.setdefault(name, set()).add(module_label)
                 relocations = self._segment_merge_relocations(segments, newsegments)
                 segments, structures = self.merge_segments(segments, structs, newsegments, newstructs)
                 data_aliases.extend(self._relocate_data_aliases(newaliases, relocations))
@@ -618,11 +655,81 @@ class Gen(TopDownVisitor):
             storage_reserved_names,
             reserved_code_symbol_offsets,
         )
+        self._assign_qualified_colliding_code_offsets(
+            code_symbol_definers,
+            code_symbol_visible,
+            reserved_code_symbol_offsets,
+        )
         self._context.all_defined_code_symbol_offsets = {
             str(name).lower(): int(offset)
             for name, offset in defined_code_symbol_offsets.items()
         }
+        self._context.merged_module_names = module_names
         return segments, structures
+
+    def _assign_qualified_colliding_code_offsets(
+        self,
+        code_symbol_definers: dict[str, list[str]],
+        code_symbol_visible: dict[str, set[str]],
+        reserved_code_symbol_offsets: set[int],
+    ) -> None:
+        """Disambiguate same-named code symbols defined by several modules.
+
+        A real MASM link keeps non-PUBLIC symbols module-local, but the
+        generated code emits externally visible (weak) wrappers for any
+        code symbol referenced by data tables or OFFSET, so duplicates from
+        different modules silently bind to whichever object the linker picks
+        first (e.g. a FAR ``InitCtrlDevice`` chain landing in a NEAR sibling,
+        corrupting the emulated stack on return).
+
+        For every name that is link-visible in two or more modules, the
+        earlier definers get module-qualified ``name__<module>`` functions and
+        ``kglobal_name__<module>`` dispatch handles; the last link-visible
+        definer keeps the canonical function name so plain extern calls still
+        bind.  The renames are emitted as compile-time ``#define``s at the end
+        of ``_equates.h`` (after all constant definitions, so the kglobal_*
+        macros only affect use sites).
+        """
+        exported_offsets = getattr(self._context, "exported_code_symbol_offsets", None)
+        callable_offsets = getattr(self._context, "exported_callable_code_symbol_offsets", None)
+        self._context.code_label_renames = []
+        if not exported_offsets or not code_symbol_definers:
+            return
+        if callable_offsets is None:
+            callable_offsets = exported_offsets
+        used_offsets = {int(v) for v in exported_offsets.values()}
+        used_offsets.update(int(v) for v in callable_offsets.values())
+        used_offsets.update(int(v) for v in reserved_code_symbol_offsets)
+        next_offset = max(used_offsets, default=0x1000) + 1
+        renames: list[tuple[str, str, str]] = []
+        for name in sorted(code_symbol_definers):
+            definers = code_symbol_definers[name]
+            if len(definers) < 2 or name not in exported_offsets:
+                continue
+            visible = [m for m in definers if m in code_symbol_visible.get(name, set())]
+            if len(visible) < 2:
+                # Other definers are module-local (static) and never collide.
+                continue
+            keeper = visible[-1]
+            keeper_handle = int(exported_offsets[name])
+            for module in visible:
+                qualified = f"{name}__{re.sub(r'[^A-Za-z0-9_]', '_', str(module).lower())}"
+                module_macro = f"M2C_MODULE_{re.sub(r'[^A-Za-z0-9_]', '_', str(module).upper()) or 'UNKNOWN'}"
+                if module != keeper:
+                    while next_offset in used_offsets:
+                        next_offset += 1
+                    exported_offsets[qualified] = next_offset
+                    callable_offsets[qualified] = next_offset
+                    used_offsets.add(next_offset)
+                    next_offset += 1
+                    renames.append((module_macro, name, qualified))
+                else:
+                    # The keeper's dispatch handle is also qualified so that its
+                    # own tables store a distinct value; no bare kglobal_<name>
+                    # constant is emitted for colliding names.
+                    exported_offsets[qualified] = keeper_handle
+                renames.append((module_macro, f"kglobal_{name}", f"kglobal_{qualified}"))
+        self._context.code_label_renames = renames
 
     @staticmethod
     def _data_label_code_offsets(data_aliases, segments: OrderedDict, defined_code_symbol_offsets: dict[str, int]):
@@ -784,7 +891,11 @@ class Gen(TopDownVisitor):
 
     @staticmethod
     def _is_module_local_equate_value(value: str) -> bool:
-        return "$" in value or "*(" in value or "&" in value or "m2c::" in value
+        if "$" in value or "&" in value or "m2c::" in value:
+            return True
+        # Unary dereference "*(" only counts at expression start or after an
+        # operator/opening paren; "2*(expr)" is plain multiplication.
+        return bool(re.search(r"(?:^|[\s(+\-*/%<>=&|^!~])\*\s*\(", value))
 
     @staticmethod
     def _is_non_numeric_bare_equate_value(value: str) -> bool:
@@ -833,6 +944,8 @@ class Gen(TopDownVisitor):
         root, ext = os.path.splitext(source_path)
         if ext.lower() in {".asm", ".lst"}:
             return f"{root}.seg"
+        if ext.lower() == ".seg":
+            return source_path
         return f"{source_path}.seg"
 
     def merge_segments(self, allsegments: OrderedDict, allstructs: OrderedDict, newsegments: OrderedDict,
@@ -851,7 +964,12 @@ class Gen(TopDownVisitor):
         for segment_name, segment_value in newsegments.items():
             segclass = segment_value.segclass
             ispublic = segment_value.options and "public" in segment_value.options
-            if segclass and ispublic and self.merge_data_segments:
+            if (
+                segclass
+                and ispublic
+                and self.merge_data_segments
+                and self._is_code_storage_segment(segment_value)
+            ):
                 if segclass not in allsegments:
                     allsegments[segclass] = segment_value
                     self._segment_aliases(allsegments[segclass]).setdefault(segment_value.name, 0)
@@ -883,7 +1001,12 @@ class Gen(TopDownVisitor):
         for segment_name, segment_value in newsegments.items():
             segclass = segment_value.segclass
             ispublic = segment_value.options and "public" in segment_value.options
-            if segclass and ispublic and self.merge_data_segments:
+            if (
+                segclass
+                and ispublic
+                and self.merge_data_segments
+                and self._is_code_storage_segment(segment_value)
+            ):
                 merge_offset = self._segment_extent(allsegments[segclass]) if segclass in allsegments else 0
                 relocations[segment_name] = (segclass, merge_offset)
             elif self.merge_data_segments and segment_name in allsegments and (
@@ -992,7 +1115,12 @@ class Gen(TopDownVisitor):
             old = jsonpickle.encode(allsegments[segment_name], unpicklable=False)
             new = jsonpickle.encode(segment_value, unpicklable=False)
             if old != new and segment_name not in self._warned_segment_overwrites:
-                logging.warning("Overwriting segment %s during merge", segment_name)
+                logging.warning(
+                    "Overwriting segment %s during merge (old size 0x%x -> new size 0x%x)",
+                    segment_name,
+                    allsegments[segment_name].getsize(),
+                    segment_value.getsize(),
+                )
                 self._warned_segment_overwrites.add(segment_name)
 
     def _check_for_struct_overwrite(self, allstructs: dict, newstructs: dict):

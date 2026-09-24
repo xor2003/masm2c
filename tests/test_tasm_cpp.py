@@ -45,6 +45,13 @@ class CppTest(unittest.TestCase):
         assert self.parser.parse_arg("LOW T_100Hz", def_size=1, destination=False) == "t_100hz & 0xff"
         assert self.parser.parse_arg("HIGH T_100Hz", def_size=1, destination=False) == "(t_100hz >> 8) & 0xff"
 
+    def test_args_gwbasic_low_offset_string_literals(self):
+        assert self.parser.parse_arg('LOW OFFSET "%"+1', def_size=1, destination=False) == "('%' & 0xff)+1"
+        assert self.parser.parse_arg('LOW OFFSET "+"-"-"', def_size=1, destination=False) == "('+' & 0xff)-'-'"
+
+    def test_args_gwbasic_shr_expression_operator(self):
+        assert self.parser.parse_arg("2386364 SHR 16", def_size=2, destination=False) == "2386364 >> 16"
+
     def test_convert_str_accepts_string_chunks(self):
         assert self.cpp.convert_str("abc") == "abc"
 
