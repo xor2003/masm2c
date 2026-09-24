@@ -52,6 +52,9 @@ class baseop(lark.Tree):
         self.real_offset: Optional[int] = None
         self.real_seg: Optional[int] = None
         self.syntetic = False
+        # Raw `DB <prefix>` byte (e.g. `DB 026h` for `es:`) armed for this
+        # instruction, consumed by render-time segment handling.
+        self.segment_override_prefix = ""
 
     def getsize(self) -> int:
         return self.size

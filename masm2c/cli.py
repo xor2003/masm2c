@@ -461,13 +461,51 @@ def _eval_simple_numeric_equate(expr: str, values: dict[str, int]) -> int | None
         return None
 
 
+def _collect_one_source_exports(
+    source: str, args_dict: dict, base_counter: int
+) -> tuple[set[str], set[str], set[str], set[str]]:
+    """Parse one source and report its cross-module code symbol sets.
+
+    Returns (extern procs, offset consumers, unresolved references, public
+    code definitions).  Runs in worker processes under ``-j``; per-source
+    state is independent, so parallel union is equivalent to the serial loop.
+    """
+    from . import op
+    from .proc import Proc
+
+    parser = Parser(args_dict.copy())
+    try:
+        if match := re.match(r"(.+)\.(?:asm|lst)", source.lower()):
+            parser.parse_rt_info(match[1].strip())
+        if (args_dict.get("passes") or 0) >= 2:
+            parser.parse_file(source)
+            parser.next_pass(base_counter)
+        parser.parse_file(source)
+    except (Exception, SystemExit):
+        logging.exception("Failed collecting exports from %s", source)
+        return set(), set(), set(), set()
+    external_exports = set(parser.externals_procs)
+    offset_consumers = set(parser.externals_vars) | set(parser.externals_abs)
+    known_symbols = set(parser.symbols.get_globals())
+    unresolved_references: set[str] = set()
+    for symbol in parser.symbols.get_globals().values():
+        if not hasattr(symbol, "stmts"):
+            continue
+        labels: list[Any] = list(Token_.find_tokens(getattr(symbol, "stmts", []), "LABEL") or [])
+        labels += list(Token_.find_tokens(getattr(symbol, "stmts", []), "COMMON") or [])
+        unresolved_references.update(str(label) for label in labels if str(label) not in known_symbols)
+    public_definitions = {
+        name
+        for name in parser.public_symbols
+        if isinstance(parser.symbols.get_global(name), (op.label, Proc))
+    }
+    return external_exports, offset_consumers, unresolved_references, public_definitions
+
+
 def collect_code_exports(sources: list[str], args: argparse.Namespace) -> tuple[set[str], set[str]]:
     """Collect cross-module code symbols from this translation set."""
     if len(sources) <= 1:
         return set(), set()
-
-    from . import op
-    from .proc import Proc
 
     external_exports: set[str] = set()
     external_offset_consumers: set[str] = set()
@@ -475,32 +513,28 @@ def collect_code_exports(sources: list[str], args: argparse.Namespace) -> tuple[
     unresolved_references: set[str] = set()
     args_dict = vars(args).copy()
     saved_counter = Parser.c_dummy_label[0]
+    jobs = max(1, min(getattr(args, "jobs", 1) or 1, len(sources)))
     try:
-        for source in sources:
-            parser = Parser(args_dict.copy())
-            try:
-                if match := re.match(r"(.+)\.(?:asm|lst)", source.lower()):
-                    parser.parse_rt_info(match[1].strip())
-                if (args_dict.get("passes") or 0) >= 2:
-                    parser.parse_file(source)
-                    parser.next_pass(saved_counter)
-                parser.parse_file(source)
-            except (Exception, SystemExit):
-                logging.exception("Failed collecting exports from %s", source)
-                continue
-            external_exports.update(parser.externals_procs)
-            external_offset_consumers.update(parser.externals_vars)
-            external_offset_consumers.update(parser.externals_abs)
-            known_symbols = set(parser.symbols.get_globals())
-            for symbol in parser.symbols.get_globals().values():
-                if not hasattr(symbol, "stmts"):
-                    continue
-                labels: list[Any] = list(Token_.find_tokens(getattr(symbol, "stmts", []), "LABEL") or [])
-                labels += list(Token_.find_tokens(getattr(symbol, "stmts", []), "COMMON") or [])
-                unresolved_references.update(str(label) for label in labels if str(label) not in known_symbols)
-            for name in parser.public_symbols:
-                if isinstance(parser.symbols.get_global(name), (op.label, Proc)):
-                    public_definitions.add(name)
+        if jobs == 1:
+            results = [
+                _collect_one_source_exports(source, args_dict.copy(), saved_counter)
+                for source in sources
+            ]
+        else:
+            with concurrent.futures.ProcessPoolExecutor(max_workers=jobs) as executor:
+                results = list(
+                    executor.map(
+                        _collect_one_source_exports,
+                        sources,
+                        [args_dict.copy() for _ in sources],
+                        [saved_counter] * len(sources),
+                    )
+                )
+        for exports, consumers, unresolved, publics in results:
+            external_exports.update(exports)
+            external_offset_consumers.update(consumers)
+            unresolved_references.update(unresolved)
+            public_definitions.update(publics)
     finally:
         Parser.c_dummy_label[0] = saved_counter
     return external_exports, public_definitions & (unresolved_references | external_offset_consumers | external_exports)

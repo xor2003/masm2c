@@ -2460,7 +2460,11 @@ Q SYSTEM
 
         self.assertIn("start", labels)
         self.assertIn("keep", labels)
-        self.assertNotIn("table", labels)
+        # A standalone label before data inside a code segment keeps its
+        # code label (it may be a jump target, e.g. an ES_LODSB-style
+        # prefix byte) while still registering as a data variable.
+        self.assertIn("table", labels)
+        self.assertIsInstance(parser.symbols.get_global("table"), op.var)
 
     def test_offset_array_plus_constant_renders_offset_not_pointer(self):
         parser = Parser({"mergeprocs": "separate"})
@@ -3306,6 +3310,159 @@ Q SYSTEM
 
         self.assertIn("main", exported)
         self.assertIn("main", callable_offsets)
+
+
+class DuplicateLocalCodeSymbolTest(unittest.TestCase):
+    """Module-local code symbols defined in several modules must not collide.
+
+    Tornado's VSCREEN and COM_CLIP both define private PolyClipRight procs
+    (NEAR, not PUBLIC, never EXTRN-referenced).  The generated TUs still emit
+    them with weak linkage (translate-time export scans mark them), so the
+    linker would otherwise silently merge two different procedures.
+    """
+
+    def _merge_two_local_definers(self):
+        tmp = TemporaryDirectory()
+        old_cwd = os.getcwd()
+        os.chdir(tmp.name)
+        self.addCleanup(os.chdir, old_cwd)
+        self.addCleanup(tmp.cleanup)
+        writer = Cpp(Parser([]))
+        for mod in ("com_clip.asm", "vscreen.asm"):
+            writer.write_segment_file(
+                OrderedDict(),
+                OrderedDict(),
+                mod,
+                defined_code_symbols={"polyclipright"},
+                defined_code_symbol_offsets={"polyclipright": 0x100},
+            )
+        merger = Cpp(Parser([]), merge_data_segments=True)
+        merger.write_data_segments_cpp(*merger.read_segment_files(["com_clip.asm", "vscreen.asm"]))
+        return merger
+
+    def test_non_keeper_definer_gets_module_qualified_rename(self):
+        self._merge_two_local_definers()
+        equates = Path("_equates.h").read_text(encoding="cp437")
+
+        self.assertIn("#if defined(M2C_MODULE_COM_CLIP)", equates)
+        self.assertIn("#define polyclipright polyclipright__com_clip", equates)
+
+    def test_last_definer_keeps_canonical_name(self):
+        self._merge_two_local_definers()
+        equates = Path("_equates.h").read_text(encoding="cp437")
+
+        self.assertNotIn("polyclipright__vscreen", equates)
+
+    def test_code_segment_db_label_renders_goto_case_and_no_wrapper(self):
+        parser = Parser({"mergeprocs": "separate"})
+        source = (
+            "CODE SEGMENT\n"
+            "main PROC\n"
+            "loop1: db 026h\n"
+            "    lodsb\n"
+            "    cmp al,-1\n"
+            "    jz done\n"
+            "    jmp loop1\n"
+            "done: ret\n"
+            "main ENDP\n"
+            "CODE ENDS\n"
+            "END\n"
+        )
+        tree = parser.parse_text(source)
+        parser.process_ast(source, tree)
+
+        proc = parser.symbols.get_global("main")
+        cpp = Cpp(parser)
+        cpp.generate_label_to_proc_map()
+        rendered = "\n".join(proc.generate_c_cmd(cpp, stmt) for stmt in proc.stmts)
+
+        # The label stays a code position: the jump dispatches by code offset
+        # into the owning proc rather than reading the data byte's value.
+        self.assertIn("loop1", cpp.label_to_proc)
+        self.assertIn("kloop1", rendered)
+        self.assertNotIn("__disp=loop1", rendered)
+        # The ES prefix byte applies to the lodsb (raddr(es,si), not ds).
+        self.assertIn("raddr(es,si)", rendered)
+        # The name is also a data variable for byte-level references.
+        self.assertIsInstance(parser.symbols.get_global("loop1"), op.var)
+        # A wrapper function would collide with the data symbol; the label is
+        # reached through the owning proc's dispatch instead.
+        self.assertNotIn("loop1", cpp._label_wrapper_targets())
+        # The exported code offset is the label's position, not a data slot.
+        self.assertGreater(
+            cpp.export_defined_code_symbol_offsets().get("loop1", 0), 0x1000
+        )
+
+    def test_code_segment_db_prefix_is_consumed_by_next_instruction_only(self):
+        parser = Parser({"mergeprocs": "separate"})
+        source = (
+            "CODE SEGMENT\n"
+            "main PROC\n"
+            "    db 02eh\n"
+            "    lodsb\n"
+            "    lodsb\n"
+            "    ret\n"
+            "main ENDP\n"
+            "CODE ENDS\n"
+            "END\n"
+        )
+        tree = parser.parse_text(source)
+        parser.process_ast(source, tree)
+
+        proc = parser.symbols.get_global("main")
+        cpp = Cpp(parser)
+        rendered = "\n".join(proc.generate_c_cmd(cpp, stmt) for stmt in proc.stmts)
+
+        # CS prefix applies to the first lodsb only; the second falls back to
+        # the plain ds-based LODSB macro.
+        self.assertEqual(rendered.count("raddr(cs,si)"), 1)
+        self.assertIn("LODSB", rendered)
+
+    def test_data_segment_db_prefix_byte_does_not_override(self):
+        parser = Parser({"mergeprocs": "separate"})
+        source = (
+            "DATA SEGMENT\n"
+            "byte26 db 026h\n"
+            "DATA ENDS\n"
+            "CODE SEGMENT\n"
+            "main PROC\n"
+            "    lodsb\n"
+            "    ret\n"
+            "main ENDP\n"
+            "CODE ENDS\n"
+            "END\n"
+        )
+        tree = parser.parse_text(source)
+        parser.process_ast(source, tree)
+
+        proc = parser.symbols.get_global("main")
+        cpp = Cpp(parser)
+        rendered = "\n".join(proc.generate_c_cmd(cpp, stmt) for stmt in proc.stmts)
+
+        self.assertIn("LODSB", rendered)
+        self.assertNotIn("raddr(es,si)", rendered)
+
+    def test_mainproc_is_never_qualified(self):
+        with TemporaryDirectory() as tmp:
+            old_cwd = os.getcwd()
+            os.chdir(tmp)
+            try:
+                writer = Cpp(Parser([]))
+                for mod in ("alpha.asm", "beta.asm"):
+                    writer.write_segment_file(
+                        OrderedDict(),
+                        OrderedDict(),
+                        mod,
+                        defined_code_symbols={"mainproc"},
+                        defined_code_symbol_offsets={"mainproc": 0x100},
+                    )
+                merger = Cpp(Parser([]), merge_data_segments=True)
+                merger.write_data_segments_cpp(*merger.read_segment_files(["alpha.asm", "beta.asm"]))
+
+                equates = Path("_equates.h").read_text(encoding="cp437")
+                self.assertNotIn("mainproc__", equates)
+            finally:
+                os.chdir(old_cwd)
 
 
 if __name__ == "__main__":

@@ -127,11 +127,13 @@ class _PendingParseState:
     proc_options: list[str] = field(default_factory=list)
     mnemonic: str = ""
     source_comment: str = ""
+    segment_prefix: str = ""
 
     def reset(self) -> None:
         self.proc_options.clear()
         self.mnemonic = ""
         self.source_comment = ""
+        self.segment_prefix = ""
 
 
 @dataclass
@@ -534,6 +536,10 @@ class Parser:
         self.make_sure_proc_exists(line_number, raw)
         
         assert self.proc, "No current procedure for label"
+        # A label is a possible jump entry point: control can resume here
+        # without executing a `DB <prefix>` byte above it, so drop any armed
+        # segment-override prefix.
+        self._pending.segment_prefix = ""
         public_export = mangled_name in self.public_symbols
         if public_export:
             globl = True
@@ -1159,10 +1165,11 @@ class Parser:
     ) -> tuple[str, list[Any]]:
         self._current_instruction_raw = raw
         normalized_instruction = str(instruction).lower()
+        pending_segment = self._pending.segment_prefix
         if normalized_instruction in {"lodsb", "lodsw", "lodsd"}:
             lods_args = args if self._has_implicit_lods_segment_override_arg(args) else []
             if not lods_args:
-                lods_args = self._implicit_lods_segment_override_args(normalized_instruction)
+                lods_args = self._implicit_lods_segment_override_args(normalized_instruction, pending_segment)
             if lods_args:
                 size = {"lodsb": 1, "lodsw": 2, "lodsd": 4}[normalized_instruction]
                 for arg in lods_args:
@@ -1171,7 +1178,21 @@ class Parser:
                         arg.ptr_size = size
                 instruction = "lods"
                 args = lods_args
+        elif pending_segment:
+            self._apply_pending_segment_prefix(args, pending_segment)
         return instruction, self.prepare_instruction_args(instruction, args)
+
+    @staticmethod
+    def _apply_pending_segment_prefix(args: list[Any], segment: str) -> None:
+        """Apply a raw `DB <prefix>` override to explicit memory operands."""
+        for arg in args:
+            if (
+                isinstance(arg, Expression)
+                and arg.indirection == IndirectionType.POINTER
+                and not arg.segment_overriden
+            ):
+                arg.segment_register = segment
+                arg.segment_overriden = True
 
     def prepare_instruction_args(self, instruction: str, args: list[Any]) -> list[Any]:
         if len(args) >= 2 and isinstance(args[0], Expression):
@@ -1191,23 +1212,26 @@ class Parser:
             and bool(args[0].registers.intersection({"si", "esi"}))
         )
 
-    def _implicit_lods_segment_override_args(self, instruction: str) -> list[Expression]:
-        match = re.match(
-            r"^\s*lods[bdw]\s+(?P<segment>cs|ds|es|fs|gs|ss)\s*:\s*\[?\s*(?P<index>e?si)\s*\]?\s*(?:;.*)?$",
-            self._current_instruction_raw,
-            re.IGNORECASE,
-        )
-        if not match:
-            return []
+    def _implicit_lods_segment_override_args(self, instruction: str, segment: str = "") -> list[Expression]:
+        index = "si"
+        if not segment:
+            match = re.match(
+                r"^\s*lods[bdw]\s+(?P<segment>cs|ds|es|fs|gs|ss)\s*:\s*\[?\s*(?P<index>e?si)\s*\]?\s*(?:;.*)?$",
+                self._current_instruction_raw,
+                re.IGNORECASE,
+            )
+            if not match:
+                return []
+            segment = match.group("segment").lower()
+            index = match.group("index").lower()
 
         size = {"lodsb": 1, "lodsw": 2, "lodsd": 4}[instruction]
-        index = match.group("index").lower()
         expr = Expression()
         expr.indirection = IndirectionType.POINTER
         expr.element_size = size
         expr.ptr_size = size
         expr.registers.add(index)
-        expr.segment_register = match.group("segment").lower()
+        expr.segment_register = segment
         expr.segment_overriden = True
         expr.children = [Tree(data="register", children=[index])]
         return [expr]
@@ -1859,6 +1883,9 @@ class Parser:
         logging.info("     Found segment %s", name)
         name = name.lower()
         self.data_merge_candidates = 0
+        # Segments are not contiguous: a `DB <prefix>` byte at the end of one
+        # segment cannot override an instruction in the next.
+        self._pending.segment_prefix = ""
         self._remember_current_segment_offset()
         if self.__segment_name != "default_seg" and name != self.__segment_name:
             self.__segment_stack.append((self.__segment_name, self.__segment, self.__cur_seg_offset))
@@ -2156,6 +2183,7 @@ class Parser:
         data.alignment = binary_width
         self._append_data_record(data, isstruct, raw, dummy_label, data_internal_type, binary_width)
         self._append_code_skip_op_if_needed(data, isstruct, dummy_label)
+        self._arm_segment_prefix_if_needed(data, isstruct)
 
         self.flow_terminated = True
         self._last_statement_was_data = not isstruct
@@ -2192,6 +2220,35 @@ class Parser:
         skip.segment = self.__segment_name
         self.proc.stmts.append(skip)
         self.flow_terminated = False
+
+    _SEGMENT_PREFIX_BYTES = {
+        0x26: "es",
+        0x2E: "cs",
+        0x36: "ss",
+        0x3E: "ds",
+        0x64: "fs",
+        0x65: "gs",
+    }
+
+    def _arm_segment_prefix_if_needed(self, data: Data, isstruct: bool) -> None:
+        """Record a code-segment `DB <prefix>` byte as a segment override.
+
+        Listings carry raw prefix bytes (``DB 026h`` for ``es:`` and friends)
+        emitted by macros such as ``ES_LODSB``.  Executed inline, the byte is a
+        real segment-override prefix applying to the next instruction, so keep
+        it pending until the following instruction is built.
+        """
+        if isstruct or not self._current_segment_is_code():
+            return
+        if data.data_type.lower() == "db" and data.getsize() == 1:
+            byte = self._single_data_byte(data)
+            segment = self._SEGMENT_PREFIX_BYTES.get(byte) if byte is not None else None
+            if segment is not None:
+                self._pending.segment_prefix = segment
+                return
+        # Any other code-stream bytes are the instruction the armed prefix
+        # actually applies to, so the override must not leak past them.
+        self._pending.segment_prefix = ""
 
     def _current_segment_is_code(self) -> bool:
         """Return true when the active segment is intended to hold code."""
@@ -2235,6 +2292,14 @@ class Parser:
             return ""
         if getattr(previous, "public_export", False):
             return ""
+        if self._current_segment_is_code():
+            # A standalone label inside a code segment still marks an
+            # executable position even when a data directive follows
+            # (e.g. an ES_LODSB-style `DB 26h` segment-override prefix).
+            # Keep the code label so jumps to it dispatch locally; the
+            # data record below still registers the same name as a
+            # variable for data references.
+            return name
 
         del self.proc.stmts[previous_index]
         self.proc.provided_labels.discard(name)
@@ -3979,6 +4044,12 @@ class Parser:
         op = self._build_instruction_op(instruction, args, raw, line_number)
         if op is None:
             return None
+        if self._pending.segment_prefix:
+            # A raw `DB <prefix>` byte (e.g. `DB 026h` = `es:`) applies to this
+            # instruction; keep it on the op for render-time consumers with
+            # implicit operands (cmps/movs/scas/stos).
+            op.segment_override_prefix = self._pending.segment_prefix
+            self._pending.segment_prefix = ""
         self._register_direct_external_code_ref(op)
         self._register_offset_external_code_ref(op)
         self._register_provisional_external_code_target(op)

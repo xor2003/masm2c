@@ -191,7 +191,17 @@ class Gen(TopDownVisitor):
         uniq_labels = OrderedDict()
         for label in labels:
             g = self._context.symbols.get_global(label)
-            uniq_labels[f"{g.real_seg}_{g.real_offset}"] = label
+            if g is not None and not hasattr(g, "real_seg"):
+                # A dual code/data name resolves to the data variable in the
+                # globals table; recover the code label for its real address.
+                owner = self.label_to_proc.get(label)
+                proc = self._context.symbols.get_global(owner) if owner else None
+                for symbol in getattr(proc, "stmts", []) or []:
+                    if isinstance(symbol, op.label) and symbol.name == label:
+                        g = symbol
+                        break
+            key = f"{g.real_seg}_{g.real_offset}" if hasattr(g, "real_seg") else label
+            uniq_labels[key] = label
         return uniq_labels.values()
 
     def merge_procs(self):
@@ -426,6 +436,23 @@ class Gen(TopDownVisitor):
                 labels.add(label_name)
         return labels
 
+    @staticmethod
+    def _iter_segment_data_code_labels(value):
+        """Yield normalized label tokens nested inside data initializer values."""
+        if getattr(value, "type", None) in {"LABEL", "COMMON"}:
+            yield re.sub(r"[^A-Za-z0-9_]", "_", str(value)).lower()
+            return
+        if isinstance(value, lark.Tree):
+            for child in value.children:
+                yield from Gen._iter_segment_data_code_labels(child)
+            return
+        if isinstance(value, op.Data):
+            yield from Gen._iter_segment_data_code_labels(value.children)
+            return
+        if isinstance(value, (list, tuple)):
+            for child in value:
+                yield from Gen._iter_segment_data_code_labels(child)
+
     def write_segment_file(
         self,
         segments,
@@ -441,6 +468,7 @@ class Gen(TopDownVisitor):
         code_offset_aliases=None,
         module_name=None,
         public_code_symbols=None,
+        link_visible_code_symbols=None,
     ):
         jsonpickle.set_encoder_options("json", indent=2)
         with open(self.segment_sidecar_path(fname), "wb") as f:
@@ -458,6 +486,7 @@ class Gen(TopDownVisitor):
                     code_offset_aliases or [],
                     module_name,
                     public_code_symbols or set(),
+                    link_visible_code_symbols or set(),
                 ),
                 f,
             )
@@ -587,6 +616,12 @@ class Gen(TopDownVisitor):
                     if len(sidecar) > 11 and sidecar[11]
                     else set()
                 )
+                newlink_visible_code_symbols = (
+                    {str(name).lower() for name in sidecar[12]}
+                    if len(sidecar) > 12 and sidecar[12]
+                    else set()
+                )
+                has_link_visibility = len(sidecar) > 12 and sidecar[12] is not None
                 module_label = module_names.get(
                     str(source_file),
                     os.path.splitext(os.path.basename(str(source_file)))[0].lower(),
@@ -596,14 +631,31 @@ class Gen(TopDownVisitor):
                     definers = code_symbol_definers.setdefault(name, [])
                     if module_label not in definers:
                         definers.append(module_label)
-                # A defined symbol that is also extern/data/offset referenced is
-                # emitted with external (weak) linkage, so same-named definitions
-                # in other modules collide at link time.
-                for name in newextern_code_symbols:
-                    lowered = str(name).lower()
-                    if lowered in defined_here:
-                        code_symbol_visible.setdefault(lowered, set()).add(module_label)
-                for name in defined_here & requested_exports:
+                if not has_link_visibility:
+                    # Sidecars predating slot 12 can't report translate-time
+                    # linkage; approximate it: a defined symbol that is also
+                    # extern-referenced or requested by the global export scan
+                    # may have been emitted weak, so same-named definitions in
+                    # other modules could collide at link time.  Newer sidecars
+                    # record the real linkage decision, which is authoritative —
+                    # e.g. only the PUBLIC-ing definer of a public_code_exports
+                    # name actually emits weak, not every module defining it.
+                    for name in newextern_code_symbols:
+                        lowered = str(name).lower()
+                        if lowered in defined_here:
+                            code_symbol_visible.setdefault(lowered, set()).add(module_label)
+                    for name in defined_here & requested_exports:
+                        code_symbol_visible.setdefault(name, set()).add(module_label)
+                # Code symbols stored in this module's data initializers (jump
+                # tables, offset lists) are emitted with weak linkage, so they
+                # collide at link exactly like externs.
+                data_referenced = set()
+                for segment in newsegments.values():
+                    for data in segment.getdata():
+                        data_referenced.update(
+                            self._iter_segment_data_code_labels(getattr(data, "children", []))
+                        )
+                for name in defined_here & (data_referenced | newlink_visible_code_symbols):
                     code_symbol_visible.setdefault(name, set()).add(module_label)
                 for name in defined_here & newpublic_code_symbols:
                     code_symbol_publics.setdefault(name, set()).add(module_label)
@@ -670,6 +722,7 @@ class Gen(TopDownVisitor):
             code_symbol_visible,
             reserved_code_symbol_offsets,
             code_symbol_publics,
+            extern_code_symbols,
         )
         self._context.all_defined_code_symbol_offsets = {
             str(name).lower(): int(offset)
@@ -684,6 +737,7 @@ class Gen(TopDownVisitor):
         code_symbol_visible: dict[str, set[str]],
         reserved_code_symbol_offsets: set[int],
         code_symbol_publics: dict[str, set[str]] | None = None,
+        extern_code_symbols: set[str] | None = None,
     ) -> None:
         """Disambiguate same-named code symbols defined by several modules.
 
@@ -705,10 +759,13 @@ class Gen(TopDownVisitor):
         exported_offsets = getattr(self._context, "exported_code_symbol_offsets", None)
         callable_offsets = getattr(self._context, "exported_callable_code_symbol_offsets", None)
         self._context.code_label_renames = []
-        if not exported_offsets or not code_symbol_definers:
+        if not code_symbol_definers:
             return
+        if not exported_offsets:
+            exported_offsets = {}
         if callable_offsets is None:
             callable_offsets = exported_offsets
+        extern_code_symbols = extern_code_symbols or set()
         used_offsets = {int(v) for v in exported_offsets.values()}
         used_offsets.update(int(v) for v in callable_offsets.values())
         used_offsets.update(int(v) for v in reserved_code_symbol_offsets)
@@ -716,37 +773,62 @@ class Gen(TopDownVisitor):
         renames: list[tuple[str, str, str]] = []
         for name in sorted(code_symbol_definers):
             definers = code_symbol_definers[name]
-            if len(definers) < 2 or name not in exported_offsets:
+            if len(definers) < 2:
                 continue
             visible = [m for m in definers if m in code_symbol_visible.get(name, set())]
             if len(visible) < 2:
-                # Other definers are module-local (static) and never collide.
-                continue
+                # Sidecars written before link visibility was recorded can't
+                # reveal translate-time weak emission (e.g. driven by the
+                # external_code_exports scan).  When no module references the
+                # name externally, every definer is module-local, so qualify
+                # all but the keeper unconditionally.  Extern-referenced
+                # names must keep a canonical target for their callers.
+                if name == "mainproc" or name in extern_code_symbols:
+                    continue
+                # Only link-visible definers can back dispatch handles; module
+                # -local (static) definers still get qualified function names
+                # so they never bind the canonical symbol, but no callable
+                # offset may point at them.  When visibility tracking is
+                # absent entirely, keep the old all-definers behavior.
+                handle_modules = visible if name in code_symbol_visible else list(definers)
+                visible = list(definers)
+            else:
+                handle_modules = visible
+            has_handle = name in exported_offsets
             # Prefer the module that PUBLIC-exports the symbol as keeper: plain
             # extern callers bind to the unqualified name, which only the public
             # definer actually emits with external linkage.
             public_definers = [
                 m for m in visible if m in (code_symbol_publics or {}).get(name, set())
             ]
-            keeper = public_definers[-1] if public_definers else visible[-1]
-            keeper_handle = int(exported_offsets[name])
+            keeper = (
+                public_definers[-1]
+                if public_definers
+                else handle_modules[-1]
+                if handle_modules
+                else visible[-1]
+            )
+            keeper_handle = int(exported_offsets[name]) if has_handle else 0
             for module in visible:
                 qualified = f"{name}__{re.sub(r'[^A-Za-z0-9_]', '_', str(module).lower())}"
                 module_macro = f"M2C_MODULE_{re.sub(r'[^A-Za-z0-9_]', '_', str(module).upper()) or 'UNKNOWN'}"
+                dispatchable = has_handle and module in handle_modules
                 if module != keeper:
-                    while next_offset in used_offsets:
+                    if dispatchable:
+                        while next_offset in used_offsets:
+                            next_offset += 1
+                        exported_offsets[qualified] = next_offset
+                        callable_offsets[qualified] = next_offset
+                        used_offsets.add(next_offset)
                         next_offset += 1
-                    exported_offsets[qualified] = next_offset
-                    callable_offsets[qualified] = next_offset
-                    used_offsets.add(next_offset)
-                    next_offset += 1
                     renames.append((module_macro, name, qualified))
-                else:
+                elif dispatchable:
                     # The keeper's dispatch handle is also qualified so that its
                     # own tables store a distinct value; no bare kglobal_<name>
                     # constant is emitted for colliding names.
                     exported_offsets[qualified] = keeper_handle
-                renames.append((module_macro, f"kglobal_{name}", f"kglobal_{qualified}"))
+                if dispatchable:
+                    renames.append((module_macro, f"kglobal_{name}", f"kglobal_{qualified}"))
         self._context.code_label_renames = renames
 
     @staticmethod

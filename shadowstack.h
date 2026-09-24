@@ -3,17 +3,17 @@
     class ShadowStack {
         struct Frame {
             bool init=false;
-            const char *file;
-            size_t line;
-            dd sp;
-            dw cs;
-            dd ip;
-            dd value;
-            dw *pointer_;
-            size_t addcounter;
-            size_t remcounter;
-            bool itwascall;
-            size_t call_deep;
+            const char *file=nullptr;
+            size_t line=0;
+            dd sp=0;
+            dw cs=0;
+            dd ip=0;
+            dd value=0;
+            dw *pointer_=nullptr;
+            size_t addcounter=0;
+            size_t remcounter=0;
+            bool itwascall=false;
+            size_t call_deep=0;
         };
 
         std::vector<Frame> m_ss;

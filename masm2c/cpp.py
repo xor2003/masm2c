@@ -1119,7 +1119,8 @@ class Cpp(Gen):
         elif "near" in expr.mods:
             far = False
 
-        if isinstance(name, str) and ((g := self._context.symbols.get_and_mark_global(name)) is None or isinstance(g, op.var)):
+        if (isinstance(name, str) and name not in self.label_to_proc
+                and ((g := self._context.symbols.get_and_mark_global(name)) is None or isinstance(g, op.var))):
             # jumps feat purpose:
             # * in sub __dispatch_call - for address based jumps or grouped subs
             # * direct jumps
@@ -1204,6 +1205,12 @@ class Cpp(Gen):
         label_ip = "0"
         if isinstance(proc_name, str) and (g := self._context.symbols.get_global(proc_name)):
             if isinstance(g, op.label) and not g.isproc and proc_name not in self._procs and proc_name not in self.grouped:
+                label_ip = f"m2c::k{proc_name}"
+                proc_name = self.label_to_proc[g.name]
+            elif isinstance(g, op.var) and g.name in self.label_to_proc:
+                # Data symbol that is also a code position (label before a
+                # code-segment data directive): call the owning proc like a
+                # normal code label.
                 label_ip = f"m2c::k{proc_name}"
                 proc_name = self.label_to_proc[g.name]
             elif isinstance(g, op.var):
@@ -1604,6 +1611,9 @@ class Cpp(Gen):
 
     def _cmps_source_segment_override(self) -> str | None:
         """Return the explicit source segment from a CMPS source operand."""
+        pending = getattr(self._current_stmt, "segment_override_prefix", "") or ""
+        if pending:
+            return pending
         raw_line = str(getattr(self._current_stmt, "raw_line", "") or "")
         match = re.search(r"\bcmps[bdw]?\s+(?P<segment>cs|ds|es|fs|gs|ss)\s*:", raw_line, re.IGNORECASE)
         return match.group("segment").lower() if match else None
@@ -1885,13 +1895,44 @@ class Cpp(Gen):
                 str(name).lower()
                 for name in getattr(self._context, "public_symbols", set())
             },
+            link_visible_code_symbols={
+                name
+                for name in self.export_defined_code_symbol_names()
+                if self.function_linkage(name) != "static "
+            },
         )
+
+    def _proc_label_objects(self) -> dict[str, "op.label"]:
+        """Map code label names to their ``op.label`` statements.
+
+        A standalone label before a code-segment data directive (for example
+        ``VertexLoop1: DB 026h`` prefix bytes) is registered both as a code
+        label in ``proc.stmts`` and as a same-named ``op.var`` in the globals
+        table.  ``get_globals()`` can therefore no longer reach the label
+        object; this map recovers it.
+        """
+        if getattr(self, "__proc_label_objects", None) is None:
+            result: dict[str, op.label] = {}
+            for proc_name in self._procs:
+                proc = self._context.symbols.get_global(proc_name)
+                if not proc or not hasattr(proc, "stmts"):
+                    continue
+                for symbol in proc.stmts:
+                    if isinstance(symbol, op.label):
+                        result.setdefault(self.sanitize_label_name(symbol.name), symbol)
+            self.__proc_label_objects = result
+        return self.__proc_label_objects
+
+    def _dual_code_label(self, name: str) -> "op.label | None":
+        """Return the proc-level code label sharing ``name`` with a data var."""
+        return self._proc_label_objects().get(self.sanitize_label_name(str(name)))
 
     def export_code_symbol_names(self) -> set[str]:
         return {
             name
             for name, symbol in self._context.symbols.get_globals().items()
             if isinstance(symbol, (op.label, Proc))
+            or (isinstance(symbol, op.var) and self._dual_code_label(name) is not None)
         }
 
     def export_defined_code_symbol_names(self) -> set[str]:
@@ -1974,8 +2015,14 @@ class Cpp(Gen):
         for name, symbol in self._context.symbols.get_globals().items():
             label = self.sanitize_label_name(name)
             if isinstance(symbol, op.var) and not symbol.external:
-                offsets[label] = int(symbol.offset)
-                continue
+                dual_label = self._dual_code_label(name)
+                if dual_label is None:
+                    offsets[label] = int(symbol.offset)
+                    continue
+                # The name also marks a code position (standalone label before
+                # a code-segment data directive): record the code offset so
+                # `k<label>`/dispatch cases reach it.
+                symbol = dual_label
             if not isinstance(symbol, (op.label, Proc)):
                 continue
             current += 1
@@ -2164,6 +2211,12 @@ class Cpp(Gen):
                     continue
                 name = symbol.name
                 if name == entry_point:
+                    continue
+                if isinstance(self._context.symbols.get_global(name), op.var):
+                    # The name is shared with a data variable (standalone
+                    # label before a code-segment data directive): a wrapper
+                    # function would collide with the data symbol, and the
+                    # label is reached through the owning proc's dispatch.
                     continue
                 if self._is_internal_label_wrapper_name(name) and name not in externally_referenced:
                     continue
@@ -2501,9 +2554,14 @@ db(& heap)[HEAP_SIZE]=m.heap;
         result = "namespace m2c{\n"
         offset = 0x1001
         for name, symbol in list(self._context.symbols.get_globals().items()):
-            if not isinstance(symbol, (op.label, Proc)):
-                continue
             label = re.sub(r"[^A-Za-z0-9_]", "_", name).lower()
+            if not isinstance(symbol, (op.label, Proc)):
+                # A standalone label on a code-segment data directive also
+                # registers a same-named variable; emit the code offset.
+                dual = self._dual_code_label(name) if isinstance(symbol, op.var) else None
+                if dual is None:
+                    continue
+                symbol = dual
             offset += 1
             real_seg = getattr(symbol, "real_seg", None) or 0
             real_offset = getattr(symbol, "real_offset", None) or 0
@@ -2530,6 +2588,12 @@ db(& heap)[HEAP_SIZE]=m.heap;
                     continue
                 label = self.sanitize_label_name(data.label)
                 if label.startswith(("dummy", "edummy")):
+                    continue
+                if self._dual_code_label(label) is not None:
+                    # Shared with a code label (standalone label before a
+                    # code-segment data directive): the module header emits a
+                    # constexpr k<label> code offset; a data-offset alias here
+                    # would give it a conflicting value.
                     continue
                 if label in emitted:
                     continue
@@ -2879,18 +2943,24 @@ static const dd kbegin = 0x1001;
 """
         i = 0x1001
         for k, v in list(self._context.symbols.get_globals().items()):
-            if isinstance(v, (op.label, Proc)):
-                if isinstance(v, Proc) and v.extern and self._is_public_code_offset_export(k):
+            if not isinstance(v, (op.label, Proc)):
+                # A standalone label on a code-segment data directive also
+                # registers a same-named variable; emit the code offset so
+                # `k<label>` matches the dispatch tables.
+                v = self._dual_code_label(k) if isinstance(v, op.var) else None
+                if v is None:
                     continue
-                k = self.sanitize_label_name(k)
-                i += 1
-                if v.real_offset or v.real_seg:
-                    i = v.real_seg * 0x10000 + v.real_offset
-                line = f"static const dd k{k} = 0x{i:x};\n"
-                guard = self.code_equate_guard_name(k)
-                if guard:
-                    line = f"#ifndef {guard}\n#define {guard} 1\n{line}#endif\n"
-                labeloffsets += line
+            if isinstance(v, Proc) and v.extern and self._is_public_code_offset_export(k):
+                continue
+            k = self.sanitize_label_name(k)
+            i += 1
+            if v.real_offset or v.real_seg:
+                i = v.real_seg * 0x10000 + v.real_offset
+            line = f"static const dd k{k} = 0x{i:x};\n"
+            guard = self.code_equate_guard_name(k)
+            if guard:
+                line = f"#ifndef {guard}\n#define {guard} 1\n{line}#endif\n"
+            labeloffsets += line
         labeloffsets += "}\n"
         return labeloffsets
 
@@ -3223,6 +3293,11 @@ struct Memory{
             if g := self._context.symbols.get_global(label):
                 target_proc_name = None
                 if isinstance(g, op.label) and g.name in self.label_to_proc:
+                    target_proc_name = self.label_to_proc[g.name]
+                elif isinstance(g, op.var) and g.name in self.label_to_proc:
+                    # Data symbols that also mark a code position (standalone
+                    # label before a code-segment data directive, e.g. an
+                    # ES_LODSB prefix byte) dispatch to the owning proc.
                     target_proc_name = self.label_to_proc[g.name]
                 elif isinstance(g, Proc):
                     target_proc_name = g.name
@@ -3830,7 +3905,7 @@ struct Memory{
         if self.proc and self.proc.name in set(self.groups.values()):
             result += "        default: return __dispatch_call(__disp, _state);\n"
         else:
-            result += "        default: { bool handled = false; if (!m2c::dispatch_external_code(__disp, _state, &handled)) return false; if (handled) break; m2c::log_error(\"Don't know how to jump to 0x%x. See \" __FILE__ \" line %d\\n\", __disp, __LINE__);m2c::stackDump(_state); abort(); }\n"
+            result += "        default: { bool handled = false; if (!m2c::dispatch_external_code(__disp, _state, &handled)) return false; if (handled) break; m2c::log_error(\"Don't know how to jump to 0x%x in %s (\" __FILE__ \":%d)\\n\", __disp, __func__, __LINE__);m2c::stackDump(_state); abort(); }\n"
         result += "    };\n}\n"
         return result
 

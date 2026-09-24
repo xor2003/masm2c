@@ -123,7 +123,7 @@ return m_needtoskipcall;}
 
   void ShadowStack::print_frame(const Frame& f)
   {
-            log_debug("~~ %4d %8x %8x %04x:%04x sp=%4x %4x~%4x\n", f.itwascall, f.addcounter, f.remcounter, f.cs, f.ip, f.sp, f.value, *f.pointer_);
+            log_debug("~~ %4d %8zx %8zx %04x:%04x sp=%4x %4x~%4x\n", f.itwascall, f.addcounter, f.remcounter, f.cs, f.ip, f.sp, f.value, *f.pointer_);
   }
 
   void ShadowStack::print (_STATE * _state)
@@ -139,7 +139,7 @@ return m_needtoskipcall;}
             if (!f.init) continue;
             if (i == m_current)
               printf ("  ");
-            printf ("%4z %8zx %8zx %04zx:%04x sp=%4x %4x", f.call_deep, f.addcounter, f.remcounter, f.cs, f.ip, f.sp, (dw) f.value);
+            printf ("%4zu %8zx %8zx %04x:%04x sp=%4x %4x", f.call_deep, f.addcounter, f.remcounter, f.cs, f.ip, f.sp, (dw) f.value);
             if ((dw) *f.pointer_ != (dw) f.value)
               printf (" ^%4x^\n", (dw) *f.pointer_);
             else

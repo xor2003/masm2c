@@ -776,7 +776,7 @@ inline bool take_native_return_value(
     return false;
 }
 
-inline bool consume_native_return(_STATE* state, dw stack_segment, dw stack_offset, MWORDSIZE return_ip) {
+inline bool consume_native_return(_STATE* state, dw stack_segment, dw stack_offset, MWORDSIZE return_ip, size_t* matched_call_depth = nullptr) {
     for (auto it = native_return_marks.rbegin(); it != native_return_marks.rend(); ++it) {
         if (
             it->state != state
@@ -787,10 +787,31 @@ inline bool consume_native_return(_STATE* state, dw stack_segment, dw stack_offs
             continue;
         }
         const bool matched = it->return_ip == return_ip;
-        const size_t id = it->id;
+        if (matched_call_depth) {
+            *matched_call_depth = it->call_depth;
+        }
         native_return_marks.erase(std::next(it).base());
-        (void)id;
         return matched;
+    }
+    // Frame-skipping return (e.g. `pop reg` discarding intermediate frames
+    // followed by `ret`): the popped address is a live outer frame's return
+    // sitting at this slot, but at a shallower native call depth. Match it and
+    // report the depth so the caller can unwind the skipped scopes.
+    for (auto it = native_return_marks.rbegin(); it != native_return_marks.rend(); ++it) {
+        if (
+            it->state != state
+            || it->stack_segment != stack_segment
+            || it->stack_offset != stack_offset
+            || it->return_ip != return_ip
+            || it->call_depth >= native_return_call_depth
+        ) {
+            continue;
+        }
+        if (matched_call_depth) {
+            *matched_call_depth = it->call_depth;
+        }
+        native_return_marks.erase(std::next(it).base());
+        return true;
     }
     return false;
 }
@@ -2008,10 +2029,23 @@ struct StackPop
 #else
         POP(ip);
 #endif
+#ifndef SHADOW_STACK
+        size_t ret_match_depth = native_return_call_depth;
+        bool native_ret = false;
+        if (!ret) {
+            if (m2c::consume_native_return(_state, return_ss, return_sp, ip, &ret_match_depth)) {
+                native_ret = true;
+            } else {
+                native_ret = m2c::take_native_return_value(_state, ip, &ip);
+            }
+        }
+        ret = ret || native_ret;
+#else
         const bool native_ret = !ret
             && (m2c::consume_native_return(_state, return_ss, return_sp, ip)
                 || m2c::take_native_return_value(_state, ip, &ip));
         ret = ret || native_ret;
+#endif
 #ifndef SHADOW_STACK
         if (!ret && ip == 0) {
             // Dispatcher-entered wrappers do not always have a native CALL marker.
@@ -2020,6 +2054,14 @@ struct StackPop
         }
 #endif
         esp += i;
+#ifndef SHADOW_STACK
+        if (native_ret && ret_match_depth < native_return_call_depth) {
+            // The callee skipped intermediate frames (`pop reg`/`jmp` then `ret`),
+            // so the popped return belongs to an outer frame. Unwind the extra
+            // native call scopes so execution resumes at the matched frame.
+            throw StackPop(native_return_call_depth - ret_match_depth);
+        }
+#endif
 #ifdef SHADOW_STACK
         if (!ret) {
             fprintf(stderr, "Warning. Return address wasn't created by native CALL (found %x) at cs=%x sp=%x depth=%zu\n",
@@ -2083,10 +2125,23 @@ throw StackPop(skip);
         const dw return_ss = ss;
         const dw return_sp = sp;
         POP(ip);
+#ifndef SHADOW_STACK
+        size_t ret_match_depth = native_return_call_depth;
+        bool native_ret = false;
+        if (!ret) {
+            if (m2c::consume_native_return(_state, return_ss, return_sp, ip, &ret_match_depth)) {
+                native_ret = true;
+            } else {
+                native_ret = m2c::take_native_return_value(_state, ip, &ip);
+            }
+        }
+        ret = ret || native_ret;
+#else
         const bool native_ret = !ret
             && (m2c::consume_native_return(_state, return_ss, return_sp, ip)
                 || m2c::take_native_return_value(_state, ip, &ip));
         ret = ret || native_ret;
+#endif
         (void)return_ss;
         (void)return_sp;
 #ifdef SHADOW_STACK
@@ -2108,6 +2163,12 @@ log_debug("skip %d\n", skip);
         POP(cs);
 //        log_error("~~RETF after 2pop\n");
         esp += i;
+#ifndef SHADOW_STACK
+        if (native_ret && ret_match_depth < native_return_call_depth) {
+            // Frame-skipping far return: unwind the extra native call scopes.
+            throw StackPop(native_return_call_depth - ret_match_depth);
+        }
+#endif
  #if M2CDEBUG > 0
 log_debug("retf target %x:%x\n", cs,ip);
         if (debug>2) {
@@ -2247,6 +2308,15 @@ shadow_stack.decreasedeep();
   log_debug("~~Finished with skipping calls\n");
 #endif
 
+             }
+#else
+             if (ex.deep > 0)
+             {
+		// This native call frame is being skipped by a frame-skipping
+		// return: drop its return mark/carried value and keep unwinding.
+		m2c::discard_native_return(native_return_id);
+		m2c::restore_data_offset_ds(ds, data_offset_ds_mark);
+		throw StackPop(ex.deep-1);
              }
 #endif
 	        }

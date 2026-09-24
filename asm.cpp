@@ -62,6 +62,7 @@ SOFTWARE.
 #include <cstdio>
 #include <cstdint>
 #include <cstdlib>
+#include <cstring>
 #include <csignal>
 #include <thread>
 #include <vector>
@@ -814,16 +815,62 @@ static int snd_sample() {
 	return SND_NEGATE ? -out : out;
 }
 
+// --- live note-based soft-synth ("MIDI" engine) ------------------------------
+// Two audio engines share the same SN76496 register state (period[c] -> note
+// frequency, volume[c] -> amplitude):
+//   midi (default): each tone channel is rendered as a triangle-wave voice with
+//                   a short attack and a gentle release, so the score reads as
+//                   soft instruments instead of raw square beeps. The noise
+//                   channel keeps the chip's own percussion output.
+//   psg           : the original cycle-level square-wave emulation.
+// Select with M2C_SND_ENGINE=midi|psg (default: midi). The .mid file recorder
+// (M2C_MIDI_OUT) is independent and works with either engine.
+static int    snd_engine_sel = -1;  // -1 unresolved; 0 = midi, 1 = psg
+static double snd_sample_rate = 0.0;
+static double midi_phase[4] = {0.0, 0.0, 0.0, 0.0};
+static double midi_amp[4]   = {0.0, 0.0, 0.0, 0.0};
+
+static int snd_engine() {
+	if (snd_engine_sel >= 0) return snd_engine_sel;
+	const char* e = getenv("M2C_SND_ENGINE");
+	snd_engine_sel = (e && (!strcmp(e, "psg") || !strcmp(e, "square") ||
+	                        !strcmp(e, "tandy") || !strcmp(e, "chip")))
+	                 ? 1 : 0;
+	return snd_engine_sel;
+}
+
+// One audio sample from the note-based (MIDI) engine. Only called on the audio
+// thread, so the per-voice phase/amplitude accumulators need no locking.
+static int midi_synth_sample(double dt) {
+	int acc = 0;
+	for (int c = 0; c < 3; ++c) {
+		const double f = snd.period[c] > 0 ? SND_CLOCK / (32.0 * snd.period[c]) : 0.0;
+		const double tgt = static_cast<double>(snd.volume[c]) / SND_MAX_OUTPUT;
+		const double rate = tgt > midi_amp[c] ? 400.0 : 50.0; // fast attack, slow release
+		const double k = rate * dt > 1.0 ? 1.0 : rate * dt;
+		midi_amp[c] += (tgt - midi_amp[c]) * k;
+		midi_phase[c] += f * dt;
+		midi_phase[c] -= floor(midi_phase[c]);
+		const double t = midi_phase[c];
+		const double tri = t < 0.5 ? 4.0 * t - 1.0 : 3.0 - 4.0 * t; // -1..1
+		acc += static_cast<int>(tri * midi_amp[c] * SND_MAX_OUTPUT);
+	}
+	acc += snd.output[3] ? snd.volume[3] : 0; // noise channel stays percussion
+	return SND_NEGATE ? -acc : acc;
+}
+
 static void snd_sdl_callback(void*, Uint8* stream, int len) {
 	int16_t* out = reinterpret_cast<int16_t*>(stream);
 	const int samples = len / static_cast<int>(sizeof(int16_t));
+	const bool midi = (snd_engine() == 0);
+	const double dt = snd_sample_rate > 0.0 ? 1.0 / snd_sample_rate : 0.0;
 	for (int i = 0; i < samples; ++i) {
 		snd.tick_accum += snd_ticks_per_sample;
 		while (snd.tick_accum >= 1.0) {
 			snd.tick_accum -= 1.0;
 			snd_tick();
 		}
-		out[i] = static_cast<int16_t>(snd_sample());
+		out[i] = static_cast<int16_t>(midi ? midi_synth_sample(dt) : snd_sample());
 	}
 }
 
@@ -850,8 +897,10 @@ static void snd_init() {
 		return;
 	}
 	snd_ticks_per_sample = SND_TICK_HZ / got.freq;
+	snd_sample_rate = got.freq;
 	SDL_PauseAudioDevice(snd_dev, 0);
-	log_debug("Tandy sound: SDL audio %d Hz\n", got.freq);
+	log_debug("Tandy sound: SDL audio %d Hz, engine=%s\n", got.freq,
+	          snd_engine() == 0 ? "midi" : "psg");
 }
 
 } // namespace m2c_snd
@@ -953,6 +1002,7 @@ static void vga_dump_top_visible_colors(size_t start) {
 static void vga_maybe_dump_frame() {
 	static bool dumped = false;
 	static unsigned frame_count = 0;
+	static unsigned since_last = 0;
 	++frame_count;
 	if (dumped) {
 		return;
@@ -968,6 +1018,12 @@ static void vga_maybe_dump_frame() {
 	if (frame_at != 0 && frame_count < frame_at) {
 		return;
 	}
+	// Continuous mode: when no specific frame was requested, refresh the dump
+	// file periodically so the live screen can be inspected without gdb.
+	if (frame_at == 0 && ++since_last < 15) {
+		return;
+	}
+	since_last = 0;
 
 	size_t lit_pixels = 0;
 	for (int i = 0; i < vga_logical_width * vga_logical_height; ++i) {
@@ -996,8 +1052,10 @@ static void vga_maybe_dump_frame() {
 		std::fwrite(rgb, 1, sizeof(rgb), f);
 	}
 	std::fclose(f);
-	std::fprintf(stderr, "vga dumped frame #%u to %s lit=%zu\n", frame_count, path, lit_pixels);
-	dumped = true;
+	if (frame_at != 0) {
+		std::fprintf(stderr, "vga dumped frame #%u to %s lit=%zu\n", frame_count, path, lit_pixels);
+		dumped = true;
+	}
 }
 
 static size_t vga_crtc_start_byte_offset() {
@@ -2211,6 +2269,23 @@ X86_REGREF
 		for (int i = -16; i < 64; i += 2) {
 			dw w = *(dw*)(sb + (i + 16));
 			fprintf(stderr, "  sp%+03d = %04x\n", i, w);
+		}
+		// Dump the tracked native-return marks/values so a dispatch failure
+		// shows which return markers are live and at what sp/depth.
+		fprintf(stderr, "[marks] depth=%zu nmarks=%zu nvals=%zu\n",
+			(size_t)native_return_call_depth,
+			native_return_marks.size(), native_return_values.size());
+		int shown = 0;
+		for (auto it = native_return_marks.rbegin();
+		     it != native_return_marks.rend() && shown < 12; ++it, ++shown) {
+			fprintf(stderr, "  mark rip=%04x ss=%04x sp=%04x depth=%zu id=%zu\n",
+				(unsigned)it->return_ip, it->stack_segment,
+				it->stack_offset, it->call_depth, it->id);
+		}
+		for (auto it = native_return_values.rbegin();
+		     it != native_return_values.rend() && shown < 24; ++it, ++shown) {
+			fprintf(stderr, "  val  rip=%04x depth=%zu id=%zu carrier=%p\n",
+				(unsigned)it->return_ip, it->call_depth, it->id, it->carrier);
 		}
 		fflush(stderr);
 	}
