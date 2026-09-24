@@ -175,6 +175,19 @@ void interpret_unknown_callf(dw cs, dd eip, db source){assert(0);}
     __attribute__((weak)) db* linked_data_segment_raddr(dw, dw){return nullptr;}
     __attribute__((weak)) void set_segment_register(dw& reg, dw value){reg = value;}
     __attribute__((weak)) void copy_linked_program_segment_prefix(dw, const void*, size_t) {}
+    // Translated TANDYSND overlay module (tnd_module.cpp). tnd_seg is the EXEC
+    // load segment of TANDYSND.EXE; tnd_code_seg is its code segment (+7 paras,
+    // past the 0x70-byte header/seg000). Weak stubs: overridden by the real
+    // module when it is linked, and stay inert (tnd_code_seg==0) otherwise.
+    __attribute__((weak)) dw tnd_seg = 0;
+    __attribute__((weak)) dw tnd_code_seg = 0;
+    __attribute__((weak)) bool tnd_overlay_call(dd, _STATE*) { return false; }
+    // BIOS ROM shadow for the F000 segment (see asm.h). Zeroed by default; the
+    // Tandy signature bytes are planted only when the tnd module is linked.
+    db m2c_bios_rom[0x10000] = {};
+    // tnd_module.cpp defines this strong=1 so the game auto-detects a
+    // Tandy/PCjr BIOS (F000:FFFE==0xFF && F000:C000==0x21) and loads TANDYSND.EXE.
+    __attribute__((weak)) bool tnd_present = false;
     bool host_try_overlay_retf(_offsets __disp, _STATE* _state, bool* out_result);
     __attribute__((weak)) bool dispatch_external_code(_offsets __disp, _STATE* _state, bool* handled) {
         bool res = true;
@@ -1368,6 +1381,15 @@ static void host_fire_ivt(int intno, _STATE* _state) {
 // far call, which is exactly where the driver's retf would resume.
 bool host_try_overlay_retf(_offsets __disp, _STATE* _state, bool* out_result) {
 	const dw tseg = static_cast<dw>(__disp >> 16);
+	// Translated TANDYSND overlay: an external far call / ISR targets the
+	// driver's code segment (tseg == tnd_code_seg), while an internal indirect
+	// dispatch (e.g. `call off_10380[bx]`) arrives with tseg == 0 while cs is
+	// still the driver's code segment. Route both into tnd_overlay_call.
+	if (tnd_code_seg &&
+	    (tseg == tnd_code_seg || (tseg == 0 && _state->cs == tnd_code_seg))) {
+		*out_result = tnd_overlay_call(__disp, _state);
+		return true;
+	}
 	for (const auto& r : host.overlay_segs) {
 		if (tseg < r.first || tseg >= r.second) {
 			continue;
@@ -2905,7 +2927,11 @@ X86_REGREF
 			void * buffer=(db *) realAddress(dx, ds);
 			// log_debug2("Reading ecx=%d cx=%d eds=%x edx=%x -> %p file: %p\n",m.ecx,cx,m.ds,m.edx,buffer,(void *)  file);
 
-			if (feof(file)) {
+			if (!file) {
+				log_error("dos read: no open file (bx=%04x)\n", bx);
+				eax = 6; // invalid handle
+				AFFECT_CF(1);
+			} else if (feof(file)) {
 				log_debug2("feof(file)\n");
 				eax=0;
 			} else {
@@ -2969,7 +2995,10 @@ X86_REGREF
 			}
 			long int offset=(((long int )cx)<<16)+dx;
 			log_debug2("Seeking to offset %ld %d\n",offset,seek);
-			if (fseek(file,offset,seek)!=0) {
+			if (!file) {
+				log_error("dos seek: no open file (bx=%04x)\n", bx);
+				AFFECT_CF(1);
+			} else if (fseek(file,offset,seek)!=0) {
 				log_error("Error seeking\n");
 				AFFECT_CF(1);
 			} else {
@@ -3165,6 +3194,19 @@ X86_REGREF
 				return;
 			}
 			host.overlay_segs.push_back({loadseg, (dw)(loadseg + (fsz - hsize + 15) / 16 + 8)});
+			// TANDYSND.EXE is a translated overlay (tnd_module.cpp). Record its
+			// image base and code segment (seg001 begins 0x70 bytes in, +7 paras)
+			// so far calls and its IRQ0 ISR dispatch into the generated code.
+			{
+				char nm[96]; size_t i = 0;
+				for (; fname[i] && i < sizeof(nm) - 1; ++i) nm[i] = toupper((db)fname[i]);
+				nm[i] = 0;
+				if (strstr(nm, "TANDY")) {
+					tnd_seg = loadseg;
+					tnd_code_seg = (dw)(loadseg + 7);
+					log_debug("TANDYSND bound: image %x code %x\n", tnd_seg, tnd_code_seg);
+				}
+			}
 			log_debug("EXEC overlay %s loaded at %x (relocs %d)\n", fname, loadseg, nreloc);
 			AFFECT_CF(0);
 			return;
@@ -3820,6 +3862,15 @@ std::this_thread::sleep_for(std::chrono::microseconds(1));
        Report 640K - the top of conventional memory on the emulated PC. */
     *(dw*)(host_physical_address(host.current_psp, 2)) = 0xA000;
  #endif
+
+    /* When the Tandy overlay module is linked, present a Tandy/PCjr BIOS
+       signature so the game's hardware probe (F000:FFFE==0xFF and
+       F000:C000==0x21) selects TANDYSND.EXE instead of the PC speaker driver. */
+    if (tnd_present) {
+        m2c_bios_rom[0xFFFE] = 0xFF;   // model byte
+        m2c_bios_rom[0xC000] = 0x21;   // secondary Tandy ROM marker
+        log_debug2("tandy: planted PCjr/Tandy BIOS signature in F000 shadow\n");
+    }
 
     if (m2c::Initializer) {
         m2c::Initializer();

@@ -2131,131 +2131,131 @@ dd res;
     esi = i2l(0x0010);
     edi = i2l(0x0020);
 
-    { //asm("lea 0x4000, %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { res = 0x4000;
  printf("lea %s = %08lx\n", "0x4000", res);};
 
-    { //asm("lea (%%eax)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { res = eax;
  printf("lea %s = %08lx\n", "(%%eax)", res);};
-    { //asm("lea (%%ebx)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { res = ebx;
  printf("lea %s = %08lx\n", "(%%ebx)", res);};
-    { //asm("lea (%%ecx)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { res = ecx;
  printf("lea %s = %08lx\n", "(%%ecx)", res);};
-    { //asm("lea (%%edx)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { res = edx;
  printf("lea %s = %08lx\n", "(%%edx)", res);};
-    { //asm("lea (%%esi)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { res = esi;
  printf("lea %s = %08lx\n", "(%%esi)", res);};
-    { //asm("lea (%%edi)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { res = edi;
  printf("lea %s = %08lx\n", "(%%edi)", res);};
 
-    { //asm("lea 0x40(%%eax)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { res = 0x40+eax;
  printf("lea %s = %08lx\n", "0x40(%%eax)", res);};
-    { //asm("lea 0x40(%%ebx)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { res = 0x40+ebx;
  printf("lea %s = %08lx\n", "0x40(%%ebx)", res);};
-    { //asm("lea 0x40(%%ecx)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { res = 0x40+ecx;
  printf("lea %s = %08lx\n", "0x40(%%ecx)", res);};
-    { //asm("lea 0x40(%%edx)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { res = 0x40+edx;
  printf("lea %s = %08lx\n", "0x40(%%edx)", res);};
-    { //asm("lea 0x40(%%esi)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { res = 0x40+esi;
  printf("lea %s = %08lx\n", "0x40(%%esi)", res);};
-    { //asm("lea 0x40(%%edi)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { res = 0x40+edi;
  printf("lea %s = %08lx\n", "0x40(%%edi)", res);};
 
-    { //asm("lea 0x4000(%%eax)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { res = 0x4000+eax;
  printf("lea %s = %08lx\n", "0x4000(%%eax)", res);};
-    { //asm("lea 0x4000(%%ebx)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { res = 0x4000+ebx;
  printf("lea %s = %08lx\n", "0x4000(%%ebx)", res);};
-    { //asm("lea 0x4000(%%ecx)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { res = 0x4000+ecx;
  printf("lea %s = %08lx\n", "0x4000(%%ecx)", res);};
-    { //asm("lea 0x4000(%%edx)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { res = 0x4000+edx;
  printf("lea %s = %08lx\n", "0x4000(%%edx)", res);};
-    { //asm("lea 0x4000(%%esi)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { res = 0x4000+esi;
  printf("lea %s = %08lx\n", "0x4000(%%esi)", res);};
-    { //asm("lea 0x4000(%%edi)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { res = 0x4000+edi;
  printf("lea %s = %08lx\n", "0x4000(%%edi)", res);};
 
-    { //asm("lea (%%eax, %%ecx)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { res = eax+ecx;
  printf("lea %s = %08lx\n", "(%%eax, %%ecx)", res);};
-    { //asm("lea (%%ebx, %%edx)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { res = ebx+edx;
  printf("lea %s = %08lx\n", "(%%ebx, %%edx)", res);};
-    { //asm("lea (%%ecx, %%ecx)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { res = ecx+ecx;
  printf("lea %s = %08lx\n", "(%%ecx, %%ecx)", res);};
-    { //asm("lea (%%edx, %%ecx)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { res = edx+ecx;
  printf("lea %s = %08lx\n", "(%%edx, %%ecx)", res);};
-    { //asm("lea (%%esi, %%ecx)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { res = esi+ecx;
  printf("lea %s = %08lx\n", "(%%esi, %%ecx)", res);};
-    { //asm("lea (%%edi, %%ecx)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { res = edi+ecx;
  printf("lea %s = %08lx\n", "(%%edi, %%ecx)", res);};
 
-    { //asm("lea 0x40(%%eax, %%ecx)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { res = 0x40+eax+ecx;
  printf("lea %s = %08lx\n", "0x40(%%eax, %%ecx)", res);};
-    { //asm("lea 0x4000(%%ebx, %%edx)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { res = 0x4000+ebx+edx;
  printf("lea %s = %08lx\n", "0x4000(%%ebx, %%edx)", res);};
 
-    { //asm("lea (%%ecx, %%ecx, 2)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { res = ecx+ecx*2;
  printf("lea %s = %08lx\n", "(%%ecx, %%ecx, 2)", res);};
-    { //asm("lea (%%edx, %%ecx, 4)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { res = edx+ecx*4;
  printf("lea %s = %08lx\n", "(%%edx, %%ecx, 4)", res);};
-    { //asm("lea (%%esi, %%ecx, 8)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { res = esi+ecx*8;
  printf("lea %s = %08lx\n", "(%%esi, %%ecx, 8)", res);};
 
-    { //asm("lea (,%%eax, 2)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { res = eax*2;
  printf("lea %s = %08lx\n", "(,%%eax, 2)", res);};
-    { //asm("lea (,%%ebx, 4)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { res = ebx*4;
  printf("lea %s = %08lx\n", "(,%%ebx, 4)", res);};
-    { //asm("lea (,%%ecx, 8)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { res = ecx*8;
  printf("lea %s = %08lx\n", "(,%%ecx, 8)", res);};
 
-    { //asm("lea 0x40(,%%eax, 2)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { res = 0x40+eax*2;
  printf("lea %s = %08lx\n", "0x40(,%%eax, 2)", res);};
-    { //asm("lea 0x40(,%%ebx, 4)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { res = 0x40+ebx*4;
  printf("lea %s = %08lx\n", "0x40(,%%ebx, 4)", res);};
-    { //asm("lea 0x40(,%%ecx, 8)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { res = 0x40+ecx*8;
  printf("lea %s = %08lx\n", "0x40(,%%ecx, 8)", res);};
 
 
-    { //asm("lea -10(%%ecx, %%ecx, 2)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { res = -10+ecx+ecx*2;
  printf("lea %s = %08lx\n", "-10(%%ecx, %%ecx, 2)", res);};
-    { //asm("lea -10(%%edx, %%ecx, 4)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { res = -10+edx+ecx*4;
  printf("lea %s = %08lx\n", "-10(%%edx, %%ecx, 4)", res);};
-    { //asm("lea -10(%%esi, %%ecx, 8)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { res = -10+esi+ecx*8;
  printf("lea %s = %08lx\n", "-10(%%esi, %%ecx, 8)", res);};
 
-    { //asm("lea 0x4000(%%ecx, %%ecx, 2)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { res = 0x4000+ecx+ecx*2;
  printf("lea %s = %08lx\n", "0x4000(%%ecx, %%ecx, 2)", res);};
-    { //asm("lea 0x4000(%%edx, %%ecx, 4)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { res = 0x4000+edx+ecx*4;
  printf("lea %s = %08lx\n", "0x4000(%%edx, %%ecx, 4)", res);};
-    { //asm("lea 0x4000(%%esi, %%ecx, 8)" ", %0" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { res = 0x4000+esi+ecx*8;
  printf("lea %s = %08lx\n", "0x4000(%%esi, %%ecx, 8)", res);};
 
-    { //asm(".code16 ; .byte 0x67 ; leal 0x4000, %0 ; .code32" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { res = 0x4000;
  printf("lea %s = %08lx\n", "0x4000", res);};
-    { //asm(".code16 ; .byte 0x67 ; leal (%%bx)" ", %0 ; .code32" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { res = bx;
  printf("lea %s = %08lx\n", "(%%bx)", res);};
-    { //asm(".code16 ; .byte 0x67 ; leal (%%si)" ", %0 ; .code32" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { res = si;
  printf("lea %s = %08lx\n", "(%%si)", res);};
-    { //asm(".code16 ; .byte 0x67 ; leal (%%di)" ", %0 ; .code32" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { res = di;
  printf("lea %s = %08lx\n", "(%%di)", res);};
-    { //asm(".code16 ; .byte 0x67 ; leal 0x40(%%bx)" ", %0 ; .code32" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { res = 0x40+bx;
  printf("lea %s = %08lx\n", "0x40(%%bx)", res);};
-    { //asm(".code16 ; .byte 0x67 ; leal 0x40(%%si)" ", %0 ; .code32" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { res = 0x40+si;
  printf("lea %s = %08lx\n", "0x40(%%si)", res);};
-    { //asm(".code16 ; .byte 0x67 ; leal 0x40(%%di)" ", %0 ; .code32" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { res = 0x40+di;
  printf("lea %s = %08lx\n", "0x40(%%di)", res);};
-    { //asm(".code16 ; .byte 0x67 ; leal 0x4000(%%bx)" ", %0 ; .code32" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { res = 0x4000+bx;
  printf("lea %s = %08lx\n", "0x4000(%%bx)", res);};
-    { //asm(".code16 ; .byte 0x67 ; leal 0x4000(%%si)" ", %0 ; .code32" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { res = 0x4000+si;
  printf("lea %s = %08lx\n", "0x4000(%%si)", res);};
-    { //asm(".code16 ; .byte 0x67 ; leal (%%bx,%%si)" ", %0 ; .code32" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { res = bx+si;
  printf("lea %s = %08lx\n", "(%%bx,%%si)", res);};
-    { //asm(".code16 ; .byte 0x67 ; leal (%%bx,%%di)" ", %0 ; .code32" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { res = bx+di;
  printf("lea %s = %08lx\n", "(%%bx,%%di)", res);};
-    { //asm(".code16 ; .byte 0x67 ; leal 0x40(%%bx,%%si)" ", %0 ; .code32" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { res = 0x40+bx+si;
  printf("lea %s = %08lx\n", "0x40(%%bx,%%si)", res);};
-    { //asm(".code16 ; .byte 0x67 ; leal 0x40(%%bx,%%di)" ", %0 ; .code32" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { res = 0x40+bx+di;
  printf("lea %s = %08lx\n", "0x40(%%bx,%%di)", res);};
-    { //asm(".code16 ; .byte 0x67 ; leal 0x4000(%%bx,%%si)" ", %0 ; .code32" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { res = 0x4000+bx+si;
  printf("lea %s = %08lx\n", "0x4000(%%bx,%%si)", res);};
-    { //asm(".code16 ; .byte 0x67 ; leal 0x4000(%%bx,%%di)" ", %0 ; .code32" : "=r" (res) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx), "S" (esi), "D" (edi));
+    { res = 0x4000+bx+di;
  printf("lea %s = %08lx\n", "0x4000(%%bx,%%di)", res);};
 
 }
@@ -2331,11 +2331,11 @@ X86_REGREF
     TEST_JCC(A, 1, -1);
 
 
-//    TEST_JCC(P, 1, 1);
-//    TEST_JCC(P, 1, 0);
+    TEST_JCC(P, 1, 1);
+    TEST_JCC(P, 1, 0);
 
-//    TEST_JCC(NP, 1, 1);
-//    TEST_JCC(NP, 1, 0);
+    TEST_JCC(NP, 1, 1);
+    TEST_JCC(NP, 1, 0);
 
     TEST_JCC(O, 0X7FFFFFFF, 0);
     TEST_JCC(O, 0X7FFFFFFF, -1);
@@ -2369,23 +2369,23 @@ X86_REGREF
     int i, res;
 
 
-    { for(i = 0; i < sizeof(ecx_vals) / sizeof(dd); i++) { ecx = ecx_vals[i]; for(zf = 0; zf < 2; zf++) { //asm("test %2, %2\nmovl $1, %0\n" "jcxz 1f\nmovl $0, %0\n" "1:\n" : "=a" (res) : "c" (ecx), "b" (!zf));
+    { for(i = 0; i < sizeof(ecx_vals) / sizeof(dd); i++) { ecx = ecx_vals[i]; for(zf = 0; zf < 2; zf++) { dd m2c_ecx=ecx; AFFECT_ZF(zf);res=1;if(cx==0)GOTOLABEL(TOKENPASTE2(lb,__LINE__));res=0;TOKENPASTE2(lb,__LINE__):;ecx=m2c_ecx;
  printf("%-10s ECX=%08lx ZF=%ld r=%d\n", "jcxz", ecx, zf, res); } }};
-    { for(i = 0; i < sizeof(ecx_vals) / sizeof(dd); i++) { ecx = ecx_vals[i]; for(zf = 0; zf < 2; zf++) { //asm("test %2, %2\nmovl $1, %0\n" "loopw 1f\nmovl $0, %0\n" "1:\n" : "=a" (res) : "c" (ecx), "b" (!zf));
+    { for(i = 0; i < sizeof(ecx_vals) / sizeof(dd); i++) { ecx = ecx_vals[i]; for(zf = 0; zf < 2; zf++) { dd m2c_ecx=ecx; AFFECT_ZF(zf);res=1;--cx;if(cx!=0)GOTOLABEL(TOKENPASTE2(lb,__LINE__));res=0;TOKENPASTE2(lb,__LINE__):;ecx=m2c_ecx;
  printf("%-10s ECX=%08lx ZF=%ld r=%d\n", "loopw", ecx, zf, res); } }};
-    { for(i = 0; i < sizeof(ecx_vals) / sizeof(dd); i++) { ecx = ecx_vals[i]; for(zf = 0; zf < 2; zf++) { //asm("test %2, %2\nmovl $1, %0\n" "loopzw 1f\nmovl $0, %0\n" "1:\n" : "=a" (res) : "c" (ecx), "b" (!zf));
+    { for(i = 0; i < sizeof(ecx_vals) / sizeof(dd); i++) { ecx = ecx_vals[i]; for(zf = 0; zf < 2; zf++) { dd m2c_ecx=ecx; AFFECT_ZF(zf);res=1;--cx;if(cx!=0&&GET_ZF())GOTOLABEL(TOKENPASTE2(lb,__LINE__));res=0;TOKENPASTE2(lb,__LINE__):;ecx=m2c_ecx;
  printf("%-10s ECX=%08lx ZF=%ld r=%d\n", "loopzw", ecx, zf, res); } }};
-    { for(i = 0; i < sizeof(ecx_vals) / sizeof(dd); i++) { ecx = ecx_vals[i]; for(zf = 0; zf < 2; zf++) { //asm("test %2, %2\nmovl $1, %0\n" "loopnzw 1f\nmovl $0, %0\n" "1:\n" : "=a" (res) : "c" (ecx), "b" (!zf));
+    { for(i = 0; i < sizeof(ecx_vals) / sizeof(dd); i++) { ecx = ecx_vals[i]; for(zf = 0; zf < 2; zf++) { dd m2c_ecx=ecx; AFFECT_ZF(zf);res=1;--cx;if(cx!=0&&!GET_ZF())GOTOLABEL(TOKENPASTE2(lb,__LINE__));res=0;TOKENPASTE2(lb,__LINE__):;ecx=m2c_ecx;
  printf("%-10s ECX=%08lx ZF=%ld r=%d\n", "loopnzw", ecx, zf, res); } }};
 
 
-    { for(i = 0; i < sizeof(ecx_vals) / sizeof(dd); i++) { ecx = ecx_vals[i]; for(zf = 0; zf < 2; zf++) { //asm("test %2, %2\nmovl $1, %0\n" "jecxz 1f\nmovl $0, %0\n" "1:\n" : "=a" (res) : "c" (ecx), "b" (!zf));
+    { for(i = 0; i < sizeof(ecx_vals) / sizeof(dd); i++) { ecx = ecx_vals[i]; for(zf = 0; zf < 2; zf++) { dd m2c_ecx=ecx; AFFECT_ZF(zf);res=1;if(ecx==0)GOTOLABEL(TOKENPASTE2(lb,__LINE__));res=0;TOKENPASTE2(lb,__LINE__):;ecx=m2c_ecx;
  printf("%-10s ECX=%08lx ZF=%ld r=%d\n", "jecxz", ecx, zf, res); } }};
-    { for(i = 0; i < sizeof(ecx_vals) / sizeof(dd); i++) { ecx = ecx_vals[i]; for(zf = 0; zf < 2; zf++) { //asm("test %2, %2\nmovl $1, %0\n" "loopl 1f\nmovl $0, %0\n" "1:\n" : "=a" (res) : "c" (ecx), "b" (!zf));
+    { for(i = 0; i < sizeof(ecx_vals) / sizeof(dd); i++) { ecx = ecx_vals[i]; for(zf = 0; zf < 2; zf++) { dd m2c_ecx=ecx; AFFECT_ZF(zf);res=1;if(--ecx)GOTOLABEL(TOKENPASTE2(lb,__LINE__));res=0;TOKENPASTE2(lb,__LINE__):;ecx=m2c_ecx;
  printf("%-10s ECX=%08lx ZF=%ld r=%d\n", "loopl", ecx, zf, res); } }};
-    { for(i = 0; i < sizeof(ecx_vals) / sizeof(dd); i++) { ecx = ecx_vals[i]; for(zf = 0; zf < 2; zf++) { //asm("test %2, %2\nmovl $1, %0\n" "loopzl 1f\nmovl $0, %0\n" "1:\n" : "=a" (res) : "c" (ecx), "b" (!zf));
+    { for(i = 0; i < sizeof(ecx_vals) / sizeof(dd); i++) { ecx = ecx_vals[i]; for(zf = 0; zf < 2; zf++) { dd m2c_ecx=ecx; AFFECT_ZF(zf);res=1;--ecx;if(ecx!=0&&GET_ZF())GOTOLABEL(TOKENPASTE2(lb,__LINE__));res=0;TOKENPASTE2(lb,__LINE__):;ecx=m2c_ecx;
  printf("%-10s ECX=%08lx ZF=%ld r=%d\n", "loopzl", ecx, zf, res); } }};
-    { for(i = 0; i < sizeof(ecx_vals) / sizeof(dd); i++) { ecx = ecx_vals[i]; for(zf = 0; zf < 2; zf++) { //asm("test %2, %2\nmovl $1, %0\n" "loopnzl 1f\nmovl $0, %0\n" "1:\n" : "=a" (res) : "c" (ecx), "b" (!zf));
+    { for(i = 0; i < sizeof(ecx_vals) / sizeof(dd); i++) { ecx = ecx_vals[i]; for(zf = 0; zf < 2; zf++) { dd m2c_ecx=ecx; AFFECT_ZF(zf);res=1;--ecx;if(ecx!=0&&!GET_ZF())GOTOLABEL(TOKENPASTE2(lb,__LINE__));res=0;TOKENPASTE2(lb,__LINE__):;ecx=m2c_ecx;
  printf("%-10s ECX=%08lx ZF=%ld r=%d\n", "loopnzl", ecx, zf, res); } }};
 }
 
@@ -2854,29 +2854,30 @@ X86_REGREF
 
 void test_bsx(m2c::_STATE* _state)
 {
+X86_REGREF
     { dd res, val, resz; val = 0;
-//asm("xor %1, %1\nmov $0x12345678, %0\n" "bsrw %w2, %w0 ; setz %b1" : "=&r" (res), "=&q" (resz) : "r" (val));
+res=0x12345678;resz=0;BSR(*(dw*)&res,*(dw*)&val);resz=GET_ZF()?1:0;
  printf("%-10s A=%08lx R=%08lx %ld\n", "bsrw", val, res, resz);};
     { dd res, val, resz; val = 0x12340128;
-//asm("xor %1, %1\nmov $0x12345678, %0\n" "bsrw %w2, %w0 ; setz %b1" : "=&r" (res), "=&q" (resz) : "r" (val));
+res=0x12345678;resz=0;BSR(*(dw*)&res,*(dw*)&val);resz=GET_ZF()?1:0;
  printf("%-10s A=%08lx R=%08lx %ld\n", "bsrw", val, res, resz);};
     { dd res, val, resz; val = 0;
-//asm("xor %1, %1\nmov $0x12345678, %0\n" "bsfw %w2, %w0 ; setz %b1" : "=&r" (res), "=&q" (resz) : "r" (val));
+res=0x12345678;resz=0;BSF(*(dw*)&res,*(dw*)&val);resz=GET_ZF()?1:0;
  printf("%-10s A=%08lx R=%08lx %ld\n", "bsfw", val, res, resz);};
     { dd res, val, resz; val = 0x12340128;
-//asm("xor %1, %1\nmov $0x12345678, %0\n" "bsfw %w2, %w0 ; setz %b1" : "=&r" (res), "=&q" (resz) : "r" (val));
+res=0x12345678;resz=0;BSF(*(dw*)&res,*(dw*)&val);resz=GET_ZF()?1:0;
  printf("%-10s A=%08lx R=%08lx %ld\n", "bsfw", val, res, resz);};
     { dd res, val, resz; val = 0;
-//asm("xor %1, %1\nmov $0x12345678, %0\n" "bsrl %k2, %k0 ; setz %b1" : "=&r" (res), "=&q" (resz) : "r" (val));
+res=0x12345678;resz=0;BSR(*(dd*)&res,*(dd*)&val);resz=GET_ZF()?1:0;
  printf("%-10s A=%08lx R=%08lx %ld\n", "bsrl", val, res, resz);};
     { dd res, val, resz; val = 0x00340128;
-//asm("xor %1, %1\nmov $0x12345678, %0\n" "bsrl %k2, %k0 ; setz %b1" : "=&r" (res), "=&q" (resz) : "r" (val));
+res=0x12345678;resz=0;BSR(*(dd*)&res,*(dd*)&val);resz=GET_ZF()?1:0;
  printf("%-10s A=%08lx R=%08lx %ld\n", "bsrl", val, res, resz);};
     { dd res, val, resz; val = 0;
-//asm("xor %1, %1\nmov $0x12345678, %0\n" "bsfl %k2, %k0 ; setz %b1" : "=&r" (res), "=&q" (resz) : "r" (val));
+res=0x12345678;resz=0;BSF(*(dd*)&res,*(dd*)&val);resz=GET_ZF()?1:0;
  printf("%-10s A=%08lx R=%08lx %ld\n", "bsfl", val, res, resz);};
     { dd res, val, resz; val = 0x00340128;
-//asm("xor %1, %1\nmov $0x12345678, %0\n" "bsfl %k2, %k0 ; setz %b1" : "=&r" (res), "=&q" (resz) : "r" (val));
+res=0x12345678;resz=0;BSF(*(dd*)&res,*(dd*)&val);resz=GET_ZF()?1:0;
  printf("%-10s A=%08lx R=%08lx %ld\n", "bsfl", val, res, resz);};
 
 }
@@ -3258,39 +3259,39 @@ X86_REGREF
 
 
     { dd op0, op1; op0 = i2l(0x12345678); op1 = i2l(0xfbca7654);
-//asm("xchgl %k0, %k1" : "=q" (op0), "+q" (op1) : "0" (op0));
+XCHG(*(dd*)&op0,*(dd*)&op1);
  printf("%-10s A=%08lx B=%08lx\n", "xchgl", op0, op1);};
     { dd op0, op1; op0 = i2l(0x12345678); op1 = i2l(0xfbca7654);
-//asm("xchgw %w0, %w1" : "=q" (op0), "+q" (op1) : "0" (op0));
+XCHG(*(dw*)&op0,*(dw*)&op1);
  printf("%-10s A=%08lx B=%08lx\n", "xchgw", op0, op1);};
     { dd op0, op1; op0 = i2l(0x12345678); op1 = i2l(0xfbca7654);
-//asm("xchgb %b0, %b1" : "=q" (op0), "+q" (op1) : "0" (op0));
+XCHG(*(db*)&op0,*(db*)&op1);
  printf("%-10s A=%08lx B=%08lx\n", "xchgb", op0, op1);};
 
 
 
 
     { dd op0, op1; op0 = i2l(0x12345678); op1 = i2l(0xfbca7654);
-//asm("xchgl %k0, %k1" : "=q" (op0), "+m" (op1) : "0" (op0));
+XCHG(*(dd*)&op0,*(dd*)&op1);
  printf("%-10s A=%08lx B=%08lx\n", "xchgl", op0, op1);};
     { dd op0, op1; op0 = i2l(0x12345678); op1 = i2l(0xfbca7654);
-//asm("xchgw %w0, %w1" : "=q" (op0), "+m" (op1) : "0" (op0));
+XCHG(*(dw*)&op0,*(dw*)&op1);
  printf("%-10s A=%08lx B=%08lx\n", "xchgw", op0, op1);};
     { dd op0, op1; op0 = i2l(0x12345678); op1 = i2l(0xfbca7654);
-//asm("xchgb %b0, %b1" : "=q" (op0), "+m" (op1) : "0" (op0));
+XCHG(*(db*)&op0,*(db*)&op1);
  printf("%-10s A=%08lx B=%08lx\n", "xchgb", op0, op1);};
 
 
 
 
     { dd op0, op1; op0 = i2l(0x12345678); op1 = i2l(0xfbca7654);
-XADD(*(dd*)&op0,*(dd*)&op1);
+XADD(*(dd*)&op1,*(dd*)&op0);
  printf("%-10s A=%08lx B=%08lx\n", "xaddl", op0, op1);};
     { dd op0, op1; op0 = i2l(0x12345678); op1 = i2l(0xfbca7654);
-XADD(*(dw*)&op0,*(dw*)&op1);
+XADD(*(dw*)&op1,*(dw*)&op0);
  printf("%-10s A=%08lx B=%08lx\n", "xaddw", op0, op1);};
     { dd op0, op1; op0 = i2l(0x12345678); op1 = i2l(0xfbca7654);
-XADD(*(db*)&op0,*(db*)&op1);
+XADD(*(db*)&op1,*(db*)&op0);
  printf("%-10s A=%08lx B=%08lx\n", "xaddb", op0, op1);};
 
     {
@@ -3304,65 +3305,65 @@ XADD(*(dd*)&res,*(dd*)&res);
 
 
     { dd op0, op1; op0 = i2l(0x12345678); op1 = i2l(0xfbca7654);
-XADD(*(dd*)&op0,*(dd*)&op1);
+XADD(*(dd*)&op1,*(dd*)&op0);
  printf("%-10s A=%08lx B=%08lx\n", "xaddl", op0, op1);};
     { dd op0, op1; op0 = i2l(0x12345678); op1 = i2l(0xfbca7654);
-XADD(*(dw*)&op0,*(dw*)&op1);
+XADD(*(dw*)&op1,*(dw*)&op0);
  printf("%-10s A=%08lx B=%08lx\n", "xaddw", op0, op1);};
     { dd op0, op1; op0 = i2l(0x12345678); op1 = i2l(0xfbca7654);
-XADD(*(db*)&op0,*(db*)&op1);
+XADD(*(db*)&op1,*(db*)&op0);
  printf("%-10s A=%08lx B=%08lx\n", "xaddb", op0, op1);};
 
 
 
 
     { dd op0, op1, op2; op0 = i2l(0x12345678); op1 = i2l(0xfbca7654); op2 = i2l(0xfbca7654);
-//asm("cmpxchgl %k0, %k1" : "=q" (op0), "+q" (op1) : "0" (op0), "a" (op2));
+eax=op2;CMPXCHG(*(dd*)&op1,*(dd*)&op0);op2=eax;
  printf("%-10s EAX=%08lx A=%08lx C=%08lx\n", "cmpxchgl", op2, op0, op1);};
     { dd op0, op1, op2; op0 = i2l(0x12345678); op1 = i2l(0xfbca7654); op2 = i2l(0xfbca7654);
-//asm("cmpxchgw %w0, %w1" : "=q" (op0), "+q" (op1) : "0" (op0), "a" (op2));
+eax=op2;CMPXCHG(*(dw*)&op1,*(dw*)&op0);op2=eax;
  printf("%-10s EAX=%08lx A=%08lx C=%08lx\n", "cmpxchgw", op2, op0, op1);};
     { dd op0, op1, op2; op0 = i2l(0x12345678); op1 = i2l(0xfbca7654); op2 = i2l(0xfbca7654);
-//asm("cmpxchgb %b0, %b1" : "=q" (op0), "+q" (op1) : "0" (op0), "a" (op2));
+eax=op2;CMPXCHG(*(db*)&op1,*(db*)&op0);op2=eax;
  printf("%-10s EAX=%08lx A=%08lx C=%08lx\n", "cmpxchgb", op2, op0, op1);};
 
 
 
 
     { dd op0, op1, op2; op0 = i2l(0x12345678); op1 = i2l(0xfbca7654); op2 = i2l(0xfffefdfc);
-//asm("cmpxchgl %k0, %k1" : "=q" (op0), "+q" (op1) : "0" (op0), "a" (op2));
+eax=op2;CMPXCHG(*(dd*)&op1,*(dd*)&op0);op2=eax;
  printf("%-10s EAX=%08lx A=%08lx C=%08lx\n", "cmpxchgl", op2, op0, op1);};
     { dd op0, op1, op2; op0 = i2l(0x12345678); op1 = i2l(0xfbca7654); op2 = i2l(0xfffefdfc);
-//asm("cmpxchgw %w0, %w1" : "=q" (op0), "+q" (op1) : "0" (op0), "a" (op2));
+eax=op2;CMPXCHG(*(dw*)&op1,*(dw*)&op0);op2=eax;
  printf("%-10s EAX=%08lx A=%08lx C=%08lx\n", "cmpxchgw", op2, op0, op1);};
     { dd op0, op1, op2; op0 = i2l(0x12345678); op1 = i2l(0xfbca7654); op2 = i2l(0xfffefdfc);
-//asm("cmpxchgb %b0, %b1" : "=q" (op0), "+q" (op1) : "0" (op0), "a" (op2));
+eax=op2;CMPXCHG(*(db*)&op1,*(db*)&op0);op2=eax;
  printf("%-10s EAX=%08lx A=%08lx C=%08lx\n", "cmpxchgb", op2, op0, op1);};
 
 
 
 
     { dd op0, op1, op2; op0 = i2l(0x12345678); op1 = i2l(0xfbca7654); op2 = i2l(0xfbca7654);
-//asm("cmpxchgl %k0, %k1" : "=q" (op0), "+m" (op1) : "0" (op0), "a" (op2));
+eax=op2;CMPXCHG(*(dd*)&op1,*(dd*)&op0);op2=eax;
  printf("%-10s EAX=%08lx A=%08lx C=%08lx\n", "cmpxchgl", op2, op0, op1);};
     { dd op0, op1, op2; op0 = i2l(0x12345678); op1 = i2l(0xfbca7654); op2 = i2l(0xfbca7654);
-//asm("cmpxchgw %w0, %w1" : "=q" (op0), "+m" (op1) : "0" (op0), "a" (op2));
+eax=op2;CMPXCHG(*(dw*)&op1,*(dw*)&op0);op2=eax;
  printf("%-10s EAX=%08lx A=%08lx C=%08lx\n", "cmpxchgw", op2, op0, op1);};
     { dd op0, op1, op2; op0 = i2l(0x12345678); op1 = i2l(0xfbca7654); op2 = i2l(0xfbca7654);
-//asm("cmpxchgb %b0, %b1" : "=q" (op0), "+m" (op1) : "0" (op0), "a" (op2));
+eax=op2;CMPXCHG(*(db*)&op1,*(db*)&op0);op2=eax;
  printf("%-10s EAX=%08lx A=%08lx C=%08lx\n", "cmpxchgb", op2, op0, op1);};
 
 
 
 
     { dd op0, op1, op2; op0 = i2l(0x12345678); op1 = i2l(0xfbca7654); op2 = i2l(0xfffefdfc);
-//asm("cmpxchgl %k0, %k1" : "=q" (op0), "+m" (op1) : "0" (op0), "a" (op2));
+eax=op2;CMPXCHG(*(dd*)&op1,*(dd*)&op0);op2=eax;
  printf("%-10s EAX=%08lx A=%08lx C=%08lx\n", "cmpxchgl", op2, op0, op1);};
     { dd op0, op1, op2; op0 = i2l(0x12345678); op1 = i2l(0xfbca7654); op2 = i2l(0xfffefdfc);
-//asm("cmpxchgw %w0, %w1" : "=q" (op0), "+m" (op1) : "0" (op0), "a" (op2));
+eax=op2;CMPXCHG(*(dw*)&op1,*(dw*)&op0);op2=eax;
  printf("%-10s EAX=%08lx A=%08lx C=%08lx\n", "cmpxchgw", op2, op0, op1);};
     { dd op0, op1, op2; op0 = i2l(0x12345678); op1 = i2l(0xfbca7654); op2 = i2l(0xfffefdfc);
-//asm("cmpxchgb %b0, %b1" : "=q" (op0), "+m" (op1) : "0" (op0), "a" (op2));
+eax=op2;CMPXCHG(*(db*)&op1,*(db*)&op0);op2=eax;
  printf("%-10s EAX=%08lx A=%08lx C=%08lx\n", "cmpxchgb", op2, op0, op1);};
 
     {
@@ -3379,11 +3380,9 @@ XADD(*(db*)&op0,*(db*)&op1);
             else
                 op1 = op0;
             op2 = 0x6532432432434LL;
-            /*asm("cmpxchg8b %2\n"
-                "PUSHF;"
-                "pop %3\n"
-                : "=a" (eax), "=d" (edx), "=m" (op1), "=g" (eflags)
-                : "0" (eax), "1" (edx), "m" (op1), "b" ((int)op2), "c" ((int)(op2 >> 32)));*/
+            ebx=(dd)op2; ecx=(dd)(op2>>32);
+            CMPXCHG8B(*(dq*)&op1);
+            eflags=m2cflags.getvalue();
             printf("cmpxchg8b: eax=%08lx edx=%08lx op1=%016llx CC=%02lx\n",
                    eax, edx, op1, eflags & 0x0040);
         }
@@ -3403,7 +3402,7 @@ X86_REGREF
     // asm ("xlat" : "=a" (res) : "b" (table), "0" (res));
     printf("xlat: EAX=%08lx\n", res);
 
-    // asm volatile ("pushl $12345432 ; pushl $0x9abcdef ; popl (%%esp) ; popl %0" : "=g" (res));
+    {dd m2c_pop_esp_v;PUSH((dd)0x12345432);PUSH((dd)0x9abcdef);POP(m2c_pop_esp_v);*(dd*)m2c::stack_raddr_(ss,esp)=m2c_pop_esp_v;POP(res);}
     printf("popl esp=%08lx\n", res);
 
 

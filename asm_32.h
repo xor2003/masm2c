@@ -68,7 +68,7 @@ static inline db* stack_raddr_(dw segment,dd offset) {return raddr_(segment,offs
  #define INSB {db averytemporary3 = asm2C_IN(dx);*realAddress(edi,es)=averytemporary3;edi+=(GET_DF()==0)?1:-1;}
  #define INSW {dw averytemporary3 = asm2C_INW(dx);*realAddress(edi,es)=averytemporary3;edi+=(GET_DF()==0)?2:-2;}
 
- #define LOOP(label) DEC(ecx); JNZ(label)
+ #define LOOP(label) if (--ecx) GOTOLABEL(label)
  #define LOOPE(label) --ecx; if (ecx!=0 && GET_ZF()) GOTOLABEL(label) //TODO
  #define LOOPNE(label) --ecx; if (ecx!=0 && !GET_ZF()) GOTOLABEL(label) //TODO
 

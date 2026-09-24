@@ -223,8 +223,11 @@ union flagsUnion{
 
 // Regs
 struct _STATE{
-        _STATE() {
-            call_source=0;
+        _STATE() : eax(0), ebx(0), ecx(0), edx(0), esi(0), edi(0),
+                   esp(0), ebp(0), eip(0), cs(0), ds(0), es(0), fs(0),
+                   gs(0), ss(0), CF(false), PF(false), AF(false),
+                   ZF(false), SF(false), DF(false), OF(false), IF(false),
+                   TF(false), other_flags(0), call_source(0) {
        }
 
 dd eax;
@@ -624,6 +627,13 @@ inline bool MSB(D a)  // get highest bit
 #else
  #define INLINE
 #endif
+
+// Shadow buffer for the BIOS ROM segment (F000:xxxx). struct Memory is smaller
+// than 1MB, so F000 real-mode accesses would otherwise read out of bounds.
+// raddr_() redirects this segment here; it stays zeroed unless a Tandy/PCjr
+// signature is planted by the runtime (see m2c::init / tnd_present).
+extern db m2c_bios_rom[];
+extern bool tnd_present;
 
 #if _BITS == 32
   #include "asm_32.h"
@@ -1234,14 +1244,16 @@ template <class D>
             }
             else {
                 AFFECT_CF(m2c::getbit(Destination, TCount - 1));
+                D originalDest = Destination;
                 Destination >>= TCount;
-		for(int i = m2c::bitsizeof(Destination) - TCount; i <= m2c::bitsizeof(Destination) - 1; ++i) 
+		for(int i = m2c::bitsizeof(Destination) - TCount; i <= m2c::bitsizeof(Destination) - 1; ++i)
                     if (i >= 0) {
                         m2c::bitset(Destination, m2c::getbit(Source, i + TCount - m2c::bitsizeof(Destination)), i);
                     }
                 if (m2c::bitsizeof(Destination) - TCount < 0) {
                     AFFECT_CF(m2c::getbit(Source, TCount - m2c::bitsizeof(Destination) - 1));
                 }
+                AFFECT_OF((Destination ^ originalDest) & m2c::sign_mask_for_size(sizeof(D)));
 }
  }
 }
@@ -1358,7 +1370,8 @@ AFFECT_CF(((Destination<<m2c::bitsizeof(Destination)+Source) >> (32 - Count)) & 
 		AFFECT_AF(false);								\
 	}														\
 	AFFECT_SF(al&0x80);							\
-	AFFECT_ZFifz(al);}
+	AFFECT_ZFifz(al); \
+	AFFECT_PF(m2c::even_parity8(al));}
 
 #define DAS												\
 {															\
@@ -1384,6 +1397,7 @@ AFFECT_CF(((Destination<<m2c::bitsizeof(Destination)+Source) >> (32 - Count)) & 
 	AFFECT_OF(osigned && ((al&0x80)==0));			\
 	AFFECT_SF(al&0x80);							\
 	AFFECT_ZFifz(al); \
+	AFFECT_PF(m2c::even_parity8(al)); \
 }
 
 
@@ -1409,6 +1423,7 @@ AFFECT_CF(((Destination<<m2c::bitsizeof(Destination)+Source) >> (32 - Count)) & 
 		AFFECT_ZFifz(al);						\
 		AFFECT_AF(false);								\
 	}														\
+	AFFECT_PF(m2c::even_parity8(al));				\
 	al &= 0x0F;}
 
 #define AAS {												\
@@ -1430,7 +1445,8 @@ AFFECT_CF(((Destination<<m2c::bitsizeof(Destination)+Source) >> (32 - Count)) & 
 		AFFECT_CF(false);								\
 		AFFECT_AF(false);								\
 	}														\
-	AFFECT_ZFifz((al == 0));							\
+	AFFECT_ZFifz(al);							\
+	AFFECT_PF(m2c::even_parity8(al));				\
 	al &= 0x0F;}
 
 #define AAM1(x)											\
@@ -1441,10 +1457,11 @@ AFFECT_CF(((Destination<<m2c::bitsizeof(Destination)+Source) >> (32 - Count)) & 
 		al=al % dv;									\
 		AFFECT_SF(al & 0x80);						\
 		AFFECT_ZFifz(al);						\
+		AFFECT_PF(m2c::even_parity8(al));				\
 		AFFECT_CF(false);								\
 		AFFECT_OF(false);								\
 		AFFECT_AF(false);								\
-	} \
+	} else {CPU_Exception(0);} \
 }
 
 #define AAM AAM1(10)
@@ -1458,6 +1475,7 @@ AFFECT_CF(((Destination<<m2c::bitsizeof(Destination)+Source) >> (32 - Count)) & 
 		AFFECT_AF(false);								\
 		AFFECT_SF(al >= 0x80);						\
 		AFFECT_ZFifz(al);							\
+		AFFECT_PF(m2c::even_parity8(al));				\
 	}
 
 #define AAD AAD1(10)
@@ -1480,12 +1498,14 @@ AFFECT_CF(((Destination<<m2c::bitsizeof(Destination)+Source) >> (32 - Count)) & 
 	}
 
 
-#define XADD(a,b) {dq averytemporary=(dq)a+(dq)b; \
-		AFFECT_CF((averytemporary)>m2c::MASK[sizeof(a)]); \
-		a=b; \
+#define XADD(a,b) {dq averytemporary=(dq)(a); dq averytemporary2=(dq)(b); \
+		dq averytemporary3=(averytemporary+averytemporary2)&m2c::MASK[sizeof(a)]; \
+		AFFECT_CF(averytemporary+averytemporary2>m2c::MASK[sizeof(a)]); \
+		AFFECT_OF(((averytemporary^averytemporary3)&(averytemporary2^averytemporary3)&m2c::sign_mask_for_size(sizeof(a)))!=0); \
+		AFFECT_AF(((averytemporary^averytemporary2^averytemporary3)&0x10u)!=0); \
 		b=averytemporary; \
-		AFFECT_ZFifz(b); \
-		AFFECT_SF_(b,b);}
+		a=averytemporary3; \
+		m2c::set_szp_flags(sizeof(a),averytemporary3,m2cflags);}
 
 	#define SUB(a, b) m2c::SUB_(a, b, m2cflags)
 
@@ -1566,9 +1586,9 @@ template <class D>
 #define IMUL1_2(a) {int32_t averytemporary=(int32_t)((int16_t)ax)*((int16_t)(a));ax=averytemporary;dx=averytemporary>>16; AFFECT_OF(AFFECT_CF((averytemporary & 0xffff8000)!=0xffff8000&&(averytemporary & 0xffff8000)!=0));AFFECT_ZFifz(ax);AFFECT_SF_(ax,ax);}
 #define IMUL1_4(a) {int64_t averytemporary=(int64_t)((int32_t)eax)*((int32_t)(a));eax=averytemporary;edx=averytemporary>>32; AFFECT_OF(AFFECT_CF((averytemporary & 0xffffffff80000000)!=0xffffffff80000000&&(averytemporary & 0xffffffff80000000)!=0));AFFECT_ZFifz(eax);AFFECT_SF_(eax,eax);}
 #define IMUL2_2(a,b) {int32_t averytemporary = ((int16_t)(a)) * ((int16_t)(b)); a=averytemporary;AFFECT_OF(AFFECT_CF((averytemporary>= -32768)  && (averytemporary<=32767)?false:true));}
-#define IMUL2_4(a,b) {int64_t averytemporary = ((int64_t)(a)) * ((int32_t)(b)); a=averytemporary;AFFECT_OF(AFFECT_CF((averytemporary>=-((int64_t)(2147483647)+1)) && (averytemporary<=(int64_t)2147483647)?false:true));}
+#define IMUL2_4(a,b) {int64_t averytemporary = ((int64_t)(int32_t)(a)) * ((int64_t)(int32_t)(b)); a=averytemporary;AFFECT_OF(AFFECT_CF((averytemporary>=-((int64_t)(2147483647)+1)) && (averytemporary<=(int64_t)2147483647)?false:true));}
 #define IMUL3_2(a,b,c) {int32_t averytemporary = ((int16_t)(b)) * ((int16_t)(c)); a=averytemporary;AFFECT_OF(AFFECT_CF((averytemporary>= -32768)  && (averytemporary<=32767)?false:true));}
-#define IMUL3_4(a,b,c) {int64_t averytemporary = ((int64_t)(b)) * ((int32_t)(c)); a=averytemporary;AFFECT_OF(AFFECT_CF((averytemporary>=-((int64_t)(2147483647)+1)) && (averytemporary<=(int64_t)2147483647)?false:true));}
+#define IMUL3_4(a,b,c) {int64_t averytemporary = ((int64_t)(int32_t)(b)) * ((int64_t)(int32_t)(c)); a=averytemporary;AFFECT_OF(AFFECT_CF((averytemporary>=-((int64_t)(2147483647)+1)) && (averytemporary<=(int64_t)2147483647)?false:true));}
 
 #define MUL1_1(a) {ax=(dw)al*(a); AFFECT_OF(AFFECT_CF(ah));AFFECT_ZFifz(al);}
 #define MUL1_2(a) {dd averytemporary=(dd)ax*(a);ax=averytemporary;dx=averytemporary>>16; AFFECT_ZFifz(ax);AFFECT_OF(AFFECT_CF(dx));}
@@ -1625,9 +1645,9 @@ template <class D>
     AFFECT_OF(false);                                    \
 }
 
-#define DIV1(a) {if(a) {dw averytemporary=ax;al=averytemporary/(a);ah=averytemporary%(a); AFFECT_OF(false);}}
-#define DIV2(a) {if(a) {dd averytemporary=((((dd)dx)<<16)|ax);ax=averytemporary/(a);dx=averytemporary%(a); AFFECT_OF(false);}}
-#define DIV4(a) {if(a) {uint64_t averytemporary=((((dq)edx)<<32)|eax);eax=averytemporary/(a);edx=averytemporary%(a); AFFECT_OF(false);}}
+#define DIV1(a) {dw m2c_div_v=(dw)(a);if(m2c_div_v){dw averytemporary=ax;dw m2c_div_q=averytemporary/m2c_div_v;if(m2c_div_q<=0xff){al=(db)m2c_div_q;ah=(db)(averytemporary%m2c_div_v);}/* else #DE: result registers left unchanged */} AFFECT_OF(false);}
+#define DIV2(a) {dw m2c_div_v=(dw)(a);if(m2c_div_v){dd averytemporary=((((dd)dx)<<16)|ax);dd m2c_div_q=averytemporary/m2c_div_v;if(m2c_div_q<=0xffff){ax=(dw)m2c_div_q;dx=(dw)(averytemporary%m2c_div_v);}/* else #DE: result registers left unchanged */} AFFECT_OF(false);}
+#define DIV4(a) {dd m2c_div_v=(dd)(a);if(m2c_div_v){uint64_t averytemporary=((((dq)edx)<<32)|eax);uint64_t m2c_div_q=averytemporary/m2c_div_v;if(m2c_div_q<=0xffffffffull){eax=(dd)m2c_div_q;edx=(dd)(averytemporary%m2c_div_v);}/* else #DE: result registers left unchanged */} AFFECT_OF(false);}
 #define DIV0(a) DIV1(a)
 
 #define NOT(a) {a= ~(a);};// AFFECT_ZFifz(a) //TODO
@@ -1736,7 +1756,11 @@ template <class D>
 template <class D, class S>
     MYINLINE void MOV_(D *dest, const S &src) { m2c::setdata(dest, static_cast<D>(m2c::getdata(src))); }
 
-#define LEAVE {MOV(esp, ebp));POP(ebp);}
+#if _BITS == 32
+#define LEAVE {MOV(esp, ebp);POP(ebp);}
+#else
+#define LEAVE {MOV(sp, bp);POP(bp);}
+#endif
 #define LFS(dest, src) {dw seg= *(dw*)((db*)&(src) + sizeof(dest));dest = src;fs=seg;}
 #define LES(dest, src) {dw seg= *(dw*)((db*)&(src) + sizeof(dest));dest = src;es=seg;}
 #define LGS(dest, src) {dw seg= *(dw*)((db*)&(src) + sizeof(dest));dest = src;gs=seg;}
@@ -1754,6 +1778,26 @@ template <class D, class S>
 #define LEA(dest,src) {dest = src;}
 
 #define XCHG(dest, src) m2c::XCHG_(dest,src)
+
+/* CMPXCHG dest,src: compares accumulator (al/ax/eax) with dest.
+   If equal: ZF=1 and dest=src. Otherwise: ZF=0 and accumulator=dest.
+   Other flags are set as by CMP accumulator,dest. */
+#define CMPXCHG(dest, src) { \
+    if (sizeof(dest)==1) { CMP(al, (db)(dest)); if (GET_ZF()) {dest=(db)(src);} else {al=dest;} } \
+    else if (sizeof(dest)==2) { CMP(ax, (dw)(dest)); if (GET_ZF()) {dest=(dw)(src);} else {ax=dest;} } \
+    else { CMP(eax, (dd)(dest)); if (GET_ZF()) {dest=(dd)(src);} else {eax=dest;} } }
+
+/* CMPXCHG8B m64: compares edx:eax with m64.
+   If equal: ZF=1 and m64=ecx:ebx. Otherwise: ZF=0 and edx:eax=m64. */
+#define CMPXCHG8B(a) {dq m2c_cmpxchg8b_v=(dq)(a); \
+    if (((((dq)edx)<<32)|(dq)eax)==m2c_cmpxchg8b_v) { \
+        AFFECT_ZF(1); \
+        (a)=(dq)((((dq)ecx)<<32)|(dq)ebx); \
+    } else { \
+        AFFECT_ZF(0); \
+        edx=(dd)(m2c_cmpxchg8b_v>>32); \
+        eax=(dd)(m2c_cmpxchg8b_v&0xffffffffull); \
+    }}
 
     template<class D>
     MYINLINE void XCHG_(D &dest, D &src) {
@@ -2262,6 +2306,11 @@ bool is_little_endian();
 #endif
 
 
+#define LOOPW(x) UNIMPLEMENTED
+#define LOOPWE(x) UNIMPLEMENTED
+#define LOOPWNE(x) UNIMPLEMENTED
+*/
+
 #define BSR(dest, src) m2c::BSR_(dest, src, m2cflags)
 template <class D, class S>
     MYINLINE void BSR_(D &dest, const S &src, m2c::eflags &m2cflags) {
@@ -2293,12 +2342,6 @@ template <class D, class S>
         }
 }
 
-#define CMPXCHG UNIMPLEMENTED
-
-#define LOOPW(x) UNIMPLEMENTED
-#define LOOPWE(x) UNIMPLEMENTED
-#define LOOPWNE(x) UNIMPLEMENTED
-*/
 #define CDQ { edx = (eax & 0x80000000) ? 0xffffffff : 0; }
 
 
