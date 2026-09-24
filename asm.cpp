@@ -58,10 +58,13 @@ SOFTWARE.
 #include <algorithm>
 #include <atomic>
 #include <chrono>
+#include <cmath>
 #include <cstdio>
 #include <cstdint>
 #include <cstdlib>
+#include <csignal>
 #include <thread>
+#include <vector>
 
 #ifndef M2C_LOAD_SEG
 #define M2C_LOAD_SEG 0x192
@@ -621,6 +624,103 @@ static Sn76496 snd;
 static SDL_AudioDeviceID snd_dev = 0;
 static double snd_ticks_per_sample = 0.0;
 
+// --- MIDI capture ---------------------------------------------------------
+// The game streams raw SN76496 register words, so each tone write is a real
+// note frequency (f = SND_CLOCK/(32*period)). We mirror that into a Standard
+// MIDI File: tone channels 0..2 -> MIDI channels 0..2, noise channel 3 ->
+// percussion on channel 9. Events are timestamped in microseconds and flushed
+// at exit. Capture is opt-in: set M2C_MIDI_OUT to the .mid path to enable it.
+struct MidiEvt { uint64_t us; uint8_t status, a, b; };
+static std::vector<MidiEvt> midi_evts;
+static int midi_note_state[4] = {-1, -1, -1, -1};   // sounding note or -1
+static bool midi_started = false;
+
+static uint64_t midi_now_us() {
+	using namespace std::chrono;
+	return (uint64_t)duration_cast<microseconds>(
+		steady_clock::now().time_since_epoch()).count();
+}
+
+static int snd_freq_to_midi(int period) {
+	if (period <= 0) return -1;
+	const double f = SND_CLOCK / (32.0 * (double)period);
+	if (f < 8.0) return -1;
+	int n = (int)lround(69.0 + 12.0 * log2(f / 440.0));
+	return n < 0 ? 0 : (n > 127 ? 127 : n);
+}
+
+static void midi_push(uint8_t status, uint8_t a, uint8_t b, uint64_t us) {
+	midi_evts.push_back({us, status, a, b});
+}
+
+// Re-evaluate channel c's sounding note and emit note-on/off on change.
+static void midi_commit(int c) {
+	if (!midi_started) return; // capture is opt-in via M2C_MIDI_OUT
+	int note = -1;
+	if (snd.volume[c] > 0) {
+		note = (c < 3) ? snd_freq_to_midi(snd.period[c]) : 38; // noise -> snare
+	}
+	if (note == midi_note_state[c]) return;
+	const uint64_t now = midi_now_us();
+	const int mch = (c < 3) ? c : 9;
+	if (midi_note_state[c] >= 0) midi_push(0x80 | mch, midi_note_state[c], 0, now);
+	if (note >= 0)               midi_push(0x90 | mch, note, 100, now);
+	midi_note_state[c] = note;
+}
+
+static void midi_flush() {
+	if (midi_evts.empty()) return;
+	const char* path = getenv("M2C_MIDI_OUT");
+	if (!path || !*path) return;
+	FILE* f = fopen(path, "wb");
+	if (!f) return;
+	// Sort by timestamp, then write a single-track type-0 file at 96 PPQ,
+	// 120 BPM (500000us/qn => 1 MIDI tick = 5208.33us of wall time).
+	std::stable_sort(midi_evts.begin(), midi_evts.end(),
+		[](const MidiEvt& x, const MidiEvt& y){ return x.us < y.us; });
+	const double us_per_tick = 500000.0 / 96.0;
+	fwrite("MThd", 1, 4, f);
+	uint32_t hdrlen = 6; fwrite(&hdrlen, 4, 1, f); // big-endian below
+	fseek(f, -4, SEEK_CUR);
+	fputc(0, f); fputc(0, f); fputc(0, f); fputc(6, f);          // hdr len
+	fputc(0, f); fputc(0, f); fputc(0, f); fputc(1, f);          // fmt 0, 1 track
+	fputc(0, f); fputc(96, f);                                    // division=96 PPQ
+	// body into memory to learn its length
+	std::vector<uint8_t> trk;
+	auto put=[&](uint8_t b){ trk.push_back(b); };
+	auto putvlq=[&](uint32_t v){ uint8_t b[5];int n=0;b[n++]=v&0x7f;
+		while(v>>=7)b[n++]=0x80|(v&0x7f); while(n--)trk.push_back(b[n]); };
+	uint64_t prev = midi_evts.front().us; // first event anchors t=0
+	for (auto& e : midi_evts) {
+		uint64_t dt = (uint64_t)((e.us - prev) / us_per_tick + 0.5);
+		prev = e.us;
+		putvlq((uint32_t)dt);
+		put(e.status); put(e.a); put(e.b);
+	}
+	putvlq(0); put(0xff); put(0x2f); put(0x00);                  // end of track
+	fwrite("MTrk", 1, 4, f);
+	uint32_t len = (uint32_t)trk.size();
+	fputc((len>>24)&255, f); fputc((len>>16)&255, f);
+	fputc((len>>8)&255, f); fputc(len&255, f);
+	fwrite(trk.data(), 1, trk.size(), f);
+	fclose(f);
+	m2c::log_error("MIDI: wrote %zu note events to %s\n", midi_evts.size(), path);
+}
+
+static void midi_init() {
+	if (midi_started) return;
+	const char* path = getenv("M2C_MIDI_OUT");
+	if (!path || !*path) return; // opt-in: no output file configured
+	midi_started = true;
+	atexit(midi_flush);
+	// Route SIGTERM/SIGINT through exit() so atexit dumps the capture even when
+	// the game is killed rather than quitting via its own exit path.
+	auto die = [](int){ exit(0); };
+	signal(SIGTERM, die);
+	signal(SIGINT, die);
+}
+// --- end MIDI capture -----------------------------------------------------
+
 static void snd_reset() {
 	double out = SND_MAX_OUTPUT / 4; // per-channel headroom
 	int gain = 16;
@@ -666,10 +766,13 @@ static void snd_write(uint8_t data) {
 		if (!(data & 0x80)) snd.reg[r] = (snd.reg[r] & 0x0f) | ((data & 0x3f) << 4);
 		snd.period[c] = snd.reg[r] != 0 ? snd.reg[r] : 0x400;
 		if (r == 4 && (snd.reg[6] & 0x03) == 0x03) snd.period[3] = snd.period[2] << 1;
+		// Frequency divider is complete only after the data byte; commit then.
+		if (!(data & 0x80)) midi_commit(c);
 		break;
 	case 1: case 3: case 5: case 7: // volume
 		snd.volume[c] = snd.vol_table[data & 0x0f];
 		if (!(data & 0x80)) snd.reg[r] = (snd.reg[r] & 0x3f0) | (data & 0x0f);
+		midi_commit(c);
 		break;
 	case 6: // noise frequency/mode
 		if (!(data & 0x80)) snd.reg[r] = (snd.reg[r] & 0x3f0) | (data & 0x0f);
@@ -677,6 +780,7 @@ static void snd_write(uint8_t data) {
 			const int n = snd.reg[6];
 			snd.period[3] = ((n & 3) == 3) ? (snd.period[2] << 1) : (1 << (5 + (n & 3)));
 		}
+		midi_commit(3);
 		break;
 	}
 }
@@ -729,6 +833,7 @@ static void snd_init() {
 	}
 	snd.started = true;
 	snd_reset();
+	midi_init();
 	if ((SDL_WasInit(SDL_INIT_AUDIO) & SDL_INIT_AUDIO) == 0) {
 		SDL_InitSubSystem(SDL_INIT_AUDIO);
 	}
