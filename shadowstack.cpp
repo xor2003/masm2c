@@ -79,6 +79,7 @@ namespace m2c{
                   m_ss.at(m_current).remcounter = counter;
                   if (m_ss.at(m_current).itwascall) {++m_needtoskipcall;log_debug("increased m_needtoskipcall=%d\n",m_needtoskipcall);}
                 print_frame(m_ss.at(m_current));
+                m_ss.at(m_current).init = false;
                 }
 //		else log_debug ("m_current %x not initialized\n", m_current);
 

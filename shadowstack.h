@@ -52,6 +52,19 @@
         size_t getneedtoskipcallndclean(){int ret = m_needtoskipcall; m_needtoskipcall = 0; return ret;}
         void noneedreturn(){--m_needtoskipcall;}
 
+        // Drop every recorded frame below the given stack offset. Frames at
+        // sp < floor sit in dead stack space (the live stack occupies
+        // [sp, top]); interrupt handlers and synthesized sentinels leave such
+        // frames behind, and the next real pop scan would miscount them as
+        // uncontrolled pops.
+        void clear_frames_below(dw sp_floor) {
+            for (auto& f : m_ss) {
+                if (f.init && f.sp < sp_floor) {
+                    f.init = false;
+                }
+            }
+        }
+
         struct SavedState {
             size_t m_current;
             bool m_itiscall;

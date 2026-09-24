@@ -182,6 +182,10 @@ void interpret_unknown_callf(dw cs, dd eip, db source){assert(0);}
     __attribute__((weak)) dw tnd_seg = 0;
     __attribute__((weak)) dw tnd_code_seg = 0;
     __attribute__((weak)) bool tnd_overlay_call(dd, _STATE*) { return false; }
+    // Private image buffer for the translated overlay (see asm.h). tnd_img_paras
+    // is the mapped span in paragraphs; 0 keeps the raddr_ route inert.
+    db tnd_img[0x8000] = {};
+    dw tnd_img_paras = 0;
     // BIOS ROM shadow for the F000 segment (see asm.h). Zeroed by default; the
     // Tandy signature bytes are planted only when the tnd module is linked.
     db m2c_bios_rom[0x10000] = {};
@@ -325,6 +329,11 @@ bool is_dos_terminate_vector(dw segment, dw offset) {
 }
 
 static db* host_physical_address(dw segment, dw offset) {
+	// The translated TANDYSND overlay image lives in a private buffer (see
+	// asm.h): the EXEC load segment aliases the game's adapter-region buffer
+	// writes, so the image must not sit inside struct Memory's heap.
+	if (tnd_img_paras && segment >= tnd_seg && segment < tnd_seg + tnd_img_paras)
+		return tnd_img + ((segment - tnd_seg) << 4) + offset;
 	return reinterpret_cast<db*>(&m2c::m) + (static_cast<size_t>(segment) << 4) + offset;
 }
 
@@ -742,7 +751,17 @@ static void snd_init() {
 
 } // namespace m2c_snd
 
-void tandy_snd_write(db data) { m2c_snd::snd_init(); SDL_LockAudioDevice(m2c_snd::snd_dev); m2c_snd::snd_write(data); SDL_UnlockAudioDevice(m2c_snd::snd_dev); }
+void tandy_snd_write(db data) {
+	m2c_snd::snd_init();
+	SDL_LockAudioDevice(m2c_snd::snd_dev);
+	m2c_snd::snd_write(data);
+	SDL_UnlockAudioDevice(m2c_snd::snd_dev);
+	static unsigned long snd_writes = 0;
+	++snd_writes;
+	if (snd_writes <= 32 || (snd_writes % 512) == 0) {
+		m2c::log_error("snd c0 wr #%lu data=%02x\n", snd_writes, data);
+	}
+}
 
 static uint8_t vga_dac_to_sdl(db value) {
 	if (value > 63) {
@@ -1340,39 +1359,117 @@ static void host_start_timer_thread() {
 // IVT for handlers installed with direct vector writes (no int 21h AH=25h).
 static _STATE* host_irq_main_state = nullptr;
 
+/* Cooperative IRQ delivery. A real ISR shares the caller's machine state and
+   runs on the interrupted thread between instructions; the generated code uses
+   shared bookkeeping (native_return_*, data_offset stacks, etc.) that is NOT
+   thread-safe. Running the IVT handler on a separate thread races the game on
+   that shared state (observed as non-deterministic "Don't know how to call"
+   faults). Instead the timer thread only bumps the BIOS tick and a pending
+   counter; the game thread drains it here, on its own stack, exactly like
+   host_run_timer_handler does for registered timer procs. */
+static std::atomic<int> host_pending_irq8{0};
+static std::atomic<int> host_pending_irq1c{0};
+
+/* PIT channel-0 period in microseconds. The game/sound driver reprograms the
+   8253 divisor via ports 0x43/0x40 (e.g. TANDYSND loads 0x4DAE => ~60 Hz for
+   its sequencer); the IRQ thread paces int8/int1c at this rate so music tempo,
+   animation and input polling run at the speed the game expects. Default is
+   the BIOS rate (65536 divisor => 18.2 Hz). */
+static std::atomic<int> host_irq_period_us{54945};
+
+/* The ISR runs on a dedicated machine state whose stack lives in stack[]; the
+   frame sentinel (0,0) makes IRET/RETF unwind back to C++. It is only ever run
+   on the game thread (via host_drain_irq) so the shared generated-code
+   bookkeeping is used serially, never concurrently. */
+static _STATE host_irq_state;
+static bool host_irq_state_init = false;
+
 static void host_fire_ivt(int intno, _STATE* _state) {
-	X86_REGREF
 	const dw off = *(dw*)host_physical_address(0, intno * 4);
 	const dw seg = *(dw*)host_physical_address(0, intno * 4 + 2);
-	if ((off | seg) == 0 || seg >= 0xa000) {
+	// Skip unset/BIOS-adapter-region vectors, but let the translated TANDYSND
+	// ISR (which lives at its own code segment, e.g. a239:0373) fire.
+	if ((off | seg) == 0 || (seg >= 0xa000 && seg != tnd_code_seg)) {
 		return;
 	}
 	if (host_irq_main_state && !host_irq_main_state->IF) {
 		return;
 	}
-	// stack[] is only used before the program installs its own stack, so its
-	// top is free for the interrupt frame. IRET lowers to RETF(0) here, which
-	// pops ip then cs; ip==0 is the sentinel that unwinds back to C++.
-	ss = seg_offset(stack);
-	esp = STACK_SIZE - 8;
-	*(dw*)m2c::stack_raddr_(ss, (dw)esp) = 0;
-	*(dw*)m2c::stack_raddr_(ss, (dw)(esp + 2)) = 0;
-	cs = seg;
-	eip = off;
+	if (!host_irq_state_init) {
+		std::memset(&host_irq_state, 0, sizeof(host_irq_state));
+		host_irq_state_init = true;
+	}
+	_STATE* irq = &host_irq_state;
+	/* On real hardware the CPU pushes the interrupt frame onto the
+	   interrupted task's own ss:sp. Placing it at the top of stack[] instead
+	   breaks when the game itself runs on stack[]: the handler's pushes
+	   descend into live frames and corrupt both the stack bytes and the
+	   shared shadow-stack map (indexed by raw sp). Run the ISR on the game's
+	   stack, just below its live sp; fall back to a dedicated arena at the
+	   bottom of stack[] only when no game state exists yet. */
+	dw irq_ss = seg_offset(stack);
+	dw irq_sp = STACK_SIZE / 4;
+	if (host_irq_main_state && host_irq_main_state->esp > 0x10) {
+		irq_ss = host_irq_main_state->ss;
+		irq_sp = (dw)(host_irq_main_state->esp - 8);
+	}
+	// IRET lowers to RETF(0) here, which pops ip then cs; ip==0 is the
+	// sentinel that unwinds back to C++.
+	irq->ss = irq_ss;
+	irq->esp = irq_sp;
+	*(dw*)m2c::stack_raddr_(irq->ss, (dw)irq->esp) = 0;
+	*(dw*)m2c::stack_raddr_(irq->ss, (dw)(irq->esp + 2)) = 0;
+	irq->cs = seg;
+	irq->eip = off;
 #ifdef SHADOW_STACK
-	// Isolate the handler's bookkeeping on this thread: its pushes/rets must
-	// not perturb the interrupted code's call-depth accounting.
 	const ShadowStack::SavedState saved_shadow = m2c::shadow_stack.save_state();
 #endif
+	// Snapshot native-return bookkeeping; the handler may leave stale marks
+	// behind (e.g. when a StackPop unwind bypasses the matching RET).
+	const size_t saved_marks = m2c::native_return_marks.size();
+	const size_t saved_values = m2c::native_return_values.size();
+	const size_t saved_depth = m2c::native_return_call_depth;
+	const bool saved_suppress = m2c::suppress_native_return_push_transfer;
 	try {
-		(*m2c::_ENTRY_POINT_)(static_cast<_offsets>((static_cast<dd>(seg) << 16) | off), _state);
+		(*m2c::_ENTRY_POINT_)(static_cast<_offsets>((static_cast<dd>(seg) << 16) | off), irq);
 	} catch (const m2c::StackPop&) {
 		// An IRET/RETF inside the handler unwound past the synthesized frame;
 		// that is the normal way back to C++, not an error.
 	}
+	m2c::native_return_marks.resize(saved_marks);
+	m2c::native_return_values.resize(saved_values);
+	m2c::native_return_call_depth = saved_depth;
+	m2c::suppress_native_return_push_transfer = saved_suppress;
 #ifdef SHADOW_STACK
 	m2c::shadow_stack.restore_state(saved_shadow);
+	// The handler pushed frames below the live stack top; they are stale now
+	// and would otherwise be miscounted as uncontrolled pops by later scans.
+	m2c::shadow_stack.clear_frames_below(irq_sp);
 #endif
+}
+
+// Run pending IVT interrupts on the caller's (game) thread. Called from
+// poll_host_events and from a periodic hook inside the arithmetic helpers so
+// that pure compute delay loops (e.g. waits on an int1c-decremented counter)
+// still get their ticks. */
+static void host_drain_irq() {
+	if (host.timer.in_callback) {
+		return;
+	}
+	host.timer.in_callback = true;
+	int n8 = host_pending_irq8.exchange(0);
+	while (n8-- > 0) host_fire_ivt(0x08, nullptr);
+	int n1c = host_pending_irq1c.exchange(0);
+	while (n1c-- > 0) host_fire_ivt(0x1c, nullptr);
+	host.timer.in_callback = false;
+}
+
+// Cheap periodic drain trigger injected into hot generated-code helpers. The
+// counter bounds overhead; the atomic pending check makes the common case a
+// single load. Runs on whichever thread executes generated code (the game's).
+void host_irq_poll() {
+	if (host_pending_irq8.load() <= 0 && host_pending_irq1c.load() <= 0) return;
+	host_drain_irq();
 }
 
 // Far call/jump targets inside EXEC-loaded overlay regions (sound drivers)
@@ -1388,7 +1485,7 @@ bool host_try_overlay_retf(_offsets __disp, _STATE* _state, bool* out_result) {
 	// still the driver's code segment. Route both into tnd_overlay_call.
 	if (tnd_code_seg &&
 	    (tseg == tnd_code_seg || (tseg == 0 && _state->cs == tnd_code_seg))) {
-		log_error("tnd call disp=%x cs=%x\n", __disp, _state->cs);
+		log_debug2("tnd call disp=%x cs=%x\n", __disp, _state->cs);
 		*out_result = tnd_overlay_call(__disp, _state);
 		return true;
 	}
@@ -1414,13 +1511,16 @@ static void host_start_irq_thread() {
 		return;
 	}
 	std::thread([] {
-		_STATE irq_state;
-		std::memset(&irq_state, 0, sizeof(irq_state));
 		while (host.timer.irq_running.load()) {
-			std::this_thread::sleep_for(std::chrono::milliseconds(55));
+			int us = host_irq_period_us.load();
+			if (us < 1000) us = 1000; // clamp: don't spin below 1 kHz
+			std::this_thread::sleep_for(std::chrono::microseconds(us));
 			++*(dd*)host_physical_address(0x40, 0x6c); // BIOS tick count
-			host_fire_ivt(0x08, &irq_state);
-			host_fire_ivt(0x1c, &irq_state);
+			// Mark IRQ0/IRQ1C pending; the game thread drains them in
+			// host_drain_irq so handler code never races the game on
+			// shared (non-thread-local) generated-code bookkeeping.
+			host_pending_irq8.fetch_add(1);
+			host_pending_irq1c.fetch_add(1);
 		}
 	}).detach();
 }
@@ -1540,13 +1640,56 @@ static int sdl_scancode_to_pc(SDL_Scancode scancode) {
 }
 #endif
 
+// Weak default: games whose INT 9 hardware-keyboard ISR was not translated
+// (kept as data bytes) provide a strong override to maintain their held-key
+// bitmask. Called on every host key make (pressed) / break (released).
+// host_int9_diverts_key mirrors the real ISR's routing: a key is diverted to the
+// held-key bitmask only when it has a table entry; all other keys (and keys
+// pressed while the ISR is disabled) still reach the BIOS buffer for INT 16h.
+__attribute__((weak)) void host_int9_update(int scan_code, bool pressed) {}
+__attribute__((weak)) bool host_int9_diverts_key(int scan_code) { return false; }
+
+// Terminal (stdin) input produces only key-down events -- there is no release.
+// Emulate a short key tap: raise the held-key bit immediately, then release it
+// ~60ms later so menus that sample the held-key bitmask register one press.
+struct HostTap { int scan; uint64_t release_us; };
+static HostTap host_taps[8];
+static int host_tap_count = 0;
+
+static void host_int9_tap(int scan_code) {
+	if (scan_code <= 0 || scan_code >= 0x80) return;
+	host_int9_update(scan_code, true);
+	if (host_tap_count < 8) {
+		host_taps[host_tap_count].scan = scan_code;
+		host_taps[host_tap_count].release_us = host_now_us() + 60000;
+		++host_tap_count;
+	}
+}
+
+static void host_int9_release_taps() {
+	const uint64_t now = host_now_us();
+	for (int i = 0; i < host_tap_count; ++i) {
+		if (now >= host_taps[i].release_us) {
+			host_int9_update(host_taps[i].scan, false);
+			host_taps[i] = host_taps[--host_tap_count];
+			--i;
+		}
+	}
+}
+
 static void host_set_key(int scan_code, bool pressed) {
+	if (scan_code < 0 || scan_code >= 128) {
+		return;
+	}
+	host.keyboard_scan_code = pressed ? scan_code : (scan_code | 0x80);
+	// The game's INT 9 held-key bitmask is independent of the generic key[]
+	// table; update it even when that table is absent (key is a null weak sym).
+	host_int9_update(scan_code, pressed);
 	db* keys = host_key_state();
-	if (scan_code < 0 || scan_code >= 128 || keys == nullptr) {
+	if (keys == nullptr) {
 		return;
 	}
 	keys[scan_code] = pressed ? 1 : 0;
-	host.keyboard_scan_code = pressed ? scan_code : (scan_code | 0x80);
 	switch (scan_code) {
 	case 42:
 		keys[54] = keys[42];
@@ -1623,11 +1766,17 @@ static dw sdl_key_event_to_bios_key(const SDL_KeyboardEvent& event) {
 // unbalanced sp into the interrupted code.
 static void host_run_timer_handler(m2cf* handler, struct _STATE* _state) {
 	const struct _STATE saved = *_state;
+	// Snapshot native-return bookkeeping; a StackPop unwind out of the handler
+	// can bypass the matching RET and leave stale marks behind.
+	const size_t saved_marks = m2c::native_return_marks.size();
+	const size_t saved_values = m2c::native_return_values.size();
+	const size_t saved_depth = m2c::native_return_call_depth;
+	const bool saved_suppress = m2c::suppress_native_return_push_transfer;
 	m2c::suppress_native_return_push_transfer = true;
 	PUSH_((dw)0, _state); // flags slot (IRET) / padding (RETF)
 	PUSH_((dw)0, _state); // sentinel cs
 	PUSH_((dw)0, _state); // sentinel ip=0 -> unwind to C++
-	m2c::suppress_native_return_push_transfer = false;
+	m2c::suppress_native_return_push_transfer = saved_suppress;
 #ifdef SHADOW_STACK
 	// Isolate the handler's bookkeeping: its pushes/rets must not perturb the
 	// interrupted code's call-depth accounting (spurious StackPop unwinds).
@@ -1640,8 +1789,16 @@ static void host_run_timer_handler(m2cf* handler, struct _STATE* _state) {
 		// The emulated state is restored below either way.
 	}
 	*_state = saved;
+	m2c::native_return_marks.resize(saved_marks);
+	m2c::native_return_values.resize(saved_values);
+	m2c::native_return_call_depth = saved_depth;
+	m2c::suppress_native_return_push_transfer = saved_suppress;
 #ifdef SHADOW_STACK
 	m2c::shadow_stack.restore_state(saved_shadow);
+	// The sentinel words and the handler's own pushes left frames below the
+	// live stack top; they are stale now and would otherwise be miscounted as
+	// uncontrolled pops by later scans.
+	m2c::shadow_stack.clear_frames_below((dw)saved.esp);
 #endif
 }
 
@@ -1679,24 +1836,60 @@ static void host_run_timer(struct _STATE* _state) {
 
 static void poll_host_stdin() {
 #if !defined(_WIN32) && !defined(__DJGPP__)
-	if (host_keyboard_buffer_full()) {
-		return;
+	/* Terminal arrow keys arrive as CSI "ESC [ <final>". Parse that sequence so
+	   they produce PC extended keys (AL=0, AH=scancode) the menu code expects.
+	   A bare ESC (no '[' following) still pushes the Escape key. */
+	static int esc_state = 0;   // 0 = normal, 1 = got ESC, 2 = got "ESC ["
+	for (int n = 0; n < 8 && !host_keyboard_buffer_full(); ++n) {
+		fd_set readfds;
+		FD_ZERO(&readfds);
+		FD_SET(STDIN_FILENO, &readfds);
+		timeval timeout = {0, 0};
+		if (select(STDIN_FILENO + 1, &readfds, NULL, NULL, &timeout) <= 0 ||
+		    !FD_ISSET(STDIN_FILENO, &readfds)) {
+			break;
+		}
+		unsigned char ch = 0;
+		if (read(STDIN_FILENO, &ch, 1) <= 0) {
+			break;
+		}
+		dw key = 0;
+		if (esc_state == 0) {
+			if (ch == 0x1b) { esc_state = 1; continue; }
+			key = host_stdin_char_to_bios_key(ch);
+		} else if (esc_state == 1) {
+			if (ch == '[') { esc_state = 2; continue; }
+			esc_state = 0;
+			host_keyboard_push(host_stdin_char_to_bios_key(0x1b));
+			if (host_keyboard_buffer_full()) break;
+			key = host_stdin_char_to_bios_key(ch);   // ESC then a normal key
+		} else { // esc_state == 2, final byte of CSI
+			esc_state = 0;
+			int scan = 0;
+			switch (ch) {
+			case 'A': scan = 0x48; break; // up
+			case 'B': scan = 0x50; break; // down
+			case 'C': scan = 0x4d; break; // right
+			case 'D': scan = 0x4b; break; // left
+			case 'H': scan = 0x47; break; // home
+			case 'F': scan = 0x4f; break; // end
+			default: break;
+			}
+			if (!scan) continue;
+			key = (dw)(scan << 8); // extended key: AL=0, AH=scancode
+		}
+		if (key) {
+			// A key is diverted to the game's held-key bitmask only when its
+			// INT 9 ISR maps it (table entry nonzero); all other keys still
+			// chain to the BIOS buffer for INT 16h. Terminal keys have no
+			// release event, so emulate a short tap for diverted keys.
+			if (host_int9_diverts_key((key >> 8) & 0x7f)) {
+				host_int9_tap((key >> 8) & 0x7f);
+			} else {
+				host_keyboard_push(key);
+			}
+		}
 	}
-	fd_set readfds;
-	FD_ZERO(&readfds);
-	FD_SET(STDIN_FILENO, &readfds);
-	timeval timeout = {0, 0};
-	const int ready = select(STDIN_FILENO + 1, &readfds, NULL, NULL, &timeout);
-	if (ready <= 0 || !FD_ISSET(STDIN_FILENO, &readfds)) {
-		return;
-	}
-
-	unsigned char ch = 0;
-	const ssize_t count = read(STDIN_FILENO, &ch, 1);
-	if (count <= 0) {
-		return;
-	}
-	host_keyboard_push(host_stdin_char_to_bios_key(ch));
 #endif
 }
 
@@ -1726,6 +1919,7 @@ static void host_render_text_memory() {
 
 static void poll_host_events(struct _STATE* _state) {
 	poll_host_stdin();
+	host_int9_release_taps();
 #ifndef NOCURSES
 	host_render_text_memory();
 #endif
@@ -1763,13 +1957,19 @@ static void poll_host_events(struct _STATE* _state) {
 				break;
 			}
 			case SDL_KEYDOWN:
-			case SDL_KEYUP:
-				host_set_key(sdl_scancode_to_pc(event.key.keysym.scancode),
-					event.type == SDL_KEYDOWN);
-				if (event.type == SDL_KEYDOWN && event.key.repeat == 0) {
+			case SDL_KEYUP: {
+				const int pc_scan =
+					sdl_scancode_to_pc(event.key.keysym.scancode);
+				host_set_key(pc_scan, event.type == SDL_KEYDOWN);
+				// A key diverted to the game's held-key bitmask (mapped in its
+				// INT 9 ISR table) is consumed by it; every other key still
+				// chains to the BIOS buffer for INT 16h, as on real hardware.
+				if (event.type == SDL_KEYDOWN && event.key.repeat == 0 &&
+					!host_int9_diverts_key(pc_scan)) {
 					host_keyboard_push(sdl_key_event_to_bios_key(event.key));
 				}
 				break;
+			}
 			default:
 				break;
 			}
@@ -1777,6 +1977,7 @@ static void poll_host_events(struct _STATE* _state) {
 	}
 #endif
 	host_run_timer(_state);
+	host_drain_irq();
 }
 
 static bool host_keyboard_wait(struct _STATE* _state, dw* bios_key) {
@@ -1897,6 +2098,17 @@ X86_REGREF
 #endif
 	log_debug("flags: ZF = %d\n",GET_ZF());
 	log_debug("top stack=%d\n",stackPointer);
+	// Diagnostic: dump the emulated stack window around ss:sp so the failing
+	// return-address chain is visible even when debug logging is compiled out.
+	{
+		db* sb = (db*)m2c::stack_raddr_(ss, (dw)(stackPointer - 16));
+		fprintf(stderr, "[stackdump] ss=%04x sp=%04x words from sp-16:\n", ss, stackPointer);
+		for (int i = -16; i < 64; i += 2) {
+			dw w = *(dw*)(sb + (i + 16));
+			fprintf(stderr, "  sp%+03d = %04x\n", i, w);
+		}
+		fflush(stderr);
+	}
 	checkIfVgaRamEmpty();
 }
 
@@ -1988,8 +2200,25 @@ X86_REGREF
 		break;
 		case 0x40:
 			host.pit.channel0_latch = data;
+			// In lobyte-then-hibyte mode (control 0x36) the first write is the
+			// low divisor byte, the second the high byte. When the divisor
+			// completes, derive the int8 tick period (PIT clock ~1.19318 MHz).
+			if (!host.pit.channel0_waiting_high) {
+				host.pit.channel0_low = data;
+				host.pit.channel0_waiting_high = true;
+			} else {
+				host.pit.channel0_divisor = (uint16_t)((data << 8) | host.pit.channel0_low);
+				host.pit.channel0_waiting_high = false;
+				uint32_t d = host.pit.channel0_divisor ? host.pit.channel0_divisor : 0x10000;
+				host_irq_period_us.store((int)((d / 1193181.818) * 1000000.0));
+			}
 			break;
 	case 0x43:
+		// Channel-0 control with lobyte/hibyte access (0x3x) restarts the
+		// two-write divisor sequence on port 0x40.
+		if ((data & 0xc0) == 0 && (data & 0x30) == 0x30) {
+			host.pit.channel0_waiting_high = false;
+		}
 		break;
 	case 0x61:
 		host.ppi_port_b = data;
@@ -3176,6 +3405,19 @@ X86_REGREF
 				ax = 2;
 				return;
 			}
+			// Detect the translated TANDYSND overlay before loading so the image
+			// write and relocations route into tnd_img instead of m's heap.
+			bool is_tnd = false;
+			{
+				char nm[96]; size_t i = 0;
+				for (; fname[i] && i < sizeof(nm) - 1; ++i) nm[i] = toupper((db)fname[i]);
+				nm[i] = 0;
+				is_tnd = strstr(nm, "TANDY") != nullptr;
+				if (is_tnd) {
+					tnd_seg = loadseg;
+					tnd_code_seg = (dw)(loadseg + 7);
+				}
+			}
 			db hdr[0x20];
 			bool bad = fread(hdr, 1, 0x20, ovf) != 0x20 || hdr[0] != 'M' || (hdr[1] != 'Z' && hdr[1] != 'M');
 			dw hsize = 0, nreloc = 0; dw reloff = 0;
@@ -3186,6 +3428,10 @@ X86_REGREF
 			}
 			fseek(ovf, 0, SEEK_END);
 			const long fsz = ftell(ovf);
+			if (is_tnd) {
+				tnd_img_paras = (dw)((fsz - hsize + 15) / 16 + 2);
+				if (tnd_img_paras * 16 > sizeof(tnd_img)) { bad = true; }
+			}
 			if (!bad && hsize < fsz) {
 				fseek(ovf, hsize, SEEK_SET);
 				db* base = (db*)host_physical_address(loadseg, 0);
@@ -3207,18 +3453,8 @@ X86_REGREF
 				return;
 			}
 			host.overlay_segs.push_back({loadseg, (dw)(loadseg + (fsz - hsize + 15) / 16 + 8)});
-			// TANDYSND.EXE is a translated overlay (tnd_module.cpp). Record its
-			// image base and code segment (seg001 begins 0x70 bytes in, +7 paras)
-			// so far calls and its IRQ0 ISR dispatch into the generated code.
-			{
-				char nm[96]; size_t i = 0;
-				for (; fname[i] && i < sizeof(nm) - 1; ++i) nm[i] = toupper((db)fname[i]);
-				nm[i] = 0;
-				if (strstr(nm, "TANDY")) {
-					tnd_seg = loadseg;
-					tnd_code_seg = (dw)(loadseg + 7);
-					log_debug("TANDYSND bound: image %x code %x\n", tnd_seg, tnd_code_seg);
-				}
+			if (is_tnd) {
+				log_error("TANDYSND bound: image %x code %x paras %x\n", tnd_seg, tnd_code_seg, tnd_img_paras);
 			}
 			log_error("EXEC overlay %s loaded at %x fsz=%ld hsize=%x nreloc=%d img=%02x%02x%02x%02x base=%p\n",
 				fname, loadseg, fsz, (unsigned)hsize, (int)nreloc,

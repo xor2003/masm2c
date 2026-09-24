@@ -19,6 +19,9 @@ static inline db* stack_raddr_(dw segment,dw offset) {return raddr_(segment,offs
 	    if (segment == 0xF000) {
 	        return m2c_bios_rom + offset;
 	    }
+	    if (tnd_img_paras && segment >= tnd_seg && segment < tnd_seg + tnd_img_paras) {
+	        return tnd_img + ((segment - tnd_seg) << 4) + offset;
+	    }
 	    return (db *)&m + (segment<<4) + offset;
 	}
 	static inline db* stack_raddr_(dw segment,dw offset) {

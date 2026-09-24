@@ -152,6 +152,11 @@ extern struct SDL_Renderer *renderer;
 
 namespace m2c {
 
+// Cooperative-IRQ drain hook (defined in asm.cpp). Called periodically from a
+// counter inside the hot flag helpers so pure-compute delay loops still run
+// pending IVT handlers on this thread.
+void host_irq_poll();
+
 extern db vgaPalette[256*3];
 extern bool executionFinished;
 
@@ -165,6 +170,16 @@ extern bool executionFinished;
 #endif
 
     extern struct Memory m;
+
+    // Weak hooks for games whose INT 9 hardware-keyboard ISR was emitted as data
+    // bytes (not a callable proc). A game module may provide strong overrides.
+    // host_int9_update maintains the held-key state on each host key make/break.
+    // host_int9_diverts_key reports whether a given scancode is diverted into the
+    // game's held-key bitmask (its ISR enabled AND a nonzero table entry) instead
+    // of chaining to BIOS -- matching the real hardware, where only mapped keys
+    // are diverted and every other key still feeds the BIOS buffer for INT 16h.
+    void host_int9_update(int scan_code, bool pressed);
+    bool host_int9_diverts_key(int scan_code);
 
     db* linked_code_segment_raddr(dw segment, dw offset);
     db* linked_data_segment_raddr(dw segment, dw offset);
@@ -635,6 +650,18 @@ inline bool MSB(D a)  // get highest bit
 extern db m2c_bios_rom[];
 extern bool tnd_present;
 
+// Translated TANDYSND overlay. The EXEC handler loads its image into a private
+// buffer (tnd_img) rather than inside struct Memory's heap: the game uses fixed
+// adapter-region segments (A000/B800/...) that alias the same linear offsets as
+// the EXEC load segment, so an in-m copy would be clobbered by the game's own
+// rep stosw buffer clears. Segments in [tnd_seg, tnd_seg+tnd_img_paras) are the
+// overlay's own (image base and its code segment) and route to tnd_img; the
+// game never uses them for its own buffers, so the image stays isolated.
+extern dw tnd_seg;          // EXEC load segment of TANDYSND.EXE (0 when absent)
+extern dw tnd_code_seg;     // overlay code segment (tnd_seg + 7)
+extern dw tnd_img_paras;    // paragraphs of tnd_img mapped from tnd_seg
+extern db tnd_img[];        // private overlay image buffer
+
 #if _BITS == 32
   #include "asm_32.h"
 #else
@@ -906,6 +933,9 @@ inline void restore_external_offset_ds(dw& segment) {
     }
 
     inline void set_szp_flags(size_t bytes, uint64_t value, m2c::eflags &m2cflags) {
+        // Periodically drain pending hardware IRQs so spin-wait loops that
+        // only do arithmetic (cmp/jnz) still run installed IVT handlers.
+        { static unsigned m2c_irqctr = 0; if (++m2c_irqctr >= 0x40000) { m2c_irqctr = 0; host_irq_poll(); } }
         const uint64_t masked = value & operand_mask_for_size(bytes);
         AFFECT_ZFifz(masked);
         AFFECT_SF((masked & sign_mask_for_size(bytes)) != 0);
@@ -1992,7 +2022,22 @@ struct StackPop
         esp += i;
 #ifdef SHADOW_STACK
         if (!ret) {
-            log_error("Warning. Return address wasn't created by native CALL (found %x)\n", ip);
+            fprintf(stderr, "Warning. Return address wasn't created by native CALL (found %x) at cs=%x sp=%x depth=%zu\n",
+                      (unsigned)ip, (unsigned)cs, (unsigned)return_sp, native_return_call_depth);
+            int shown = 0;
+            for (auto it = native_return_marks.rbegin();
+                 it != native_return_marks.rend() && shown < 8; ++it) {
+                const int dsp = (int)it->stack_offset - (int)return_sp;
+                if (it->state == _state
+                    && it->stack_segment == return_ss
+                    && dsp >= -16 && dsp <= 16) {
+                    fprintf(stderr, "  mark sp=%x ip=%x depth=%zu id=%zu\n",
+                              (unsigned)it->stack_offset, (unsigned)it->return_ip,
+                              it->call_depth, it->id);
+                    ++shown;
+                }
+            }
+            fflush(stderr);
 	}
 #endif
  #if M2CDEBUG > 0
@@ -2010,10 +2055,8 @@ struct StackPop
         if (native_ret && skip > 0) --skip;
         if (skip>0)
           {
- #if M2CDEBUG > 0
-log_debug("~~will throw exception skip call=%d\n",skip);
- #endif
-
+            log_error("RETN_ throwing StackPop(%d) at %x:%x sp=%x ip=%x\n",
+                      skip, cs, return_sp, return_sp, ip);
 throw StackPop(skip);
 }
         if (ret) {m2c::shadow_stack.decreasedeep();}
@@ -2145,6 +2188,9 @@ throw StackPop(skip);
  #if M2CDEBUG > 0
             if (sp!=oldsp && sp!=oldsp+2) log_debug("~~old SP %x != SP %x\n",oldsp, sp);
  #endif
+        if (sp != oldsp && sp != (dw)(oldsp + 2))
+            log_error("CALL_ %s returned sp=%x oldsp=%x ip=%x ret=%x\n",
+                      label_name, sp, oldsp, ip, return_addr);
  while(std::strcmp(label_name, "__dispatch_call") != 0 && sp < oldsp && return_addr != ip&& ((dw)(ip - return_addr)) > 5 ) {
   const m2c::MWORDSIZE trampoline_ip = ip;
   bool external_trampoline_handled = false;
@@ -2183,6 +2229,8 @@ throw StackPop(skip);
         }
         catch(const StackPop& ex)
         {
+            log_error("CALL_ %s caught StackPop(%d) oldsp=%x sp=%x\n",
+                      label_name, ex.deep, oldsp, sp);
 #ifdef SHADOW_STACK
 shadow_stack.decreasedeep();
              if (ex.deep > 0)

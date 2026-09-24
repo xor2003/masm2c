@@ -1184,10 +1184,17 @@ class Cpp(Gen):
         logging.debug("cpp._call(%s)", expr)
         ret = ""
         expr_render = self._clone_expression_for_render(expr)
-        if expr_render.ptr_size == 0:
-            expr_render.ptr_size = 2
         size = self.calculate_size(expr_render)
-        proc_name = self._render_with_flags(expr_render, is_jump=True, is_call=True)  # TODO why need something else?
+        prev_jump, prev_call = self.itisjump, self.itiscall
+        self.itisjump, self.itiscall = True, True
+        try:
+            proc_name, render_state = self.render_instruction_argument_with_state(expr_render, 0)
+        finally:
+            self.itisjump, self.itiscall = prev_jump, prev_call
+        if not size:
+            size = expr_render.ptr_size or render_state.variable_size or 2
+        if expr_render.ptr_size == 0:
+            expr_render.ptr_size = size
         far = self.get_global_far(proc_name)
         if size == 4 or "far" in expr.mods:
             far = True
