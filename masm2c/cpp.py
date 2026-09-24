@@ -1874,6 +1874,10 @@ class Cpp(Gen):
             self.export_defined_code_symbol_offsets(),
             getattr(self._context, "code_offset_aliases", []),
             module_name=self._namespace,
+            public_code_symbols={
+                str(name).lower()
+                for name in getattr(self._context, "public_symbols", set())
+            },
         )
 
     def export_code_symbol_names(self) -> set[str]:

@@ -440,6 +440,7 @@ class Gen(TopDownVisitor):
         defined_code_symbol_offsets=None,
         code_offset_aliases=None,
         module_name=None,
+        public_code_symbols=None,
     ):
         jsonpickle.set_encoder_options("json", indent=2)
         with open(self.segment_sidecar_path(fname), "wb") as f:
@@ -456,6 +457,7 @@ class Gen(TopDownVisitor):
                     defined_code_symbol_offsets or {},
                     code_offset_aliases or [],
                     module_name,
+                    public_code_symbols or set(),
                 ),
                 f,
             )
@@ -477,6 +479,7 @@ class Gen(TopDownVisitor):
         module_names: dict[str, str] = {}
         code_symbol_definers: dict[str, list[str]] = {}
         code_symbol_visible: dict[str, set[str]] = {}
+        code_symbol_publics: dict[str, set[str]] = {}
         merge_args = self._context.args if isinstance(getattr(self._context, "args", None), dict) else {}
         requested_exports = {
             str(name).lower()
@@ -579,6 +582,11 @@ class Gen(TopDownVisitor):
                     ) = sidecar[:10]
                 if len(sidecar) > 10 and sidecar[10]:
                     module_names[str(source_file)] = str(sidecar[10])
+                newpublic_code_symbols = (
+                    {str(name).lower() for name in sidecar[11]}
+                    if len(sidecar) > 11 and sidecar[11]
+                    else set()
+                )
                 module_label = module_names.get(
                     str(source_file),
                     os.path.splitext(os.path.basename(str(source_file)))[0].lower(),
@@ -597,6 +605,8 @@ class Gen(TopDownVisitor):
                         code_symbol_visible.setdefault(lowered, set()).add(module_label)
                 for name in defined_here & requested_exports:
                     code_symbol_visible.setdefault(name, set()).add(module_label)
+                for name in defined_here & newpublic_code_symbols:
+                    code_symbol_publics.setdefault(name, set()).add(module_label)
                 relocations = self._segment_merge_relocations(segments, newsegments)
                 segments, structures = self.merge_segments(segments, structs, newsegments, newstructs)
                 data_aliases.extend(self._relocate_data_aliases(newaliases, relocations))
@@ -659,6 +669,7 @@ class Gen(TopDownVisitor):
             code_symbol_definers,
             code_symbol_visible,
             reserved_code_symbol_offsets,
+            code_symbol_publics,
         )
         self._context.all_defined_code_symbol_offsets = {
             str(name).lower(): int(offset)
@@ -672,6 +683,7 @@ class Gen(TopDownVisitor):
         code_symbol_definers: dict[str, list[str]],
         code_symbol_visible: dict[str, set[str]],
         reserved_code_symbol_offsets: set[int],
+        code_symbol_publics: dict[str, set[str]] | None = None,
     ) -> None:
         """Disambiguate same-named code symbols defined by several modules.
 
@@ -710,7 +722,13 @@ class Gen(TopDownVisitor):
             if len(visible) < 2:
                 # Other definers are module-local (static) and never collide.
                 continue
-            keeper = visible[-1]
+            # Prefer the module that PUBLIC-exports the symbol as keeper: plain
+            # extern callers bind to the unqualified name, which only the public
+            # definer actually emits with external linkage.
+            public_definers = [
+                m for m in visible if m in (code_symbol_publics or {}).get(name, set())
+            ]
+            keeper = public_definers[-1] if public_definers else visible[-1]
             keeper_handle = int(exported_offsets[name])
             for module in visible:
                 qualified = f"{name}__{re.sub(r'[^A-Za-z0-9_]', '_', str(module).lower())}"
