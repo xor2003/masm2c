@@ -80,15 +80,50 @@ Features:
 - 386 instructions (except FPU) are supported (well tested with QEMU
   tests). x86 flags: Carry, Zero, Sign, Overflow are supported
 - Segment memory model and 16bit offsets
-- Internal SDL target: some BIOS/DOS Int 10h, 21h interrupts, DOS
-  memory manager, and stack emulation CGA text mode is supported using
-  Curses (PDcurses or NCurses). VGA 320x200x256 support (partial)
+- Internal SDL2 target: BIOS/DOS Int 10h, 16h, 21h, 33h interrupts, DOS
+  memory manager, EXEC overlay loading, and stack emulation. CGA text
+  mode is supported using Curses (PDcurses or NCurses). VGA 320x200x256
+  mode 13h and planar modes with DAC palette and CRTC start-offset
+  handling (partial)
+- SDL2 window rendering with per-frame present scheduling (retrace
+  boundary via IN 0x3DA plus rate-limited mid-frame flushes), keyboard
+  delivered through SDL2 events as BIOS scancodes (INT 9h diversion and
+  INT 16h buffer semantics), terminal stdin fallback including CSI
+  arrow keys, and mouse motion/buttons
+- Periodic timer (INT 1Ch/IRQ 0-style) callbacks run on synthesized
+  interrupt frames: full CPU-state save/restore so handlers cannot leak
+  registers into interrupted code
+- Hardware ports: IN/OUT emulation for VGA status/CRTC/DAC, keyboard
+  controller, game port and timer-adjacent ports used by games
 - Libdosbox target: Full interrupts, hardware support.
-- structures support
+- structures support, including full MASM member expressions:
+  `var[idx].field`, `equate[reg].field`, `var.field[idx]`, nested
+  `x.y[reg].z` paths, and `[label].member` direct addressing
+- MASM operators in code operands: `SIZE`, `TYPE`, `SEG`, `LENGTH`,
+  `OFFSET` and bracket arithmetic in EQU expressions are folded
+  correctly (e.g. `add ax, BUF_SIZE` emits the constant)
+- Cross-module calls/jumps: per-module dispatch tables plus a global
+  aggregate dispatcher; colliding proc names are qualified per-module
+  (`proc__module`), indirect `jmp/call [reg]` tables resolved through
+  linked code offsets
+- IDA `.lst`/MASM listing quirks handled: dual code/data labels on one
+  line, explicit segment-override prefix bytes, negative DB/DW
+  literals, symbolic REPT/DUP counts
 - parser is based on Masm EBNF grammar
 - segment can be merged same as Masm do it during linking: Many .asm
   sources can be converted individually and linked together using
-  modern linker
+  modern linker (tested with 126-module builds)
+- `M2CDEBUG == -1` build mode emits ops as plain inline C (no flag
+  tracking) so the output can be fed to a decompiler for cleaner
+  pseudocode
+
+Verified end-to-end (translate → compile → link → run):
+
+- **Tornado** (DOS flight sim, ~126 MASM modules, `TORNADO.EXE`):
+  cockpit panel renders, MFD/CRT updates run, keyboard input works,
+  ESC opens the in-game exit dialog
+- **GW-BASIC** (`GW-BASIC/` in this repo): interactive BASIC prompt
+  works — `PRINT`, `SYSTEM`, program load/save via DOS file services
 
 **Prerequisites:**
 * **Python 3.9 or later:** Ensure you have Python installed on your system.
