@@ -2064,6 +2064,9 @@ struct StackPop
 #endif
 #ifdef SHADOW_STACK
         if (!ret) {
+            // ip==0 is the unwind sentinel (dispatcher-entered continuations
+            // and synthesized interrupt frames): not a corrupt return.
+            if (ip != 0) {
             fprintf(stderr, "Warning. Return address wasn't created by native CALL (found %x) at cs=%x sp=%x depth=%zu\n",
                       (unsigned)ip, (unsigned)cs, (unsigned)return_sp, native_return_call_depth);
             int shown = 0;
@@ -2080,6 +2083,7 @@ struct StackPop
                 }
             }
             fflush(stderr);
+            }
 	}
 #endif
  #if M2CDEBUG > 0
@@ -2146,8 +2150,16 @@ throw StackPop(skip);
         (void)return_sp;
 #ifdef SHADOW_STACK
         if (!ret) {
-            log_error("Warning. Return address wasn't created by native CALL (found %x)\n", ip);
+            // 0:0 is the synthesized interrupt-frame sentinel pushed by
+            // host_run_timer_handler/IVT IRQ delivery: RETF/IRET to it unwinds
+            // to C++ via is_dos_terminate_vector — by design, not a corrupt
+            // return. The cs word has not been popped yet, so peek at ss:sp.
+            dw pending_cs = 1;
+            memcpy(&pending_cs, m2c::stack_raddr_(ss, stackPointer), sizeof(pending_cs));
+            if (!(ip == 0 && pending_cs == 0)) {
+                log_error("Warning. Return address wasn't created by native CALL (found %x)\n", ip);
 //            m2c::stackDump();
+            }
         }
 //        log_error("~~RETF after 1pop\n");
 //        bool need = shadow_stack.needtoskipcalls();
