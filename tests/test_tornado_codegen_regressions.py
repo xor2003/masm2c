@@ -3514,5 +3514,60 @@ class IndirectDispatchPointerSizeTest(unittest.TestCase):
         self.assertIn("*(dd*)(raddr(ss,bp))", rendered)
 
 
+class OperatorEquateInstructionTest(unittest.TestCase):
+    """EQU values built on SIZE/TYPE/SEG must not degrade to label offsets.
+
+    ``_render_known_offset_expression`` used to descend into single-child
+    operator nodes and render only the label operand, so ``SIZE LhsX``
+    became ``offset(data,lhsx)`` in instruction operands such as
+    ``add ax,BUF_SIZE``.  Tornado's polygon filler relies on
+    ``BUF_SIZE EQU SIZE LhsX`` (0x190) to jump between the lhs/rhs scanline
+    tables; the miscompiled add poisoned RhsPtr and corrupted memory.
+    """
+
+    @staticmethod
+    def _render(body: str) -> str:
+        parser = Parser({"mergeprocs": "separate"})
+        source = (
+            "DATA SEGMENT\n"
+            "LhsX DW 200 DUP(0)\n"
+            "BUF_SIZE EQU SIZE LhsX\n"
+            "SEG_EQU EQU SEG LhsX\n"
+            "DATA ENDS\n"
+            "CODE SEGMENT\n"
+            "main PROC\n"
+            f"{body}"
+            "main ENDP\n"
+            "CODE ENDS\n"
+            "END\n"
+        )
+        tree = parser.parse_text(source)
+        parser.process_ast(source, tree)
+        proc = parser.symbols.get_global("main")
+        cpp = Cpp(parser)
+        return "\n".join(proc.generate_c_cmd(cpp, stmt) for stmt in proc.stmts)
+
+    def test_size_equate_renders_total_byte_size(self):
+        rendered = self._render("    add ax,BUF_SIZE\n    sub ax,BUF_SIZE\n")
+        self.assertIn("ADD(ax, 400)", rendered)
+        self.assertIn("SUB(ax, 400)", rendered)
+        self.assertNotIn("offset(data,lhsx)", rendered)
+
+    def test_size_equate_memory_operand_uses_constant_base(self):
+        rendered = self._render("    cmp ax,BUF_SIZE[di]\n    cmp ax,-BUF_SIZE[di]\n")
+        self.assertIn("raddr(ds,400+di)", rendered)
+        self.assertIn("raddr(ds,-400+di)", rendered)
+        self.assertNotIn("offset(data,lhsx)", rendered)
+
+    def test_type_operator_renders_element_size(self):
+        rendered = self._render("    add ax,TYPE LhsX\n")
+        self.assertIn("ADD(ax, 2)", rendered)
+
+    def test_seg_operator_renders_segment_offset(self):
+        rendered = self._render("    mov ax,SEG_EQU\n")
+        self.assertIn("seg_offset(", rendered)
+        self.assertNotIn("offset(data,lhsx)", rendered)
+
+
 if __name__ == "__main__":
     unittest.main()

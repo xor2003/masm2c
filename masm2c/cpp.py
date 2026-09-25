@@ -4293,7 +4293,10 @@ struct Memory{
             if node.data == "unadddir" and len(node.children) == 2:
                 value = self._render_known_offset_expression(node.children[1])
                 return None if value is None else f"{node.children[0]}{value}"
-            if len(node.children) == 1:
+            if node.data in {"size", "sizearg", "sizeofdir"} and len(node.children) == 1:
+                value = self._eval_asm_int_expression(node, None)
+                return None if value is None else str(value)
+            if len(node.children) == 1 and node.data in {"expr", "offsetdir"}:
                 return self._render_known_offset_expression(node.children[0])
             return None
         if isinstance(node, Token):
@@ -4427,8 +4430,12 @@ struct Memory{
                 if value is None:
                     return None
                 return value if str(node.children[0]) == "+" else -value
+            if node.data in {"size", "sizearg"} and len(node.children) == 1:
+                return self._eval_asm_symbol_size(node.children[0], total=True)
+            if node.data == "sizeofdir" and len(node.children) == 1:
+                return self._eval_asm_symbol_size(node.children[0], total=False)
             if node.data in {
-                "size", "sizeofdir", "offsetdir", "segdir", "memberdir",
+                "offsetdir", "seg", "segdir", "memberdir",
                 "sqexpr", "sqexpr2", "wordopdir", "typedefdir", "dollar2",
             }:
                 return None
@@ -4455,6 +4462,23 @@ struct Memory{
         real_offset = getattr(symbol, "real_offset", None)
         if isinstance(real_offset, int):
             return real_offset
+        return None
+
+    def _eval_asm_symbol_size(self, node: Any, *, total: bool) -> int | None:
+        """Return the byte size of a SIZE/SIZEOF/TYPE operand, if it is known."""
+        while isinstance(node, (Tree, Expression)) and len(node.children) == 1:
+            node = node.children[0]
+        if isinstance(node, list) and len(node) == 1:
+            node = node[0]
+        if isinstance(node, Token) and node.type in {"LABEL", "COMMON"}:
+            symbol = self._context.symbols.get_global(str(node))
+            if isinstance(symbol, op.var):
+                elements = int(getattr(symbol, "elements", 1) or 1)
+                return int(symbol.size) * elements if total else int(symbol.size)
+            if isinstance(symbol, op.Struct):
+                return int(symbol.size)
+            if isinstance(symbol, op.Data):
+                return int(symbol.getsize() or 0)
         return None
 
     def notdir(self, tree: Tree) -> list[Union[str, Token]]:
