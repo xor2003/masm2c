@@ -740,31 +740,36 @@ class Asm2IR(CommonCollector):
     def structinstance(self, nodes: list[Any | lark.Tree]) -> list[Any | lark.Tree]: #, values):
         return nodes  # Token('structinstance', values)
 
+    def _serialize_memptr_expr(self, node: lark.Tree | lark.Token | list[Any] | str) -> str:
+        if isinstance(node, lark.Tree):
+            if node.data in {"register", "segmentregister"} and node.children:
+                return str(node.children[0])
+            if node.data == "memberdir":
+                return "{" + ".".join(str(child) for child in node.children) + "}"
+            return "".join(self._serialize_memptr_expr(child) for child in node.children)
+        if isinstance(node, list):
+            return "".join(self._serialize_memptr_expr(child) for child in node)
+        if isinstance(node, lark.Token):
+            text = str(node)
+            if node.type == "LABEL":
+                return "{" + self.context.normalize_label(text) + "}"
+            if node.type == "INTEGER":
+                try:
+                    return str(self.context.parse_numeric_value(text))
+                except (ValueError, TypeError):
+                    return text
+            return text
+        return str(node)
+
     def memberdir(self, nodes: list[lark.Token | lark.Tree | list[Any]]) ->     lark.Tree:
         parts: list[str] = []
         for node in nodes:
             if isinstance(node, lark.Tree) and node.data == "sqexpr":
-                registers = Token.find_tokens(node, "register") or []
-                if registers:
-                    register = registers[0] if isinstance(registers[0], str) else registers[0].children[0]
-                    parts.append(f"__memptr_{register}")
-                    continue
-                labels = Token.find_tokens(node, "LABEL") or []
-                if labels:
-                    label = labels[0] if isinstance(labels[0], str) else labels[0].children[0]
-                    parts.append(f"__memptr_{self.context.normalize_label(str(label))}")
-                    continue
+                parts.append(f"__memptr_{self._serialize_memptr_expr(node)}")
+                continue
             if isinstance(node, list):
-                registers = Token.find_tokens(node, "register") or []
-                if registers:
-                    register = registers[0] if isinstance(registers[0], str) else registers[0].children[0]
-                    parts.append(f"__memptr_{register}")
-                    continue
-                labels = Token.find_tokens(node, "LABEL") or []
-                if labels:
-                    label = labels[0] if isinstance(labels[0], str) else labels[0].children[0]
-                    parts.append(f"__memptr_{self.context.normalize_label(str(label))}")
-                    continue
+                parts.append(f"__memptr_{self._serialize_memptr_expr(node)}")
+                continue
             parts.append(self.context.normalize_label(str(node)))
         if len(parts) == 2 and parts[1].startswith("__memptr_"):
             parts = [parts[1], parts[0]]

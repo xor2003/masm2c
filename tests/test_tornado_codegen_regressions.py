@@ -3196,7 +3196,7 @@ Q SYSTEM
 
         rendered = parser.parse_arg("[WPPtr].WP_ID")
 
-        self.assertEqual(rendered, "*((db*)raddr(ds,wpptr+wp_id))")
+        self.assertEqual(rendered, "*((db*)raddr(ds,offset(data,wpptr)+wp_id))")
 
     def test_m510_old_struct_member_offset_constant_is_renamed_when_global_conflicts(self):
         parser = Parser([])
@@ -3567,6 +3567,73 @@ class OperatorEquateInstructionTest(unittest.TestCase):
         rendered = self._render("    mov ax,SEG_EQU\n")
         self.assertIn("seg_offset(", rendered)
         self.assertNotIn("offset(data,lhsx)", rendered)
+
+
+class BracketedBaseMemberTest(unittest.TestCase):
+    """``expr[reg].member`` must keep every addend of the bracketed base.
+
+    ``memberdir`` used to emit only ``__memptr_<reg>`` whenever the bracket
+    contained a register, silently dropping label/equate siblings.  Tornado
+    corrupts its mobile list because ``MOB_REC_SIZE[si].VP_XFT``
+    (``MOB_REC_SIZE EQU TYPE MOBILE`` = 6) rendered ``si+vp_xft`` -> ``si+4``,
+    which is the MOBILE.MOB_LINK_PTR field.  The same drop hit
+    ``RWRThreats[bp].X`` / ``EWRTable[bx].X`` array-of-struct accesses.
+    """
+
+    @staticmethod
+    def _render(body: str, extra_data: str = "") -> str:
+        parser = Parser({"mergeprocs": "separate"})
+        source = (
+            "MOBILE STRUCT\n"
+            "MOB_NUM DB 0\n"
+            "MOB_TYPE DB 0\n"
+            "MOB_ANIM DB 0\n"
+            "MOB_LINK_PTR DW -1\n"
+            "MOBILE ENDS\n"
+            "VIEWPOINT STRUCT\n"
+            "VP_XSEC DW 0\n"
+            "VP_YSEC DW 0\n"
+            "VP_XFT DW 0\n"
+            "VP_YFT DW 0\n"
+            "VIEWPOINT ENDS\n"
+            "MOB_REC_SIZE EQU TYPE MOBILE\n"
+            "DATA SEGMENT\n"
+            "mobarr MOBILE 5 DUP(<>)\n"
+            f"{extra_data}"
+            "DATA ENDS\n"
+            "CODE SEGMENT\n"
+            "main PROC\n"
+            f"{body}"
+            "main ENDP\n"
+            "CODE ENDS\n"
+            "END\n"
+        )
+        tree = parser.parse_text(source)
+        parser.process_ast(source, tree)
+        proc = parser.symbols.get_global("main")
+        cpp = Cpp(parser)
+        return "\n".join(proc.generate_c_cmd(cpp, stmt) for stmt in proc.stmts)
+
+    def test_scalar_equ_base_preserves_displacement(self):
+        rendered = self._render(
+            "    add ax,MOB_REC_SIZE[si].VP_XFT\n"
+            "    mov MOB_REC_SIZE[si].VP_YFT,ax\n"
+        )
+        self.assertIn("raddr(ds,mob_rec_size+si+vp_xft)", rendered)
+        self.assertIn("raddr(ds,mob_rec_size+si+vp_yft)", rendered)
+        self.assertNotIn("raddr(ds,si+vp_xft)", rendered)
+
+    def test_var_array_base_preserves_offset(self):
+        rendered = self._render("    add ax,mobarr[si].MOB_LINK_PTR\n")
+        self.assertIn("raddr(ds,offset(data,mobarr)+si+mob_link_ptr)", rendered)
+
+    def test_bracket_expression_keeps_constant_term(self):
+        rendered = self._render("    add ax,mobarr[si+2].MOB_NUM\n")
+        self.assertIn("raddr(ds,offset(data,mobarr)+si+2+mob_num)", rendered)
+
+    def test_bare_register_member_unchanged(self):
+        rendered = self._render("    add ax,[si].MOB_LINK_PTR\n")
+        self.assertIn("raddr(ds,si+mob_link_ptr)", rendered)
 
 
 if __name__ == "__main__":

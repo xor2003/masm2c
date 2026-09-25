@@ -913,9 +913,30 @@ class Cpp(Gen):
     def _offsetof_decl(self, type_name: str, members: str) -> str:
         return self._offsetof_expr(type_name, members).replace(",", ", ", 1)
 
+    def _resolve_memptr_base_symbol(self, name: str) -> str:
+        if self._context.is_register(name):
+            return name
+        head, _, rest = name.partition(".")
+        g = self._context.symbols.get_and_mark_global(head)
+        if isinstance(g, op.var):
+            base = f"m2c::near_offset_external({head})" if g.external else self._near_data_offset_expr(g, head)
+            if rest:
+                if g.original_type in self._context.structures:
+                    return f"{base}+{self._offsetof_expr(g.original_type, rest)}"
+                return f"{base}+{rest}"
+            return base
+        if isinstance(g, op.Struct):
+            return self._offsetof_expr(head, rest) if rest else name
+        return name
+
+    def _resolve_memptr_base(self, base: str) -> str:
+        if re.fullmatch(r"[A-Za-z_@$?][A-Za-z0-9_@$?]*", base):
+            return self._resolve_memptr_base_symbol(base)
+        return re.sub(r"\{([^{}]+)\}", lambda m: self._resolve_memptr_base_symbol(m.group(1)), base)
+
     def _convert_pointer_member(self, label: list[str]) -> str:
         state = self._expr_state
-        base = label[0].removeprefix("__memptr_")
+        base = self._resolve_memptr_base(label[0].removeprefix("__memptr_"))
         member = label[-1]
         member_size = state.element_size or self._middle_size or self._calculate_known_struct_member_size(member) or 1
         state.variable_size = member_size
