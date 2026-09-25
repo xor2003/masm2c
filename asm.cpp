@@ -907,9 +907,13 @@ static void snd_init() {
 
 void tandy_snd_write(db data) {
 	m2c_snd::snd_init();
-	SDL_LockAudioDevice(m2c_snd::snd_dev);
+	if (m2c_snd::snd_dev) {
+		SDL_LockAudioDevice(m2c_snd::snd_dev);
+	}
 	m2c_snd::snd_write(data);
-	SDL_UnlockAudioDevice(m2c_snd::snd_dev);
+	if (m2c_snd::snd_dev) {
+		SDL_UnlockAudioDevice(m2c_snd::snd_dev);
+	}
 	static unsigned long snd_writes = 0;
 	++snd_writes;
 	if (snd_writes <= 32 || (snd_writes % 512) == 0) {
@@ -999,6 +1003,8 @@ static void vga_dump_top_visible_colors(size_t start) {
 	std::fprintf(stderr, "\n");
 }
 
+static size_t vga_crtc_start_byte_offset();
+
 static void vga_maybe_dump_frame() {
 	static bool dumped = false;
 	static unsigned frame_count = 0;
@@ -1052,6 +1058,33 @@ static void vga_maybe_dump_frame() {
 		std::fwrite(rgb, 1, sizeof(rgb), f);
 	}
 	std::fclose(f);
+	// Companion diagnostics: dump the raw per-pixel palette indices and the DAC
+	// palette alongside the rendered frame so corruption can be attributed to
+	// bad pixel data vs a bad palette entry.
+	{
+		std::string pal_path = std::string(path) + ".pal";
+		FILE *pf = std::fopen(pal_path.c_str(), "wb");
+		if (pf) {
+			std::fwrite(vgaPalette, 1, 256 * 3, pf);
+			std::fclose(pf);
+		}
+	}
+	{
+		std::string idx_path = std::string(path) + ".idx";
+		FILE *ix = std::fopen(idx_path.c_str(), "wb");
+		if (ix) {
+			const size_t start = vga_crtc_start_byte_offset();
+			for (int y = 0; y < vga_logical_height; ++y) {
+				for (int x = 0; x < vga_logical_width; ++x) {
+					const db color = (host.vga.current_mode == 0x13 && vga_logical_width == 320)
+						? vga_mode13_visible_color(start, x, y)
+						: vgaPlanarPixels[y * 640 + x];
+					std::fwrite(&color, 1, 1, ix);
+				}
+			}
+			std::fclose(ix);
+		}
+	}
 	if (frame_at != 0) {
 		std::fprintf(stderr, "vga dumped frame #%u to %s lit=%zu\n", frame_count, path, lit_pixels);
 		dumped = true;
@@ -1134,12 +1167,35 @@ static void vga_render_indexed_frame() {
 	SDL_RenderCopy(renderer, vgaTexture, NULL, NULL);
 }
 
+static uint64_t vga_last_present_ms = 0;
+
+static void vga_present_now() {
+	vga_render_indexed_frame();
+	SDL_RenderPresent(renderer);
+	vga_last_present_ms = SDL_GetTicks64();
+	vga_render_dirty = false;
+	vga_render_writes = 0;
+}
+
+/* Rate-limited mid-frame present. The write-flush threshold fires several times
+   inside one ~64 KB frame and each call used to re-render + present the whole
+   framebuffer, which is heavy CPU work and can queue up vsync on a real display.
+   Cap those mid-frame flushes to ~30 Hz; the completed frame is still shown once
+   per frame by the retrace boundary (vga_present_forced) and by the periodic
+   event pump. vga_render_writes/dirty stay set on a skip so the next check still
+   sees pending work. */
 void vga_present_pending() {
+	if (renderer && vga_render_dirty &&
+	    SDL_GetTicks64() - vga_last_present_ms >= 33) {
+		vga_present_now();
+	}
+}
+
+/* Frame-boundary present: always shows the accumulated frame. Called from the
+   VGA vertical-retrace poll (IN 0x3DA), i.e. once per logical game frame. */
+void vga_present_forced() {
 	if (renderer && vga_render_dirty) {
-		vga_render_indexed_frame();
-		SDL_RenderPresent(renderer);
-		vga_render_dirty = false;
-		vga_render_writes = 0;
+		vga_present_now();
 	}
 }
 
@@ -2141,6 +2197,11 @@ static void poll_host_events(struct _STATE* _state) {
 #endif
 	host_run_timer(_state);
 	host_drain_irq();
+#ifndef NOSDL
+	/* Flush any pending frame tail on screens that draw then idle waiting for
+	   input without polling the retrace port; rate-limited so it stays cheap. */
+	vga_present_pending();
+#endif
 }
 
 static bool host_keyboard_wait(struct _STATE* _state, dw* bios_key) {
@@ -2516,7 +2577,7 @@ X86_REGREF
 	case 0x3DA:
 		host.vga.attr_waiting_for_index = true;
   #if SDL_MAJOR_VERSION == 2 && !defined(NOSDL) && M2CDEBUG != -1
-		vga_present_pending();
+		vga_present_forced();
   #endif
 		if (vblTick) {
 			vblTick = 0;

@@ -2565,4 +2565,141 @@ extern void print_instruction_direct(Bit16u newcs, Bit32u newip);
 #endif
 
 
+/* ==========================================================================
+   M2CDEBUG == -1  --  IDA / Hex-Rays decompilation mode
+   --------------------------------------------------------------------------
+   The runnable emulator implements every ALU op as an m2c::* helper call that
+   additionally tracks the full flag set (including PF and AF).  For static
+   decompilation that produces noisy pseudocode, so in this mode each op is
+   re-emitted as a plain inline C expression acting directly on the register
+   globals.  Only the flags that conditional branches actually read are kept
+   (ZF, SF, CF, OF); PF and AF are dropped -- they are almost never consumed.
+   CALL/RETN/RETF/IRET collapse to a direct call / plain return so the decomp
+   shows real control flow instead of the shadow-stack + dispatch machinery.
+   ========================================================================== */
+#if M2CDEBUG == -1
+
+/* operand geometry helpers: width in bits, value mask, sign mask */
+#define M2CW_(a)   (sizeof(a) * 8)
+#define M2CM_(a)   ((((unsigned long long)1) << M2CW_(a)) - 1)
+#define M2CS_(a)   (((unsigned long long)1) << (M2CW_(a) - 1))
+#define M2CSZ_(a)  { ZF = ((a) == 0); SF = (((a) >> (M2CW_(a)-1)) & 1); }
+
+#undef ADD
+#define ADD(a, b) { \
+    auto& _a = (a); unsigned long long _b = (b); \
+    unsigned long long _r = (unsigned long long)_a + _b; \
+    CF = ((_r >> M2CW_(_a)) & 1); \
+    OF = ((((~(_a ^ _b)) & (_a ^ _r)) >> (M2CW_(_a)-1)) & 1); \
+    _a = _r; M2CSZ_(_a); }
+
+#undef ADC
+#define ADC(a, b) { \
+    auto& _a = (a); unsigned long long _b = (b); \
+    unsigned long long _r = (unsigned long long)_a + _b + (CF ? 1 : 0); \
+    CF = ((_r >> M2CW_(_a)) & 1); \
+    OF = ((((~(_a ^ _b)) & (_a ^ _r)) >> (M2CW_(_a)-1)) & 1); \
+    _a = _r; M2CSZ_(_a); }
+
+#undef SUB
+#define SUB(a, b) { \
+    auto& _a = (a); unsigned long long _b = (b); \
+    unsigned long long _r = (unsigned long long)_a - _b; \
+    CF = ((unsigned long long)_a < _b); \
+    OF = ((((_a ^ _b) & (_a ^ _r)) >> (M2CW_(_a)-1)) & 1); \
+    _a = _r; M2CSZ_(_a); }
+
+#undef SBB
+#define SBB(a, b) { \
+    auto& _a = (a); unsigned long long _b = (unsigned long long)(b) + (CF ? 1 : 0); \
+    unsigned long long _r = (unsigned long long)_a - _b; \
+    CF = ((unsigned long long)_a < _b); \
+    OF = ((((_a ^ _b) & (_a ^ _r)) >> (M2CW_(_a)-1)) & 1); \
+    _a = _r; M2CSZ_(_a); }
+
+#undef CMP
+#define CMP(a, b) { \
+    unsigned long long _a = (a), _b = (b); \
+    unsigned long long _r = (_a - _b) & M2CM_(a); \
+    CF = (_a < _b); \
+    OF = ((((_a ^ _b) & (_a ^ _r)) >> (M2CW_(a)-1)) & 1); \
+    ZF = (_r == 0); SF = ((_r >> (M2CW_(a)-1)) & 1); }
+
+#undef INC
+#define INC(a) { \
+    auto& _a = (a); _a = (unsigned long long)_a + 1; \
+    OF = (_a == M2CS_(_a)); M2CSZ_(_a); }
+
+#undef DEC
+#define DEC(a) { \
+    auto& _a = (a); _a = (unsigned long long)_a - 1; \
+    OF = (_a == M2CS_(_a)-1); M2CSZ_(_a); }
+
+#undef NEG
+#define NEG(a) { \
+    auto& _a = (a); unsigned long long _v = _a; \
+    CF = (_v != 0); _a = 0 - _v; OF = (_a == M2CS_(_a)); M2CSZ_(_a); }
+
+#undef AND
+#define AND(a, b) { auto& _a = (a); _a &= (b); CF = 0; OF = 0; M2CSZ_(_a); }
+#undef OR
+#define OR(a, b)  { auto& _a = (a); _a |= (b); CF = 0; OF = 0; M2CSZ_(_a); }
+#undef XOR
+#define XOR(a, b) { auto& _a = (a); _a ^= (b); CF = 0; OF = 0; M2CSZ_(_a); }
+
+#undef TEST
+#define TEST(a, b) { \
+    unsigned long long _r = (unsigned long long)(a) & (b); \
+    CF = 0; OF = 0; ZF = (_r == 0); SF = ((_r >> (M2CW_(a)-1)) & 1); }
+
+#undef SHL
+#define SHL(a, b) { auto& _a = (a); unsigned _n = (b) & 31; if (_n) { \
+    unsigned _w = M2CW_(_a); unsigned long long _v = _a; \
+    if (_n > _w) _n = _w; \
+    CF = ((_v >> (_w - _n)) & 1); \
+    _a = _v << _n; M2CSZ_(_a); } }
+
+#undef SHR
+#define SHR(a, b) { auto& _a = (a); unsigned _n = (b) & 31; if (_n) { \
+    unsigned _w = M2CW_(_a); unsigned long long _v = _a; \
+    if (_n > _w) _n = _w; \
+    CF = ((_v >> (_n - 1)) & 1); \
+    _a = _v >> _n; M2CSZ_(_a); } }
+
+#undef SAR
+#define SAR(a, b) { auto& _a = (a); unsigned _n = (b) & 31; if (_n) { \
+    unsigned _w = M2CW_(_a); if (_n >= _w) _n = _w - 1; \
+    CF = (((unsigned long long)_a >> (_n - 1)) & 1); \
+    _a = (unsigned long long)(((long long)_a << (64 - _w)) >> (64 - _w + _n)); \
+    M2CSZ_(_a); } }
+
+#undef XCHG
+#define XCHG(a, b) { auto _t = (a); a = (b); b = _t; }
+
+/* push / pop become plain word-sized accesses into the emulated stack        */
+#undef PUSH
+#define PUSH(a) { sp -= 2; *(dw*)raddr(ss, sp) = (a); }
+#undef POP
+#define POP(a)  { a = *(dw*)raddr(ss, sp); sp += 2; }
+
+/* calls / returns collapse to direct C call & return                        */
+#undef CALL
+#define CALL(label, disp)         { label((m2c::_offsets)(disp), _state); }
+#undef CALLF
+#define CALLF(label, disp)        { label((m2c::_offsets)(disp), _state); }
+#undef CALLI
+#define CALLI(label, disp, rip)   { label((m2c::_offsets)(disp), _state); }
+#undef CALLFI
+#define CALLFI(label, disp, rip)  { label((m2c::_offsets)(disp), _state); }
+
+#undef RETN
+#define RETN(i)   { sp += (i); return true; }
+#undef RETF
+#define RETF(i)   { sp += (i); return true; }
+#undef IRET
+#define IRET      { return true; }
+
+#endif /* M2CDEBUG == -1 decomp overrides */
+
+
 #endif
