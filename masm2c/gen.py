@@ -200,7 +200,14 @@ class Gen(TopDownVisitor):
                     if isinstance(symbol, op.label) and symbol.name == label:
                         g = symbol
                         break
-            key = f"{g.real_seg}_{g.real_offset}" if hasattr(g, "real_seg") else label
+            # Only dedup by real address when one was actually recorded; when
+            # all symbols report real_seg/real_offset of 0/0 every label would
+            # collapse onto the same key and the dispatch table would keep just
+            # the last entry.
+            if hasattr(g, "real_seg") and (g.real_seg or g.real_offset):
+                key = f"{g.real_seg}_{g.real_offset}"
+            else:
+                key = label
             uniq_labels[key] = label
         return uniq_labels.values()
 
