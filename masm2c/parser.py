@@ -205,6 +205,7 @@ class ExprSizeCalculator(BottomUpVisitor):
         super().__init__(init=init, **kwargs)
         self.element_number = 0
         self.element_size = element_size
+        self.declared_element_size = element_size
         self.kwargs = kwargs
 
     def expr(self, tree: Expression, size: Vector) -> Vector:
@@ -232,10 +233,20 @@ class ExprSizeCalculator(BottomUpVisitor):
                 self.element_size = g.size
             return Vector(self.element_size, 1)
         elif isinstance(g, (op._assignment, op._equ)) and isinstance(g.value, Expression):
-            self.element_size = g.value.size()
-            if self.element_size < 1:
-                self.element_size = self.visit(g.value).values[0]
-            return Vector(self.element_size, 1)
+            element_size = g.value.size()
+            if element_size < 1:
+                previous = self.element_size
+                self.element_size = 0
+                element_size = self.visit(g.value).values[0]
+                self.element_size = previous
+            if element_size >= 1:
+                self.element_size = element_size
+            else:
+                # An unsized equate contributes no width of its own; keep the
+                # declared data width for following elements (0 in instruction
+                # context, as before).
+                self.element_size = self.declared_element_size
+            return Vector(element_size, 1)
         return None
 
     def register(self, tree: Tree, size: Vector) -> Vector:
