@@ -3465,5 +3465,54 @@ class DuplicateLocalCodeSymbolTest(unittest.TestCase):
                 os.chdir(old_cwd)
 
 
+class IndirectDispatchPointerSizeTest(unittest.TestCase):
+    def _render_main(self, body: str) -> str:
+        parser = Parser({"mergeprocs": "separate"})
+        source = (
+            "CODE SEGMENT\n"
+            "main PROC\n"
+            f"{body}"
+            "main ENDP\n"
+            "CODE ENDS\n"
+            "END\n"
+        )
+        tree = parser.parse_text(source)
+        parser.process_ast(source, tree)
+        proc = parser.symbols.get_global("main")
+        cpp = Cpp(parser)
+        return "\n".join(proc.generate_c_cmd(cpp, stmt) for stmt in proc.stmts)
+
+    def _render_main_with_dispatch(self, body: str) -> str:
+        parser = Parser({"mergeprocs": "separate"})
+        source = (
+            "CODE SEGMENT\n"
+            "main PROC\n"
+            f"{body}"
+            "main ENDP\n"
+            "CODE ENDS\n"
+            "END\n"
+        )
+        tree = parser.parse_text(source)
+        parser.process_ast(source, tree)
+        proc = parser.symbols.get_global("main")
+        cpp = Cpp(parser)
+        rendered = "\n".join(proc.generate_c_cmd(cpp, stmt) for stmt in proc.stmts)
+        return rendered + "\n" + cpp.dispatch
+
+    def test_unsized_indirect_jump_reads_word(self):
+        # ``jmp [bx]`` is a near jump through a word pointer; without an
+        # explicit ``word ptr`` annotation it must still dereference a dw.
+        rendered = self._render_main_with_dispatch("    jmp [bx]\n")
+        self.assertIn("__disp=*(dw*)(raddr(ds,bx))", rendered)
+
+    def test_unsized_indirect_call_reads_word(self):
+        rendered = self._render_main("    call [si]\n")
+        self.assertIn("*(dw*)(raddr(ds,si))", rendered)
+
+    def test_annotated_far_indirect_call_reads_dword(self):
+        rendered = self._render_main("    call dword ptr [bp]\n")
+        self.assertIn("*(dd*)(raddr(ss,bp))", rendered)
+
+
 if __name__ == "__main__":
     unittest.main()
