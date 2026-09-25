@@ -2101,7 +2101,7 @@ struct StackPop
         if (native_ret && skip > 0) --skip;
         if (skip>0)
           {
-            log_error("RETN_ throwing StackPop(%d) at %x:%x sp=%x ip=%x\n",
+            log_debug("RETN_ throwing StackPop(%d) at %x:%x sp=%x ip=%x\n",
                       skip, cs, return_sp, return_sp, ip);
 throw StackPop(skip);
 }
@@ -2302,7 +2302,7 @@ throw StackPop(skip);
         }
         catch(const StackPop& ex)
         {
-            log_error("CALL_ %s caught StackPop(%d) oldsp=%x sp=%x\n",
+            log_debug("CALL_ %s caught StackPop(%d) oldsp=%x sp=%x\n",
                       label_name, ex.deep, oldsp, sp);
 #ifdef SHADOW_STACK
 shadow_stack.decreasedeep();
@@ -2507,6 +2507,16 @@ enum  _offsets;
 #define _INT(a) {m2c::asm2C_INT(_state,a);}
 
 void asm2C_OUT(int16_t address, int data,_STATE* _state);
+
+// Word-sized OUT: real hardware writes AL to port DX and AH to port DX+1,
+// which is how programs update VGA index/data register pairs (0x3c4/0x3c5,
+// 0x3ce/0x3cf, 0x3d4/0x3d5) with a single `out dx,ax`. The width must come
+// from the operand type — guessing from the value breaks when AH is 0
+// (e.g. Tornado selecting CRT start page 0 writes ax=0x000c).
+static inline void asm2C_OUT(int16_t address, dw data,_STATE* _state) {
+    asm2C_OUT(address, static_cast<int>(data & 0xff), _state);
+    asm2C_OUT(static_cast<int16_t>(address + 1), static_cast<int>((data >> 8) & 0xff), _state);
+}
 
 #define OUT(a,b) m2c::asm2C_OUT(a,b,_state)
 int8_t asm2C_IN(int16_t data,_STATE* _state);

@@ -1111,10 +1111,13 @@ static void vga_maybe_dump_stats(size_t crtc_start) {
 	}
 	std::fprintf(
 		stderr,
-		"vga stats #%u mode=%02x crtc=%04zx seq2=%02x seq4=%02x gc5=%02x visible=%zu visible-lit=%zu p0=%zu p4000=%zu p8000=%zu pc000=%zu\n",
+		"vga stats #%u mode=%02x crtc=%04zx r0c=%02x r0d=%02x r11=%02x seq2=%02x seq4=%02x gc5=%02x visible=%zu visible-lit=%zu p0=%zu p4000=%zu p8000=%zu pc000=%zu\n",
 		dump_count,
 		host.vga.current_mode,
 		crtc_start,
+		host.vga.crtc_regs[0x0c],
+		host.vga.crtc_regs[0x0d],
+		host.vga.crtc_regs[0x11],
 		host.vga.seq_regs[2],
 		host.vga.seq_regs[4],
 		host.vga.gc_regs[5],
@@ -2230,7 +2233,7 @@ void log_error(const char *fmt, ...) {
 #endif
 }
 void log_debug(const char *fmt, ...) {
-#ifdef M2CDEBUG
+#if M2CDEBUG
 	char formatted_string[MAX_FMT_SIZE];
 	va_list argptr;
 	va_start(argptr,fmt);
@@ -3143,11 +3146,11 @@ X86_REGREF
 			db* gp = (db*)host_physical_address(tnd_seg, 0);
 			dd cur = *(dd*)gp;
 			if (cur != tnd_img_guard)
-				log_error("imgchg ah=%02x %08x->%08x ds=%x dx=%x es=%x at %x:%x\n", ah, tnd_img_guard, cur, ds, dx, es, cs, eip);
+				log_debug("imgchg ah=%02x %08x->%08x ds=%x dx=%x es=%x at %x:%x\n", ah, tnd_img_guard, cur, ds, dx, es, cs, eip);
 			tnd_img_guard = cur;
 		}
 		if (ah == 0x48 || ah == 0x49 || ah == 0x4b || ah == 0x4c || ah == 0x09 || ah == 0x4a || ah == 0x3f)
-			log_error("int21 ah=%02x bx=%x dx=%x es=%x ds=%x at %x:%x\n", ah, bx, dx, es, ds, cs, eip);
+			log_debug("int21 ah=%02x bx=%x dx=%x es=%x ds=%x at %x:%x\n", ah, bx, dx, es, ds, cs, eip);
 		}
 #ifdef __DJGPP__
 		switch(ah)
