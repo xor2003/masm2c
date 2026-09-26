@@ -153,10 +153,16 @@ extern struct SDL_Renderer *renderer;
 
 namespace m2c {
 
-// Cooperative-IRQ drain hook (defined in asm.cpp). Called periodically from a
-// counter inside the hot flag helpers so pure-compute delay loops still run
-// pending IVT handlers on this thread.
+// Cooperative-IRQ drain hook. Called periodically from a counter inside the
+// hot flag helpers so pure-compute delay loops still run pending IVT handlers
+// on this thread. The real implementation lives in asm.cpp; single-TU test
+// builds (e.g. qemu_tests, compiled with NO_SHADOW_STACK and no runtime
+// objects) get this weak no-op instead -- a strong definition always wins it.
+#if defined(NO_SHADOW_STACK)
+__attribute__((weak)) void host_irq_poll() {}
+#else
 void host_irq_poll();
+#endif
 
 extern db vgaPalette[256*3];
 extern bool executionFinished;
