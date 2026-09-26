@@ -1094,7 +1094,17 @@ static void vga_maybe_dump_frame() {
 static size_t vga_crtc_start_byte_offset() {
 	const size_t crtc_start = (static_cast<size_t>(host.vga.crtc_regs[0x0c]) << 8) | host.vga.crtc_regs[0x0d];
 	if (host.vga.current_mode == 0x13 && (host.vga.seq_regs[4] & 0x08) == 0) {
-		return (crtc_start * 2) % VGA_WINDOW_SIZE;
+		/* Unchained (mode-X style) plane addressing: the start-address units
+		 * follow the CRTC addressing mode -- dword mode (CRTC 0x14 bit6)
+		 * scales x4, word mode (CRTC 0x17 bit6=0) x2, byte mode (bit6=1) x1.
+		 * Tornado programs the start directly in plane bytes ({0, 0x4000}),
+		 * so byte mode must not scale or the display reads the wrong page. */
+		if (host.vga.crtc_regs[0x14] & 0x40) {
+			return (crtc_start * 4) % VGA_WINDOW_SIZE;
+		}
+		if ((host.vga.crtc_regs[0x17] & 0x40) == 0) {
+			return (crtc_start * 2) % VGA_WINDOW_SIZE;
+		}
 	}
 	return crtc_start % VGA_WINDOW_SIZE;
 }
@@ -1652,11 +1662,22 @@ static void host_fire_ivt(int intno, _STATE* _state) {
 	const size_t saved_values = m2c::native_return_values.size();
 	const size_t saved_depth = m2c::native_return_call_depth;
 	const bool saved_suppress = m2c::suppress_native_return_push_transfer;
+	/* Dispatch through the aggregate global-offset table: IVT offsets were
+	   stored by generated `OFFSET` writes (kglobal_* space), so `off` maps
+	   directly (e.g. Tornado's 0x13a2 -> timerintr). _ENTRY_POINT_ is the
+	   program's main proc and ignores its argument -- running it per IRQ
+	   re-enters the whole game loop inside the ISR. Untranslated overlay ISRs
+	   (TANDYSND) are still reached via host_try_overlay_retf: irq->cs holds the
+	   vector's segment, so the tseg==0 internal-dispatch case applies. */
+	bool handled = false;
 	try {
-		(*m2c::_ENTRY_POINT_)(static_cast<_offsets>((static_cast<dd>(seg) << 16) | off), irq);
+		m2c::dispatch_external_code(static_cast<_offsets>(off), irq, &handled);
 	} catch (const m2c::StackPop&) {
 		// An IRET/RETF inside the handler unwound past the synthesized frame;
 		// that is the normal way back to C++, not an error.
+	}
+	if (!handled) {
+		log_debug2("irq vector %x:%x not handled by translated code\n", seg, off);
 	}
 	m2c::native_return_marks.resize(saved_marks);
 	m2c::native_return_values.resize(saved_values);
@@ -1674,16 +1695,27 @@ static void host_fire_ivt(int intno, _STATE* _state) {
 // poll_host_events and from a periodic hook inside the arithmetic helpers so
 // that pure compute delay loops (e.g. waits on an int1c-decremented counter)
 // still get their ticks. */
+struct HostIrqCallbackGuard {
+	HostIrqCallbackGuard() { host.timer.in_callback = true; }
+	~HostIrqCallbackGuard() { host.timer.in_callback = false; }
+};
+
 static void host_drain_irq() {
 	if (host.timer.in_callback) {
 		return;
 	}
-	host.timer.in_callback = true;
+	HostIrqCallbackGuard callback_guard;
+	/* Real hardware latches at most one pending IRQ per source: ticks that
+	   arrive while the game is busy are lost, never queued. Clamp the catch-up
+	   batch so a stall (heavy frame, debugger pause) cannot queue thousands of
+	   handler invocations and trap the game thread inside this loop. The BIOS
+	   tick count at 0x40:0x6c still advances at wall-clock rate. */
 	int n8 = host_pending_irq8.exchange(0);
+	if (n8 > 4) n8 = 4;
 	while (n8-- > 0) host_fire_ivt(0x08, nullptr);
 	int n1c = host_pending_irq1c.exchange(0);
+	if (n1c > 4) n1c = 4;
 	while (n1c-- > 0) host_fire_ivt(0x1c, nullptr);
-	host.timer.in_callback = false;
 }
 
 // Cheap periodic drain trigger injected into hot generated-code helpers. The
@@ -1700,6 +1732,15 @@ void host_irq_poll() {
 // true: the C++ call chain then unwinds to the statement after the original
 // far call, which is exactly where the driver's retf would resume.
 bool host_try_overlay_retf(_offsets __disp, _STATE* _state, bool* out_result) {
+	// A null far target means the jump/call chained to an empty vector --
+	// e.g. Tornado's timerintr tails into the saved DOS IRQ0 handler, which
+	// was 0:0 because no BIOS handler was ever installed. On real hardware
+	// that slot ends in EOI+IRET, i.e. the whole activation simply ends:
+	// returning false unwinds the dispatch exactly like a completed retf.
+	if (__disp == 0) {
+		*out_result = false;
+		return true;
+	}
 	const dw tseg = static_cast<dw>(__disp >> 16);
 	// Translated TANDYSND overlay: an external far call / ISR targets the
 	// driver's code segment (tseg == tnd_code_seg), while an internal indirect
@@ -1723,6 +1764,20 @@ bool host_try_overlay_retf(_offsets __disp, _STATE* _state, bool* out_result) {
 			tseg, (dw)(__disp & 0xffff), ret_cs, ret_ip);
 		*out_result = true;
 		return true;
+	}
+	/* Packed far target (seg:off from a dd pointer, e.g. Tornado's
+	 * `call UserVctr100` = 0x4d1d:0x1659): SEG of a generated proc is an
+	 * opaque value, not a real address, so the aggregate dispatch only ever
+	 * matches the offset part. BIOS (f000) and overlay segments were already
+	 * excluded above; retry the remaining packed pointers by global offset. */
+	if (tseg != 0 && tseg != 0xf000) {
+		bool inner = false;
+		const bool ok = dispatch_external_code(
+			static_cast<_offsets>(__disp & 0xffff), _state, &inner);
+		if (inner) {
+			*out_result = ok;
+			return true;
+		}
 	}
 	return false;
 }
@@ -2038,7 +2093,7 @@ static void host_run_timer(struct _STATE* _state) {
 	delta_us = std::min<uint64_t>(delta_us, 250000);
 	host.timer.accum_us += delta_us;
 
-	host.timer.in_callback = true;
+	HostIrqCallbackGuard callback_guard;
 	int ticks_this_pump = 0;
 	while (host.timer.accum_us >= 10000 && ticks_this_pump < 5) {
 		host.timer.accum_us -= 10000;
@@ -2053,7 +2108,6 @@ static void host_run_timer(struct _STATE* _state) {
 			}
 		}
 	}
-	host.timer.in_callback = false;
 }
 
 static void poll_host_stdin() {
