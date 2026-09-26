@@ -42,6 +42,7 @@ SOFTWARE.
 #include <cstring>
 
 #include <iterator>
+#include <unordered_map>
 #include <vector>
 
 #ifndef NOSDL
@@ -753,6 +754,12 @@ inline bool take_native_return_value(
     const void* carrier = nullptr,
     size_t* id = nullptr
 ) {
+    if (return_ip == 0) {
+        // 0 is the unwind sentinel (`push 0`/`ret` to PSP:0 termination and
+        // dispatcher-entered continuations), never a real call return. A
+        // plain `push 0` must not consume tracking for it.
+        return false;
+    }
     for (auto it = native_return_values.rbegin(); it != native_return_values.rend(); ++it) {
         if (
             it->state != state
@@ -760,12 +767,17 @@ inline bool take_native_return_value(
         ) {
             continue;
         }
-        if (carrier) {
-            if (it->carrier != carrier) {
+        if (it->return_ip != return_ip) {
+            // A register-carried return may be deliberately adjusted before
+            // re-push (`pop si; inc si; push si` reads inline data placed
+            // after a call via the pushed return address). Allow a small
+            // delta only through the same carrier register, so register
+            // juggling that leaves the old carrier holding an unrelated
+            // value cannot steal the tracked return.
+            const int delta = (int)return_ip - (int)it->return_ip;
+            if (!carrier || it->carrier != carrier || delta < -4 || delta > 4) {
                 continue;
             }
-        } else if (it->return_ip != return_ip) {
-            continue;
         }
         if (id) {
             *id = it->id;
@@ -791,7 +803,13 @@ inline bool consume_native_return(_STATE* state, dw stack_segment, dw stack_offs
             *matched_call_depth = it->call_depth;
         }
         native_return_marks.erase(std::next(it).base());
-        return matched;
+        if (matched) {
+            return true;
+        }
+        // The guest overwrote this stack slot after the marked call (e.g.
+        // XTHL-style return-address juggling): the mark is stale. Drop it
+        // but keep looking so a relocated same-address mark can match below.
+        break;
     }
     // Frame-skipping return (e.g. `pop reg` discarding intermediate frames
     // followed by `ret`): the popped address is a live outer frame's return
@@ -813,6 +831,27 @@ inline bool consume_native_return(_STATE* state, dw stack_segment, dw stack_offs
         native_return_marks.erase(std::next(it).base());
         return true;
     }
+    // Relocated return slot (e.g. `pop si; xchg; push; push` XTHL-style
+    // juggling): the callee moves the caller's pushed return to an adjacent
+    // stack word before `ret`, so the same return address pops one slot over.
+    // Match it by value within a small window at the same call depth.
+    for (auto it = native_return_marks.rbegin(); it != native_return_marks.rend(); ++it) {
+        const int slot_delta = (int)it->stack_offset - (int)stack_offset;
+        if (
+            it->state != state
+            || it->stack_segment != stack_segment
+            || it->call_depth != native_return_call_depth
+            || it->return_ip != return_ip
+            || slot_delta < -8 || slot_delta > 8
+        ) {
+            continue;
+        }
+        if (matched_call_depth) {
+            *matched_call_depth = it->call_depth;
+        }
+        native_return_marks.erase(std::next(it).base());
+        return true;
+    }
     return false;
 }
 
@@ -824,10 +863,14 @@ inline void carry_native_return(
     const void* carrier
 ) {
     for (auto it = native_return_marks.rbegin(); it != native_return_marks.rend(); ++it) {
+        const int slot_delta = (int)it->stack_offset - (int)stack_offset;
         if (
             it->state != state
             || it->stack_segment != stack_segment
-            || it->stack_offset != stack_offset
+            // Stack-slot juggling (pop/push sequences around the return word)
+            // can leave the return one word off the marked slot; the value is
+            // what identifies it.
+            || slot_delta < -4 || slot_delta > 4
             || it->return_ip != return_ip
             || it->call_depth != native_return_call_depth
         ) {
@@ -1010,6 +1053,10 @@ inline void restore_external_offset_ds(dw& segment) {
   if (
       !m2c::suppress_native_return_push_transfer
       && sizeof(a) == sizeof(m2c::MWORDSIZE)
+      // Match the tracked return by value only: register juggling (e.g.
+      // `xchg si,bx` in XTHL sequences) can move the return into a different
+      // carrier register, and pushing the old carrier register with new
+      // contents must not consume the tracked value.
       && m2c::take_native_return_value(_state, (m2c::MWORDSIZE)a, &a, &native_return_id)
   ) {
       m2c::mark_native_return_with_id(_state, ss, stackPointer, (m2c::MWORDSIZE)a, native_return_id);
@@ -2067,6 +2114,13 @@ struct StackPop
             // ip==0 is the unwind sentinel (dispatcher-entered continuations
             // and synthesized interrupt frames): not a corrupt return.
             if (ip != 0) {
+            // Throttle repeats: the same unmarked return can fire every poll
+            // iteration (e.g. "push offset; call/ret" idioms the native marker
+            // cannot see), which otherwise floods stderr forever.
+            static std::unordered_map<dd, size_t> nonnative_return_seen;
+            const dd warn_key = ((dd)cs << 16) | (dd)ip;
+            size_t& warn_count = nonnative_return_seen[warn_key];
+            if (++warn_count <= 3) {
             fprintf(stderr, "Warning. Return address wasn't created by native CALL (found %x) at cs=%x sp=%x depth=%zu\n",
                       (unsigned)ip, (unsigned)cs, (unsigned)return_sp, native_return_call_depth);
             int shown = 0;
@@ -2083,6 +2137,11 @@ struct StackPop
                 }
             }
             fflush(stderr);
+            } else if (warn_count == 4 || (warn_count & 0xFFFF) == 0) {
+                fprintf(stderr, "Warning. Return address wasn't created by native CALL (found %x) at cs=%x repeated %zu times\n",
+                          (unsigned)ip, (unsigned)cs, warn_count);
+                fflush(stderr);
+            }
             }
 	}
 #endif
@@ -2246,6 +2305,7 @@ throw StackPop(skip);
         }
  #endif
 	        _state->call_source = 2;
+	        bool caught_stack_pop = false;
 	        try{
 		  if (!label(_i, _state)) {
 		      if (m2c::executionFinished) {
@@ -2261,11 +2321,14 @@ throw StackPop(skip);
  #if M2CDEBUG > 0
             if (sp!=oldsp && sp!=oldsp+2) log_debug("~~old SP %x != SP %x\n",oldsp, sp);
  #endif
+#if M2CDEBUG > 0
         if (sp != oldsp && sp != (dw)(oldsp + 2)) {
-            log_error("CALL_ %s returned sp=%x oldsp=%x ip=%x ret=%x\n",
+            // Words the callee left unpopped (sp < oldsp) or over-popped
+            // (sp > oldsp+2). Note sp < oldsp is also produced legitimately by
+            // XTHL-style stack juggling that leaves a result word for the
+            // caller, so this is informational only.
+            log_debug("CALL_ %s returned sp=%x oldsp=%x ip=%x ret=%x\n",
                       label_name, sp, oldsp, ip, return_addr);
-            // Dump the emulated stack residue between sp and oldsp+2: words the
-            // callee left unpopped (sp < oldsp) or over-popped (sp > oldsp+2).
             fprintf(stderr, "[stack] ss=%04x residue sp..oldsp+2 after call to %s:\n",
                     (unsigned)ss, label_name);
             for (dw a = sp; (int)a <= (int)(oldsp + 2); a += 2) {
@@ -2274,6 +2337,7 @@ throw StackPop(skip);
                         a == sp ? " <== sp" : (a == (dw)(oldsp - 2) ? " <== pushed ret slot" : ""));
             }
         }
+#endif
  while(std::strcmp(label_name, "__dispatch_call") != 0 && sp < oldsp && return_addr != ip&& ((dw)(ip - return_addr)) > 5 ) {
   const m2c::MWORDSIZE trampoline_ip = ip;
   bool external_trampoline_handled = false;
@@ -2330,7 +2394,7 @@ shadow_stack.decreasedeep();
  #if M2CDEBUG > 0
   log_debug("~~Finished with skipping calls\n");
 #endif
-
+             caught_stack_pop = true;
              }
 #else
              if (ex.deep > 0)
@@ -2341,16 +2405,32 @@ shadow_stack.decreasedeep();
 		m2c::restore_data_offset_ds(ds, data_offset_ds_mark);
 		throw StackPop(ex.deep-1);
              }
+             else
+             {
+             caught_stack_pop = true;
+             }
 #endif
 	        }
-	       if ((dw)sp < (dw)oldsp) {
-	           // The callee (or an unwound skipped frame) left stack words
-	           // unpopped below the pushed return slot. Restoring sp keeps that
-	           // residue from being consumed by the caller's own pops, the same
-	           // recovery the trampoline path applies for wrapper calls.
+        // The pushed return word sits at oldsp-2: it is still live while
+        // sp <= oldsp-2 (a StackPop unwind or a callee that left residue can
+        // reach this point without consuming it). Dropping the mark then
+        // orphans the word and the next POP/RET of it re-dispatches into the
+        // caller's own proc (e.g. GW-BASIC LIST re-entering `list`). Only
+        // discard the bookkeeping once the word was actually consumed.
+        const bool native_return_consumed = (dw)sp >= (dw)oldsp;
+	       if (caught_stack_pop && (dw)sp < (dw)oldsp) {
+	           // A StackPop unwind skipped frames: words it left below the
+	           // pushed return slot are dead residue, so restore sp to keep
+	           // the caller's own pops from consuming them. A callee that
+	           // returns *normally* with sp<oldsp -- e.g. GW-BASIC's
+	           // XTHL-style pop/push juggling that deliberately leaves a
+	           // result word on the stack for the caller -- keeps its sp:
+	           // the caller pops that word itself.
 	           sp = oldsp;
 	       }
-		       m2c::discard_native_return(native_return_id);
+		       if (native_return_consumed || caught_stack_pop) {
+		           m2c::discard_native_return(native_return_id);
+		       }
 		       m2c::restore_data_offset_ds(ds, data_offset_ds_mark);
 	       return true;
 	    }

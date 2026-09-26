@@ -2711,12 +2711,24 @@ void copy_linked_program_segment_prefix(dw segment, const void* source, size_t s
 """
 
         entries = "\n".join(
-            f"    {{reinterpret_cast<const db*>(&::{name}), 0x{linear:x}, {str(is_data).lower()}}},"
-            for linear, name, is_data in anchors
+            f"    {{reinterpret_cast<const db*>(&::{name}), 0x{linear:x}, 0x{extent:x}, {str(is_data).lower()}}},"
+            for linear, name, is_data, extent in anchors
         )
         linked_data_raddr_body = """    for (const LinkedSegmentAnchor& anchor : linked_segment_anchors) {
         if (anchor.is_data && segment == static_cast<dw>(anchor.linear >> 4)) {
             return const_cast<db*>(anchor.base) + offset;
+        }
+    }
+    if (is_linked_data_runtime_segment(segment)) {
+        const size_t position = static_cast<size_t>(segment) << 4;
+        for (const LinkedSegmentAnchor& anchor : linked_segment_anchors) {
+            if (!anchor.is_data || anchor.linear == 0 || anchor.extent == 0) {
+                continue;
+            }
+            const size_t lower = anchor.linear > anchor.extent ? anchor.linear - anchor.extent : 0;
+            if (position >= lower && position < anchor.linear + anchor.extent) {
+                return const_cast<db*>(anchor.base) + offset;
+            }
         }
     }
     return nullptr;"""
@@ -2725,6 +2737,7 @@ void copy_linked_program_segment_prefix(dw segment, const void* source, size_t s
 struct LinkedSegmentAnchor {{
     const db* base;
     size_t linear;
+    size_t extent;
     bool is_data;
 }};
 
@@ -2826,23 +2839,44 @@ void copy_linked_program_segment_prefix(dw segment, const void* source, size_t s
         }}
     }}
     if (!copied) {{
+        if (db* linked = linked_data_segment_raddr(segment, 0)) {{
+            std::memmove(linked, source, size);
+            copied = true;
+        }}
+    }}
+    if (!copied) {{
         std::memmove((db*)&m + (static_cast<size_t>(segment) << 4), source, size);
     }}
 }}
 """
 
-    def _linked_segment_anchors(self, segments: OrderedDict) -> list[tuple[int, str, bool]]:
+    def _linked_segment_anchors(self, segments: OrderedDict) -> list[tuple[int, str, bool, int]]:
         anchors_by_linear: dict[int, tuple[str, bool]] = {}
+        extents_by_linear: dict[int, int] = {}
         for segment_name, segment in segments.items():
             if not segment.getdata() or str(getattr(segment, "segclass", "")).lower() == "code":
                 continue
             is_data = not self._is_code_storage_segment(segment)
+            extent = self._segment_end_offset(segment)
             aliases = {segment.name: 0, **getattr(segment, "segment_aliases", {segment.name: 0})}
             aliases = {segment_name: 0, **aliases}
             for name, relative_offset in aliases.items():
                 linear = self._segment_binding_linear(segment, relative_offset, segment_name)
                 anchors_by_linear.setdefault(linear, (name, is_data))
-        return [(linear, name, is_data) for linear, (name, is_data) in sorted(anchors_by_linear.items())]
+                if is_data:
+                    extents_by_linear[linear] = max(extents_by_linear.get(linear, 0), extent - int(relative_offset))
+        return [
+            (linear, name, is_data, extents_by_linear.get(linear, 0))
+            for linear, (name, is_data) in sorted(anchors_by_linear.items())
+        ]
+
+    @staticmethod
+    def _segment_end_offset(segment: Any) -> int:
+        """Return the byte offset immediately after a segment's known data."""
+        end = 0
+        for data in segment.getdata():
+            end = max(end, int(data.offset) + int(data.getsize()))
+        return end
 
     def _produce_linked_code_segment_address_helper(self, segments: OrderedDict) -> str:
         """Build runtime address mapping for linked code-segment data records."""

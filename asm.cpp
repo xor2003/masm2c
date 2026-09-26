@@ -71,6 +71,13 @@ SOFTWARE.
 #define M2C_LOAD_SEG 0x192
 #endif
 
+// DOS program segment prefix paragraph. For hosted .COM-style runs it equals
+// M2C_LOAD_SEG; for EXE-style two-segment programs the code loads at
+// M2C_LOAD_SEG while the PSP lives one paragraph below it.
+#ifndef M2C_PSP_SEG
+#define M2C_PSP_SEG M2C_LOAD_SEG
+#endif
+
 #ifndef NOCURSES
 #include <curses.h>
 #endif
@@ -302,7 +309,7 @@ struct HostHardware {
 	HostVga vga;
 	HostPit pit;
 	HostTimer timer;
-	dw current_psp = M2C_LOAD_SEG;
+	dw current_psp = M2C_PSP_SEG;
 	db ppi_port_b = 0;
 	db keyboard_scan_code = 0;
 	dw keyboard_buffer[16] = {};
@@ -4405,7 +4412,8 @@ std::this_thread::sleep_for(std::chrono::microseconds(1));
  #else
     esp = 0;
     sp = STACK_SIZE - 4;
-    cs = ds = es = M2C_LOAD_SEG; // DOS PSP/load segment for hosted COM-style runs
+    cs = M2C_LOAD_SEG;
+    ds = es = M2C_PSP_SEG; // EXE-style entry: CS is the load segment, DS/ES point at the PSP
     *(dw*)(raddr(0, 0x408)) = 0x378; //LPT
     /* DOS loader fills PSP:0002 with the top of the program's memory block
        ("top of memory", in paragraphs). Programs like GW-BASIC copy the

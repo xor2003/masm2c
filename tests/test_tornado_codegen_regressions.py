@@ -1895,9 +1895,9 @@ class Masm510StructCompatibilityTest(unittest.TestCase):
                 self.assertIn("dw near_offset_linked_address(const void* symbol)", data_cpp)
                 self.assertIn("const size_t linear = anchor->linear +", data_cpp)
                 self.assertIn("linear - ((anchor->linear >> 4) << 4)", data_cpp)
-                self.assertIn("{reinterpret_cast<const db*>(&::data), 0x0, true}", data_cpp)
-                self.assertIn("{reinterpret_cast<const db*>(&::wsdata), 0x200, true}", data_cpp)
-                self.assertIn("{reinterpret_cast<const db*>(&::stack), 0x550, true}", data_cpp)
+                self.assertIn("{reinterpret_cast<const db*>(&::data), 0x0, 0x1, true}", data_cpp)
+                self.assertIn("{reinterpret_cast<const db*>(&::wsdata), 0x200, 0x0, true}", data_cpp)
+                self.assertIn("{reinterpret_cast<const db*>(&::stack), 0x550, 0x1, true}", data_cpp)
                 self.assertNotIn("{reinterpret_cast<const db*>(&::code), 0x10}", data_cpp)
             finally:
                 os.chdir(old_cwd)
@@ -1924,7 +1924,7 @@ class Masm510StructCompatibilityTest(unittest.TestCase):
                 self.assertIn("db& datasg=*((db*)&m2c::m+0x1b00);", data_refs)
                 self.assertIn("db& dseg=*((db*)&m2c::m+0x1b00);", data_refs)
                 data_cpp = Path("_data.cpp").read_text(encoding="cp437")
-                self.assertIn("{reinterpret_cast<const db*>(&::datasg), 0x1b00, true}", data_cpp)
+                self.assertIn("{reinterpret_cast<const db*>(&::datasg), 0x1b00, 0x102, true}", data_cpp)
             finally:
                 os.chdir(old_cwd)
 
@@ -1953,7 +1953,7 @@ class Masm510StructCompatibilityTest(unittest.TestCase):
                 self.assertIn("db& dseg=*((db*)&m2c::m+0x2c60);", data_refs)
                 self.assertNotIn("db& dseg=*((db*)&m2c::m+0x1b00);", data_refs)
                 data_cpp = Path("_data.cpp").read_text(encoding="cp437")
-                self.assertIn("{reinterpret_cast<const db*>(&::datasg), 0x2c60, true}", data_cpp)
+                self.assertIn("{reinterpret_cast<const db*>(&::datasg), 0x2c60, 0xa92, true}", data_cpp)
             finally:
                 os.chdir(old_cwd)
 
@@ -2094,8 +2094,8 @@ class Masm510StructCompatibilityTest(unittest.TestCase):
 
                 data_cpp = Path("_data.cpp").read_text(encoding="cp437")
                 self.assertIn("if (offset >= 0x0 && offset < 0x4) { return (db*)&m + 0x1920 + offset; }", data_cpp)
-                self.assertIn("{reinterpret_cast<const db*>(&::codesg), 0x1920, false}", data_cpp)
-                self.assertIn("{reinterpret_cast<const db*>(&::data), 0x1921, true}", data_cpp)
+                self.assertIn("{reinterpret_cast<const db*>(&::codesg), 0x1920, 0x0, false}", data_cpp)
+                self.assertIn("{reinterpret_cast<const db*>(&::data), 0x1921, 0x2, true}", data_cpp)
                 self.assertIn("anchor.linear != 0 && anchor.is_data", data_cpp)
                 self.assertIn("segment == 0 || segment >= 0xa000 || is_linked_data_runtime_segment(segment)", data_cpp)
                 self.assertNotIn("std::memcpy", data_cpp)

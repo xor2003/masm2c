@@ -23,6 +23,7 @@ Primary implementation is Python (`masm2c/` package). The repo also contains man
 - `-lo/--loadsegment`: load segment (default `0x1a2`)
 - `-AT`: force DOS `.com` load segment (`0x192`)
 - `-FL/--list`: emit `.list` globals/procs/labels
+- `-l/--lift`: post-pass (`masm2c/lift.py`) also emitting `<name>_lifted.cpp` with `R()/J()` fake-C statements rewritten to readable C (keeps m2c runtime + dispatch; stock `.cpp` untouched); also enabled by `M2C_LIFT=1`
 
 ## Environment and Dependencies
 - Python `>=3.9`

@@ -17,6 +17,16 @@ SKIP_CASES = {
     "popf.asm": "unsupported: call loc_15c4a+1",
 }
 
+# Only skipped when translating with M2C_LIFT (--lift). The test's wait loop
+# needs ~30ms of wall time for the 10ms host timer thread to tick twice;
+# stock R()/J() instrumentation makes the loop that slow, lifted code is
+# ~50x faster and finishes first. On real hardware this loop would also
+# outrun the 18.2Hz PIT. The timer machinery itself stays covered by the
+# default (non-lifted) run.
+LIFT_SKIP_CASES = {
+    "timer_thread.asm": "timing-dependent: lifted loop outruns the 10ms host timer",
+}
+
 CASE_ARGS = {
     "argv_tail.asm": ["SN", "MN", "QS"],
 }
@@ -105,10 +115,13 @@ def run_case(script_dir: Path, name: str, logs_dir: Path, cxx: str, opt_flags: s
     base = name.rsplit(".", 1)[0]
     log_file = logs_dir / f"{base}.log"
 
-    if name in SKIP_CASES:
-        msg = f"Testing {name}:\nSKIP {SKIP_CASES[name]}\n"
+    skip_cases = dict(SKIP_CASES)
+    if os.environ.get("M2C_LIFT"):
+        skip_cases.update(LIFT_SKIP_CASES)
+    if name in skip_cases:
+        msg = f"Testing {name}:\nSKIP {skip_cases[name]}\n"
         log_file.write_text(msg, encoding="utf-8")
-        return CaseResult(name=name, status="SKIP", rc=0, reason=SKIP_CASES[name], log_file=log_file)
+        return CaseResult(name=name, status="SKIP", rc=0, reason=skip_cases[name], log_file=log_file)
 
     work_dir = prepare_case_workspace(script_dir, name)
     repo_root = script_dir.parent
@@ -129,6 +142,20 @@ def run_case(script_dir: Path, name: str, logs_dir: Path, cxx: str, opt_flags: s
         output = "\n".join(output_chunks)
         log_file.write_text(output, encoding="utf-8", errors="replace")
         return CaseResult(name=name, status="FAIL", rc=t.returncode, reason=f"exit={t.returncode}", log_file=log_file)
+
+    if os.environ.get("M2C_LIFT"):
+        # --lift emits <name>_lifted.cpp next to the stock output; swap the
+        # lifted variant into the canonical names so the build compiles it.
+        for lifted in sorted(work_dir.glob(f"{base}*_lifted.cpp")):
+            stock = lifted.with_name(lifted.name.removesuffix("_lifted.cpp") + ".cpp")
+            shutil.copyfile(lifted, stock)
+            lifted.unlink()
+        main_cpp = work_dir / f"{base}.cpp"
+        if main_cpp.exists():
+            main_cpp.write_text(
+                main_cpp.read_text(encoding="utf-8", errors="replace")
+                .replace('_lifted.cpp"', '.cpp"'),
+                encoding="utf-8")
 
     compile_cmd = [
         cxx,

@@ -25,6 +25,9 @@ static inline db* stack_raddr_(dw segment,dw offset) {return raddr_(segment,offs
 	    return (db *)&m + (segment<<4) + offset;
 	}
 	static inline db* stack_raddr_(dw segment,dw offset) {
+	    if (db* linked_data = linked_data_segment_raddr(segment, offset)) {
+	        return linked_data;
+	    }
 	    return (db *)&m + (segment<<4) + offset;
 	}
 #endif

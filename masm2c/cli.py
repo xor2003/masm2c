@@ -164,6 +164,14 @@ def parse_args(args):
         default=False,
         help="Print simple per-proc complexity metrics",
     )
+    aparser.add_argument(
+        "-l",
+        "--lift",
+        dest="lift",
+        action="store_true",
+        default=False,
+        help="Also emit <name>_lifted.cpp with fake-C statements rewritten to readable C (keeps m2c runtime semantics)",
+    )
     aparser.add_argument("filenames", nargs="+", help="Assembler source .asm Masm 6 or .lst from IDA Pro or .seg Segment dump to merge")
     return aparser.parse_args(args)
 
@@ -277,6 +285,12 @@ def process(name, args):
     generator = Cpp(context, outfile=outname)
     generator.process()
     generator.save_cpp_files(name)  # start routine
+    if args.get("lift") or os.environ.get("M2C_LIFT"):
+        from .lift import lift_cpp_files
+        ns = generator._namespace.lower()
+        srcs = [p for p in glob.glob(f"{ns}.cpp") + glob.glob(f"{ns}_*.cpp")
+                if not p.endswith("_lifted.cpp")]
+        lift_cpp_files(srcs)
     if args.get("list"):
         generator.dump_globals()
     return generator
