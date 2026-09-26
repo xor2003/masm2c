@@ -1605,6 +1605,7 @@ class Parser:
         self._preserve_assignment_ptr_metadata(value, raw)
 
         # if self.has_global(label):
+        self.make_sure_proc_exists(line_number, raw)
         assert self.proc
         o = self.proc.create_assignment_op(label, value, line_number=line_number)
         o.filename = self._current_file
