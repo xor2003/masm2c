@@ -74,7 +74,15 @@ namespace m2c{
 //     log_debug ("~3\n");
                 tsp = m_ss.at(m_current ).sp;
                 if ((tcount++) > 0)
+                  {
                   log_error ("uncontrolled pop meet in past which added %x sp=%x\n", m_ss.at(m_current).addcounter, tsp);
+                  fprintf (stderr,
+                           "[shadow] swept stale frame sp=%x itwascall=%d pushed_at %x:%x value=%x (current cs=%x ip=%x sp=%x)\n",
+                           (unsigned)tsp, (int)m_ss.at(m_current).itwascall,
+                           (unsigned)m_ss.at(m_current).cs, (unsigned)m_ss.at(m_current).ip,
+                           (unsigned)m_ss.at(m_current).value,
+                           (unsigned)cs, (unsigned)eip, (unsigned)sp);
+                  }
 //                if (tsp <= sp)
                   m_ss.at(m_current).remcounter = counter;
                   if (m_ss.at(m_current).itwascall) {++m_needtoskipcall;log_debug("increased m_needtoskipcall=%d\n",m_needtoskipcall);}

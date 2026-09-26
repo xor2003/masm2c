@@ -2261,9 +2261,19 @@ throw StackPop(skip);
  #if M2CDEBUG > 0
             if (sp!=oldsp && sp!=oldsp+2) log_debug("~~old SP %x != SP %x\n",oldsp, sp);
  #endif
-        if (sp != oldsp && sp != (dw)(oldsp + 2))
+        if (sp != oldsp && sp != (dw)(oldsp + 2)) {
             log_error("CALL_ %s returned sp=%x oldsp=%x ip=%x ret=%x\n",
                       label_name, sp, oldsp, ip, return_addr);
+            // Dump the emulated stack residue between sp and oldsp+2: words the
+            // callee left unpopped (sp < oldsp) or over-popped (sp > oldsp+2).
+            fprintf(stderr, "[stack] ss=%04x residue sp..oldsp+2 after call to %s:\n",
+                    (unsigned)ss, label_name);
+            for (dw a = sp; (int)a <= (int)(oldsp + 2); a += 2) {
+                dw v = 0; memcpy(&v, m2c::raddr_(ss, a), 2);
+                fprintf(stderr, "  ss:%04x = %04x%s\n", (unsigned)a, (unsigned)v,
+                        a == sp ? " <== sp" : (a == (dw)(oldsp - 2) ? " <== pushed ret slot" : ""));
+            }
+        }
  while(std::strcmp(label_name, "__dispatch_call") != 0 && sp < oldsp && return_addr != ip&& ((dw)(ip - return_addr)) > 5 ) {
   const m2c::MWORDSIZE trampoline_ip = ip;
   bool external_trampoline_handled = false;
@@ -2311,6 +2321,7 @@ shadow_stack.decreasedeep();
  #if M2CDEBUG > 0
   log_debug("~~Rethrowing upper\n");
 #endif
+		m2c::discard_native_return(native_return_id);
 		m2c::restore_data_offset_ds(ds, data_offset_ds_mark);
 		throw StackPop(ex.deep-1);
              }
@@ -2332,6 +2343,13 @@ shadow_stack.decreasedeep();
              }
 #endif
 	        }
+	       if ((dw)sp < (dw)oldsp) {
+	           // The callee (or an unwound skipped frame) left stack words
+	           // unpopped below the pushed return slot. Restoring sp keeps that
+	           // residue from being consumed by the caller's own pops, the same
+	           // recovery the trampoline path applies for wrapper calls.
+	           sp = oldsp;
+	       }
 		       m2c::discard_native_return(native_return_id);
 		       m2c::restore_data_offset_ds(ds, data_offset_ds_mark);
 	       return true;
