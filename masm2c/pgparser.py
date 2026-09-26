@@ -100,7 +100,8 @@ def get_raw(input_str: str, meta: lark.tree.Meta) -> str:
     :param context:
     :return: The raw string from the input string.
     """
-    return input_str[meta.start_pos: meta.end_pos].strip()
+    source = getattr(meta, "input_str", None) or input_str
+    return source[meta.start_pos: meta.end_pos].strip()
 
 
 def get_raw_line(input_str: str, meta: lark.tree.Meta) -> str:
@@ -108,6 +109,7 @@ def get_raw_line(input_str: str, meta: lark.tree.Meta) -> str:
 
     :return: The line of text from the input string.
     """
+    input_str = getattr(meta, "input_str", None) or input_str
     try:
         line_strt_pos = input_str.rfind("\n", 0, meta.start_pos) + 1
 

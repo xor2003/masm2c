@@ -3748,7 +3748,9 @@ class Parser:
             if self.__lex.start_parser and parser is not self.__lex.start_parser[0]:
                 try:
                     logging.debug("Primary parser failed (%s), retrying with post-lex fallback for start=%s", type(ex).__name__, start_rule)
-                    return self.__lex.start_parser[0].parse(text, start=start_rule)
+                    result = self.__lex.start_parser[0].parse(text, start=start_rule)
+                    self._tag_meta_source_text(result, text)
+                    return result
                 except Exception as ex_fallback:
                     logging.debug("Post-lex fallback also failed (%s): %s", type(ex_fallback).__name__, ex_fallback)
             if isinstance(ex, UnexpectedToken):
@@ -3762,7 +3764,20 @@ class Parser:
             else:
                 logging.exception("Parse failure: %s", ex)
             sys.exit(9)
+        self._tag_meta_source_text(result, text)
         return result
+
+    @staticmethod
+    def _tag_meta_source_text(result: Tree, text: str) -> None:
+        """Record the source text each node was parsed from on its meta.
+
+        Include files are parsed into separate inputs and their trees are later
+        spliced into the includer's tree; raw-text extraction therefore cannot
+        rely on a single shared input string.
+        """
+        for node in result.iter_subtrees_topdown():
+            if node.meta is not None:
+                node.meta.input_str = text
 
     def _select_parser(self, start_rule: str):
         if start_rule == "start" and self.__lex.start_parser:
