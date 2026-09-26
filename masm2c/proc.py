@@ -310,6 +310,7 @@ class Proc:
                                        + " " + raw_line + "\n"
                 except AttributeError:
                     logging.warning(f"Some attributes missing while setting comment for {stmt}")
+            visitor.body += visitor.flush_pending_code_skips()
         finally:
             visitor._active_proc_far = previous_active_proc_far
             visitor._current_stmt = previous_current_stmt

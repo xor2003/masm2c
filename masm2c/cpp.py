@@ -205,7 +205,7 @@ class Cpp(Gen):
         self._active_proc_far = False
         self._pending_external_offset_ds_restore = False
         self._pending_data_offset_ds_restore = False
-        self._pending_code_skip: dict[str, Any] | None = None
+        self._pending_code_skips: list[dict[str, Any]] = []
         self._code_skip_label_counter = 0
         self._current_stmt: op.baseop | None = None
         self._next_stmt: op.baseop | None = None
@@ -1338,31 +1338,42 @@ class Cpp(Gen):
         """Render a code-segment data opcode that swallows following bytes."""
         self._code_skip_label_counter += 1
         label = f"__m2c_skip_{self._code_skip_label_counter}"
-        self._pending_code_skip = {
+        self._pending_code_skips.append({
             "label": label,
             "remaining": byte_count,
             "just_created": True,
-        }
+        })
         effect = self._render_skip_opcode_effect(opcode, byte_count, self._next_stmt)
         return f"{{{effect}goto {label};}}"
 
     def consume_code_skip_after_stmt(self, stmt: op.baseop, command: str) -> str:
-        """Place a pending skip target after the swallowed source bytes."""
-        pending = self._pending_code_skip
-        if pending is None:
+        """Place pending skip targets after the swallowed source bytes."""
+        if not self._pending_code_skips:
             return ""
-        if pending.pop("just_created", False):
+        is_label_or_empty = isinstance(stmt, op.label) or not command
+        emitted = ""
+        for pending in self._pending_code_skips:
+            if pending.pop("just_created", False):
+                continue
+            if is_label_or_empty:
+                continue
+            pending["remaining"] = int(pending["remaining"]) - max(1, len(self._estimate_instruction_bytes(stmt)))
+            if pending["remaining"] <= 0:
+                pending["label_emitted"] = True
+                emitted += f"\n{pending['label']}:\n"
+        self._pending_code_skips = [
+            pending for pending in self._pending_code_skips
+            if not pending.get("label_emitted")
+        ]
+        return emitted
+
+    def flush_pending_code_skips(self) -> str:
+        """Emit any skip targets still pending at the end of a proc."""
+        if not self._pending_code_skips:
             return ""
-        if isinstance(stmt, op.label) or not command:
-            return ""
-        remaining = int(pending["remaining"])
-        remaining -= max(1, len(self._estimate_instruction_bytes(stmt)))
-        if remaining > 0:
-            pending["remaining"] = remaining
-            return ""
-        label = str(pending["label"])
-        self._pending_code_skip = None
-        return f"\n{label}:\n"
+        emitted = "".join(f"\n{pending['label']}:\n" for pending in self._pending_code_skips)
+        self._pending_code_skips = []
+        return emitted
 
     def _render_skip_opcode_effect(self, opcode: int, byte_count: int, stmt: op.baseop | None) -> str:
         """Render the visible effect of an immediate opcode used as a skip."""
