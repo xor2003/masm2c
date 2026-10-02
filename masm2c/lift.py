@@ -51,8 +51,11 @@ VERBATIM = {'XCHG', 'IN', 'OUT', 'CBW', 'CWD', 'CWDE', 'CLD', 'STD', 'CLI',
             'STI', 'NOP', 'PUSHA', 'POPA', 'PUSHAD', 'POPAD', 'XLAT', 'LEA',
             'BOUND', 'LDS', 'LES', 'MOVBE'}
 # verbatim ops that clobber CF/all flags -> pending dies (no foldable producer)
-FLAGWRITE = {'CLC', 'STC', 'CMC', 'POPF', 'SAHF', 'IRET',
+FLAGWRITE = {'POPF', 'SAHF', 'IRET',
              'AAA', 'AAS', 'DAA', 'DAS', 'AAD', 'AAM'}
+# verbatim ops that modify ONLY CF -> pending survives, but unsigned folds
+# (which reconstruct CF from cmp operands) must defer to the real flag
+CFLAG_MOD = {'CLC', 'STC', 'CMC'}
 # verbatim ops that READ flags -> need the real flag state, not folds
 FLAGREAD_OPS = {'LAHF', 'PUSHF'}
 ASSIGN = {'MOV'}
@@ -135,12 +138,25 @@ class _Lifter:
 
     def __init__(self):
         self.pending = None  # ('cmp'|'test'|'result', a, b)
+        self.pcf = False     # CF was modified after `pending` was recorded
+
+    def _pend(self, kind, a, b):
+        self.pending = (kind, a, b)
+        self.pcf = False
+
+    def _kill(self):
+        self.pending = None
+        self.pcf = False
 
     # -- condition folding ---------------------------------------------------
     def _cond(self, jcc):
         p = self.pending
         if p is not None:
             kind, a, b = p
+            # CF changed since the flag op ran (clc/stc/cmc): unsigned jumps
+            # can't be rebuilt from operands, use the materialized flag.
+            if self.pcf and jcc in UNSIGNED:
+                return FLAGREAD.get(jcc, '0')
             bits = _bits(a)
             if kind == 'cmp':
                 t = {8: 'db', 32: 'dd'}.get(bits, 'dw')
@@ -168,12 +184,12 @@ class _Lifter:
         if self.pending is None:
             return
         if mem_written and _has_memref(self.pending[1] + self.pending[2]):
-            self.pending = None
+            self._kill()
             return
         # reg writes clobber the whole family (al kills ax/eax pending ops)
         if {_REGFAM.get(i, i) for i in written} & \
            (_ids(self.pending[1], fam=True) | _ids(self.pending[2], fam=True)):
-            self.pending = None
+            self._kill()
 
     def _dst_names(self, expr):
         """Identifiers a store into `expr` would clobber (incl. index regs)."""
@@ -189,8 +205,11 @@ class _Lifter:
             stmt = inner if inner.endswith(';') else inner + ';'
             lhs = inner.split('=', 1)[0]
             self._invalidate_writes(self._dst_names(lhs), _has_memref(lhs))
-            if re.match(r'__disp\b|.*\bCALL_\b', inner):
-                self.pending = None
+            # a call (direct or via dispatch) may clobber any pending operand
+            # or the flags themselves -> pending operands are unknowable
+            if re.search(r'\b\w+\s*\(', inner) or \
+               re.match(r'__disp\b|.*\bCALL_\b', inner):
+                self._kill()
             return [stmt]
         m = re.match(r'^(_?[A-Z][A-Z_0-9]*)\s*\((.*)\)\s*$', inner, re.S)
         if not m:
@@ -199,12 +218,13 @@ class _Lifter:
                          'LODSB', 'LODSW', 'LODSD', 'SCASB', 'SCASW', 'SCASD',
                          'CMPSB', 'CMPSW', 'CMPSD', 'INSB', 'INSW', 'OUTSB', 'OUTSW')
                    for w in words):
-                self.pending = None  # REP-prefixed / bare string op
+                self._kill()  # REP-prefixed / bare string op
                 return [f"{{ {inner.rstrip(';')}; }}"]
             m2 = re.match(r'^(_?[A-Z][A-Z_0-9]*)\s*;?\s*$', inner)
             if m2:
                 m = _BareMatch(m2.group(1))   # bare op name, no args
             else:
+                self._kill()  # unparseable statement; flags unknowable
                 return [f"{{ {inner.rstrip(';')}; }}"]
         name, argstr = m.group(1), m.group(2)
         args = split_args(argstr)
@@ -214,14 +234,14 @@ class _Lifter:
 
         if name == '_INT':
             out = [f"_INT({argstr});"]
-            self.pending = None
+            self._kill()
         elif name == 'CMP':
             # m2c::CMP_ computes all flags exactly; the fold keeps `if`s readable
             out = [f"CMP({a}, {b});"]
-            self.pending = ('cmp', a, b)
+            self._pend('cmp', a, b)
         elif name == 'TEST':
             out = [f"TEST({a}, {b});"]
-            self.pending = ('test', a, b)
+            self._pend('test', a, b)
         elif name in ASSIGN:
             out = [f"{a} = {b};"]
             self._invalidate_writes(self._dst_names(a), _has_memref(a))
@@ -233,11 +253,14 @@ class _Lifter:
             self._invalidate_writes(self._dst_names(a), _has_memref(a))
         elif name in FLAGOPS:
             out = [f"{name}({argstr});"]
-            self.pending = ('result', a, '')
+            self._pend('result', a, '')
         elif name in SETCC:
             cond = self._cond(SETCC[name])
             out = []
+            # re-emitting the producer refreshes all flags — but that would
+            # undo a clc/stc/cmc, so only when no CF divergence is pending
             if (self.pending is not None and self.pending[0] in ('cmp', 'test')
+                    and not self.pcf
                     and cond == FLAGREAD.get(SETCC[name])):
                 p = self.pending
                 out.append(f"{p[0].upper()}({p[1]}, {p[2]});")
@@ -247,13 +270,20 @@ class _Lifter:
             out = [f"{name}({argstr});"]
             if name == 'POP':
                 self._invalidate_writes(self._dst_names(a), _has_memref(a))
+        elif name in CFLAG_MOD:
+            # clc/stc/cmc touch CF only: pending operands stay valid for
+            # equality/sign folds, but unsigned folds must read the real CF
+            out = [f"{name}({argstr});" if argstr else f"{name};"]
+            self.pcf = True
         elif name in FLAGWRITE:
             out = [f"{name}({argstr});" if argstr else f"{name};"]
-            self.pending = None
+            self._kill()
         elif name in FLAGREAD_OPS:
             # the op reads real flag bits; if only CF/ZF were materialized,
-            # recompute the pending producer so all flags are exact
-            if self.pending is not None and self.pending[0] in ('cmp', 'test'):
+            # recompute the pending producer so all flags are exact (not
+            # when CF was diverted by clc/stc/cmc — a recompute would undo it)
+            if (self.pending is not None and self.pending[0] in ('cmp', 'test')
+                    and not self.pcf):
                 p = self.pending
                 out.append(f"{p[0].upper()}({p[1]}, {p[2]});")
             out.append(f"{name}({argstr});" if argstr else f"{name};")
@@ -268,7 +298,7 @@ class _Lifter:
                 _has_memref(a))
         else:
             out = [f"{name}({argstr});"]
-            self.pending = None
+            self._kill()
         return out
 
     # -- J(...) --------------------------------------------------------------
@@ -285,26 +315,29 @@ class _Lifter:
            name in ('JS', 'JNS', 'JO', 'JNO', 'JP', 'JPE', 'JNP', 'JPO'):
             cond = self._cond(name)
             pre = []
+            # the producer re-emit refreshes all flags — unsafe if a
+            # clc/stc/cmc diverted CF in between, so gate on `pcf`
             if (self.pending is not None and self.pending[0] in ('cmp', 'test')
+                    and not self.pcf
                     and cond == FLAGREAD.get(name)):
                 p = self.pending
                 pre.append(f"{p[0].upper()}({p[1]}, {p[2]});")
             pre.append(f"if ({cond}) {{goto {lbl};}}")
             return pre
         if name == 'JMP':
-            self.pending = None
+            self._kill()
             return [f"goto {lbl};"]
         if name in ('CALL', 'CALLF'):
-            self.pending = None
+            self._kill()
             rest = f", {args[1]}" if len(args) > 1 else ''
             return [f"CALL({lbl}{rest});" if name == 'CALL' else f"CALLF({lbl}{rest});"]
         if name in ('RETN', 'RETF', 'IRET', 'RET'):
-            self.pending = None
+            self._kill()
             return [f"{name}({argstr});" if argstr else f"{name};"]
         if name in ('LOOP', 'LOOPE', 'LOOPZ', 'LOOPNE', 'LOOPNZ', 'JCXZ', 'JECXZ'):
-            self.pending = None
+            self._kill()
             return [f"{name}({argstr});"]
-        self.pending = None
+        self._kill()
         return [f"J({inner});"]
 
 
@@ -361,7 +394,7 @@ def lift_cpp_text(text):
             s = ln.strip()
             if not s or s.startswith('//') or s.startswith('/*'):
                 continue  # comments/blanks don't disturb pending flags
-            lf.pending = None
+            lf._kill()
             continue
         comment_m = re.search(r'//\s*(.*)$', ln)
         asm = _asm_text(comment_m.group(1)) if comment_m else ''
