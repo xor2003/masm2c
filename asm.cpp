@@ -175,7 +175,10 @@ namespace m2c {
   dd last_ret_site=0;
 
 #ifdef M2CDEBUG
-  size_t debug = std::getenv("M2C_DEBUG") ? (size_t)atoi(std::getenv("M2C_DEBUG")) : (size_t)M2CDEBUG;
+  /* Per-instruction tracing is expensive enough to freeze a program, so it
+   * is strictly opt-in: M2CDEBUG only compiles the support in, M2C_DEBUG
+   * must be set explicitly to turn it on (default off). */
+  size_t debug = std::getenv("M2C_DEBUG") ? (size_t)atoi(std::getenv("M2C_DEBUG")) : 0;
 #else
   size_t debug = 0;
 #endif
