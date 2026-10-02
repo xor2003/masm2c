@@ -21,6 +21,16 @@ class ParserDataTest(unittest.TestCase):
     def test_data_10012(self):
         assert self.convert_data(line="Dw seg default_seg") == ("seg_offset(default_seg), // dummy0_0\n", "dw dummy0_0;\n", 2)
 
+    def test_data_dd_far_code_pointer(self):
+        # ``dd <code label>`` is a far pointer {offset, segment}; it must emit
+        # the m2c::k* dispatch key (paragraph in the high word), not the flat
+        # kglobal_* aggregate offset that would decode as a call into segment 0.
+        assert self.convert_data(line="dd exec_adc") == ("m2c::kexec_adc, // dummy0_0\n", "dd dummy0_0;\n", 4)
+
+    def test_data_dw_near_code_pointer(self):
+        # ``dw <code label>`` stays a near/aggregate code offset (kglobal_*).
+        assert self.convert_data(line="dw exec_adc") == ("m2c::kglobal_exec_adc, // dummy0_0\n", "dw dummy0_0;\n", 2)
+
     def test_data_10011(self):
         # '@' labels normalize unscoped only in test mode; register it the same
         # way the parse path would see it.

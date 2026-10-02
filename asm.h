@@ -232,6 +232,9 @@ extern bool executionFinished;
     // (shared, lazily created).  Used by seg_offset under _PROTECTED_MODE
     // so `seg X` yields a real descriptor rather than a bare paragraph.
     dw   m2c_seg_selector(dw para);
+    // Lookup-only variant: returns the NE-image selector aliasing this
+    // paragraph when one exists, else the paragraph itself (never allocates).
+    dw   m2c_seg_selector_or_para(dw para);
     // First allocated selector value (weak, overridable); default 0x4000
     // puts descriptor indices above images loaded below 256KB.
     __attribute__((weak)) extern dw m2c_pm_sel_base;
@@ -780,7 +783,11 @@ extern db tnd_img[];        // private overlay image buffer
 // Win16 model: `seg X` produces a real selector aliasing the image.
 #define seg_offset(segment) m2c::m2c_seg_selector(seg_para(segment))
 #else
-#define seg_offset(segment) seg_para(segment)
+// `seg X` yields the NE-loaded selector when one aliases this paragraph
+// (Win16 images: ds/ss hold selectors and NE fixups store them), otherwise
+// the real-mode paragraph — DOS programs have no descriptors and are
+// unaffected.  Lookup is non-allocating so early/static use is safe.
+#define seg_offset(segment) m2c::m2c_seg_selector_or_para(seg_para(segment))
 #endif
 
 // DJGPP
@@ -1160,6 +1167,10 @@ inline void restore_external_offset_ds(dw& segment) {
     // guest stack (arg layouts, saved-word restores, varargs). The same applies
     // to `offset()` results (ptrdiff_t -> long) and 64-bit host types.
     OPTINLINE void PUSH_(const int& a, _STATE *_state) { PUSH_((dw)a, _state); }
+    // `dd` (unsigned int) operands — e.g. `push offset proc` emitted as
+    // `PUSH(m2c::ksub_X)` where k* is an aggregate seg<<16|off constant — must
+    // also push a word, not the full 32-bit value.
+    OPTINLINE void PUSH_(const unsigned int& a, _STATE *_state) { PUSH_((dw)a, _state); }
     OPTINLINE void PUSH_(const long& a, _STATE *_state) { PUSH_((dw)a, _state); }
     OPTINLINE void PUSH_(const unsigned long& a, _STATE *_state) { PUSH_((dw)a, _state); }
     OPTINLINE void PUSH_(const long long& a, _STATE *_state) { PUSH_((dw)a, _state); }

@@ -430,6 +430,28 @@ dw m2c_seg_selector(dw para) {
 	return sel;
 }
 
+// `seg X` where X names a segment the NE loader mapped: the descriptor the
+// loader created is the guest-visible selector value (ds/ss hold selectors,
+// NE fixups store selectors), so data initializers and `seg` expressions
+// must agree with them.  Paragraphs with no descriptor keep their real-mode
+// identity, so DOS programs see no behaviour change.  Lookup only — unlike
+// m2c_seg_selector this never allocates, and misses are not cached so it is
+// safe to call before the loader runs.
+dw m2c_seg_selector_or_para(dw para) {
+	const dd lin = (dd)para << 4;
+	static dw last_para = 0xffff, last_sel = 0;
+	if (para == last_para) return last_sel;
+	for (int i = 0; i < NB_LDT; ++i) {
+		const PmDesc& d = m2c_ldt[i];
+		if (d.used && !d.owned && d.lin == lin) {
+			last_para = para;
+			last_sel = (dw)((i << 3) | 7);
+			return last_sel;
+		}
+	}
+	return para;
+}
+
 /* Generic NE (Win16) image loader — shared implementation behind the
    m2c_ne_entry_setup hook.  The caller owns where each segment lives
    (M2cNeSegHost::base/para); this routine does the format work: descriptor

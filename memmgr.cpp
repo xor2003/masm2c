@@ -47,6 +47,23 @@ db mem_access_mode=0;   /* memory allocation scheme             */
 
 typedef mcb * mcb_p;
 
+static void mcb_dump_chain(const char *why, mcb_p bad)
+{
+  fprintf(stderr, "[MCB alloc FAIL %s seg=%x type=%x psp=%x size=%x]\n", why,
+          bad ? (unsigned)FP_SEG(bad) : 0,
+          bad ? (unsigned)bad->m_type : 0,
+          bad ? (unsigned)bad->m_psp : 0,
+          bad ? (unsigned)bad->m_size : 0);
+  mcb_p d = para2far(first_mcb);
+  for (int i = 0; d && i < 64; ++i) {
+    fprintf(stderr, "[MCB dump seg=%x type=%x psp=%x size=%x]\n",
+            (unsigned)FP_SEG(d), (unsigned)d->m_type,
+            (unsigned)d->m_psp, (unsigned)d->m_size);
+    if (d->m_type == MCB_LAST || d == bad || !mcbValid(d)) break;
+    d = nxtMCB(d);
+  }
+}
+
 /*
  * Join any following unused MCBs to MCB 'p'.
  *  Return:
@@ -118,12 +135,18 @@ searchAgain:
   {
     /* check for corruption                         */
     if (!mcbValid(p))
+    {
+      mcb_dump_chain("walk", p);
       return DE_MCBDESTRY;
+    }
 
     if (mcbFree(p))
     {                           /* unused block, check if it applies to the rule */
       if (joinMCBs(FP_SEG(p)) != SUCCESS)       /* join following unused blocks */
+      {
+        mcb_dump_chain("join", p);
         return DE_MCBDESTRY;    /* error */
+      }
 
       if (!biggestSeg || biggestSeg->m_size < p->m_size)
         biggestSeg = p;
@@ -181,6 +204,9 @@ searchAgain:
     }
     if (asize)
       *asize = biggestSeg ? biggestSeg->m_size : 0;
+    fprintf(stderr, "[MCB alloc FAIL nomem size=%x biggest=%x]\n",
+            (unsigned)size, (unsigned)(biggestSeg ? biggestSeg->m_size : 0));
+    mcb_dump_chain("nomem", NULL);
     return DE_NOMEM;
   }
 

@@ -4153,6 +4153,11 @@ struct Memory{
 
     def _effective_indirection_for_expr(self, tree: Expression) -> IndirectionType:
         effective_indirection = tree.indirection
+        if self.itiscall and "near" in tree.mods and not tree.registers:
+            # `call near ptr <label+off>` (opcode E8) is a *direct* near call:
+            # the operand is the target offset, not a memory location to
+            # dereference (contrast `call word ptr [x]`, opcode FF /2).
+            return IndirectionType.OFFSET
         if self.itiscall and tree.mods & {"near", "far"}:
             return IndirectionType.VALUE
         return effective_indirection
@@ -4246,7 +4251,13 @@ struct Memory{
             result = g.original_name
         elif isinstance(g, (op.label, Proc)):
             name = self.sanitize_label_name(str(v))
-            if self._is_cross_module_code_export(name) or name in self._data_referenced_code_symbol_names():
+            if size >= 4:
+                # A far code pointer (dd/df) stores {offset, segment}; the
+                # m2c::k* dispatch key encodes exactly that pair (paragraph in
+                # the high word).  kglobal_* is a flat code-stream offset that
+                # has no segment and would decode as a call into segment 0.
+                result = f"m2c::k{g.name.lower()}"
+            elif self._is_cross_module_code_export(name) or name in self._data_referenced_code_symbol_names():
                 result = f"m2c::{self.global_code_offset_constant(str(v))}"
             else:
                 result = f"m2c::k{g.name.lower()}"
