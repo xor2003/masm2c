@@ -72,7 +72,23 @@ void retd(m2c::_STATE* s, dd v) {
     s->eax = (s->eax & 0xffff0000) | (v & 0xffff);
     s->edx = (s->edx & 0xffff0000) | ((v >> 16) & 0xffff);
 }
-void retf_args(m2c::_STATE* s, int nbytes) { s->esp = (s->esp + 4 + nbytes) & 0xffff; }
+void retf_args(m2c::_STATE* s, int nbytes) {
+    /* Emulated retf N: the word at ss:sp is the return ip pushed (and
+     * return-marked) by the caller's CALL_. Consume the mark so the strict
+     * return verification in CALL_ sees a real consume, then drop
+     * ret+cs+args as the hardware would. */
+    dw ip;
+    memcpy(&ip, m2c::stack_raddr_(s->ss, (dw)s->esp), 2);
+    size_t mdepth = m2c::native_return_call_depth;
+    size_t mid = 0;
+    int mmode = 0;
+    m2c::consume_native_return(s, s->ss, (dw)s->esp, (m2c::MWORDSIZE)ip, &mdepth, &mid, &mmode);
+    s->esp = (s->esp + 4 + nbytes) & 0xffff;
+    m2c::last_ret_popped = 4 + nbytes;
+    m2c::last_ret_mark_id = mid;
+    m2c::last_ret_mark_mode = mmode;
+    m2c::last_ret_site = 0;
+}
 
 static FILE* apilog = nullptr;
 void log_api(const char* name, const char* fmt, ...) {
@@ -139,7 +155,7 @@ void res_init(const char* path) {
     dd neoff = rd32(img + 0x3c);
     const db* ne = img + neoff;
     dw restab_off = rd16(ne + 0x24);
-    dw resnames_off = rd16(ne + 0x2e); // offset of resource-name table (from NE)
+    dw resnames_off = rd16(ne + 0x26); // offset of resident-name table (from NE)
     dw modref = rd16(ne + 0x28);
     dw impnames = rd16(ne + 0x2a);
     dw nonres = rd16(ne + 0x2c);
@@ -163,22 +179,22 @@ void res_init(const char* path) {
             dd len_units = rd16(ri + 2);
             e.file_off = off_units << align_shift;
             e.len = len_units ? (len_units << align_shift) : 0;
-            e.res_id = rd16(ri + 4);
+            e.res_id = rd16(ri + 6);
             g_res.push_back(e);
         }
         ti += 8 + count * 12;
     }
-    // name table: sequence of [len][chars][ordlo][ordhi]
+    // Embedded resource name table: [len][chars][ordinal] records right
+    // after the typeinfo terminator. rnName/rnType name references stored
+    // in resource records are offsets relative to the resource table base.
     {
-        const db* n = ne + resnames_off;
-        dw ordbase = 1;
-        while (n < ne_image.data() + ne_image.size()) {
+        const db* lim = ne_image.data() + ne_image.size();
+        const db* n = ti + 2;
+        while (n < lim) {
             dw l = *n;
-            if (!l) break;
+            if (!l || n + 1 + l + 2 > lim) break;
             std::string nm((const char*)n + 1, l);
-            dw ord = rd16(n + 1 + l);
-            res_names[(dw)(n - ne)] = nm;
-            (void)ord; (void)ordbase;
+            res_names[(dw)(n - rt)] = nm;
             n += 1 + l + 2;
         }
     }
@@ -251,6 +267,9 @@ W16Win* find_hwnd(dw hwnd) {
 
 void post_msg(dw hwnd, dw msg, dw wp, dd lp) { msgq.push_back({hwnd, msg, wp, lp}); }
 
+static void win_abs_pos(W16Win* w, int* ox, int* oy);
+static W16Win* hit_test(int x, int y);
+
 void sdl_event_to_msg(m2c::_STATE*, const SDL_Event& ev) {
     switch (ev.type) {
     case SDL_QUIT:
@@ -283,7 +302,48 @@ void sdl_event_to_msg(m2c::_STATE*, const SDL_Event& ev) {
         }
         if (!vk) break;
         dw hwnd = g_focus ? g_focus : main_hwnd;
-        dd lp = ((dd)(dw)ev.key.keysym.scancode << 16) | 1;
+        /* guest code reads the PC/XT (set-1) scancode out of lParam[23:16];
+           SDL scancodes are HID-style and differ, so translate. */
+        dw xt = 0;
+        switch (ev.key.keysym.scancode) {
+        case SDL_SCANCODE_ESCAPE: xt = 0x01; break;
+        case SDL_SCANCODE_1: xt = 0x02; break; case SDL_SCANCODE_2: xt = 0x03; break;
+        case SDL_SCANCODE_3: xt = 0x04; break; case SDL_SCANCODE_4: xt = 0x05; break;
+        case SDL_SCANCODE_5: xt = 0x06; break; case SDL_SCANCODE_6: xt = 0x07; break;
+        case SDL_SCANCODE_7: xt = 0x08; break; case SDL_SCANCODE_8: xt = 0x09; break;
+        case SDL_SCANCODE_9: xt = 0x0a; break; case SDL_SCANCODE_0: xt = 0x0b; break;
+        case SDL_SCANCODE_BACKSPACE: xt = 0x0e; break; case SDL_SCANCODE_TAB: xt = 0x0f; break;
+        case SDL_SCANCODE_Q: xt = 0x10; break; case SDL_SCANCODE_W: xt = 0x11; break;
+        case SDL_SCANCODE_E: xt = 0x12; break; case SDL_SCANCODE_R: xt = 0x13; break;
+        case SDL_SCANCODE_T: xt = 0x14; break; case SDL_SCANCODE_Y: xt = 0x15; break;
+        case SDL_SCANCODE_U: xt = 0x16; break; case SDL_SCANCODE_I: xt = 0x17; break;
+        case SDL_SCANCODE_O: xt = 0x18; break; case SDL_SCANCODE_P: xt = 0x19; break;
+        case SDL_SCANCODE_RETURN: xt = 0x1c; break; case SDL_SCANCODE_LCTRL: xt = 0x1d; break;
+        case SDL_SCANCODE_A: xt = 0x1e; break; case SDL_SCANCODE_S: xt = 0x1f; break;
+        case SDL_SCANCODE_D: xt = 0x20; break; case SDL_SCANCODE_F: xt = 0x21; break;
+        case SDL_SCANCODE_G: xt = 0x22; break; case SDL_SCANCODE_H: xt = 0x23; break;
+        case SDL_SCANCODE_J: xt = 0x24; break; case SDL_SCANCODE_K: xt = 0x25; break;
+        case SDL_SCANCODE_L: xt = 0x26; break;
+        case SDL_SCANCODE_Z: xt = 0x2c; break; case SDL_SCANCODE_X: xt = 0x2d; break;
+        case SDL_SCANCODE_C: xt = 0x2e; break; case SDL_SCANCODE_V: xt = 0x2f; break;
+        case SDL_SCANCODE_B: xt = 0x30; break; case SDL_SCANCODE_N: xt = 0x31; break;
+        case SDL_SCANCODE_M: xt = 0x32; break;
+        case SDL_SCANCODE_LSHIFT: xt = 0x2a; break; case SDL_SCANCODE_RSHIFT: xt = 0x36; break;
+        case SDL_SCANCODE_LALT: xt = 0x38; break; case SDL_SCANCODE_SPACE: xt = 0x39; break;
+        case SDL_SCANCODE_F1: xt = 0x3b; break; case SDL_SCANCODE_F2: xt = 0x3c; break;
+        case SDL_SCANCODE_F3: xt = 0x3d; break; case SDL_SCANCODE_F4: xt = 0x3e; break;
+        case SDL_SCANCODE_F5: xt = 0x3f; break; case SDL_SCANCODE_F6: xt = 0x40; break;
+        case SDL_SCANCODE_F7: xt = 0x41; break; case SDL_SCANCODE_F8: xt = 0x42; break;
+        case SDL_SCANCODE_F9: xt = 0x43; break; case SDL_SCANCODE_F10: xt = 0x44; break;
+        case SDL_SCANCODE_F11: xt = 0x57; break; case SDL_SCANCODE_F12: xt = 0x58; break;
+        case SDL_SCANCODE_HOME: xt = 0x47; break; case SDL_SCANCODE_UP: xt = 0x48; break;
+        case SDL_SCANCODE_PAGEUP: xt = 0x49; break; case SDL_SCANCODE_LEFT: xt = 0x4b; break;
+        case SDL_SCANCODE_RIGHT: xt = 0x4d; break; case SDL_SCANCODE_END: xt = 0x4f; break;
+        case SDL_SCANCODE_DOWN: xt = 0x50; break; case SDL_SCANCODE_PAGEDOWN: xt = 0x51; break;
+        case SDL_SCANCODE_INSERT: xt = 0x52; break; case SDL_SCANCODE_DELETE: xt = 0x53; break;
+        default: xt = (dw)ev.key.keysym.scancode & 0x7f; break;
+        }
+        dd lp = ((dd)xt << 16) | 1;
         if (ev.type == SDL_KEYUP) lp |= 0xC0000000u;
         post_msg(hwnd, ev.type == SDL_KEYDOWN ? 0x0100 : 0x0101, vk, lp);
         if (ev.type == SDL_KEYDOWN && k >= 32 && k < 127)
@@ -299,8 +359,25 @@ void sdl_event_to_msg(m2c::_STATE*, const SDL_Event& ev) {
         case SDL_BUTTON_RIGHT:  msg = down ? 0x0204 : 0x0205; break;
         }
         if (!msg) break;
-        dd lp = ((dd)(dw)ev.button.y << 16) | (dw)ev.button.x;
-        post_msg(g_capture ? g_capture : main_hwnd, msg, 0, lp);
+        /* Windows dispatches mouse input to the window under the cursor:
+         * hit-test the visible window tree (topmost = latest creation)
+         * rather than always the main window.  A real click also assigns
+         * keyboard focus, so later keys reach the clicked window. */
+        int mx = ev.button.x, my = ev.button.y;
+        W16Win* hit = nullptr;
+        if (!g_capture) hit = hit_test(mx, my);
+        dw target = g_capture ? g_capture
+                              : (hit ? hit->hwnd : main_hwnd);
+        if (down && hit) g_focus = hit->hwnd;
+        /* Convert screen coords to the target's client coordinates. */
+        int rx = mx, ry = my;
+        if (W16Win* t = find_hwnd(target)) {
+            int tx, ty;
+            win_abs_pos(t, &tx, &ty);
+            rx -= tx; ry -= ty;
+        }
+        dd lp = ((dd)(dw)ry << 16) | (dw)rx;
+        post_msg(target, msg, 0, lp);
         break;
     }
     case SDL_MOUSEMOTION: {
@@ -700,26 +777,76 @@ void sdl_poll(m2c::_STATE* s) {
     while (SDL_PollEvent(&ev)) sdl_event_to_msg(s, ev);
 }
 
+/* Hit-test the visible window stack: topmost (latest-created) window whose
+ * rect contains the point wins, mirroring Windows mouse dispatch. */
+static W16Win* hit_test(int x, int y) {
+    for (auto it = windows.rbegin(); it != windows.rend(); ++it) {
+        W16Win* c = *it;
+        if (!c->visible) continue;
+        int ax, ay;
+        win_abs_pos(c, &ax, &ay);
+        int cw = c->w > 0 ? c->w : (c->surf ? c->surf->w : 0);
+        int ch = c->h > 0 ? c->h : (c->surf ? c->surf->h : 0);
+        if (x >= ax && x < ax + cw && y >= ay && y < ay + ch) return c;
+    }
+    return nullptr;
+}
+
+/* Window-tree compositing: each hwnd paints into its own surface; a Win16
+ * display is the overlaid stack of every visible window at its position.
+ * Child coords are relative to the parent's client origin; WS_POPUP
+ * windows (dialogs, menus) position absolutely on screen.  Creation order
+ * approximates z-order (later = on top). */
+static void win_abs_pos(W16Win* w, int* ox, int* oy) {
+    int x = w->x, y = w->y;
+    if (!(w->style & 0x80000000u)) {          // WS_CHILD: relative to parent
+        int depth = 32;
+        dw p = w->parent;
+        while (p && depth-- > 0) {
+            W16Win* par = find_hwnd(p);
+            if (!par) break;
+            x += par->x; y += par->y;
+            p = par->parent;
+        }
+    }
+    *ox = x; *oy = y;
+}
+
 void sdl_present(m2c::_STATE*) {
     if (!win || !renderer || !tex) return;
     auto* w = find_hwnd(main_hwnd);
-    if (!w || !w->surf) return;
-    if (w->surf->w != win_w || w->surf->h != win_h) {
+    if (!w) return;
+    int fw = w->surf ? w->surf->w : (w->w > 0 ? w->w : 640);
+    int fh = w->surf ? w->surf->h : (w->h > 0 ? w->h : 480);
+    if (fw != win_w || fh != win_h) {
         SDL_DestroyTexture(tex);
         tex = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_BGRA32,
-                                SDL_TEXTUREACCESS_STREAMING,
-                                w->surf->w, w->surf->h);
-        if (tex) SDL_RenderSetLogicalSize(renderer, w->surf->w, w->surf->h);
-        win_w = w->surf->w; win_h = w->surf->h;
+                                SDL_TEXTUREACCESS_STREAMING, fw, fh);
+        if (tex) SDL_RenderSetLogicalSize(renderer, fw, fh);
+        win_w = fw; win_h = fh;
     }
     if (!tex) return;
+    SDL_Surface* frame = SDL_CreateRGBSurfaceWithFormat(0, fw, fh, 32,
+                                                      SDL_PIXELFORMAT_BGRA32);
+    if (!frame) return;
+    if (w->surf) SDL_BlitSurface(w->surf, nullptr, frame, nullptr);
+    // Overlay every other visible window at its absolute position, in
+    // creation order (children and popups land on top of the main frame).
+    for (auto* v : windows) {
+        if (v == w || !v->visible || !v->surf) continue;
+        int ax, ay;
+        win_abs_pos(v, &ax, &ay);
+        SDL_Rect dr{ax, ay, v->surf->w, v->surf->h};
+        SDL_BlitSurface(v->surf, nullptr, frame, &dr);
+    }
     void* px; int pitch;
     if (SDL_LockTexture(tex, nullptr, &px, &pitch) == 0) {
-        for (int y = 0; y < w->surf->h; ++y)
-            memcpy((db*)px + y * pitch, (db*)w->surf->pixels + y * w->surf->pitch,
-                   w->surf->w * 4);
+        for (int y = 0; y < fh; ++y)
+            memcpy((db*)px + y * pitch, (db*)frame->pixels + y * frame->pitch,
+                   fw * 4);
         SDL_UnlockTexture(tex);
     }
+    SDL_FreeSurface(frame);
     SDL_RenderClear(renderer);
     SDL_RenderCopy(renderer, tex, nullptr, nullptr);
     SDL_RenderPresent(renderer);

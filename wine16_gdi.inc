@@ -128,6 +128,7 @@ APIFN(realizepalette) {
 APIFN(createcompatibledc) {
     X86_REGREF
     std::string _strtmp;
+    LOG("hit\n");
     auto* srcdc = w16::find_dc(W(0));
     w16::DC* d = w16::make_dc(nullptr, nullptr, nullptr);
     if (srcdc) {
@@ -210,14 +211,16 @@ APIFN(getobject) {
     auto* o = w16::find_obj(h);
     db* p = w16::fptr(lpv);
     if (o && o->kind == 4 && p && cb >= 14) {
+        // Win16 BITMAP is 14 bytes: bmBits (far ptr) sits at +10.
+        // Writing a dword at +12 overruns the caller's buffer (here it
+        // zeroed the saved BP on the stack and crashed the layout walk).
         w16::wr16(p, 0);                 // bmType
         w16::wr16(p + 2, (dw)o->bw);
         w16::wr16(p + 4, (dw)o->bh);
         w16::wr16(p + 6, (dw)o->stride);
-        p[8] = 0; p[9] = 0;              // bmPlanes wide byte?
-        p[10] = 0; p[11] = 0;
-        w16::wr16(p + 10, (dw)o->bbpp);
-        w16::wr32(p + 12, 0);
+        p[8] = 1;                        // bmPlanes
+        p[9] = (db)o->bbpp;              // bmBitsPixel
+        w16::wr32(p + 10, 0);            // bmBits
         eax = 14;
     } else eax = 0;
     DONE(8);
@@ -443,6 +446,7 @@ APIFN(textout) {
 APIFN(bitblt) {
     X86_REGREF
     std::string _strtmp;
+    LOG("hit\n");
     // (hdcDst,x,y,w,h,hdcSrc,xs,ys,rop4)
     dd rop = D(0); dw ys = W(2), xs = W(3), hsrc = W(4);
     dw hh = W(5), ww = W(6), yd = W(7), xd = W(8), hdst = W(9);
@@ -468,6 +472,7 @@ APIFN(bitblt) {
 APIFN(patblt) {
     X86_REGREF
     std::string _strtmp;
+    LOG("hit\n");
     // (hdc,x,y,w,h,rop4)
     dd rop = D(0); dw hh = W(2), ww = W(3), yd = W(4), xd = W(5), hdc = W(6);
     auto* d = w16::find_dc(hdc);
@@ -490,6 +495,7 @@ APIFN(patblt) {
 APIFN(stretchdibits) {
     X86_REGREF
     std::string _strtmp;
+    LOG("hit\n");
     // (hdc,xDst,yDst,wDst,hDst,xSrc,ySrc,wSrc,hSrc,lpBits4,lpbmi4,usage2,rop4)
     dd rop = D(0); dw usage = W(2); dd lpbmi = D(3); dd lpbits = D(5);
     dw hSrc = W(7), wSrc = W(8), ySrc = W(9), xSrc = W(10);
@@ -556,11 +562,13 @@ APIFN(gettextmetrics) {
     std::string _strtmp;
     db* p = FP(0);
     if (p) {
-        memset(p, 0, 60);
+        // Win16 TEXTMETRIC is 32 bytes; a larger memset overruns the
+        // caller's stack buffer and clobbers its saved BP.
+        memset(p, 0, 32);
         w16::wr16(p, 8);      // tmHeight
-        w16::wr16(p + 2, 0);  // ascent
-        w16::wr16(p + 4, 2);  // descent
-        w16::wr16(p + 22, 6); // ave char width
+        w16::wr16(p + 2, 0);  // tmAscent
+        w16::wr16(p + 4, 2);  // tmDescent
+        w16::wr16(p + 10, 6); // tmAveCharWidth
     }
     eax = 1;
     DONE(6);

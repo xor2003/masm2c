@@ -4025,13 +4025,12 @@ struct Memory{
         result += "     };\n     return true;\n}\n"
         result += """
   static bool __dispatch_call_ext(m2c::_offsets __disp, struct m2c::_STATE* _state){
-     // Indirect call/jump targets hold aggregate (linked) code offsets
-     // (OFFSET emits m2c::kglobal_* and code tables store the same space),
-     // so resolve them through the aggregate dispatcher before falling back
-     // to this module's local offset switch.
-     bool handled = false;
-     bool ok = m2c::dispatch_external_code(__disp, _state, &handled);
-     if (handled) return ok;
+     // Indirect targets must be claimed by the local switch first: in
+     // listing mode a bare offset is cs-relative and para:off keys live
+     // only in the local table, while aggregate-space keys fall through
+     // the switch's default to m2c::dispatch_external_code anyway.
+     // Resolving through the aggregate dispatcher first aliases a packed
+     // seg:off key's offset word against unrelated global-offset entries.
      return __dispatch_call(__disp, _state);
 }
 """
@@ -4058,9 +4057,6 @@ struct Memory{
         result = """
             assert(0);
             __dispatch_call_ext:
-            { bool handled = false;
-              bool ok = m2c::dispatch_external_code(__disp, _state, &handled);
-              if (handled) return ok; }
             __dispatch_call:
         #ifdef DOSBOX_CUSTOM
             if ((__disp >> 16) == 0xf000)

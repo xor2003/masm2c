@@ -43,6 +43,9 @@ dd call_guest(m2c::_STATE* s, dd fnaddr, const std::vector<dw>& args) {
     s->esp = (s->esp & 0xffff0000) | saved_sp;
     s->ebp = (s->ebp & 0xffff0000) | saved_bp;
     ret = (s->eax & 0xffff) | ((s->edx & 0xffff) << 16);
+    log_api("call_guest", "fn=%08x hwnd=%x msg=%x -> %08x",
+            fnaddr, args.size() > 0 ? args[0] : 0,
+            args.size() > 1 ? args[1] : 0, ret);
     return ret;
 }
 
@@ -119,6 +122,18 @@ bool m2c_guest_thunk(dd disp, _STATE* s) {
     const db* img = (const db*)&m;
     if (!cur) return false;
 
+    /* A selector-form callback target (a registered wndproc like
+     * 403f:2036) resolves here to its translated para:offset key.  Hand it
+     * back to the dispatcher so the COMPILED code runs when a generated
+     * case owns the key; only targets no case claims end up interpreted
+     * below (linker byte stubs, thunk tails, tiny helper records).  Without
+     * this, entire wndprocs get byte-interpreted. */
+    {
+        const dd key = ((dd)cur << 16) | (dd)pc;
+        if (key != disp)
+            return __dispatch_call((_offsets)key, s);
+    }
+
     /* RETF-via-variable: a callee may pop cs:ip into memory and jmp to it
        (MS CRT __setargv pops the caller's far return into dword_3A8CE then
        jmps to it).  The POP moves the caller's native-return mark into
@@ -130,6 +145,10 @@ bool m2c_guest_thunk(dd disp, _STATE* s) {
         if (it->state == s
             && it->return_ip == (m2c::MWORDSIZE)pc
             && it->call_depth == m2c::native_return_call_depth) {
+            m2c::last_ret_popped = -1;
+            m2c::last_ret_mark_id = it->id;
+            m2c::last_ret_mark_mode = 4;
+            m2c::last_ret_site = disp;
             m2c::native_return_marks.erase(std::next(it).base());
             if (gth_trace)
                 fprintf(stderr, "[thunk] %04x:%04x is a native return mark -> unwind\n", cur, pc);
@@ -141,6 +160,10 @@ bool m2c_guest_thunk(dd disp, _STATE* s) {
         if (it->state == s
             && it->return_ip == (m2c::MWORDSIZE)pc
             && it->call_depth == m2c::native_return_call_depth) {
+            m2c::last_ret_popped = -1;
+            m2c::last_ret_mark_id = it->id;
+            m2c::last_ret_mark_mode = 4;
+            m2c::last_ret_site = disp;
             m2c::native_return_values.erase(std::next(it).base());
             if (gth_trace)
                 fprintf(stderr, "[thunk] %04x:%04x is a carried return -> unwind\n", cur, pc);
@@ -174,20 +197,27 @@ bool m2c_guest_thunk(dd disp, _STATE* s) {
 
     eflags fl(s);
     auto flags16 = [&](dd v) { set_logic_flags(2, (dw)v, fl); };
-    /* szp + carry for add/sub */
+    /* szp + carry for add/sub.  set_logic_flags() clears CF, so arithmetic
+     * ops must publish only SZP or every jae/jb/jbe after cmp/sub breaks. */
     auto alu = [&](int rgop, dw d, dw v2, int bytes) -> dw {
         dd r;
+        const dd c = s->CF ? 1 : 0;
         switch (rgop) {
-        case 0: r = d + v2; fl.setCF(r >= (1u << (bytes*8))); break;
-        case 1: r = d | v2; fl.setCF(false); break;
-        case 4: r = d & v2; fl.setCF(false); break;
-        case 5: r = d - v2; fl.setCF(d < v2); break;
-        case 6: r = d ^ v2; fl.setCF(false); break;
-        case 7: r = d - v2; fl.setCF(d < v2); break;
-        default: r = d | v2; fl.setCF(false); break;
+        case 0: r = (dd)d + v2; fl.setCF(r >= (1u << (bytes*8))); break;
+        case 2: r = (dd)d + v2 + c; fl.setCF(r >= (1u << (bytes*8))); break;
+        case 3: r = (dd)d - v2 - c; fl.setCF((dd)d < (dd)v2 + c); break;
+        case 5: r = (dd)d - v2; fl.setCF(d < v2); break;
+        case 7: r = (dd)d - v2; fl.setCF(d < v2); break;
+        case 1: r = d | v2; break;
+        case 4: r = d & v2; break;
+        case 6: r = d ^ v2; break;
+        default: r = d | v2; break;
         }
         const dw msk = (bytes == 1) ? 0xff : 0xffff;
-        set_logic_flags(bytes, r & msk, fl);
+        if (rgop == 0 || rgop == 2 || rgop == 3 || rgop == 5 || rgop == 7)
+            set_szp_flags(bytes, r & msk, fl);
+        else
+            set_logic_flags(bytes, r & msk, fl);
         return (dw)(r & msk);
     };
 
@@ -245,6 +275,7 @@ bool m2c_guest_thunk(dd disp, _STATE* s) {
      * CALL_), run the callee through the aggregate dispatcher, then resume
      * interpreting at the return address.  The callee's retf/retn pops the
      * marked slot and returns true, handing control back here at pc. */
+    dw opc_pc = 0;                 /* offset of the opcode being interpreted */
     auto call_disp = [&](dd agg, bool far_frame) -> bool {
         if (far_frame) push(cur);   /* executing segment acts as cs */
         m2c::NativeCallDepthScope native_call_depth_scope;
@@ -263,15 +294,24 @@ bool m2c_guest_thunk(dd disp, _STATE* s) {
     auto finish_ret = [&](bool far, dw nargs) -> bool {
         const dw rss = (dw)s->ss;
         const dw rsp = (dw)s->esp;
+        const dd ret_site = ((dd)cur << 16) | (dd)opc_pc;
         dw ip = pop();
         size_t mdepth = m2c::native_return_call_depth;
+        size_t mid = 0;
+        int mmode = 0;
         bool native_ret =
-            m2c::consume_native_return(s, rss, rsp, (m2c::MWORDSIZE)ip, &mdepth);
-        if (!native_ret)
-            native_ret = m2c::take_native_return_value(s, (m2c::MWORDSIZE)ip, &ip);
+            m2c::consume_native_return(s, rss, rsp, (m2c::MWORDSIZE)ip, &mdepth, &mid, &mmode);
+        if (!native_ret) {
+            native_ret = m2c::take_native_return_value(s, (m2c::MWORDSIZE)ip, &ip, &mid);
+            if (native_ret) mmode = 4;
+        }
         dw ncs = far ? pop() : cur;
         if (nargs)
             s->esp = (s->esp & 0xffff0000u) | (dw)((dw)s->esp + nargs);
+        m2c::last_ret_popped = (far ? 4 : 2) + (int)nargs;
+        m2c::last_ret_mark_id = mid;
+        m2c::last_ret_mark_mode = mmode;
+        m2c::last_ret_site = ret_site;
         if (native_ret) {
             if (mdepth < m2c::native_return_call_depth)
                 throw m2c::StackPop(m2c::native_return_call_depth - mdepth);
@@ -288,7 +328,7 @@ bool m2c_guest_thunk(dd disp, _STATE* s) {
     for (int steps = 0; steps < 4000; ++steps) {
         if (((dd)cur << 4) + pc + 8 >= 0x3d000) { fprintf(stderr,"[thunk] bound %04x:%04x\n",cur,pc); return false; }
         dw segovr = 0;
-        dw opc_pc = pc;
+        opc_pc = pc;
         db op = rd8i();
         while (true) {
             if (op == 0x26)      { segovr = (dw)s->es; op = rd8i(); continue; }
@@ -394,8 +434,8 @@ bool m2c_guest_thunk(dd disp, _STATE* s) {
         /* ---- accumulator-immediate forms ---- */
         if ((op & 0xc7) == 0x04 || (op & 0xc7) == 0x05) {
             const int rgop = op >> 3;
-            if (op & 1) { dw imm = rd16i(); gth_r16(s,0) = alu(rgop, gth_r16(s,0), imm, 2); }
-            else        { dw imm = rd8i(); set_r8(0, alu(rgop, get_r8(0), imm, 1)); }
+            if (op & 1) { dw imm = rd16i(); dw v = alu(rgop, gth_r16(s,0), imm, 2); if (rgop != 7) gth_r16(s,0) = v; }
+            else        { dw imm = rd8i();  dw v = alu(rgop, get_r8(0), imm, 1); if (rgop != 7) set_r8(0, v); }
             continue;
         }
 
@@ -484,14 +524,31 @@ bool m2c_guest_thunk(dd disp, _STATE* s) {
         case 0x03: gth_r16(s,rg) = alu(0, gth_r16(s,rg), rdw(), 2); break;
         case 0x08: wrb(alu(1, rdb(), get_r8(rg), 1)); break;
         case 0x09: wrw(alu(1, rdw(), gth_r16(s, rg), 2)); break;
+        case 0x0a: set_r8(rg, alu(1, get_r8(rg), rdb(), 1)); break;
         case 0x0b: gth_r16(s,rg) = alu(1, gth_r16(s,rg), rdw(), 2); break;
+        case 0x10: wrb(alu(2, rdb(), get_r8(rg), 1)); break;
+        case 0x11: wrw(alu(2, rdw(), gth_r16(s, rg), 2)); break;
+        case 0x12: set_r8(rg, alu(2, get_r8(rg), rdb(), 1)); break;
+        case 0x13: gth_r16(s,rg) = alu(2, gth_r16(s,rg), rdw(), 2); break;
+        case 0x18: wrb(alu(3, rdb(), get_r8(rg), 1)); break;
+        case 0x19: wrw(alu(3, rdw(), gth_r16(s, rg), 2)); break;
+        case 0x1a: set_r8(rg, alu(3, get_r8(rg), rdb(), 1)); break;
+        case 0x1b: gth_r16(s,rg) = alu(3, gth_r16(s,rg), rdw(), 2); break;
+        case 0x20: wrb(alu(4, rdb(), get_r8(rg), 1)); break;
         case 0x21: wrw(alu(4, rdw(), gth_r16(s, rg), 2)); break;
+        case 0x22: set_r8(rg, alu(4, get_r8(rg), rdb(), 1)); break;
         case 0x23: gth_r16(s,rg) = alu(4, gth_r16(s,rg), rdw(), 2); break;
+        case 0x28: wrb(alu(5, rdb(), get_r8(rg), 1)); break;
         case 0x29: wrw(alu(5, rdw(), gth_r16(s, rg), 2)); break;
+        case 0x2a: set_r8(rg, alu(5, get_r8(rg), rdb(), 1)); break;
         case 0x2b: gth_r16(s,rg) = alu(5, gth_r16(s,rg), rdw(), 2); break;
+        case 0x30: wrb(alu(6, rdb(), get_r8(rg), 1)); break;
         case 0x31: wrw(alu(6, rdw(), gth_r16(s, rg), 2)); break;
+        case 0x32: set_r8(rg, alu(6, get_r8(rg), rdb(), 1)); break;
         case 0x33: gth_r16(s,rg) = alu(6, gth_r16(s,rg), rdw(), 2); break;
+        case 0x38: (void)alu(7, rdb(), get_r8(rg), 1); break;
         case 0x39: (void)alu(7, rdw(), gth_r16(s, rg), 2); break;
+        case 0x3a: (void)alu(7, get_r8(rg), rdb(), 1); break;
         case 0x3b: (void)alu(7, gth_r16(s,rg), rdw(), 2); break;
         case 0x84: (void)alu(4, rdb(), get_r8(rg), 1); break;
         case 0x85: (void)alu(4, rdw(), gth_r16(s, rg), 2); break;
@@ -522,8 +579,8 @@ bool m2c_guest_thunk(dd disp, _STATE* s) {
         case 0x80: case 0x81: case 0x83: {
             dw imm;
             if (op == 0x81) imm = rd16i(); else imm = (dw)(int8_t)rd8i();
-            if (op == 0x80) wrb(alu(rg, rdb(), imm, 1));
-            else            wrw(alu(rg, rdw(), imm, 2));
+            if (op == 0x80) { dw v = alu(rg, rdb(), imm, 1); if (rg != 7) wrb(v); }
+            else            { dw v = alu(rg, rdw(), imm, 2); if (rg != 7) wrw(v); }
         } break;
         case 0xf6: case 0xf7: {
             const int byt = (op == 0xf6);

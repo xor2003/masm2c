@@ -169,6 +169,10 @@ db vgaRamPaddingAfter[VGARAM_SIZE];
   bool from_callf=false;
 
 namespace m2c {
+  int last_ret_popped=-1;
+  size_t last_ret_mark_id=0;
+  int last_ret_mark_mode=0;
+  dd last_ret_site=0;
 
 #ifdef M2CDEBUG
   size_t debug = std::getenv("M2C_DEBUG") ? (size_t)atoi(std::getenv("M2C_DEBUG")) : (size_t)M2CDEBUG;
@@ -2264,6 +2268,14 @@ bool host_try_overlay_retf(_offsets __disp, _STATE* _state, bool* out_result) {
 		dw ret_ip = 0, ret_cs = 0;
 		POP(ret_ip);
 		POP(ret_cs);
+		/* The POPs moved the caller's return mark into the value list;
+		 * claim it so CALL_'s strict verification sees a real consume. */
+		size_t ov_mid = 0;
+		if (take_native_return_value(_state, (MWORDSIZE)ret_ip, &ret_ip, &ov_mid)) {
+			m2c::last_ret_mark_id = ov_mid;
+			m2c::last_ret_mark_mode = 4;
+		}
+		m2c::last_ret_popped = 4;
 		log_debug2("overlay entry %x:%x emulated as retf to %x:%x\n",
 			tseg, (dw)(__disp & 0xffff), ret_cs, ret_ip);
 		*out_result = true;
@@ -2273,14 +2285,36 @@ bool host_try_overlay_retf(_offsets __disp, _STATE* _state, bool* out_result) {
 	 * `call UserVctr100` = 0x4d1d:0x1659): SEG of a generated proc is an
 	 * opaque value, not a real address, so the aggregate dispatch only ever
 	 * matches the offset part. BIOS (f000) and overlay segments were already
-	 * excluded above; retry the remaining packed pointers by global offset. */
-	if (tseg != 0 && tseg != 0xf000) {
-		bool inner = false;
-		const bool ok = dispatch_external_code(
-			static_cast<_offsets>(__disp & 0xffff), _state, &inner);
-		if (inner) {
-			*out_result = ok;
-			return true;
+	 * excluded above; retry the remaining packed pointers by global offset.
+	 * Never retry off==0: the inner dispatch's null-target rule would claim
+	 * it as an empty vector and "end the activation", silently swallowing a
+	 * real far call whose target segment simply starts at offset 0 (e.g. an
+	 * NE listing-mode key 0x15c5:0000 that the local switch owns).
+	 * The retry is also skipped when `tseg` resolves to a real segment of
+	 * this image: a packed value carrying a live code paragraph or LDT
+	 * selector is a genuine seg:off key owned by the local switch (or the
+	 * selector thunk), and stripping the segment aliases its offset word
+	 * against unrelated aggregate-table entries -- e.g. Zeek's packed
+	 * 0x11ed:0x1066 (kloc_11516) collapsed to global offset 0x1066 and ran
+	 * loc_11918 instead.  Tornado's packed pointers survive the gate
+	 * because their bank "seg" matches no resolver. */
+	if (tseg != 0 && tseg != 0xf000 && (__disp & 0xffff) != 0) {
+		const dw toff = static_cast<dw>(__disp & 0xffff);
+		const bool real_seg =
+			(tlink_code_segment_raddr != nullptr &&
+			 tlink_code_segment_raddr(tseg, toff) != nullptr) ||
+			(m2c_code_segment_raddr != nullptr &&
+			 m2c_code_segment_raddr(tseg, toff) != nullptr) ||
+			linked_code_segment_raddr(tseg, toff) != nullptr ||
+			m2c_alloc_segment_raddr(tseg, toff) != nullptr;
+		if (!real_seg) {
+			bool inner = false;
+			const bool ok = dispatch_external_code(
+				static_cast<_offsets>(toff), _state, &inner);
+			if (inner) {
+				*out_result = ok;
+				return true;
+			}
 		}
 	}
 	return false;
@@ -2788,6 +2822,9 @@ void log_error(const char *fmt, ...) {
 #else
 	if (logDebug!=NULL) { fprintf(logDebug,"%s",formatted_string); fflush(logDebug);}
 	{ printf("%s",formatted_string); }
+	/* Errors must be visible even when stdout is redirected into a trace
+	 * file or /dev/null -- always mirror to stderr and flush. */
+	{ fprintf(stderr, "%s", formatted_string); fflush(stderr); }
 #endif
 }
 void log_debug(const char *fmt, ...) {
@@ -5320,7 +5357,8 @@ int main(int argc, char *argv[]) {
 
     try {
         m2c::_indent = 0;
-        m2c::logDebug = fopen("asm.log", "w");
+        if (m2c::debug)
+            m2c::logDebug = fopen("asm.log", "w");
 #ifndef NOCURSES
         initscr();
         resize_term(25, 80);

@@ -30,6 +30,11 @@ APIFN(mmioopen) {
             snprintf(buf, sizeof(buf), "%s/%s", w16::data_dir, nm.c_str());
             f = fopen(buf, "rb");
         }
+    } else {
+        /* mmioOpen(NULL, ..., MMIO_READWRITE) creates a memory-backed hmmio;
+         * the caller uses it like a file. tmpfile() gives real seek/read/write
+         * semantics so descend/create chunks behave correctly. */
+        f = tmpfile();
     }
     dw h = 0;
     if (f) {
@@ -69,7 +74,7 @@ APIFN(mmiodescend) {
     // pushed L->R: hmmio, lpck, parent, flags -> flags=W(0), parent=D(1), lpck=D(3), hmmio=W(5)
     dw hmm = W(5); dd lpck = D(3); dd par = D(1); dw fl = W(0);
     db* ck = w16::fptr(lpck);
-    if (hmm <= mmios.size() && mmios[hmm - 1].f && ck) {
+    if (hmm && hmm <= mmios.size() && mmios[hmm - 1].f && ck) {
         FILE* f = mmios[hmm - 1].f;
         uint8_t hdr[8];
         if (fread(hdr, 1, 8, f) == 8) {

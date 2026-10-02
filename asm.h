@@ -53,6 +53,13 @@ SOFTWARE.
 
 extern bool from_callf;
 
+namespace m2c {
+/* Byte count popped by the most recent guest return (RETN=2+i, RETF=4+i,
+ * host API retf = 4+n).  -1 means the last callee did not unwind through a
+ * counted return (sentinel/thunk path), so callers cannot verify sp. */
+extern int last_ret_popped;
+}
+
 #ifdef DOSBOX_CUSTOM
 #include "json.hpp"
 #include <typeinfo>
@@ -903,7 +910,16 @@ inline bool take_native_return_value(
     return false;
 }
 
-inline bool consume_native_return(_STATE* state, dw stack_segment, dw stack_offset, MWORDSIZE return_ip, size_t* matched_call_depth = nullptr) {
+/* How the most recent ret consumed a native-return mark:
+ * 0 none, 1 exact slot+depth, 2 frame-skip (shallower depth),
+ * 3 relocated slot, 4 register-carried value mark. */
+extern int last_ret_mark_mode;
+/* Mark id consumed by the most recent ret (0 when none was consumed). */
+extern size_t last_ret_mark_id;
+/* cs<<16|ip of the most recent ret instruction itself. */
+extern dd last_ret_site;
+
+inline bool consume_native_return(_STATE* state, dw stack_segment, dw stack_offset, MWORDSIZE return_ip, size_t* matched_call_depth = nullptr, size_t* matched_id = nullptr, int* match_kind = nullptr) {
     for (auto it = native_return_marks.rbegin(); it != native_return_marks.rend(); ++it) {
         if (
             it->state != state
@@ -917,8 +933,11 @@ inline bool consume_native_return(_STATE* state, dw stack_segment, dw stack_offs
         if (matched_call_depth) {
             *matched_call_depth = it->call_depth;
         }
+        const size_t consumed_id = it->id;
         native_return_marks.erase(std::next(it).base());
         if (matched) {
+            if (matched_id) *matched_id = consumed_id;
+            if (match_kind) *match_kind = 1;
             return true;
         }
         // The guest overwrote this stack slot after the marked call (e.g.
@@ -943,6 +962,8 @@ inline bool consume_native_return(_STATE* state, dw stack_segment, dw stack_offs
         if (matched_call_depth) {
             *matched_call_depth = it->call_depth;
         }
+        if (matched_id) *matched_id = it->id;
+        if (match_kind) *match_kind = 2;
         native_return_marks.erase(std::next(it).base());
         return true;
     }
@@ -964,6 +985,8 @@ inline bool consume_native_return(_STATE* state, dw stack_segment, dw stack_offs
         if (matched_call_depth) {
             *matched_call_depth = it->call_depth;
         }
+        if (matched_id) *matched_id = it->id;
+        if (match_kind) *match_kind = 3;
         native_return_marks.erase(std::next(it).base());
         return true;
     }
@@ -2209,14 +2232,18 @@ struct StackPop
 #else
         POP(ip);
 #endif
+        const dd ret_site = ((dd)cs << 16) | (dd)eip;
+        size_t ret_mark_id = 0;
+        int ret_mark_mode = 0;
 #ifndef SHADOW_STACK
         size_t ret_match_depth = native_return_call_depth;
         bool native_ret = false;
         if (!ret) {
-            if (m2c::consume_native_return(_state, return_ss, return_sp, ip, &ret_match_depth)) {
+            if (m2c::consume_native_return(_state, return_ss, return_sp, ip, &ret_match_depth, &ret_mark_id, &ret_mark_mode)) {
                 native_ret = true;
             } else {
-                native_ret = m2c::take_native_return_value(_state, ip, &ip);
+                native_ret = m2c::take_native_return_value(_state, ip, &ip, &ret_mark_id);
+                if (native_ret) ret_mark_mode = 4;
             }
         }
         ret = ret || native_ret;
@@ -2234,6 +2261,10 @@ struct StackPop
         }
 #endif
         esp += i;
+        m2c::last_ret_popped = (int)i + 2;
+        m2c::last_ret_mark_id = ret_mark_id;
+        m2c::last_ret_mark_mode = ret_mark_mode;
+        m2c::last_ret_site = ret_site;
 #ifndef SHADOW_STACK
         if (native_ret && ret_match_depth < native_return_call_depth) {
             // The callee skipped intermediate frames (`pop reg`/`jmp` then `ret`),
@@ -2320,15 +2351,19 @@ throw StackPop(skip);
 #endif
         const dw return_ss = ss;
         const dw return_sp = sp;
+        const dd ret_site = ((dd)cs << 16) | (dd)eip;
         POP(ip);
+        size_t ret_mark_id = 0;
+        int ret_mark_mode = 0;
 #ifndef SHADOW_STACK
         size_t ret_match_depth = native_return_call_depth;
         bool native_ret = false;
         if (!ret) {
-            if (m2c::consume_native_return(_state, return_ss, return_sp, ip, &ret_match_depth)) {
+            if (m2c::consume_native_return(_state, return_ss, return_sp, ip, &ret_match_depth, &ret_mark_id, &ret_mark_mode)) {
                 native_ret = true;
             } else {
-                native_ret = m2c::take_native_return_value(_state, ip, &ip);
+                native_ret = m2c::take_native_return_value(_state, ip, &ip, &ret_mark_id);
+                if (native_ret) ret_mark_mode = 4;
             }
         }
         ret = ret || native_ret;
@@ -2367,6 +2402,10 @@ log_debug("skip %d\n", skip);
         POP(cs);
 //        log_error("~~RETF after 2pop\n");
         esp += i;
+        m2c::last_ret_popped = (int)i + 4;
+        m2c::last_ret_mark_id = ret_mark_id;
+        m2c::last_ret_mark_mode = ret_mark_mode;
+        m2c::last_ret_site = ret_site;
 #ifndef SHADOW_STACK
         if (native_ret && ret_match_depth < native_return_call_depth) {
             // Frame-skipping far return: unwind the extra native call scopes.
@@ -2423,6 +2462,10 @@ throw StackPop(skip);
 #endif
         size_t data_offset_ds_mark = m2c::mark_data_offset_ds();
         dw oldsp=sp;
+        m2c::last_ret_popped = -1;
+        m2c::last_ret_mark_id = 0;
+        m2c::last_ret_mark_mode = 0;
+        m2c::last_ret_site = 0;
         m2c::NativeCallDepthScope native_call_depth_scope;
         m2c::suppress_native_return_push_transfer = true;
         PUSH(return_addr);
@@ -2451,26 +2494,52 @@ throw StackPop(skip);
 		              m2c::restore_data_offset_ds(ds, data_offset_ds_mark);
 	              return ret;
 	          }
- #if M2CDEBUG > 0
-            if (sp!=oldsp && sp!=oldsp+2) log_debug("~~old SP %x != SP %x\n",oldsp, sp);
- #endif
-#if M2CDEBUG > 0
-        if (sp != oldsp && sp != (dw)(oldsp + 2)) {
-            // Words the callee left unpopped (sp < oldsp) or over-popped
-            // (sp > oldsp+2). Note sp < oldsp is also produced legitimately by
-            // XTHL-style stack juggling that leaves a result word for the
-            // caller, so this is informational only.
-            log_debug("CALL_ %s returned sp=%x oldsp=%x ip=%x ret=%x\n",
-                      label_name, sp, oldsp, ip, return_addr);
-            fprintf(stderr, "[stack] ss=%04x residue sp=%04x..%04x after call to %s:\n",
-                    (unsigned)ss, (unsigned)sp, (unsigned)(oldsp + 2), label_name);
-            for (dw a = sp; (int)a <= (int)(oldsp + 2) && (dw)a < (dw)(sp + 64); a += 2) {
-                dw v = 0; memcpy(&v, m2c::raddr_(ss, a), 2);
-                fprintf(stderr, "  ss:%04x = %04x%s\n", (unsigned)a, (unsigned)v,
-                        a == sp ? " <== sp" : (a == (dw)(oldsp - 2) ? " <== pushed ret slot" : ""));
+#ifndef SHADOW_STACK
+        /* Strict return verification (non-shadow builds only): a callee that
+         * returns true must have consumed exactly the return word this frame
+         * pushed (mark id == native_return_id).  A ret that consumes another
+         * frame's mark, or a return that consumed no mark at all (0:0 sentinel
+         * / untracked path), leaves our pushed word orphaned on the stack --
+         * every later pop reads shifted slots and an eventual retf lands on
+         * garbage.  This is the real corruption behind the old
+         * "~~old SP != SP" spam.  Under SHADOW_STACK the shadow stack is the
+         * authoritative call/ret verifier and the ret path does not populate
+         * last_ret_mark_id, so this check only applies to non-shadow builds. */
+        if (m2c::last_ret_mark_id != native_return_id) {
+            log_error("CALL_ %s returned without consuming its return word: "
+                      "consumed mark=%zu mode=%d (ours=%zu) ret_site=%x "
+                      "sp=%04x oldsp=%04x popped=%d ip=%x ret=%x\n",
+                      label_name, m2c::last_ret_mark_id,
+                      m2c::last_ret_mark_mode, native_return_id,
+                      (unsigned)m2c::last_ret_site, (unsigned)sp,
+                      (unsigned)oldsp, m2c::last_ret_popped,
+                      (unsigned)ip, (unsigned)return_addr);
+            m2c::stackDump(_state);
+            abort();
+        }
+        if (m2c::last_ret_mark_mode == 1 && m2c::last_ret_popped >= 0) {
+            /* Exact-slot consumption: the ret popped ip[/cs][/args] starting
+             * at our pushed word, so sp must be oldsp - 2 + popped. */
+            const dw expected_sp = (dw)(oldsp - 2 + m2c::last_ret_popped);
+            if ((dw)sp != expected_sp) {
+                log_error("CALL_ %s stack imbalance: sp=%04x expected=%04x oldsp=%04x popped=%d ret_site=%x ip=%x ret=%x\n",
+                          label_name, (unsigned)sp, (unsigned)expected_sp,
+                          (unsigned)oldsp, m2c::last_ret_popped,
+                          (unsigned)m2c::last_ret_site,
+                          (unsigned)ip, (unsigned)return_addr);
+                m2c::stackDump(_state);
+                abort();
             }
         }
+#if M2CDEBUG > 0
+        else if (sp != oldsp && sp != (dw)(oldsp + 2)) {
+            // Callee returned through an uncounted path (sentinel/thunk);
+            // words left below oldsp may still be legit XTHL-style juggling.
+            log_debug("CALL_ %s returned sp=%x oldsp=%x ip=%x ret=%x\n",
+                      label_name, sp, oldsp, ip, return_addr);
+        }
 #endif
+#endif /* !SHADOW_STACK */
  while(std::strcmp(label_name, "__dispatch_call") != 0 && sp < oldsp && return_addr != ip&& ((dw)(ip - return_addr)) > 5 ) {
   const m2c::MWORDSIZE trampoline_ip = ip;
   bool external_trampoline_handled = false;
