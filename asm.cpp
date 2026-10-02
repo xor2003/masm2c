@@ -30,6 +30,9 @@ SOFTWARE.
   #include <sys/select.h>
   #include <sys/time.h>
   #include <unistd.h>
+  #include <fcntl.h>
+  #include <dirent.h>
+  #include <strings.h>
  #endif
  #ifndef __DJGPP__
   #ifndef NOSDL
@@ -54,6 +57,8 @@ SOFTWARE.
 //#include <assert.h>
 //#include <time.h>
 #include <cassert>
+#include <cerrno>
+#include <string>
 #include <ctime>
 #include <algorithm>
 #include <atomic>
@@ -166,7 +171,7 @@ db vgaRamPaddingAfter[VGARAM_SIZE];
 namespace m2c {
 
 #ifdef M2CDEBUG
-  size_t debug = M2CDEBUG;
+  size_t debug = std::getenv("M2C_DEBUG") ? (size_t)atoi(std::getenv("M2C_DEBUG")) : (size_t)M2CDEBUG;
 #else
   size_t debug = 0;
 #endif
@@ -204,6 +209,10 @@ void interpret_unknown_callf(dw cs, dd eip, db source){assert(0);}
     // Tandy/PCjr BIOS (F000:FFFE==0xFF && F000:C000==0x21) and loads TANDYSND.EXE.
     __attribute__((weak)) bool tnd_present = false;
     bool host_try_overlay_retf(_offsets __disp, _STATE* _state, bool* out_result);
+    __attribute__((weak)) bool m2c_guest_thunk(_offsets __disp, _STATE* _state) {
+        (void)__disp; (void)_state;
+        return false;
+    }
     __attribute__((weak)) bool dispatch_external_code(_offsets __disp, _STATE* _state, bool* handled) {
         bool res = true;
         if (host_try_overlay_retf(__disp, _state, &res)) {
@@ -221,8 +230,58 @@ void interpret_unknown_callf(dw cs, dd eip, db source){assert(0);}
 
 ShadowStack shadow_stack;
 
+x87_t fpu;
+
+long double fpu_ld80(const void* p) {
+    if (sizeof(long double) >= 10) {
+        long double v = 0;
+        memcpy(&v, p, 10);
+        return v;
+    }
+    // Portable decode for hosts where long double is not 80-bit x87 ext.
+    const db* b = (const db*)p;
+    uint64_t mant;
+    memcpy(&mant, b, 8);
+    int se = b[8] | (b[9] << 8);
+    int sign = se >> 15;
+    int exp = se & 0x7fff;
+    if (exp == 0 && mant == 0) return sign ? -0.0L : 0.0L;
+    return (long double)std::ldexp((long double)mant, exp - 16383 - 63) * (sign ? -1.0L : 1.0L);
+}
+
+void fpu_st80(void* p, long double v) {
+    db* b = (db*)p;
+    if (sizeof(long double) >= 10) {
+        memcpy(b, &v, 10);
+        return;
+    }
+    // Portable encode to 80-bit x87 extended.
+    int sign = std::signbit(v);
+    long double a = std::fabs(v);
+    uint64_t mant = 0;
+    int se = 0;
+    if (a != 0 && std::isfinite(a)) {
+        int exp;
+        long double f = std::frexp(a, &exp);          // a = f * 2^exp, f in [0.5,1)
+        mant = (uint64_t)std::ldexp(f, 64);           // 1 bit int + 63 fraction
+        se = exp - 1 + 16383;
+    }
+    memcpy(b, &mant, 8);
+    b[8] = se & 0xff;
+    b[9] = ((se >> 8) & 0x7f) | (sign ? 0x80 : 0);
+}
+
+void fpu_init() {
+    memset(&fpu, 0, sizeof(fpu));
+    fpu.cw = 0x037f;
+    std::fesetround(FE_TONEAREST);
+}
+
 //db vgaPalette[256*3];
 #include "vgapal.h"
+// Legacy selector table — superseded by m2c_ldt (emulated LDT).  Kept
+// because historical asm_16.h copies reference `selectors[segment]` under
+// _PROTECTED_MODE; the shared runtime no longer uses it.
 dd selectorsPointer;
 dd selectors[NB_SELECTORS];
 
@@ -230,6 +289,413 @@ dd heapPointer;
 struct find_t;
 static db defaultDiskTransferArea[128] = {};
 struct find_t * diskTransferAddr = reinterpret_cast<find_t *>(defaultDiskTransferArea);
+
+/* Win16 / protected-mode descriptor table (emulated LDT).  Under real
+   protected mode, segment registers hold *selectors*: 16-bit values encoded
+   as (index<<3 | TI<<2 | RPL).  Each selector indexes a descriptor
+   {base, limit, rights}.  We emulate that:
+
+   - m2c_ldt[] is the descriptor store, indexed by selector>>3.
+   - base is a HOST pointer: either inside `m` (aliases of real-mode
+     segments / the loaded image) or a malloc'd block (DPMI/RTM allocations).
+   - lin is the guest-visible linear base (m-offset for m-aliases, a
+     synthetic address for owned blocks).
+   - Real-mode paragraphs in segregs are not descriptors: they resolve
+     through the `m` paragraph view in raddr_().
+
+   Allocated selectors are encoded (idx<<3 | 7) starting at m2c_pm_sel_base
+   (default 0x4000 -> index 2048), above normal image paragraphs, so plain
+   paragraph values never alias a used descriptor.  Because the encoding is
+   the real one, guest descriptor arithmetic works: sel+8 (__AHINCR) steps
+   to the next descriptor and sel>>3 (__AHSHIFT) yields the table index. */
+PmDesc m2c_ldt[NB_LDT];
+static unsigned m2c_ldt_next_idx;   // allocation cursor (index)
+// First allocated selector *value*. Weak so a program can place its
+// descriptor space above its loaded image; default suits images < 256KB.
+__attribute__((weak)) dw m2c_pm_sel_base = 0x4000;
+static unsigned m2c_pm_next_linear = 0x1000000;  // synthetic linear base for owned blocks
+
+int m2c_ldt_idx(dw sel) { return (sel >> 3) & (NB_LDT - 1); }
+
+// Allocate n consecutive descriptors; returns the base selector value
+// (idx<<3 | 7) or 0 on exhaustion.  Entries are marked used with no base —
+// the client sets base/limit via INT31 0007/0008 or the m2c_ldt_* helpers.
+dw m2c_ldt_alloc(int n) {
+	if (!m2c_ldt_next_idx) m2c_ldt_next_idx = m2c_ldt_idx(m2c_pm_sel_base);
+	unsigned start = m2c_ldt_next_idx;
+	if (start + n >= NB_LDT) {
+		log_error("ldt: out of descriptors (need %d at %u)\n", n, start);
+		return 0;
+	}
+	for (int i = 0; i < n; ++i) {
+		PmDesc& d = m2c_ldt[start + i];
+		if (d.used) { // shouldn't happen past the cursor; be loud
+			log_error("ldt: descriptor %u already used\n", start + i);
+		}
+		d.base = nullptr;
+		d.limit = 0xffff;
+		d.rights = 0x00f3;  // data, read/write, accessed (DPMI default)
+		d.lin = 0;
+		d.used = 1;
+		d.owned = 0;
+	}
+	m2c_ldt_next_idx = start + n;
+	return (dw)((start << 3) | 7);
+}
+
+void m2c_ldt_free(dw sel) {
+	int idx = m2c_ldt_idx(sel);
+	PmDesc& d = m2c_ldt[idx];
+	if (!d.used) return;
+	if (d.owned) {
+		db* blk = d.base;
+		dd ext = d.extent ? d.extent : 0x10000;
+		free(blk);
+		// Clear every descriptor aliasing the freed block.
+		for (int i = 0; i < NB_LDT; ++i) {
+			if (m2c_ldt[i].used && m2c_ldt[i].base >= blk &&
+			    m2c_ldt[i].base < blk + ext)
+				m2c_ldt[i] = PmDesc{};
+		}
+	} else {
+		d = PmDesc{};
+	}
+}
+
+// `struct Memory` is program-defined and incomplete here; its layout ends
+// with the `heap` array (a link-bound reference into m), so the usable
+// extent of `m` linear addresses is (&heap - &m) + HEAP_SIZE.
+static inline dd m2c_m_extent() {
+	return (dd)((db*)&heap - (db*)&m) + HEAP_SIZE;
+}
+
+// Guest linear base for INT31 0006: m-offset for m-aliased descriptors,
+// the recorded synthetic base for owned regions.
+dd m2c_ldt_get_lin(dw sel) {
+	const PmDesc& d = m2c_ldt[m2c_ldt_idx(sel)];
+	if (!d.base) return d.lin;
+	if (d.base >= (db*)&m && d.base < (db*)&m + m2c_m_extent())
+		return (dd)(d.base - (db*)&m);
+	return d.lin;
+}
+
+// Allocate a 64KB-backed region and return its selector.  Real selectors
+// cover the full 64KB regardless of the requested size — guest code may
+// legally touch any 16-bit offset — so the host block is always 64KB.
+dw m2c_pm_alloc_paras(dw paras) {
+	dw sel = m2c_ldt_alloc(1);
+	if (!sel) {
+		log_error("pm alloc: out of descriptors (req=%04x)\n", (unsigned)paras);
+		return 0;
+	}
+	db* p = static_cast<db*>(calloc(1, 0x10000));
+	if (!p) { m2c_ldt_free(sel); return 0; }
+	PmDesc& d = m2c_ldt[m2c_ldt_idx(sel)];
+	d.base = p;
+	d.limit = 0xffff;
+	d.lin = m2c_pm_next_linear;
+	d.extent = 0x10000;
+	m2c_pm_next_linear += 0x10000;
+	d.owned = 1;
+	log_debug2("pm alloc req=%04x -> sel=%04x lin=%x\n", (unsigned)paras, sel, d.lin);
+	return sel;
+}
+
+void m2c_pm_free(dw sel) { m2c_ldt_free(sel); }
+
+// Under the protected-mode memory model, `seg X` must produce a *selector*:
+// value stored into ds/es/ss/cs, passed to DPMI, or written by NE fixups.
+// Resolve a paragraph to a descriptor aliasing that m storage.  Aliases are
+// shared (same paragraph -> same selector) and cached for the common
+// repeated `seg DGROUP` pattern.
+dw m2c_seg_selector(dw para) {
+	dd lin = (dd)para << 4;
+	static dw last_para = 0xffff, last_sel = 0;
+	if (para == last_para) return last_sel;
+	for (int i = 0; i < NB_LDT; ++i) {
+		const PmDesc& d = m2c_ldt[i];
+		if (d.used && !d.owned && d.lin == lin) {
+			last_para = para;
+			last_sel = (dw)((i << 3) | 7);
+			return last_sel;
+		}
+	}
+	dw sel = m2c_ldt_alloc(1);
+	if (!sel) return para;  // LDT exhausted — paragraph still resolves via m
+	PmDesc& d = m2c_ldt[m2c_ldt_idx(sel)];
+	d.base = (db*)&m + lin;
+	d.lin = lin;
+	last_para = para;
+	last_sel = sel;
+	return sel;
+}
+
+/* Generic NE (Win16) image loader — shared implementation behind the
+   m2c_ne_entry_setup hook.  The caller owns where each segment lives
+   (M2cNeSegHost::base/para); this routine does the format work: descriptor
+   creation, file-data copies, internal-reference fixups, entry state. */
+static dw ne_w(const db* p) { return (dw)(p[0] | (p[1] << 8)); }
+static dd ne_d(const db* p) {
+	return (dd)p[0] | ((dd)p[1] << 8) | ((dd)p[2] << 16) | ((dd)p[3] << 24);
+}
+
+static M2cNeImport s_ne_imports[512];
+static char s_ne_mod_names[32][16];
+M2cNeImport* m2c_ne_imports = s_ne_imports;
+dw m2c_ne_import_count = 0;
+const char* m2c_ne_import_mod_name(dw mod_idx) {
+	if (!mod_idx || mod_idx > 32 || !s_ne_mod_names[mod_idx - 1][0]) return "?";
+	return s_ne_mod_names[mod_idx - 1];
+}
+static dw ne_import_add(dw mod_idx, dw ord) {
+	for (dw i = 0; i < m2c_ne_import_count; ++i)
+		if (s_ne_imports[i].mod_idx == mod_idx && s_ne_imports[i].ordinal == ord)
+			return i;
+	dw idx = m2c_ne_import_count;
+	if (idx < sizeof(s_ne_imports) / sizeof(*s_ne_imports)) {
+		s_ne_imports[idx].mod_idx = mod_idx;
+		s_ne_imports[idx].ordinal = ord;
+		++m2c_ne_import_count;
+	}
+	return idx;
+}
+
+bool m2c_ne_load(_STATE* _state, const db* image, dd image_size,
+                 M2cNeSegHost* segs) {
+	X86_REGREF
+	if (!image || image_size < 0x40 || ne_w(image) != 0x5a4d /*'MZ'*/) {
+		log_error("NE load: not an MZ image\n");
+		return false;
+	}
+	dd ne = ne_d(image + 0x3c);
+	if (ne + 0x40 > image_size || ne_w(image + ne) != 0x454e /*'NE'*/) {
+		log_error("NE load: no NE signature\n");
+		return false;
+	}
+	const db* hdr = image + ne;
+	const dw ds_idx  = ne_w(hdr + 0x0e);   // automatic data segment
+	const dw entry_ip = ne_w(hdr + 0x14);
+	const dw cs_idx  = ne_w(hdr + 0x16);
+	const dw entry_sp = ne_w(hdr + 0x18);
+	const dw ss_idx  = ne_w(hdr + 0x1a);
+	const dw nseg    = ne_w(hdr + 0x1c);
+	const dw segoff  = ne_w(hdr + 0x22);   // segment table, rel to NE
+	const dw shift   = ne_w(hdr + 0x32);   // logical sector shift
+	if (!nseg || ne + segoff + nseg * 8 > image_size) {
+		log_error("NE load: bad segment table (count=%u)\n", nseg);
+		return false;
+	}
+	const db* stab = hdr + segoff;
+	for (int i = 0; i < nseg; ++i) {
+		const db* e = stab + i * 8;
+		dd  foff  = (dd)ne_w(e) << shift;
+		dd  len   = ne_w(e + 2); if (!len) len = 0x10000;
+		dw  flags = ne_w(e + 4);
+		segs[i].flags = flags;
+		if (!segs[i].base && segs[i].para)
+			segs[i].base = (db*)&m + ((dd)segs[i].para << 4);
+		if (!segs[i].base) {
+			log_error("NE load: segment %d has no host storage\n", i + 1);
+			return false;
+		}
+		// File bytes (code images, preinitialized data) into host storage.
+		if (foff && foff + len <= image_size)
+			memcpy(segs[i].base, image + foff, len);
+		// Selector aliasing the segment storage; keep lin = paragraph
+		// linear so get-base and the PM-vector IVT mirror stay consistent.
+		dw sel = m2c_ldt_alloc(1);
+		if (!sel) return false;
+		PmDesc& d = m2c_ldt[m2c_ldt_idx(sel)];
+		d.base = segs[i].base;
+		d.lin = (dd)segs[i].para << 4;
+		segs[i].selector = sel;
+	}
+	// Module-reference table -> imported module names (for diagnostics).
+	const dw nmods = ne_w(hdr + 0x1e);
+	const db* mrt  = hdr + ne_w(hdr + 0x28);   // module-reference table
+	const db* itab = hdr + ne_w(hdr + 0x2a);   // imported names table
+	for (dw mi = 0; mi < nmods && mi < 32 && mrt + 2 * mi + 2 <= image + image_size; ++mi) {
+		const db* np = itab + ne_w(mrt + 2 * mi);
+		dw nl = np[0]; if (nl > 15) nl = 15;
+		if (np + 1 + nl <= image + image_size) {
+			memcpy(s_ne_mod_names[mi], np + 1, nl);
+			s_ne_mod_names[mi][nl] = 0;
+		}
+	}
+	// Relocation records.
+	// Non-additive records (flag bit2 clear) are CHAIN records: the stored
+	// word at each site holds the offset of the next site and 0xffff ends
+	// the list; the record supplies the whole fixup value.  Additive records
+	// are single sites whose stored word is an addend to the record target.
+	//   rtype&3 == 0  internal ref  -> seg selector / target offset
+	//   rtype&3 == 1  imported ordinal / 2 imported name -> sentinel 0000:80NN
+	//   rtype&3 == 3  osfixup (x87 emulator patching) -> skipped: real FPU
+	for (int i = 0; i < nseg; ++i) {
+		const db* e = stab + i * 8;
+		dd  foff  = (dd)ne_w(e) << shift;
+		dd  len   = ne_w(e + 2); if (!len) len = 0x10000;
+		if (!(segs[i].flags & 0x0100)) continue;  // no relocations
+		dd rp = foff + len;
+		if (rp + 2 > image_size) break;
+		dw count = ne_w(image + rp);
+		rp += 2;
+		for (dw r = 0; r < count && rp + 8 <= image_size; ++r, rp += 8) {
+			const db* rec = image + rp;
+			const db atype = rec[0];
+			const db rtype = rec[1];
+			const dw rkind = rtype & 3;
+			const bool additive = (rtype & 4) != 0;
+			if (rkind == 3) continue;
+			dw off = ne_w(rec + 2);
+			dw guard = 0;
+			if (rkind == 1 || rkind == 2) {
+				const dw mod = ne_w(rec + 4);
+				const dw ord = ne_w(rec + 6);
+				const dw sentinel = (dw)(0x8000 | ne_import_add(mod, ord));
+				do {
+					db* loc = segs[i].base + off;
+					dw link = ne_w(loc);
+					switch (atype) {
+					case 2: *(dw*)loc = 0; break;                            // seg word -> null
+					case 3: *(dw*)loc = sentinel; *(dw*)(loc + 2) = 0; break; // far ptr -> 0000:80NN
+					case 5: *(dw*)loc = sentinel; break;                     // off16 -> sentinel
+					default: log_error("NE load: import addr type %u\n", atype); break;
+					}
+					off = additive ? 0xffff : link;
+				} while (off != 0xffff && ++guard < 0x8000);
+				continue;
+			}
+			const dw tseg = ne_w(rec + 4);
+			const dw toff = ne_w(rec + 6);
+			if (!tseg || tseg > nseg) continue;
+			const dw tsel = segs[tseg - 1].selector;
+			do {
+				db* loc = segs[i].base + off;
+				dw link = ne_w(loc);
+				switch (atype) {
+				case 2: *(dw*)loc = tsel; break;                     // selector word
+				case 3: *(dw*)loc = toff; *(dw*)(loc + 2) = tsel; break; // far ptr
+				case 5: *(dw*)loc = additive ? (dw)(link + toff) : toff; break;
+				default:
+					log_error("NE load: addr type %u unsupported\n", atype);
+				}
+				off = additive ? 0xffff : link;
+			} while (off != 0xffff && ++guard < 0x8000);
+		}
+	}
+	cs  = segs[cs_idx - 1].selector;
+	eip = entry_ip;
+	if (ss_idx) { ss = segs[ss_idx - 1].selector; }
+	sp  = entry_sp ? entry_sp : (dw)(STACK_SIZE - 4);
+	if (ds_idx) { ds = es = segs[ds_idx - 1].selector; }
+	log_debug("NE load: entry %04x:%04x stack %04x:%04x ds %04x (%u segs)\n",
+	          cs, entry_ip, ss, sp, ds, nseg);
+	return true;
+}
+db* m2c_alloc_segment_raddr(dw segment, dw offset) {
+	const PmDesc& d = m2c_ldt[m2c_ldt_idx(segment)];
+	// Only values with the LDT table-indicator bit (sel&4) are selectors;
+	// plain paragraphs fall through to the `m` view.  Lenient on the limit:
+	// blocks are backed by 64KB so every 16-bit offset resolves; the limit
+	// is recorded for get/set fidelity.
+	if ((segment & 4) && d.used && d.base)
+		return d.base + offset;
+	return nullptr;
+}
+
+// Protected-mode vectors installed via INT31 0203/0205 (CX:EDX = sel:eip).
+// Recorded verbatim for faithful get/set round-trips; additionally mirrored
+// into the real-mode IVT when the handler selector aliases `m`.
+static dw pm_vec_sel[256];
+static dd pm_vec_off[256];
+static db pm_vec_set[256];
+
+// Compatibility name used by NE/RTM-style translated programs (asm.h).
+// Weak so a program harness can substitute its own allocator.
+__attribute__((weak)) dw tlink_rtm_alloc_paras(dw paras) { return m2c_pm_alloc_paras(paras); }
+
+// DOS file-handle table: handles 0..4 are the predefined std devices;
+// regular files occupy 5..N (like DOS's SFT).
+static dw dta_seg = 0;   // guest-visible seg:off of the DTA (as set by AH=1Ah)
+static dw dta_off = 0x80;
+static FILE * dos_files[0x40] = {};
+static const dw DOS_HANDLE_BASE = 5;
+static int dos_last_child_rc = 0;
+static FILE * dos_std[5] = {};
+static FILE * dos_get_file(dw h) {
+	if (h < DOS_HANDLE_BASE) {
+		// Predefined DOS devices 0..4 (stdin/stdout/stderr/aux/prn). Map to
+		// dup'd host stdio so guest dup()/close() on them is harmless.
+		if (!dos_std[h]) {
+			FILE * sf = (h == 0) ? stdin : (h == 1) ? stdout : (h == 2) ? stderr
+				: (h == 3) ? stdout : stderr;
+			int fd = dup(fileno(sf));
+			int acc = fd >= 0 ? (fcntl(fd, F_GETFL) & O_ACCMODE) : -1;
+			const char * sm = acc == O_RDONLY ? "r" : acc == O_WRONLY ? "a" : "r+";
+			dos_std[h] = fd >= 0 ? fdopen(fd, sm) : nullptr;
+		}
+		return dos_std[h];
+	}
+	if (h - DOS_HANDLE_BASE >= 0x40) return nullptr;
+	return dos_files[h - DOS_HANDLE_BASE];
+}
+static dw dos_alloc_handle(FILE * f) {
+	for (dw h = 0; h < 0x40; ++h)
+		if (!dos_files[h]) { dos_files[h] = f; return DOS_HANDLE_BASE + h; }
+	fclose(f);
+	return 0xffff;
+}
+
+// DOS file names are case-insensitive. Resolve a guest path against the
+// host filesystem component-by-component, folding case via directory
+// listing, so "hello.obj" finds "HELLO.OBJ". Returns true on success.
+static bool dos_resolve_case(const char *path, char *out, size_t outsz) {
+	if (!path || !*path || !out || outsz < 2) return false;
+	char buf[1024];
+	std::snprintf(buf, sizeof(buf), "%s", path);
+	for (char *p = buf; *p; ++p) if (*p == '\\') *p = '/';
+	std::string resolved;
+	size_t pos = 0;
+	if (buf[0] == '/') { resolved = "/"; pos = 1; }
+	while (pos <= strlen(buf)) {
+		const char *sep = strchr(buf + pos, '/');
+		size_t len = sep ? (size_t)(sep - (buf + pos)) : strlen(buf + pos);
+		if (len == 0) {
+			if (!sep) break;
+			pos += 1;
+			continue;
+		}
+		char comp[256];
+		if (len >= sizeof(comp)) return false;
+		std::memcpy(comp, buf + pos, len);
+		comp[len] = 0;
+		const char *dir = resolved.empty() ? "." : resolved.c_str();
+		// exact match first
+		std::string cand = resolved + comp;
+		if (access(cand.c_str(), F_OK) != 0) {
+			DIR *d = opendir(dir);
+			if (!d) return false;
+			struct dirent *e;
+			bool found = false;
+			while ((e = readdir(d))) {
+				if (!strcasecmp(e->d_name, comp)) {
+					cand = resolved + e->d_name;
+					found = true;
+					break;
+				}
+			}
+			closedir(d);
+			if (!found) return false;
+		}
+		resolved = cand;
+		if (!sep) break;
+		resolved += "/";
+		pos += len + 1;
+	}
+	if (resolved.size() >= outsz) return false;
+	std::memcpy(out, resolved.c_str(), resolved.size() + 1);
+	return true;
+}
 //#include "memmgr.c"
 
 
@@ -323,6 +789,11 @@ struct HostHardware {
 
 static HostHardware host;
 
+// Accessor for NE-harness glue (zeek16.cpp) which installs a fake PSP after
+// segment binding; HostHardware itself is file-local.
+void m2c_set_current_psp(dw psp) { host.current_psp = psp; }
+dw m2c_current_psp() { return host.current_psp; }
+
 bool is_dos_terminate_vector(dw segment, dw offset) {
 	// 0:0 is the sentinel pushed for synthesized interrupt frames (IVT IRQ
 	// delivery); reaching it means unwind to C++, not program termination.
@@ -345,6 +816,10 @@ static db* host_physical_address(dw segment, dw offset) {
 	// writes, so the image must not sit inside struct Memory's heap.
 	if (tnd_img_paras && segment >= tnd_seg && segment < tnd_seg + tnd_img_paras)
 		return tnd_img + ((segment - tnd_seg) << 4) + offset;
+	// PM selectors resolve through the emulated LDT (DOS services given a
+	// selector must see the same memory the guest sees).
+	if (db* sel_mem = m2c_alloc_segment_raddr(segment, offset))
+		return sel_mem;
 	return reinterpret_cast<db*>(&m2c::m) + (static_cast<size_t>(segment) << 4) + offset;
 }
 
@@ -2823,6 +3298,21 @@ X86_REGREF
 	int i;
 	AFFECT_CF(0);
 	int rc;
+#if M2CDEBUG>=2
+	{
+		static char last[128] = "";
+		static int rep = 0;
+		char cur[128];
+		snprintf(cur, sizeof(cur), "INT%02x ax=%04x bx=%04x cx=%04x dx=%04x ds=%04x es=%04x\n",
+			a, ax & 0xffff, bx & 0xffff, cx & 0xffff, dx & 0xffff, ds, es);
+		if (!strcmp(cur, last)) { ++rep; }
+		else {
+			if (rep) { fprintf(stderr, "   [repeated x%d]\n", rep); rep = 0; }
+			fprintf(stderr, "%s", cur);
+			strncpy(last, cur, sizeof(last) - 1);
+		}
+	}
+#endif
 #define SUCCESS         0       /* Function was successful      */
 	log_debug2("INT %x ax=%x bx=%x cx=%x dx=%x\n",a,ax,bx,cx,dx);
 
@@ -3248,6 +3738,17 @@ X86_REGREF
 #endif
 		switch(ah)
 		{
+		case 0x02: // Display character in DL
+		{
+#ifdef __DJGPP__
+			call_dos_realint(_state, a);
+#else
+			std::putchar(dl);
+			std::fflush(stdout);
+			AFFECT_ZF(0);
+#endif
+			return;
+		}
 		case 0x06: // Direct console I/O
 		{
 #ifdef __DJGPP__
@@ -3311,6 +3812,14 @@ X86_REGREF
 		case 0x1A: // Set disk transfer addr
 		{
 			diskTransferAddr=(find_t *)realAddress(dx,ds);
+			dta_seg = ds;
+			dta_off = dx;
+			return;
+		}
+		case 0x2F: // Get disk transfer addr -> ES:BX
+		{
+			es = dta_seg ? dta_seg : host.current_psp;
+			bx = dta_off;
 			return;
 		}
 			case 0x25: // Set disk transfer addr
@@ -3403,29 +3912,78 @@ X86_REGREF
 			return;
 #endif
 		}
+		case 0x3c: // create file (CX = attr)
+		case 0x5a: // create temp file (DS:DX = dir path ending with '\')
+		case 0x5b: // create new file (fail if exists)
+		{
+			char fileName[1000];
+			if (ah == 0x5a) {
+				// Build a name inside the given directory.
+				char dir[1000];
+				std::snprintf(dir, sizeof(dir), "%s", (const char *)realAddress(dx, ds));
+				std::snprintf(fileName, sizeof(fileName), "%stl%04x.tmp", dir, (unsigned)(getpid() & 0xffff));
+			} else {
+				std::snprintf(fileName, sizeof(fileName), "%s", (const char *)realAddress(dx, ds));
+			}
+			if (fileName[0] == '\0') {
+				ax = 3; // path not found
+				AFFECT_CF(1);
+				break;
+			}
+			if (ah == 0x5b && access(fileName, F_OK) == 0) {
+				ax = 0x50; // file exists
+				AFFECT_CF(1);
+				break;
+			}
+			FILE * f = fopen(fileName, "w+b");
+			log_debug2("dos create %s -> %p\n", fileName, (void *)f);
+			if (!f) {
+				ax = (access(fileName, F_OK) == 0 || ah == 0x5a) ? 5 : 3;
+				AFFECT_CF(1);
+				break;
+			}
+			dw h = dos_alloc_handle(f);
+			if (h == 0xffff) { ax = 4; AFFECT_CF(1); break; }
+			log_debug2("dos create %s -> handle %d\n", fileName, h);
+			ax = h;
+			AFFECT_CF(0);
+			return;
+		}
 		case 0x3d: //open
 		{
 				char fileName[1000];
-	//			if (path!=NULL) {
-	//				sprintf(fileName,"%s/%s",path,(const char *) realAddress(dx, ds));
-	//			} else {
-					sprintf(fileName,"%s",(const char *) realAddress(dx, ds));
-	//			}
+					snprintf(fileName,sizeof(fileName),"%s",(const char *) realAddress(dx, ds));
 				if (fileName[0] == '\0') {
-					log_error("Error opening empty filename ds=%04x dx=%04x\n", ds, dx);
-					stackDump(_state);
+					ax = 2;
+					AFFECT_CF(1);
+					return;
 				}
-				file=fopen(fileName, "rb"); //TOFIX, multiple files support
-				log_debug2("Opening file %s -> %p\n",fileName,(void *) file);
+				const char * mode = "rb";
+				switch (al & 7) {
+				case 0: mode = "rb"; break;
+				case 1: mode = "r+b"; break;
+				case 2: mode = "r+b"; break;
+				default: mode = "rb"; break;
+				}
+				FILE * f = fopen(fileName, mode);
+				if (!f) {
+					char resolved[1000];
+					if (dos_resolve_case(fileName, resolved, sizeof(resolved)))
+						f = fopen(resolved, mode);
+				}
+				log_debug2("Opening file %s -> %p\n",fileName,(void *) f);
 				if (m2c_stats_enabled()) {
-					std::fprintf(stderr, "dos open %s -> %p\n", fileName, static_cast<void *>(file));
+					std::fprintf(stderr, "dos open %s -> %p\n", fileName, static_cast<void *>(f));
 				}
-				if (file!=NULL) {
-					eax=1; //TOFIX
+				if (f!=NULL) {
+					dw h = dos_alloc_handle(f);
+					if (h == 0xffff) { ax=4; AFFECT_CF(1); return; }
+					eax=h;
 					AFFECT_CF(0);
 				} else {
 					AFFECT_CF(1);
-					log_error("Error opening file %s\n",fileName);
+					ax = (errno == ENOENT) ? 2 : 5;
+					std::fprintf(stderr, "Error opening file %s\n", fileName);
 				}
 			/*
 			   // [Index]AH = 3Dh - "OPEN" - OPEN EXISTING FILE
@@ -3443,16 +4001,147 @@ X86_REGREF
 		}
 		case 0x3e: //close
 		{
-			// bx: file handle to close
-			//TOFIX
 			log_debug2("Closing file. bx:%d\n",bx);
-			if (!file || fclose(file))  {
-				AFFECT_CF(1);
-				perror("Error");
-				log_error("Error closing file ? bx:%d %p\n",bx,(void *) file);
+			FILE * f = dos_get_file(bx);
+			if (!f && file && bx == 1) f = file;   // legacy single-handle compat
+			if (!f) {
+				// Closing a handle that was never opened is accepted
+				// silently by the reference environment; keep it a no-op
+				// so exit-time handle sweeps stay idempotent instead of
+				// cascading into the fatal-error reporter.
+				AFFECT_CF(0);
+				return;
 			}
-
-			file=NULL;
+			if (bx >= DOS_HANDLE_BASE && f != file) dos_files[bx - DOS_HANDLE_BASE] = nullptr;
+			if (fclose(f)) {
+				ax = 6;
+				AFFECT_CF(1);
+				log_error("Error closing file ? bx:%d\n",bx);
+				return;
+			}
+			if (bx < DOS_HANDLE_BASE) dos_std[bx] = nullptr;
+			if (f == file) file = NULL;
+			AFFECT_CF(0);
+			return;
+		}
+		case 0x41: // delete file (DS:DX -> ASCIZ name)
+		{
+			char fileName[1000];
+			std::snprintf(fileName, sizeof(fileName), "%s", (const char *)realAddress(dx, ds));
+			char resolved[1000];
+			const char* target = dos_resolve_case(fileName, resolved, sizeof(resolved)) ? resolved : fileName;
+			if (unlink(target) == 0) {
+				AFFECT_CF(0);
+			} else {
+				ax = 2; // file not found
+				AFFECT_CF(1);
+			}
+			return;
+		}
+		case 0x40: // write to file/device
+		{
+			// BX = handle, CX = count, DS:DX -> buffer
+			void * buffer = (db *)realAddress(dx, ds);
+			FILE * f = dos_get_file(bx);
+			if (bx <= 4) {
+				// std device: write to host stdout/stderr
+				size_t w = fwrite(buffer, 1, cx, bx <= 2 ? stdout : stderr);
+				ax = (dw)w;
+				AFFECT_CF(0);
+				return;
+			}
+			if (!f) {
+				ax = 6;
+				AFFECT_CF(1);
+				return;
+			}
+			size_t w = fwrite(buffer, 1, cx, f);
+			log_debug2("dos write handle=%d count=%d -> %zu\n", bx, cx, w);
+			if (w != cx && ferror(f)) {
+				ax = 5;
+				AFFECT_CF(1);
+				return;
+			}
+			ax = (dw)w;
+			AFFECT_CF(0);
+			return;
+		}
+		case 0x44: // ioctl (subset: get info)
+		{
+			// AL=0 get device info word; AL=8 check removable; others: fail
+			if (al == 0) {
+				dx = (bx <= 4) ? 0x80d3 : 0x0000; // isdev bit for std handles
+				AFFECT_CF(0);
+			} else if (al == 8) {
+				ax = 1; // not removable
+				AFFECT_CF(0);
+			} else {
+				ax = 1;
+				AFFECT_CF(1);
+			}
+			return;
+		}
+		case 0x45: // dup handle
+		{
+			FILE * f = dos_get_file(bx);
+			if (!f) { ax = 6; AFFECT_CF(1); return; }
+			// Underlying OS dup so both handles share the file offset.
+			// Mode must match the fd access mode or fdopen fails EINVAL.
+			int dfd = dup(fileno(f));
+			if (dfd < 0) { ax = 4; AFFECT_CF(1); return; }
+			int acc = fcntl(dfd, F_GETFL) & O_ACCMODE;
+			const char * dmode = acc == O_RDONLY ? "rb" : acc == O_WRONLY ? "ab" : "r+b";
+			FILE * nf = fdopen(dfd, dmode);
+			if (!nf) { close(dfd); ax = 4; AFFECT_CF(1); return; }
+			dw h = dos_alloc_handle(nf);
+			if (h == 0xffff) { ax = 4; AFFECT_CF(1); return; }
+			ax = h;
+			AFFECT_CF(0);
+			return;
+		}
+		case 0x46: // force duplicate handle
+		{
+			FILE * f = dos_get_file(bx);
+			if (!f) { ax = 6; AFFECT_CF(1); return; }
+			if (cx >= DOS_HANDLE_BASE && cx - DOS_HANDLE_BASE < 0x40) {
+				if (dos_files[cx - DOS_HANDLE_BASE])
+					fclose(dos_files[cx - DOS_HANDLE_BASE]);
+				dos_files[cx - DOS_HANDLE_BASE] = fdopen(dup(fileno(f)), "r+b");
+				if (!dos_files[cx - DOS_HANDLE_BASE]) { ax = 4; AFFECT_CF(1); return; }
+			}
+			AFFECT_CF(0);
+			return;
+		}
+		case 0x4d: // get child return code
+		{
+			ax = (dw)(dos_last_child_rc & 0xffff);
+			ah = 0;   // terminated normally
+			AFFECT_CF(0);
+			return;
+		}
+		case 0x56: // rename file
+		{
+			char oldn[1000], newn[1000];
+			std::snprintf(oldn, sizeof(oldn), "%s", (const char *)realAddress(dx, ds));
+			std::snprintf(newn, sizeof(newn), "%s", (const char *)realAddress(di, es));
+			if (rename(oldn, newn) == 0) { AFFECT_CF(0); }
+			else { ax = (errno == ENOENT) ? 2 : 5; AFFECT_CF(1); }
+			return;
+		}
+		case 0x57: // get/set file date+time (stub: get returns zeros)
+		{
+			if (!dos_get_file(bx)) { ax = 6; AFFECT_CF(1); return; }
+			if (al == 0) { cx = dx = 0; AFFECT_CF(0); }
+			else { AFFECT_CF(0); }
+			return;
+		}
+		case 0x67: // set handle count
+		case 0x68: // commit file
+		{
+			FILE * f = dos_get_file(bx);
+			if (ah == 0x68 && !f) { ax = 6; AFFECT_CF(1); return; }
+			if (ah == 0x68) fflush(f);
+			AFFECT_CF(0);
 			return;
 		}
 		case 0x3f: // read
@@ -3473,27 +4162,30 @@ X86_REGREF
 			//char grosbuff[100000];
 			void * buffer=(db *) realAddress(dx, ds);
 			// log_debug2("Reading ecx=%d cx=%d eds=%x edx=%x -> %p file: %p\n",m.ecx,cx,m.ds,m.edx,buffer,(void *)  file);
+			FILE * rf = dos_get_file(bx);
+			if (!rf && file) rf = file;   // legacy single-handle compat
 
-			if (!file) {
-				log_error("dos read: no open file (bx=%04x)\n", bx);
+			if (!rf) {
+				log_debug2("dos read: no open file (bx=%04x)\n", bx);
 				eax = 6; // invalid handle
 				AFFECT_CF(1);
-			} else if (feof(file)) {
-				log_debug2("feof(file)\n");
+			} else if (bx >= DOS_HANDLE_BASE && feof(rf)) {
+				log_debug2("feof(handle %d)\n", bx);
 				eax=0;
+				AFFECT_CF(0);
 			} else {
-				size_t r=fread (buffer,1,cx,file);
+				size_t r=fread (buffer,1,cx,rf);
 				if (r!=cx) {
-					perror("Error");
-					log_error("r!=cx cx:%d R:%zu \n",cx,r);
-					if(!feof(file)) {
-						log_error("Error reading ? %d %zu %p\n",cx,r,(void *) file);
+					// short read is EOF (not an OS error) - only report real errors
+					if(!feof(rf)) {
+						log_error("Error reading ? %d %zu %p\n",cx,r,(void *) rf);
 						AFFECT_CF(1);
 					}
 				} else {
-					log_debug2("Reading OK %p\n",(void *) file);
+					log_debug2("Reading OK %p\n",(void *) rf);
 				}
 				eax=r;
+				AFFECT_CF(0);
 				if (m2c_stats_enabled()) {
 					std::fprintf(
 						stderr,
@@ -3542,16 +4234,21 @@ X86_REGREF
 			}
 			long int offset=(((long int )cx)<<16)+dx;
 			log_debug2("Seeking to offset %ld %d\n",offset,seek);
-			if (!file) {
-				log_error("dos seek: no open file (bx=%04x)\n", bx);
+			FILE * sf = dos_get_file(bx);
+			if (!sf && file) sf = file;
+			if (!sf) {
+				log_debug2("dos seek: no open file (bx=%04x)\n", bx);
+				eax = 6;
 				AFFECT_CF(1);
-			} else if (fseek(file,offset,seek)!=0) {
+			} else if (fseek(sf,offset,seek)!=0) {
 				log_error("Error seeking\n");
+				eax = 6;
 				AFFECT_CF(1);
 			} else {
-				const long pos = ftell(file);
+				const long pos = ftell(sf);
 				dx = (dw)((pos >> 16) & 0xffff);
 				ax = (dw)(pos & 0xffff);
+				AFFECT_CF(0);
 			}
 			return;
 		}
@@ -3771,11 +4468,12 @@ X86_REGREF
 		}
 		case 0x4c:
 		{
-			stackDump(_state);
 			jumpToBackGround = 1;
 			executionFinished = 1;
 			exitCode = al;
-			log_error("Graceful exit al=%d\n",al);
+			// Runtime status, not guest output — stderr keeps it in test
+			// logs while guest stdout stays clean for golden comparisons.
+			std::fprintf(stderr, "Graceful exit al=%d\n", al);
 			exit(al);
 			return;
 		}
@@ -3790,7 +4488,7 @@ X86_REGREF
 		default:
 			break;
 		}
-/*  protected mode temporrary disabled
+		return;
 	case 0x31:
 		switch(ax)
 		{
@@ -3811,20 +4509,20 @@ X86_REGREF
 			//   ;    AX     = base selector
 			 
 			log_debug2("Function 0000h - Allocate %d Descriptors\n",cx);
-			if (selectorsPointer+cx>=NB_SELECTORS) {
+			dw base_sel = m2c_ldt_alloc(cx);
+			if (!base_sel) {
 				AFFECT_CF(1);
-				log_error("Not enough free selectors (increase NB_SELECTORS)\n");
+				log_error("Not enough free LDT descriptors\n");
 				return;
-			} else {
-				eax = selectorsPointer;
-				selectorsPointer+=cx;
-				log_debug2("Return %x\n",eax);
 			}
+			ax = base_sel;
+			AFFECT_CF(0);
+			log_debug2("Return base selector %x\n", ax);
 			return;
 		}
 		case 0x02:
 		{
-			
+
 			//   This function Converts a real mode segment into a protected mode descriptor.
 			//   BX =    real mode segment
 			//   Out:
@@ -3833,46 +4531,95 @@ X86_REGREF
 			//   AX =  selector
 			//  if failed:
 			//   carry flag set
-			 
-			log_debug2("Function 0002h - Converts a real mode segment into a protected mode descriptor real mode segment: %d\n",ebx);
-			if (selectorsPointer+1>=NB_SELECTORS) {
-				AFFECT_CF(1);
-				log_error("Not enough free selectors (increase NB_SELECTORS)\n");
-				return;
-			}
-			// TOFIX ?
-			// always return vga adress.
-			selectors[selectorsPointer]=offsetof(struct Mem,vgaRam); // bx;
-			eax=selectorsPointer;
-			log_debug2("Returns new selector: eax: %d\n",eax);
-			selectorsPointer++;
 
-			// Multiple calls for the same real mode segment return the same selector. The returned descriptor should never be modified or freed. <- TOFIX
+			log_debug2("Function 0002h - real segment %x -> selector\n", bx);
+			// Per spec, repeated conversions of the same real-mode segment
+			// return the same selector.
+			for (int i = 0; i < NB_LDT; ++i) {
+				const PmDesc& d = m2c_ldt[i];
+				if (d.used && !d.owned && d.lin == ((dd)bx << 4)) {
+					ax = (dw)((i << 3) | 7);
+					AFFECT_CF(0);
+					return;
+				}
+			}
+			{
+				dw sel = m2c_ldt_alloc(1);
+				if (!sel) { AFFECT_CF(1); return; }
+				PmDesc& d = m2c_ldt[m2c_ldt_idx(sel)];
+				d.base = (db*)&m + ((dd)bx << 4);
+				d.lin = (dd)bx << 4;
+				ax = sel;
+				AFFECT_CF(0);
+				log_debug2("Returns new selector: %x\n", ax);
+			}
 			return;
 		}
-		
+		case 0x01: // Free descriptor(s): BX = base selector
+		{
+			if (!m2c_ldt[m2c_ldt_idx(bx)].used) {
+				AFFECT_CF(1);
+				log_error("Function 0001h - bad selector %x\n", bx);
+				return;
+			}
+			m2c_ldt_free(bx);
+			AFFECT_CF(0);
+			return;
+		}
+		case 0x06: // Get Segment Base Address: BX = sel -> CX:DX linear base
+		{
+			if (!m2c_ldt[m2c_ldt_idx(bx)].used) {
+				AFFECT_CF(1);
+				log_error("Function 0006h - bad selector %x\n", bx);
+				return;
+			}
+			dd base = m2c_ldt_get_lin(bx);
+			cx = (dw)(base >> 16);
+			dx = (dw)(base & 0xffff);
+			AFFECT_CF(0);
+			return;
+		}
 		//   ;2.5 - Function 0007h - Set Segment Base Address:
 		//   ; Sets the 32bit linear base address field in the descriptor for the specified
 		//   ; segment.
 		//   ; In:   AX     = 0007h
 		//   ; BX     = selector
 		//   ;  CX:DX  = 32bit linear base address of segment
-		 
+
 		case 0x07:
 		{
-			log_debug2("Function 0007h - Set Segment Base Address: ebx: %x, edx:%x ecx:%x\n",ebx,edx,ecx);
-			if (bx>selectorsPointer) {
+			dd lin = (dw)dx + ((dd)cx << 16);
+			log_debug2("Function 0007h - Set Segment Base: sel=%x lin=%x\n", bx, lin);
+			PmDesc& d = m2c_ldt[m2c_ldt_idx(bx)];
+			if (!d.used) {
 				AFFECT_CF(1);
 				log_error("Error: selector number doesnt exist\n");
 				return;
 			}
-			selectors[bx]=(dx&0xffff)+(cx<<16);
-			log_debug2("Address for selector %d: %x\n",bx,selectors[bx]);
+			d.lin = lin;
+			if (lin < m2c_m_extent()) {
+				d.base = (db*)&m + lin;
+			} else {
+				// Synthetic linear of an owned region (0501 result):
+				// alias into the recorded host block (mid-block bases OK).
+				for (int i = 0; i < NB_LDT; ++i) {
+					if (m2c_ldt[i].owned && m2c_ldt[i].extent &&
+					    lin >= m2c_ldt[i].lin &&
+					    lin < m2c_ldt[i].lin + m2c_ldt[i].extent) {
+						d.base = m2c_ldt[i].base + (lin - m2c_ldt[i].lin);
+						break;
+					}
+				}
+				if (!d.base && !d.owned) {
+					log_error("Function 0007h - linear %x not mapped\n", lin);
+				}
+			}
+			AFFECT_CF(0);
 			return;
 		}
 		case 0x08:
 		{
-			
+
 			//   ;2.6 - Function 0008h - Set Segment Limit:
 			//   ;-----------------------------------------
 			//   ;  Sets the limit field in the descriptor for the specified segment.
@@ -3885,15 +4632,30 @@ X86_REGREF
 			//   ;    carry flag clear
 			//   ;  if failed:
 			//   ;    carry flag set
-			 
 
-			// To implement...
-			log_debug2("Function 0008h - Set Segment Limit for selector %d (Ignored)\n",bx);
+
+			// Record the limit; backing is always >=64KB so emulation
+			// resolution is unaffected, but clients may read it back.
+			{
+				PmDesc& d = m2c_ldt[m2c_ldt_idx(bx)];
+				if (!d.used) { AFFECT_CF(1); return; }
+				d.limit = (dw)dx + ((dd)cx << 16);
+				log_debug2("Function 0008h - Set Limit sel=%x -> %x\n", bx, d.limit);
+				AFFECT_CF(0);
+			}
+			return;
+		}
+		case 0x09: // Set Descriptor Access Rights: BX=sel, CL=rights
+		{
+			PmDesc& d = m2c_ldt[m2c_ldt_idx(bx)];
+			if (!d.used) { AFFECT_CF(1); return; }
+			d.rights = cx;
+			AFFECT_CF(0);
 			return;
 		}
 		case 0x501:
 		{
-			
+
 			//   ;2.29 - Function 0501h - Allocate Memory Block:
 			//   ;In:  AX     = 0501h
 			//   ;  BX:CX  = size of block in bytes (must be non-zero)
@@ -3901,64 +4663,94 @@ X86_REGREF
 			//   ;    carry flag clear
 			//   ;    BX:CX  = linear address of allocated memory block
 			//   ;    SI:DI  = memory block handle (used to resize and free block)
-			 
-			int32_t nbBlocks=(bx<<16)+cx;
-			log_debug2("Function 0501h - Allocate Memory Block: %d bytes\n",nbBlocks);
 
-			if (heapPointer+nbBlocks>=HEAP_SIZE) {
-				AFFECT_CF(1);
-				log_error("Not enough memory (increase HEAP_SIZE)\n");
-				exit(1);
-				return;
-			} else {
-				dd a=offsetof(struct Mem,heap)+heapPointer;
-				heapPointer+=nbBlocks;
-				{
-					log_debug2("New top of heap: %x\n",(dd) offsetof(struct Mem,heap)+heapPointer);
-				}
-				ecx=a & 0xFFFF;
-				ebx=a >> 16;
-				edi=0; // TOFIX
-				esi=0; // TOFIX
-				log_debug2("Return %x ebx:ecx %x:%x\n",a,ebx,ecx);
-				return;
+			dd size = ((dd)bx << 16) + cx;
+			log_debug2("Function 0501h - Allocate Memory Block: %u bytes\n", size);
+
+			// One descriptor per 64KB, one contiguous host block; the handle
+			// returned is the base selector, so sel+8/__AHINCR steps across
+			// the block exactly like real LDT descriptors.
+			int n = (int)((size + 0xffff) >> 16);
+			dw sel = m2c_ldt_alloc(n);
+			if (!sel) { AFFECT_CF(1); return; }
+			dd bytes = (dd)n << 16;
+			db* blk = static_cast<db*>(calloc(1, bytes));
+			if (!blk) { AFFECT_CF(1); return; }
+			for (int i = 0; i < n; ++i) {
+				PmDesc& d = m2c_ldt[m2c_ldt_idx(sel) + i];
+				d.base = blk + ((dd)i << 16);
+				d.lin = m2c_pm_next_linear + ((dd)i << 16);
+				d.limit = 0xffff;
+				d.owned = (i == 0);
+				d.extent = (i == 0) ? bytes : 0;
 			}
-			break;
+			m2c_pm_next_linear += bytes;
+			cx = (dw)(m2c_ldt[m2c_ldt_idx(sel)].lin & 0xffff);
+			bx = (dw)(m2c_ldt[m2c_ldt_idx(sel)].lin >> 16);
+			di = sel;
+			si = 0;
+			AFFECT_CF(0);
+			log_debug2("Return lin %x:%x handle %x\n", bx, cx, di);
+			return;
 		}
-		case 0x205: {
-			
-			//   fo implement
-			//   ;2.18 - Function 0204h - Get Protected Mode Interrupt Vector:
-			//   ;------------------------------------------------------------
-			//   ;
-			//   ;  Returns the address of the current protected mode interrupt handler for the
-			//   ;specified interrupt.
-			//   ;
-			//   ;In:
-			//   ;  AX     = 0204h
-			//   ;  BL     = interrupt number
-			//   ;
-			//   ;Out:
-			//   ;  always successful:
-			//   ;    carry flag clear
-			//   ;    CX:EDX = selector:offset of protected mode interrupt handler
-			
-			//   ;  AX     = 0204h
-			//   ;  BL     = interrupt number
-			//   ;
-			//   ;Out:
-			//   ;  always successful:
-			//   ;    carry flag clear
-			//   ;    CX:EDX = selector:offset of protected mode interrupt handler
-			 
-
+		case 0x502: // Free Memory Block: SI:DI = handle (base selector)
+		{
+			dw sel = (dw)((si << 16) | di);
+			if (!m2c_ldt[m2c_ldt_idx(sel)].used) { AFFECT_CF(1); return; }
+			m2c_ldt_free(sel);
+			AFFECT_CF(0);
+			return;
+		}
+		case 0x200: // get real-mode interrupt vector -> CX:DX
+		{
+			cx = *(dw *)realAddress(bl * 4 + 2, 0);
+			dx = *(dw *)realAddress(bl * 4, 0);
+			AFFECT_CF(0);
+			return;
+		}
+		case 0x201: // set real-mode interrupt vector = CX:DX
+		{
+			*(dw *)realAddress(bl * 4, 0) = dx;
+			*(dw *)realAddress(bl * 4 + 2, 0) = cx;
+			AFFECT_CF(0);
+			return;
+		}
+		case 0x202: // get processor exception handler -> CX:EDX
+		case 0x204: // get PM interrupt vector -> CX:EDX
+		{
+			if (pm_vec_set[bl]) {
+				cx = pm_vec_sel[bl];
+				edx = pm_vec_off[bl];
+			} else {
+				// Report the real-mode IVT entry as an opaque far pointer.
+				cx = *(dw *)realAddress(bl * 4 + 2, 0);
+				edx = *(dw *)realAddress(bl * 4, 0);
+			}
+			AFFECT_CF(0);
+			return;
+		}
+		case 0x203: // set processor exception handler = CX:EDX
+		case 0x205: // set PM interrupt vector = CX:EDX
+		{
+			pm_vec_sel[bl] = cx;
+			pm_vec_off[bl] = edx;
+			pm_vec_set[bl] = 1;
+			// When the handler's selector aliases `m` (generated code always
+			// does — code descriptors over image segments), mirror the real
+			// paragraph into the IVT so real-mode INT dispatch reaches it.
+			const PmDesc& d = m2c_ldt[m2c_ldt_idx(cx)];
+			if (d.used && d.base >= (db*)&m &&
+			    d.base < (db*)&m + m2c_m_extent()) {
+				*(dw *)realAddress(bl * 4, 0) = (dw)(edx & 0xffff);
+				*(dw *)realAddress(bl * 4 + 2, 0) = (dw)(m2c_ldt_get_lin(cx) >> 4);
+			}
+			AFFECT_CF(0);
 			return;
 		}
 		default:
 			break;
 		}
 		break;
-*/
 	case 0x33:
 	{
 #ifdef __DJGPP__
@@ -4402,18 +5194,24 @@ std::this_thread::sleep_for(std::chrono::microseconds(1));
  {
     X86_REGREF
     
-    log_debug("~~~ heap_size=%d heap_para=%x heap_seg=%x\n", HEAP_SIZE, (HEAP_SIZE >> 4), seg_offset(heap) );
+    log_debug("~~~ heap_size=%d heap_para=%x heap_seg=%x\n", HEAP_SIZE, (HEAP_SIZE >> 4), seg_para(heap) );
     /* We expect ram_top as Kbytes, so convert to paragraphs */
-    mcb_init(seg_offset(heap), (HEAP_SIZE >> 4) - seg_offset(heap) - 1, MCB_LAST);
+    mcb_init(seg_para(heap), (HEAP_SIZE >> 4) - seg_para(heap) - 1, MCB_LAST);
     
     R(MOV(ss, seg_offset(stack)));
  #if _BITS == 32
     esp = ((dd)(db*)&stack[STACK_SIZE - 4]);
  #else
     esp = 0;
-    sp = STACK_SIZE - 4;
-    cs = M2C_LOAD_SEG;
-    ds = es = M2C_PSP_SEG; // EXE-style entry: CS is the load segment, DS/ES point at the PSP
+    /* Win16/NE programs start with cs:eip, ss:sp and ds from the NE header
+       rather than the MZ/EXE convention below; the optional program hook
+       installs that state (and applies segment fixups / initial data) and
+       returns true to suppress the defaults. */
+    if (!(m2c_ne_entry_setup && m2c_ne_entry_setup(_state))) {
+        sp = STACK_SIZE - 4;
+        cs = M2C_LOAD_SEG;
+        ds = es = M2C_PSP_SEG; // EXE-style entry: CS is the load segment, DS/ES point at the PSP
+    }
     *(dw*)(raddr(0, 0x408)) = 0x378; //LPT
     /* DOS loader fills PSP:0002 with the top of the program's memory block
        ("top of memory", in paragraphs). Programs like GW-BASIC copy the
@@ -4448,6 +5246,7 @@ std::this_thread::sleep_for(std::chrono::microseconds(1));
  void log_regs_m2c(const char *file, int line, const char *instr, _STATE* _state)
  {
   ++counter;
+  if (!debug) return;
   X86_REGREF
   log_debug("%x %05d %04X:%08X  %-54s EAX:%08X EBX:%08X ECX:%08X EDX:%08X ESI:%08X EDI:%08X EBP:%08X ESP:%08X DS:%04X ES:%04X FS:%04X GS:%04X SS:%04X CF:%d ZF:%d SF:%d OF:%d AF:%d PF:%d IF:%d\n", \
                          counter,line,cs,eip,instr,       eax,     ebx,     ecx,     edx,     esi,     edi,     ebp,     esp,     ds,     es,     fs,     gs,     ss,     GET_CF()   ,GET_ZF()   ,GET_SF()   ,GET_OF()   ,GET_AF()   ,GET_PF(),   GET_IF());

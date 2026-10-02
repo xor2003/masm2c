@@ -1077,6 +1077,94 @@ class AsmData2IR(TopDownVisitor):  # TODO HACK Remove it. !For missing funcitons
     def notdir(self, tree: lark.Tree) -> list[lark.Tree]:
         return self._operator_tree(tree)
 
+    _BINOP_C_EQUIVALENTS = {
+        "mod": "%",
+        "shl": "<<",
+        "shr": ">>",
+    }
+
+    _RELOP_C_EQUIVALENTS = {
+        "eq": "==",
+        "ne": "!=",
+        "lt": "<",
+        "le": "<=",
+        "gt": ">",
+        "ge": ">=",
+    }
+
+    def _data_operand(self, node: Any) -> list[Any]:
+        """Return IR for an operand inside an arithmetic expression.
+
+        A quoted literal used as an operand is a character constant in MASM
+        ("A"+128 == 65+128), not a byte sequence, so it is converted to its
+        numeric value here.  Everything else is visited normally.
+        """
+        inner = node
+        while isinstance(inner, lark.Tree):
+            if inner.data == "braces":
+                operands = [
+                    child
+                    for child in inner.children
+                    if not (_is_token(child) and str(child) in "()")
+                ]
+                if len(operands) == 1:
+                    inner = operands[0]
+                    continue
+                break
+            if len(inner.children) == 1:
+                inner = inner.children[0]
+                continue
+            break
+        if _is_token(inner) and inner.type == "STRING" and str(inner):
+            value = 0
+            for index, char in enumerate(str(inner)):
+                value |= ord(char) << (8 * index)
+            return [value]
+        return self.visit(node)
+
+    def _binary_operator(self, tree: lark.Tree) -> list[Any]:
+        children = tree.children
+        if len(children) != 3 or not _is_token(children[1]):
+            return self.visit(children)
+        left = self._data_operand(children[0])
+        right = self._data_operand(children[2])
+        operator = str(children[1]).lower()
+        operator = self._BINOP_C_EQUIVALENTS.get(operator, operator)
+        return [*left, operator, *right]
+
+    def adddir(self, tree: lark.Tree) -> list[Any]:
+        return self._binary_operator(tree)
+
+    def muldir(self, tree: lark.Tree) -> list[Any]:
+        return self._binary_operator(tree)
+
+    def shiftdir(self, tree: lark.Tree) -> list[Any]:
+        return self._binary_operator(tree)
+
+    def reldir(self, tree: lark.Tree) -> list[Any]:
+        children = tree.children
+        if len(children) != 3 or not _is_token(children[1]):
+            return self.visit(children)
+        c_operator = self._RELOP_C_EQUIVALENTS.get(str(children[1]).lower())
+        if c_operator is None:
+            return self.visit(children)
+        left = self._data_operand(children[0])
+        right = self._data_operand(children[2])
+        # MASM relational operators yield -1/0 rather than C's 1/0.
+        return ["-((", *left, f"){c_operator}(", *right, "))"]
+
+    def unadddir(self, tree: lark.Tree) -> list[Any]:
+        children = tree.children
+        if len(children) != 2 or not _is_token(children[0]):
+            return self.visit(children)
+        return [str(children[0]), *self._data_operand(children[1])]
+
+    def wordopdir(self, tree: lark.Tree) -> list[Any]:
+        children = tree.children
+        if len(children) != 2 or not _is_token(children[0]):
+            return self.visit(children)
+        return [str(children[0]).lower(), *self._data_operand(children[1])]
+
     def INTEGER(self, token: lark.lexer.Token) -> list[int]:
         radix, sign, value = token.start_pos, token.line, token.value
         assert radix

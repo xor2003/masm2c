@@ -342,7 +342,9 @@ class Cpp(Gen):
                 and (folded := self._fold_location_counter_expression(symbol)) is not None
             ):
                 return folded
-            return self.render_instruction_argument(self._assignments[name])
+            return self._render_scalar_equate(
+                self.render_instruction_argument(
+                    self._clone_as_scalar_value(self._assignments[name])))
         if (g := self._context.symbols.get_and_mark_global(name)) is None:
             if str(name).lower() in getattr(self._context, "old_struct_member_offsets", {}):
                 return self._old_struct_member_offset_constant_name(name)
@@ -377,7 +379,8 @@ class Cpp(Gen):
                 return symbolic_offset
             if (folded := self._fold_location_counter_expression(g)) is not None:
                 return folded
-            return self._parenthesize_compound(self.render_instruction_argument(g.value))
+            return self._render_scalar_equate(
+                self.render_instruction_argument(self._clone_as_scalar_value(g.value)))
         elif isinstance(g, op._equ):
             if self.itiscall or self.itisjump:
                 if (target := self._code_equate_target(g)) is not None:
@@ -388,7 +391,7 @@ class Cpp(Gen):
                 return symbolic_offset
             if (folded := self._fold_location_counter_expression(g)) is not None:
                 return folded
-            return self._parenthesize_compound(self.render_equate_value(g))
+            return self._render_scalar_equate(self.render_equate_value(g))
         elif isinstance(g, op.Struct):
             return str(g.size)
         return name
@@ -777,6 +780,12 @@ class Cpp(Gen):
             return ""
         if name.startswith("dummy") and value == "0":
             return ""
+        # tbyte (80-bit) has no C integer literal form: emit the initializer
+        # as its 10 little-endian bytes so MYCOPY can copy it verbatim.
+        if type_and_size.startswith(("dt ", "tbyte ")) and re.fullmatch(r"-?\d+", value):
+            raw = int(value)
+            byte_list = ",".join(str(b) for b in raw.to_bytes(10, "little", signed=raw < 0))
+            return f"    {{db tmp999[10]={{{byte_list}}};MYCOPY({name})}}"
         if is_array:
             return "" if value == "{}" else f"    {{{type_and_size}={value};MYCOPY({name})}}"
         return f"    {{{type_and_size}={value};MYCOPY({name})}}"
@@ -1991,7 +2000,14 @@ class Cpp(Gen):
         } | self._data_referenced_code_symbol_names() | self._instruction_offset_referenced_code_symbol_names()
 
     def _data_referenced_code_symbol_names(self) -> set[str]:
-        """Return code symbols stored in data initializers as indirect targets."""
+        """Return code symbols stored in data initializers as indirect targets.
+
+        Pure function of the frozen globals table; called once per emitted
+        wrapper, so memoize to keep codegen near-linear on large listings.
+        """
+        cached = getattr(self, "_data_ref_code_names_cache", None)
+        if cached is not None:
+            return cached
         names: set[str] = set()
         data_labels = {
             str(data.label).lower()
@@ -2007,6 +2023,7 @@ class Cpp(Gen):
                     symbol = self._context.symbols.get_global(label)
                     if isinstance(symbol, (op.label, Proc)):
                         names.add(label)
+        self._data_ref_code_names_cache = names
         return names
 
     def _iter_data_value_labels(self, value: Any):
@@ -2026,13 +2043,21 @@ class Cpp(Gen):
                 yield from self._iter_data_value_labels(child)
 
     def _instruction_offset_referenced_code_symbol_names(self) -> set[str]:
-        """Return code labels whose OFFSET value is materialized by instructions."""
+        """Return code labels whose OFFSET value is materialized by instructions.
+
+        Pure function of the frozen globals table; called once per emitted
+        wrapper, so memoize to keep codegen near-linear on large listings.
+        """
+        cached = getattr(self, "_instr_offset_refs_cache", None)
+        if cached is not None:
+            return cached
         names: set[str] = set()
         for symbol in self._context.symbols.get_globals().values():
             for label in self._iter_instruction_offset_labels(getattr(symbol, "stmts", [])):
                 target = self._context.symbols.get_global(label)
                 if isinstance(target, (op.label, Proc)):
                     names.add(label)
+        self._instr_offset_refs_cache = names
         return names
 
     def _iter_instruction_offset_labels(self, value: Any):
@@ -2049,7 +2074,15 @@ class Cpp(Gen):
                 yield from self._iter_instruction_offset_labels(child)
 
     def export_defined_code_symbol_offsets(self) -> dict[str, int]:
-        """Return generated `m2c::k<label>` offsets for defined code symbols."""
+        """Return generated `m2c::k<label>` offsets for defined code symbols.
+
+        The map is a pure function of the frozen globals table, so cache it:
+        ``produce_jump_table`` calls this once per proc and large listings
+        otherwise spend most of codegen time rebuilding the same dict.
+        """
+        cached = getattr(self, "_code_symbol_offsets_cache", None)
+        if cached is not None:
+            return cached
         offsets: dict[str, int] = {"begin": 0x1001}
         current = 0x1001
         for name, symbol in self._context.symbols.get_globals().items():
@@ -2076,6 +2109,7 @@ class Cpp(Gen):
         for alias in getattr(self._context, "code_offset_aliases", []):
             if getattr(alias, "name", ""):
                 offsets[self.sanitize_label_name(alias.name)] = int(alias.offset)
+        self._code_symbol_offsets_cache = offsets
         return offsets
 
     def write_procedures(self, banner, header_fname):
@@ -2727,7 +2761,10 @@ void copy_linked_program_segment_prefix(dw segment, const void* source, size_t s
             }
             const size_t lower = anchor.linear > anchor.extent ? anchor.linear - anchor.extent : 0;
             if (position >= lower && position < anchor.linear + anchor.extent) {
-                return const_cast<db*>(anchor.base) + offset;
+                // A runtime paragraph is an offset inside the anchor's segment,
+                // not the anchor base itself: keep the segment-relative delta.
+                const ptrdiff_t delta = static_cast<ptrdiff_t>(position) - static_cast<ptrdiff_t>(anchor.linear);
+                return const_cast<db*>(anchor.base) + delta + offset;
             }
         }
     }
@@ -2839,6 +2876,12 @@ void copy_linked_program_segment_prefix(dw segment, const void* source, size_t s
         }}
     }}
     if (!copied) {{
+        // The target segment may be computed at runtime (e.g. CS plus a
+        // paragraph delta passed to DOS AH=26h create-PSP) and never
+        // registered through set_segment_register. Register it so the
+        // copy routes into an overlapping linked data anchor instead of
+        // corrupting raw memory.
+        remember_linked_data_runtime_segment(segment);
         if (db* linked = linked_data_segment_raddr(segment, 0)) {{
             std::memmove(linked, source, size);
             copied = true;
@@ -3216,14 +3259,45 @@ struct Memory{
         a = self.render_instruction_argument(dst)
         return f"_INT({a})"
 
+    # x87 mnemonics whose bare (no-operand) form has an implicit register
+    # operand that needs the explicit macro argument, or whose operandless
+    # encoding is the ST(1) pop form (fadd = faddp st(1),st).
+    _FPU_IMPLICIT_0ARG = {
+        "fcom": "FCOM(1)", "fcomp": "FCOMP(1)", "fucom": "FUCOM(1)",
+        "fucomp": "FUCOMP(1)", "fxch": "FXCH()",
+        "fadd": "FADDP(1)", "fmul": "FMULP(1)",
+        "fsub": "FSUBP(1)", "fdiv": "FDIVP(1)",
+        "fsubr": "FSUBRP(1)", "fdivr": "FDIVRP(1)",
+    }
+
+    # FPU mnemonics taking register/memory operands: a bare `st` operand
+    # renders as an empty string; normalize it to the explicit index 0.
+    _FPU_OPERAND_MNEMONICS = {
+        "fadd", "faddp", "fsub", "fsubp", "fsubr", "fsubrp",
+        "fmul", "fmulp", "fdiv", "fdivp", "fdivr", "fdivrp",
+        "fcom", "fcomp", "fucom", "fucomp", "ficom", "ficomp",
+        "fld", "fst", "fstp", "fxch", "ffree",
+        "fist", "fistp", "fild",
+        "fiadd", "fisub", "fisubr", "fimul", "fidiv", "fidivr",
+        "fbld", "fbstp", "fstsw", "fnstsw", "fstcw", "fnstcw", "fldcw",
+    }
+
+    @classmethod
+    def _fpu_operand(cls, cmd: str, rendered: str) -> str:
+        return "0" if rendered == "" and cmd.lower() in cls._FPU_OPERAND_MNEMONICS else rendered
+
     def _instruction0(self, cmd: str) -> str:
         if cmd.upper() in {"QUEZ0"}:
             return ""
+        implicit = self._FPU_IMPLICIT_0ARG.get(cmd.lower())
+        if implicit is not None:
+            return implicit
         return cmd.upper()
 
     def _instruction1(self, cmd: str, dst: Expression) -> str:
         default_size = 2 if cmd.lower() in {"push", "pop"} else 0
         a = self.render_instruction_argument(dst, def_size=default_size)
+        a = self._fpu_operand(cmd, a)
         return f"{cmd.upper()}({a})"
 
     def render_instruction_argument(self, expr: Expression, def_size: int = 0, destination: bool = False,
@@ -3241,6 +3315,18 @@ struct Memory{
         cloned = copy(expr)
         cloned.mods = set(expr.mods)
         cloned.registers = set(expr.registers)
+        return cloned
+
+    @classmethod
+    def _clone_as_scalar_value(cls, expr: Expression) -> Expression:
+        """Clone an equate/assignment value forced to render as a scalar.
+
+        IDA stack-frame equates (``var_4 = byte ptr -4``) carry POINTER
+        indirection from the ``ptr`` annotation; inline expansion must yield
+        the constant (``-4``), not a dereference of ds:-4.
+        """
+        cloned = cls._clone_expression_for_render(expr)
+        cloned.indirection = IndirectionType.VALUE
         return cloned
 
     def _prepare_expression_for_render(
@@ -3311,6 +3397,19 @@ struct Memory{
                 depth -= 1
             elif depth == 0 and ch in "+-*/%<>&|^":
                 return f"({rendered})"
+        return rendered
+
+    def _render_scalar_equate(self, rendered: str) -> str:
+        """Sanitize an inline-substituted equate scalar for C++ lexing.
+
+        In addition to compound-expression parenthesization, a bare numeric
+        literal ending in ``e``/``E``/``p``/``P`` must be wrapped: in C++,
+        ``0x0E+2`` lexes as a single pp-number (``E+2`` looks like an
+        exponent), producing ``operator""+2`` errors.
+        """
+        rendered = self._parenthesize_compound(rendered)
+        if re.search(r"[0-9.][0-9a-zA-Z_.]*[eEpP]$", rendered):
+            return f"({rendered})"
         return rendered
 
     def check_parentesis(self, string: str) -> bool:
@@ -3388,6 +3487,8 @@ struct Memory{
 
     def _instruction2(self, cmd: str, dst: Expression, src: Expression) -> str:
         a, b = self.parse2(dst, src)
+        a = self._fpu_operand(cmd, a)
+        b = self._fpu_operand(cmd, b)
         return f"{cmd.upper()}({a}, {b})"
 
     def _instruction3(self, cmd: str, dst: Expression, src: Expression, c: Expression) -> str:
@@ -3860,6 +3961,7 @@ struct Memory{
             result = """
   static bool __dispatch_call(m2c::_offsets __i, struct m2c::_STATE* _state){
   X86_REGREF
+     if ((__i>>16) == 0) {__i |= ((dd)cs) << 16;}
      __disp=__i;
      switch (__i) {
 """
@@ -3919,7 +4021,7 @@ struct Memory{
                 line = f"#ifndef {self.code_equate_guard_name(name)}\n{line}#endif\n"
             result += line
 
-        result += "        default: { bool handled = false; if (!m2c::dispatch_external_code(__disp, _state, &handled)) return false; if (handled) break; m2c::log_error(\"Don't know how to call to 0x%x. See \" __FILE__ \" line %d\\n\", __disp, __LINE__);m2c::stackDump(_state); abort(); }\n"
+        result += "        default: { bool handled = false; if (!m2c::dispatch_external_code(__disp, _state, &handled)) return false; if (handled) break; if (m2c::m2c_guest_thunk(__disp, _state)) break; m2c::log_error(\"Don't know how to call to 0x%x. See \" __FILE__ \" line %d\\n\", __disp, __LINE__);m2c::stackDump(_state); abort(); }\n"
         result += "     };\n     return true;\n}\n"
         result += """
   static bool __dispatch_call_ext(m2c::_offsets __disp, struct m2c::_STATE* _state){
@@ -3964,7 +4066,14 @@ struct Memory{
             if ((__disp >> 16) == 0xf000)
             {cs=0xf000;eip=__disp&0xffff;m2c::fix_segs();return false;}  // Jumping to BIOS
         #endif
-            switch (__disp) {
+        """
+        if self._is_listing_source():
+            # Listing inputs key every label real_seg<<16|off, so a bare
+            # near-offset dispatch (jump-table word, call/jmp reg) is always
+            # cs-relative.  Non-listing inputs use synthetic low ids that must
+            # reach their cases unchanged.
+            result += "            if ((__disp>>16) == 0) {__disp |= ((dd)cs) << 16;}\n"
+        result += """            switch (__disp) {
         """
         label_offsets = self.export_defined_code_symbol_offsets()
         emitted_offsets: set[int] = set()
@@ -3979,7 +4088,7 @@ struct Memory{
         if self.proc and self.proc.name in set(self.groups.values()):
             result += "        default: return __dispatch_call(__disp, _state);\n"
         else:
-            result += "        default: { bool handled = false; if (!m2c::dispatch_external_code(__disp, _state, &handled)) return false; if (handled) break; m2c::log_error(\"Don't know how to jump to 0x%x in %s (\" __FILE__ \":%d)\\n\", __disp, __func__, __LINE__);m2c::stackDump(_state); abort(); }\n"
+            result += "        default: { bool handled = false; if (!m2c::dispatch_external_code(__disp, _state, &handled)) return false; if (handled) break; if (m2c::m2c_guest_thunk(__disp, _state)) break; m2c::log_error(\"Don't know how to jump to 0x%x in %s (\" __FILE__ \":%d)\\n\", __disp, __func__, __LINE__);m2c::stackDump(_state); abort(); }\n"
         result += "    };\n}\n"
         return result
 

@@ -404,7 +404,7 @@ class Parser:
         self.current_macro = None
         self.current_struct: Optional[Struct] = None
         self._pending = _PendingParseState()
-        self._pending_data_label: str = ""
+        self._pending_data_labels: list[str] = []
         self._last_statement_was_data = False
         self._text_macro_expansion_id = 0
         self._text_macro_symbols: dict[str, int | str] = {}
@@ -577,7 +577,10 @@ class Parser:
         self.proc.add_label(mangled_name, label_obj)
         # '@'-style code locals get proc-scoped mangled names and can only ever
         # be jump targets; they must not attach to a following data item.
-        self._pending_data_label = "" if str(name).lstrip().startswith("@") else mangled_name
+        if str(name).lstrip().startswith("@"):
+            self._pending_data_labels = []
+        else:
+            self._pending_data_labels.append(mangled_name)
         existing = self.symbols.get_global(mangled_name)
         if (
             existing is not None
@@ -617,36 +620,43 @@ class Parser:
         if (
             self.current_macro
             or self.proc is None
-            or not self._pending_data_label
+            or not self._pending_data_labels
             or not self._last_statement_was_data
         ):
             return False
-        name = self._pending_data_label
-        if name in self.public_symbols or name.startswith(("dummy", "edummy")):
-            return False
-        previous_index = next(
-            (
-                index for index in range(len(self.proc.stmts) - 1, -1, -1)
-                if isinstance(stmt := self.proc.stmts[index], op.label) and stmt.name == name
-            ),
-            None,
-        )
-        if previous_index is None:
-            return False
-        previous = self.proc.stmts[previous_index]
-        if not isinstance(previous, op.label) or previous.isproc:
-            return False
-        if getattr(previous, "segment", "") != self.__segment.name:
-            return False
+        remaining: list[str] = []
+        consumed = False
+        for name in self._pending_data_labels:
+            if name in self.public_symbols or name.startswith(("dummy", "edummy")):
+                remaining.append(name)
+                continue
+            previous_index = next(
+                (
+                    index for index in range(len(self.proc.stmts) - 1, -1, -1)
+                    if isinstance(stmt := self.proc.stmts[index], op.label) and stmt.name == name
+                ),
+                None,
+            )
+            if previous_index is None:
+                remaining.append(name)
+                continue
+            previous = self.proc.stmts[previous_index]
+            if not isinstance(previous, op.label) or previous.isproc:
+                remaining.append(name)
+                continue
+            if getattr(previous, "segment", "") != self.__segment.name:
+                remaining.append(name)
+                continue
 
-        del self.proc.stmts[previous_index]
-        self.proc.provided_labels.discard(name)
-        existing = self.symbols.get_global(name)
-        if existing is previous:
-            self.symbols.symbols.pop(name.lower(), None)
-        self._pending_data_label = ""
-        self._register_trailing_data_label(name, offset=offset, raw=raw, line_number=line_number)
-        return True
+            del self.proc.stmts[previous_index]
+            self.proc.provided_labels.discard(name)
+            existing = self.symbols.get_global(name)
+            if existing is previous:
+                self.symbols.symbols.pop(name.lower(), None)
+            self._register_trailing_data_label(name, offset=offset, raw=raw, line_number=line_number)
+            consumed = True
+        self._pending_data_labels = remaining
+        return consumed
 
     def _register_trailing_data_label(
             self,
@@ -728,7 +738,7 @@ class Parser:
             label = self.get_dummy_label()
 
             num = pointer - self.__binary_data_size
-            offset = self.__binary_data_size
+            offset = self.__cur_seg_offset
             self.__binary_data_size += num
 
             self.__segment.append(
@@ -910,6 +920,24 @@ class Parser:
         if isinstance(value, list):
             if len(value) == 1:
                 return self._eval_numeric_expression_tree(value[0])
+            if len(value) == 2 and isinstance(value[0], str):
+                operand = self._eval_numeric_expression_tree(value[1])
+                if operand is None:
+                    return None
+                operator = value[0].lower()
+                if operator == "+":
+                    return operand
+                if operator == "-":
+                    return -operand
+                if operator == "low":
+                    return operand & 0xFF
+                if operator == "high":
+                    return (operand >> 8) & 0xFF
+                if operator == "lowword":
+                    return operand & 0xFFFF
+                if operator == "highword":
+                    return (operand >> 16) & 0xFFFF
+                return None
             if len(value) == 3:
                 left = self._eval_numeric_expression_tree(value[0])
                 right = self._eval_numeric_expression_tree(value[2])
@@ -1542,19 +1570,37 @@ class Parser:
         content = self._read_whole_file(map_file).splitlines()
         strgenerator = iter(content)
         segs = OrderedDict()
+        ne_map = False
         for line in strgenerator:
-            if line.strip() == "Start  Stop   Length Name               Class":  # IDA Pro .lst magic
+            header = line.strip()
+            if header == "Start  Stop   Length Name               Class":  # IDA Pro .lst magic
+                break
+            # IDA NE/PE listings emit "Start         Length Name  Class" where
+            # Start is a selector index ("0001:0000"), not a linear address.
+            if re.match(r"^Start\s+Length\s+Name\s+Class\s*$", header):
+                ne_map = True
                 break
         # Reads text until the end of the block:
+        next_para = DOSBOX_START_SEG
         for line in strgenerator:  # This keeps reading the file
             try:
                 if line.strip() == "Address         Publics by Value":
                     break
                 if line.strip():
-                    m = re.match(
-                        r"^\s+(?P<start>[0-9A-F]{5,10})H [0-9A-F]{5,10}H [0-9A-F]{5,10}H (?P<segment>[_0-9A-Za-z]+)\s+",
-                        line)
-                    segs[m["segment"]] = f"{int(m['start'], 16) // 16 + DOSBOX_START_SEG:04X}"
+                    if ne_map:
+                        m = re.match(
+                            r"^\s+(?P<index>[0-9A-F]{1,5}):(?P<offset>[0-9A-F]{1,5})\s+"
+                            r"(?P<length>[0-9A-F]{1,10})H\s+(?P<segment>[_0-9A-Za-z]+)\s+",
+                            line)
+                        if m:
+                            segs[m["segment"]] = f"{next_para:04X}"
+                            next_para += (int(m["length"], 16) + 15) // 16
+                    else:
+                        m = re.match(
+                            r"^\s+(?P<start>[0-9A-F]{5,10})H [0-9A-F]{5,10}H [0-9A-F]{5,10}H (?P<segment>[_0-9A-Za-z]+)\s+",
+                            line)
+                        if m:
+                            segs[m["segment"]] = f"{int(m['start'], 16) // 16 + DOSBOX_START_SEG:04X}"
             except Exception as ex:
                 print("read_segments_map Exception", ex, map_file, line)
                 raise
@@ -2156,6 +2202,7 @@ class Parser:
                 label = self._consume_previous_standalone_data_label()
                 if not label:
                     self._mark_pending_public_data_label_offset(offset)
+            self._alias_remaining_pending_data_labels(offset)
             self._prepare_nonstruct_data_context(raw, label, line_number, args)
             offset = self.__cur_seg_offset
 
@@ -2172,6 +2219,16 @@ class Parser:
         ):
             array = cast(list[Any], numeric_array)
             data_internal_type = op.DataType.ARRAY if len(array) > 1 else op.DataType.NUMBER
+        elif (
+            data_internal_type == op.DataType.ARRAY_STRING
+            and any(value is not None for value in numeric_array)
+        ):
+            # Fold evaluable sub-expressions (e.g. "="+128) while keeping the
+            # remaining string fragments as-is.
+            array = [
+                value if value is not None else element
+                for value, element in zip(numeric_array, array)
+            ]
         if data_internal_type == op.DataType.ARRAY and not any(array) and not isstruct:  # all zeros
             array = [0]
 
@@ -2284,10 +2341,9 @@ class Parser:
             return None
 
     def _consume_previous_standalone_data_label(self) -> str:
-        if self.current_macro or self.proc is None or not self._pending_data_label:
+        if self.current_macro or self.proc is None or not self._pending_data_labels:
             return ""
-        name = self._pending_data_label
-        self._pending_data_label = ""
+        name = self._pending_data_labels.pop()
         previous_index = next(
             (
                 index for index in range(len(self.proc.stmts) - 1, -1, -1)
@@ -2321,26 +2377,58 @@ class Parser:
         return name
 
     def _mark_pending_public_data_label_offset(self, offset: int) -> None:
-        """Record the storage offset for a public label immediately before data."""
-        if self.current_macro or self.proc is None or not self._pending_data_label:
+        """Record the storage offset for public labels immediately before data."""
+        if self.current_macro or self.proc is None or not self._pending_data_labels:
             return
-        name = self._pending_data_label
-        previous = next(
-            (
-                stmt for stmt in reversed(self.proc.stmts)
-                if isinstance(stmt, op.label) and stmt.name == name
-            ),
-            None,
-        )
-        if previous is None or previous.isproc:
-            return
-        if getattr(previous, "segment", "") != self.__segment.name:
-            return
-        if not getattr(previous, "public_export", False):
-            return
-        if not getattr(previous, "real_seg", 0):
+        remaining: list[str] = []
+        for name in self._pending_data_labels:
+            previous = next(
+                (
+                    stmt for stmt in reversed(self.proc.stmts)
+                    if isinstance(stmt, op.label) and stmt.name == name
+                ),
+                None,
+            )
+            if (
+                previous is None
+                or previous.isproc
+                or getattr(previous, "segment", "") != self.__segment.name
+                or not getattr(previous, "public_export", False)
+                or getattr(previous, "real_seg", 0)
+            ):
+                remaining.append(name)
+                continue
             self._register_public_data_label_alias(name, offset, raw=previous.raw_line, line_number=previous.line_number)
-        self._pending_data_label = ""
+        self._pending_data_labels = remaining
+
+    def _alias_remaining_pending_data_labels(self, offset: int) -> None:
+        """Bind earlier consecutive labels before data to the data offset.
+
+        Consecutive standalone labels (``RESLST:``/``ATAB:``) all denote the
+        same address: the offset of the first data item that follows.  Only
+        the last pending label becomes the data record's own name, so the
+        rest still need a code-offset alias or ``OFFSET``/``kglobal_*`` would
+        resolve them to their synthetic code-space ids instead of the data
+        storage offset.
+        """
+        if self.current_macro or self.proc is None or not self._pending_data_labels:
+            return
+        for name in self._pending_data_labels:
+            previous = next(
+                (
+                    stmt for stmt in reversed(self.proc.stmts)
+                    if isinstance(stmt, op.label) and stmt.name == name
+                ),
+                None,
+            )
+            if previous is None or previous.isproc:
+                continue
+            if getattr(previous, "segment", "") != self.__segment.name:
+                continue
+            if getattr(previous, "real_seg", 0):
+                continue
+            self._register_public_data_label_alias(name, offset, raw=previous.raw_line, line_number=previous.line_number)
+        self._pending_data_labels = []
 
     def _register_public_data_label_alias(self, name: str, offset: int, *, raw: str, line_number: int) -> None:
         """Record a public code-segment data label for merge relocation."""
@@ -2828,7 +2916,22 @@ class Parser:
         def replace(match: re.Match[str]) -> str:
             return str(symbols.get(match.group("name").lower(), 0))
 
-        return re.sub(r"%(?P<name>[A-Za-z_@$?][A-Za-z0-9_@$?]*)", replace, line)
+        def replace_quoted(match: re.Match[str]) -> str:
+            # '%name' inside a quoted literal still expands when it names a
+            # repeat-iteration symbol (e.g. db "LPT%NLPT"), but literal '%'
+            # in format strings (db '%s', '%m' templates) is data.
+            name = match.group("name").lower()
+            if name in symbols:
+                return str(symbols[name])
+            return match.group(0)
+
+        # `%name` repeat-iteration symbols expand everywhere in code; inside
+        # quoted literals only names known to the repeat scope expand.
+        chunks = re.split(r"('[^']*'|\"[^\"]*\")", line)
+        for i in range(len(chunks)):
+            pattern = re.compile(r"%(?P<name>[A-Za-z_@$?][A-Za-z0-9_@$?]*)")
+            chunks[i] = pattern.sub(replace if i % 2 == 0 else replace_quoted, chunks[i])
+        return "".join(chunks)
 
     def _eval_repeat_conditional(self, payload: str, symbols: dict[str, int]) -> int:
         rendered = payload
@@ -4063,7 +4166,7 @@ class Parser:
         proc.stmts.append(o)
 
     def action_instruction(self, instruction: str, args: list[Expression | Any], raw: str="", line_number: int=0) -> baseop | None:
-        self._pending_data_label = ""
+        self._pending_data_labels.clear()
         self._last_statement_was_data = False
         self._armed_short_relative_label = ""
         self.handle_local_asm_jumps(instruction, args)

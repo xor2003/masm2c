@@ -1640,6 +1640,47 @@ class Masm510StructCompatibilityTest(unittest.TestCase):
 
         self.assertEqual(aliases["table"], 0)
 
+    def test_consecutive_public_label_before_data_exports_storage_offset(self):
+        parser = Parser({"mergeprocs": "separate"})
+        source = (
+            "PUBLIC ResLst\n"
+            "CODE SEGMENT\n"
+            "db 0\n"
+            "ResLst:\n"
+            "ATab:\n"
+            "db 1\n"
+            "CODE ENDS\n"
+            "END\n"
+        )
+        tree = parser.parse_text(source)
+        parser.process_ast(source, tree)
+
+        aliases = {alias.name: alias.offset for alias in parser.code_offset_aliases}
+        offsets = Cpp(parser).export_defined_code_symbol_offsets()
+
+        self.assertEqual(aliases["reslst"], 1)
+        self.assertEqual(offsets["reslst"], 1)
+        self.assertEqual(offsets["atab"], 1)
+
+    def test_consecutive_trailing_labels_after_data_share_alias_offset(self):
+        parser = Parser([])
+        source = (
+            "DATA SEGMENT\n"
+            "Base db 1\n"
+            "AfterA:\n"
+            "AfterB:\n"
+            "Tail db 2\n"
+            "DATA ENDS\n"
+            "END\n"
+        )
+        tree = parser.parse_text(source)
+        parser.process_ast(source, tree)
+
+        aliases = {alias.name: alias.offset for alias in parser.data_aliases}
+
+        self.assertEqual(aliases["aftera"], 1)
+        self.assertEqual(aliases["afterb"], 1)
+
     def test_collect_code_exports_matches_external_var_to_public_code_label(self):
         with TemporaryDirectory() as temp_dir:
             temp = Path(temp_dir)
@@ -2646,7 +2687,7 @@ Q SYSTEM
 
         parser.symbols.get_global("mainproc").visit(cpp)
 
-        self.assertIn("di+32*2-32*2", cpp.body)
+        self.assertIn("di+(32*2)-(32*2)", cpp.body)
         self.assertNotIn("#define", cpp.body)
 
     def test_parenthesized_location_counter_assignment_folds_to_integer_operand(self):

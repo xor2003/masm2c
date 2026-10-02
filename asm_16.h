@@ -4,14 +4,34 @@
  typedef dw MWORDSIZE;
 
 #if defined(_PROTECTED_MODE)
-//  #define raddr(segment,offset) ((db *)&m2c::m+(db)(offset)+selectors[segment])
-static inline db* raddr_(dw segment,dw offset) {return ((db *)&m+(dw)(offset)+selectors[segment]);}
-static inline db* stack_raddr_(dw segment,dw offset) {return raddr_(segment,offset);}
-#else
- //#define raddr(segment,offset) (((db *)&m2c::m + ((segment)<<4) + (offset) ))
+/* 16-bit protected mode (Win16/DPMI) shares the default resolution:
+   segment registers may hold selectors (idx<<3|RPL into m2c_ldt, resolved
+   by m2c_alloc_segment_raddr) or real-mode paragraphs for the loaded image
+   (resolved against `m`).  The chain below serves both — descriptors are
+   matched first, paragraphs fall through. */
+#endif
+// #define raddr(segment,offset) (((db *)&m2c::m + ((segment)<<4) + (offset) ))
 	static inline db* raddr_(dw segment,dw offset) {
+	    if (tlink_code_segment_raddr != nullptr) {
+	        if (db* code_img = tlink_code_segment_raddr(segment, offset)) {
+	            return code_img;
+	        }
+	    }
+	    if (m2c_code_segment_raddr != nullptr) {
+	        if (db* code_img = m2c_code_segment_raddr(segment, offset)) {
+	            return code_img;
+	        }
+	    }
 	    if (db* linked_code = linked_code_segment_raddr(segment, offset)) {
 	        return linked_code;
+	    }
+	    if (db* pm_mem = m2c_alloc_segment_raddr(segment, offset)) {
+	        return pm_mem;
+	    }
+	    if (tlink_alloc_segment_raddr != nullptr) {
+	        if (db* rtm_mem = tlink_alloc_segment_raddr(segment, offset)) {
+	            return rtm_mem;
+	        }
 	    }
 	    if (db* linked_data = linked_data_segment_raddr(segment, offset)) {
 	        return linked_data;
@@ -25,12 +45,16 @@ static inline db* stack_raddr_(dw segment,dw offset) {return raddr_(segment,offs
 	    return (db *)&m + (segment<<4) + offset;
 	}
 	static inline db* stack_raddr_(dw segment,dw offset) {
+	    // ss may hold a selector (DPMI clients run their stack in an
+	    // allocated region) — resolve descriptors before the paragraph view.
+	    if (db* pm_mem = m2c_alloc_segment_raddr(segment, offset)) {
+	        return pm_mem;
+	    }
 	    if (db* linked_data = linked_data_segment_raddr(segment, offset)) {
 	        return linked_data;
 	    }
 	    return (db *)&m + (segment<<4) + offset;
 	}
-#endif
 
  #define offset(segment,name) ((db*)(&name)-(db*)(&segment))
  #define far_offset(segment,name) (offset(segment,name)+(seg_offset(segment)<<16))
@@ -129,8 +153,8 @@ static inline db* stack_raddr_(dw segment,dw offset) {return raddr_(segment,offs
    #define STOSD {m2c::setdata( (dd*)m2c::raddr_(es,di), eax);di+=(GET_DF()==0)?4:-4;} {m2c::repForMov=false;}
 
 
- #define INSB {db averytemporary3 = asm2C_IN(dx);*realAddress(di,es)=averytemporary3;di+=(GET_DF()==0)?1:-1;}
- #define INSW {dw averytemporary3 = asm2C_INW(dx);*realAddress(di,es)=averytemporary3;di+=(GET_DF()==0)?2:-2;}
+ #define INSB {db averytemporary3 = m2c::asm2C_IN(dx,_state);*realAddress(di,es)=averytemporary3;di+=(GET_DF()==0)?1:-1;}
+ #define INSW {dw averytemporary3 = m2c::asm2C_INW(dx,_state);*realAddress(di,es)=averytemporary3;di+=(GET_DF()==0)?2:-2;}
 
 #define LOOP(label) if (--cx) GOTOLABEL(label)
 #define LOOPE(label) if (--cx && GET_ZF()) GOTOLABEL(label)

@@ -35,6 +35,7 @@ SOFTWARE.
 #include <cstdlib>
 #include <cstdarg>
 #include <cmath>
+#include <cfenv>
 #include <cstddef>
 #include <cstdio>
 #include <cassert>
@@ -129,13 +130,13 @@ typedef uint8_t db;
 typedef uint16_t dw;
 typedef uint32_t dd;
 typedef uint64_t dq;
-//typedef uint80_t dt;
+struct dt { db b[10]; };   // x87 80-bit extended (MASM tbyte)
 
 typedef db byte;
 typedef dw word;
 typedef dd dword;
 typedef dq qword;
-//typedef dt tbyte;
+typedef dt tbyte;
 typedef float real4;
 typedef double real8;
 typedef long double real10;
@@ -190,6 +191,95 @@ extern bool executionFinished;
 
     db* linked_code_segment_raddr(dw segment, dw offset);
     db* linked_data_segment_raddr(dw segment, dw offset);
+
+    // Win16 / protected-mode support (generic, defined by the shared
+    // runtime).  m2c_code_segment_raddr lets a translated NE binary redirect
+    // cs: reads at the original segment image (jump tables, inline data that
+    // the sparse generated `m` image does not contain); define it strong in
+    // the program's own TU.  m2c_alloc_segment_raddr resolves segment values
+    // through the emulated LDT below and returns nullptr for non-selectors.
+    __attribute__((weak)) db* m2c_code_segment_raddr(dw segment, dw offset);
+    db* m2c_alloc_segment_raddr(dw segment, dw offset);
+
+    /* Emulated 16-bit protected-mode descriptor table (LDT).  A segment
+       register may hold a real-mode paragraph (resolved against `m`) or a
+       selector; selectors are encoded as in hardware: sel = idx<<3 | TI<<2
+       | RPL, so sel>>3 indexes this table.  m2c_ldt covers the full 16-bit
+       selector space. */
+    struct PmDesc {
+        db* base;   // host pointer: inside `m` for aliases, malloc'd for owned
+        dd limit;   // byte limit (always backed by >=64KB in the emulation)
+        dw rights;  // access-rights byte (as set by INT31 0009)
+        dd lin;     // guest-visible linear base (for INT31 0006)
+        dd extent;  // owner only: total bytes of the malloc'd block (may span
+                    // several consecutive descriptors for >64KB 0501 blocks)
+        db used;
+        db owned;   // base was malloc'd by the runtime (free on release)
+    };
+    enum { NB_LDT = 8192 };        // 16-bit selector space / 8
+    extern PmDesc m2c_ldt[NB_LDT];
+
+    int  m2c_ldt_idx(dw sel);                 // selector -> table index
+    dw   m2c_ldt_alloc(int n);                // alloc n descriptors -> base sel
+    void m2c_ldt_free(dw sel);
+    dd   m2c_ldt_get_lin(dw sel);             // guest linear base
+    // Allocate a 64KB-backed protected-mode region; returns its selector.
+    // Every region spans the full 64KB so any 16-bit offset is legal,
+    // matching real selector semantics.
+    dw   m2c_pm_alloc_paras(dw paras);
+    void m2c_pm_free(dw sel);
+    // Map an image paragraph to a selector aliasing that `m` storage
+    // (shared, lazily created).  Used by seg_offset under _PROTECTED_MODE
+    // so `seg X` yields a real descriptor rather than a bare paragraph.
+    dw   m2c_seg_selector(dw para);
+    // First allocated selector value (weak, overridable); default 0x4000
+    // puts descriptor indices above images loaded below 256KB.
+    __attribute__((weak)) extern dw m2c_pm_sel_base;
+
+    // PSP accessors for harness glue (HostHardware is file-local in asm.cpp).
+    void m2c_set_current_psp(dw psp);
+    dw m2c_current_psp();
+
+    // Optional program hook for NE-style entry: set cs/eip, ss:sp, ds from
+    // the NE header (and apply segment fixups / initial data images) instead
+    // of the default MZ-style init.  Return true when handled.
+    __attribute__((weak)) bool m2c_ne_entry_setup(struct _STATE* _state);
+
+    /* Generic NE (Win16/DOS-extender) loader for translated programs.
+       The program supplies the raw NE file bytes plus a per-segment host
+       binding; the loader creates an LDT descriptor per segment, copies
+       file data into each segment's host storage, applies internal
+       reference fixups (selector and far-pointer forms) writing real
+       selectors, and sets cs:ip / ss:sp / ds per the NE header. */
+    struct M2cNeSegHost {
+        db* base;      // host storage for the segment (in m or a const image)
+        dw para;       // guest paragraph the segment occupies
+        dw flags;      // NE segment flags (from the segment table)
+        dw selector;   // out: LDT selector created for this segment
+    };
+    // segs[] must have room for the header's segment count.  Segments are
+    // 1-based in NE fixups and entry indices (segs[idx-1]).
+    bool m2c_ne_load(struct _STATE* _state, const db* image, dd image_size,
+                     M2cNeSegHost* segs);
+
+    /* Imported-ordinal/name fixup sites are patched to the sentinel far
+     * address 0000:0x8000|idx; the idx slots into this table giving the
+     * (module index, ordinal) each site refers to.  The interpreter /
+     * external dispatcher turn the sentinel into a host API call. */
+    struct M2cNeImport {
+        dw mod_idx;    // 1-based module-reference index
+        dw ordinal;    // export ordinal (or imported-name table offset)
+    };
+    extern M2cNeImport* m2c_ne_imports;
+    extern dw m2c_ne_import_count;
+    const char* m2c_ne_import_mod_name(dw mod_idx);
+
+    // TLINK.EXE runtime hooks (defined only by the tlink_rt harness).
+    // Weak so projects that do not provide them still link; callers must
+    // null-check before calling (an undefined weak function resolves to 0).
+    __attribute__((weak)) db* tlink_code_segment_raddr(dw segment, dw offset);
+    __attribute__((weak)) db* tlink_alloc_segment_raddr(dw segment, dw offset);
+    dw tlink_rtm_alloc_paras(dw paras);
     void set_segment_register(dw& reg, dw value);
 
     extern size_t debug;
@@ -299,6 +389,10 @@ int call_source;
 
 typedef bool m2cf(_offsets, struct _STATE*); // common masm2c function
 bool dispatch_external_code(_offsets __disp, _STATE* _state, bool* handled);
+/* Last-resort dispatch fallback: interpret guest byte stubs/NE import
+ * thunks.  A win16 target provides a strong implementation; the weak
+ * runtime stub in asm.cpp reports "not handled". */
+bool m2c_guest_thunk(_offsets __disp, _STATE* _state);
 bool host_try_overlay_retf(_offsets __disp, _STATE* _state, bool* out_result);
 bool is_dos_terminate_vector(dw segment, dw offset);
 
@@ -679,7 +773,15 @@ extern db tnd_img[];        // private overlay image buffer
 #define realAddress(offset, segment) m2c::raddr_(segment,offset)
 
 
-#define seg_offset(segment) ((dw)(((db*)(&segment)-(db*)(&m2c::m))>>4))
+// Raw paragraph of a segment's storage in `m` — runtime bookkeeping form
+// (MCB chain, PSP fields, logs).  Guest-visible `seg X` uses seg_offset.
+#define seg_para(segment) ((dw)(((db*)(&segment)-(db*)(&m2c::m))>>4))
+#if defined(_PROTECTED_MODE)
+// Win16 model: `seg X` produces a real selector aliasing the image.
+#define seg_offset(segment) m2c::m2c_seg_selector(seg_para(segment))
+#else
+#define seg_offset(segment) seg_para(segment)
+#endif
 
 // DJGPP
 #define MASK_LINEAR(addr)     (((size_t)addr) & 0x000FFFFF)
@@ -1036,8 +1138,10 @@ inline void restore_external_offset_ds(dw& segment) {
     template<>
     OPTINLINE void PUSH_<short int>(short int a) { fix_segs();CPU_Push16(a); }
 
+    // 16-bit mode: `push imm` always pushes a word. A bare host `int` literal
+    // is 32-bit, so narrow it here or every imm push desyncs the guest stack.
     template<>
-    OPTINLINE void PUSH_<int>(int a) { fix_segs();CPU_Push32(a); }
+    OPTINLINE void PUSH_<int>(int a) { fix_segs();CPU_Push16(a); }
 
 
     OPTINLINE void POP_(dw &a) { fix_segs();a = CPU_Pop16(); }
@@ -1048,6 +1152,18 @@ inline void restore_external_offset_ds(dw& segment) {
 
 #define PUSH(a) {m2c::PUSH_(a, _state);}
 #define POP(a) {m2c::POP_(a, _state);}
+
+    template<typename S> OPTINLINE void PUSH_(const S& a, _STATE *_state);
+
+    // 16-bit mode: `push imm` always pushes a word. A bare host `int` literal
+    // is 32-bit; route it through the word path or every imm push desyncs the
+    // guest stack (arg layouts, saved-word restores, varargs). The same applies
+    // to `offset()` results (ptrdiff_t -> long) and 64-bit host types.
+    OPTINLINE void PUSH_(const int& a, _STATE *_state) { PUSH_((dw)a, _state); }
+    OPTINLINE void PUSH_(const long& a, _STATE *_state) { PUSH_((dw)a, _state); }
+    OPTINLINE void PUSH_(const unsigned long& a, _STATE *_state) { PUSH_((dw)a, _state); }
+    OPTINLINE void PUSH_(const long long& a, _STATE *_state) { PUSH_((dw)a, _state); }
+    OPTINLINE void PUSH_(const unsigned long long& a, _STATE *_state) { PUSH_((dw)a, _state); }
 
     template<typename S>
     OPTINLINE void PUSH_(const S& a, _STATE *_state)
@@ -1063,9 +1179,9 @@ inline void restore_external_offset_ds(dw& segment) {
       // `xchg si,bx` in XTHL sequences) can move the return into a different
       // carrier register, and pushing the old carrier register with new
       // contents must not consume the tracked value.
-      && m2c::take_native_return_value(_state, (m2c::MWORDSIZE)a, &a, &native_return_id)
+      && m2c::take_native_return_value(_state, (m2c::MWORDSIZE)(uintptr_t)a, &a, &native_return_id)
   ) {
-      m2c::mark_native_return_with_id(_state, ss, stackPointer, (m2c::MWORDSIZE)a, native_return_id);
+      m2c::mark_native_return_with_id(_state, ss, stackPointer, (m2c::MWORDSIZE)(uintptr_t)a, native_return_id);
   }
  #if M2CDEBUG > 0
  		m2c::log_debug("after push %x\n",stackPointer); 
@@ -2335,9 +2451,9 @@ throw StackPop(skip);
             // caller, so this is informational only.
             log_debug("CALL_ %s returned sp=%x oldsp=%x ip=%x ret=%x\n",
                       label_name, sp, oldsp, ip, return_addr);
-            fprintf(stderr, "[stack] ss=%04x residue sp..oldsp+2 after call to %s:\n",
-                    (unsigned)ss, label_name);
-            for (dw a = sp; (int)a <= (int)(oldsp + 2); a += 2) {
+            fprintf(stderr, "[stack] ss=%04x residue sp=%04x..%04x after call to %s:\n",
+                    (unsigned)ss, (unsigned)sp, (unsigned)(oldsp + 2), label_name);
+            for (dw a = sp; (int)a <= (int)(oldsp + 2) && (dw)a < (dw)(sp + 64); a += 2) {
                 dw v = 0; memcpy(&v, m2c::raddr_(ss, a), 2);
                 fprintf(stderr, "  ss:%04x = %04x%s\n", (unsigned)a, (unsigned)v,
                         a == sp ? " <== sp" : (a == (dw)(oldsp - 2) ? " <== pushed ret slot" : ""));
@@ -2624,8 +2740,18 @@ static inline void asm2C_OUT(int16_t address, dw data,_STATE* _state) {
 
 #define OUT(a,b) m2c::asm2C_OUT(a,b,_state)
 int8_t asm2C_IN(int16_t data,_STATE* _state);
+uint16_t asm2C_INW(uint16_t data,_STATE* _state);
 #define IN(a,b) a = m2c::asm2C_IN(b,_state);
 #endif
+
+/* IDA/Ghidra emit a handful of instructions the runtime does not model.
+   Generated code only reaches them inside misdecoded inline-data regions
+   (unreachable) or as genuine but inert ops — keep them compilable. */
+#define ENTER(sz, lvl) { PUSH(bp); bp = sp; SUB(sp, sz); }
+#define OUTS(port, val) { m2c::asm2C_OUT(port, (dw)(val), _state); si += (GET_DF()==0)?2:-2; }
+#define BOUND(reg, mem) {}
+#define ARPL(mem, reg)  {}
+#define TEXT(enc, lit)  {}
 
 #define XLATP(x) {al = *(x + al);}
 #if DOSBOX_CUSTOM
@@ -2827,5 +2953,341 @@ extern void print_instruction_direct(Bit16u newcs, Bit32u newip);
 
 #endif /* M2CDEBUG == -1 decomp overrides */
 
+/* ---------------- x87 FPU emulation ----------------
+   Coexists on the host long-double type: on x86-64 `long double` is the
+   80-bit extended format, bit-identical to the x87 ST(i) registers and to
+   MASM `tbyte` operands, so tbyte memory loads/stores are exact.  Only the
+   instruction set emitted by the translator is implemented.
+
+   x87 status word bits used for FCOM/FUCOM results:
+     C0 -> sw bit 8  (mapped to CF by `fstsw ax; sahf`)
+     C2 -> sw bit 10 (mapped to PF)
+     C3 -> sw bit 14 (mapped to ZF)
+   TOP lives in sw bits 11..13 like real hardware.                    */
+
+namespace m2c {
+
+struct x87_t {
+    long double st[8];   // physical register file; sti() applies TOP
+    int top;             // index of ST(0) inside st[]
+    dw cw;               // control word
+    dw sw;               // status word (C0..C3 + TOP mirrored)
+};
+
+extern x87_t fpu;
+
+/* 80-bit extended <-> host long double.
+   On x86-64 these are the same 10-byte payload; written byte-wise so the
+   code stays correct even where long double were IEEE double. */
+long double fpu_ld80(const void* p);
+void fpu_st80(void* p, long double v);
+
+void fpu_init();
+
+inline void fpu_push(long double v) {
+    fpu.top = (fpu.top - 1) & 7;
+    fpu.st[fpu.top] = v;
+    fpu.sw = (fpu.sw & 0xC7FF) | (((dw)fpu.top) << 11);
+}
+inline void fpu_pop() {
+    fpu.st[fpu.top] = 0;
+    fpu.top = (fpu.top + 1) & 7;
+    fpu.sw = (fpu.sw & 0xC7FF) | (((dw)fpu.top) << 11);
+}
+inline long double fpu_st0() { return fpu.st[fpu.top]; }
+inline long double fpu_sti(int i) { return fpu.st[(fpu.top + i) & 7]; }
+
+inline void fpu_setcc(int cmp /*-1 below, 0 equal, 1 above, 2 unordered*/) {
+    // C3 C2 C0  ->  bits 14, 10, 8
+    fpu.sw &= ~(1u << 14) & ~(1u << 10) & ~(1u << 8);
+    if (cmp == 0)      fpu.sw |= (1u << 14);           // ZF
+    else if (cmp < 0)  fpu.sw |= (1u << 8);            // C0 -> CF
+    else if (cmp == 2) fpu.sw |= (1u << 14) | (1u << 10) | (1u << 8); // unordered
+    // cmp == 1 (above): all clear
+}
+
+inline int fpu_cmp(long double a, long double b) {
+    if (std::isunordered(a, b)) return 2;
+    if (a == b) return 0;
+    return a < b ? -1 : 1;
+}
+
+/* ---- loads ---- */
+inline void fpu_ld(_STATE*) { fpu_push(fpu_st0()); }                    // fld st(0)
+inline void fpu_ld(_STATE*, int i) { fpu_push(fpu_sti(i)); }            // fld st(i)
+inline void fpu_ld(_STATE*, const dq& v) { fpu_push(*(const double*)&v); }
+inline void fpu_ld(_STATE*, const dd& v) { fpu_push(*(const float*)&v); }
+inline void fpu_ld(_STATE*, const dt& v) { fpu_push(fpu_ld80(&v)); }    // tbyte
+inline void fpu_ld(_STATE*, const db& v) { fpu_push(fpu_ld80(&v)); }    // tbyte
+
+/* ---- stores ---- */
+inline void fpu_st(_STATE*, dq& d) { *(double*)&d = (double)fpu_st0(); }
+inline void fpu_st(_STATE*, dd& d) { *(float*)&d = (float)fpu_st0(); }
+inline void fpu_st(_STATE*, dt& d) { fpu_st80(&d, fpu_st0()); }
+inline void fpu_st(_STATE*, db& d) { fpu_st80(&d, fpu_st0()); }
+inline void fpu_st(_STATE*, int i) { fpu.st[(fpu.top + i) & 7] = fpu_st0(); }
+
+inline void fpu_stp(_STATE*) { fpu_pop(); }                             // fstp st(0)
+inline void fpu_stp(_STATE*, int i) { fpu.st[(fpu.top + i) & 7] = fpu_st0(); fpu_pop(); }
+inline void fpu_stp(_STATE*, dq& d) { *(double*)&d = (double)fpu_st0(); fpu_pop(); }
+inline void fpu_stp(_STATE*, dd& d) { *(float*)&d = (float)fpu_st0(); fpu_pop(); }
+inline void fpu_stp(_STATE*, dt& d) { fpu_st80(&d, fpu_st0()); fpu_pop(); }
+inline void fpu_stp(_STATE*, db& d) { fpu_st80(&d, fpu_st0()); fpu_pop(); }
+
+/* ---- compares ---- */
+inline void fpu_com(_STATE*, const dq& v) { fpu_setcc(fpu_cmp(fpu_st0(), *(const double*)&v)); }
+inline void fpu_com(_STATE*, const dd& v) { fpu_setcc(fpu_cmp(fpu_st0(), *(const float*)&v)); }
+inline void fpu_com(_STATE*, const dt& v) { fpu_setcc(fpu_cmp(fpu_st0(), fpu_ld80(&v))); }
+inline void fpu_com(_STATE*, const db& v) { fpu_setcc(fpu_cmp(fpu_st0(), fpu_ld80(&v))); }
+inline void fpu_com(_STATE*, int i) { fpu_setcc(fpu_cmp(fpu_st0(), fpu_sti(i))); }
+inline void fpu_comp(_STATE*, const dq& v) { fpu_setcc(fpu_cmp(fpu_st0(), *(const double*)&v)); fpu_pop(); }
+inline void fpu_comp(_STATE*, const dd& v) { fpu_setcc(fpu_cmp(fpu_st0(), *(const float*)&v)); fpu_pop(); }
+inline void fpu_comp(_STATE*, const dt& v) { fpu_setcc(fpu_cmp(fpu_st0(), fpu_ld80(&v))); fpu_pop(); }
+inline void fpu_comp(_STATE*, const db& v) { fpu_setcc(fpu_cmp(fpu_st0(), fpu_ld80(&v))); fpu_pop(); }
+inline void fpu_comp(_STATE*, int i) { fpu_setcc(fpu_cmp(fpu_st0(), fpu_sti(i))); fpu_pop(); }
+
+/* ---- integer conversions ---- */
+inline void fpu_ild(_STATE*, const dw& v) { fpu_push((int16_t)v); }
+inline void fpu_ild(_STATE*, const dd& v) { fpu_push((int32_t)v); }
+inline void fpu_ild(_STATE*, const dq& v) { fpu_push((long double)(int64_t)v); }
+inline void fpu_istp(_STATE*, dw& d) { d = (dw)llrint(fpu_st0()); fpu_pop(); }
+inline void fpu_istp(_STATE*, dd& d) { d = (dd)llrint(fpu_st0()); fpu_pop(); }
+inline void fpu_istp(_STATE*, dq& d) { d = (dq)llrint(fpu_st0()); fpu_pop(); }
+inline void fpu_ist(_STATE*, dw& d) { d = (dw)llrint(fpu_st0()); }
+inline void fpu_ist(_STATE*, dd& d) { d = (dd)llrint(fpu_st0()); }
+inline void fpu_ist(_STATE*, dq& d) { d = (dq)llrint(fpu_st0()); }
+
+/* ---- arithmetic ---- */
+inline void fpu_mul(_STATE*, const dq& v) { fpu.st[fpu.top] *= *(const double*)&v; }
+inline void fpu_mul(_STATE*, const dd& v) { fpu.st[fpu.top] *= *(const float*)&v; }
+inline void fpu_mul(_STATE*, int i) { fpu.st[fpu.top] *= fpu_sti(i); }    // fmul st(0),st(i)
+inline void fpu_mul(_STATE*, int dst, int src) { fpu.st[(fpu.top + dst) & 7] *= fpu_sti(src); }
+inline void fpu_mul(_STATE*) { fpu.st[fpu.top] *= fpu_sti(1); }         // fmul st(0),st(1)
+inline void fpu_mulp(_STATE*, int i, ...) {                             // fmulp st(i),st(0)
+    fpu.st[(fpu.top + i) & 7] *= fpu_st0();
+    fpu_pop();
+}
+inline void fpu_div(_STATE*, const dq& v) { fpu.st[fpu.top] /= *(const double*)&v; }
+inline void fpu_div(_STATE*, const dd& v) { fpu.st[fpu.top] /= *(const float*)&v; }
+inline void fpu_div(_STATE*, int i) { fpu.st[fpu.top] /= fpu_sti(i); }
+inline void fpu_div(_STATE*, int dst, int src) { fpu.st[(fpu.top + dst) & 7] /= fpu_sti(src); }
+inline void fpu_div(_STATE*) { fpu.st[fpu.top] /= fpu_sti(1); }
+inline void fpu_divp(_STATE*, int i, ...) { fpu.st[(fpu.top + i) & 7] /= fpu_st0(); fpu_pop(); }
+inline void fpu_divr(_STATE*, const dq& v) { fpu.st[fpu.top] = *(const double*)&v / fpu_st0(); }
+inline void fpu_divr(_STATE*, const dd& v) { fpu.st[fpu.top] = *(const float*)&v / fpu_st0(); }
+inline void fpu_divr(_STATE*, int i) { fpu.st[fpu.top] = fpu_sti(i) / fpu_st0(); }
+inline void fpu_divr(_STATE*, int dst, int src) { fpu.st[(fpu.top + dst) & 7] = fpu_sti(src) / fpu.st[(fpu.top + dst) & 7]; }
+inline void fpu_divrp(_STATE*, int i, ...) { fpu.st[(fpu.top + i) & 7] = fpu_st0() / fpu_sti(i); fpu_pop(); }
+inline void fpu_add(_STATE*, const dq& v) { fpu.st[fpu.top] += *(const double*)&v; }
+inline void fpu_add(_STATE*, const dd& v) { fpu.st[fpu.top] += *(const float*)&v; }
+inline void fpu_add(_STATE*, int i) { fpu.st[fpu.top] += fpu_sti(i); }
+inline void fpu_add(_STATE*, int dst, int src) { fpu.st[(fpu.top + dst) & 7] += fpu_sti(src); }
+inline void fpu_add(_STATE*) { fpu.st[fpu.top] += fpu_sti(1); }
+inline void fpu_addp(_STATE*, int i, ...) { fpu.st[(fpu.top + i) & 7] += fpu_st0(); fpu_pop(); }
+inline void fpu_sub(_STATE*, const dq& v) { fpu.st[fpu.top] -= *(const double*)&v; }
+inline void fpu_sub(_STATE*, const dd& v) { fpu.st[fpu.top] -= *(const float*)&v; }
+inline void fpu_sub(_STATE*, int i) { fpu.st[fpu.top] -= fpu_sti(i); }
+inline void fpu_sub(_STATE*, int dst, int src) { fpu.st[(fpu.top + dst) & 7] -= fpu_sti(src); }
+inline void fpu_sub(_STATE*) { fpu.st[fpu.top] -= fpu_sti(1); }
+inline void fpu_subp(_STATE*, int i, ...) { fpu.st[(fpu.top + i) & 7] -= fpu_st0(); fpu_pop(); }
+inline void fpu_subr(_STATE*, const dq& v) { fpu.st[fpu.top] = *(const double*)&v - fpu_st0(); }
+inline void fpu_subr(_STATE*, const dd& v) { fpu.st[fpu.top] = *(const float*)&v - fpu_st0(); }
+inline void fpu_subr(_STATE*, int i) { fpu.st[fpu.top] = fpu_sti(i) - fpu_st0(); }
+inline void fpu_subr(_STATE*, int dst, int src) { fpu.st[(fpu.top + dst) & 7] = fpu_sti(src) - fpu.st[(fpu.top + dst) & 7]; }
+inline void fpu_subrp(_STATE*, int i, ...) { fpu.st[(fpu.top + i) & 7] = fpu_st0() - fpu_sti(i); fpu_pop(); }
+inline void fpu_imul(_STATE*, const dw& v) { fpu.st[fpu.top] *= (int16_t)v; }
+inline void fpu_imul(_STATE*, const dd& v) { fpu.st[fpu.top] *= (int32_t)v; }
+inline void fpu_idiv(_STATE*, const dw& v) { fpu.st[fpu.top] /= (int16_t)v; }
+inline void fpu_idiv(_STATE*, const dd& v) { fpu.st[fpu.top] /= (int32_t)v; }
+inline void fpu_idivr(_STATE*, const dw& v) { fpu.st[fpu.top] = (int16_t)v / fpu_st0(); }
+inline void fpu_idivr(_STATE*, const dd& v) { fpu.st[fpu.top] = (int32_t)v / fpu_st0(); }
+inline void fpu_isub(_STATE*, const dw& v) { fpu.st[fpu.top] -= (int16_t)v; }
+inline void fpu_isubr(_STATE*, const dw& v) { fpu.st[fpu.top] = (int16_t)v - fpu_st0(); }
+inline void fpu_isubr(_STATE*, const dd& v) { fpu.st[fpu.top] = (int32_t)v - fpu_st0(); }
+inline void fpu_iadd(_STATE*, const dw& v) { fpu.st[fpu.top] += (int16_t)v; }
+inline void fpu_iadd(_STATE*, const dd& v) { fpu.st[fpu.top] += (int32_t)v; }
+inline void fpu_icom(_STATE*, const dw& v) { fpu_setcc(fpu_cmp(fpu_st0(), (int16_t)v)); }
+inline void fpu_icom(_STATE*, const dd& v) { fpu_setcc(fpu_cmp(fpu_st0(), (int32_t)v)); }
+inline void fpu_icomp(_STATE*, const dw& v) { fpu_setcc(fpu_cmp(fpu_st0(), (int16_t)v)); fpu_pop(); }
+inline void fpu_icomp(_STATE*, const dd& v) { fpu_setcc(fpu_cmp(fpu_st0(), (int32_t)v)); fpu_pop(); }
+inline void fpu_chs() { fpu.st[fpu.top] = -fpu_st0(); }
+inline void fpu_abs() { fpu.st[fpu.top] = std::fabs(fpu_st0()); }
+inline void fpu_xch(_STATE*, int i = 1) {
+    std::swap(fpu.st[fpu.top], fpu.st[(fpu.top + i) & 7]);
+}
+
+/* ---- misc / transcendental ---- */
+inline void fpu_ftst() { fpu_setcc(fpu_cmp(fpu_st0(), 0.0L)); }
+inline void fpu_sqrt() { fpu.st[fpu.top] = std::sqrt(fpu_st0()); }
+inline void fpu_rndint() { fpu.st[fpu.top] = std::rint(fpu_st0()); }   // default RC = to-nearest-even
+inline void fpu_scale() { fpu.st[fpu.top] = std::ldexp(fpu_st0(), (int)fpu_sti(1)); }
+inline void fpu_prem() { fpu.st[fpu.top] = std::fmod(fpu_st0(), fpu_sti(1)); }
+inline void fpu_prem1() { fpu.st[fpu.top] = std::remainder(fpu_st0(), fpu_sti(1)); }
+inline void fpu_xtract() {
+    int e = 0;
+    const long double sig = std::frexp(fpu_st0(), &e);
+    fpu.st[fpu.top] = sig;
+    fpu_push((long double)e);
+}
+inline void fpu_yl2x() {   // ST(1) = ST(1) * log2(ST(0)); pop
+    fpu.st[(fpu.top + 1) & 7] = fpu_sti(1) * std::log2(fpu_st0());
+    fpu_pop();
+}
+inline void fpu_yl2xp1() { // ST(1) = ST(1) * log2(ST(0)+1); pop
+    fpu.st[(fpu.top + 1) & 7] = fpu_sti(1) * std::log2(fpu_st0() + 1.0L);
+    fpu_pop();
+}
+inline void fpu_2xm1() { fpu.st[fpu.top] = std::pow(2.0L, fpu_st0()) - 1.0L; }
+inline void fpu_ptan() {   // ST(0) = tan(ST(0)); push 1.0
+    fpu.st[fpu.top] = std::tan(fpu_st0());
+    fpu_push(1.0L);
+}
+inline void fpu_patan() {  // ST(1) = atan2(ST(1), ST(0)); pop
+    fpu.st[(fpu.top + 1) & 7] = std::atan2(fpu_sti(1), fpu_st0());
+    fpu_pop();
+}
+inline void fpu_sin() { fpu.st[fpu.top] = std::sin(fpu_st0()); }
+inline void fpu_cos() { fpu.st[fpu.top] = std::cos(fpu_st0()); }
+inline void fpu_sincos() { // ST(0)=sin(orig), then push cos(orig)
+    const long double v = fpu_st0();
+    fpu.st[fpu.top] = std::sin(v);
+    fpu_push(std::cos(v));
+}
+inline void fpu_xam() {
+    // Classify ST(0): C3C2C1C0 = NaN 0001? Real encoding:
+    // unsupported 000, NaN 001, normal 010, inf 011, zero 100, empty 101,
+    // denormal 110 (C3C2C0 ordering; C1 = sign of ST(0)).
+    fpu.sw &= ~((1u << 14) | (1u << 10) | (1u << 9) | (1u << 8));
+    const long double v = fpu_st0();
+    unsigned cls;
+    if (std::isnan(v)) cls = 1;
+    else if (std::isinf(v)) cls = 3;
+    else if (v == 0.0L) cls = 4;
+    else cls = 2;
+    if (cls & 1) fpu.sw |= 1u << 8;          // C0
+    if (cls & 2) fpu.sw |= 1u << 10;         // C2
+    if (cls & 4) fpu.sw |= 1u << 14;         // C3
+    if (std::signbit(v)) fpu.sw |= 1u << 9;  // C1 = sign
+}
+inline void fpu_incstp() { fpu.top = (fpu.top + 1) & 7; fpu.sw = (fpu.sw & 0xC7FF) | (((dw)fpu.top) << 11); }
+inline void fpu_decstp() { fpu.top = (fpu.top - 1) & 7; fpu.sw = (fpu.sw & 0xC7FF) | (((dw)fpu.top) << 11); }
+
+/* ---- packed BCD ---- */
+inline void fpu_bld(_STATE*, const db& v) {
+    const db* p = (const db*)&v;
+    long double r = 0.0L;
+    for (int i = 8; i >= 0; --i) {          // bytes 8..0, high nibble first
+        r = r * 10.0L + ((p[i] >> 4) & 0xF);
+        r = r * 10.0L + (p[i] & 0xF);
+    }
+    if (p[9] & 0x80) r = -r;
+    fpu_push(r);
+}
+inline void fpu_bld(_STATE* s, const dt& v) { fpu_bld(s, v.b[0]); }
+inline void fpu_bstp(_STATE*, db& d) {
+    db* p = (db*)&d;
+    long long iv = llrint(std::fabs(fpu_st0()));
+    for (int i = 0; i < 9; ++i) {
+        p[i] = (db)((iv % 10) | ((iv / 10 % 10) << 4));
+        iv /= 100;
+    }
+    p[9] = std::signbit(fpu_st0()) ? 0x80 : 0;
+    fpu_pop();
+}
+inline void fpu_bstp(_STATE* s, dt& d) { fpu_bstp(s, d.b[0]); }
+
+/* ---- status/control ---- */
+inline void fpu_stsw(_STATE*, dw& d) { d = fpu.sw; }
+inline void fpu_stcw(_STATE*, dw& d) { d = fpu.cw; }
+inline void fpu_ldcw(_STATE*, const dw& v) {
+    fpu.cw = v;
+    // x87 RC bits (cw 10..11) mapped onto the host fenv so that frndint and
+    // fist/fistp honour the loaded rounding direction.
+    static const int rc_modes[4] = {FE_TONEAREST, FE_DOWNWARD, FE_UPWARD, FE_TOWARDZERO};
+    std::fesetround(rc_modes[(v >> 10) & 3]);
+}
+
+} // namespace m2c
+
+#define FLD(...)   m2c::fpu_ld(_state , ##__VA_ARGS__)
+#define FLDZ       { m2c::fpu_push(0.0L); }
+#define FLD1       { m2c::fpu_push(1.0L); }
+#define FLDPI      { m2c::fpu_push(3.14159265358979323846L); }
+#define FST(x)     m2c::fpu_st(_state, x)
+#define FSTP(...)  m2c::fpu_stp(_state , ##__VA_ARGS__)
+#define FCOM(...)  m2c::fpu_com(_state , ##__VA_ARGS__)
+#define FCOMP(x)   m2c::fpu_comp(_state, x)
+#define FCOMPP     { m2c::fpu_setcc(m2c::fpu_cmp(m2c::fpu_st0(), m2c::fpu_sti(1))); m2c::fpu_pop(); m2c::fpu_pop(); }
+#define FILD(x)    m2c::fpu_ild(_state, x)
+#define FISTP(x)   m2c::fpu_istp(_state, x)
+#define FIST(x)    m2c::fpu_ist(_state, x)
+#define FMUL(...)  m2c::fpu_mul(_state , ##__VA_ARGS__)
+#define FMULP(i, ...) m2c::fpu_mulp(_state, i)
+#define FDIV(...)  m2c::fpu_div(_state , ##__VA_ARGS__)
+#define FDIVP(i, ...) m2c::fpu_divp(_state, i)
+#define FDIVR(...) m2c::fpu_divr(_state , ##__VA_ARGS__)
+#define FDIVRP(i, ...) m2c::fpu_divrp(_state, i)
+#define FADD(...)  m2c::fpu_add(_state , ##__VA_ARGS__)
+#define FADDP(i, ...) m2c::fpu_addp(_state, i)
+#define FSUB(...)  m2c::fpu_sub(_state , ##__VA_ARGS__)
+#define FSUBP(i, ...) m2c::fpu_subp(_state, i)
+#define FSUBR(...) m2c::fpu_subr(_state , ##__VA_ARGS__)
+#define FSUBRP(i, ...) m2c::fpu_subrp(_state, i)
+#define FIMUL(x)   m2c::fpu_imul(_state, x)
+#define FIDIV(x)   m2c::fpu_idiv(_state, x)
+#define FIDIVR(x)  m2c::fpu_idivr(_state, x)
+#define FISUB(x)   m2c::fpu_isub(_state, x)
+#define FISUBR(x)  m2c::fpu_isubr(_state, x)
+#define FIADD(x)   m2c::fpu_iadd(_state, x)
+#define FICOM(x)   m2c::fpu_icom(_state, x)
+#define FICOMP(x)  m2c::fpu_icomp(_state, x)
+#define FCHS       { m2c::fpu_chs(); }
+#define FABS       { m2c::fpu_abs(); }
+#define FXCH(...)  m2c::fpu_xch(_state , ##__VA_ARGS__)
+#define FSTSW(x)   m2c::fpu_stsw(_state, x)
+#define FNSTSW(x)  FSTSW(x)
+#define FSTCW(x)   m2c::fpu_stcw(_state, x)
+#define FNSTCW(x)  FSTCW(x)
+#define FLDCW(x)   m2c::fpu_ldcw(_state, x)
+#define FINIT      { m2c::fpu_init(); }
+#define FNINIT     FINIT
+#define FCLEX      { m2c::fpu.sw &= ~0x3f; }
+#define FNCLEX     FCLEX
+#define FTST       { m2c::fpu_ftst(); }
+#define FSQRT      { m2c::fpu_sqrt(); }
+#define FRNDINT    { m2c::fpu_rndint(); }
+#define FSCALE     { m2c::fpu_scale(); }
+#define FPREM      { m2c::fpu_prem(); }
+#define FPREM1     { m2c::fpu_prem1(); }
+#define FXTRACT    { m2c::fpu_xtract(); }
+#define FYL2X      { m2c::fpu_yl2x(); }
+#define FYL2XP1    { m2c::fpu_yl2xp1(); }
+#define F2XM1      { m2c::fpu_2xm1(); }
+#define FPTAN      { m2c::fpu_ptan(); }
+#define FPATAN     { m2c::fpu_patan(); }
+#define FSIN       { m2c::fpu_sin(); }
+#define FCOS       { m2c::fpu_cos(); }
+#define FSINCOS    { m2c::fpu_sincos(); }
+#define FXAM       { m2c::fpu_xam(); }
+#define FINCSTP    { m2c::fpu_incstp(); }
+#define FDECSTP    { m2c::fpu_decstp(); }
+#define FFREE(...) { ; }                 // tag words are not modelled
+#define FBLD(x)    m2c::fpu_bld(_state, x)
+#define FBSTP(x)   m2c::fpu_bstp(_state, x)
+#define FUCOM(...)   FCOM(__VA_ARGS__)
+#define FUCOMP(x)    FCOMP(x)
+#define FUCOMPP      FCOMPP
+#define FLDL2E     { m2c::fpu_push(1.4426950408889634074L); }
+#define FLDL2T     { m2c::fpu_push(3.3219280948873623479L); }
+#define FLDLG2     { m2c::fpu_push(0.3010299956639811952L); }
+#define FLDLN2     { m2c::fpu_push(0.6931471805599453094L); }
+#define FNOP       { ; }
+#define FENI       { ; }
+#define FNENI      { ; }
+#define FDISI      { ; }
+#define FNDISI     { ; }
+#define FSETPM     { ; }
+#define WAIT       { ; }
+#define FWAIT      { ; }
 
 #endif
