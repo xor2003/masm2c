@@ -72,8 +72,8 @@ struct W16Win {
     std::string cls;
     std::string title;
     int x, y, w, h;
-    dw style;
-    dw exstyle;
+    dd style;          // full 32-bit window style (WS_* bits live high)
+    dd exstyle;
     dw parent;
     dw menu;
     bool visible;
@@ -82,9 +82,20 @@ struct W16Win {
     dw winwords[16];   // SetWindowWord scratch
     bool dirty;
     SDL_Surface* surf; // 32bpp backing store
+    /* Non-client inset: the client area of a framed top-level window is inset
+     * by its border/caption.  clx/cly = client origin within the window,
+     * crx/cby = right/bottom border thickness.  Children position relative
+     * to the client origin. */
+    int clx, cly, crx, cby;
+    /* Drawable (presented) size of a framed top-level window.  The Win16
+     * window's outer rect includes a caption band that SDL renders as the real
+     * title bar, so our drawable is shorter than w->h: drh = client+edge,
+     * i.e. the field region actually painted.  0 means use w->w/w->h. */
+    int drw, drh;
 };
 extern std::vector<W16Win*> windows;
 W16Win* find_hwnd(dw hwnd);
+void compute_client(W16Win* w);   // recompute non-client inset from style
 extern dw main_hwnd;
 
 /* expose the guest _STATE for the SDL pump to use for callbacks */

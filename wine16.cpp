@@ -10,6 +10,7 @@
 #include "wine16.h"
 
 #include <SDL.h>
+#include <SDL_mixer.h>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -21,6 +22,7 @@
 #include <deque>
 #include <algorithm>
 #include <map>
+#include <dirent.h>
 
 extern "C" int DosMemAlloc(uint16_t size, int mode, uint16_t* para, uint16_t* asize);
 extern "C" int DosMemFree(uint16_t para);
@@ -269,13 +271,23 @@ void post_msg(dw hwnd, dw msg, dw wp, dd lp) { msgq.push_back({hwnd, msg, wp, lp
 
 static void win_abs_pos(W16Win* w, int* ox, int* oy);
 static W16Win* hit_test(int x, int y);
+static void win_to_logical(int wx, int wy, int* lx, int* ly);
+static void toggle_fullscreen();
 
 void sdl_event_to_msg(m2c::_STATE*, const SDL_Event& ev) {
     switch (ev.type) {
     case SDL_QUIT:
+        fprintf(stderr, "[sdlquit] main_hwnd=%x\n", main_hwnd);
         post_msg(main_hwnd, 0x0010, 0, 0);
         break;
     case SDL_KEYDOWN: case SDL_KEYUP: {
+        /* Alt-Enter / Alt-Return toggles fullscreen on the host; swallow it so
+         * the guest never sees the Enter. */
+        if (ev.type == SDL_KEYDOWN && ev.key.keysym.sym == SDLK_RETURN &&
+            (ev.key.keysym.mod & KMOD_ALT)) {
+            toggle_fullscreen();
+            break;
+        }
         dw vk = 0;
         SDL_Keycode k = ev.key.keysym.sym;
         if (k >= SDLK_a && k <= SDLK_z) vk = 'A' + (k - SDLK_a);
@@ -363,7 +375,8 @@ void sdl_event_to_msg(m2c::_STATE*, const SDL_Event& ev) {
          * hit-test the visible window tree (topmost = latest creation)
          * rather than always the main window.  A real click also assigns
          * keyboard focus, so later keys reach the clicked window. */
-        int mx = ev.button.x, my = ev.button.y;
+        int mx, my;
+        win_to_logical(ev.button.x, ev.button.y, &mx, &my);
         W16Win* hit = nullptr;
         if (!g_capture) hit = hit_test(mx, my);
         dw target = g_capture ? g_capture
@@ -381,7 +394,9 @@ void sdl_event_to_msg(m2c::_STATE*, const SDL_Event& ev) {
         break;
     }
     case SDL_MOUSEMOTION: {
-        dd lp = ((dd)(dw)ev.motion.y << 16) | (dw)ev.motion.x;
+        int mx, my;
+        win_to_logical(ev.motion.x, ev.motion.y, &mx, &my);
+        dd lp = ((dd)(dw)my << 16) | (dw)mx;
         post_msg(g_capture ? g_capture : main_hwnd, 0x0200, 0, lp);
         break;
     }
@@ -473,15 +488,19 @@ DC* make_dc(W16Win* w, SDL_Surface* surf, GdiObj* mem) {
 }
 
 void dc_pt(DC* d, int x, int y, int* px, int* py) {
+    /* A window DC is client-relative: drawing at client (x,y) lands at the
+     * window's client origin, which sits inside any non-client border. */
+    int cx = d->win ? d->win->clx : 0;
+    int cy = d->win ? d->win->cly : 0;
     if (d->mapmode == 1 || !d->wextx || !d->vextx) {
-        *px = x - d->worgx + d->vorgx;
-        *py = y - d->worgy + d->vorgy;
+        *px = x - d->worgx + d->vorgx + cx;
+        *py = y - d->worgy + d->vorgy + cy;
         return;
     }
     double sx = (double)d->vextx / d->wextx;
     double sy = (double)d->vexty / d->wexty;
-    *px = (int)((x - d->worgx) * sx) + d->vorgx;
-    *py = (int)((y - d->worgy) * sy) + d->vorgy;
+    *px = (int)((x - d->worgx) * sx) + d->vorgx + cx;
+    *py = (int)((y - d->worgy) * sy) + d->vorgy + cy;
 }
 
 void surf_px(SDL_Surface* s, int x, int y, dd rgb) {
@@ -755,9 +774,16 @@ void sdl_init() {
         fprintf(stderr, "SDL_Init: %s\n", SDL_GetError());
         return;
     }
+    /* Optional integer scale-up (M2C_SCALE) so small fixed-res games open
+     * larger; logical size below keeps the framebuffer at the guest res so
+     * the window can be freely resized (letterboxed) or fullscreened. */
+    int scale = 1;
+    const char* sc = getenv("M2C_SCALE");
+    if (sc) { scale = atoi(sc); if (scale < 1) scale = 1; }
     win = SDL_CreateWindow(app_title,
                            SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-                           win_w, win_h, SDL_WINDOW_SHOWN);
+                           win_w * scale, win_h * scale,
+                           SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
     if (!win) { fprintf(stderr, "SDL_CreateWindow: %s\n", SDL_GetError()); return; }
     renderer = SDL_CreateRenderer(win, -1,
                                   SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
@@ -769,6 +795,22 @@ void sdl_init() {
                                 SDL_TEXTUREACCESS_STREAMING, win_w, win_h);
     }
     // start with a white client area (typical Win3.x window bg)
+}
+
+/* Window pixel -> logical (guest) coordinate, honoring the letterboxed
+ * viewport SDL applies around the logical size. */
+static void win_to_logical(int wx, int wy, int* lx, int* ly) {
+    if (!renderer) { *lx = wx; *ly = wy; return; }
+    float fx, fy;
+    SDL_RenderWindowToLogical(renderer, (float)wx, (float)wy, &fx, &fy);
+    *lx = (int)lroundf(fx); *ly = (int)lroundf(fy);
+}
+
+static bool sdl_fullscreen = false;
+static void toggle_fullscreen() {
+    if (!win) return;
+    sdl_fullscreen = !sdl_fullscreen;
+    SDL_SetWindowFullscreen(win, sdl_fullscreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0);
 }
 
 void sdl_poll(m2c::_STATE* s) {
@@ -785,8 +827,8 @@ static W16Win* hit_test(int x, int y) {
         if (!c->visible) continue;
         int ax, ay;
         win_abs_pos(c, &ax, &ay);
-        int cw = c->w > 0 ? c->w : (c->surf ? c->surf->w : 0);
-        int ch = c->h > 0 ? c->h : (c->surf ? c->surf->h : 0);
+        int cw = c->drw > 0 ? c->drw : (c->w > 0 ? c->w : (c->surf ? c->surf->w : 0));
+        int ch = c->drh > 0 ? c->drh : (c->h > 0 ? c->h : (c->surf ? c->surf->h : 0));
         if (x >= ax && x < ax + cw && y >= ay && y < ay + ch) return c;
     }
     return nullptr;
@@ -805,19 +847,102 @@ static void win_abs_pos(W16Win* w, int* ox, int* oy) {
         while (p && depth-- > 0) {
             W16Win* par = find_hwnd(p);
             if (!par) break;
-            x += par->x; y += par->y;
+            /* A child's origin is relative to its parent's CLIENT area, so the
+             * parent's non-client border inset shifts it down/right. */
+            x += par->x + par->clx;
+            y += par->y + par->cly;
             p = par->parent;
         }
     }
     *ox = x; *oy = y;
 }
 
+/* Compute the client area of a framed top-level window.  A Win16 overlapped
+ * window reserves a non-client band (border, plus caption/menu which SDL
+ * already supplies as the real window decorations) around its drawable
+ * content.  Children anchor to that client origin; GetClientRect reports the
+ * client size.  Values may be tuned with M2C_FX/M2C_FY (left+right) and
+ * M2C_FTY/M2C_FBY. */
+void compute_client(W16Win* w) {
+    int bx = 0, by = 0;
+    bool frame = false;
+    if (w->parent == 0 && !(w->style & 0x80000000u)) {  // top-level
+        dd st = w->style;
+        frame = (st & 0x00C00000u) || (st & 0x00400000u) ||
+                (st & 0x00040000u) || (st & 0x00800000u);
+        if (frame) {
+            /* Dialog/thick frames reserve a wider border on the left/right and
+             * bottom, a shallower one on top (the caption lives in the real SDL
+             * title bar, so we only need the sizing border here).  Defaults are
+             * tuned to match Wine's rendering; M2C_F* override for testing. */
+            bx = getenv("M2C_FX") ? atoi(getenv("M2C_FX")) : 8;
+            by = getenv("M2C_FY") ? atoi(getenv("M2C_FY")) : 4;
+        }
+    }
+    w->clx = bx; w->cly = by;
+    w->crx = getenv("M2C_FBX") ? atoi(getenv("M2C_FBX")) : bx;
+    w->cby = getenv("M2C_FBY") ? atoi(getenv("M2C_FBY")) : by;
+    /* A captioned window's Win16 outer rect includes a title-bar band that SDL
+     * supplies as the real decoration, so it is not part of our drawable.  The
+     * drawable hugs the client region (field + recessed edge); the leftover
+     * height below it is the caption, not dead space.  M2C_DW/M2C_DH tune how
+     * much of the outer rect is external non-client (caption/frame). */
+    w->drw = w->w;
+    w->drh = w->h;
+    if (frame) {
+        w->drw = w->w - (getenv("M2C_DW") ? atoi(getenv("M2C_DW")) : 6);
+        w->drh = w->h - (getenv("M2C_DH") ? atoi(getenv("M2C_DH")) : 32);
+    }
+}
+
+/* Paint the non-client band of a framed window into target surface `t`.
+ * Win16 draws a window's border/caption in the non-client area; our SDL
+ * window supplies real decorations, so we emulate the inner look: a
+ * raised frame face with a sunken edge where the client is carved in. */
+static void draw_nc_frame(SDL_Surface* t, W16Win* w) {
+    int bw = t->w, bh = t->h;
+    int cw = bw - w->clx - w->crx, ch = bh - w->cly - w->cby;
+    if (cw <= 0 || ch <= 0) return;
+    int cx = w->clx, cy = w->cly;
+    dd face = 0xc0c0c0, hi = 0xffffff, lo = 0x808080, dk = 0x000000;
+    /* fill the whole non-client ring with the frame face color */
+    surf_fill(t, 0, 0, bw, cy, face);                       // top band
+    surf_fill(t, 0, cy + ch, bw, bh - (cy + ch), face);     // bottom band
+    surf_fill(t, 0, cy, cx, ch, face);                      // left band
+    surf_fill(t, cx + cw, cy, bw - (cx + cw), ch, face);    // right band
+    /* Sunken client edge carved into the frame.  Light comes from the top-left,
+     * so the recess's top/left walls read as a dark groove (shadow, then the
+     * black floor corner) while the bottom/right walls catch the light (a black
+     * corner line then a highlight wall).  The remaining margin is face gray. */
+    if (cx >= 3) {
+        surf_fill(t, cx - 3, cy - 3, 1, ch + 6, lo);
+        surf_fill(t, cx - 2, cy - 2, 1, ch + 4, lo);
+        surf_fill(t, cx - 1, cy - 1, 1, ch + 2, dk);        // left dark groove
+    }
+    if (cy >= 3) {
+        surf_fill(t, cx - 3, cy - 3, cw + 6, 1, lo);
+        surf_fill(t, cx - 2, cy - 2, cw + 4, 1, lo);
+        surf_fill(t, cx - 1, cy - 1, cw + 2, 1, dk);        // top dark groove
+    }
+    int rx = cx + cw, by = cy + ch;                          // client right/bottom
+    if (rx + 3 <= bw) {
+        surf_fill(t, rx,     cy - 1, 1, ch + 2, dk);        // right corner
+        surf_fill(t, rx + 1, cy - 2, 1, ch + 4, hi);
+        surf_fill(t, rx + 2, cy - 3, 1, ch + 6, hi);        // right lit wall
+    }
+    if (by + 3 <= bh) {
+        surf_fill(t, cx - 1, by,     cw + 2, 1, dk);        // bottom corner
+        surf_fill(t, cx - 2, by + 1, cw + 4, 1, hi);
+        surf_fill(t, cx - 3, by + 2, cw + 6, 1, hi);        // bottom lit wall
+    }
+}
+
 void sdl_present(m2c::_STATE*) {
     if (!win || !renderer || !tex) return;
     auto* w = find_hwnd(main_hwnd);
     if (!w) return;
-    int fw = w->surf ? w->surf->w : (w->w > 0 ? w->w : 640);
-    int fh = w->surf ? w->surf->h : (w->h > 0 ? w->h : 480);
+    int fw = w->surf ? w->surf->w : (w->drw > 0 ? w->drw : 640);
+    int fh = w->surf ? w->surf->h : (w->drh > 0 ? w->drh : 480);
     if (fw != win_w || fh != win_h) {
         SDL_DestroyTexture(tex);
         tex = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_BGRA32,
@@ -830,6 +955,9 @@ void sdl_present(m2c::_STATE*) {
                                                       SDL_PIXELFORMAT_BGRA32);
     if (!frame) return;
     if (w->surf) SDL_BlitSurface(w->surf, nullptr, frame, nullptr);
+    /* frame the client area of a bordered top-level window (children land
+     * inside, so this draws the recessed border ring around the field). */
+    if (w->clx || w->cly || w->crx || w->cby) draw_nc_frame(frame, w);
     // Overlay every other visible window at its absolute position, in
     // creation order (children and popups land on top of the main frame).
     for (auto* v : windows) {

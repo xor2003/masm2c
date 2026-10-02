@@ -12,6 +12,18 @@ struct W16Class {
 static std::vector<W16Class> w16classes;
 static std::map<dw, std::string> dlgproc_store;
 
+/* Send WM_DESTROY (so the app's handler can PostQuitMessage) then drop the
+ * window.  Real DestroyWindow does this; without it closing the main window
+ * never reaches the app's quit path, so the host window couldn't be closed. */
+static void w16_destroy_win(m2c::_STATE* s, w16::W16Win* w) {
+    if (!w) return;
+    if (w->wndproc) w16::call_guest(s, w->wndproc, {w->hwnd, 0x0002, 0, 0, 0});
+    if (w->surf) SDL_FreeSurface(w->surf);
+    for (size_t i = 0; i < w16::windows.size(); ++i)
+        if (w16::windows[i] == w) { w16::windows.erase(w16::windows.begin() + i); break; }
+    delete w;
+}
+
 static dw find_class(const std::string& n) {
     for (size_t i = 0; i < w16classes.size(); ++i)
         if (w16classes[i].name == n) return (dw)(i + 1);
@@ -51,7 +63,7 @@ APIFN(registerclass) {
         c.menu_name = w16::rd32(p + 18);
         c.name = "";
         w16::fstr(w16::rd32(p + 22), c.name);
-        LOG("cls='%s' wndproc=%08x hbr=%x", c.name.c_str(), c.wndproc, c.hbr);
+        LOG("cls='%s' wndproc=%08x hbr=%x menu=%x", c.name.c_str(), c.wndproc, c.hbr, c.menu_name);
     }
     w16classes.push_back(c);
     eax = (dw)w16classes.size();
@@ -112,17 +124,22 @@ APIFN(createwindow) {
     w->wndproc = clsid ? w16classes[clsid - 1].wndproc : 0;
     w->x = (int16_t)x; w->y = (int16_t)y;
     w->w = (int16_t)wid; w->h = (int16_t)hgt;
-    w->style = (dw)style; w->parent = parent; w->menu = menu;
+    w->style = style; w->parent = parent; w->menu = menu;
     w->visible = false; w->enabled = true; w->dirty = true;
     memset(w->userdata, 0, sizeof(w->userdata));
     memset(w->winwords, 0, sizeof(w->winwords));
     w->surf = nullptr;
+    w16::compute_client(w);
     w16::windows.push_back(w);
     if (!w16::main_hwnd) {
         w16::main_hwnd = w->hwnd;
         if (w->w <= 0 || w->w > 3000) w->w = w16::win_w;
         if (w->h <= 0 || w->h > 3000) w->h = w16::win_h;
-        w16::win_w = w->w; w16::win_h = w->h;
+        w16::compute_client(w);
+        /* The SDL drawable is the client region, not the outer rect: the caption
+         * lives in the real title bar, so present only drw x drh. */
+        w16::win_w = w->drw ? w->drw : w->w;
+        w16::win_h = w->drh ? w->drh : w->h;
         w16::sdl_init();
         // send WM_CREATE then WM_SIZE/SHOWWINDOW-ish
         w16::post_msg(w->hwnd, 0x0001, 0, 0);   // WM_CREATE
@@ -152,18 +169,21 @@ APIFN(createwindowex) {
     w->wndproc = clsid ? w16classes[clsid - 1].wndproc : 0;
     w->x = (int16_t)x; w->y = (int16_t)y;
     w->w = (int16_t)wid; w->h = (int16_t)hgt;
-    w->style = (dw)style; w->exstyle = (dw)exstyle;
+    w->style = style; w->exstyle = exstyle;
     w->parent = parent; w->menu = menu;
     w->visible = false; w->enabled = true; w->dirty = true;
     memset(w->userdata, 0, sizeof(w->userdata));
     memset(w->winwords, 0, sizeof(w->winwords));
     w->surf = nullptr;
+    w16::compute_client(w);
     w16::windows.push_back(w);
     if (!w16::main_hwnd) {
         w16::main_hwnd = w->hwnd;
         if (w->w <= 0 || w->w > 3000) w->w = w16::win_w;
         if (w->h <= 0 || w->h > 3000) w->h = w16::win_h;
-        w16::win_w = w->w; w16::win_h = w->h;
+        w16::compute_client(w);
+        w16::win_w = w->drw ? w->drw : w->w;
+        w16::win_h = w->drh ? w->drh : w->h;
         w16::sdl_init();
         w16::post_msg(w->hwnd, 0x0001, 0, 0);
     }
@@ -176,13 +196,7 @@ APIFN(destroywindow) {
     std::string _strtmp;
     dw hwnd = W(0);
     LOG("hwnd=%x", hwnd);
-    for (size_t i = 0; i < w16::windows.size(); ++i)
-        if (w16::windows[i]->hwnd == hwnd) {
-            if (w16::windows[i]->surf) SDL_FreeSurface(w16::windows[i]->surf);
-            delete w16::windows[i];
-            w16::windows.erase(w16::windows.begin() + i);
-            break;
-        }
+    w16_destroy_win(_state, w16::find_hwnd(hwnd));
     eax = 1;
     DONE(2);
 }
@@ -234,9 +248,32 @@ APIFN(movewindow) {
     std::string _strtmp;
     auto* w = w16::find_hwnd(W(5));
     if (w) {
+        LOG("movewin hwnd=%x to %d,%d %dx%d", W(5), (int16_t)W(4), (int16_t)W(3),
+            (int16_t)W(2), (int16_t)W(1));
         w->x = (int16_t)W(4); w->y = (int16_t)W(3);
-        w->w = (int16_t)W(2); w->h = (int16_t)W(1);
-        if (w->surf) { SDL_FreeSurface(w->surf); w->surf = nullptr; }
+        int nw = (int16_t)W(2), nh = (int16_t)W(1);
+        bool resized = (nw != w->w || nh != w->h);
+        w->w = nw; w->h = nh;
+        w16::compute_client(w);
+        if (resized) {
+            /* Win16 posts WM_SIZE when a window's size changes so OWL can run
+             * its layout (reposition child controls to the design rect). */
+            int cw_ = (w->drw > 0 ? w->drw : nw) - w->clx - w->crx;
+            int ch_ = (w->drh > 0 ? w->drh : nh) - w->cly - w->cby;
+            w16::post_msg(w->hwnd, 0x0005, 0,
+                          (dd)(((ch_ & 0xffff) << 16) | (cw_ & 0xffff)));
+        }
+        if (w->surf) {
+            /* Move/resize must not drop already-painted pixels: recreate the
+             * backing store at the new drawable size and carry over the art. */
+            int cw = w->drw > 0 ? w->drw : (nw > 0 ? nw : 640);
+            int ch = w->drh > 0 ? w->drh : (nh > 0 ? nh : 480);
+            SDL_Surface* ns = SDL_CreateRGBSurfaceWithFormat(0, cw, ch, 32,
+                                                           SDL_PIXELFORMAT_BGRA32);
+            if (ns) { SDL_BlitSurface(w->surf, nullptr, ns, nullptr);
+                      SDL_FreeSurface(w->surf); w->surf = ns; }
+        }
+        w->dirty = true;
     }
     eax = 1;
     DONE(12);
@@ -260,8 +297,13 @@ APIFN(getclientrect) {
     auto* w = w16::find_hwnd(W(2));
     db* r = FP(0);
     if (w && r) {
+        /* The client fills the drawable area inside the non-client edge; the
+         * drawable (drw/drh) already excludes any external caption band. */
+        int dw_ = w->drw > 0 ? w->drw : w->w;
+        int dh_ = w->drh > 0 ? w->drh : w->h;
+        int cw = dw_ - w->clx - w->crx, ch = dh_ - w->cly - w->cby;
         w16::wr16(r, 0); w16::wr16(r + 2, 0);
-        w16::wr16(r + 4, (dw)w->w); w16::wr16(r + 6, (dw)w->h);
+        w16::wr16(r + 4, (dw)(cw > 0 ? cw : 0)); w16::wr16(r + 6, (dw)(ch > 0 ? ch : 0));
     }
     DONE(6);
 }
@@ -291,7 +333,7 @@ APIFN(setwindowlong) {
     dd old = 0;
     if (w) {
         if (idx == -8) { old = w->wndproc; w->wndproc = v; }
-        else if (idx == -16) { old = w->style; w->style = (dw)v; }
+        else if (idx == -16) { old = w->style; w->style = v; }
         else if (idx >= 0 && idx < 16) { old = w->userdata[idx / 2]; w->userdata[idx / 2] = v; }
     }
     RETD(old);
@@ -537,6 +579,9 @@ APIFN(defwindowproc) {
         if (w) w->dirty = false;
         ret = 0; break;
     }
+    case 0x0010:                // WM_CLOSE -> DestroyWindow
+        w16_destroy_win(_state, w16::find_hwnd(hwnd));
+        ret = 0; break;
     case 0x0086: ret = 1; break;  // WM_NCACTIVATE -> keep active
     case 0x0087: ret = 0; break;  // WM_NCDESTROY
     default: ret = 0;
@@ -940,8 +985,8 @@ APIFN(beginpaint) {
     auto* w = w16::find_hwnd(hwnd);
     db* p = w16::fptr(lpps);
     if (w && !w->surf) {
-        w->surf = SDL_CreateRGBSurfaceWithFormat(0, w->w > 0 ? w->w : 640,
-                                               w->h > 0 ? w->h : 480, 32,
+        w->surf = SDL_CreateRGBSurfaceWithFormat(0, w->drw ? w->drw : (w->w > 0 ? w->w : 640),
+                                               w->drh ? w->drh : (w->h > 0 ? w->h : 480), 32,
                                                SDL_PIXELFORMAT_BGRA32);
     }
     w16::DC* d = w ? w16::make_dc(w, w->surf, nullptr) : nullptr;
@@ -977,8 +1022,8 @@ APIFN(getdc) {
     std::string _strtmp;
     auto* w = w16::find_hwnd(W(0));
     if (w && !w->surf)
-        w->surf = SDL_CreateRGBSurfaceWithFormat(0, w->w > 0 ? w->w : 640,
-                                               w->h > 0 ? w->h : 480, 32,
+        w->surf = SDL_CreateRGBSurfaceWithFormat(0, w->drw ? w->drw : (w->w > 0 ? w->w : 640),
+                                               w->drh ? w->drh : (w->h > 0 ? w->h : 480), 32,
                                                SDL_PIXELFORMAT_BGRA32);
     w16::DC* d = w16::make_dc(w, w ? w->surf : nullptr, nullptr);
     eax = d->handle;
