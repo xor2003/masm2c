@@ -46,7 +46,7 @@ jobs:
         run: |
           sudo apt-get update -y
           sudo apt-get install -y make gcc gcc-multilib g++-multilib libncurses-dev libgtest-dev \
-            clang libclang-rt-14-dev
+            clang libclang-common-14-dev
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
