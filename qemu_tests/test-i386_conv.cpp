@@ -116,7 +116,14 @@ std::vector<NativeReturnMark> native_return_values;
 size_t native_return_next_id = 0;
 size_t native_return_call_depth = 0;
 bool suppress_native_return_push_transfer = false;
+int last_ret_popped = -1;
+int last_ret_mark_mode = -1;
+size_t last_ret_mark_id = 0;
+dd last_ret_site = 0;
 bool executionFinished = false;
+void stackDump(_STATE*) {}
+// Standalone harness has no LDT/NE selector space: paragraphs map 1:1.
+dw m2c_seg_selector(dw para) { return para; }
 bool dispatch_external_code(_offsets __disp, _STATE* _state, bool* handled) {
     (void)__disp; (void)_state;
     if (handled) *handled = false;
