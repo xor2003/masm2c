@@ -1,5 +1,5 @@
-import unittest
 import os
+import unittest
 from argparse import Namespace
 from collections import OrderedDict
 from pathlib import Path

@@ -105,8 +105,8 @@ APIFN(createwindow) {
     X86_REGREF
     std::string _strtmp;
     // CreateWindow(cls(4), title(4), style(4), X,Y,W,H(8), parent(2),
-    //              menu(2), inst(2), param(4)) — 32 bytes
-    dd lp = D(0); dw hinst = W(2); dw menu = W(3); dw parent = W(4);
+    //              menu(2), inst(2), param(4)) — 32 bytes; lp/hinst unused
+    dw menu = W(3); dw parent = W(4);
     dw hgt = W(5), wid = W(6), y = W(7), x = W(8);
     dd style = D(9); dd title = D(11); dd cls = D(13);
     std::string cname, tname;
@@ -152,8 +152,8 @@ APIFN(createwindowex) {
     X86_REGREF
     std::string _strtmp;
     // CreateWindowEx(exstyle(4), cls(4), title(4), style(4), X,Y,W,H(8),
-    //                parent(2), menu(2), inst(2), param(4)) — 36 bytes
-    dd lp = D(0); dw hinst = W(2); dw menu = W(3); dw parent = W(4);
+    //                parent(2), menu(2), inst(2), param(4)) — 36 bytes; lp/hinst unused
+    dw menu = W(3); dw parent = W(4);
     dw hgt = W(5), wid = W(6), y = W(7), x = W(8);
     dd style = D(9); dd title = D(11); dd cls = D(13); dd exstyle = D(15);
     std::string cname, tname;
@@ -934,7 +934,7 @@ APIFN(setscrollpos) {
     X86_REGREF
     std::string _strtmp;
     // (hwnd, bar, pos, redraw)
-    dw hwnd = W(3), bar = W(2), pos = W(1);
+    dw hwnd = W(3), pos = W(1);
     dw old = scrollpos_val[(hwnd & 63)];
     scrollpos_val[(hwnd & 63)] = pos;
     eax = old;
@@ -945,7 +945,7 @@ APIFN(setscrollrange) {
     X86_REGREF
     std::string _strtmp;
     // (hwnd, bar, min, max, redraw)
-    dw hwnd = W(4), bar = W(3), mn = W(2), mx = W(1);
+    dw hwnd = W(4), mn = W(2), mx = W(1);
     scrollrange_val[hwnd & 63][0] = mn;
     scrollrange_val[hwnd & 63][1] = mx;
     DONE(10);
@@ -1033,7 +1033,7 @@ APIFN(getdc) {
 APIFN(releasedc) {
     X86_REGREF
     std::string _strtmp;
-    dw hwnd = W(1); dw hdc = W(0);
+    dw hdc = W(0);
     auto* d = w16::find_dc(hdc);
     if (d) {
         for (auto it = w16::dcs.begin(); it != w16::dcs.end(); ++it)
@@ -1105,7 +1105,7 @@ APIFN(_wsprintf) {
             out += sv;
         } else if (spec == '%') out += '%';
     }
-    if (dstp) strcpy((char*)dstp, out.c_str());
+    if (dstp) strcpy((char*)dstp, out.c_str());  // NOLINT(clang-analyzer-security.insecureAPI.strcpy) wsprintf is unbounded by API contract; dstp is guest memory
     eax = (dw)out.size();
     DONE(0);   // cdecl — caller cleans
 }
@@ -1116,7 +1116,7 @@ APIFN(wvsprintf) {
     // wvsprintf(buf(4), fmt(4), arglist(4)) — args via pointer; approximate
     dd buf = D(4); dd fmt = D(2); dd argp = D(0);
     db* dstp = w16::fptr(buf);
-    std::string fmtstr; w16::fstr(D(1), fmtstr);
+    std::string fmtstr; w16::fstr(fmt, fmtstr);
     db* ap = w16::fptr(argp);
     std::string out;
     int ai = 0;
@@ -1145,7 +1145,7 @@ APIFN(wvsprintf) {
             out += sv;
         } else if (spec == '%') out += '%';
     }
-    if (dstp) strcpy((char*)dstp, out.c_str());
+    if (dstp) strcpy((char*)dstp, out.c_str());  // NOLINT(clang-analyzer-security.insecureAPI.strcpy) wvsprintf is unbounded by API contract; dstp is guest memory
     eax = (dw)out.size();
     DONE(12);
 }

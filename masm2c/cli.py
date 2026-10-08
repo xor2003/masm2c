@@ -35,7 +35,6 @@ import os
 import re
 import sys
 import traceback
-
 from typing import Any
 
 from .cpp import Cpp
@@ -47,8 +46,6 @@ __version__ = "0.9.8"
 __author__ = "x0r"
 __copyright__ = "x0r"
 __license__ = "GPL2+"
-
-_logger = logging.getLogger(__name__)
 
 _ASM_IDENTIFIER = r"[A-Za-z_@$?.][A-Za-z0-9_@$?.]*"
 _EQUATE_ASSIGNMENT_RE = re.compile(

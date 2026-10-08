@@ -1,0 +1,4 @@
+# Sanitizer ignorelist (llvm -fsanitize-ignorelist format).
+# Functions/types listed here intentionally model 16-bit x86 wrap-around and
+# type-punned memory access; instrumenting them floods UBSan with expected
+# violations. Add entries only for verified-intentional behavior.

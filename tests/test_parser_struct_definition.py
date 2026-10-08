@@ -1,7 +1,7 @@
 import unittest
 
-from masm2c.parser import Parser
 from masm2c.op import Struct
+from masm2c.parser import Parser
 
 
 class ParserStructDefinitionTest(unittest.TestCase):

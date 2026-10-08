@@ -18,17 +18,15 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #
-from typing import Any, Union
+from typing import Any
 
 import lark
 import lark.tree
 from lark import Tree
 
-SQEXPR = "sqexpr"
-
 
 class Token(lark.Tree):
-    __slots__ = ("data", "children")
+    __slots__ = ("children", "data")
 
     def __init__(self, type, value) -> None:
         raise Exception("Dead code")
@@ -39,7 +37,7 @@ class Token(lark.Tree):
     # def __repr__(self):
 
     @staticmethod
-    def find_tokens(expr: Any, lookfor: str) -> Union[list[str], list[lark.Tree], None]:
+    def find_tokens(expr: Any, lookfor: str) -> list[str] | list[lark.Tree] | None:
         found: list[Any] = []
         if isinstance(expr, Tree):
             if expr.data == lookfor:

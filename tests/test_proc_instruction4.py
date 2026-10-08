@@ -1,7 +1,7 @@
 import unittest
 
-from masm2c.Token import Expression
 from masm2c.proc import Proc
+from masm2c.Token import Expression
 
 
 class ProcInstruction4Test(unittest.TestCase):

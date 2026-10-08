@@ -22,7 +22,8 @@ mov ecx, 5000000
 waitLoop:
 cmp frames, 2
 jae success
-loop waitLoop
+dec ecx
+jnz waitLoop
 mov al, 1
 jmp failure
 

@@ -1,5 +1,5 @@
-import unittest
 import os
+import unittest
 from unittest.mock import patch
 
 from masm2c.parser import Parser

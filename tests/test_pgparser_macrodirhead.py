@@ -2,8 +2,8 @@ import unittest
 
 from lark import Token
 
-from masm2c.pgparser import Asm2IR
 from masm2c.parser import Parser
+from masm2c.pgparser import Asm2IR
 
 
 class PgParserMacroDirHeadTest(unittest.TestCase):

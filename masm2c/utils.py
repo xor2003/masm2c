@@ -2,12 +2,13 @@
 
 import logging
 
+
 def read_whole_file(file_name: str) -> str:
     """Read the entire file and return it as a string.
-    
+
     Args:
         file_name: The name of the file to read
-        
+
     Returns:
         The content of the file as a string
     """

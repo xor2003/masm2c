@@ -8,12 +8,12 @@ from __future__ import annotations
 
 import argparse
 import cProfile
-import os
 import logging
+import os
 import statistics
 import time
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Sequence
 
 from masm2c.parser import Parser
 
@@ -22,7 +22,6 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Benchmark parser-only throughput")
     parser.add_argument("cases_dir", nargs="?", default="asmTests", help="Directory with .asm/.lst fixtures")
     parser.add_argument("--passes", type=int, default=2, help="Parser passes per file")
-    parser.add_argument("--engine", default="postlex", help="Parser engine: postlex or cython")
     parser.add_argument(
         "--runs",
         type=int,
@@ -116,12 +115,11 @@ def main() -> int:
     cases_dir = Path(args.cases_dir)
     cases = collect_cases(cases_dir, sort_names=not args.no_sort)
 
-    print(f"parser benchmark: dir={cases_dir} files={len(cases)} engine={args.engine} passes={args.passes}")
+    print(f"parser benchmark: dir={cases_dir} files={len(cases)} passes={args.passes}")
     if not cases:
         print("no input files found")
         return 1
 
-    os.environ["MASM2C_PARSER_ENGINE"] = args.engine
     if args.quiet:
         logging.disable(logging.CRITICAL)
 

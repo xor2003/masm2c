@@ -707,7 +707,7 @@ const char* log_spaces(int n);
  #define HEAP_SIZE 1024
 #else
  #define STACK_SIZE (1024*64-16)
- #define HEAP_SIZE 1024*1024 - 16 - STACK_SIZE
+ #define HEAP_SIZE (1024*1024 - 16 - STACK_SIZE)
 #endif
 
 #define NB_SELECTORS 128
@@ -1113,7 +1113,7 @@ inline void restore_external_offset_ds(dw& segment) {
 #define AFFECT_AF(a) m2cflags.setAF(a)
 #define AFFECT_OF(a) m2cflags.setOF(a)
 #define AFFECT_IF(a) m2cflags.setIF(a)
-#define ISNEGATIVE(f, a) ( (a) & (1 << (m2c::bitsizeof(f)-1)) )
+#define ISNEGATIVE(f, a) ( ((a) >> (m2c::bitsizeof(f)-1)) & 1 )
 #define AFFECT_SF(a) m2cflags.setSF(a)
 #define AFFECT_SF_(f, a) {AFFECT_SF(ISNEGATIVE(f,a));}
 	#define AFFECT_ZF(a) m2cflags.setZF(a)
@@ -1190,10 +1190,10 @@ inline void restore_external_offset_ds(dw& segment) {
     // guest stack (arg layouts, saved-word restores, varargs). The same applies
     // to `offset()` results (ptrdiff_t -> long) and 64-bit host types.
     OPTINLINE void PUSH_(const int& a, _STATE *_state) { PUSH_((dw)a, _state); }
-    // `dd` (unsigned int) operands — e.g. `push offset proc` emitted as
-    // `PUSH(m2c::ksub_X)` where k* is an aggregate seg<<16|off constant — must
-    // also push a word, not the full 32-bit value.
-    OPTINLINE void PUSH_(const unsigned int& a, _STATE *_state) { PUSH_((dw)a, _state); }
+    // NOTE: no `unsigned int` (`dd`) overload — 32-bit registers and dword
+    // memory operands must keep their dword push size. `push offset <code>`
+    // emits `PUSH((m2c::dw)m2c::k*)` so the aggregate offset key still lands
+    // as a word.
     OPTINLINE void PUSH_(const long& a, _STATE *_state) { PUSH_((dw)a, _state); }
     OPTINLINE void PUSH_(const unsigned long& a, _STATE *_state) { PUSH_((dw)a, _state); }
     OPTINLINE void PUSH_(const long long& a, _STATE *_state) { PUSH_((dw)a, _state); }
@@ -1426,9 +1426,14 @@ OPTINLINE static void defer_irqs()
 template <class D, class S>
     MYINLINE void ROR_(D &a, S b, m2c::eflags &m2cflags) {
         if (b) {
-            AFFECT_CF(((a) >> (m2c::shiftmodule(a, b) - 1)) & 1);\
-		a=((a)>>(m2c::shiftmodule(a,b)) | a<<(m2c::bitsizeof(a)-(m2c::shiftmodule(a,b))));
-            D highestbitset = (1 << (m2c::bitsizeof(a) - 1));
+            size_t shift = m2c::shiftmodule(a, b);
+            // shift==0 means count is a multiple of the operand size: the value
+            // wraps a full circle (unchanged) and CF gets the wrapped MSB.
+            AFFECT_CF(((a) >> ((shift ? shift : m2c::bitsizeof(a)) - 1)) & 1);
+            if (shift) {
+		a=((a)>>(shift) | a<<(m2c::bitsizeof(a)-(shift)));
+            }
+            D highestbitset = (D(1) << (m2c::bitsizeof(a) - 1));
             AFFECT_OF((a ^ (a << 1)) & highestbitset);
 		}
 }
@@ -1481,7 +1486,7 @@ template <class D, class C>
 		}
 	op1 = lf_resw;
 	AFFECT_CF((lf_var1w >> (lf_var2b-1)) & 1);	
-	D highestbitset = (1<<( m2c::bitsizeof(op1)-1));
+	D highestbitset = (D(1)<<( m2c::bitsizeof(op1)-1));
 	AFFECT_OF((lf_resw ^ (lf_resw << 1))&highestbitset);
 }
 
@@ -1820,7 +1825,7 @@ template <class D>
         a += 1;
 		AFFECT_ZFifz(a);
 		AFFECT_SF_(a,a);
-		D highestbitset = (1<<( m2c::bitsizeof(a)-1));
+		D highestbitset = (D(1)<<( m2c::bitsizeof(a)-1));
 		AFFECT_OF(a==highestbitset);
 }
             
@@ -1830,7 +1835,7 @@ template <class D>
         a -= 1;
 		AFFECT_ZFifz(a);
 		AFFECT_SF_(a,a);
-		D a7fff = (1<<( m2c::bitsizeof(a)-1))-1;
+		D a7fff = (D(1)<<( m2c::bitsizeof(a)-1))-1;
 		AFFECT_OF(a==a7fff);
 }
 

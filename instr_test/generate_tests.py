@@ -1,5 +1,6 @@
 import re
 
+
 def generate_test_body(instruction, operands, result, initial_flags, expected_flags, data_type):
   """Generates the body of a Google Test case for a given instruction."""
   initial_cf = "true" if int(initial_flags, 16) & 0x0001 else "false"
@@ -78,7 +79,7 @@ def generate_test_body(instruction, operands, result, initial_flags, expected_fl
 
 def main():
   """Parses the test file and generates Google Test cases."""
-  with open("test-i386_conv.txt", "r") as f:
+  with open("test-i386_conv.txt") as f:
     lines = f.readlines()
 
   tests = {}
@@ -110,7 +111,7 @@ def main():
       f.write("#include \"test_fixture.h\"\n")
       f.write("#include <cstring>\n")
       f.write("\n")
-      
+
       # Add template functions based on instruction type
       if instruction in ["ADD", "ADC", "SUB", "SBB", "OR", "AND", "XOR", "CMP", "TEST"]:
         f.write("template <typename D, typename S>\n")
@@ -214,8 +215,8 @@ def main():
         f.write("  ASSERT_EQ(AF, expected_AF);\n")
         f.write("}\n")
         f.write("\n")
-      
-      
+
+
       # Generate test cases for this specific instruction
       for i, (operands, result, initial_flags, expected_flags, data_type) in enumerate(test_cases):
         if result is None:
@@ -223,7 +224,7 @@ def main():
           continue
         if isinstance(result, tuple):
           result = f"std::make_pair({result[0]}, {result[1]})"
-        
+
         test_name = f"{instruction}_{i}"
         f.write(f"TEST_F(EmulatedInstructionsTest, {test_name}) {{\n")
         test_body = generate_test_body(instruction, operands, result, initial_flags, expected_flags, data_type)

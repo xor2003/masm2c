@@ -4,7 +4,6 @@ The Macro class stores information about each macro and its parameters.
 """
 from masm2c.op import baseop
 
-
 # Masm2c S2S translator (initially based on SCUMMVM tasmrecover)
 #
 # Masm2c is the legal property of its developers, whose names

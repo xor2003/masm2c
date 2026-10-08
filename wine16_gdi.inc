@@ -185,7 +185,7 @@ APIFN(createdibitmap) {
     X86_REGREF
     std::string _strtmp;
     // (hdc, lpbmih4, fdwInit4, lpbits4, lpbmi4, usage2)
-    dw usage = W(0); dd bmi = D(1); dd bits = D(3); dd init = D(5); dd bmih = D(7);
+    dd bmi = D(1); dd bits = D(3); dd init = D(5); dd bmih = D(7);
     const db* hdr = w16::fptr(bmih ? bmih : bmi);
     const db* pix = w16::fptr(bits);
     int w = 0, h = 0, bpp = 0, stride = 0;
@@ -497,7 +497,7 @@ APIFN(stretchdibits) {
     std::string _strtmp;
     LOG("hit\n");
     // (hdc,xDst,yDst,wDst,hDst,xSrc,ySrc,wSrc,hSrc,lpBits4,lpbmi4,usage2,rop4)
-    dd rop = D(0); dw usage = W(2); dd lpbmi = D(3); dd lpbits = D(5);
+    dd rop = D(0); dd lpbmi = D(3); dd lpbits = D(5);
     dw hSrc = W(7), wSrc = W(8), ySrc = W(9), xSrc = W(10);
     dw hDst = W(11), wDst = W(12), yDst = W(13), xDst = W(14), hdc = W(15);
     auto* d = w16::find_dc(hdc);

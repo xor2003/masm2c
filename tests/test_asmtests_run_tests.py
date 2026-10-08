@@ -1,11 +1,16 @@
 import os
 import shlex
 import shutil
-from pathlib import Path
 import subprocess
 import sys
+from pathlib import Path
 
-from asmTests.run_tests import compile_runtime, get_opt_flags, generated_cpp_sources, generated_data_sources
+from asmTests.run_tests import (
+    compile_runtime,
+    generated_cpp_sources,
+    generated_data_sources,
+    get_opt_flags,
+)
 
 
 def test_generated_cpp_sources_include_segment_files(tmp_path: Path) -> None:

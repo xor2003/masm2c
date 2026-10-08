@@ -1,7 +1,7 @@
-import unittest
-from unittest.mock import patch
 import hashlib
 import os
+import unittest
+from unittest.mock import patch
 
 from masm2c.parser import Parser
 
@@ -15,9 +15,9 @@ class ParserIncludeStateTest(unittest.TestCase):
         parser = Parser([])
         parser._current_file = "root.asm"
 
-        with patch("masm2c.utils.read_whole_file", return_value=""):
-            with patch.object(parser, "parse_file_inside", return_value="ok"):
-                result = parser.parse_include_file_lines("inc1.inc")
+        with patch("masm2c.utils.read_whole_file", return_value=""), \
+                patch.object(parser, "parse_file_inside", return_value="ok"):
+            result = parser.parse_include_file_lines("inc1.inc")
 
         self.assertEqual(result, "ok")
         self.assertEqual(parser._current_file, "root.asm")
@@ -26,10 +26,10 @@ class ParserIncludeStateTest(unittest.TestCase):
         parser = Parser([])
         parser._current_file = "root.asm"
 
-        with patch("masm2c.utils.read_whole_file", return_value=""):
-            with patch.object(parser, "parse_file_inside", side_effect=RuntimeError("boom")):
-                with self.assertRaises(RuntimeError):
-                    parser.parse_include_file_lines("inc1.inc")
+        with patch("masm2c.utils.read_whole_file", return_value=""), \
+                patch.object(parser, "parse_file_inside", side_effect=RuntimeError("boom")), \
+                self.assertRaises(RuntimeError):
+            parser.parse_include_file_lines("inc1.inc")
 
         self.assertEqual(parser._current_file, "root.asm")
 
@@ -49,9 +49,9 @@ class ParserIncludeStateTest(unittest.TestCase):
                 return "inc2.inc"
             raise AssertionError(f"Unexpected include file: {file_name}")
 
-        with patch("masm2c.utils.read_whole_file", return_value=""):
-            with patch.object(parser, "parse_file_inside", side_effect=fake_parse_file_inside):
-                result = parser.parse_include_file_lines("inc1.inc")
+        with patch("masm2c.utils.read_whole_file", return_value=""), \
+                patch.object(parser, "parse_file_inside", side_effect=fake_parse_file_inside):
+            result = parser.parse_include_file_lines("inc1.inc")
 
         self.assertEqual(result, "inc1.inc")
         self.assertEqual(parser._current_file, "root.asm")
@@ -68,9 +68,9 @@ class ParserIncludeStateTest(unittest.TestCase):
             self.assertEqual(parser._Parser__current_file_hash, self._file_hash("inc1.inc"))
             return "ok"
 
-        with patch("masm2c.utils.read_whole_file", return_value=""):
-            with patch.object(parser, "parse_file_inside", side_effect=fake_parse_file_inside):
-                parser.parse_include_file_lines("inc1.inc")
+        with patch("masm2c.utils.read_whole_file", return_value=""), \
+                patch.object(parser, "parse_file_inside", side_effect=fake_parse_file_inside):
+            parser.parse_include_file_lines("inc1.inc")
 
         self.assertEqual(parser._current_file, "root.asm")
         self.assertEqual(parser._Parser__current_file_hash, root_hash)
@@ -85,10 +85,10 @@ class ParserIncludeStateTest(unittest.TestCase):
             self.assertEqual(parser._Parser__current_file_hash, self._file_hash("top.asm"))
             return "ast"
 
-        with patch("masm2c.utils.read_whole_file", return_value="mov ax, 1"):
-            with patch.object(parser, "parse_text", side_effect=fake_parse_text):
-                with patch.object(parser, "process_ast", return_value=None):
-                    parser.parse_file_lines("dir/top.asm")
+        with patch("masm2c.utils.read_whole_file", return_value="mov ax, 1"), \
+                patch.object(parser, "parse_text", side_effect=fake_parse_text), \
+                patch.object(parser, "process_ast", return_value=None):
+            parser.parse_file_lines("dir/top.asm")
 
         self.assertEqual(parser._current_file, "dir/top.asm")
         self.assertEqual(parser._Parser__current_file_hash, self._file_hash("top.asm"))

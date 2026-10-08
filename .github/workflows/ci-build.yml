@@ -23,12 +23,14 @@ jobs:
           sudo apt-get install -y \
             make gcc gcc-multilib g++-multilib \
             libc6-dev-i386 lib32stdc++-11-dev \
-            libncurses-dev
+            libncurses-dev \
+            clang-tools clang-tidy libsdl2-dev libsdl2-mixer-dev
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install ruff mypy pyright vulture radon
+          pip install ruff mypy lizard
+          npm install -g basta
       - name: QA checks
         run: make ci-qa
 
@@ -43,7 +45,8 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update -y
-          sudo apt-get install -y make gcc gcc-multilib g++-multilib libncurses-dev libgtest-dev
+          sudo apt-get install -y make gcc gcc-multilib g++-multilib libncurses-dev libgtest-dev \
+            clang libclang-rt-dev
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip

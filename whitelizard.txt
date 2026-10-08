@@ -1,0 +1,38 @@
+# Lizard whitelist: pre-existing functions allowed to exceed complexity limits.
+# Format: file:function_name (comma-separated names allowed). New violations fail the QA gate.
+# Regenerate/audit with: python3 -m lizard -w masm2c
+masm2c/proc.py: visit
+masm2c/cli.py: process
+masm2c/cpp.py: convert_label_
+masm2c/cpp.py: _convert_member_var
+masm2c/cpp.py: _call
+masm2c/cpp.py: _write_equates_header
+masm2c/cpp.py: _jump
+masm2c/cpp.py: produce_c_data_array
+masm2c/cpp.py: produce_global_jump_table
+masm2c/cpp.py: _finalize_rendered_expr
+masm2c/cpp.py: offsetdir
+masm2c/cpp.py: _render_known_offset_expression
+masm2c/cpp.py: _eval_asm_int_expression
+masm2c/gen.py: read_segment_files
+masm2c/gen.py: _assign_qualified_colliding_code_offsets
+masm2c/gen.py: _deduplicate_equates
+masm2c/lift.py: _cond
+masm2c/lift.py: op
+masm2c/lift.py: jump
+masm2c/lift.py: lift_cpp_text
+masm2c/pgparser.py: datadir
+masm2c/parser.py: action_label
+masm2c/parser.py: _finalize_pending_trailing_data_label
+masm2c/parser.py: _eval_numeric_expression_tree
+masm2c/parser.py: define_data_alias
+masm2c/parser.py: _assignment_data_alias_target
+masm2c/parser.py: datadir_action
+masm2c/parser.py: _expand_repeat_iteration
+masm2c/parser.py: _expand_text_macros_once
+masm2c/parser.py: _expand_text_macro_control_blocks
+masm2c/parser.py: _normalize_struct_instance_rows
+masm2c/parser.py: apply_conditional_assembly
+masm2c/parser.py: add_structinstance
+masm2c/parser.py: _append_runtime_metadata_comment
+masm2c/parser.py: parse_rt_info

@@ -101,25 +101,33 @@ def _has_memref(expr):
 def split_args(s):
     out, depth, cur = [], 0, ''
     for c in s:
-        if c in '([{': depth += 1
-        if c in ')]}': depth -= 1
+        if c in '([{':
+            depth += 1
+        if c in ')]}':
+            depth -= 1
         if c == ',' and depth == 0:
-            out.append(cur); cur = ''
-        else: cur += c
+            out.append(cur)
+            cur = ''
+        else:
+            cur += c
     out.append(cur)
     return [a.strip() for a in out if a.strip() != '']
 
 
 def _signed_cast(expr, bits):
-    return {8: f"(char)({expr})", 32: f"(int)({expr})"}.get(bits, f"(short)({expr})")
+    return {8: f"(signed char)({expr})", 32: f"(int)({expr})"}.get(bits, f"(short)({expr})")
 
 
 def _bits(expr):
     """Best-effort operand width in bits (8/16/32)."""
-    if re.search(r'\*\s*\(\s*db\s*\*|\*\s*\(\s*byte\s*\*|\bbyte_', expr): return 8
-    if re.search(r'\*\s*\(\s*dd\s*\*|\*\s*\(\s*dword\s*\*|\bdword_', expr): return 32
-    if re.search(r'\b(a|b|c|d)(l|h)\b', expr): return 8
-    if re.search(r'\be(ax|bx|cx|dx|si|di|bp|sp)\b', expr): return 32
+    if re.search(r'\*\s*\(\s*db\s*\*|\*\s*\(\s*byte\s*\*|\bbyte_', expr):
+        return 8
+    if re.search(r'\*\s*\(\s*dd\s*\*|\*\s*\(\s*dword\s*\*|\bdword_', expr):
+        return 32
+    if re.search(r'\b(a|b|c|d)(l|h)\b', expr):
+        return 8
+    if re.search(r'\be(ax|bx|cx|dx|si|di|bp|sp)\b', expr):
+        return 32
     return 16
 
 
@@ -161,22 +169,33 @@ class _Lifter:
             if kind == 'cmp':
                 t = {8: 'db', 32: 'dd'}.get(bits, 'dw')
                 ca, cb = f"({t})({a})", f"({t})({b})"
-                if jcc in UNSIGNED: return f"{ca} {UNSIGNED[jcc]} {cb}"
-                if jcc in EQUAL:    return f"{ca} {EQUAL[jcc]} {cb}"
+                if jcc in UNSIGNED:
+                    return f"{ca} {UNSIGNED[jcc]} {cb}"
+                if jcc in EQUAL:
+                    return f"{ca} {EQUAL[jcc]} {cb}"
                 if jcc in SIGNED:
                     return f"{_signed_cast(a, bits)} {SIGNED[jcc]} {_signed_cast(b, bits)}"
             elif kind == 'test':
-                if jcc in ('JZ', 'JE'):   return f"!({a} & {b})"
-                if jcc in ('JNZ', 'JNE'): return f"({a} & {b}) != 0"
-                if jcc == 'JS':  return f"{_signed_cast(f'({a} & {b})', bits)} < 0"
-                if jcc == 'JNS': return f"{_signed_cast(f'({a} & {b})', bits)} >= 0"
+                if jcc in ('JZ', 'JE'):
+                    return f"!({a} & {b})"
+                if jcc in ('JNZ', 'JNE'):
+                    return f"({a} & {b}) != 0"
+                if jcc == 'JS':
+                    return f"{_signed_cast(f'({a} & {b})', bits)} < 0"
+                if jcc == 'JNS':
+                    return f"{_signed_cast(f'({a} & {b})', bits)} >= 0"
                 # TEST clears CF and OF
-                if jcc in ('JC', 'JB', 'JNAE', 'JO'):  return '0'
-                if jcc in ('JNC', 'JAE', 'JNB', 'JNO'): return '1'
+                if jcc in ('JC', 'JB', 'JNAE', 'JO'):
+                    return '0'
+                if jcc in ('JNC', 'JAE', 'JNB', 'JNO'):
+                    return '1'
             else:  # 'result': flag macros already ran, folding only for ZF/SF
-                if jcc in EQUAL: return f"{a} {EQUAL[jcc]} 0"
-                if jcc == 'JS':  return f"{_signed_cast(a, bits)} < 0"
-                if jcc == 'JNS': return f"{_signed_cast(a, bits)} >= 0"
+                if jcc in EQUAL:
+                    return f"{a} {EQUAL[jcc]} 0"
+                if jcc == 'JS':
+                    return f"{_signed_cast(a, bits)} < 0"
+                if jcc == 'JNS':
+                    return f"{_signed_cast(a, bits)} >= 0"
         return FLAGREAD.get(jcc, '0')
 
     # -- operand-write invalidation ------------------------------------------
@@ -360,8 +379,10 @@ def _extract_stmt(line, pos):
     depth = 1
     while i < len(line) and depth:
         c = line[i]
-        if c == '(': depth += 1
-        elif c == ')': depth -= 1
+        if c == '(':
+            depth += 1
+        elif c == ')':
+            depth -= 1
         i += 1
     if depth:
         return None
@@ -400,7 +421,7 @@ def lift_cpp_text(text):
         asm = _asm_text(comment_m.group(1)) if comment_m else ''
         indent = re.match(r'^\s*', ln).group(0)
         first = True
-        for pos, end, kind, inner in spans:
+        for _pos, _end, kind, inner in spans:
             stmts = lf.op(inner) if kind == 'R' else lf.jump(inner)
             if first and asm:
                 out.append(f"{indent}/* {asm} */")
@@ -413,7 +434,7 @@ def lift_cpp_text(text):
 
 def lift_cpp_file(path, dst=None):
     """Lift `path`; writes to `dst` (separate file) or in-place. Returns count."""
-    with open(path, 'r', encoding='utf-8', errors='replace') as f:
+    with open(path, encoding='utf-8', errors='replace') as f:
         lifted, changed = lift_cpp_text(f.read())
     if changed or dst:
         with open(dst or path, 'w', encoding='utf-8') as f:
@@ -441,7 +462,7 @@ def lift_cpp_files(paths):
     for p in paths:
         dst = lifted_name(p)
         n = lift_cpp_file(p, dst=dst)
-        with open(dst, 'r', encoding='utf-8', errors='replace') as f:
+        with open(dst, encoding='utf-8', errors='replace') as f:
             text = include_re.sub(r'\1\2_lifted.cpp"', f.read())
         with open(dst, 'w', encoding='utf-8') as f:
             f.write(text)

@@ -1,8 +1,8 @@
 import unittest
 
+from masm2c.enumeration import IndirectionType
 from masm2c.parser import Parser
 from masm2c.Token import Expression
-from masm2c.enumeration import IndirectionType
 
 
 class ParserExprEvalTest(unittest.TestCase):

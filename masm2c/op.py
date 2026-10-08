@@ -25,7 +25,7 @@ It include classes like _mov, _add, _jmp, etc., each with methods to generate eq
 from collections import OrderedDict
 from copy import deepcopy
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Union, Optional, Final
+from typing import TYPE_CHECKING, Any, Final, Union
 
 from lark import lark
 
@@ -33,6 +33,7 @@ if TYPE_CHECKING:
     from masm2c.cpp import Cpp
 
 from masm2c.Token import Expression
+
 
 class Unsupported(Exception):
     pass
@@ -49,8 +50,8 @@ class baseop(lark.Tree):
         self.children: list[Any] = []
         self.elements = 1
         self.size = 0
-        self.real_offset: Optional[int] = None
-        self.real_seg: Optional[int] = None
+        self.real_offset: int | None = None
+        self.real_seg: int | None = None
         self.syntetic = False
         # Raw `DB <prefix>` byte (e.g. `DB 026h` for `es:`) armed for this
         # instruction, consumed by render-time segment handling.
@@ -411,7 +412,7 @@ SIMPLE_SEGMENTS = {
 
 class Segment:
 
-    def __init__(self, name: str, offset: int, *, options: Optional[set[str]]=None, segclass: Optional[str]="", comment: str="") -> None:
+    def __init__(self, name: str, offset: int, *, options: set[str] | None=None, segclass: str | None="", comment: str="") -> None:
         """Represents MASM Segment.
 
         :param name: Segment name
@@ -515,7 +516,7 @@ class Data(baseop):
 
     def setvalue(self, value: list) -> None:
         if self.isobject():
-            for m, v in zip(self.__members, value):
+            for m, v in zip(self.__members, value, strict=False):
                 m.setvalue(v)
         else:
             self.children = [value]
@@ -554,7 +555,7 @@ class Struct:
         self.name = name
         self.original_name = name
         self.used = True
-        self.children: OrderedDict[str, Union[Data, Struct]] = OrderedDict()
+        self.children: OrderedDict[str, Data | Struct] = OrderedDict()
         self.size = 0
         self.alignment = max(1, alignment)
         self.__type = Struct.UNION if dtype.lower() == "union" else Struct.STRUCT
@@ -612,7 +613,7 @@ class basejmp(baseop):
 class _call(baseop):
     def __init__(self, args: list[Expression]) -> None:
         super().__init__()
-        
+
         self.children = args
 
     def accept(self, visitor: "Cpp") -> str:
@@ -637,7 +638,7 @@ class _skipbytes(baseop):
 class _rep(baseop):
     def __init__(self, args: list[Expression]) -> None:
         super().__init__()
-        
+
         self.children = args
 
     def accept(self, visitor: "Cpp"):
@@ -647,7 +648,7 @@ class _rep(baseop):
 class _add(baseop):
     def __init__(self, args: list[Expression]) -> None:
         super().__init__()
-        
+
         self.children = args
 
     def accept(self, visitor: "Cpp") -> str:
@@ -658,7 +659,7 @@ class _add(baseop):
 class _mul(baseop):
     def __init__(self, args: list[Expression]) -> None:
         super().__init__()
-        
+
         self.children = args
 
     def accept(self, visitor: "Cpp") -> str:
@@ -668,7 +669,7 @@ class _mul(baseop):
 class _div(baseop):
     def __init__(self, args: list[Expression]) -> None:
         super().__init__()
-        
+
         self.children = args
 
     def accept(self, visitor: "Cpp") -> str:
@@ -679,7 +680,7 @@ class _div(baseop):
 class _jne(basejmp):
     def __init__(self, args: list[Expression]) -> None:
         super().__init__()
-        
+
         self.children = args
 
     def accept(self, visitor: "Cpp") -> str:
@@ -689,7 +690,7 @@ class _jne(basejmp):
 class _je(basejmp):
     def __init__(self, args: list[Expression]) -> None:
         super().__init__()
-        
+
         self.children = args
 
     def accept(self, visitor: "Cpp") -> str:
@@ -699,7 +700,7 @@ class _je(basejmp):
 class _jb(basejmp):
     def __init__(self, args: list[Expression]) -> None:
         super().__init__()
-        
+
         self.children = args
 
     def accept(self, visitor: "Cpp") -> str:
@@ -709,7 +710,7 @@ class _jb(basejmp):
 class _jae(basejmp):
     def __init__(self, args: list[Expression]) -> None:
         super().__init__()
-        
+
         self.children = args
 
     def accept(self, visitor: "Cpp") -> str:
@@ -719,7 +720,7 @@ class _jae(basejmp):
 class _jnb(basejmp):
     def __init__(self, args: list[Expression]) -> None:
         super().__init__()
-        
+
         self.children = args
 
     def accept(self, visitor: "Cpp") -> str:
@@ -781,7 +782,7 @@ class _pop(baseop):
 class _ret(baseop):
     def __init__(self, args: list[Any]) -> None:
         super().__init__()
-        
+
         self.children = args
 
     def accept(self, visitor: "Cpp") -> str:
@@ -790,7 +791,7 @@ class _ret(baseop):
 class _retn(baseop):
     def __init__(self, args: list[Expression]) -> None:
         super().__init__()
-        
+
         self.children = args
 
     def accept(self, visitor: "Cpp") -> str:
@@ -799,7 +800,7 @@ class _retn(baseop):
 class _retf(baseop):
     def __init__(self, args: list[Expression]) -> None:
         super().__init__()
-        
+
         self.children = args
 
     def accept(self, visitor: "Cpp") -> str:
@@ -925,7 +926,7 @@ class _movsb(baseop):
 class _int(baseop):
     def __init__(self, args: list[Expression]) -> None:
         super().__init__()
-        
+
         self.children = args
 
     def accept(self, visitor: "Cpp") -> str:
@@ -982,7 +983,7 @@ class label(baseop):
 class _lea(baseop):
     def __init__(self, args: list[Expression]) -> None:
         super().__init__()
-        
+
         self.children = args
 
     def accept(self, visitor: "Cpp") -> str:
@@ -992,7 +993,7 @@ class _lea(baseop):
 class _repe(baseop):
     def __init__(self, args) -> None:
         super().__init__()
-        
+
         self.children = args
 
     def accept(self, visitor: "Cpp"):
@@ -1011,7 +1012,7 @@ class _repne(baseop):
 class _jna(basejmp):
     def __init__(self, args: list[Expression]) -> None:
         super().__init__()
-        
+
         self.children = args
 
     def accept(self, visitor: "Cpp") -> str:
@@ -1021,7 +1022,7 @@ class _jna(basejmp):
 class _jnbe(basejmp):
     def __init__(self, args: list[Expression]) -> None:
         super().__init__()
-        
+
         self.children = args
 
     def accept(self, visitor: "Cpp") -> str:
@@ -1031,7 +1032,7 @@ class _jnbe(basejmp):
 class _imul(baseop):
     def __init__(self, args: list[Expression]) -> None:
         super().__init__()
-        
+
         self.children = args
 
     def accept(self, visitor: "Cpp") -> str:
@@ -1041,7 +1042,7 @@ class _imul(baseop):
 class _movs(baseop):
     def __init__(self, args: list[Expression]) -> None:
         super().__init__()
-        
+
         self.children = args
 
     def accept(self, visitor: "Cpp") -> str:
@@ -1051,7 +1052,7 @@ class _movs(baseop):
 class _lods(baseop):
     def __init__(self, args: list[Expression]) -> None:
         super().__init__()
-        
+
         self.children = args
 
     def accept(self, visitor: "Cpp") -> str:
@@ -1061,7 +1062,7 @@ class _lods(baseop):
 class _scas(baseop):
     def __init__(self, args: list[Expression]) -> None:
         super().__init__()
-        
+
         self.children = args
 
     def accept(self, visitor: "Cpp") -> str:
@@ -1079,7 +1080,7 @@ class _leave(baseop):
 class _idiv(baseop):
     def __init__(self, args: list[Expression]) -> None:
         super().__init__()
-        
+
         self.children = args
 
     def accept(self, visitor: "Cpp") -> str:
@@ -1097,7 +1098,7 @@ class _instruction0(baseop):
 class _instruction1(baseop):
     def __init__(self, args: list[Expression]) -> None:
         super().__init__()
-        
+
         self.children = args
 
     def accept(self, visitor: "Cpp") -> str:
@@ -1107,7 +1108,7 @@ class _instruction1(baseop):
 class _jump(baseop):
     def __init__(self, args: list[Expression]) -> None:
         super().__init__()
-        
+
         self.children = args
 
     def accept(self, visitor: "Cpp") -> str:
@@ -1117,7 +1118,7 @@ class _jump(baseop):
 class _instruction2(baseop):
     def __init__(self, args: list[Expression]) -> None:
         super().__init__()
-        
+
         self.children = args
 
     def accept(self, visitor: "Cpp") -> str:
@@ -1172,7 +1173,7 @@ class _equ(baseop):
 
 
 class _assignment(baseop):
-    def __init__(self, args: list[Union[str, lark.Tree]]) -> None:
+    def __init__(self, args: list[str | lark.Tree]) -> None:
         super().__init__()
         self.children = args
         self.original_name = ""
@@ -1205,7 +1206,7 @@ class _xlat(baseop):
 class _mov(baseop):
     def __init__(self, args: list[Expression]) -> None:
         super().__init__()
-        
+
         self.children = args
         self.syntetic = False
 

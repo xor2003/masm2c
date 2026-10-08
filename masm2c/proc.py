@@ -25,7 +25,7 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import Any, TYPE_CHECKING, ClassVar, Optional
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from lark import lark
 
@@ -87,7 +87,7 @@ class Proc:
         self.stmts.append(label)
         self.provided_labels.add(name)
 
-    def optimize(self, keep_labels: Optional[set[str]] = None) -> int:
+    def optimize(self, keep_labels: set[str] | None = None) -> int:
         """Conservative dead-code elimination inside one proc.
 
         Removes statements after an unconditional flow terminator (`jmp`, `ret`, `iret`)
@@ -149,7 +149,7 @@ class Proc:
         }
 
 
-    def create_instruction_object(self, instruction: str, args: Optional[list[Expression]] = None) -> baseop:
+    def create_instruction_object(self, instruction: str, args: list[Expression] | None = None) -> baseop:
         """:param instruction: the instruction name
         :param args: a list of strings, each string is an argument to the instruction
         :return: An object of type cl, which is a subclass of Instruction.
@@ -236,7 +236,7 @@ class Proc:
         def cmd_impacting_only_registers(stmt):
             return (cmd_wo_args(stmt) or \
                     stmt.cmd in {"cmp", "test"} or \
-                    (stmt.cmd != "xchg" and len(stmt.children) >= 1 and expr_is_register(stmt.children[0]) or \
+                    ((stmt.cmd != "xchg" and len(stmt.children) >= 1 and expr_is_register(stmt.children[0])) or \
                      (stmt.cmd == "xchg" and expr_is_register(stmt.children[0]) and expr_is_register(stmt.children[1])))) and \
                 not stmt.cmd.startswith("push") and not stmt.cmd.startswith("pop") and not stmt.cmd.startswith("stos") and \
                 not stmt.cmd.startswith("movs")

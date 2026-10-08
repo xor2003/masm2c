@@ -2,16 +2,15 @@
 
 import logging
 from collections import OrderedDict
-from typing import Any, TYPE_CHECKING, Union
+from typing import Any
 
-# Avoid circular imports for type hints
-if TYPE_CHECKING:
-    from masm2c.op import Struct, label, var, _equ, _assignment
-    from masm2c.proc import Proc
-    from lark.lexer import Token
+from lark.lexer import Token
+
+from masm2c.op import Struct, _assignment, _equ, label, var
+from masm2c.proc import Proc
 
 # Define the type alias for possible symbol values
-SymbolValue = Union['Struct', 'label', 'Proc', 'var', '_equ', '_assignment']
+SymbolValue = Struct | label | Proc | var | _equ | _assignment
 
 def _format_object(value: SymbolValue) -> str:
     """Helper to represent object as string (copied from parser.py)."""
@@ -58,10 +57,10 @@ class SymbolTable:
 
     def reset_global(self, name: str, value: SymbolValue) -> None:
         """Forcefully overwrite a global symbol, bypassing normal checks.
-        
+
         Use this method only when intentionally replacing an existing symbol,
         such as during procedure merging or other advanced transformations.
-        
+
         Args:
             name: Original symbol name
             value: New symbol value
@@ -73,12 +72,12 @@ class SymbolTable:
         logging.debug("SymbolTable.reset_global(name='%s', value=%s)", name, value)
         self.symbols[name] = value
 
-    def get_global(self, name: Union['Token', str]) -> Any:
+    def get_global(self, name: Token | str) -> Any:
         """Retrieve a global symbol without marking it as used.
-        
+
         Args:
             name: Symbol name (either as string or Token)
-            
+
         Returns:
             The symbol object if found, otherwise None
         """
@@ -86,15 +85,15 @@ class SymbolTable:
         logging.debug("SymbolTable.get_global(%s)", name_str)
         return self.symbols.get(name_str)
 
-    def get_and_mark_global(self, name: Union['Token', str]) -> Any:
+    def get_and_mark_global(self, name: Token | str) -> Any:
         """Retrieve a global symbol and mark it as used in the current context.
-        
+
         This method both fetches the symbol and updates its 'used' flag,
         which helps track which symbols are actually referenced in the code.
-        
+
         Args:
             name: Symbol name (either as string or Token)
-            
+
         Returns:
             The symbol object if found, otherwise None
         """

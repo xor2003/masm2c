@@ -19,30 +19,33 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #
-from masm2c.proc import Proc
-from ast import literal_eval
+import contextlib
 import hashlib
 import logging
 import os
 import re
 import sys
+from ast import literal_eval
 from collections import OrderedDict
+from collections.abc import Callable
 from copy import copy, deepcopy
 from dataclasses import dataclass, field
-from typing import Any, Optional, Final, cast
-from collections.abc import Callable
+from typing import Any, ClassVar, Final, Optional, cast
 
 import jsonpickle  # type: ignore[import-untyped]
 from lark import UnexpectedToken, lark
 from lark.lexer import Token
 from lark.tree import Tree
 
-from masm2c.op import Data, Struct, _assignment, _equ, baseop, label, var
-from masm2c.Token import Token as Token_, Expression
 from masm2c.gen import avoid_cpp_keyword
-from .symbol_table import SymbolTable # Added import
+from masm2c.op import Data, Struct, _assignment, _equ, baseop, label, var
+from masm2c.proc import Proc
+from masm2c.Token import Expression
+from masm2c.Token import Token as Token_
 
 from . import op
+from .enumeration import IndirectionType
+from .Macro import Macro
 from .pgparser import (
     Asm2IR,
     AsmData2IR,
@@ -53,8 +56,7 @@ from .pgparser import (
     _is_token,
     _token_lower,
 )
-from .Macro import Macro
-from .enumeration import IndirectionType
+from .symbol_table import SymbolTable  # Added import
 
 INTEGERCNST = "integer"
 STRINGCNST = "STRING"
@@ -92,7 +94,7 @@ _DATA_DECL_NAMES = {
     "fword", "qword", "tbyte", "real4", "real8", "real10",
 }
 
-_INSTRUCTION_MNEMONIC_ALT: Optional[str] = None
+_INSTRUCTION_MNEMONIC_ALT: str | None = None
 
 
 def _instruction_mnemonic_alt() -> str:
@@ -151,10 +153,10 @@ class _TextMacro:
 
 class Vector:
     """A 2D vector class with basic vector operations."""
-    
+
     def __init__(self, arg1: int=0, arg2: int=0) -> None:
         """Initialize a new vector with x and y components.
-        
+
         Args:
             arg1: x component (default: 0)
             arg2: y component (default: 0)
@@ -163,10 +165,10 @@ class Vector:
 
     def __add__(self, vec: Optional["Vector"]) -> "Vector":
         """Add another vector to this vector.
-        
+
         Args:
             vec: The vector to add. If None, returns a copy of this vector.
-            
+
         Returns:
             A new Vector instance with the sum of the vectors.
         """
@@ -176,13 +178,13 @@ class Vector:
 
     def __mul__(self, other: int) -> "Vector":
         """Multiply this vector by a scalar.
-        
+
         Args:
             other: The scalar to multiply by.
-            
+
         Returns:
             A new Vector instance with scaled components.
-            
+
         Raises:
             TypeError: If other is not an integer.
         """
@@ -303,9 +305,9 @@ def dump_object(value: Struct | label | Proc | var | _equ | _assignment) -> str:
 
 class Parser:
     c_dummy_label: Final[list] = [0]
-    _file_cache: dict[str, tuple[float, str]] = {}
+    _file_cache: ClassVar[dict[str, tuple[float, str]]] = {}
 
-    def __init__(self, args: Optional[dict] = None) -> None:
+    def __init__(self, args: dict | None = None) -> None:
         """Assembler parser."""
         self.test_mode = False
         # self.__globals: OrderedDict[str, Struct | label | Proc | var | _equ | _assignment] = OrderedDict() # Removed
@@ -402,7 +404,7 @@ class Parser:
         self.radix = 10
 
         self.current_macro = None
-        self.current_struct: Optional[Struct] = None
+        self.current_struct: Struct | None = None
         self._pending = _PendingParseState()
         self._pending_data_labels: list[str] = []
         self._last_statement_was_data = False
@@ -436,10 +438,8 @@ class Parser:
             if not isinstance(value, Expression):
                 continue
             self._shared_equate_names.add(name)
-            try:
+            with contextlib.suppress(Exception):
                 self._text_macro_symbols[name] = self.eval_expression_to_int(value)
-            except Exception:
-                pass
             if self.symbols.get_global(name) is not None:
                 continue
             symbol = Proc.create_equ_op(name, value, line_number=0)
@@ -495,7 +495,7 @@ class Parser:
         """Parse integer from string in various bases (hex, octal, binary, decimal)"""
         assert isinstance(v, str)
         v = v.strip()
-        
+
         if re.match(r"^[+-]?[0-8]+[OoQq]$", v):
             return Parser._parse_octal(v)
         elif re.match(r"^[+-]?\d[0-9A-Fa-f]*[Hh]$", v):
@@ -528,7 +528,7 @@ class Parser:
 
     def action_label(self, name: str, far: bool=False, isproc: bool=False, raw: str="", globl: bool=True, line_number: int=0) -> None:
         """Create and register a new label in the current procedure
-        
+
         Args:
             name: Original label name
             far: Whether the label has far addressing
@@ -538,14 +538,14 @@ class Parser:
             line_number: Source line number
         """
         logging.debug("Creating label: %s", name)
-        
+
         # Mangle label name for C compatibility
         mangled_name = self.normalize_label(name)
         if mangled_name == "arbarb":  # Special case placeholder for @@ labels
             mangled_name = self.get_dummy_jumplabel()
         self.need_label = False
         self.make_sure_proc_exists(line_number, raw)
-        
+
         assert self.proc, "No current procedure for label"
         # A label is a possible jump entry point: control can resume here
         # without executing a `DB <prefix>` byte above it, so drop any armed
@@ -566,13 +566,13 @@ class Parser:
             segment=self.__segment.name,
         )
         label_obj.public_export = public_export
-        
+
         # Extract real addresses from listing if available
         _, label_obj.real_offset, label_obj.real_seg = self.get_lst_offsets(raw)
         # Update procedure start tracking
         if label_obj.real_seg:
             self.procs_start.discard(label_obj.real_seg * 0x10 + label_obj.real_offset)
-            
+
         # Register label with procedure and symbol table
         self.proc.add_label(mangled_name, label_obj)
         # '@'-style code locals get proc-scoped mangled names and can only ever
@@ -610,7 +610,7 @@ class Parser:
             self.symbols.reset_global(mangled_name, label_obj)
         else:
             self.symbols.set_global(mangled_name, label_obj)
-        
+
         # Increment ID for next label
         self.__offset_id += 1
         self.__offset_id += 1
@@ -1299,6 +1299,7 @@ class Parser:
                     break
         if g:
             from masm2c.proc import Proc
+
             from .enumeration import IndirectionType
             if isinstance(g, (op._equ, op._assignment)):
                 if isinstance(g.value, Expression):
@@ -1489,7 +1490,7 @@ class Parser:
         for _width in (2, 4, 8, 16, 20):
             _dir = {2: "DB", 4: "DW", 8: "DD", 16: "DQ", 20: "DT"}[_width]
             content = re.sub(
-                r"(?m)^(\s*[0-9A-F]{4,8}[^\S\r\n]+)[0-9A-F]{%d}(?=[A-Za-z_@$?.][A-Za-z0-9_@$?.]{2,}[^\S\r\n]+%s\b)" % (_width, _dir),
+                rf"(?m)^(\s*[0-9A-F]{{4,8}}[^\S\r\n]+)[0-9A-F]{{{_width}}}(?=[A-Za-z_@$?.][A-Za-z0-9_@$?.]{{2,}}[^\S\r\n]+{_dir}\b)",
                 r"\1",
                 content,
             )
@@ -1676,9 +1677,9 @@ class Parser:
                 if name in seen:
                     continue
                 symbol = self.symbols.get_global(name)
-                if isinstance(symbol, (op._assignment, op._equ)) and isinstance(symbol.value, Expression):
-                    if self._assignment_uses_location_counter(symbol.value, seen | {name}):
-                        return True
+                if (isinstance(symbol, (op._assignment, op._equ)) and isinstance(symbol.value, Expression)
+                        and self._assignment_uses_location_counter(symbol.value, seen | {name})):
+                    return True
         return False
 
     def _register_assignment_data_alias(
@@ -1926,9 +1927,7 @@ class Parser:
         if isinstance(value, Expression) and value.indirection == IndirectionType.POINTER:
             o.original_type = value.original_type
         existing = self.symbols.get_global(label)
-        if self.itislst and self.pass_number == 1 and existing is not None:
-            self.symbols.reset_global(label, o)
-        elif self.pass_number == 1 and isinstance(existing, op._equ):
+        if (self.itislst and self.pass_number == 1 and existing is not None) or (self.pass_number == 1 and isinstance(existing, op._equ)):
             self.symbols.reset_global(label, o)
         else:
             self.symbols.set_global(label, o)
@@ -2152,7 +2151,7 @@ class Parser:
                 assert isinstance(expr, Expression)
                 return self.render_expression(expr, def_size=def_size, destination=destination)
             except Exception as e:
-                exc_type, exc_obj, exc_tb = sys.exc_info()
+                exc_type, _exc_obj, exc_tb = sys.exc_info()
                 assert exc_tb
                 fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
                 print(e, exc_type, fname, exc_tb.tb_lineno)
@@ -2227,7 +2226,7 @@ class Parser:
             # remaining string fragments as-is.
             array = [
                 value if value is not None else element
-                for value, element in zip(numeric_array, array)
+                for value, element in zip(numeric_array, array, strict=False)
             ]
         if data_internal_type == op.DataType.ARRAY and not any(array) and not isstruct:  # all zeros
             array = [0]
@@ -2258,11 +2257,11 @@ class Parser:
         self._last_statement_was_data = not isstruct
         return data  # c, h, size
 
-    _CODE_SKIP_IMMEDIATE_BYTES = {
+    _CODE_SKIP_IMMEDIATE_BYTES: ClassVar[dict] = {
         0x0D: 2,  # OR AX, imm16
         0x3C: 1,  # CMP AL, imm8
-        **{opcode: 1 for opcode in range(0xB0, 0xB8)},  # MOV r8, imm8
-        **{opcode: 2 for opcode in range(0xB8, 0xC0)},  # MOV r16, imm16
+        **dict.fromkeys(range(176, 184), 1),  # MOV r8, imm8
+        **dict.fromkeys(range(184, 192), 2),  # MOV r16, imm16
     }
 
     def _append_code_skip_op_if_needed(self, data: Data, isstruct: bool, dummy_label: bool) -> None:
@@ -2290,7 +2289,7 @@ class Parser:
         self.proc.stmts.append(skip)
         self.flow_terminated = False
 
-    _SEGMENT_PREFIX_BYTES = {
+    _SEGMENT_PREFIX_BYTES: ClassVar[dict] = {
         0x26: "es",
         0x2E: "cs",
         0x36: "ss",
@@ -2457,9 +2456,7 @@ class Parser:
         binary_width = self.typetosize(data_type)
         calc = ExprSizeCalculator(element_size=binary_width, init=Vector(0, 0), context=self)
         size, elements = calc.visit(args).values
-        if binary_width and elements:
-            size = binary_width * elements
-        elif size == 0:
+        if (binary_width and elements) or size == 0:
             size = binary_width * elements
         return binary_width, size, elements
 
@@ -3502,7 +3499,7 @@ class Parser:
         synthetic = f"{segment_name} ENDS ;__MASM2C_SYNTHETIC\n"
         if final_end_index is None:
             return content + ("\n" if content and not content.endswith(("\n", "\r")) else "") + synthetic
-        return "".join(lines[:final_end_index] + [synthetic] + lines[final_end_index:])
+        return "".join([*lines[:final_end_index], synthetic, *lines[final_end_index:]])
 
     def _apply_fragment_end_directive(self, content: str) -> None:
         for line in reversed(content.splitlines()):
@@ -3691,7 +3688,7 @@ class Parser:
         padded_args = [*args, *(["0"] * max(0, len(widths) - len(args)))]
         shift = sum(widths)
         parts: list[str] = []
-        for width, arg in zip(widths, padded_args):
+        for width, arg in zip(widths, padded_args, strict=False):
             shift -= width
             value = arg.strip() or "0"
             if shift:
@@ -3844,19 +3841,11 @@ class Parser:
         text = self._normalize_rinit_alias_directives(text)
         text = self._normalize_label_alias_directives(text)
         logging.debug("parsing: [%s]", text)
-        parser = self._select_parser(start_rule)
+        parser = self.__lex.parser[0]
         try:
             self.__lex.bind_context(self)
             result = parser.parse(text, start=start_rule)
         except (UnexpectedToken, KeyError, TypeError) as ex:
-            if self.__lex.start_parser and parser is not self.__lex.start_parser[0]:
-                try:
-                    logging.debug("Primary parser failed (%s), retrying with post-lex fallback for start=%s", type(ex).__name__, start_rule)
-                    result = self.__lex.start_parser[0].parse(text, start=start_rule)
-                    self._tag_meta_source_text(result, text)
-                    return result
-                except Exception as ex_fallback:
-                    logging.debug("Post-lex fallback also failed (%s): %s", type(ex_fallback).__name__, ex_fallback)
             if isinstance(ex, UnexpectedToken):
                 logging.exception("Parse failure: [%s] line=%s column=%s", ex.token, getattr(ex, "line", "?"), getattr(ex, "column", "?"))
                 try:
@@ -3882,21 +3871,6 @@ class Parser:
         for node in result.iter_subtrees_topdown():
             if node.meta is not None:
                 node.meta.input_str = text
-
-    def _select_parser(self, start_rule: str):
-        if start_rule == "start" and self.__lex.start_parser:
-            return self.__lex.start_parser[0]
-        parser_lookup = {
-            "expr": self.__lex.expr_parser,
-            "instruction": self.__lex.instruction_parser,
-            "equtype": self.__lex.equtype_parser,
-            "insegdirlist": self.__lex.insegdirlist_parser,
-            "_directivelist": self.__lex.directivelist_parser,
-        }
-        selected = parser_lookup.get(start_rule, self.__lex.parser)
-        if selected:
-            return selected[0]
-        return self.__lex.parser[0]
 
     @staticmethod
     def _normalize_title_directives(text: str) -> str:
@@ -4309,10 +4283,8 @@ class Parser:
             if sampled is not None:
                 parts.append(f"rt-func-sampled={sampled}")
             if calls not in (None, 0) and sampled is not None:
-                try:
+                with contextlib.suppress(Exception):
                     parts.append(f"rt-func-ratio={sampled / calls:.4f}")
-                except Exception:
-                    pass
 
         if self.runtime_meta_anchor is not None and linear == self.runtime_meta_anchor:
             load_seg = self.runtime_meta.get("DosboxLoadSeg")

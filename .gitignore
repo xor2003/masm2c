@@ -77,6 +77,12 @@ gen_backup_packed/
 instr_test/generated_tests_*.cpp
 instr_test/.generated_tests.stamp
 instr_test/instruction_tests
+instr_test/instruction_tests_asan
+
+# asmTests harness outputs (generated per run by run_tests.py)
+asmTests/.test-work/
+asmTests/.test-logs/
+asmTests/_result.log
 
 # Generated translator outputs live at the repo root beside their .asm/.lst
 # inputs; they are regenerable build artifacts, not sources.  Root-level

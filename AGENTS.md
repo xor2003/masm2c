@@ -26,7 +26,7 @@ Primary implementation is Python (`masm2c/` package). The repo also contains man
 - `-l/--lift`: post-pass (`masm2c/lift.py`) also emitting `<name>_lifted.cpp` with `R()/J()` fake-C statements rewritten to readable C (keeps m2c runtime + dispatch; stock `.cpp` untouched); also enabled by `M2C_LIFT=1`
 
 ## Environment and Dependencies
-- Python `>=3.9`
+- Python `>=3.10`
 - Runtime deps: `lark`, `jsonpickle`
 - Dev/test deps: `pytest`, `mock`, `coverage`
 

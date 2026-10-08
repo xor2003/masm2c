@@ -464,6 +464,7 @@ dw m2c_seg_selector_or_para(dw para) {
    (M2cNeSegHost::base/para); this routine does the format work: descriptor
    creation, file-data copies, internal-reference fixups, entry state. */
 static dw ne_w(const db* p) { return (dw)(p[0] | (p[1] << 8)); }
+static void ne_w_set(db* p, dw v) { p[0] = db(v); p[1] = db(v >> 8); }
 static dd ne_d(const db* p) {
 	return (dd)p[0] | ((dd)p[1] << 8) | ((dd)p[2] << 16) | ((dd)p[3] << 24);
 }
@@ -602,9 +603,9 @@ bool m2c_ne_load(_STATE* _state, const db* image, dd image_size,
 				db* loc = segs[i].base + off;
 				dw link = ne_w(loc);
 				switch (atype) {
-				case 2: *(dw*)loc = tsel; break;                     // selector word
-				case 3: *(dw*)loc = toff; *(dw*)(loc + 2) = tsel; break; // far ptr
-				case 5: *(dw*)loc = additive ? (dw)(link + toff) : toff; break;
+				case 2: ne_w_set(loc, tsel); break;                     // selector word
+				case 3: ne_w_set(loc, toff); ne_w_set(loc + 2, tsel); break; // far ptr
+				case 5: ne_w_set(loc, additive ? (dw)(link + toff) : toff); break;
 				default:
 					log_error("NE load: addr type %u unsupported\n", atype);
 				}
@@ -2233,6 +2234,9 @@ static void host_drain_irq() {
 // counter bounds overhead; the atomic pending check makes the common case a
 // single load. Runs on whichever thread executes generated code (the game's).
 void host_irq_poll() {
+	if (host.timer.enabled) {
+		host_advance_timer_counters();
+	}
 	if (host_pending_irq8.load() <= 0 && host_pending_irq1c.load() <= 0) return;
 	host_drain_irq();
 }
@@ -3978,7 +3982,7 @@ X86_REGREF
 		case 0x5a: // create temp file (DS:DX = dir path ending with '\')
 		case 0x5b: // create new file (fail if exists)
 		{
-			char fileName[1000];
+			char fileName[1040];
 			if (ah == 0x5a) {
 				// Build a name inside the given directory.
 				char dir[1000];
@@ -4020,7 +4024,7 @@ X86_REGREF
 					AFFECT_CF(1);
 					return;
 				}
-				const char * mode = "rb";
+				const char * mode;
 				switch (al & 7) {
 				case 0: mode = "rb"; break;
 				case 1: mode = "r+b"; break;
@@ -4733,6 +4737,7 @@ X86_REGREF
 			// returned is the base selector, so sel+8/__AHINCR steps across
 			// the block exactly like real LDT descriptors.
 			int n = (int)((size + 0xffff) >> 16);
+			if (n <= 0) { AFFECT_CF(1); return; }
 			dw sel = m2c_ldt_alloc(n);
 			if (!sel) { AFFECT_CF(1); return; }
 			dd bytes = (dd)n << 16;

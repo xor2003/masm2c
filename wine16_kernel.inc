@@ -273,7 +273,7 @@ APIFN(lstrcpy) {
     db* d = w16::fptr(dst);
     std::string s;
     w16::fstr(src, s);
-    if (d) { strcpy((char*)d, s.c_str()); }
+    if (d) { strcpy((char*)d, s.c_str()); }  // NOLINT(clang-analyzer-security.insecureAPI.strcpy) lstrcpy is unbounded by API contract; d is guest memory
     RETD(dst);
     DONE(8);
 }
@@ -285,7 +285,7 @@ APIFN(lstrcat) {
     db* d = w16::fptr(dst);
     std::string s;
     w16::fstr(src, s);
-    if (d) strcat((char*)d, s.c_str());
+    if (d) strcat((char*)d, s.c_str());  // NOLINT(clang-analyzer-security.insecureAPI.strcpy) lstrcat is unbounded by API contract; d is guest memory
     RETD(dst);
     DONE(8);
 }

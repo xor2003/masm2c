@@ -1,8 +1,8 @@
 import unittest
 
+from masm2c import cpp
 from masm2c.parser import Parser
 from masm2c.proc import Proc
-from masm2c import cpp
 
 
 class ParserCommentSemanticsTest(unittest.TestCase):

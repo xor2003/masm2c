@@ -857,6 +857,13 @@ static void win_abs_pos(W16Win* w, int* ox, int* oy) {
     *ox = x; *oy = y;
 }
 
+/* getenv() parsed as int with a fallback; reads the variable once so the
+ * analyzer (and a racing putenv) can't observe it turning NULL. */
+static int env_int(const char* name, int fallback) {
+    const char* v = getenv(name);
+    return v ? atoi(v) : fallback;
+}
+
 /* Compute the client area of a framed top-level window.  A Win16 overlapped
  * window reserves a non-client band (border, plus caption/menu which SDL
  * already supplies as the real window decorations) around its drawable
@@ -875,13 +882,13 @@ void compute_client(W16Win* w) {
              * bottom, a shallower one on top (the caption lives in the real SDL
              * title bar, so we only need the sizing border here).  Defaults are
              * tuned to match Wine's rendering; M2C_F* override for testing. */
-            bx = getenv("M2C_FX") ? atoi(getenv("M2C_FX")) : 8;
-            by = getenv("M2C_FY") ? atoi(getenv("M2C_FY")) : 4;
+            bx = env_int("M2C_FX", 8);
+            by = env_int("M2C_FY", 4);
         }
     }
     w->clx = bx; w->cly = by;
-    w->crx = getenv("M2C_FBX") ? atoi(getenv("M2C_FBX")) : bx;
-    w->cby = getenv("M2C_FBY") ? atoi(getenv("M2C_FBY")) : by;
+    w->crx = env_int("M2C_FBX", bx);
+    w->cby = env_int("M2C_FBY", by);
     /* A captioned window's Win16 outer rect includes a title-bar band that SDL
      * supplies as the real decoration, so it is not part of our drawable.  The
      * drawable hugs the client region (field + recessed edge); the leftover
@@ -890,8 +897,8 @@ void compute_client(W16Win* w) {
     w->drw = w->w;
     w->drh = w->h;
     if (frame) {
-        w->drw = w->w - (getenv("M2C_DW") ? atoi(getenv("M2C_DW")) : 6);
-        w->drh = w->h - (getenv("M2C_DH") ? atoi(getenv("M2C_DH")) : 32);
+        w->drw = w->w - env_int("M2C_DW", 6);
+        w->drh = w->h - env_int("M2C_DH", 32);
     }
 }
 

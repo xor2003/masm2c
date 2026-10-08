@@ -1,8 +1,8 @@
 import unittest
 from unittest.mock import patch
 
-from masm2c.Token import Expression
 from masm2c.parser import Parser
+from masm2c.Token import Expression
 
 
 class ParserSymbolDirectivesTest(unittest.TestCase):

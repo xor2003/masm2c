@@ -1,9 +1,9 @@
 import unittest
 
-from lark import Tree, Token
+from lark import Token, Tree
 
-from masm2c.pgparser import Asm2IR
 from masm2c.parser import Parser
+from masm2c.pgparser import Asm2IR
 
 
 class PgParserRepeatBeginTest(unittest.TestCase):

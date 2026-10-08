@@ -5,7 +5,6 @@ from masm2c.cpp import Cpp
 from masm2c.parser import Parser
 from masm2c.proc import Proc
 
-
 RT_DATA_OFFSET = 1 << 0
 RT_CODE_OFFSET = 1 << 1
 RT_FAR_POINTER = 1 << 4

@@ -4,14 +4,13 @@ from __future__ import annotations
 import argparse
 import concurrent.futures
 import os
-import shutil
 import shlex
+import shutil
 import subprocess
 import sys
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
-
 
 SKIP_CASES = {
     "popf.asm": "unsupported: call loc_15c4a+1",
@@ -208,9 +207,7 @@ def summarize(results: Iterable[CaseResult], logs_dir: Path) -> int:
 
     print("\n==================== asmTests summary ====================")
     for r in ordered:
-        if r.status == "FAIL":
-            print(f"{r.status:<5} {r.name} ({r.reason})")
-        elif r.status == "SKIP":
+        if r.status == "FAIL" or r.status == "SKIP":
             print(f"{r.status:<5} {r.name} ({r.reason})")
         else:
             print(f"{r.status:<5} {r.name}")

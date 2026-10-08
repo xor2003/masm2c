@@ -1,8 +1,9 @@
 from collections import OrderedDict
 
-from masm2c.gen import Gen
 import masm2c.proc as proc_module
+from masm2c.gen import Gen
 from masm2c.parser import Parser
+
 
 class Test_MergeAllProcs:
 
@@ -11,13 +12,13 @@ class Test_MergeAllProcs:
         context = Parser()
         first_proc_name = "proc1"
         first_proc = proc_module.Proc(first_proc_name, line_number=1)
-        first_proc.to_group_with = set(["proc2", "proc3"])
+        first_proc.to_group_with = {"proc2", "proc3"}
         context.symbols.set_global(first_proc_name, first_proc)
         proc2 = proc_module.Proc("proc2", line_number=2)
-        proc2.to_group_with = set(["proc1", "proc3"])
+        proc2.to_group_with = {"proc1", "proc3"}
         context.symbols.set_global("proc2", proc2)
         proc3 = proc_module.Proc("proc3", line_number=3)
-        proc3.to_group_with = set(["proc1", "proc2"])
+        proc3.to_group_with = {"proc1", "proc2"}
         context.symbols.set_global("proc3", proc3)
 
         gen = Gen(context=context)
@@ -27,10 +28,10 @@ class Test_MergeAllProcs:
         gen._merge_all_procs()
 
         assert gen._procs == ["_group1"]
-        assert gen.grouped == set(["proc1", "proc2", "proc3"])
+        assert gen.grouped == {"proc1", "proc2", "proc3"}
         assert gen.groups == OrderedDict({'proc1': '_group1', 'proc2': '_group1', 'proc3': '_group1'})
-        assert first_proc.to_group_with == set(["proc2", "proc3"])
-        assert first_proc.provided_labels == set(["proc1", "proc2", "proc3"])
+        assert first_proc.to_group_with == {"proc2", "proc3"}
+        assert first_proc.provided_labels == {"proc1", "proc2", "proc3"}
         assert first_proc.stmts[0].proc == "_group1"
         assert first_proc.stmts[0].data == "label"
         assert first_proc.stmts[0].real_offset == first_proc.real_offset

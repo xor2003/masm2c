@@ -24,27 +24,29 @@ and handling C++ specific constructs.
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #
 import logging
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from lark.lexer import Token
 from lark.tree import Tree
 
-from masm2c.Token import Token as Token_, Expression
 from masm2c.op import Data, Struct
+from masm2c.Token import Expression
+from masm2c.Token import Token as Token_
 
 if TYPE_CHECKING:
     from masm2c.parser import Parser
 
+import glob
 import os
 import re
-import glob
 from collections import OrderedDict
 from copy import copy, deepcopy
 
 from lark import lark
 
-from . import op
 from masm2c.proc import Proc
+
+from . import op
 from .enumeration import IndirectionType
 from .gen import Gen, mangle_asm_labels
 from .pgparser import LABEL, MEMBERDIR, REGISTER, SQEXPR, Asm2IR
@@ -83,21 +85,21 @@ def _parse_runtime_int(value: Any) -> int | None:
 
 class _ExprRenderState:
     __slots__ = (
-        "needs_dereference",
-        "is_pointer",
-        "struct_type",
-        "is_variable",
-        "is_label",
+        "data_label_size",
+        "element_size",
+        "indirection",
         "is_just_label",
         "is_just_member",
+        "is_label",
         "is_member",
+        "is_pointer",
+        "is_variable",
         "need_pointer_to_member",
+        "needs_dereference",
         "size_changed",
+        "struct_type",
         "variable_size",
         "work_segment",
-        "indirection",
-        "element_size",
-        "data_label_size",
     )
 
     def __init__(self) -> None:
@@ -131,34 +133,31 @@ class SeparateProcStrategy:
 
     def function_header(self, name, entry_point=""):
         linkage = self.renderer.function_linkage(name)
-        header = """
+        header = f"""
 
- %sbool %s(m2c::_offsets _i, struct m2c::_STATE* _state){
+ {linkage}bool {self.renderer.mangle_label(name)}(m2c::_offsets _i, struct m2c::_STATE* _state){{
     X86_REGREF
     __disp = _i;
-""" % (linkage, self.renderer.mangle_label(name))
+"""
 
         if entry_point != "":
-            header += """
-    if (__disp == kbegin) goto %s;
-""" % entry_point
+            header += f"""
+    if (__disp == kbegin) goto {entry_point};
+"""
 
-        header += """
+        header += f"""
     if (__disp == 0) goto _begin;
     else goto __dispatch_call;
-    %s:
+    {self.renderer.mangle_label(name)}:
     _begin:
-""" % self.renderer.mangle_label(name)
+"""
         return header
 
     def write_declarations(self, procs, context):
         result = ""
         external_proc_data_refs = getattr(context, "external_proc_data_refs", {})
         for p in sorted(procs):  # TODO only if used or public
-            result += "%sbool %s(m2c::_offsets, struct m2c::_STATE*);\n" % (
-                self.renderer.wrapper_linkage(p),
-                self.renderer.mangle_label(p),
-            )
+            result += f"{self.renderer.wrapper_linkage(p)}bool {self.renderer.mangle_label(p)}(m2c::_offsets, struct m2c::_STATE*);\n"
 
         for i in sorted(context.externals_procs):
             v = context.symbols.get_global(i)
@@ -382,9 +381,8 @@ class Cpp(Gen):
             return self._render_scalar_equate(
                 self.render_instruction_argument(self._clone_as_scalar_value(g.value)))
         elif isinstance(g, op._equ):
-            if self.itiscall or self.itisjump:
-                if (target := self._code_equate_target(g)) is not None:
-                    return target
+            if (self.itiscall or self.itisjump) and (target := self._code_equate_target(g)) is not None:
+                return target
             if self._context.test_mode:
                 return g.name
             if (symbolic_offset := self._render_single_base_offset_expression(g.value)) is not None:
@@ -1044,9 +1042,7 @@ class Cpp(Gen):
         if not g.implemented:
             g.accept(self)
 
-        if state.is_just_label:
-            value = ".".join(label)
-        elif not isinstance(g.value, Expression):
+        if state.is_just_label or not isinstance(g.value, Expression):
             value = ".".join(label)
         else:
             state.struct_type = g.value.original_type
@@ -1178,7 +1174,7 @@ class Cpp(Gen):
 
         return name, far
 
-    _DISPATCH_INDIRECT_REGS = {
+    _DISPATCH_INDIRECT_REGS: ClassVar[set] = {
         "ax", "bx", "cx", "dx", "si", "di", "bp", "sp",
         "ah", "al", "bh", "bl", "ch", "cl", "dh", "dl",
         "eax", "ebx", "ecx", "edx", "esi", "edi", "ebp", "esp",
@@ -1211,7 +1207,7 @@ class Cpp(Gen):
     def _label(self, name, isproc):
         if isproc:
             raise RuntimeError("Dead code?")
-        self._cmdlabel = "%s:\n" % self.mangle_label(name)
+        self._cmdlabel = f"{self.mangle_label(name)}:\n"
         return ""
 
     def _call(self, expr: Expression) -> str:
@@ -1479,18 +1475,18 @@ class Cpp(Gen):
         finally:
             self.itisjump, self.itiscall = prev_jump, prev_call
 
-    def _ret(self, src: list[Union[Expression, Any]]) -> str:
+    def _ret(self, src: list[Expression | Any]) -> str:
         arg = self.render_instruction_argument(src[0]) if src else "0"
         proc = getattr(self, "proc", None)
         if getattr(proc, "far", False) or getattr(self, "_active_proc_far", False):
             return f"RETF({arg})"
         return f"RETN({arg})"
 
-    def _retf(self, src: list[Union[Expression, Any]]) -> str:
+    def _retf(self, src: list[Expression | Any]) -> str:
         arg = self.render_instruction_argument(src[0]) if src else "0"
         return f"RETF({arg})"
 
-    def _xlat(self, src: list[Union[Expression, Any]]) -> str:
+    def _xlat(self, src: list[Expression | Any]) -> str:
         if not src:
             return "XLAT"
         arg = self.render_instruction_argument(src[0])[2:-1]
@@ -1538,7 +1534,7 @@ class Cpp(Gen):
             size = self.calculate_size(arg) or state.variable_size or arg.ptr_size or arg.element_size
         if size == 0:
             size = self._middle_size
-        return "MUL%d_%d(%s)" % (len(src), size, ",".join(res))
+        return f"MUL{len(src)}_{size}({','.join(res)})"
 
     def _imul(self, src: list[Expression]) -> str:
         size = 0
@@ -1551,17 +1547,17 @@ class Cpp(Gen):
             size = self.calculate_size(arg) or state.variable_size or arg.ptr_size or arg.element_size
         if size == 0:
             size = self._middle_size
-        return "IMUL%d_%d(%s)" % (len(src), size, ",".join(res))
+        return f"IMUL{len(src)}_{size}({','.join(res)})"
 
     def _div(self, src: Expression) -> str:
         a = self.render_instruction_argument(src)
         size = self.calculate_size(src)
-        return "DIV%d(%s)" % (size, a)
+        return f"DIV{size}({a})"
 
     def _idiv(self, src: Expression) -> str:
         a = self.render_instruction_argument(src)
         size = self.calculate_size(src)
-        return "IDIV%d(%s)" % (size, a)
+        return f"IDIV{size}({a})"
 
     def _jz(self, label: Expression) -> str:
         if self.isrelativejump(label):
@@ -1590,7 +1586,7 @@ class Cpp(Gen):
     def _ja(self, label: Expression) -> str:
         if self.isrelativejump(label):
             return "{;}"
-        label_str, far = self.jump_post(label)
+        label_str, _far = self.jump_post(label)
         if dispatch := self._conditional_cross_proc_dispatch(label_str, "!GET_CF() && !GET_ZF()"):
             return dispatch
         return f"JA({label_str})"
@@ -1598,7 +1594,7 @@ class Cpp(Gen):
     def _jc(self, label: Expression) -> str:
         if self.isrelativejump(label):
             return "{;}"
-        label_str, far = self.jump_post(label)
+        label_str, _far = self.jump_post(label)
         if dispatch := self._conditional_cross_proc_dispatch(label_str, "GET_CF()"):
             return dispatch
         return f"JC({label_str})"
@@ -1606,7 +1602,7 @@ class Cpp(Gen):
     def _jnc(self, label: Expression) -> str:
         if self.isrelativejump(label):
             return "{;}"
-        label_str, far = self.jump_post(label)
+        label_str, _far = self.jump_post(label)
         if dispatch := self._conditional_cross_proc_dispatch(label_str, "!GET_CF()"):
             return dispatch
         return f"JNC({label_str})"
@@ -1714,7 +1710,7 @@ class Cpp(Gen):
         size = self.calculate_size(src)
         srcr = Token_.find_tokens(src, REGISTER)
         assert srcr
-        return "SCAS(%s,%s,%d)" % (a, srcr[0], size)
+        return f"SCAS({a},{srcr[0]},{size})"
 
     def process(self):
         self.merge_procs()
@@ -1854,8 +1850,6 @@ class Cpp(Gen):
         initializer_name = self._initializer_function_name(self._namespace)
 
         with open(cpp_fname, "w", encoding=self.__codeset) as cpp_file:
-            hpp_file = open(header_fname, "w", encoding=self.__codeset)
-
             cpp_file.write(f"""{banner}
         /* Include STL headers before generated headers: MASM EQUs can coin
            names like "count" that would otherwise macro-break <algorithm>. */
@@ -1897,7 +1891,8 @@ class Cpp(Gen):
         #endif
         #endif
         """)
-        hpp_file.write(f"""{banner}
+        with open(header_fname, "w", encoding=self.__codeset) as hpp_file:
+            hpp_file.write(f"""{banner}
 #ifndef {header_id}
 #define {header_id}
 
@@ -1917,7 +1912,6 @@ class Cpp(Gen):
 #endif
 """)
 
-        hpp_file.close()
         self._write_module_data_header(cpp_extern + self.produce_externals(self._context))
 
         self.__methods += self.__failed
@@ -2224,7 +2218,7 @@ class Cpp(Gen):
                 return str(child).lower()
         return None
 
-    def render_equate_value(self, symbol: Union[op._equ, op._assignment]) -> str:
+    def render_equate_value(self, symbol: op._equ | op._assignment) -> str:
         src = symbol.value
         if not isinstance(src, Expression):
             return ""
@@ -3215,12 +3209,12 @@ struct Memory{
         dstr, srcr = Token_.find_tokens(dst, REGISTER), Token_.find_tokens(src, REGISTER)
         if dstr and srcr:
             a, b = self.parse2(dst, src)
-            return "MOVS(%s, %s, %s, %s, %d)" % (a, b, dstr[0], srcr[0], size)
+            return f"MOVS({a}, {b}, {dstr[0]}, {srcr[0]}, {size})"
 
         dreg, sreg = self._movs_index_registers(dst, src)
         a = self._string_op_indexed_operand(dst.segment_register or "es", dreg, size)
         b = self._string_op_indexed_operand(src.segment_register or "ds", sreg, size)
-        return "MOVS(%s, %s, %s, %s, %d)" % (a, b, dreg, sreg, size)
+        return f"MOVS({a}, {b}, {dreg}, {sreg}, {size})"
 
     @staticmethod
     def _movs_index_registers(dst: Expression, src: Expression) -> tuple[str, str]:
@@ -3247,10 +3241,10 @@ struct Memory{
         srcr = Token_.find_tokens(src, REGISTER)
         if srcr:
             a = self.render_instruction_argument(src)
-            return "LODS(%s,%s,%d)" % (a, srcr[0], size)
+            return f"LODS({a},{srcr[0]},{size})"
         sreg = "esi" if "esi" in getattr(src, "registers", set()) else "si"
         a = self._string_op_indexed_operand(src.segment_register or "ds", sreg, size)
-        return "LODS(%s,%s,%d)" % (a, sreg, size)
+        return f"LODS({a},{sreg},{size})"
 
     def _leave(self) -> str:
         return "LEAVE"  # MOV(esp, ebp) POP(ebp)
@@ -3262,7 +3256,7 @@ struct Memory{
     # x87 mnemonics whose bare (no-operand) form has an implicit register
     # operand that needs the explicit macro argument, or whose operandless
     # encoding is the ST(1) pop form (fadd = faddp st(1),st).
-    _FPU_IMPLICIT_0ARG = {
+    _FPU_IMPLICIT_0ARG: ClassVar[dict] = {
         "fcom": "FCOM(1)", "fcomp": "FCOMP(1)", "fucom": "FUCOM(1)",
         "fucomp": "FUCOMP(1)", "fxch": "FXCH()",
         "fadd": "FADDP(1)", "fmul": "FMULP(1)",
@@ -3272,7 +3266,7 @@ struct Memory{
 
     # FPU mnemonics taking register/memory operands: a bare `st` operand
     # renders as an empty string; normalize it to the explicit index 0.
-    _FPU_OPERAND_MNEMONICS = {
+    _FPU_OPERAND_MNEMONICS: ClassVar[set] = {
         "fadd", "faddp", "fsub", "fsubp", "fsubr", "fsubrp",
         "fmul", "fmulp", "fdiv", "fdivp", "fdivr", "fdivrp",
         "fcom", "fcomp", "fucom", "fucomp", "ficom", "ficomp",
@@ -3298,6 +3292,10 @@ struct Memory{
         default_size = 2 if cmd.lower() in {"push", "pop"} else 0
         a = self.render_instruction_argument(dst, def_size=default_size)
         a = self._fpu_operand(cmd, a)
+        # `push offset <code>` renders the m2c::k* aggregate offset key (dd);
+        # a near push stores only the word offset, so pin the operand size.
+        if cmd.lower() == "push" and a.startswith("m2c::k"):
+            a = f"(m2c::dw){a}"
         return f"{cmd.upper()}({a})"
 
     def render_instruction_argument(self, expr: Expression, def_size: int = 0, destination: bool = False,
@@ -3695,7 +3693,7 @@ struct Memory{
         return rc, rh, data.getsize()
 
     def produce_c_data_number(self, data: op.Data) -> tuple[str, str]:
-        label, data_ctype, _, r, elements, size = data.getdata()
+        label, data_ctype, _, r, elements, _size = data.getdata()
         r = self._flatten_data_values(r)
         source_linear = self._runtime_linear_for_data(data)
         element_size = self._runtime_data_element_size(data, elements)
@@ -3801,7 +3799,7 @@ struct Memory{
             return self._render_int_for_ctype(value, data_ctype)
         return str(value)
 
-    _CTYPE_RANGES = {
+    _CTYPE_RANGES: ClassVar[dict] = {
         "db": (0, 0xFF), "byte": (0, 0xFF), "char": (-0x80, 0x7F), "sbyte": (-0x80, 0x7F),
         "dw": (0, 0xFFFF), "word": (0, 0xFFFF), "sword": (-0x8000, 0x7FFF),
         "dd": (0, 0xFFFFFFFF), "dword": (0, 0xFFFFFFFF), "sdword": (-0x80000000, 0x7FFFFFFF),
@@ -3827,7 +3825,7 @@ struct Memory{
             return rendered
         bounds = cls._CTYPE_RANGES.get(data_ctype, cls._CTYPE_RANGES.get(c_type))
         try:
-            value = eval(rendered, {"__builtins__": {}}, {})  # noqa: S307 - arithmetic-only charset above
+            value = eval(rendered, {"__builtins__": {}}, {})
         except Exception:
             value = None
         if bounds is not None and isinstance(value, (int, float)) and bounds[0] <= int(value) <= bounds[1]:
@@ -3868,7 +3866,7 @@ struct Memory{
         return "", value
 
     def produce_c_data_zero_string(self, data: op.Data) -> tuple[str, str]:
-        label, data_ctype, _, r, elements, size = data.getdata()
+        label, _data_ctype, _, r, _elements, size = data.getdata()
         r = flatten(r)
         size = max(size, len(r))
         if self._is_listing_source() and size == 1:
@@ -3881,7 +3879,7 @@ struct Memory{
         return rc, rh
 
     def produce_c_data_array_string(self, data: op.Data) -> tuple[str, str]:
-        label, data_ctype, _, r, elements, size = data.getdata()
+        label, _data_ctype, _, r, _elements, size = data.getdata()
         r = flatten(r)
         size = max(size, len(r))
         if self._is_listing_source() and size == 1:
@@ -3893,7 +3891,7 @@ struct Memory{
         return rc, rh
 
     def produce_c_data_object(self, data: op.Data):
-        label, data_ctype, _, r, elements, size = data.getdata()
+        label, data_ctype, _, _r, _elements, _size = data.getdata()
         rc = []
         for i in data.getmembers():
             c, _, _ = self.produce_c_data_single_(i)
@@ -3911,7 +3909,7 @@ struct Memory{
             return f"struct {data_ctype}"
         return data_ctype
 
-    def convert_char(self, c: Union[int, str]) -> str:
+    def convert_char(self, c: int | str) -> str:
         if isinstance(c, int):
             if c in [10, 13]:
                 return f"'{self.convert_str(c)}'"
@@ -3926,7 +3924,7 @@ struct Memory{
             return c
         return f"'{self.convert_str(c)}'"
 
-    def convert_str(self, c: Union[int, str]) -> str:
+    def convert_str(self, c: int | str) -> str:
         vvv = ""
         if isinstance(c, int):
             if c == 13:
@@ -4176,7 +4174,7 @@ struct Memory{
 
     def _finalize_rendered_expr(self, tree: Expression, result: str) -> str:
         state = self._expr_state
-        state.size_changed = state.size_changed or "size_changed" in tree.mods and self._middle_size != tree.size()
+        state.size_changed = state.size_changed or ("size_changed" in tree.mods and self._middle_size != tree.size())
         effective_ptr_size = self._effective_ptr_size_for_expr(tree)
 
         if state.indirection == IndirectionType.POINTER and tree.registers.intersection({"bp", "ebp", "sp", "esp"}):
@@ -4220,13 +4218,13 @@ struct Memory{
             self._expr_state.data_label_size = prev_data_label_size
         return c, h, size
 
-    def LABEL(self, token: Token) -> list[Union[str, Token]]:
+    def LABEL(self, token: Token) -> list[str | Token]:
         if self._expr_state.data_label_size:
             size = self._expr_state.data_label_size
             return [self.convert_label_data(token, size=size)]
         return [self.convert_label_(token)]
 
-    def convert_label_data(self, v: Token, size: int=0) -> Union[Token, str]:
+    def convert_label_data(self, v: Token, size: int=0) -> Token | str:
         logging.debug("convert_label_data(%s)", v)
         size = 2 if size <= 0 else size
         if (g := self._context.symbols.get_global(v)) is None:
@@ -4262,7 +4260,7 @@ struct Memory{
         logging.debug(result)
         return result
 
-    def offsetdir(self, tree: Tree) -> list[Union[str, Token]]:  # TODO equ, assign support
+    def offsetdir(self, tree: Tree) -> list[str | Token]:  # TODO equ, assign support
         name = tree.children[0]
 
         if isinstance(name, lark.Tree) and name.data=="memberdir":
@@ -4351,7 +4349,7 @@ struct Memory{
         return [f"seg_offset({label})"]
 
     # Approximate C++ precedence of rendered operator nodes (higher binds tighter).
-    _EXPR_NODE_PRECEDENCE = {
+    _EXPR_NODE_PRECEDENCE: ClassVar[dict] = {
         "memberdir": 95, "sqexpr2": 95, "braces": 95,
         "unadddir": 80, "notdir": 80, "wordopdir": 80,
         "offsetdir": 80, "seg": 80, "ptrdir": 80, "segoverride": 80,
@@ -4476,8 +4474,8 @@ struct Memory{
                 value = self._render_known_offset_expression(node.children[1])
                 return None if value is None else f"{node.children[0]}{value}"
             if node.data in {"size", "sizearg", "sizeofdir"} and len(node.children) == 1:
-                value = self._eval_asm_int_expression(node, None)
-                return None if value is None else str(value)
+                int_value = self._eval_asm_int_expression(node, None)
+                return None if int_value is None else str(int_value)
             if len(node.children) == 1 and node.data in {"expr", "offsetdir"}:
                 return self._render_known_offset_expression(node.children[0])
             return None
@@ -4555,7 +4553,7 @@ struct Memory{
             return 1 if self._known_symbol_offset(str(node)) is not None else 0
         return 0
 
-    def _fold_location_counter_expression(self, symbol: Union[op._equ, op._assignment]) -> str | None:
+    def _fold_location_counter_expression(self, symbol: op._equ | op._assignment) -> str | None:
         """Evaluate MASM absolute expressions that depend on known offsets."""
         value = getattr(symbol, "value", None)
         if not isinstance(value, Expression):
@@ -4663,7 +4661,7 @@ struct Memory{
                 return int(symbol.getsize() or 0)
         return None
 
-    def notdir(self, tree: Tree) -> list[Union[str, Token]]:
+    def notdir(self, tree: Tree) -> list[str | Token]:
         return ["~", *self._render_operator_children(tree.children, "notdir")]
 
     def wordopdir(self, tree: Tree) -> list[str]:
@@ -4685,7 +4683,7 @@ struct Memory{
             return [f"({left} << {right})"]
         return [f"({left} >> {right})"]
 
-    def ordir(self, tree: Tree) -> list[Union[str, Token]]:
+    def ordir(self, tree: Tree) -> list[str | Token]:
         left, right = self._render_operator_children(tree.children, "ordir")
         return [left, " | ", right]
 

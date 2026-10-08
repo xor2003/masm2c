@@ -16,12 +16,13 @@ from lark import lark
 
 from masm2c import op
 from masm2c.enumeration import IndirectionType
-from masm2c.Token import Expression, Token as Token_
 from masm2c.pgparser import TopDownVisitor
+from masm2c.Token import Expression
+from masm2c.Token import Token as Token_
 
 if TYPE_CHECKING:
-    from masm2c.proc import Proc
     from masm2c.parser import Parser
+    from masm2c.proc import Proc
 
 
 class Gen(TopDownVisitor):
@@ -1010,8 +1011,8 @@ class Gen(TopDownVisitor):
 
     @staticmethod
     def _merged_symbol_names(segments, structures, data_aliases) -> set[str]:
-        names = {str(name).lower() for name in structures.keys()}
-        names.update(str(name).lower() for name in segments.keys())
+        names = {str(name).lower() for name in structures}
+        names.update(str(name).lower() for name in segments)
         for segment in segments.values():
             for data in segment.getdata():
                 label = getattr(data, "label", "")
@@ -1257,7 +1258,7 @@ class Gen(TopDownVisitor):
                 self.proc = g
             else:
                 logging.debug("No procedure named %s, trying label", name)
-                off, src_proc, skip = self._context.get_offset(name)
+                _off, src_proc, skip = self._context.get_offset(name)
 
                 from masm2c.proc import Proc
                 self.proc = Proc(name)

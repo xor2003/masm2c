@@ -1,0 +1,10 @@
+# clang-tidy configuration for masm2c.
+#
+# Scope: clang static-analyzer checks only. Style/refactor check families
+# (bugprone-*, cert-*, misc-*, readability-*) are intentionally not enabled:
+# this runtime deliberately models 16-bit x86 semantics where truncation and
+# implicit integer wrap-around are required behavior, so those rules produce
+# false positives that cannot be "fixed" without breaking emulation.
+Checks: 'clang-analyzer-*,-clang-analyzer-optin.*'
+WarningsAsErrors: '*'
+HeaderFilterRegex: '.*'
