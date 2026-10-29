@@ -4614,6 +4614,18 @@ struct Memory{
                 return self._eval_asm_symbol_size(node.children[0], total=True)
             if node.data == "sizeofdir" and len(node.children) == 1:
                 return self._eval_asm_symbol_size(node.children[0], total=False)
+            if node.data in {"lengthdir", "lengthofdir"} and len(node.children) == 1:
+                return self._symbol_element_count(str(node.children[0]))
+            if node.data == "widthdir" and len(node.children) == 1:
+                name = str(node.children[0])
+                widths = self._record_bit_widths(name)
+                if widths is not None:
+                    return sum(widths)
+                symbol = self._context.symbols.get_global(name.lower())
+                return int(symbol.size) * 8 if isinstance(symbol, op.var) else None
+            if node.data == "maskdir" and len(node.children) == 1:
+                widths = self._record_bit_widths(str(node.children[0]))
+                return None if widths is None else (1 << sum(widths)) - 1
             if node.data in {
                 "offsetdir", "seg", "segdir", "memberdir",
                 "sqexpr", "sqexpr2", "wordopdir", "typedefdir", "dollar2",
@@ -4712,6 +4724,51 @@ struct Memory{
 
     def sizeofdir(self, tree: Tree) -> list[str]:
         return [self._render_known_size_operator(tree.children[0], total=False)]
+
+    def _symbol_element_count(self, name: str) -> int | None:
+        """Return the LENGTH/LENGTHOF element count of a data symbol, if known."""
+        symbol = self._context.symbols.get_global(name.lower())
+        if isinstance(symbol, op.var):
+            return int(getattr(symbol, "elements", 1) or 1)
+        if isinstance(symbol, op.Data):
+            return int(getattr(symbol, "elements", 1) or 1)
+        if isinstance(symbol, op.Struct):
+            return 1
+        return None
+
+    def _record_bit_widths(self, name: str) -> list[int] | None:
+        """Return declared field widths of a RECORD definition, if known."""
+        record_defs = getattr(self._context, "record_defs", None)
+        if isinstance(record_defs, dict):
+            return record_defs.get(name.lower())
+        return None
+
+    def lengthdir(self, tree: Tree) -> list[str]:
+        name = str(tree.children[0])
+        count = self._symbol_element_count(name)
+        if count is None:
+            raise ValueError(f"LENGTH of unknown symbol {name}")
+        return [str(count)]
+
+    def lengthofdir(self, tree: Tree) -> list[str]:
+        return self.lengthdir(tree)
+
+    def widthdir(self, tree: Tree) -> list[str]:
+        name = str(tree.children[0])
+        widths = self._record_bit_widths(name)
+        if widths is not None:
+            return [str(sum(widths))]
+        symbol = self._context.symbols.get_global(name.lower())
+        if isinstance(symbol, op.var):
+            return [str(int(symbol.size) * 8)]
+        raise ValueError(f"WIDTH of unknown symbol {name}")
+
+    def maskdir(self, tree: Tree) -> list[str]:
+        name = str(tree.children[0])
+        widths = self._record_bit_widths(name)
+        if widths is None:
+            raise ValueError(f"MASK of unknown or field symbol {name}")
+        return [str((1 << sum(widths)) - 1)]
 
 
 class IR2Cpp(Cpp):

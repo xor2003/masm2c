@@ -175,12 +175,12 @@ WORDOP.1: /(?i:HIGHWORD|LOWWORD|HIGH|LOW)(?![A-Za-z0-9_@$?])/
 ?e10: e10 ("." e11)+ -> memberdir
 | e10 "[" expr "]" -> sqexpr2
 | e11
-dir3: "WIDTH"i LABEL
-| "MASK"i LABEL
+dir3: "WIDTH"i (LABEL|RECORDNAME) -> widthdir
+| "MASK"i (LABEL|RECORDNAME) -> maskdir
 | "SIZE"i sizearg -> size
 | "SIZEOF"i sizearg
-| "LENGTH"i LABEL
-| "LENGTHOF"i LABEL
+| "LENGTH"i LABEL -> lengthdir
+| "LENGTHOF"i LABEL -> lengthofdir
 ?e11: braces
 | "[" expr "]" -> sqexpr
 | dir3
