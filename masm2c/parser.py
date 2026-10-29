@@ -3308,6 +3308,14 @@ class Parser:
                     i += 1
                     continue
 
+            if re.match(r"^\s*EXITM\b", line, re.IGNORECASE):
+                if all(frame.current_active for frame in stack):
+                    # EXITM ends the macro expansion immediately; any
+                    # %value return is irrelevant at statement position.
+                    break
+                i += 1
+                continue
+
             if all(frame.current_active for frame in stack):
                 rendered = self._render_text_macro_symbols_in_line(line)
                 self._remember_text_macro_assignment_from_line(rendered)
@@ -3958,6 +3966,7 @@ class Parser:
         text = self._normalize_title_directives(text)
         text = self._normalize_rinit_alias_directives(text)
         text = self._normalize_label_alias_directives(text)
+        text = self._normalize_dot_condition_relops(text)
         logging.debug("parsing: [%s]", text)
         parser = self.__lex.parser[0]
         try:
@@ -4002,6 +4011,33 @@ class Parser:
             return f"{match.group('indent')};{match.group('directive')}{body}{match.group('newline')}"
 
         return pattern.sub(repl, text)
+
+    @staticmethod
+    def _normalize_dot_condition_relops(text: str) -> str:
+        """Translate MASM word relops in runtime dot-directive conditions.
+
+        Inside ``.IF``/``.ELSEIF``/``.WHILE``/``.UNTIL``/``.BREAK``/
+        ``.CONTINUE`` conditions the contextual lexer reads ``LT``/``EQ``/
+        ``NE``/``LE``/``GE``/``GT`` as LABEL tokens, so ``.IF ax LT 3``
+        fails to parse while ``.IF ax < 3`` works. Rewriting the word
+        relops to their symbolic form keeps both spellings valid.
+        """
+        directive = re.compile(
+            r"^(?P<indent>[ \t]*)(?P<head>\.(?:IF|ELSEIF|WHILE|UNTIL|BREAK|CONTINUE)\b)"
+            r"(?P<cond>[^;\r\n]*)",
+            re.IGNORECASE | re.MULTILINE,
+        )
+        relops = {
+            "EQ": "==", "NE": "!=", "LT": "<",
+            "LE": "<=", "GT": ">", "GE": ">=",
+        }
+        word = re.compile(r"\b(EQ|NE|LT|LE|GT|GE)\b", re.IGNORECASE)
+
+        def repl(match: re.Match[str]) -> str:
+            cond = word.sub(lambda m: relops[m.group(1).upper()], match.group("cond"))
+            return f"{match.group('indent')}{match.group('head')}{cond}"
+
+        return directive.sub(repl, text)
 
     @staticmethod
     def _normalize_label_alias_directives(text: str) -> str:
