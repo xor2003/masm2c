@@ -12,6 +12,28 @@ def test_repeat_expands_percent_symbols_and_updates_assignments():
     assert "COUNT = COUNT+1" not in out
 
 
+def test_labeled_repeat_keeps_label_and_expands_body():
+    parser = Parser([])
+
+    out = parser._expand_repeat_blocks(
+        "myrep: REPT 2\nshl ax,1\nrcl dx,1\nENDM\n")
+
+    assert "myrep:" in out
+    assert out.count("shl ax,1") == 2
+    assert out.count("rcl dx,1") == 2
+
+
+def test_anonymous_labeled_repeat_keeps_label_and_expands_body():
+    parser = Parser([])
+
+    out = parser._expand_repeat_blocks(
+        "@@: REPT 2\nshl ax,1\nrcl dx,1\nENDM\n")
+
+    assert "@@:" in out
+    assert out.count("shl ax,1") == 2
+    assert out.count("rcl dx,1") == 2
+
+
 def test_labeled_macro_call_preserves_label_on_first_expanded_line():
     parser = Parser([])
     parser._collect_text_macros_from_content("SETAL MACRO value\nmov al,value\nENDM\n")

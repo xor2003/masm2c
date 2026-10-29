@@ -2828,12 +2828,18 @@ class Parser:
                 i += 1
                 continue
 
-            repeat = re.match(r"^\s*(?:REPT|REPEAT)\s+(?P<count>[^;\r\n]+)", line, re.IGNORECASE)
+            repeat = re.match(
+                r"^\s*(?:(?P<label>[A-Za-z_@$?][A-Za-z0-9_@$?]*)\s*:\s*)?(?:REPT|REPEAT)\s+(?P<count>[^;\r\n]+)",
+                line, re.IGNORECASE)
             if not repeat:
                 rows.append(self._substitute_repeat_percent_expressions(line, symbols))
                 i += 1
                 continue
 
+            if repeat.group("label"):
+                # A label glued to REPT ("name: REPT n" / "@@: REPT n") still
+                # belongs to the repeated block's first emitted instruction.
+                rows.append(repeat.group("label") + ":\n")
             count = max(0, self._eval_repeat_expression(repeat.group("count"), symbols))
             i += 1
             body: list[str] = []
