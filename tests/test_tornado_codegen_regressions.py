@@ -1036,6 +1036,71 @@ class Masm510StructCompatibilityTest(unittest.TestCase):
         self.assertIn("static const int buf_size = 400;", equates)
         self.assertIn("static const int type_size = 2;", equates)
 
+    def test_length_operators_render_element_count_not_dereference(self):
+        parser = Parser([])
+        source = (
+            "DATA SEGMENT\n"
+            "LhsX DW 200 DUP(0)\n"
+            "Scalar DB 7\n"
+            "COUNT EQU LENGTH LhsX\n"
+            "COUNT_OF EQU LENGTHOF LhsX\n"
+            "ONE EQU LENGTH Scalar\n"
+            "DATA ENDS\n"
+            "END\n"
+        )
+        tree = parser.parse_text(source)
+        parser.process_ast(source, tree)
+
+        equates = Cpp(parser).produce_equates()
+
+        self.assertIn("static const int count = 200;", equates)
+        self.assertIn("static const int count_of = 200;", equates)
+        self.assertIn("static const int one = 1;", equates)
+
+    def test_width_and_mask_render_record_bit_geometry(self):
+        with TemporaryDirectory() as tmp:
+            source = Path(tmp) / "rec_geom.asm"
+            source.write_text(
+                (
+                    "R RECORD A:3,B:5\n"
+                    "W EQU WIDTH R\n"
+                    "M EQU MASK R\n"
+                    "END\n"
+                ),
+                encoding="utf-8",
+            )
+            parser = Parser([])
+            parser.parse_file(str(source))
+
+        equates = Cpp(parser).produce_equates()
+
+        self.assertIn("static const int w = 8;", equates)
+        self.assertIn("static const int m = 255;", equates)
+
+    def test_length_in_instruction_operand_is_element_count(self):
+        with TemporaryDirectory() as tmp:
+            source = Path(tmp) / "length_op.asm"
+            source.write_text(
+                (
+                    "DATA SEGMENT\n"
+                    "Buf DW 100 DUP(0)\n"
+                    "DATA ENDS\n"
+                    ".code\n"
+                    "main PROC\n"
+                    "    mov ax, LENGTH Buf\n"
+                    "    ret\n"
+                    "main ENDP\n"
+                    "END\n"
+                ),
+                encoding="utf-8",
+            )
+            parser = Parser([])
+            parser.parse_file(str(source))
+
+        rendered = Cpp(parser).write_procedures("", "length_op.h")
+
+        self.assertIn("R(ax = 100;);", rendered)
+
     def test_text_equ_partial_expression_expands_before_parsing_operand(self):
         with TemporaryDirectory() as tmp:
             source = Path(tmp) / "text_equ.asm"
