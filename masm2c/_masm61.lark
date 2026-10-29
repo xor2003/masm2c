@@ -9,7 +9,7 @@ TITLEKW.3: /(?i:TITLE)(?=[ \t;\r\n]|\Z)/
 SUBTITLEKW.3: /(?i:SUBTITLE)(?=[ \t;\r\n]|\Z)/
 SUBTTLKW.3: /(?i:SUBTTL)(?=[ \t;\r\n]|\Z)/
 TEXT.1: /[^<>\r\n]+/x
-STRING: /((?<!')'((?!').+?(?<!'))?'(?!'))|((?<!")"((?!").+?(?<!"))?"(?!"))/
+STRING: /'(?:[^']|'')*'|"(?:[^"]|"")*"/
 LABEL: /[A-Za-z@_$?][A-Za-z@_$?0-9]*/
 LABELKW.3: "LABEL"i
 LABELALIAS.3: "__MASM2C_LABEL_ALIAS"
