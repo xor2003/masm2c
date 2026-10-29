@@ -3273,7 +3273,9 @@ class Parser:
 
             directive = self._parse_conditional_directive(line)
             if directive is not None:
-                keyword, payload = directive
+                keyword, payload, dir_label = directive
+                if dir_label:
+                    output.append(f"{dir_label}:\n")
                 upper = keyword.upper()
                 parent_active = all(frame.current_active for frame in stack)
                 if upper in {"IF", "IFE", "IFB", "IFNB", "IFDEF", "IFNDEF", "IFDIF", "IFDIFI", "IFIDN", "IFIDNI", "IF1", "IF2"}:
@@ -3833,7 +3835,9 @@ class Parser:
                     output.append(line)
                 continue
 
-            keyword, payload = directive
+            keyword, payload, dir_label = directive
+            if dir_label:
+                output.append(f"{dir_label}:\n")
             upper = keyword.upper()
             parent_active = all(frame.current_active for frame in stack)
 
@@ -3871,12 +3875,12 @@ class Parser:
 
         return "".join(output)
 
-    def _parse_conditional_directive(self, line: str) -> tuple[str, str] | None:
+    def _parse_conditional_directive(self, line: str) -> tuple[str, str, str] | None:
         code = line.split(";", 1)[0].strip()
         if not code:
             return None
         match = re.match(
-            r"^(?:(?:@@|[A-Za-z_@$?][A-Za-z0-9_@$?]*)\s*:\s*)?"
+            r"^(?:(?P<label>@@|[A-Za-z_@$?][A-Za-z0-9_@$?]*)\s*:\s*)?"
             r"(IF(?:E|B|NB|DEF|NDEF|DIF|DIFI|IDN|IDNI|1|2)?|"
             r"ELSEIF(?:E|B|NB|DEF|NDEF|DIF|DIFI|IDN|IDNI|1|2)?|ELSE|ENDIF)\b(.*)$",
             code,
@@ -3884,7 +3888,7 @@ class Parser:
         )
         if not match:
             return None
-        return match.group(1), match.group(2).strip()
+        return match.group(2), match.group(3).strip(), match.group("label") or ""
 
     def _evaluate_conditional(self, keyword: str, payload: str) -> bool:
         key = keyword.upper()
