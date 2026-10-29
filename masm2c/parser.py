@@ -241,6 +241,15 @@ class ExprSizeCalculator(BottomUpVisitor):
                 self.element_size = 0
                 element_size = self.visit(g.value).values[0]
                 self.element_size = previous
+            if element_size < 1:
+                # Untyped equates still carry the width of a struc member they
+                # are built on: `_AC_CTRL_MODE EQU BASE+AC_CTRL_MODE` used as
+                # `cmp _AC_CTRL_MODE[si],imm` assembles as a WORD op.
+                for lbl in Token_.find_tokens(g.value, "LABEL") or []:
+                    member_info = context.old_struct_member_offsets.get(str(lbl).lower())
+                    if member_info:
+                        element_size = member_info[2]
+                        break
             if element_size >= 1:
                 self.element_size = element_size
             else:
@@ -1303,7 +1312,7 @@ class Parser:
             from .enumeration import IndirectionType
             if isinstance(g, (op._equ, op._assignment)):
                 if isinstance(g.value, Expression):
-                    g.size = g.value.size()
+                    g.size = g.value.size() or self._equ_value_member_size(g.value)
                     if (
                         len(g.children) == 2
                         and isinstance(g.children[1], Expression)
@@ -1319,6 +1328,17 @@ class Parser:
         elif self.has_structure(value):
             expr.element_size = self.structures[value].size
         return value
+
+    def _equ_value_member_size(self, value: Expression) -> int:
+        """Untyped equates still carry the width of a struc member they are
+        built on: ``_AC_CTRL_MODE EQU BASE+AC_CTRL_MODE`` used as
+        ``cmp _AC_CTRL_MODE[si],imm`` assembles as a WORD op because
+        AC_CTRL_MODE is a DW member."""
+        for lbl in Token_.find_tokens(value, "LABEL") or []:
+            member_info = self.old_struct_member_offsets.get(str(lbl).lower())
+            if member_info:
+                return member_info[2]
+        return 0
 
     def apply_register_reference(self, expr: Expression, register_name: str) -> None:
         reg = register_name.lower()

@@ -1118,6 +1118,52 @@ class Masm510StructCompatibilityTest(unittest.TestCase):
         self.assertEqual(cpp.produce_equates(), "static const int nul = 0;\n")
         self.assertEqual(cpp.produce_equates(), "")
 
+    @staticmethod
+    def _render_proc(body: str) -> str:
+        parser = Parser({"mergeprocs": "separate"})
+        source = (
+            "OPTION M510\n"
+            "AIRCRAFT STRUC\n"
+            "AC_TYPE DW 0\n"
+            "AC_CTRL_MODE DW 0\n"
+            "AC_SIDE DB 0\n"
+            "AIRCRAFT ENDS\n"
+            "MOB_REC_SIZE EQU 6\n"
+            "_AC_CTRL_MODE EQU MOB_REC_SIZE+AC_CTRL_MODE\n"
+            "_AC_SIDE EQU MOB_REC_SIZE+AC_SIDE\n"
+            "CODE SEGMENT\n"
+            "main PROC\n"
+            f"{body}"
+            "done:\n"
+            "    ret\n"
+            "main ENDP\n"
+            "CODE ENDS\n"
+            "END\n"
+        )
+        tree = parser.parse_text(source)
+        parser.process_ast(source, tree)
+        proc = parser.symbols.get_global("main")
+        cpp = Cpp(parser)
+        return "\n".join(proc.generate_c_cmd(cpp, stmt) for stmt in proc.stmts)
+
+    def test_untyped_equ_over_word_member_compares_as_word(self):
+        # ``_AC_CTRL_MODE EQU MOB_REC_SIZE+AC_CTRL_MODE`` carries no PTR
+        # directive, but MASM assembles ``cmp _AC_CTRL_MODE[si],imm`` as a
+        # word op (83 /7) because AC_CTRL_MODE is DW.  Tornado's
+        # GroundCheck reads this field; emitting a byte compare flipped
+        # the combat-mode branch and diverged from the original binary.
+        rendered = self._render_proc("    cmp _AC_CTRL_MODE[si],14\n    jne done\n")
+        self.assertIn("*(dw*)(raddr(ds,", rendered)
+        self.assertNotIn("*(db*)(raddr(ds,", rendered)
+
+    def test_untyped_equ_over_byte_member_stays_byte(self):
+        rendered = self._render_proc("    cmp _AC_SIDE[si],2\n    jne done\n")
+        self.assertNotIn("*(dw*)(raddr(ds,", rendered)
+
+    def test_explicit_byte_ptr_overrides_member_width(self):
+        rendered = self._render_proc("    cmp al,BYTE PTR _AC_CTRL_MODE[si]\n    jne done\n")
+        self.assertNotIn("*(dw*)(raddr(ds,", rendered)
+
     def test_equ_forward_alias_emits_as_textual_macro(self):
         parser = Parser([])
         source = "COL_RAD_MISS EQU COL_MAP_ENEMY\nCOL_MAP_ENEMY EQU 4\nEND\n"

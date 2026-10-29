@@ -93,7 +93,16 @@ class Gen(TopDownVisitor):
         symbol = self._context.symbols.get_global(node)
         if not isinstance(symbol, (op._assignment, op._equ)) or not isinstance(symbol.value, Expression):
             return 0
-        return symbol.value.ptr_size
+        if symbol.value.ptr_size:
+            return symbol.value.ptr_size
+        # Untyped equates still carry the width of a struc member they are
+        # built on: `_AC_CTRL_MODE EQU BASE+AC_CTRL_MODE` used as
+        # `cmp _AC_CTRL_MODE[si],imm` assembles as a WORD op.
+        for lbl in Token_.find_tokens(symbol.value, "LABEL") or []:
+            member_info = getattr(self._context, "old_struct_member_offsets", {}).get(str(lbl).lower())
+            if member_info:
+                return member_info[2]
+        return 0
 
 
     def _calculate_struct_alias_member_size(self, struct_type: str, alias: str, seen: set[str] | None = None) -> int:
