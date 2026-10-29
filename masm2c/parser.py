@@ -3214,11 +3214,40 @@ class Parser:
                 continue
             macro = self._text_macros.get(match.group("name").lower())
             if macro is None:
+                new_code = self._expand_function_style_macro_calls(code)
+                if new_code != code:
+                    changed = True
+                    line = new_code + sep + comment
                 if self._record_pass_through_assignments:
                     self._remember_text_macro_assignment_from_line(line)
                 rows.append(line)
                 i += 1
                 continue
+            if match.group("args").lstrip().startswith("("):
+                # `M(a, b)` is also a valid macro invocation in MASM: treat the
+                # balanced parenthesized list the same as the whitespace form.
+                inner = match.group("args").strip()
+                open_paren = line.find("(", match.start("args"))
+                depth_n = 0
+                end = -1
+                for j in range(open_paren, len(line)):
+                    if line[j] == "(":
+                        depth_n += 1
+                    elif line[j] == ")":
+                        depth_n -= 1
+                        if depth_n == 0:
+                            end = j
+                            break
+                if end >= 0:
+                    match_args = line[open_paren + 1:end]
+                    line = match.group("ws") + (match.group("label") or "") + \
+                        match.group("name") + " " + match_args + \
+                        ("\n" if line.endswith("\n") else "")
+                    match = re.match(
+                        r"^(?P<ws>\s*)(?:(?P<label>(?:@@|[A-Za-z_@$?][A-Za-z0-9_@$?]*)\s*:)\s*)?"
+                        r"(?P<name>[A-Za-z_@$?][A-Za-z0-9_@$?]*)(?P<args>\b[^\r\n]*)$",
+                        line,
+                    )
             if split_lines := self._split_chained_macro_invocation(line, match):
                 rows.extend(split_lines)
                 changed = True
@@ -3264,7 +3293,57 @@ class Parser:
             i += 1
         return "".join(rows), changed
 
-    def _expand_text_macro_control_blocks(self, content: str) -> str:
+    def _expand_function_style_macro_calls(self, line: str, depth: int = 0) -> str:
+        """Expand `name(args)` invocations of known text macros in operand position.
+
+        MASM allows a macro to be called function-style anywhere an expression
+        is expected; the macro's `EXITM <text>` supplies the replacement text.
+        """
+        if depth >= 8:
+            return line
+        pattern = re.compile(r"[A-Za-z_@$?][A-Za-z0-9_@$?]*\s*\(")
+        for match in pattern.finditer(line):
+            name = match.group(0).rstrip("( \t").lower()
+            if name not in self._text_macros:
+                continue
+            open_paren = line.find("(", match.start())
+            depth_n = 0
+            end = -1
+            for j in range(open_paren, len(line)):
+                if line[j] == "(":
+                    depth_n += 1
+                elif line[j] == ")":
+                    depth_n -= 1
+                    if depth_n == 0:
+                        end = j
+                        break
+            if end < 0:
+                continue
+            args = self._split_macro_args(line[open_paren + 1:end].strip())
+            macro = self._text_macros[name]
+            defaults = getattr(macro, "defaults", None) or {}
+            replacements = {}
+            for index, parameter in enumerate(macro.parameters):
+                if parameter == getattr(macro, "vararg", None):
+                    value = ", ".join(args[index:]) if index < len(args) else ""
+                else:
+                    value = args[index] if index < len(args) else ""
+                replacements[parameter] = value or defaults.get(parameter, "")
+            self._text_macro_expansion_id += 1
+            replacements.update(
+                self._local_macro_replacements(macro.body, self._text_macro_expansion_id))
+            rendered_body = "".join(
+                self._substitute_text_macro_args(body_line.lstrip(), replacements)
+                for body_line in macro.body
+                if not re.match(r"^\s*LOCAL\b", body_line, re.IGNORECASE))
+            exitm_out: list = []
+            self._expand_text_macro_control_blocks(rendered_body, exitm_out)
+            replacement_text = exitm_out[-1] if exitm_out else ""
+            line = line[:match.start()] + replacement_text + line[end + 1:]
+            return self._expand_function_style_macro_calls(line, depth + 1)
+        return line
+
+    def _expand_text_macro_control_blocks(self, content: str, exitm_out: list | None = None) -> str:
         lines = content.splitlines(keepends=True)
         output: list[str] = []
         stack: list[_ConditionalFrame] = []
@@ -3282,7 +3361,7 @@ class Parser:
                             self._substitute_text_macro_args(body_line, replacements)
                             for body_line in body
                         )
-                        output.append(self._expand_text_macro_control_blocks(expanded))
+                        output.append(self._expand_text_macro_control_blocks(expanded, exitm_out))
                 continue
 
             irp = self._parse_irp_directive(line)
@@ -3296,7 +3375,7 @@ class Parser:
                             self._substitute_text_macro_args(body_line, replacements)
                             for body_line in body
                         )
-                        output.append(self._expand_text_macro_control_blocks(expanded))
+                        output.append(self._expand_text_macro_control_blocks(expanded, exitm_out))
                 continue
 
             directive = self._parse_conditional_directive(line)
@@ -3338,8 +3417,16 @@ class Parser:
 
             if re.match(r"^\s*EXITM\b", line, re.IGNORECASE):
                 if all(frame.current_active for frame in stack):
-                    # EXITM ends the macro expansion immediately; any
-                    # %value return is irrelevant at statement position.
+                    # EXITM ends the macro expansion immediately. The
+                    # payload is the function-style macro's return text.
+                    if exitm_out is not None:
+                        payload = line.split(";", 1)[0].strip()
+                        payload = re.sub(r"^EXITM\s*", "", payload, flags=re.IGNORECASE)
+                        rendered = self._render_text_macro_symbols(
+                            payload, include_plain=True).strip()
+                        if rendered.startswith("<") and rendered.endswith(">"):
+                            rendered = rendered[1:-1].strip()
+                        exitm_out.append(rendered)
                     break
                 i += 1
                 continue
