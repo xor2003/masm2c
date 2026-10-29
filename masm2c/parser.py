@@ -149,6 +149,8 @@ class _ConditionalFrame:
 class _TextMacro:
     parameters: list[str]
     body: list[str]
+    vararg: str | None = None
+    defaults: dict = None
 
 
 class Vector:
@@ -2735,12 +2737,23 @@ class Parser:
                         break
                 body.append(lines[i])
                 i += 1
-            params = [
-                param.strip().split(":", 1)[0].split("=", 1)[0].lower()
-                for param in header.group("params").split(",")
-                if param.strip()
-            ]
-            self._text_macros[header.group("name").lower()] = _TextMacro(params, body)
+            params: list[str] = []
+            vararg: str | None = None
+            defaults: dict = {}
+            for param in header.group("params").split(","):
+                pname = param.strip()
+                if not pname:
+                    continue
+                quals = pname.split(":", 1)[1].strip() if ":" in pname else ""
+                if "=" in pname:
+                    pname, default = (p.strip() for p in pname.split("=", 1))
+                    defaults[pname.lower()] = default
+                pname = pname.split(":", 1)[0].lower()
+                params.append(pname)
+                if "vararg" in quals.lower():
+                    vararg = pname
+            self._text_macros[header.group("name").lower()] = _TextMacro(
+                params, body, vararg, defaults)
             i += 1
 
     @staticmethod
@@ -3134,12 +3147,23 @@ class Parser:
                         break
                 body.append(lines[i])
                 i += 1
-            params = [
-                param.strip().split(":", 1)[0].split("=", 1)[0].lower()
-                for param in header.group("params").split(",")
-                if param.strip()
-            ]
-            self._text_macros[header.group("name").lower()] = _TextMacro(params, body)
+            params: list[str] = []
+            vararg: str | None = None
+            defaults: dict = {}
+            for param in header.group("params").split(","):
+                pname = param.strip()
+                if not pname:
+                    continue
+                quals = pname.split(":", 1)[1].strip() if ":" in pname else ""
+                if "=" in pname:
+                    pname, default = (p.strip() for p in pname.split("=", 1))
+                    defaults[pname.lower()] = default
+                pname = pname.split(":", 1)[0].lower()
+                params.append(pname)
+                if "vararg" in quals.lower():
+                    vararg = pname
+            self._text_macros[header.group("name").lower()] = _TextMacro(
+                params, body, vararg, defaults)
         return "".join(rows)
 
     def _expand_text_macros(self, content: str) -> str:
@@ -3202,10 +3226,14 @@ class Parser:
                 continue
             changed = True
             args = self._split_macro_args(match.group("args").strip())
-            replacements = {
-                parameter: args[index] if index < len(args) else ""
-                for index, parameter in enumerate(macro.parameters)
-            }
+            defaults = getattr(macro, "defaults", None) or {}
+            replacements = {}
+            for index, parameter in enumerate(macro.parameters):
+                if parameter == getattr(macro, "vararg", None):
+                    value = ", ".join(args[index:]) if index < len(args) else ""
+                else:
+                    value = args[index] if index < len(args) else ""
+                replacements[parameter] = value or defaults.get(parameter, "")
             self._text_macro_expansion_id += 1
             local_replacements = self._local_macro_replacements(macro.body, self._text_macro_expansion_id)
             replacements.update(local_replacements)
