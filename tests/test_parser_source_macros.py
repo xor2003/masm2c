@@ -34,6 +34,33 @@ def test_anonymous_labeled_repeat_keeps_label_and_expands_body():
     assert out.count("rcl dx,1") == 2
 
 
+def test_while_expands_body_until_condition_is_false():
+    parser = Parser([])
+
+    out = parser._expand_repeat_blocks(
+        "COUNT = 0\nWHILE COUNT LT 3\nshl ax,1\nCOUNT = COUNT+1\nENDM\n")
+
+    assert out.count("shl ax,1") == 3
+
+
+def test_while_with_false_condition_emits_nothing():
+    parser = Parser([])
+
+    out = parser._expand_repeat_blocks("WHILE 0\nshl ax,1\nENDM\n")
+
+    assert "shl" not in out
+
+
+def test_labeled_while_keeps_label_and_expands_body():
+    parser = Parser([])
+
+    out = parser._expand_repeat_blocks(
+        "COUNT = 0\nloop1: WHILE COUNT LT 2\nshl ax,1\nCOUNT = COUNT+1\nENDM\n")
+
+    assert "loop1:" in out
+    assert out.count("shl ax,1") == 2
+
+
 def test_labeled_macro_call_preserves_label_on_first_expanded_line():
     parser = Parser([])
     parser._collect_text_macros_from_content("SETAL MACRO value\nmov al,value\nENDM\n")

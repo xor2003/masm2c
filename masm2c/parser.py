@@ -1469,7 +1469,7 @@ class Parser:
         # REPT/IRP/MACRO/IF body that the parser expands itself - keeping the row
         # would double-emit it (e.g. duplicate "PosSubDiv&N:" labels).
         content = re.sub(
-            r"(?m)^[ \t]*[0-9A-F]{4,8}(?:[^\S\r\n]+(?:[0-9A-F]{2,8}|R\b|C\b))*[^\S\r\n]+[1-9](?=[^\S\r\n])[^\r\n]*\r?\n",
+            r"(?m)^[ \t]*[0-9A-F]{4,8}(?:[^\S\r\n]+(?:[0-9A-F][0-9A-F:]{1,9}|-{2,}|[A-Z]\b))*[^\S\r\n]+[1-9](?=[^\S\r\n])[^\r\n]*\r?\n",
             "",
             content,
         )
@@ -2286,7 +2286,7 @@ class Parser:
 
     def _append_code_skip_op_if_needed(self, data: Data, isstruct: bool, dummy_label: bool) -> None:
         """Emit a synthetic op for code bytes that swallow following opcode bytes."""
-        if isstruct or not dummy_label or self.current_macro or self.proc is None:
+        if isstruct or not dummy_label or self.proc is None:
             return
         if not self._current_segment_is_code():
             return
@@ -2748,7 +2748,7 @@ class Parser:
         code = line.split(";", 1)[0].strip()
         return bool(
             re.match(r"^[A-Za-z_@$?][A-Za-z0-9_@$?]*\s+MACRO\b", code, re.IGNORECASE)
-            or re.match(r"^(?:REPT|REPEAT|IRP|IRPC|WHILE)\b", code, re.IGNORECASE)
+            or re.match(r"^(?:REPT|REPEAT|IRP|IRPC|FOR|FORC|WHILE)\b", code, re.IGNORECASE)
         )
 
     @staticmethod
@@ -2829,23 +2829,36 @@ class Parser:
                 continue
 
             repeat = re.match(
-                r"^\s*(?:(?P<label>[A-Za-z_@$?][A-Za-z0-9_@$?]*)\s*:\s*)?(?:REPT|REPEAT)\s+(?P<count>[^;\r\n]+)",
+                r"^\s*(?:(?P<label>[A-Za-z_@$?][A-Za-z0-9_@$?]*)\s*:\s*)?"
+                r"(?:(?P<loop>REPT|REPEAT|WHILE)\s+(?P<count>[^;\r\n]+)"
+                r"|(?P<iter>IRP|IRPC|FOR|FORC)\s+"
+                r"(?P<isym>[A-Za-z_@$?][A-Za-z0-9_@$?]*)\s*,\s*"
+                r"<(?P<ilist>[^;\r\n]*)>)",
                 line, re.IGNORECASE)
             if not repeat:
                 rows.append(self._substitute_repeat_percent_expressions(line, symbols))
                 i += 1
                 continue
 
+            kind = (repeat.group("loop") or repeat.group("iter")).upper()
+            if repeat.group("iter") and self._inside_macro_definition(lines, i):
+                # IRP/FOR inside a MACRO definition iterates over the macro's
+                # own argument text at invocation time (e.g. FOR arg,<arglist>);
+                # expanding it at definition time would freeze the literal
+                # placeholder list. Leave it for the invocation pass.
+                rows.append(line)
+                i += 1
+                continue
             if repeat.group("label"):
-                # A label glued to REPT ("name: REPT n" / "@@: REPT n") still
-                # belongs to the repeated block's first emitted instruction.
+                # A label glued to a repeat directive ("name: REPT n" /
+                # "@@: REPT n") still belongs to the repeated block's first
+                # emitted instruction.
                 rows.append(repeat.group("label") + ":\n")
-            count = max(0, self._eval_repeat_expression(repeat.group("count"), symbols))
             i += 1
             body: list[str] = []
             depth = 1
             while i < len(lines) and depth:
-                if re.match(r"^\s*(?:REPT|REPEAT)\b", lines[i], re.IGNORECASE):
+                if self._starts_macro_like_block(lines[i]):
                     depth += 1
                 if re.match(r"^\s*ENDM\b", lines[i], re.IGNORECASE):
                     depth -= 1
@@ -2855,9 +2868,59 @@ class Parser:
                 if depth:
                     body.append(lines[i])
                 i += 1
-            for _ in range(count):
-                rows.extend(self._expand_repeat_iteration(body, symbols))
+            if kind in {"IRP", "FOR"}:
+                items = self._split_macro_args(repeat.group("ilist"))
+            elif kind in {"IRPC", "FORC"}:
+                items = list(repeat.group("ilist"))
+            else:
+                items = []
+            if repeat.group("iter"):
+                symbol = repeat.group("isym").lower()
+                for item in items:
+                    substituted = [
+                        self._substitute_text_macro_args(
+                            body_line, {symbol: item})
+                        for body_line in body
+                    ]
+                    rows.extend(
+                        self._expand_repeat_iteration(substituted, symbols))
+            elif kind == "WHILE":
+                # WHILE is an assembly-time loop: evaluate the condition with
+                # the current '=' symbols and expand the body until it becomes
+                # false. The cap keeps non-terminating conditions from hanging
+                # the translator (MASM would loop forever too).
+                iterations = 0
+                while self._eval_repeat_conditional(repeat.group("count"), symbols):
+                    rows.extend(self._expand_repeat_iteration(body, symbols))
+                    iterations += 1
+                    if iterations >= 65536:
+                        break
+            else:
+                count = max(
+                    0, self._eval_repeat_expression(repeat.group("count"), symbols))
+                for _ in range(count):
+                    rows.extend(self._expand_repeat_iteration(body, symbols))
         return "".join(rows)
+
+    @staticmethod
+    def _inside_macro_definition(lines: list[str], index: int) -> bool:
+        """True when ``index`` sits inside a ``name MACRO ... ENDM`` body."""
+        depth = 0
+        for line in lines[:index]:
+            code = line.split(";", 1)[0].strip()
+            if depth:
+                if re.match(r"^ENDM\b", code, re.IGNORECASE):
+                    depth -= 1
+                elif re.match(
+                        r"^(?:[A-Za-z_@$?][A-Za-z0-9_@$?]*\s+)?"
+                        r"(?:MACRO|REPT|REPEAT|IRP|IRPC|FOR|FORC|WHILE)\b",
+                        code, re.IGNORECASE):
+                    depth += 1
+            elif re.match(
+                    r"^[A-Za-z_@$?][A-Za-z0-9_@$?]*\s+MACRO\b",
+                    code, re.IGNORECASE):
+                depth += 1
+        return depth > 0
 
     def _expand_repeat_iteration(self, body: list[str], symbols: dict[str, int]) -> list[str]:
         rows: list[str] = []
@@ -3194,6 +3257,20 @@ class Parser:
                         output.append(self._expand_text_macro_control_blocks(expanded))
                 continue
 
+            irp = self._parse_irp_directive(line)
+            if irp is not None:
+                symbol, items = irp
+                body, i = self._collect_macro_block_body(lines, i + 1)
+                if all(frame.current_active for frame in stack):
+                    for item in items:
+                        replacements = {symbol.lower(): item}
+                        expanded = "".join(
+                            self._substitute_text_macro_args(body_line, replacements)
+                            for body_line in body
+                        )
+                        output.append(self._expand_text_macro_control_blocks(expanded))
+                continue
+
             directive = self._parse_conditional_directive(line)
             if directive is not None:
                 keyword, payload = directive
@@ -3247,6 +3324,17 @@ class Parser:
         if not match:
             return None
         return match.group("symbol"), match.group("text")
+
+    def _parse_irp_directive(self, line: str) -> tuple[str, list[str]] | None:
+        code = line.split(";", 1)[0].strip()
+        match = re.match(
+            r"^(?:IRP|FOR)\s+(?P<symbol>[A-Za-z_@$?][A-Za-z0-9_@$?]*)\s*,\s*<(?P<items>.*)>\s*$",
+            code,
+            re.IGNORECASE,
+        )
+        if not match:
+            return None
+        return match.group("symbol"), self._split_macro_args(match.group("items"))
 
     def _collect_macro_block_body(self, lines: list[str], start: int) -> tuple[list[str], int]:
         body: list[str] = []
