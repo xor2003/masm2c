@@ -404,6 +404,12 @@ bool dispatch_external_code(_offsets __disp, _STATE* _state, bool* handled);
  * runtime stub in asm.cpp reports "not handled". */
 bool m2c_guest_thunk(_offsets __disp, _STATE* _state);
 bool host_try_overlay_retf(_offsets __disp, _STATE* _state, bool* out_result);
+/* Map a generated-code segment selector (`(&func-&m)>>4`, i.e. the host
+ * paragraph produced by seg_offset(label)) to its proc dispatch function.
+ * Lets far pointers stored as `seg:off` with a module-local `k*` offset be
+ * routed to the owning module.  Weak stub returns nullptr; generated
+ * _data.cpp provides the real table. */
+m2cf* m2c_seg_func_for(dw seg);
 bool is_dos_terminate_vector(dw segment, dw offset);
 
 template<class S>
@@ -832,9 +838,20 @@ struct NativeReturnMark {
 
 extern std::vector<NativeReturnMark> native_return_marks;
 extern std::vector<NativeReturnMark> native_return_values;
+
+/* Sentinel continuation resume table: every tagged sentinel word pushed by
+ * CALL_ maps to the (caller proc, sentinel) pair so a ret that pops the word
+ * after its mark was abandoned can still resume the suspended continuation
+ * the way the DOS original would -- by jumping to the pushed offset. */
+struct SentinelResumeInfo {
+    m2cf* fn;
+    MWORDSIZE sentinel;
+};
+extern std::unordered_map<MWORDSIZE, SentinelResumeInfo> sentinel_resume_map;
 extern size_t native_return_next_id;
 extern size_t native_return_call_depth;
 extern bool suppress_native_return_push_transfer;
+extern int m2c_strict_native_return;
 
 struct NativeCallDepthScope {
     NativeCallDepthScope() {
@@ -876,6 +893,10 @@ inline bool take_native_return_value(
     const void* carrier = nullptr,
     size_t* id = nullptr
 ) {
+    // Carrier tracking is exact bookkeeping, not a heuristic: a value pushed
+    // from the same register that popped a live return IS that return, even
+    // under m2c_strict_native_return (inline-data `pop si; inc si; push si`
+    // idioms depend on it).
     if (return_ip == 0) {
         // 0 is the unwind sentinel (`push 0`/`ret` to PSP:0 termination and
         // dispatcher-entered continuations), never a real call return. A
@@ -904,9 +925,22 @@ inline bool take_native_return_value(
         if (id) {
             *id = it->id;
         }
+        { extern int m2c_ret_dbg; if (m2c_ret_dbg) {
+            fprintf(stderr, "  [VALMARK-HIT] rip=%x markrip=%x depth=%d id=%d\n",
+                (unsigned)return_ip, (unsigned)it->return_ip,
+                (int)it->call_depth, (int)it->id);
+        } }
         native_return_values.erase(std::next(it).base());
         return true;
     }
+    { extern int m2c_ret_dbg; if (m2c_ret_dbg) {
+        int n=0;
+        for (auto it = native_return_values.rbegin(); it != native_return_values.rend() && n<6; ++it,++n)
+            fprintf(stderr, "  [takeval-skip] markrip=%x carrier=%p depth=%d id=%d (want rip=%x depth=%d)\n",
+                (unsigned)it->return_ip, it->carrier, (int)it->call_depth, (int)it->id,
+                (unsigned)return_ip, (int)native_return_call_depth);
+        fprintf(stderr, "  [VALMARK-MISS] rip=%x depth=%d\n", (unsigned)return_ip, (int)native_return_call_depth);
+    } }
     return false;
 }
 
@@ -919,7 +953,13 @@ extern size_t last_ret_mark_id;
 /* cs<<16|ip of the most recent ret instruction itself. */
 extern dd last_ret_site;
 
+extern int m2c_ret_dbg;
 inline bool consume_native_return(_STATE* state, dw stack_segment, dw stack_offset, MWORDSIZE return_ip, size_t* matched_call_depth = nullptr, size_t* matched_id = nullptr, int* match_kind = nullptr) {
+    if (m2c_ret_dbg) {
+        int n=0; for (auto it = native_return_marks.rbegin(); it != native_return_marks.rend() && n<5; ++it,++n)
+            fprintf(stderr, "  [consume-mk] rip=%x sp=%x ss=%x d=%d id=%d\n", (unsigned)it->return_ip,(unsigned)it->stack_offset,(unsigned)it->stack_segment,(int)it->call_depth,(int)it->id);
+        fprintf(stderr, "CONSUME rip=%x ss=%x sp=%x curdepth=%d\n", (unsigned)return_ip,(unsigned)stack_segment,(unsigned)stack_offset,(int)native_return_call_depth);
+    }
     for (auto it = native_return_marks.rbegin(); it != native_return_marks.rend(); ++it) {
         if (
             it->state != state
@@ -927,6 +967,11 @@ inline bool consume_native_return(_STATE* state, dw stack_segment, dw stack_offs
             || it->stack_offset != stack_offset
             || it->call_depth != native_return_call_depth
         ) {
+            if (m2c_ret_dbg)
+                fprintf(stderr, "  [consume-skip id=%d mstate=%p wantstate=%p markrip=%x sp=%x d=%d wantrip=%x wantsp=%x wantd=%d]\n",
+                    (int)it->id, (void*)it->state, (void*)state, (unsigned)it->return_ip, (unsigned)it->stack_offset,
+                    (int)it->call_depth, (unsigned)return_ip, (unsigned)stack_offset,
+                    (int)native_return_call_depth);
             continue;
         }
         const bool matched = it->return_ip == return_ip;
@@ -934,17 +979,21 @@ inline bool consume_native_return(_STATE* state, dw stack_segment, dw stack_offs
             *matched_call_depth = it->call_depth;
         }
         const size_t consumed_id = it->id;
+        const MWORDSIZE consumed_rip = it->return_ip;
         native_return_marks.erase(std::next(it).base());
         if (matched) {
             if (matched_id) *matched_id = consumed_id;
             if (match_kind) *match_kind = 1;
+            if (m2c_ret_dbg) fprintf(stderr, "  [CONSUME-HIT mode=1 rip=%x sp=%x id=%d]\n",(unsigned)return_ip,(unsigned)stack_offset,(int)consumed_id);
             return true;
         }
+        if (m2c_ret_dbg) fprintf(stderr, "  [CONSUME-DROP stale-mark sp=%x markrip=%x wantrip=%x id=%d]\n",(unsigned)stack_offset,(unsigned)consumed_rip,(unsigned)return_ip,(int)consumed_id);
         // The guest overwrote this stack slot after the marked call (e.g.
         // XTHL-style return-address juggling): the mark is stale. Drop it
         // but keep looking so a relocated same-address mark can match below.
         break;
     }
+    if (m2c_strict_native_return) return false;
     // Frame-skipping return (e.g. `pop reg` discarding intermediate frames
     // followed by `ret`): the popped address is a live outer frame's return
     // sitting at this slot, but at a shallower native call depth. Match it and
@@ -964,7 +1013,10 @@ inline bool consume_native_return(_STATE* state, dw stack_segment, dw stack_offs
         }
         if (matched_id) *matched_id = it->id;
         if (match_kind) *match_kind = 2;
+        const size_t consumed_id = it->id;
+        const size_t consumed_depth = it->call_depth;
         native_return_marks.erase(std::next(it).base());
+        if (m2c_ret_dbg) fprintf(stderr, "  [CONSUME-HIT mode=2 FRAMESKIP rip=%x sp=%x markdepth=%d cur=%d id=%d]\n",(unsigned)return_ip,(unsigned)stack_offset,(int)consumed_depth,(int)native_return_call_depth,(int)consumed_id);
         return true;
     }
     // Relocated return slot (e.g. `pop si; xchg; push; push` XTHL-style
@@ -987,9 +1039,67 @@ inline bool consume_native_return(_STATE* state, dw stack_segment, dw stack_offs
         }
         if (matched_id) *matched_id = it->id;
         if (match_kind) *match_kind = 3;
+        const size_t consumed_id = it->id;
+        const dw consumed_sp = it->stack_offset;
         native_return_marks.erase(std::next(it).base());
+        if (m2c_ret_dbg) fprintf(stderr, "  [CONSUME-HIT mode=3 RELOC rip=%x sp=%x marksp=%x id=%d]\n",(unsigned)return_ip,(unsigned)stack_offset,(unsigned)consumed_sp,(int)consumed_id);
         return true;
     }
+    // Frame-skipping + relocated return (e.g. GW-BASIC STKINI: `pop cx` to
+    // save the caller's return word, `mov sp,bx` switching to a fresh stack,
+    // `push cx` re-pushing it a couple words off its marked slot, `ret`):
+    // same segment, same return value, shallower native depth, nearby slot.
+    for (auto it = native_return_marks.rbegin(); it != native_return_marks.rend(); ++it) {
+        const int slot_delta = (int)it->stack_offset - (int)stack_offset;
+        if (
+            it->state != state
+            || it->stack_segment != stack_segment
+            || it->return_ip != return_ip
+            || it->call_depth >= native_return_call_depth
+            || slot_delta < -8 || slot_delta > 8
+        ) {
+            continue;
+        }
+        if (matched_call_depth) {
+            *matched_call_depth = it->call_depth;
+        }
+        if (matched_id) *matched_id = it->id;
+        if (match_kind) *match_kind = 5;
+        const size_t consumed_id = it->id;
+        const dw consumed_sp = it->stack_offset;
+        const size_t consumed_depth = it->call_depth;
+        native_return_marks.erase(std::next(it).base());
+        if (m2c_ret_dbg) fprintf(stderr, "  [CONSUME-HIT mode=5 FRAMESKIP+RELOC rip=%x sp=%x marksp=%x markdepth=%d cur=%d id=%d]\n",(unsigned)return_ip,(unsigned)stack_offset,(unsigned)consumed_sp,(int)consumed_depth,(int)native_return_call_depth,(int)consumed_id);
+        return true;
+    }
+    // Value-identified return: the popped word equals the return address
+    // recorded for a live call-return mark, but its stack slot moved beyond
+    // the relocation windows above (far stack switch, deep juggling) or the
+    // depth bookkeeping drifted. The value itself is authoritative: it was
+    // pushed by a CALL_, so unwind to the frame that owns it rather than
+    // dispatching the popped word as a code offset.
+    for (auto it = native_return_marks.rbegin(); it != native_return_marks.rend(); ++it) {
+        if (
+            it->state != state
+            || it->stack_segment != stack_segment
+            || it->return_ip != return_ip
+            || it->call_depth > native_return_call_depth
+        ) {
+            continue;
+        }
+        if (matched_call_depth) {
+            *matched_call_depth = it->call_depth;
+        }
+        if (matched_id) *matched_id = it->id;
+        if (match_kind) *match_kind = 6;
+        const size_t consumed_id = it->id;
+        const dw consumed_sp = it->stack_offset;
+        const size_t consumed_depth = it->call_depth;
+        native_return_marks.erase(std::next(it).base());
+        if (m2c_ret_dbg) fprintf(stderr, "  [CONSUME-HIT mode=6 VALUEMARK rip=%x sp=%x marksp=%x markdepth=%d cur=%d id=%d]\n",(unsigned)return_ip,(unsigned)stack_offset,(unsigned)consumed_sp,(int)consumed_depth,(int)native_return_call_depth,(int)consumed_id);
+        return true;
+    }
+    if (m2c_ret_dbg) fprintf(stderr, "  [CONSUME-MISS rip=%x sp=%x]\n",(unsigned)return_ip,(unsigned)stack_offset);
     return false;
 }
 
@@ -1204,7 +1314,8 @@ inline void restore_external_offset_ds(dw& segment) {
 {
   X86_REGREF
   dd averytemporary=a;stackPointer-=sizeof(a); 
-			memcpy (m2c::stack_raddr_(ss,stackPointer), &averytemporary, sizeof (a)); 
+			memcpy (m2c::stack_raddr_(ss,stackPointer), &averytemporary, sizeof (a));
+  extern int m2c_ret_dbg; if (m2c_ret_dbg && ss == 0x5c40 && stackPointer >= 0xff80 && stackPointer <= 0xffff) { fprintf(stderr, "[PUSH] ss=%04x sp=%04x val=%04x cs=%04x ip=%04x\n", ss, stackPointer, (dd)a & 0xffff, _state->cs, _state->eip); }
   size_t native_return_id = 0;
   if (
       !m2c::suppress_native_return_push_transfer
@@ -1239,6 +1350,7 @@ inline void restore_external_offset_ds(dw& segment) {
 	     m2c::log_debug("before pop %x\n",stackPointer);
 	#endif
 	  memcpy (&a, m2c::stack_raddr_(ss,stackPointer), sizeof (a));
+  extern int m2c_ret_dbg; if (m2c_ret_dbg && ss == 0x5c40 && stackPointer >= 0xff80 && stackPointer <= 0xffff) { fprintf(stderr, "[POP] ss=%04x sp=%04x val=%04x cs=%04x ip=%04x\n", ss, stackPointer, (dd)a & 0xffff, _state->cs, _state->eip); }
   if (sizeof(a) == sizeof(m2c::MWORDSIZE)) {
       m2c::carry_native_return(_state, ss, stackPointer, (m2c::MWORDSIZE)a, &a);
   }
@@ -2177,6 +2289,7 @@ template <class D, class S>
        m2c::MWORDSIZE averytemporary9=0; POP(averytemporary9);
        eip=averytemporary9;
         dw averytemporary11;POP(averytemporary11); cs=averytemporary11;
+        { extern int m2c_ret_dbg; if (m2c_ret_dbg && cs >= 0x1000 && cs < 0x2000) { fprintf(stderr, "[RETF-noshadow cs=%04x] eip=%04x sp=%04x ss=%04x\n", cs, eip, stackPointer, ss); } }
        esp+=i;
  #if M2CDEBUG > 0
        if (debug>2) {log_debug("after retf %x\n",stackPointer);
@@ -2270,6 +2383,10 @@ struct StackPop
         m2c::last_ret_mark_id = ret_mark_id;
         m2c::last_ret_mark_mode = ret_mark_mode;
         m2c::last_ret_site = ret_site;
+        { extern int m2c_ret_dbg; if (m2c_ret_dbg) {
+            fprintf(stderr, "  [RETSITE] popped=%x sp=%x depth=%d mode=%d site=%08x\n",
+                (unsigned)ip, (unsigned)return_sp, (int)native_return_call_depth, ret_mark_mode, (unsigned)ret_site);
+        } }
 #ifndef SHADOW_STACK
         if (native_ret && ret_match_depth < native_return_call_depth) {
             // The callee skipped intermediate frames (`pop reg`/`jmp` then `ret`),
@@ -2334,6 +2451,19 @@ struct StackPop
 throw StackPop(skip);
 }
         if (ret) {m2c::shadow_stack.decreasedeep();}
+#endif
+#ifndef SHADOW_STACK
+        if (!ret) {
+            /* Abandoned sentinel continuation: the pushed tag's mark was
+             * already consumed/discarded but the word stayed on the guest
+             * stack. The DOS original would return into the suspended
+             * caller's post-call offset; resume it by re-entering the
+             * recorded caller proc at the sentinel's continuation case. */
+            if (auto it = sentinel_resume_map.find(ip); it != sentinel_resume_map.end()) {
+                { extern int m2c_ret_dbg; if (m2c_ret_dbg) fprintf(stderr, "[SENT-RESUME] popped tag=%04x -> sentinel=%04x ss=%04x sp=%04x\n", (unsigned)ip, (unsigned)it->second.sentinel, (unsigned)ss, (unsigned)sp); }
+                return it->second.fn((_offsets)it->second.sentinel, _state);
+            }
+        }
 #endif
 	return(ret);
     }
@@ -2405,6 +2535,7 @@ log_debug("skip %d\n", skip);
 #endif
 //        log_error("~~RETF before 2pop\n");
         POP(cs);
+        { extern int m2c_ret_dbg; if (m2c_ret_dbg && cs >= 0x1000 && cs < 0x2000) { fprintf(stderr, "[RETF cs=%04x] eip=%04x sp=%04x ss=%04x ret-site=%08x\n", cs, eip, stackPointer, ss, ret_site); } }
 //        log_error("~~RETF after 2pop\n");
         esp += i;
         m2c::last_ret_popped = (int)i + 4;
@@ -2437,6 +2568,14 @@ throw StackPop(skip);
 
         m2c::shadow_stack.decreasedeep();
 #endif
+#ifndef SHADOW_STACK
+        if (!ret) {
+            if (auto it = sentinel_resume_map.find(ip); it != sentinel_resume_map.end()) {
+                { extern int m2c_ret_dbg; if (m2c_ret_dbg) fprintf(stderr, "[SENT-RESUME-F] popped tag=%04x -> sentinel=%04x ss=%04x sp=%04x\n", (unsigned)ip, (unsigned)it->second.sentinel, (unsigned)ss, (unsigned)sp); }
+                return it->second.fn((_offsets)it->second.sentinel, _state);
+            }
+        }
+#endif
         return ret;
     }
 /*
@@ -2445,15 +2584,16 @@ throw StackPop(skip);
 #else
 */
 	#define CALL(label, disp) {if (!m2c::CALL_(label, _state, disp, #label)) {return false;}}
-	#define CALLI(label, disp, return_ip) {if (!m2c::CALL_(label, _state, disp, #label, (m2c::MWORDSIZE)(return_ip), true)) {return false;}}
-	#define CALLFI(label, disp, return_ip) {PUSH(cs);CALLI(label, disp, return_ip);}
+	#define CALLI(label, disp, return_ip, ...) {if (!m2c::CALL_(label, _state, disp, #label, (m2c::MWORDSIZE)(return_ip), true, ##__VA_ARGS__)) {return false;}}
+	#define CALLFI(label, disp, return_ip, ...) {PUSH(cs);CALLI(label, disp, return_ip, ##__VA_ARGS__);}
 	    static bool CALL_(
 	        m2cf *label,
 	        struct _STATE *_state,
 	        _offsets _i = 0,
 	        const char* label_name = "",
 	        m2c::MWORDSIZE explicit_return_addr = 0,
-	        bool has_explicit_return_addr = false
+	        bool has_explicit_return_addr = false,
+	        m2cf *caller_continuation = nullptr
 	    ) {
 	 X86_REGREF
 	        from_callf = true;
@@ -2462,6 +2602,25 @@ throw StackPop(skip);
 #endif
 //        m2c::MWORDSIZE averytemporary8 = 'xy';
 	        m2c::MWORDSIZE return_addr = has_explicit_return_addr ? explicit_return_addr : ip;
+        /* Synthetic continuation sentinels (>= 0x8000, emitted by
+         * _next_stmt_continuation_offset when a call has no next label) are
+         * numbered per translation unit, so two unrelated calls can push the
+         * same sentinel at once; value-based mark matching then steals the
+         * wrong frame's mark.  Give every pushed sentinel a runtime-unique
+         * tag in the 0x8000+ band: marks and carried values key on the pushed
+         * word, so a pop can only ever match the mark of the call that
+         * pushed it.  The tag's low bits equal the mark id assigned below.
+         * Also record tag -> (caller proc, sentinel): if the mark is later
+         * abandoned while the word remains on the guest stack, a ret popping
+         * it can still resume the suspended continuation like the original
+         * DOS code returning to the pushed offset. */
+        if (return_addr >= 0x8000) {
+            const m2c::MWORDSIZE sentinel_value = return_addr;
+            return_addr = 0x8000 | ((m2c::native_return_next_id + 1) & 0x7fff);
+            if (caller_continuation) {
+                m2c::sentinel_resume_map[return_addr] = {caller_continuation, sentinel_value};
+            }
+        }
 #if DOSBOX_CUSTOM
         if (compare_instructions) eip+=inst_size(cs,eip);
 #endif
@@ -2477,6 +2636,19 @@ throw StackPop(skip);
         m2c::suppress_native_return_push_transfer = false;
         size_t native_return_id = m2c::mark_native_return(_state, ss, sp, return_addr);
 
+        /* Keep eip tracking the offset of the code actually executing: the
+         * callee runs at _i, so its own PUSH(ip) values land in real code
+         * space (same as cpu_regs.ip under the DOSBox-hosted build). Without
+         * this every call pushes the same stale eip, identical pushed words
+         * alias each other's return marks, and carry_native_return steals
+         * live marks off ordinary data pops. */
+        const dd m2c_saved_eip = eip;
+        struct M2cEipRestore { dd& r; const dd v; ~M2cEipRestore() { r = v; } }
+            m2c_eip_restore {eip, m2c_saved_eip};
+        if (_i != 0) { eip = (dd)_i & 0xffff; }
+        { extern int m2c_ret_dbg; if (m2c_ret_dbg) fprintf(stderr, "  [CALLSITE] %s(i=%x) from eip=%04x sp=%04x rip=%04x depth=%zu\n", label_name, (unsigned)_i, (unsigned)(m2c_saved_eip & 0xffff), (unsigned)sp, (unsigned)return_addr, m2c::native_return_call_depth); }
+        { extern unsigned m2c_last_callsite_i, m2c_last_callsite_eip, m2c_last_callsite_rip; m2c_last_callsite_i = (unsigned)_i; m2c_last_callsite_eip = (unsigned)(m2c_saved_eip & 0xffff); m2c_last_callsite_rip = (unsigned)return_addr; (void)label_name; }
+
  #if M2CDEBUG > 0
         if (debug>2) {
             log_debug("after call %x\n", stackPointer);
@@ -2489,6 +2661,7 @@ throw StackPop(skip);
 	        bool caught_stack_pop = false;
 	        try{
 		  if (!label(_i, _state)) {
+		      { extern int m2c_ret_dbg; if (m2c_ret_dbg) fprintf(stderr, "  [CALL-FALSE] %s(i=%x) ret=false sp=%x oldsp=%x lastmark=%zu mode=%d\n", label_name, (unsigned)_i, (unsigned)sp, (unsigned)oldsp, m2c::last_ret_mark_id, m2c::last_ret_mark_mode); }
 		      if (m2c::executionFinished) {
 			          m2c::discard_native_return(native_return_id);
 			          m2c::restore_data_offset_ds(ds, data_offset_ds_mark);
@@ -2511,16 +2684,32 @@ throw StackPop(skip);
          * authoritative call/ret verifier and the ret path does not populate
          * last_ret_mark_id, so this check only applies to non-shadow builds. */
         if (m2c::last_ret_mark_id != native_return_id) {
-            log_error("CALL_ %s returned without consuming its return word: "
-                      "consumed mark=%zu mode=%d (ours=%zu) ret_site=%x "
-                      "sp=%04x oldsp=%04x popped=%d ip=%x ret=%x\n",
-                      label_name, m2c::last_ret_mark_id,
-                      m2c::last_ret_mark_mode, native_return_id,
-                      (unsigned)m2c::last_ret_site, (unsigned)sp,
-                      (unsigned)oldsp, m2c::last_ret_popped,
-                      (unsigned)ip, (unsigned)return_addr);
-            m2c::stackDump(_state);
-            abort();
+            /* consumed == 0 means the callee returned through the 0:0
+             * sentinel / untracked path -- ret_site==0 ip==0 is the designed
+             * "end this activation" unwind (empty far vector), not a stolen
+             * mark.  Tornado's Control proc exits exactly this way via
+             * controlexit's far-call tail.  Treat it as an alternative exit:
+             * drop our pushed mark and unwind false rather than abort.  A
+             * return that consumed a *different real* mark (consumed != 0)
+             * is still genuine corruption -> keep the hard abort. */
+            if (m2c::last_ret_mark_id != 0) {
+                log_error("CALL_ %s returned without consuming its return word: "
+                          "consumed mark=%zu mode=%d (ours=%zu) ret_site=%x "
+                          "sp=%04x oldsp=%04x popped=%d ip=%x ret=%x\n",
+                          label_name, m2c::last_ret_mark_id,
+                          m2c::last_ret_mark_mode, native_return_id,
+                          (unsigned)m2c::last_ret_site, (unsigned)sp,
+                          (unsigned)oldsp, m2c::last_ret_popped,
+                          (unsigned)ip, (unsigned)return_addr);
+                m2c::stackDump(_state);
+                abort();
+            }
+            log_debug("CALL_ %s 0:0-exit consumed=0 ours=%zu sp=%04x oldsp=%04x ip=%x ret=%x\n",
+                      label_name, native_return_id, (unsigned)sp,
+                      (unsigned)oldsp, (unsigned)ip, (unsigned)return_addr);
+            m2c::discard_native_return(native_return_id);
+            m2c::restore_data_offset_ds(ds, data_offset_ds_mark);
+            return false;
         }
         if (m2c::last_ret_mark_mode == 1 && m2c::last_ret_popped >= 0) {
             /* Exact-slot consumption: the ret popped ip[/cs][/args] starting
@@ -3025,9 +3214,9 @@ extern void print_instruction_direct(Bit16u newcs, Bit32u newip);
 #undef CALLF
 #define CALLF(label, disp)        { label((m2c::_offsets)(disp), _state); }
 #undef CALLI
-#define CALLI(label, disp, rip)   { label((m2c::_offsets)(disp), _state); }
+#define CALLI(label, disp, rip, ...)   { label((m2c::_offsets)(disp), _state); }
 #undef CALLFI
-#define CALLFI(label, disp, rip)  { label((m2c::_offsets)(disp), _state); }
+#define CALLFI(label, disp, rip, ...)  { label((m2c::_offsets)(disp), _state); }
 
 #undef RETN
 #define RETN(i)   { sp += (i); return true; }

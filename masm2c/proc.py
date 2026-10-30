@@ -310,6 +310,9 @@ class Proc:
                                        + " " + raw_line + "\n"
                 except AttributeError:
                     logging.warning(f"Some attributes missing while setting comment for {stmt}")
+                if pending := getattr(visitor, "_pending_continuation_label", ""):
+                    visitor.body += pending
+                    visitor._pending_continuation_label = ""
             visitor.body += visitor.flush_pending_code_skips()
         finally:
             visitor._active_proc_far = previous_active_proc_far
@@ -336,7 +339,12 @@ class Proc:
         return visitor._cmdlabel + visitor.dispatch + full_command
 
     def generate_c_cmd(self, visitor: Cpp, stmt: baseop) -> str:
-        return stmt.accept(visitor)
+        previous_active_proc_far = getattr(visitor, "_active_proc_far", False)
+        visitor._active_proc_far = self.far
+        try:
+            return stmt.accept(visitor)
+        finally:
+            visitor._active_proc_far = previous_active_proc_far
 
     def if_terminated_proc(self):
         """Check if proc was terminated with jump or ret to know if execution flow continues across function end."""

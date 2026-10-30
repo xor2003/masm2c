@@ -506,7 +506,7 @@ h_array db '^',10,10
         self.assertEqual(*self.doTest("cmp extrn_struc_inst.game_oppttypedw, 0", "CMP(extrn_struc_inst.game_oppttypedw, 0)"))
 
     def test_instr_1570(self):
-        self.assertEqual(*self.doTest("mov     ax, offset extrn_struc_inst.game_oppttypedw+t", "ax = offset(default_seg,extrn_struc_inst.game_oppttypedw)+t;"))
+        self.assertEqual(*self.doTest("mov     ax, offset extrn_struc_inst.game_oppttypedw+t", "ax = m2c::near_offset_external(extrn_struc_inst.game_oppttypedw)+t;"))
 
     def test_instr_1580(self):
         self.assertEqual(*self.doTest("jmp loc_406B3F", "JMP(loc_406b3f)"))
@@ -524,7 +524,7 @@ h_array db '^',10,10
         self.assertEqual(*self.doTest("call far ptr test_bcd", "CALLF(test_bcd,0)"))
 
     def test_instr_1630(self):
-        self.assertEqual(*self.doTest("mov ax, (offset extrn_struc_inst.game_oppttypedw+0AA8h)", "ax = offset(default_seg,extrn_struc_inst.game_oppttypedw)+0x0AA8;"))
+        self.assertEqual(*self.doTest("mov ax, (offset extrn_struc_inst.game_oppttypedw+0AA8h)", "ax = m2c::near_offset_external(extrn_struc_inst.game_oppttypedw)+0x0AA8;"))
 
     def test_instr_1640(self):
         self.assertEqual(*self.doTest("lea     si, [bx+di+TRANSSHAPESTRUC.ts_rotv_membr_strinst]", "si = bx+di+offsetof(struct transshapestruc,ts_rotv_membr_strinst)"))
@@ -545,7 +545,7 @@ h_array db '^',10,10
         self.assertEqual(*self.doTest("add     word ptr [bx+transshapestruc.ts_rotv_membr_strinst], ax", "ADD(*(dw*)(raddr(ds,bx+offsetof(struct transshapestruc,ts_rotv_membr_strinst))), ax)"))
 
     def test_instr_1700(self):
-        self.assertEqual(*self.doTest("mov ax, (offset extrn_struc_inst.game_oppTTypeDW+0AA8h)", "ax = offset(default_seg,extrn_struc_inst.game_oppttypedw)+0x0AA8;"))
+        self.assertEqual(*self.doTest("mov ax, (offset extrn_struc_inst.game_oppTTypeDW+0AA8h)", "ax = m2c::near_offset_external(extrn_struc_inst.game_oppttypedw)+0x0AA8;"))
 
     def test_instr_1710(self):
         self.assertEqual(*self.doTest("adc     word ptr [bx+(transshapestruc.ts_rotv_membr_strinst+2)], dx", "ADC(*(dw*)(raddr(ds,bx+(offsetof(struct transshapestruc,ts_rotv_membr_strinst)+2))), dx)"))

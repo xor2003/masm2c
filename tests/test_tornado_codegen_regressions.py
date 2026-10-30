@@ -257,7 +257,7 @@ class CppDataInitTest(unittest.TestCase):
 
         value, declaration, size = Cpp(parser).data(rel)
 
-        self.assertEqual(value, "offset(default_seg,polycount), // rel\n")
+        self.assertEqual(value, "m2c::near_offset_external(polycount), // rel\n")
         self.assertEqual(declaration, "dw rel;\n")
         self.assertEqual(size, 2)
 
@@ -667,7 +667,7 @@ END
 
         rendered = cpp.convert_member_offset(external, ["pilotpanel"])
 
-        self.assertEqual(rendered, "offset(default_seg,pilotpanel)")
+        self.assertEqual(rendered, "m2c::near_offset_external(pilotpanel)")
 
     def test_external_offset_loaded_into_dx_is_pure_offset_value(self):
         parser = Parser([])
@@ -2896,7 +2896,7 @@ Q SYSTEM
 
         parser.symbols.get_global("main").visit(cpp)
 
-        self.assertIn("J(CALLI(synchr,0,m2c::near_offset_external(dummy0_code_0_8)));", cpp.body)
+        self.assertIn("J(CALLI(synchr,0,m2c::near_offset_external(dummy0_code_0_8),nullptr));", cpp.body)
 
     def test_cmpsb_with_source_segment_override_renders_segment_macro(self):
         parser = Parser([])
@@ -3177,7 +3177,7 @@ Q SYSTEM
 
         self.assertNotIn("handler", aliases)
         self.assertIsInstance(parser.symbols.get_global("handler"), op.label)
-        self.assertIn("J(CALL(mainproc,m2c::khandler));", rendered)
+        self.assertIn("J(CALLI(mainproc,m2c::khandler,0xe001,mainproc));", rendered)
         self.assertNotIn("CALL(__dispatch_call,handler)", rendered)
 
     def test_code_segment_db_skip_opcode_skips_following_byte_on_fallthrough(self):

@@ -68,6 +68,80 @@ class LiftCppTest(unittest.TestCase):
         )
         self.assertIn('if ((dw)(ax) == (dw)(bx)) {goto loc_1;}', out)
 
+    def test_rol_does_not_fold_jz(self):
+        # ROL writes only CF/OF; the rotated operand is NOT the flag result,
+        # so jz must read the real (stale) ZF, not `dest == 0`
+        out = self._lift(
+            '\tR(ROL(dh, 1));\t// 1 rol dh,1\n'
+            '\tJ(JZ(loc_1));\t// 2 jz loc_1\n'
+        )
+        self.assertIn('if (ZF) {goto loc_1;}', out)
+
+    def test_mul_does_not_fold_jns(self):
+        # MUL leaves ZF/SF undefined — folding `dest >= 0` reads the operand
+        out = self._lift(
+            '\tR(MUL1_2(dx));\t// 1 mul dx\n'
+            '\tJ(JNS(loc_1));\t// 2 jns loc_1\n'
+        )
+        self.assertIn('if (!SF) {goto loc_1;}', out)
+
+    def test_bt_does_not_fold_jnz(self):
+        # BT writes only CF
+        out = self._lift(
+            '\tR(BT(ax, bx));\t// 1 bt ax,bx\n'
+            '\tJ(JNZ(loc_1));\t// 2 jnz loc_1\n'
+        )
+        self.assertIn('if (!ZF) {goto loc_1;}', out)
+
+    def test_div_does_not_fold(self):
+        # DIV leaves most flags undefined
+        out = self._lift(
+            '\tR(DIV2(dx));\t// 1 div dx\n'
+            '\tJ(JS(loc_1));\t// 2 js loc_1\n'
+        )
+        self.assertIn('if (SF) {goto loc_1;}', out)
+
+    def test_shift_lit_count_folds(self):
+        # nonzero literal count: the macro always runs -> result fold is exact
+        out = self._lift(
+            '\tR(SHL(ax, 4));\t// 1 shl ax,4\n'
+            '\tJ(JZ(loc_1));\t// 2 jz loc_1\n'
+        )
+        self.assertIn('if (ax == 0) {goto loc_1;}', out)
+
+    def test_shift_var_count_no_fold(self):
+        # shl ax,cl with cl==0 leaves flags stale -> must read real ZF
+        out = self._lift(
+            '\tR(SHL(ax, cl));\t// 1 shl ax,cl\n'
+            '\tJ(JZ(loc_1));\t// 2 jz loc_1\n'
+        )
+        self.assertIn('if (ZF) {goto loc_1;}', out)
+
+    def test_shift_zero_count_no_fold(self):
+        out = self._lift(
+            '\tR(SHR(ax, 0));\t// 1 shr ax,0\n'
+            '\tJ(JZ(loc_1));\t// 2 jz loc_1\n'
+        )
+        self.assertIn('if (ZF) {goto loc_1;}', out)
+
+    def test_setcc_after_rol_reads_flag(self):
+        # same rule for SETcc: SETNZ after ROL must read real ZF
+        out = self._lift(
+            '\tR(ROL(al, 1));\t// 1 rol al,1\n'
+            '\tR(SETNZ(bl));\t// 2 setnz bl\n'
+        )
+        self.assertIn('bl = (!ZF);', out)
+
+    def test_rep_string_op_kills_pending(self):
+        # `rep movsw` rewrites si/di/cx and es:di — a folded condition on
+        # stale operands would be wrong; must read the real flag
+        out = self._lift(
+            '\tR(CMP(si, 5));\t// 1 cmp si,5\n'
+            '\tR(REP MOVSW);\t// 2 rep movsw\n'
+            '\tJ(JZ(loc_1));\t// 3 jz loc_1\n'
+        )
+        self.assertIn('if (ZF) {goto loc_1;}', out)
+
     def test_pending_dies_on_call(self):
         # a call may clobber a pending operand (or flags): no folding across it
         out = self._lift(

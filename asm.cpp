@@ -65,12 +65,15 @@ SOFTWARE.
 #include <chrono>
 #include <cmath>
 #include <cstdio>
+#include <execinfo.h>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
 #include <csignal>
 #include <thread>
 #include <vector>
+#include <map>
+#include <fstream>
 
 #ifndef M2C_LOAD_SEG
 #define M2C_LOAD_SEG 0x192
@@ -94,10 +97,61 @@ extern dw* ticker __attribute__((weak));
 extern dw* frames __attribute__((weak));
 extern dw* countdown __attribute__((weak));
 extern dd* elapsedtime __attribute__((weak));
+extern dw* controldevice __attribute__((weak));
 extern db vga_rgb_data __attribute__((weak));
 extern db vga_panel __attribute__((weak));
 extern db vga_panel1 __attribute__((weak));
 extern db setpaletteflag __attribute__((weak));
+extern db* wheelbrakes __attribute__((weak));
+extern db* ssf_wheelbrakes __attribute__((weak));
+extern dw* throttle __attribute__((weak));
+extern dw* autovias __attribute__((weak));
+extern dw* aimthrottle __attribute__((weak));
+extern dw* deltatime __attribute__((weak));
+extern dw* lastframe __attribute__((weak));
+extern dw* sqrtrho __attribute__((weak));
+extern dw* vias __attribute__((weak));
+extern dw* accel __attribute__((weak));
+extern dw* thrust4 __attribute__((weak));
+extern dw* drag4 __attribute__((weak));
+extern dw* cd0 __attribute__((weak));
+extern dw* alpha __attribute__((weak));
+extern dw* gforce __attribute__((weak));
+extern dw* xwindveff __attribute__((weak));
+extern dw* reheat __attribute__((weak));
+extern dw* rpm1 __attribute__((weak));
+extern db* nocollisions __attribute__((weak));
+extern db* crntflappos __attribute__((weak));
+extern db* destflappos __attribute__((weak));
+extern dw* crntflapval __attribute__((weak));
+extern dw* destflapval __attribute__((weak));
+extern dw* vtas __attribute__((weak));
+extern dw* pfine __attribute__((weak));
+extern dw* m_cosr __attribute__((weak));
+extern dw* zdot __attribute__((weak));
+extern dw* trueradalt __attribute__((weak));
+extern db* airborne1 __attribute__((weak));
+extern db* destroyed __attribute__((weak));
+extern db* dieflag __attribute__((weak));
+extern db* tmpdieflag __attribute__((weak));
+extern db* hitobjectnum __attribute__((weak));
+extern db* objscaleconvert __attribute__((weak));
+extern dw* xgrid1 __attribute__((weak));
+extern dw* ygrid1 __attribute__((weak));
+extern dw* controldevice __attribute__((weak));
+extern db* joya_flag __attribute__((weak));
+extern dw* eleposn __attribute__((weak));
+extern dw* altmode __attribute__((weak));
+extern dw* ailposn __attribute__((weak));
+extern dw* autoalt __attribute__((weak));
+extern dw* zfthi __attribute__((weak));
+extern dw* zftlo __attribute__((weak));
+extern dw* xft __attribute__((weak));
+extern dw* yft __attribute__((weak));
+extern dw* xft __attribute__((weak));
+extern dw* yft __attribute__((weak));
+extern dw* xsec __attribute__((weak));
+extern dw* ysec __attribute__((weak));
 
 /* https://commons.wikimedia.org/wiki/File:Table_of_x86_Registers_svg.svg */
 
@@ -140,6 +194,9 @@ static struct __fl __eflags;
 #define DF __eflags._DF
 #define SF __eflags._SF
 */
+// VRAM logical window is VGA-state (not SDL) — needed by headless builds for
+// the deterministic frame-flip machinery below.
+static const size_t VGA_WINDOW_SIZE = 0x20000;
 // SDL2 VGA
 #ifndef NOSDL
  #if SDL_MAJOR_VERSION == 2
@@ -150,14 +207,14 @@ static struct __fl __eflags;
     static int vga_logical_width = 320;
     static int vga_logical_height = 200;
     static const unsigned VGA_RENDER_WRITE_FLUSH_THRESHOLD = 8 * 1024;
-    static const size_t VGA_WINDOW_SIZE = 0x20000;
     static db vgaPlanarPixels[640 * 200];
     static db vgaMode13Pixels[VGA_WINDOW_SIZE * 4];
+    static unsigned char vga_wr_hit[VGA_WINDOW_SIZE];  // per-byte write coverage (M2C_WRHIT)
     static db vgaReadLatch[4];
     static db vgaPendingReadLatch[4][4];
     static size_t vgaPendingReadLatchCount;
     static size_t vgaPendingReadLatchNext;
-    static uint32_t vgaSdlFrame[640 * 200];
+    static uint32_t vgaSdlFrame[640 * 400];
     static SDL_Texture *vgaTexture;
 
 db vgaRamPaddingBefore[VGARAM_SIZE];
@@ -184,12 +241,67 @@ namespace m2c {
 #endif
 bool defered_irqs=false;
   size_t counter = 0;
+    int m2c_ret_dbg = [](){ const char* e=getenv("M2C_RETDBG"); return e && *e=='1'; }();
+    unsigned m2c_last_callsite_i = 0, m2c_last_callsite_eip = 0, m2c_last_callsite_rip = 0;
     std::vector<NativeReturnMark> native_return_marks;
     std::vector<NativeReturnMark> native_return_values;
+    std::unordered_map<MWORDSIZE, SentinelResumeInfo> sentinel_resume_map;
     size_t native_return_next_id = 0;
     size_t native_return_call_depth = 0;
     bool suppress_native_return_push_transfer = false;
+    /* Default to strict (exact-match) native-return bookkeeping. The
+       non-strict register-carried (`carry`/`take`) and frame-skip/reloc
+       fallback heuristics mis-consume marks on Tornado's call patterns:
+       a `pop`/`push` juggling the return word steals or drops the mark, the
+       later `ret` then misses, dispatches to the proc *entry* instead of the
+       post-call continuation, and re-enters the proc -> unbounded recursion.
+       Exact-match marks are semantically correct for this code; opt back into
+       the heuristics with M2C_STRICT_RET=0 if a different game needs them. */
+    int m2c_strict_native_return = [](){ const char* e=getenv("M2C_STRICT_RET"); return e && *e=='0' ? 0 : 1; }();
 
+    /* M2C_DISPASSERT: verbose dump when a far/near target cannot be resolved.
+       Default ON so dispatch misses surface their full context (seg, off, cs,
+       eip, which resolver failed) instead of a bare "Don't know how to call".
+       Set M2C_DISPASSERT=0 to silence. */
+    int m2c_dispassert = [](){ const char* e=getenv("M2C_DISPASSERT"); return e && *e=='0' ? 0 : 1; }();
+
+    /* cs invariant: while running translated code the emulated cs must be a
+       plausible code segment -- 0 (bare near dispatch), 0xf000 (BIOS), a
+       generated-proc host paragraph (m2c_seg_func_for), or a real loaded
+       segment.  Anything else means a return-table word or data pointer was
+       popped into cs, which is the exact corruption class that produced the
+       seg:off "Don't know how to call" aborts.  Checked at dispatch entry so
+       the first bad cs is flagged at the point it is *used*, not deep inside
+       a wrong-module run. */
+    static bool m2c_cs_sane(dw v) {
+        if (v == 0 || v == 0xf000) return true;
+        if (m2c_seg_func_for(v)) return true;
+        if (linked_code_segment_raddr(v, 0) || m2c_alloc_segment_raddr(v, 0)) return true;
+        return false;
+    }
+    static void m2c_check_cs(_STATE* _state, _offsets disp, const char* where) {
+        if (!m2c_dispassert) return;
+        const dw v = _state->cs;
+        if (!m2c_cs_sane(v)) {
+            fprintf(stderr,
+                "[CSBAD] %s cs=%04x (not 0/f000/func-seg/real-seg) disp=%08x eip=%04x\n",
+                where, (unsigned)v, (unsigned)disp, (unsigned)(_state->eip & 0xffff));
+        }
+    }
+
+    int m2c_dump_marks(_STATE* st, unsigned disp) {
+        fprintf(stderr, "MARKDUMP disp=%08x state=%p depth=%d nmarks=%d\n",
+            disp, (void*)st, (int)native_return_call_depth, (int)native_return_marks.size());
+        const unsigned rip = disp & 0xffff;
+        for (auto& mk : native_return_marks) {
+            if ((unsigned)mk.return_ip == rip || mk.state == st)
+                fprintf(stderr, "   mk st=%p ss=%x sp=%x rip=%x d=%d id=%d %s\n",
+                    (void*)mk.state,(unsigned)mk.stack_segment,(unsigned)mk.stack_offset,
+                    (unsigned)mk.return_ip,(int)mk.call_depth,(int)mk.id,
+                    mk.state==st?"<SAMEST":"");
+        }
+        return 0;
+    }
     db _indent=0;
     const char *_str="";
     bool fix_segs(){return true;}
@@ -219,6 +331,10 @@ void interpret_unknown_callf(dw cs, dd eip, db source){assert(0);}
     __attribute__((weak)) bool m2c_guest_thunk(_offsets __disp, _STATE* _state) {
         (void)__disp; (void)_state;
         return false;
+    }
+    __attribute__((weak)) m2cf* m2c_seg_func_for(dw seg) {
+        (void)seg;
+        return nullptr;
     }
     __attribute__((weak)) bool dispatch_external_code(_offsets __disp, _STATE* _state, bool* handled) {
         bool res = true;
@@ -639,6 +755,11 @@ db* m2c_alloc_segment_raddr(dw segment, dw offset) {
 static dw pm_vec_sel[256];
 static dd pm_vec_off[256];
 static db pm_vec_set[256];
+/* Real-mode IVT entries installed via int21 ah=25h are program vectors: their
+   segment is the translated code's (opaque, often >=0xa000), so host_fire_ivt
+   must not discard them as BIOS/adapter-ROM vectors. BIOS-resident entries the
+   program never overwrote keep the >=0xa000 filter. */
+static db rm_vec_set[256];
 
 // Compatibility name used by NE/RTM-style translated programs (asm.h).
 // Weak so a program harness can substitute its own allocator.
@@ -781,6 +902,15 @@ struct HostVga {
 	db cursor_row[TEXT_PAGES] = {};
 	db cursor_col[TEXT_PAGES] = {};
 	TextCell text[TEXT_PAGES][TEXT_ROWS][TEXT_COLS] = {};
+	// CGA graphics-mode state (modes 4/5 = 320x200x2bpp, 6 = 640x200x1bpp):
+	// pixel data lives in guest VRAM at B800:0000/B800:2000 and is rasterized
+	// from `m` directly. These mirror the BIOS color-select/int10-AH=0Bh
+	// settings plus a per-cell char shadow so AH=08 read-back works (the real
+	// BIOS pattern-matches pixels; keeping the written char is equivalent for
+	// software that reads back what it wrote, e.g. GW-BASIC's screen editor).
+	db cga_color_select = 0;   // int10 AH=0Bh BH=0: low nibble bg(med res)/fg(hi res), bit4 intensity
+	db cga_palette = 0;        // int10 AH=0Bh BH=1: bit0 = palette 0/1
+	db cga_cells[TEXT_ROWS][TEXT_COLS] = {};
 };
 
 struct HostPit {
@@ -865,12 +995,24 @@ static db host_text_col(db col) {
 	return col < HostVga::TEXT_COLS ? col : HostVga::TEXT_COLS - 1;
 }
 
+// Guest-visible text VRAM page inside `m`. BIOS mode-2/3 pages are 0x1000
+// bytes each at B800:0000 — int10 text services must keep this region in
+// sync with the host.vga.text shadow so direct-VRAM programs (GW-BASIC
+// writes through ES=B800) and BIOS-driven programs see identical memory.
+static db* host_text_vram_page(db page) {
+	return reinterpret_cast<db*>(&m2c::m) + 0xB8000 +
+	       static_cast<size_t>(host_text_page(page)) * 0x1000;
+}
+
 static void host_text_clear_page(db page, db attr = 0x07) {
 	page = host_text_page(page);
+	db *vram = host_text_vram_page(page);
 	for (int row = 0; row < HostVga::TEXT_ROWS; ++row) {
 		for (int col = 0; col < HostVga::TEXT_COLS; ++col) {
 			host.vga.text[page][row][col].ch = ' ';
 			host.vga.text[page][row][col].attr = attr;
+			vram[(row * HostVga::TEXT_COLS + col) * 2] = ' ';
+			vram[(row * HostVga::TEXT_COLS + col) * 2 + 1] = attr;
 		}
 	}
 	host.vga.cursor_row[page] = 0;
@@ -895,14 +1037,21 @@ static void host_text_scroll_up_window(db page, db attr, db top, db left, db bot
 	if (lines == 0 || lines > bottom - top + 1) {
 		lines = static_cast<db>(bottom - top + 1);
 	}
+	db *vram = host_text_vram_page(page);
 	for (int row = top; row <= bottom; ++row) {
 		const int src_row = row + lines;
 		for (int col = left; col <= right; ++col) {
+			const int cell = (row * HostVga::TEXT_COLS + col) * 2;
 			if (src_row <= bottom) {
 				host.vga.text[page][row][col] = host.vga.text[page][src_row][col];
+				const int src_cell = (src_row * HostVga::TEXT_COLS + col) * 2;
+				vram[cell] = vram[src_cell];
+				vram[cell + 1] = vram[src_cell + 1];
 			} else {
 				host.vga.text[page][row][col].ch = ' ';
 				host.vga.text[page][row][col].attr = attr;
+				vram[cell] = ' ';
+				vram[cell + 1] = attr;
 			}
 		}
 	}
@@ -912,10 +1061,226 @@ static void host_text_write(db page, db row, db col, db ch, db attr, dw count) {
 	page = host_text_page(page);
 	size_t pos = static_cast<size_t>(host_text_row(row)) * HostVga::TEXT_COLS + host_text_col(col);
 	const size_t cells = HostVga::TEXT_ROWS * HostVga::TEXT_COLS;
+	db *vram = host_text_vram_page(page);
 	for (dw n = 0; n < count && pos < cells; ++n, ++pos) {
 		host.vga.text[page][pos / HostVga::TEXT_COLS][pos % HostVga::TEXT_COLS].ch = ch;
 		host.vga.text[page][pos / HostVga::TEXT_COLS][pos % HostVga::TEXT_COLS].attr = attr;
+		vram[pos * 2] = ch;
+		vram[pos * 2 + 1] = attr;
 	}
+}
+
+// ---------------------------------------------------------------------------
+// CGA graphics-mode support (BIOS modes 4/5 = 320x200 2bpp, 6 = 640x200 1bpp).
+// Pixel memory is interleaved at B800:0000 (even rows) and B800:2000 (odd).
+// Programs like GW-BASIC write pixels directly through ES=B800 and emit text
+// via BIOS int10 AH=09; this rasterizes both paths deterministically from `m`.
+// ---------------------------------------------------------------------------
+
+// Standard 8x8 VGA/CGA BIOS font for chars 0x20-0x7f (public domain,
+// font8x8_basic). Rows are byte bitmaps, MSB = leftmost pixel.
+static const db cga_font8x8[96][8] = {
+	{0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00}, // 0x20 ' '
+	{0x18,0x3c,0x3c,0x18,0x18,0x00,0x18,0x00}, // 0x21 '!'
+	{0x36,0x36,0x00,0x00,0x00,0x00,0x00,0x00}, // 0x22 '"'
+	{0x36,0x36,0x7f,0x36,0x7f,0x36,0x36,0x00}, // 0x23 '#'
+	{0x0c,0x3e,0x03,0x1e,0x30,0x1f,0x0c,0x00}, // 0x24 '$'
+	{0x00,0x63,0x33,0x18,0x0c,0x66,0x63,0x00}, // 0x25 '%'
+	{0x1c,0x36,0x1c,0x6e,0x3b,0x33,0x6e,0x00}, // 0x26 '&'
+	{0x06,0x06,0x03,0x00,0x00,0x00,0x00,0x00}, // 0x27 '\''
+	{0x18,0x0c,0x06,0x06,0x06,0x0c,0x18,0x00}, // 0x28 '('
+	{0x06,0x0c,0x18,0x18,0x18,0x0c,0x06,0x00}, // 0x29 ')'
+	{0x00,0x66,0x3c,0xff,0x3c,0x66,0x00,0x00}, // 0x2a '*'
+	{0x00,0x0c,0x0c,0x3f,0x0c,0x0c,0x00,0x00}, // 0x2b '+'
+	{0x00,0x00,0x00,0x00,0x00,0x0c,0x0c,0x06}, // 0x2c ','
+	{0x00,0x00,0x00,0x3f,0x00,0x00,0x00,0x00}, // 0x2d '-'
+	{0x00,0x00,0x00,0x00,0x00,0x0c,0x0c,0x00}, // 0x2e '.'
+	{0x60,0x30,0x18,0x0c,0x06,0x03,0x01,0x00}, // 0x2f '/'
+	{0x3e,0x63,0x73,0x7b,0x6f,0x67,0x3e,0x00}, // 0x30 '0'
+	{0x0c,0x0e,0x0c,0x0c,0x0c,0x0c,0x3f,0x00}, // 0x31 '1'
+	{0x1e,0x33,0x30,0x1c,0x06,0x33,0x3f,0x00}, // 0x32 '2'
+	{0x1e,0x33,0x30,0x1c,0x30,0x33,0x1e,0x00}, // 0x33 '3'
+	{0x38,0x3c,0x36,0x33,0x7f,0x30,0x78,0x00}, // 0x34 '4'
+	{0x3f,0x03,0x1f,0x30,0x30,0x33,0x1e,0x00}, // 0x35 '5'
+	{0x1c,0x06,0x03,0x1f,0x33,0x33,0x1e,0x00}, // 0x36 '6'
+	{0x3f,0x33,0x30,0x18,0x0c,0x0c,0x0c,0x00}, // 0x37 '7'
+	{0x1e,0x33,0x33,0x1e,0x33,0x33,0x1e,0x00}, // 0x38 '8'
+	{0x1e,0x33,0x33,0x3e,0x30,0x18,0x0e,0x00}, // 0x39 '9'
+	{0x00,0x0c,0x0c,0x00,0x00,0x0c,0x0c,0x00}, // 0x3a ':'
+	{0x00,0x0c,0x0c,0x00,0x00,0x0c,0x0c,0x06}, // 0x3b ';'
+	{0x18,0x0c,0x06,0x03,0x06,0x0c,0x18,0x00}, // 0x3c '<'
+	{0x00,0x00,0x3f,0x00,0x00,0x3f,0x00,0x00}, // 0x3d '='
+	{0x06,0x0c,0x18,0x30,0x18,0x0c,0x06,0x00}, // 0x3e '>'
+	{0x1e,0x33,0x30,0x18,0x0c,0x00,0x0c,0x00}, // 0x3f '?'
+	{0x3e,0x63,0x7b,0x7b,0x7b,0x03,0x1e,0x00}, // 0x40 '@'
+	{0x0c,0x1e,0x33,0x33,0x3f,0x33,0x33,0x00}, // 0x41 'A'
+	{0x3f,0x66,0x66,0x3e,0x66,0x66,0x3f,0x00}, // 0x42 'B'
+	{0x3c,0x66,0x03,0x03,0x03,0x66,0x3c,0x00}, // 0x43 'C'
+	{0x1f,0x36,0x66,0x66,0x66,0x36,0x1f,0x00}, // 0x44 'D'
+	{0x7f,0x46,0x16,0x1e,0x16,0x46,0x7f,0x00}, // 0x45 'E'
+	{0x7f,0x46,0x16,0x1e,0x16,0x06,0x0f,0x00}, // 0x46 'F'
+	{0x3c,0x66,0x03,0x03,0x73,0x66,0x7c,0x00}, // 0x47 'G'
+	{0x33,0x33,0x33,0x3f,0x33,0x33,0x33,0x00}, // 0x48 'H'
+	{0x1e,0x0c,0x0c,0x0c,0x0c,0x0c,0x1e,0x00}, // 0x49 'I'
+	{0x78,0x30,0x30,0x30,0x33,0x33,0x1e,0x00}, // 0x4a 'J'
+	{0x67,0x66,0x36,0x1e,0x36,0x66,0x67,0x00}, // 0x4b 'K'
+	{0x0f,0x06,0x06,0x06,0x46,0x66,0x7f,0x00}, // 0x4c 'L'
+	{0x63,0x77,0x7f,0x7f,0x6b,0x63,0x63,0x00}, // 0x4d 'M'
+	{0x63,0x67,0x6f,0x7b,0x73,0x63,0x63,0x00}, // 0x4e 'N'
+	{0x1c,0x36,0x63,0x63,0x63,0x36,0x1c,0x00}, // 0x4f 'O'
+	{0x3f,0x66,0x66,0x3e,0x06,0x06,0x0f,0x00}, // 0x50 'P'
+	{0x1e,0x33,0x33,0x33,0x3b,0x1e,0x38,0x00}, // 0x51 'Q'
+	{0x3f,0x66,0x66,0x3e,0x36,0x66,0x67,0x00}, // 0x52 'R'
+	{0x1e,0x33,0x07,0x0e,0x38,0x33,0x1e,0x00}, // 0x53 'S'
+	{0x3f,0x2d,0x0c,0x0c,0x0c,0x0c,0x1e,0x00}, // 0x54 'T'
+	{0x33,0x33,0x33,0x33,0x33,0x33,0x3f,0x00}, // 0x55 'U'
+	{0x33,0x33,0x33,0x33,0x33,0x1e,0x0c,0x00}, // 0x56 'V'
+	{0x63,0x63,0x63,0x6b,0x7f,0x77,0x63,0x00}, // 0x57 'W'
+	{0x63,0x63,0x36,0x1c,0x1c,0x36,0x63,0x00}, // 0x58 'X'
+	{0x33,0x33,0x33,0x1e,0x0c,0x0c,0x1e,0x00}, // 0x59 'Y'
+	{0x7f,0x63,0x31,0x18,0x4c,0x66,0x7f,0x00}, // 0x5a 'Z'
+	{0x1e,0x06,0x06,0x06,0x06,0x06,0x1e,0x00}, // 0x5b '['
+	{0x03,0x06,0x0c,0x18,0x30,0x60,0x40,0x00}, // 0x5c '\'
+	{0x1e,0x18,0x18,0x18,0x18,0x18,0x1e,0x00}, // 0x5d ']'
+	{0x08,0x1c,0x36,0x63,0x00,0x00,0x00,0x00}, // 0x5e '^'
+	{0x00,0x00,0x00,0x00,0x00,0x00,0x00,0xff}, // 0x5f '_'
+	{0x0c,0x0c,0x18,0x00,0x00,0x00,0x00,0x00}, // 0x60 '`'
+	{0x00,0x00,0x1e,0x30,0x3e,0x33,0x6e,0x00}, // 0x61 'a'
+	{0x07,0x06,0x06,0x3e,0x66,0x66,0x3b,0x00}, // 0x62 'b'
+	{0x00,0x00,0x1e,0x33,0x03,0x33,0x1e,0x00}, // 0x63 'c'
+	{0x38,0x30,0x30,0x3e,0x33,0x33,0x6e,0x00}, // 0x64 'd'
+	{0x00,0x00,0x1e,0x33,0x3f,0x03,0x1e,0x00}, // 0x65 'e'
+	{0x1c,0x36,0x06,0x0f,0x06,0x06,0x0f,0x00}, // 0x66 'f'
+	{0x00,0x00,0x6e,0x33,0x33,0x3e,0x30,0x1f}, // 0x67 'g'
+	{0x07,0x06,0x36,0x6e,0x66,0x66,0x67,0x00}, // 0x68 'h'
+	{0x0c,0x00,0x0e,0x0c,0x0c,0x0c,0x1e,0x00}, // 0x69 'i'
+	{0x30,0x00,0x30,0x30,0x30,0x33,0x33,0x1e}, // 0x6a 'j'
+	{0x07,0x06,0x66,0x36,0x1e,0x36,0x67,0x00}, // 0x6b 'k'
+	{0x0e,0x0c,0x0c,0x0c,0x0c,0x0c,0x1e,0x00}, // 0x6c 'l'
+	{0x00,0x00,0x33,0x7f,0x7f,0x6b,0x63,0x00}, // 0x6d 'm'
+	{0x00,0x00,0x1f,0x33,0x33,0x33,0x33,0x00}, // 0x6e 'n'
+	{0x00,0x00,0x1e,0x33,0x33,0x33,0x1e,0x00}, // 0x6f 'o'
+	{0x00,0x00,0x3b,0x66,0x66,0x3e,0x06,0x0f}, // 0x70 'p'
+	{0x00,0x00,0x6e,0x33,0x33,0x3e,0x30,0x78}, // 0x71 'q'
+	{0x00,0x00,0x3b,0x6e,0x66,0x06,0x0f,0x00}, // 0x72 'r'
+	{0x00,0x00,0x3e,0x03,0x1e,0x30,0x1f,0x00}, // 0x73 's'
+	{0x08,0x0c,0x3e,0x0c,0x0c,0x2c,0x18,0x00}, // 0x74 't'
+	{0x00,0x00,0x33,0x33,0x33,0x33,0x6e,0x00}, // 0x75 'u'
+	{0x00,0x00,0x33,0x33,0x33,0x1e,0x0c,0x00}, // 0x76 'v'
+	{0x00,0x00,0x63,0x6b,0x7f,0x7f,0x36,0x00}, // 0x77 'w'
+	{0x00,0x00,0x63,0x36,0x1c,0x36,0x63,0x00}, // 0x78 'x'
+	{0x00,0x00,0x33,0x33,0x33,0x3e,0x30,0x1f}, // 0x79 'y'
+	{0x00,0x00,0x3f,0x19,0x0c,0x26,0x3f,0x00}, // 0x7a 'z'
+	{0x38,0x0c,0x0c,0x07,0x0c,0x0c,0x38,0x00}, // 0x7b '{'
+	{0x18,0x18,0x18,0x00,0x18,0x18,0x18,0x00}, // 0x7c '|'
+	{0x07,0x0c,0x0c,0x38,0x0c,0x0c,0x07,0x00}, // 0x7d '}'
+	{0x6e,0x3b,0x00,0x00,0x00,0x00,0x00,0x00}, // 0x7e '~'
+	{0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00}, // 0x7f
+};
+
+static bool host_gfx_mode() {
+	return host.vga.current_mode == 0x04 || host.vga.current_mode == 0x05 ||
+	       host.vga.current_mode == 0x06;
+}
+
+// Text-cell columns for the current mode: med-res (4/5) = 40, hi-res (6) = 80.
+static int cga_text_cols() {
+	return host.vga.current_mode == 0x06 ? 80 : 40;
+}
+
+static const db* cga_glyph(db ch) {
+	if (ch >= 0x20 && ch < 0x7f) return cga_font8x8[ch - 0x20];
+	static const db blank[8] = {0};
+	return ch == 0 ? blank : cga_font8x8['?' - 0x20];
+}
+
+// CGA byte address of pixel row y, byte-column bx: even scanlines at
+// B800:0000 (80 bytes/row), odd at B800:2000.
+static db* cga_scanline(int y) {
+	return reinterpret_cast<db*>(&m2c::m) + 0xB8000 +
+	       (y & 1) * 0x2000 + (y >> 1) * 80;
+}
+
+// Write/erase a packed 2bpp pixel pair inside byte `off` — modes 4/5.
+// Each byte holds 4 pixels; a "dot" = one pixel of value v (0-3).
+static void cga2_set_pixel(int y, int x, int v, bool xormode) {
+	db* base = cga_scanline(y);
+	int off = x >> 2, shift = (3 - (x & 3)) * 2;
+	if (xormode) {
+		base[off] ^= (v << shift);
+	} else {
+		base[off] = (base[off] & ~(0x03 << shift)) | ((v & 3) << shift);
+	}
+}
+
+// Mode 6: 1 pixel/bit, 8 pixels/byte.
+static void cga1_set_pixel(int y, int x, int v, bool xormode) {
+	db* base = cga_scanline(y);
+	int off = x >> 3, bit = 7 - (x & 7);
+	if (xormode) {
+		base[off] ^= (v << bit);
+	} else if (v) {
+		base[off] |= (1 << bit);
+	} else {
+		base[off] &= ~(1 << bit);
+	}
+}
+
+// BIOS int10 AH=09 in graphics modes: draw one 8x8 glyph cell at text
+// (row,col). BL low bits = pixel value for set bits (2bpp: 0-3, 1bpp: 0-1);
+// BL bit7 = XOR onto existing pixels. Also records the char in cga_cells so
+// AH=08 read-back works (the BIOS equivalent pattern-matches glyph shapes).
+static void cga_draw_cell(db row, db col, db ch, db attr) {
+	if (row >= HostVga::TEXT_ROWS || col >= (db)cga_text_cols()) return;
+	const db* glyph = cga_glyph(ch);
+	const bool xormode = (attr & 0x80) != 0;
+	const int px = (host.vga.current_mode == 0x06) ? (attr & 1) : (attr & 3);
+	for (int gy = 0; gy < 8; ++gy) {
+		const int y = row * 8 + gy;
+		db bits = glyph[gy];
+		for (int gx = 0; gx < 8; ++gx) {
+			const int x = col * 8 + gx;
+			const int v = (bits & (0x01 << gx)) ? px : 0; // font is LSB-left
+			if (host.vga.current_mode == 0x06) {
+				cga1_set_pixel(y, x, v, xormode && v);
+			} else {
+				cga2_set_pixel(y, x, v, xormode);
+			}
+		}
+	}
+	host.vga.cga_cells[row][col] = ch;
+}
+
+// BIOS scroll-up (AH=06) for graphics modes: shifts `lines` text rows (8
+// pixel rows each) inside the given cell window; CGA banks shift separately.
+static void cga_scroll_up_window(db top, db left, db bottom, db right, db lines) {
+	if (top > bottom || left > right) return;
+	bottom = host_text_row(bottom);
+	if (right >= (db)cga_text_cols()) right = cga_text_cols() - 1;
+	if (lines == 0 || lines > bottom - top + 1) lines = bottom - top + 1;
+	const int w = right - left + 1;
+	const int bpc = host.vga.current_mode == 0x06 ? 1 : 2; // bytes per cell
+	for (int row = top; row <= bottom; ++row) {
+		const int src = row + lines;
+		for (int gy = 0; gy < 8; ++gy) {
+			const int y = row * 8 + gy;
+			db* dst = cga_scanline(y) + left * bpc;
+			if (src <= bottom) {
+				memcpy(dst, cga_scanline(src * 8 + gy) + left * bpc, w * bpc);
+			} else {
+				memset(dst, 0, w * bpc);
+			}
+		}
+		for (int col = left; col <= right; ++col) {
+			host.vga.cga_cells[row][col] =
+			    (src <= bottom) ? host.vga.cga_cells[src][col] : (db)' ';
+		}
+	}
+}
+
+static void cga_clear_screen() {
+	memset(reinterpret_cast<db*>(&m2c::m) + 0xB8000, 0, 0x4000);
+	memset(host.vga.cga_cells, ' ', sizeof(host.vga.cga_cells));
 }
 
 static void vga_set_mode13_defaults() {
@@ -1012,6 +1377,40 @@ static void vga_maybe_dump_dac_upload() {
 	std::fprintf(stderr, "\n");
 }
 
+/* Deterministic frame machinery: VGA-state only (host.vga registers), so it
+ * must live outside the SDL block to stay available in headless NOSDL builds. */
+static size_t vga_crtc_start_byte_offset() {
+	const size_t crtc_start = (static_cast<size_t>(host.vga.crtc_regs[0x0c]) << 8) | host.vga.crtc_regs[0x0d];
+	if (host.vga.current_mode == 0x13 && (host.vga.seq_regs[4] & 0x08) == 0) {
+		/* Unchained (mode-X style) plane addressing: the start-address units
+		 * follow the CRTC addressing mode -- dword mode (CRTC 0x14 bit6)
+		 * scales x4, word mode (CRTC 0x17 bit6=0) x2, byte mode (bit6=1) x1.
+		 * Tornado programs the start directly in plane bytes ({0, 0x4000}),
+		 * so byte mode must not scale or the display reads the wrong page. */
+		if (host.vga.crtc_regs[0x14] & 0x40) {
+			return (crtc_start * 4) % VGA_WINDOW_SIZE;
+		}
+		if ((host.vga.crtc_regs[0x17] & 0x40) == 0) {
+			return (crtc_start * 2) % VGA_WINDOW_SIZE;
+		}
+	}
+	return crtc_start % VGA_WINDOW_SIZE;
+}
+
+// (the real per-frame boundary, unlike the CRTC-start flip which the game only
+// touches a few times). host_run_timer fires IRQ0 det_step times per render so
+// gameintr100 (and the Frames/LastFrame ticks it drives) advances a fixed count
+// per rendered frame -- identical between stock and lifted builds.
+static unsigned g_det_render_tick = 0;
+// Deterministic flip-tick counter: bumped once per CRTC page flip = once per
+// download = once per simulated game frame. Stock and lifted builds present a
+// different number of times per sim frame (3DA retrace polls differ), so the
+// keyscript/ST dump index and the IRQ0 drip budget must key off flips, not
+// presents, to keep the two binaries sim-frame-aligned.
+static unsigned g_det_flip_tick = 0;
+extern "C" unsigned g_dbg_flip = 0;
+static _STATE* host_irq_main_state = nullptr;
+
 #ifndef NOSDL
  #if SDL_MAJOR_VERSION == 2
 static int sdl_vga_scale(int width, int height) {
@@ -1046,8 +1445,18 @@ static void configure_sdl_vga_window(int width, int height) {
 			SDL_WINDOWPOS_CENTERED,
 			width * scale,
 			height * scale,
-			SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE
+			SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_INPUT_FOCUS
 		);
+		if (window) {
+			// Bring forward and take keyboard focus; a shown-but-unfocused window
+			// receives no SDL_KEYDOWNs and the game appears to ignore input. WMs
+			// often deny SetWindowInputFocus (focus-stealing prevention), so also
+			// grab the keyboard: the window then receives key events regardless of
+			// which top-level window the desktop considers focused.
+			SDL_RaiseWindow(window);
+			SDL_SetWindowInputFocus(window);
+			SDL_SetWindowKeyboardGrab(window, SDL_TRUE);
+		}
 	}
 	if (!renderer && window) {
 		renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
@@ -1083,12 +1492,18 @@ static bool ensure_sdl_vga_window(int width, int height) {
 }
 
 void init_sdl_vga_window() {
-	configure_sdl_vga_window(320, 200);
+	// Size for the starting mode: text modes render 640x400, CGA gfx is
+	// pixel-doubled to 640x400, VGA mode 13 stays 320x200.
+	if (host.vga.current_mode == 0x13) {
+		configure_sdl_vga_window(320, 200);
+	} else {
+		configure_sdl_vga_window(640, 400);
+	}
 	std::fill(vgaPlanarPixels, vgaPlanarPixels + 640 * 200, 0);
 	std::fill(vgaMode13Pixels, vgaMode13Pixels + VGA_WINDOW_SIZE * 4, 0);
 	std::fill(vgaReadLatch, vgaReadLatch + 4, 0);
 	std::fill(&vgaPendingReadLatch[0][0], &vgaPendingReadLatch[0][0] + 16, 0);
-	std::fill(vgaSdlFrame, vgaSdlFrame + 640 * 200, 0xff000000u);
+	std::fill(vgaSdlFrame, vgaSdlFrame + 640 * 400, 0xff000000u);
 	vgaPendingReadLatchCount = 0;
 	vgaPendingReadLatchNext = 0;
 	if (!renderer) {
@@ -1099,6 +1514,7 @@ void init_sdl_vga_window() {
 	SDL_RenderPresent(renderer);
 	vga_render_dirty = false;
 	vga_render_writes = 0;
+	{static unsigned _ri=0; if (getenv("M2C_STATEDBG") && ++_ri<20) fprintf(stderr,"[initwin dirty0 #%u]\n",_ri);}
 }
 
 // ---------------------------------------------------------------------------
@@ -1452,6 +1868,57 @@ static bool vga_mode13_chain4_enabled() {
 	return host.vga.current_mode == 0x13 && (host.vga.seq_regs[4] & 0x08) != 0;
 }
 
+// Standard 16-color CGA/EGA-index palette (ARGB) for rasterizing B800 memory.
+static const uint32_t cga_index_argb[16] = {
+	0xff000000, 0xff0000aa, 0xff00aa00, 0xff00aaaa,
+	0xffaa0000, 0xffaa00aa, 0xffaa5500, 0xffaaaaaa,
+	0xff555555, 0xff5555ff, 0xff55ff55, 0xff55ffff,
+	0xffff5555, 0xffff55ff, 0xffffff55, 0xffffffff,
+};
+
+// Map a CGA pixel value at (x,y) in m[B8000] to a 0-15 color index.
+// Modes 4/5: 2bpp; pixel 0 = background (color-select low nibble), pixels
+// 1-3 = fixed palette selected by cga_palette bit0 + intensity bit4.
+// Mode 6: 1bpp; set = fg color (color-select low nibble, default 7).
+static db cga_pixel_color(int x, int y) {
+	const db* base = cga_scanline(y);
+	if (host.vga.current_mode == 0x06) {
+		const db byte = base[x >> 3];
+		const int v = (byte >> (7 - (x & 7))) & 1;
+		const db fg = host.vga.cga_color_select & 0x0f;
+		return v ? (fg ? fg : 0x07) : 0;
+	}
+	const db byte = base[x >> 2];
+	const int v = (byte >> ((3 - (x & 3)) * 2)) & 3;
+	if (v == 0) return host.vga.cga_color_select & 0x0f;
+	static const db pals[2][3] = {{2, 4, 6}, {3, 5, 7}};
+	db color = pals[host.vga.cga_palette & 1][v - 1];
+	if (host.vga.cga_color_select & 0x10) color += 8;
+	return color;
+}
+
+// Text modes (0-3): guest VRAM at B800:<page*0x1000> holds char/attr pairs.
+// Rasterized at 640x400: 80x25 cells of 8x16 (8x8 glyph rows doubled).
+// 40-col modes 0/1 use 16px-wide cells.
+static uint32_t text_mode_pixel_argb(int x, int y) {
+	const bool wide = host.vga.current_mode <= 0x01;
+	const db* vram = reinterpret_cast<const db*>(&m2c::m) + 0xB8000 +
+	                 static_cast<size_t>(host.vga.active_page) * 0x1000;
+	const int col = wide ? (x >> 4) : (x >> 3);
+	const int row = y >> 4;
+	if (row >= HostVga::TEXT_ROWS || col >= HostVga::TEXT_COLS) return 0xff000000;
+	const db ch = vram[(row * HostVga::TEXT_COLS + col) * 2];
+	const db attr = vram[(row * HostVga::TEXT_COLS + col) * 2 + 1];
+	const db bits = cga_glyph(ch)[(y & 15) >> 1];
+	const int bit = wide ? ((x >> 1) & 7) : (x & 7);
+	const bool on = (bits >> bit) & 1; // font is LSB-left
+	return on ? cga_index_argb[attr & 0x0f] : cga_index_argb[(attr >> 4) & 0x07];
+}
+
+static bool host_text_mode() {
+	return host.vga.current_mode <= 0x03;
+}
+
 static db vga_mode13_visible_color(size_t start, int x, int y) {
 	if (vga_mode13_chain4_enabled()) {
 		const size_t byte_offset = (start + y * 320 + x) % VGA_WINDOW_SIZE;
@@ -1515,8 +1982,6 @@ static void vga_dump_top_visible_colors(size_t start) {
 	std::fprintf(stderr, "\n");
 }
 
-static size_t vga_crtc_start_byte_offset();
-
 static void vga_maybe_dump_frame() {
 	static bool dumped = false;
 	static unsigned frame_count = 0;
@@ -1558,6 +2023,34 @@ static void vga_maybe_dump_frame() {
 		log_error("could not write M2C_VGA_DUMP_FRAME=%s\n", path);
 		dumped = true;
 		return;
+	}
+	{
+		const db *base = (const db*)&m;
+		std::fprintf(stderr, "DBG mode=%x seq4=%x w=%d h=%d\n",
+			(int)host.vga.current_mode, (int)host.vga.seq_regs[4],
+			vga_logical_width, vga_logical_height);
+		{
+			// driver jump-table fields live at &data+0x182.. = &m+0x1f2.. (&data=&m+0x70)
+			const dw *w = (const dw*)(base + 0x1f2);
+			static const char *names[] = {
+				"_setvideomode","?","_download","?","_setpixel","?","_linedraw","?",
+				"_vlinedraw","?","_hlinedraw","?","_polyfill","?","_meshfill","?",
+				"_smokefill","?","_prch1","?","_prch2","?","_prch3","?",
+				"_sspr","_mspr","_bspr","_qspr","_initss","_initms","_initqs",
+				"_blockfill","?","_savembg","?","_loadmbg","?","_savescr","?",
+				"_loadscr","?","_uncompr","?","_horizonf","?","vgascr0","vgascr1"};
+			for (int i = 0; i < 45; ++i)
+				std::fprintf(stderr, "DBG drv %-11s @%04x = %04x\n",
+					names[i], (unsigned)(0x182 + i*2), (unsigned)w[i]);
+		}
+		FILE *fr = std::fopen("/tmp/m_a0000.bin", "wb");
+		if (fr) { std::fwrite(base + 0xa0000, 1, 0x10000, fr); std::fclose(fr); }
+		FILE *fp = std::fopen("/tmp/mode13pix.bin", "wb");
+		if (fp) { std::fwrite(vgaMode13Pixels, 1, 64000*4, fp); std::fclose(fp); }
+		FILE *fw = std::fopen("/tmp/workscreen.bin", "wb");
+		if (fw) { std::fwrite(base + 0xe060, 1, 32000, fw); std::fclose(fw); } // workscreen 320x100 packed
+		FILE *fd = std::fopen("/tmp/mdata.bin", "wb");
+		if (fd) { std::fwrite(base + 0x70, 1, 0x2C000, fd); std::fclose(fd); } // whole data image + paldata
 	}
 	std::fprintf(f, "P6\n%d %d\n255\n", vga_logical_width, vga_logical_height);
 	for (int i = 0; i < vga_logical_width * vga_logical_height; ++i) {
@@ -1603,24 +2096,6 @@ static void vga_maybe_dump_frame() {
 	}
 }
 
-static size_t vga_crtc_start_byte_offset() {
-	const size_t crtc_start = (static_cast<size_t>(host.vga.crtc_regs[0x0c]) << 8) | host.vga.crtc_regs[0x0d];
-	if (host.vga.current_mode == 0x13 && (host.vga.seq_regs[4] & 0x08) == 0) {
-		/* Unchained (mode-X style) plane addressing: the start-address units
-		 * follow the CRTC addressing mode -- dword mode (CRTC 0x14 bit6)
-		 * scales x4, word mode (CRTC 0x17 bit6=0) x2, byte mode (bit6=1) x1.
-		 * Tornado programs the start directly in plane bytes ({0, 0x4000}),
-		 * so byte mode must not scale or the display reads the wrong page. */
-		if (host.vga.crtc_regs[0x14] & 0x40) {
-			return (crtc_start * 4) % VGA_WINDOW_SIZE;
-		}
-		if ((host.vga.crtc_regs[0x17] & 0x40) == 0) {
-			return (crtc_start * 2) % VGA_WINDOW_SIZE;
-		}
-	}
-	return crtc_start % VGA_WINDOW_SIZE;
-}
-
 static void vga_maybe_dump_stats(size_t crtc_start) {
 	static unsigned dump_count = 0;
 	const char *enabled = std::getenv("M2C_VGA_STATS");
@@ -1653,7 +2128,12 @@ static void vga_maybe_dump_stats(size_t crtc_start) {
 		vga_dump_top_visible_colors(crtc_start);
 	}
 
+static void host_keyscript_tick();
+static bool m2c_deterministic();
+// Deterministic render-tick counter: bumped once per vga_render_indexed_frame
 static void vga_render_indexed_frame() {
+	++g_det_render_tick;
+	if (!m2c_deterministic()) host_keyscript_tick();
 	if (!renderer) {
 		return;
 	}
@@ -1679,27 +2159,165 @@ static void vga_render_indexed_frame() {
 			db color = 0;
 			if (host.vga.current_mode == 0x13 && vga_logical_width == 320) {
 				color = vga_mode13_visible_color(crtc_start, x, y);
+				vgaSdlFrame[y * vga_logical_width + x] = vga_color_to_argb(color);
+			} else if (host_gfx_mode()) {
+				// CGA modes are pixel-doubled onto the 640x400 logical frame:
+				// modes 4/5 are 320x200 (2x2 blocks), mode 6 is 640x200 (1x2).
+				const int xscale = (vga_logical_width == 640 &&
+				                    host.vga.current_mode != 0x06) ? 1 : 0;
+				const int yscale = vga_logical_height == 400 ? 1 : 0;
+				const int sx = x >> xscale;
+				const int sy = y >> yscale;
+				vgaSdlFrame[y * vga_logical_width + x] = cga_index_argb[cga_pixel_color(sx, sy)];
+			} else if (host_text_mode()) {
+				vgaSdlFrame[y * vga_logical_width + x] = text_mode_pixel_argb(x, y);
 			} else {
 				color = vgaPlanarPixels[y * 640 + x];
+				vgaSdlFrame[y * vga_logical_width + x] = vga_color_to_argb(color);
 			}
-			vgaSdlFrame[y * vga_logical_width + x] = vga_color_to_argb(color);
 		}
+	}
+
+	if (const char* hpath = getenv("M2C_FRAMEHASH")) {
+		uint64_t h = 1469598103934665603ull;
+		const size_t n = (size_t)vga_logical_width * (size_t)vga_logical_height;
+		for (size_t i = 0; i < n; ++i) {
+			const uint32_t p = vgaSdlFrame[i];
+			for (int b = 0; b < 4; ++b) { h ^= (p >> (b * 8)) & 0xffu; h *= 1099511628211ull; }
+		}
+		static unsigned fno = 0;
+		if (FILE* fp = std::fopen(hpath, "a")) { std::fprintf(fp, "frame %u %016llx\n", fno++, (unsigned long long)h); std::fclose(fp); }
 	}
 
 	SDL_UpdateTexture(vgaTexture, NULL, vgaSdlFrame, vga_logical_width * static_cast<int>(sizeof(uint32_t)));
 	vga_maybe_dump_frame();
+	if (const char* sd = getenv("M2C_SEQDUMP")) {  // dump every present, all modes
+		static unsigned seq = 0;
+		static unsigned skip = 0;
+		if (++skip >= 8) {  // ~every 8th present
+			skip = 0;
+			char pp[1024]; std::snprintf(pp, sizeof(pp), "%s/seq_%05u.ppm", sd, seq++);
+			if (FILE* f = std::fopen(pp, "wb")) {
+				std::fprintf(f, "P6\n%d %d\n255\n", vga_logical_width, vga_logical_height);
+				for (int i = 0; i < vga_logical_width * vga_logical_height; ++i) {
+					const uint32_t p = vgaSdlFrame[i];
+					unsigned char rgb[3] = { (unsigned char)(p>>16), (unsigned char)(p>>8), (unsigned char)p };
+					std::fwrite(rgb,1,3,f);
+				}
+				std::fclose(f);
+			}
+		}
+	}
 	SDL_RenderClear(renderer);
 	SDL_RenderCopy(renderer, vgaTexture, NULL, NULL);
+}
+
+// Per-sim-frame hash of the game's VRAM image (mode-X planes), called once per
+// controlloop download tick. Deterministic across runs regardless of SDL present
+// cadence, unlike M2C_FRAMEHASH which is present-boundary driven.
+void m2c_frame_tick_hash() {
+	static const char* hpath = getenv("M2C_TICKHASH");
+	static unsigned tick = 0;
+	if (!hpath) return;
+	uint64_t h = 1469598103934665603ull;
+	for (size_t i = 0; i < (size_t)VGA_WINDOW_SIZE * 4; ++i) {
+		h ^= vgaMode13Pixels[i]; h *= 1099511628211ull;
+	}
+	if (FILE* fp = std::fopen(hpath, "a")) { std::fprintf(fp, "tick %u %016llx\n", tick++, (unsigned long long)h); std::fclose(fp); }
+	// M2C_VRAMDUMP=<dir>: raw dump of all 4 mode-X planes once per flip.
+	static const char* vdir = getenv("M2C_VRAMDUMP");
+	static unsigned vtick = 0;
+	if (vdir && *vdir) {
+		char vp[1024]; std::snprintf(vp, sizeof(vp), "%s/vram_%05u.bin", vdir, vtick++);
+		if (FILE* vf = std::fopen(vp, "wb")) { std::fwrite(vgaMode13Pixels, 1, (size_t)VGA_WINDOW_SIZE * 4, vf); std::fclose(vf); }
+	}
+}
+
+// Per-page-flip dump of the assembled logical index plane (the exact 320x200
+// indices that would be displayed), for byte-level comparison against the
+// original's paletted frame dumps. M2C_IDXDUMP=<dir> enables it.
+static void vga_dump_flip_index() {
+	static const char* dir = getenv("M2C_IDXDUMP");
+	static unsigned flip = 0;
+	if (!dir || !*dir) return;
+	if (!(host.vga.current_mode == 0x13 && vga_logical_width == 320)) return;
+	char path[1024];
+	std::snprintf(path, sizeof(path), "%s/idx_%05u.bin", dir, flip++);
+	if (FILE* fp = std::fopen(path, "wb")) {
+		const size_t start = vga_crtc_start_byte_offset();
+		for (int y = 0; y < vga_logical_height; ++y)
+			for (int x = 0; x < vga_logical_width; ++x) {
+				const db color = vga_mode13_visible_color(start, x, y);
+				std::fwrite(&color, 1, 1, fp);          // raw palette index
+			}
+		std::fclose(fp);
+	}
+	if (getenv("M2C_IDXWS")) {  // dump the 320x100 outside-view workscreen too
+		char wp[1024]; std::snprintf(wp, sizeof(wp), "%s/ws_%05u.bin", dir, flip-1);
+		if (FILE* wf = std::fopen(wp, "wb")) {
+			std::fwrite(((const db*)&m) + 0xe060, 1, 32000, wf); std::fclose(wf);
+		}
+	}
+	if (getenv("M2C_IDXLOG")) {
+		char lp[1024]; std::snprintf(lp, sizeof(lp), "%s/log.txt", dir);
+		if (FILE* lf = std::fopen(lp, "a")) {
+			const size_t st = vga_crtc_start_byte_offset();
+			// count writes that landed in the displayed page's top rows (rows 0-9)
+			size_t topw = 0, midw = 0;
+			for (size_t o = st; o < st + 800 && o < VGA_WINDOW_SIZE; ++o) topw += vga_wr_hit[o];
+			for (size_t o = st+800; o < st + 16000 && o < VGA_WINDOW_SIZE; ++o) midw += vga_wr_hit[o];
+			std::fprintf(lf, "flip=%u start=%04zx r0c=%02x topwr=%zu restwr=%zu\n",
+				flip-1, st, host.vga.crtc_regs[0x0c], topw, midw);
+			std::fclose(lf);
+		}
+	}
+	// clear hitmap for next frame
+	if (getenv("M2C_WRHIT")) std::fill(vga_wr_hit, vga_wr_hit + VGA_WINDOW_SIZE, 0);
+	if (getenv("M2C_IDXPAL")) {  // palette dump each flip; last write = flight state
+		char pp[1024]; std::snprintf(pp, sizeof(pp), "%s/pal.bin", dir);
+		if (FILE* pf = std::fopen(pp, "wb")) { std::fwrite(vgaPalette,1,256*3,pf); std::fclose(pf); }
+	}
+	if (getenv("M2C_IDXSTATE")) {  // scenario-selection flags for orig-vs-standalone compare
+		char sp[1024]; std::snprintf(sp, sizeof(sp), "%s/state.txt", dir);
+		if (FILE* sf = std::fopen(sp, "a")) {
+			const db* D = (const db*)&m;
+			unsigned nkeys = 0, keybits = 0;
+			for (int i = 0; i < 128; ++i) if (D[0x5a3 + i]) { ++nkeys; keybits |= (1u << (i & 31)); }
+			std::fprintf(sf, "flip=%u demomode=%u night=%u initnighthud=%u tornadotype=%u "
+				"nightdata=%u elapsedtime=%u nkeys=%u keybits=%08x "
+				"paused=%u viewmode=%u gvmode=%u ctrldev=%u "
+				"ele=%d ail=%d rud=%d kfPst=%u\n",
+				flip-1,
+				D[0x8671],          // demomode  (data+0x8601)
+				D[0x68f7],          // night[0]  (data+0x6887)
+				D[0x70+0x14fe],     // initnighthud (data+0x14fe)
+				(unsigned)D[0x8655] | ((unsigned)D[0x8656]<<8), // tornadotype (data+0x85e5, dw)
+				D[0x70+0xaf13],     // _night (data+0xaf13)
+				(unsigned)(*(const dd*)(D + 0x62f)), // elapsedtime (data+0x5bf, dd)
+				nkeys, keybits,
+				D[0x70+0xb1de],   // paused (data+0xb1de)
+				(unsigned)D[0x70+0x15d3] | ((unsigned)D[0x70+0x15d4]<<8), // viewmode (data+0x15d3, dw)
+				(unsigned)D[0x70+0x8488] | ((unsigned)D[0x70+0x8489]<<8), // gameviewmode (data+0x8488, dw)
+				(unsigned)D[0x70+0x85e7] | ((unsigned)D[0x70+0x85e8]<<8), // controldevice (data+0x85e7, dw)
+				(int)(short)(*(const dw*)(D + 0x70 + 0xb11d)), // eleposn (data+0xb11d)
+				(int)(short)(*(const dw*)(D + 0x70 + 0xb11f)), // ailposn (data+0xb11f)
+				(int)(short)(*(const dw*)(D + 0x70 + 0xb121)), // rudposn (data+0xb121)
+				(unsigned)D[0x70+0xb5df]); // kf_pause[k_status] (data+0xb5df, k_status@0)
+			std::fclose(sf);
+		}
+	}
 }
 
 static uint64_t vga_last_present_ms = 0;
 
 static void vga_present_now() {
+	{static unsigned _pn=0; if (getenv("M2C_STATEDBG") && (++_pn<40 || _pn%120==0)) fprintf(stderr,"[present_now #%u rdr=%p dirty=%d tid=%llx]\n",_pn,(void*)renderer,(int)vga_render_dirty,(unsigned long long)std::hash<std::thread::id>()(std::this_thread::get_id()));}
 	vga_render_indexed_frame();
 	SDL_RenderPresent(renderer);
 	vga_last_present_ms = SDL_GetTicks64();
 	vga_render_dirty = false;
 	vga_render_writes = 0;
+	{static unsigned _pc=0; if (getenv("M2C_STATEDBG") && (++_pc<20 || _pc%120==0)) fprintf(stderr,"[presentclr dirty0 #%u]\n",_pc);}
 }
 
 /* Rate-limited mid-frame present. The write-flush threshold fires several times
@@ -1710,8 +2328,16 @@ static void vga_present_now() {
    event pump. vga_render_writes/dirty stay set on a skip so the next check still
    sees pending work. */
 void vga_present_pending() {
+	// In deterministic mode a mid-frame flush present would also bump
+	// g_det_render_tick -> extra IRQ0 deliveries at wall-clock cadence, making
+	// sim speed depend on wall-time instead of rendered game frames. Presents
+	// still happen per frame via the page-flip and retrace boundaries.
+	if (m2c_deterministic()) return;
+	const uint64_t now = SDL_GetTicks64();
+	const int64_t elapsed = (int64_t)(now - vga_last_present_ms);
+	{static unsigned _pp=0; if (getenv("M2C_STATEDBG") && (++_pp<20 || _pp%4000==0)) fprintf(stderr,"[ppend #%u rdr=%p dirty=%d elapsed=%lld tid=%llx]\n",_pp,(void*)renderer,(int)vga_render_dirty,(long long)elapsed,(unsigned long long)std::hash<std::thread::id>()(std::this_thread::get_id()));}
 	if (renderer && vga_render_dirty &&
-	    SDL_GetTicks64() - vga_last_present_ms >= 33) {
+	    now - vga_last_present_ms >= 33) {
 		vga_present_now();
 	}
 }
@@ -1719,7 +2345,16 @@ void vga_present_pending() {
 /* Frame-boundary present: always shows the accumulated frame. Called from the
    VGA vertical-retrace poll (IN 0x3DA), i.e. once per logical game frame. */
 void vga_present_forced() {
-	if (renderer && vga_render_dirty) {
+	{static unsigned _pf=0; if (getenv("M2C_STATEDBG") && (++_pf<20 || _pf%600==0)) fprintf(stderr,"[pforced #%u rdr=%p dirty=%d wr=%u]\n",_pf,(void*)renderer,(int)vga_render_dirty,vga_render_writes);}
+	/* Retrace boundary = logical frame edge even when nothing is presented —
+	   tick the keyscript here so scripted input still advances while an idle
+	   interpreter polls 3DA without producing frames. */
+	if (!m2c_deterministic()) host_keyscript_tick();
+	/* Present on any writes accumulated since the last frame, not only when the
+	   dirty flag happens to read high at this instant — the flag is cleared by
+	   the previous present and mid-frame flush presents, so gating on it alone
+	   stalls the display once the game draws to a hidden page. */
+	if (renderer && (vga_render_dirty || vga_render_writes > 0)) {
 		vga_present_now();
 	}
 }
@@ -1821,12 +2456,15 @@ static void vga_write_mode13_chain4_byte(size_t offset, db value) {
 }
 
 static void vga_write_mode13_planar_byte(size_t offset, db value) {
+	static unsigned _er=0;
 	if (!ensure_sdl_vga_window(320, 200)) {
+		if (getenv("M2C_STATEDBG") && ++_er<20) fprintf(stderr,"[m13planar EARLY ensure off=%#x rdr=%p]\n",(unsigned)offset,(void*)renderer);
 		return;
 	}
 
 	size_t page_offset = 0;
 	if (!vga_mode13_address(offset, &page_offset)) {
+		if (getenv("M2C_STATEDBG") && ++_er<20) fprintf(stderr,"[m13planar EARLY addr off=%#x]\n",(unsigned)offset);
 		return;
 	}
 	db map_mask = host.vga.seq_regs[2] & 0x0f;
@@ -1842,7 +2480,28 @@ static void vga_write_mode13_planar_byte(size_t offset, db value) {
 		const db pixel = write_mode_1 ? write_latch[plane] : value;
 		vgaMode13Pixels[page_offset * 4 + plane] = pixel;
 	}
+	{static const bool wt = getenv("M2C_WRTRACE") != nullptr;
+	static _STATE* const* pms = &host_irq_main_state;
+	if (wt && pms && *pms) {
+		fprintf(stderr,"WRT f=%u cs=%04x ip=%04x off=%05x mm=%x wm=%d v=%02x L=%02x%02x%02x%02x\n",
+			g_det_flip_tick,(unsigned)(*pms)->cs,(unsigned)((*pms)->eip&0xffff),
+			(unsigned)page_offset,(unsigned)map_mask,(int)write_mode_1,(unsigned)value,
+			(unsigned)write_latch[0],(unsigned)write_latch[1],(unsigned)write_latch[2],(unsigned)write_latch[3]);
+	}}
+	static const bool wrhit = getenv("M2C_WRHIT") != nullptr;
+	if (wrhit && page_offset < 0x20000) vga_wr_hit[page_offset] = 1;
+	static const bool bandbt = getenv("M2C_BANDBT") != nullptr;
+	if (bandbt && page_offset < 80 * 6) {  // writes to top 6 rows
+		const db eff = write_mode_1 ? write_latch[0] : value;
+		if (eff == 133 || value == 133 || write_latch[0]==133 || write_latch[1]==133) {
+			void* bt[24]; int n = backtrace(bt, 24);
+			fprintf(stderr, "BANDWR off=%#x val=%d latch0=%d wm=%d\n", (unsigned)page_offset,(int)value,(int)write_latch[0],(int)write_mode_1);
+			backtrace_symbols_fd(bt, n, 2);
+		}
+	}
 	vga_render_dirty = true;
+	{static unsigned _sd=0; if (getenv("M2C_STATEDBG") && (++_sd<20 || _sd%4000==0)) fprintf(stderr,"[SETDIRTY #%u off=%#x dirty=%d tid=%llx]\n",_sd,(unsigned)page_offset,(int)vga_render_dirty,(unsigned long long)std::hash<std::thread::id>()(std::this_thread::get_id()));}
+	{static unsigned _wi=0; if (getenv("M2C_STATEDBG") && (++_wi<20 || _wi%4000==0)) fprintf(stderr,"[wrinc #%u wr=%u tid=%llx]\n",_wi,vga_render_writes,(unsigned long long)std::hash<std::thread::id>()(std::this_thread::get_id()));}
 	if (++vga_render_writes >= VGA_RENDER_WRITE_FLUSH_THRESHOLD) {
 		vga_present_pending();
 	}
@@ -1895,6 +2554,7 @@ static void vga_write_planar_byte(size_t offset, db value) {
 }
 
 void vga_write_pixel_from_memory(db *d, db color) {
+	{static unsigned _wp=0; if (getenv("M2C_STATEDBG") && (++_wp<40 || _wp%4000==0)) fprintf(stderr,"[vgawr #%u off=%#x rdr=%p]\n",_wp,(unsigned)(d-((db*)&m)-0xa0000),(void*)renderer);}
 	if (!renderer) {
 		init_sdl_vga_window();
 	}
@@ -1903,9 +2563,11 @@ void vga_write_pixel_from_memory(db *d, db color) {
 	}
 	const size_t di = d - ((db*)&m) - 0xa0000;
 	if (vga_is_planar_mode()) {
+		{static unsigned _rp=0; if (getenv("M2C_STATEDBG") && (++_rp<20 || _rp%4000==0)) fprintf(stderr,"[vgaroute #%u off=%#x PLANAR mode=%#x chain4=%d]\n",_rp,(unsigned)di,(int)host.vga.current_mode,(int)vga_mode13_chain4_enabled());}
 		vga_write_planar_byte(di, color);
 		return;
 	}
+	{static unsigned _rc=0; if (getenv("M2C_STATEDBG") && (++_rc<20 || _rc%4000==0)) fprintf(stderr,"[vgaroute #%u off=%#x CHAIN4 mode=%#x]\n",_rc,(unsigned)di,(int)host.vga.current_mode);}
 	vga_write_mode13_chain4_byte(di, color);
 }
  #endif
@@ -1913,6 +2575,11 @@ void vga_write_pixel_from_memory(db *d, db color) {
 
 #ifdef NOSDL
 void tandy_snd_write(db) {}
+// SDL-only frame hooks: the flip detection itself is config-independent, so
+// headless builds get no-op stubs and still run the deterministic tick path.
+static void vga_present_now() {}
+static void vga_dump_flip_index() {}
+void m2c_frame_tick_hash() {}
 #endif
 
 static int host_clamp_int(int value, int min_value, int max_value) {
@@ -1965,6 +2632,107 @@ static bool host_keyboard_pop(dw* bios_key) {
 	}
 	host.keyboard_head = static_cast<db>((host.keyboard_head + 1) % 16);
 	return true;
+}
+
+/* M2C_KEYSCRIPT=<file>: frame-timed BIOS key injection, the standalone analog
+   of DOSBOX_KEYSCRIPT's "<frame> bios <0xCODE>" lines. One BIOS keycode per
+   line is pushed into the keyboard buffer when the present counter reaches the
+   listed frame. Lets the same script drive the original (dosbox keyscript) and
+   this standalone so both traverse identical menus for same-state compare. */
+static void host_queue_irq9(db port60);
+static void host_set_key(int scan_code, bool pressed);
+static void host_keyscript_tick() {
+	static const char* path = getenv("M2C_KEYSCRIPT");
+	static const char* dbg = getenv("M2C_STATEDBG");
+	static std::map<unsigned, std::vector<dw>> script;
+	static bool loaded = false;
+	static unsigned present = 0;
+	if (!loaded) {
+		loaded = true;
+		// Weak-symbol presence test must check &sym first: evaluating an
+		// undef weak data symbol derefs a NULL GOT/copy-reloc slot.
+		if (getenv("M2C_NOCOL") && &nocollisions && nocollisions) *nocollisions = 1;
+		if (path && *path) {
+			std::ifstream in(path);
+			unsigned fr; std::string kind; unsigned code;
+			while (in >> std::dec >> fr >> kind && in >> std::hex >> code)
+				script[fr].push_back((dw)code);
+		}
+	}
+	if (getenv("M2C_FLAPS") && &crntflappos) {
+		if (crntflappos) *crntflappos = 3;      // FLAPS_D_FULL
+		if (destflappos) *destflappos = 3;
+		if (crntflapval) *crntflapval = 600;    // FLAPS_A_FULL
+		if (destflapval) *destflapval = 600;
+	}
+	if (dbg && present == 0 && &objscaleconvert && objscaleconvert) {
+		fprintf(stderr, "[SCALE] objsc base=%p -> ", (void*)objscaleconvert);
+		for (int i = -9; i <= 15; i++) fprintf(stderr, "%+d=%02x ", i, (unsigned char)objscaleconvert[i]);
+		fprintf(stderr, "\n");
+	}
+	if (dbg && present % 15 == 0 && &wheelbrakes) {
+		const db* keys = host_key_state();
+		fprintf(stderr,
+			"[ST f=%u] wbrk=%s thr=%s avias=%s athr=%s dt=%s lf=%s rho=%s vias=%s reh=%s rpm=%s vtas=%s radalt=%s zft=%s.%s ac=%s t4=%s d4=%s cd=%s a=%s g=%s xw=%s sec=%s,%s ft=%s,%s hitobj=%s air=%s dst=%s die=%s/%s pitch=%s zdot=%s ctrl=%s joyA=%s ele=%s alt=%s ail=%s aalt=%s\n",
+			present,
+			wheelbrakes ? std::to_string(*wheelbrakes).c_str() : "-",
+			throttle ? std::to_string(*throttle).c_str() : "-",
+			autovias ? std::to_string(*autovias).c_str() : "-",
+			aimthrottle ? std::to_string(*aimthrottle).c_str() : "-",
+			deltatime ? std::to_string(*deltatime).c_str() : "-",
+			lastframe ? std::to_string(*lastframe).c_str() : "-",
+			sqrtrho ? std::to_string(*sqrtrho).c_str() : "-",
+			vias ? std::to_string(*vias).c_str() : "-",
+			reheat ? std::to_string(*reheat).c_str() : "-",
+			rpm1 ? std::to_string(*rpm1).c_str() : "-",
+			vtas ? std::to_string(*vtas).c_str() : "-",
+			trueradalt ? std::to_string(*trueradalt).c_str() : "-",
+			zfthi ? std::to_string((int)(short)*zfthi).c_str() : "-",
+			zftlo ? std::to_string(*zftlo).c_str() : "-",
+			accel ? std::to_string((int)(short)*accel).c_str() : "-",
+			thrust4 ? std::to_string(*thrust4).c_str() : "-",
+			drag4 ? std::to_string(*drag4).c_str() : "-",
+			cd0 ? std::to_string(*cd0).c_str() : "-",
+			alpha ? std::to_string((int)(short)*alpha).c_str() : "-",
+			gforce ? std::to_string((int)(short)*gforce).c_str() : "-",
+			xwindveff ? std::to_string((int)(short)*xwindveff).c_str() : "-",
+			xsec ? std::to_string(*xsec).c_str() : "-",
+			ysec ? std::to_string(*ysec).c_str() : "-",
+			xft ? std::to_string((int)(short)*xft).c_str() : "-",
+			yft ? std::to_string((int)(short)*yft).c_str() : "-",
+			hitobjectnum ? std::to_string(*hitobjectnum).c_str() : "-",
+			airborne1 ? std::to_string(*airborne1).c_str() : "-",
+			destroyed ? std::to_string(*destroyed).c_str() : "-",
+			dieflag ? std::to_string(*dieflag).c_str() : "-",
+			tmpdieflag ? std::to_string(*tmpdieflag).c_str() : "-",
+			pfine ? std::to_string((int)(short)*pfine).c_str() : "-",
+			zdot ? std::to_string((int)(short)*zdot).c_str() : "-",
+			controldevice ? std::to_string(*controldevice).c_str() : "-",
+			joya_flag ? std::to_string(*joya_flag).c_str() : "-",
+			eleposn ? std::to_string((int)(short)*eleposn).c_str() : "-",
+			altmode ? std::to_string(*altmode).c_str() : "-",
+			ailposn ? std::to_string((int)(short)*ailposn).c_str() : "-",
+			autoalt ? std::to_string((int)(short)*autoalt).c_str() : "-");
+		db* ks = host_key_state();
+		if (ks) fprintf(stderr, " k72=%d k80=%d k56=%d k29=%d\n",
+			(int)ks[72], (int)ks[80], (int)ks[56], (int)ks[29]);
+		else fprintf(stderr, " ks=null\n");
+		if (ks && (present == 0 || present == 120)) {
+			fprintf(stderr, "[KEYDUMP f=%u] ", present);
+			for (int i = 0; i < 128; i++) if (ks[i]) fprintf(stderr, "[%d]=%d ", i, (int)ks[i]);
+			fprintf(stderr, "\n");
+		}
+	}
+	auto it = script.find(present++);
+	if (it != script.end())
+		for (dw k : it->second) {
+			const int scan = (k >> 8) & 0x7f;
+			const bool release = (k & 0x8000) != 0;
+			if (scan) {  // hold the key so the int9 Key[] held-state registers
+				host_set_key(scan, !release);
+			}
+			host_keyboard_push(k);
+		}
 }
 
 static db host_ascii_to_pc_scan(db ch) {
@@ -2067,12 +2835,49 @@ static dd* host_elapsed_time() {
 	return &::elapsedtime ? ::elapsedtime : nullptr;
 }
 
+// M2C_DET=1 selects a fixed-step timer: the wall-clock IRQ thread and poll-driven
+// counter advances are disabled; counters advance a constant amount once per
+// mode-X page flip (once per game frame). This makes the sim deterministic.
+static bool m2c_deterministic() {
+	static const int det = getenv("M2C_DET") ? atoi(getenv("M2C_DET")) : 0;
+	return det != 0;
+}
+
+// Wall-clock reads (DOS int 1Ah/21h time+date) must return a fixed value in
+// deterministic mode or the game's clock/seed diverges run to run.
+static time_t m2c_host_time() {
+	if (m2c_deterministic()) {
+		// Fixed epoch for determinism; M2C_DET_EPOCH overrides it so the
+		// standalone can match the original build_det run's DOSBOX_DET_EPOCH
+		// ("YYYY-MM-DD HH:MM:SS", local time) when the game seeds scenario /
+		// demo state from the DOS clock.
+		static const time_t fixed = [] {
+			if (const char* e = getenv("M2C_DET_EPOCH")) {
+				struct tm t; std::memset(&t, 0, sizeof t);
+				if (strptime(e, "%Y-%m-%d %H:%M:%S", &t)) return mktime(&t);
+				char* end = nullptr; long v = strtol(e, &end, 10);
+				if (end && end != e) return (time_t)v;
+			}
+			return (time_t)0; // default 1970-01-01 00:00:00
+		}();
+		return fixed;
+	}
+	return time(nullptr);
+}
+
+static int m2c_force_lf() {
+	static const int v = getenv("M2C_FORCE_LF") ? atoi(getenv("M2C_FORCE_LF")) : 0;
+	return v;
+}
 static void host_advance_timer_counters() {
 	if (dw* ticker_counter = host_ticker_counter()) {
 		++*ticker_counter;
 	}
 	if (dw* frames_counter = host_frames_counter()) {
-		++*frames_counter;
+		// M2C_FORCE_LF freezes Frames at the pinned value (poll_host_events keeps
+		// it there) so FrameWait's LastFrame is a fixed timestep; skip ++ here or
+		// the flip advance would overshoot before the poll re-pins.
+		if (m2c_force_lf() <= 0) ++*frames_counter;
 	}
 	dw* countdown_counter = host_countdown_counter();
 	if (countdown_counter && *countdown_counter > 0) {
@@ -2083,7 +2888,19 @@ static void host_advance_timer_counters() {
 	}
 }
 
+// One deterministic game frame = one 100Hz-tick batch. FrameWait gates on
+// frames>=MaxFrameRate so the original runs at a fixed centisecond step per
+// frame; M2C_DET_STEP lets us match that quantum (default = lastframe).
+static int m2c_det_step() {
+	static const int s = getenv("M2C_DET_STEP") ? atoi(getenv("M2C_DET_STEP")) : 6;
+	return s;
+}
+static void host_advance_timer_counters_n(int n) {
+	for (int i = 0; i < n; ++i) host_advance_timer_counters();
+}
+
 static void host_start_timer_thread() {
+	if (m2c_deterministic()) return; // fixed-step: counters advance at page flip
 	bool expected = false;
 	if (!host.timer.background_running.compare_exchange_strong(expected, true)) {
 		return;
@@ -2101,7 +2918,6 @@ static void host_start_timer_thread() {
 // The translated program's main state, captured in init(). The IRQ thread
 // consults its IF flag so guest cli sections are honored while polling the
 // IVT for handlers installed with direct vector writes (no int 21h AH=25h).
-static _STATE* host_irq_main_state = nullptr;
 
 /* Cooperative IRQ delivery. A real ISR shares the caller's machine state and
    runs on the interrupted thread between instructions; the generated code uses
@@ -2131,12 +2947,80 @@ static bool host_irq_state_init = false;
 static void host_fire_ivt(int intno, _STATE* _state) {
 	const dw off = *(dw*)host_physical_address(0, intno * 4);
 	const dw seg = *(dw*)host_physical_address(0, intno * 4 + 2);
+	if (getenv("M2C_IRQDBG") && intno==0x08) { static int c8=0; if(++c8<=4) fprintf(stderr,"FIREIVT8 rptr=%p val=%04x:%04x m=%p\n",(void*)host_physical_address(0,intno*4),(unsigned)seg,(unsigned)off,(void*)&m2c::m); }
 	// Skip unset/BIOS-adapter-region vectors, but let the translated TANDYSND
 	// ISR (which lives at its own code segment, e.g. a239:0373) fire.
-	if ((off | seg) == 0 || (seg >= 0xa000 && seg != tnd_code_seg)) {
+	if ((off | seg) == 0 || (seg >= 0xa000 && seg != tnd_code_seg && !rm_vec_set[intno])) {
 		return;
 	}
 	if (host_irq_main_state && !host_irq_main_state->IF) {
+		return;
+	}
+	/* Run the ISR on a SEPARATE _STATE with its own dedicated int8stack. Its
+	   native_return marks are keyed by this state's pointer, so they never
+	   collide with the interrupted game's in-flight dispatch bookkeeping, and
+	   its pushes/pops land on int8stack (never the game's live stack[]). A
+	   properly PUSH_-ed 0:0 sentinel makes the handler's IRET/RETF unwind to
+	   C++ via is_dos_terminate_vector, exactly like host_run_timer_handler. */
+	if (!host_irq_state_init) {
+		std::memset(&host_irq_state, 0, sizeof(host_irq_state));
+		host_irq_state_init = true;
+	}
+	{
+		_STATE* irq = &host_irq_state;
+		/* Executing cs must stay 0 inside translated code: __dispatch_call does
+		   `__i |= cs<<16` for bare k* targets, which is only a no-op at cs==0.
+		   Setting cs=seg made every ISR in-proc jump/call resolve to seg:off and
+		   miss all local cases. The IRET frame's popped cs is written to the
+		   ISR stack separately, so the register stays 0. */
+		irq->cs = 0;
+		irq->eip = off;
+		/* Dedicated ISR stack at the low quarter of the stack[] arena. The
+		   game's own esp stays near the top (~0xff00) so it never reaches
+		   down here; the ISR's pushes/pops are fully separate. (int8stack
+		   isn't usable: Memory is forward-declared-only at this point.) */
+		irq->ss = seg_offset(stack);
+		irq->esp = 0x3000;
+		/* Fully isolate native-return bookkeeping for the ISR: move the game's
+		   marks/values out, reset the shared depth to a clean 0, run the ISR
+		   self-contained, restore. Otherwise the ISR's calls ride on the game's
+		   inflated depth and its register-carried returns leak into the shared
+		   native_return_values, inflating depth until every consume misses. */
+		std::vector<NativeReturnMark> saved_marks_v, saved_values_v;
+		saved_marks_v.swap(m2c::native_return_marks);
+		saved_values_v.swap(m2c::native_return_values);
+		const size_t saved_depth = m2c::native_return_call_depth;
+		m2c::native_return_call_depth = 0;
+		const bool saved_suppress = m2c::suppress_native_return_push_transfer;
+		m2c::suppress_native_return_push_transfer = true;
+		PUSH_((dw)0, irq); // flags slot (IRET) / padding (RETF)
+		PUSH_((dw)0, irq); // sentinel cs
+		PUSH_((dw)0, irq); // sentinel ip=0 -> unwind to C++
+		m2c::suppress_native_return_push_transfer = saved_suppress;
+#ifdef SHADOW_STACK
+		const ShadowStack::SavedState saved_shadow = m2c::shadow_stack.save_state();
+#endif
+		bool handled = false;
+		try {
+			m2c::dispatch_external_code(static_cast<_offsets>(off), irq, &handled);
+		} catch (const m2c::StackPop&) {
+			// An IRET/RETF inside the handler unwound past the frame: normal.
+		}
+		if (getenv("M2C_IRQDBG")) {
+			static unsigned dcnt[256] = {0};
+			if (intno < 256 && (++dcnt[intno] & 0x3f) == 1)
+				fprintf(stderr, "FIREIVT int=%02x seg=%04x off=%04x handled=%d\n",
+					intno, (unsigned)seg, (unsigned)off, (int)handled);
+		}
+		m2c::native_return_marks.clear();
+		m2c::native_return_values.clear();
+		m2c::native_return_marks.swap(saved_marks_v);
+		m2c::native_return_values.swap(saved_values_v);
+		m2c::native_return_call_depth = saved_depth;
+		m2c::suppress_native_return_push_transfer = saved_suppress;
+#ifdef SHADOW_STACK
+		m2c::shadow_stack.restore_state(saved_shadow);
+#endif
 		return;
 	}
 	if (!host_irq_state_init) {
@@ -2163,16 +3047,25 @@ static void host_fire_ivt(int intno, _STATE* _state) {
 	irq->esp = irq_sp;
 	*(dw*)m2c::stack_raddr_(irq->ss, (dw)irq->esp) = 0;
 	*(dw*)m2c::stack_raddr_(irq->ss, (dw)(irq->esp + 2)) = 0;
-	irq->cs = seg;
+	/* Keep executing cs=0 for the same reason as the early path: bare k*
+	   dispatch offsets require __i |= cs<<16 to be a no-op. */
+	irq->cs = 0;
 	irq->eip = off;
 #ifdef SHADOW_STACK
 	const ShadowStack::SavedState saved_shadow = m2c::shadow_stack.save_state();
 #endif
-	// Snapshot native-return bookkeeping; the handler may leave stale marks
-	// behind (e.g. when a StackPop unwind bypasses the matching RET).
-	const size_t saved_marks = m2c::native_return_marks.size();
-	const size_t saved_values = m2c::native_return_values.size();
+	/* Fully isolate native-return bookkeeping for the ISR. The global
+	   native_return_call_depth is shared, so a nested ISR's calls ride on top
+	   of the game's (already deep) counter; its register-carried returns then
+	   miss call_depth==curdepth and leak into native_return_values, inflating
+	   the shared depth further and making every later consume miss. Give the
+	   ISR a pristine context (depth 0, empty marks/values) and restore the
+	   game's on the way out. */
+	std::vector<NativeReturnMark> saved_marks_v, saved_values_v;
+	saved_marks_v.swap(m2c::native_return_marks);
+	saved_values_v.swap(m2c::native_return_values);
 	const size_t saved_depth = m2c::native_return_call_depth;
+	m2c::native_return_call_depth = 0;
 	const bool saved_suppress = m2c::suppress_native_return_push_transfer;
 	/* Dispatch through the aggregate global-offset table: IVT offsets were
 	   stored by generated `OFFSET` writes (kglobal_* space), so `off` maps
@@ -2188,11 +3081,20 @@ static void host_fire_ivt(int intno, _STATE* _state) {
 		// An IRET/RETF inside the handler unwound past the synthesized frame;
 		// that is the normal way back to C++, not an error.
 	}
+	if (getenv("M2C_IRQDBG")) {
+		static unsigned dcnt[256] = {0};
+		if (intno < 256 && (++dcnt[intno] & 0x3f) == 1)
+			fprintf(stderr, "FIREIVT int=%02x seg=%04x off=%04x handled=%d\n",
+				intno, (unsigned)seg, (unsigned)off, (int)handled);
+	}
 	if (!handled) {
 		log_debug2("irq vector %x:%x not handled by translated code\n", seg, off);
 	}
-	m2c::native_return_marks.resize(saved_marks);
-	m2c::native_return_values.resize(saved_values);
+	/* Discard whatever marks/values the ISR left and restore the game's. */
+	m2c::native_return_marks.clear();
+	m2c::native_return_values.clear();
+	m2c::native_return_marks.swap(saved_marks_v);
+	m2c::native_return_values.swap(saved_values_v);
 	m2c::native_return_call_depth = saved_depth;
 	m2c::suppress_native_return_push_transfer = saved_suppress;
 #ifdef SHADOW_STACK
@@ -2212,11 +3114,39 @@ struct HostIrqCallbackGuard {
 	~HostIrqCallbackGuard() { host.timer.in_callback = false; }
 };
 
+/* Pending hardware-keyboard IRQ1 (int 9) requests. host_set_key pushes the
+   port-0x60 byte (scancode, bit7 set = release) for every host key event; the
+   game thread drains them here, presenting the byte on port 0x60 and firing the
+   game's own int9 ISR (KbdIntr) so its Key[] held-state table updates exactly
+   as on real IRQ1 hardware. SPSC ring: SDL thread produces, game thread drains. */
+static db host_irq9_queue[64];
+static std::atomic<unsigned> host_irq9_qhead{0};
+static std::atomic<unsigned> host_irq9_qtail{0};
+static void host_queue_irq9(db port60) {
+	unsigned t = host_irq9_qtail.load(std::memory_order_relaxed);
+	unsigned n = (t + 1) % 64;
+	if (n == host_irq9_qhead.load(std::memory_order_acquire)) return; // full: drop
+	host_irq9_queue[t] = port60;
+	host_irq9_qtail.store(n, std::memory_order_release);
+}
+static bool host_dequeue_irq9(db* out) {
+	unsigned h = host_irq9_qhead.load(std::memory_order_relaxed);
+	if (h == host_irq9_qtail.load(std::memory_order_acquire)) return false;
+	*out = host_irq9_queue[h];
+	host_irq9_qhead.store((h + 1) % 64, std::memory_order_release);
+	return true;
+}
+
 static void host_drain_irq() {
 	if (host.timer.in_callback) {
 		return;
 	}
 	HostIrqCallbackGuard callback_guard;
+	db kscan;
+	while (host_dequeue_irq9(&kscan)) {
+		host.keyboard_scan_code = kscan;
+		host_fire_ivt(0x09, nullptr);
+	}
 	/* Real hardware latches at most one pending IRQ per source: ticks that
 	   arrive while the game is busy are lost, never queued. Clamp the catch-up
 	   batch so a stall (heavy frame, debugger pause) cannot queue thousands of
@@ -2233,7 +3163,58 @@ static void host_drain_irq() {
 // Cheap periodic drain trigger injected into hot generated-code helpers. The
 // counter bounds overhead; the atomic pending check makes the common case a
 // single load. Runs on whichever thread executes generated code (the game's).
+#ifndef NOSDL
+static void host_pump_sdl_events();
+#endif
+
 void host_irq_poll() {
+#ifndef NOSDL
+	/* Pump SDL on a ~1ms cadence: a game polling its int9 Key[] table in a
+	   tight loop never reaches the BIOS int16/int8 waits that call
+	   poll_host_events, so without this SDL_KEYDOWNs queue up and input is
+	   ignored. host_set_key (invoked per event) writes the game's Key[]
+	   directly. */
+	{
+		using namespace std::chrono;
+		static steady_clock::time_point last_pump{};
+		const steady_clock::time_point now = steady_clock::now();
+		if (now - last_pump >= milliseconds(1)) {
+			last_pump = now;
+			host_pump_sdl_events();
+		}
+	}
+#endif
+	/* No joystick hardware exists (game port 0x201 always reads 0xff), but
+	   Tornado defaults ControlDevice to CTRL_DEV_JOY1/2 and then reads a dead
+	   stick, leaving flight controls unresponsive. Fall back to keyboard
+	   (CTRL_DEV_KBD1=0) whenever a joystick device is selected so arrows steer;
+	   the user can still switch device via the in-game menu. */
+	if (&::controldevice != nullptr && ::controldevice &&
+	    (*::controldevice == 4 || *::controldevice == 6)) {
+		*::controldevice = 0;
+	}
+	/* Keyboard IRQ1 (int9) is input-driven, not timer-driven: deliver pending
+	   scancodes on every poll regardless of deterministic mode or timer state,
+	   or the game's Key[] held-state never updates (keys appear ignored). */
+	if (host_irq9_qhead.load(std::memory_order_acquire) !=
+	    host_irq9_qtail.load(std::memory_order_acquire)) {
+		host_drain_irq();
+	}
+	if (m2c_deterministic()) {
+		// Keep frames >= maxframerate so FrameWait never blocks on a frozen
+		// counter; the flip hook then re-pins a constant dt each frame.
+		if (dw* f = host_frames_counter()) { if (*f < 6) *f = 6; }
+		// M2C_FORCE_LF pins the game's Frames tick counter to a constant so
+		// FrameWait always exits with LastFrame=Frames=that constant and
+		// DeltaTime (DeltaTable[LastFrame]) is a fixed timestep regardless of
+		// page-flip/FrameWait tick-count jitter. FrameWait reads `frames` itself,
+		// so the source is pinned, not the downstream lastframe copy.
+		if (dw* fc = host_frames_counter()) {
+			static const int lf = getenv("M2C_FORCE_LF") ? atoi(getenv("M2C_FORCE_LF")) : 0;
+			if (lf > 0) *fc = lf;
+		}
+		return;
+	}
 	if (host.timer.enabled) {
 		host_advance_timer_counters();
 	}
@@ -2257,6 +3238,7 @@ bool host_try_overlay_retf(_offsets __disp, _STATE* _state, bool* out_result) {
 		return true;
 	}
 	const dw tseg = static_cast<dw>(__disp >> 16);
+	m2c_check_cs(_state, __disp, "ovlretf");
 	// Translated TANDYSND overlay: an external far call / ISR targets the
 	// driver's code segment (tseg == tnd_code_seg), while an internal indirect
 	// dispatch (e.g. `call off_10380[bx]`) arrives with tseg == 0 while cs is
@@ -2314,6 +3296,10 @@ bool host_try_overlay_retf(_offsets __disp, _STATE* _state, bool* out_result) {
 			 m2c_code_segment_raddr(tseg, toff) != nullptr) ||
 			linked_code_segment_raddr(tseg, toff) != nullptr ||
 			m2c_alloc_segment_raddr(tseg, toff) != nullptr;
+		if (getenv("M2C_OVRDBG") && (toff == 0x1682 || toff == 0x167f)) {
+			fprintf(stderr, "OVLRETF disp=%08x tseg=%04x toff=%04x real_seg=%d\n",
+				(unsigned)__disp, (unsigned)tseg, (unsigned)toff, (int)real_seg);
+		}
 		if (!real_seg) {
 			bool inner = false;
 			const bool ok = dispatch_external_code(
@@ -2322,12 +3308,54 @@ bool host_try_overlay_retf(_offsets __disp, _STATE* _state, bool* out_result) {
 				*out_result = ok;
 				return true;
 			}
+			if (getenv("M2C_OVRDBG") && (toff == 0x1682 || toff == 0x167f)) {
+				fprintf(stderr, "OVLRETF inner-miss toff=%04x (case not found)\n", (unsigned)toff);
+			}
+		}
+		/* Module-local far pointer: `tseg` is the host paragraph of a proc
+		 * wrapper (seg_offset(label)) and `toff` a module-local `k*` offset
+		 * -- not a flat `kglobal_*`, so the aggregate retry above missed.
+		 * Route `toff` into the owning module's group dispatcher.  Applies
+		 * both to `real_seg` targets (genuine seg:off that must not be
+		 * stripped) and to stripped-but-unresolved local offsets. */
+		if (m2cf* f = m2c_seg_func_for(tseg)) {
+			*out_result = f(static_cast<_offsets>(toff), _state);
+			return true;
+		}
+	}
+	if (m2c_dispassert) {
+		const dw toff = static_cast<dw>(__disp & 0xffff);
+		const bool real_seg =
+			(tlink_code_segment_raddr && tlink_code_segment_raddr(tseg, toff)) ||
+			(m2c_code_segment_raddr && m2c_code_segment_raddr(tseg, toff)) ||
+			linked_code_segment_raddr(tseg, toff) ||
+			m2c_alloc_segment_raddr(tseg, toff);
+		fprintf(stderr,
+			"[DISPMISS] disp=%08x seg=%04x off=%04x cs=%04x eip=%04x "
+			"real_seg=%d funcseg=%s sp=%04x ss=%04x depth=%d "
+			"i=%x from=%04x rip=%04x\n",
+			(unsigned)__disp, (unsigned)tseg, (unsigned)toff,
+			(unsigned)_state->cs, (unsigned)(_state->eip & 0xffff),
+			(int)real_seg,
+			m2c_seg_func_for(tseg) ? "Y" : "N",
+			(unsigned)(_state->esp & 0xffff), (unsigned)_state->ss,
+			(int)native_return_call_depth,
+			m2c_last_callsite_i, m2c_last_callsite_eip, m2c_last_callsite_rip);
+		/* dump guest stack words to find caller return chain */
+		{
+			const db* spb = (const db*)&m;
+			for (int i = 0; i < 8; ++i) {
+				unsigned w = spb[(_state->ss << 4) + (_state->esp & 0xffff) + i*2]
+					| (spb[(_state->ss << 4) + (_state->esp & 0xffff) + i*2 + 1] << 8);
+				fprintf(stderr, "   stk[%d]=%04x\n", i, w);
+			}
 		}
 	}
 	return false;
 }
 
 static void host_start_irq_thread() {
+	if (m2c_deterministic()) return; // fixed-step: no wall-clock IRQ pacing
 	bool expected = false;
 	if (!host.timer.irq_running.compare_exchange_strong(expected, true)) {
 		return;
@@ -2504,6 +3532,10 @@ static void host_set_key(int scan_code, bool pressed) {
 		return;
 	}
 	host.keyboard_scan_code = pressed ? scan_code : (scan_code | 0x80);
+	// Real hardware raises IRQ1 -> the game's int9 ISR (KbdIntr) reads port
+	// 0x60 and updates its Key[] held-state table. Queue the port-0x60 byte so
+	// the game thread fires vector 0x9; without it the table never updates.
+	host_queue_irq9((db)(pressed ? scan_code : (scan_code | 0x80)));
 	// The game's INT 9 held-key bitmask is independent of the generic key[]
 	// table; update it even when that table is absent (key is a null weak sym).
 	host_int9_update(scan_code, pressed);
@@ -2628,6 +3660,25 @@ static void host_run_timer(struct _STATE* _state) {
 	if (!host.timer.enabled || host.timer.in_callback) {
 		return;
 	}
+	if (m2c_deterministic()) {
+		// Deterministic: drip-det_step IRQ0 ticks per rendered frame, spread one
+		// per poll rather than bunched -- gameintr100 then samples key[] state
+		// across the frame like a real PIT, so short key taps still register, and
+		// the per-frame tick count stays identical between stock and lifted.
+		static int budget = 0;
+		static unsigned last_det = 0;
+		const unsigned now = g_det_flip_tick;
+		if (now != last_det) {
+			budget += (int)(now - last_det) * m2c_det_step();
+			last_det = now;
+		}
+		if (budget > 0) {
+			--budget;
+			HostIrqCallbackGuard callback_guard;
+			host_fire_ivt(0x08, _state);
+		}
+		return;
+	}
 	const uint64_t now_us = host_now_us();
 	if (host.timer.last_us == 0) {
 		host.timer.last_us = now_us;
@@ -2643,15 +3694,15 @@ static void host_run_timer(struct _STATE* _state) {
 	while (host.timer.accum_us >= 10000 && ticks_this_pump < 5) {
 		host.timer.accum_us -= 10000;
 		++ticks_this_pump;
-		if (::gameintr100) {
-			host_run_timer_handler(::gameintr100, _state);
-		}
-		if (++host.timer.divider_20hz >= 5) {
-			host.timer.divider_20hz = 0;
-			if (::gameintr20) {
-				host_run_timer_handler(::gameintr20, _state);
-			}
-		}
+		/* Fire the installed IRQ0 handler (IVT[8] -> timerintr) through the
+		   cooperative-IRQ path. timerintr sets ds=DATA, updates the counters,
+		   checks the user-vector flags and CALLFs the registered 100Hz/20Hz
+		   user procs (gameintr100/gameintr20) with the correct segment -- the
+		   same work a real PIT tick performs. Calling the user procs directly
+		   here ran them on the shared _state with a stale cs/ds and ignored
+		   IF, which corrupted far-return dispatch whenever a tick landed mid
+		   `int`/cli window. */
+		host_fire_ivt(0x08, _state);
 	}
 }
 
@@ -2700,15 +3751,17 @@ static void poll_host_stdin() {
 			key = (dw)(scan << 8); // extended key: AL=0, AH=scancode
 		}
 		if (key) {
-			// A key is diverted to the game's held-key bitmask only when its
-			// INT 9 ISR maps it (table entry nonzero); all other keys still
-			// chain to the BIOS buffer for INT 16h. Terminal keys have no
-			// release event, so emulate a short tap for diverted keys.
-			if (host_int9_diverts_key((key >> 8) & 0x7f)) {
-				host_int9_tap((key >> 8) & 0x7f);
-			} else {
-				host_keyboard_push(key);
+			// Real hardware raises IRQ1 (int9 ISR updates the game's Key[]
+			// held-state) AND lands the key in the BIOS buffer for INT 16h;
+			// deliver to both. Terminal input has no release event, so tap:
+			// press then release so the key doesn't latch held forever.
+			const int scan = (key >> 8) & 0x7f;
+			if (scan && !getenv("M2C_NO_INT9")) {
+				host_set_key(scan, true);
+				host_set_key(scan, false);
 			}
+			if (!getenv("M2C_NO_BIOSQ"))
+				host_keyboard_push(key);
 		}
 	}
 #endif
@@ -2716,6 +3769,26 @@ static void poll_host_stdin() {
 
 #ifndef NOCURSES
 static void host_render_text_memory() {
+	if (host_gfx_mode()) {
+		// Graphics modes: show the char-cell shadow (text drawn via int10
+		// AH=09) on the terminal at the mode's column width.
+		static db cshadow[HostVga::TEXT_ROWS * HostVga::TEXT_COLS];
+		const int cols = cga_text_cols();
+		if (std::memcmp(host.vga.cga_cells, cshadow, sizeof(cshadow)) == 0) {
+			return;
+		}
+		std::memcpy(cshadow, host.vga.cga_cells, sizeof(cshadow));
+		for (int row = 0; row < HostVga::TEXT_ROWS; ++row) {
+			for (int col = 0; col < cols; ++col) {
+				const db ch = host.vga.cga_cells[row][col];
+				mvaddch(row, col, ch ? ch : ' ');
+			}
+		}
+		const db page = host_text_page(host.vga.active_page);
+		move(host.vga.cursor_row[page], host.vga.cursor_col[page]);
+		refresh();
+		return;
+	}
 	if (host.vga.current_mode > 3 && host.vga.current_mode != 7) {
 		return;
 	}
@@ -2738,6 +3811,76 @@ static void host_render_text_memory() {
 }
 #endif
 
+#ifndef NOSDL
+/* Drain the SDL event queue into host key/mouse state. Runs on the game thread.
+   Must be pumped continuously: a game that polls its int9 Key[] table in a
+   tight loop (e.g. Tornado flight controls) never reaches the BIOS int16/int8
+   waits where poll_host_events is invoked, so SDL_KEYDOWNs would queue forever
+   and the game would appear to ignore input. */
+static void host_pump_sdl_events() {
+	if ((SDL_WasInit(SDL_INIT_VIDEO) & SDL_INIT_VIDEO) == 0) {
+		return;
+	}
+	SDL_Event event;
+	while (SDL_PollEvent(&event)) {
+		switch (event.type) {
+		case SDL_QUIT:
+			executionFinished = true;
+			jumpToBackGround = true;
+			/* The window-close control must end the process now: the
+			   generated flight loop only consults executionFinished when a
+			   call happens to return false, so the flag alone leaves the
+			   game running long after the window is gone. exit() still runs
+			   atexit handlers (midi_flush, capture dump, etc). */
+			exit(0);
+			break;
+		case SDL_MOUSEMOTION:
+			host.mouse.x = event.motion.x;
+			host.mouse.y = event.motion.y;
+			host.mouse.motion_x += event.motion.xrel;
+			host.mouse.motion_y += event.motion.yrel;
+			clamp_host_mouse();
+			break;
+		case SDL_MOUSEBUTTONDOWN:
+		case SDL_MOUSEBUTTONUP: {
+			int bit = 0;
+			if (event.button.button == SDL_BUTTON_LEFT) {
+				bit = 1;
+			} else if (event.button.button == SDL_BUTTON_RIGHT) {
+				bit = 2;
+			} else if (event.button.button == SDL_BUTTON_MIDDLE) {
+				bit = 4;
+			}
+			if (event.type == SDL_MOUSEBUTTONDOWN) {
+				host.mouse.buttons |= bit;
+			} else {
+				host.mouse.buttons &= ~bit;
+			}
+			break;
+		}
+		case SDL_KEYDOWN:
+		case SDL_KEYUP: {
+			const int pc_scan =
+				sdl_scancode_to_pc(event.key.keysym.scancode);
+			if (getenv("M2C_KEYDBG")) fprintf(stderr, "sdlkey sc=%d pc=%d dn=%d\n",
+				event.key.keysym.scancode, pc_scan, event.type==SDL_KEYDOWN);
+			host_set_key(pc_scan, event.type == SDL_KEYDOWN);
+			// A key diverted to the game's held-key bitmask (mapped in its
+			// INT 9 ISR table) is consumed by it; every other key still
+			// chains to the BIOS buffer for INT 16h, as on real hardware.
+			if (event.type == SDL_KEYDOWN && event.key.repeat == 0 &&
+				!host_int9_diverts_key(pc_scan)) {
+				host_keyboard_push(sdl_key_event_to_bios_key(event.key));
+			}
+			break;
+		}
+		default:
+			break;
+		}
+	}
+}
+#endif
+
 static void poll_host_events(struct _STATE* _state) {
 	poll_host_stdin();
 	host_int9_release_taps();
@@ -2745,65 +3888,68 @@ static void poll_host_events(struct _STATE* _state) {
 	host_render_text_memory();
 #endif
 #ifndef NOSDL
-	if ((SDL_WasInit(SDL_INIT_VIDEO) & SDL_INIT_VIDEO) != 0) {
-		SDL_Event event;
-		while (SDL_PollEvent(&event)) {
-			switch (event.type) {
-			case SDL_QUIT:
-				executionFinished = true;
-				jumpToBackGround = true;
-				break;
-			case SDL_MOUSEMOTION:
-				host.mouse.x = event.motion.x;
-				host.mouse.y = event.motion.y;
-				host.mouse.motion_x += event.motion.xrel;
-				host.mouse.motion_y += event.motion.yrel;
-				clamp_host_mouse();
-				break;
-			case SDL_MOUSEBUTTONDOWN:
-			case SDL_MOUSEBUTTONUP: {
-				int bit = 0;
-				if (event.button.button == SDL_BUTTON_LEFT) {
-					bit = 1;
-				} else if (event.button.button == SDL_BUTTON_RIGHT) {
-					bit = 2;
-				} else if (event.button.button == SDL_BUTTON_MIDDLE) {
-					bit = 4;
-				}
-				if (event.type == SDL_MOUSEBUTTONDOWN) {
-					host.mouse.buttons |= bit;
-				} else {
-					host.mouse.buttons &= ~bit;
-				}
-				break;
-			}
-			case SDL_KEYDOWN:
-			case SDL_KEYUP: {
-				const int pc_scan =
-					sdl_scancode_to_pc(event.key.keysym.scancode);
-				host_set_key(pc_scan, event.type == SDL_KEYDOWN);
-				// A key diverted to the game's held-key bitmask (mapped in its
-				// INT 9 ISR table) is consumed by it; every other key still
-				// chains to the BIOS buffer for INT 16h, as on real hardware.
-				if (event.type == SDL_KEYDOWN && event.key.repeat == 0 &&
-					!host_int9_diverts_key(pc_scan)) {
-					host_keyboard_push(sdl_key_event_to_bios_key(event.key));
-				}
-				break;
-			}
-			default:
-				break;
-			}
+	host_pump_sdl_events();
+#endif
+	/* Idle interpreters that neither present nor poll 0x3DA would never tick
+	   the keyscript; pace it here (~30ms) so scripted input still delivers. */
+	if (!m2c_deterministic() && getenv("M2C_KEYSCRIPT")) {
+		static uint64_t last_ks_ms = 0;
+		const uint64_t now_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+			std::chrono::steady_clock::now().time_since_epoch()).count();
+		if (now_ms - last_ks_ms >= 30) {
+			last_ks_ms = now_ms;
+			host_keyscript_tick();
 		}
 	}
-#endif
 	host_run_timer(_state);
 	host_drain_irq();
 #ifndef NOSDL
+	/* CGA graphics modes write pixels straight into guest VRAM at B800 — no
+	   write hook exists there, so diff the framebuffer each poll and present
+	   on change. Same for text modes: GW-BASIC pokes char/attr cells through
+	   ES=B800 directly. */
+	if ((host_gfx_mode() || host_text_mode()) && renderer) {
+		static db cga_shadow[0x4000] = {};
+		const db* vram = reinterpret_cast<const db*>(&m) + 0xB8000;
+		if (std::memcmp(vram, cga_shadow, sizeof(cga_shadow)) != 0) {
+			std::memcpy(cga_shadow, vram, sizeof(cga_shadow));
+			vga_render_dirty = true;
+		}
+	}
 	/* Flush any pending frame tail on screens that draw then idle waiting for
 	   input without polling the retrace port; rate-limited so it stays cheap. */
 	vga_present_pending();
 #endif
+	// M2C_MEMDUMP="file,off,len" — dump len bytes of guest image at &m+off.
+	// Change-detection mode: FNV-1a the region each poll and write a
+	// sequenced file_NNNNN dump only when it differs — a timing-independent
+	// series of screen states matching det.cpp's DOSBOX_MEMDUMP_CHANGED.
+	{	const char *spec = getenv("M2C_MEMDUMP");
+		if (spec && *spec) {
+			static char md_path[512]; static unsigned long md_off = 0, md_len = 0;
+			static bool md_ready = false;
+			if (!md_ready) {
+				md_ready = std::sscanf(spec, "%511[^,],%lx,%lx", md_path, &md_off, &md_len) == 3;
+			}
+			if (md_ready) {
+				static uint64_t md_prev = 0;
+				static unsigned md_seq = 0;
+				const db *p = ((const db*)&m2c::m) + md_off;
+				uint64_t h = 1469598103934665603ull;
+				for (unsigned long i = 0; i < md_len; ++i) h = (h ^ p[i]) * 1099511628211ull;
+				if (h != md_prev) {
+					md_prev = h;
+					char path[600]; char seq[32];
+					snprintf(seq, sizeof(seq), "_%05u", ++md_seq);
+					char *dot = strrchr(strcpy(path, md_path), '.');
+					if (dot) { memmove(dot + strlen(seq), dot, strlen(dot) + 1); memcpy(dot, seq, strlen(seq)); }
+					else strcat(path, seq);
+					FILE *f = std::fopen(path, "wb");
+					if (f) { std::fwrite(p, 1, md_len, f); std::fclose(f); }
+				}
+			}
+		}
+	}
 }
 
 static bool host_keyboard_wait(struct _STATE* _state, dw* bios_key) {
@@ -3121,6 +4267,38 @@ X86_REGREF
 		break;
 	case 0x3d5:
 		host.vga.crtc_regs[host.vga.crtc_index] = data;
+		// A write to CRTC start regs (0x0c/0x0d) completes the mode-X page flip:
+		// exactly once per game frame. Hash the VRAM image on each flip for a
+		// deterministic per-frame sequence independent of SDL present cadence.
+		if (host.vga.crtc_index == 0x0c || host.vga.crtc_index == 0x0d) {
+			static size_t last_start = (size_t)-1;
+			const size_t cur = vga_crtc_start_byte_offset();
+			{static unsigned _fl=0; if (getenv("M2C_STATEDBG") && (++_fl<30 || _fl%300==0)) fprintf(stderr,"[crtcflip #%u idx=%#x data=%#x cur=%#x last=%#x]\n",_fl,(int)host.vga.crtc_index,(int)data,cur,last_start);}
+			if (cur != last_start) {
+				last_start = cur;
+				/* A CRTC start-address change is the mode-X page flip: the frame's
+				   commit point on real hardware. Present the freshly-exposed page —
+				   without this a game that draws the hidden page then flips never
+				   triggers an SDL present and the window freezes. */
+#if !defined(NOSDL)
+				if (renderer) {
+					vga_present_now();
+				}
+#endif
+				if (m2c_deterministic()) {
+					++g_det_flip_tick;
+					++g_dbg_flip;
+					host_keyscript_tick();
+					// Fixed-step: each page flip = one game frame advances the
+					// sim clock by a constant quantum, independent of wall clock.
+					host_advance_timer_counters_n(m2c_det_step());
+					++*(dd*)host_physical_address(0x40, 0x6c); // BIOS tick ~18.2Hz
+					if (dw* f = host_frames_counter()) *f = m2c_force_lf() > 0 ? m2c_force_lf() : m2c_det_step(); // constant dt
+				}
+				vga_dump_flip_index();
+				m2c_frame_tick_hash();
+			}
+		}
 		break;
 	default:
 		log_error("unknown OUT %x,%x at %x:%x\n",address, data,cs,eip);
@@ -3181,16 +4359,43 @@ X86_REGREF
 		return host.vga.crtc_index;
 	case 0x3DA:
 		host.vga.attr_waiting_for_index = true;
+#if SDL_MAJOR_VERSION == 2 && !defined(NOSDL)
+		{static unsigned _da=0; if (getenv("M2C_STATEDBG") && (++_da<40 || _da%600==0)) fprintf(stderr,"[in3da #%u rdr=%p dirty=%d tid=%llx]\n",_da,(void*)renderer,(int)vga_render_dirty,(unsigned long long)std::hash<std::thread::id>()(std::this_thread::get_id()));}
+#endif
   #if SDL_MAJOR_VERSION == 2 && !defined(NOSDL) && M2CDEBUG != -1
 		vga_present_forced();
   #endif
-		if (vblTick) {
-			vblTick = 0;
+		if (m2c_deterministic()) {
+			// Fixed-step: alternate the retrace bit so the vblank poll sees a
+			// deterministic edge each frame without wall-clock pacing.
+			vblTick = !vblTick;
+			return vblTick ? 8 : 0;
+		}
+		{
+			/* Model ~70 Hz vertical retrace on the wall clock. The guest's
+			   wait-for-vblank loop (in al,0x3da; test al,8; jz) then paces the
+			   frame loop at display rate instead of free-running a core at 100%.
+			   While "not in retrace" we yield so that spin loop sleeps instead
+			   of burning CPU. */
+			using vblclock = std::chrono::steady_clock;
+			static vblclock::time_point last = vblclock::time_point::min();
+			static vblclock::time_point lastYield = vblclock::time_point::min();
+			const vblclock::time_point now = vblclock::now();
+			if (last == vblclock::time_point::min()) {
+				last = now;
+			}
+			const auto us = std::chrono::duration_cast<std::chrono::microseconds>(now - last).count();
+			if (us >= 14000) {           // ~70 Hz retrace interval elapsed
+				last = now;
+				jumpToBackGround = 1;
+				return 8;                // in vertical retrace
+			}
+			// Not yet retrace: yield ~0.5 ms so the poll loop doesn't spin.
+			if (now - lastYield >= std::chrono::microseconds(500)) {
+				lastYield = now;
+				std::this_thread::sleep_for(std::chrono::microseconds(200));
+			}
 			return 0;
-		} else {
-			vblTick = 1;
-			jumpToBackGround = 1;
-			return 8;
 		}
 		//break;
 	case 0x3d5:
@@ -3410,12 +4615,22 @@ X86_REGREF
 					refresh();
 #endif
 					host_text_clear_all();
+#ifndef NOSDL
+ #if SDL_MAJOR_VERSION == 2
+					ensure_sdl_vga_window(640, 400);
+ #endif
+#endif
 					log_debug2("Switch to text mode\n");
 					return;
 				}
 			
-			case 0x04: {
-				log_debug2("Switch to CGA\n");
+			case 0x04:
+			case 0x05:
+			case 0x06: {
+				log_debug2("Switch to CGA mode %x\n", al);
+				host.vga.cga_color_select = 0;
+				host.vga.cga_palette = 0;
+				cga_clear_screen();
 #ifdef __DJGPP__
         call_dos_realint(_state, a);
 #endif
@@ -3423,7 +4638,10 @@ X86_REGREF
 #ifndef NOSDL
  #if SDL_MAJOR_VERSION == 2
 
-				init_sdl_vga_window();
+				// Render CGA pixel-doubled to 640x400 so the window keeps the
+				// same footprint as text mode (a real CGA fills the same CRT
+				// area as 80x25 text; 320x200 pixels are 2x2 blocks).
+				ensure_sdl_vga_window(640, 400);
 				if (renderer) {
 					SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
 					SDL_RenderClear(renderer);
@@ -3431,7 +4649,6 @@ X86_REGREF
 				}
  #endif
 #endif
-				//stackDump(_state);
 				return;
 			}
 
@@ -3507,7 +4724,11 @@ X86_REGREF
 				return;
 			}
 			case 0x06: { // scroll up / clear window
-				host_text_scroll_up_window(host.vga.active_page, bh, ch, cl, dh, dl, al);
+				if (host_gfx_mode()) {
+					cga_scroll_up_window(ch, cl, dh, dl, al);
+				} else {
+					host_text_scroll_up_window(host.vga.active_page, bh, ch, cl, dh, dl, al);
+				}
 #ifndef NOCURSES
 				if (al == 0) {
 					clear();
@@ -3520,6 +4741,11 @@ X86_REGREF
 				const db page = host_text_page(bh);
 				const db row = host.vga.cursor_row[page];
 				const db col = host.vga.cursor_col[page];
+				if (host_gfx_mode()) {
+					al = host.vga.cga_cells[row][col];
+					ah = 0;
+					return;
+				}
 				const HostVga::TextCell &cell = host.vga.text[page][row][col];
 				al = cell.ch;
 				ah = cell.attr;
@@ -3532,6 +4758,14 @@ X86_REGREF
 			}
 			case 0x09: { // write character and attribute at cursor
 				const db page = host_text_page(bh);
+				if (host_gfx_mode()) {
+					const db row = host.vga.cursor_row[page];
+					const db col = host.vga.cursor_col[page];
+					for (dw n = 0; n < (cx ? cx : 1); ++n) {
+						cga_draw_cell(row, col + n, al, bl);
+					}
+					return;
+				}
 				host_text_write(page, host.vga.cursor_row[page], host.vga.cursor_col[page], al, bl, cx);
 #ifndef NOCURSES
 				for (dw n = 0; n < cx; ++n) {
@@ -3541,7 +4775,12 @@ X86_REGREF
 #endif
 				return;
 			}
-			case 0x0b: { // set background/border color
+			case 0x0b: { // set background/border/palette color
+				if (bh == 0) {
+					host.vga.cga_color_select = bl;
+				} else if (bh == 1) {
+					host.vga.cga_palette = bl;
+				}
 				return;
 			}
 		case 0x11: {        //set charset size
@@ -3669,7 +4908,7 @@ X86_REGREF
 		call_dos_realint(_state, a);
 		return;
 #else
-		const time_t raw_time = time(nullptr);
+		const time_t raw_time = m2c_host_time();
 		struct tm local_tm;
 #if defined(_WIN32)
 		localtime_s(&local_tm, &raw_time);
@@ -3890,8 +5129,11 @@ X86_REGREF
 		}
 			case 0x25: // Set disk transfer addr
 			{
-				*(dw *)realAddress(al*4,0)=dx;
-				*(dw *)realAddress(al*4+2,0)=ds;
+				*(dw *)host_physical_address(0,al*4)=dx;
+				*(dw *)host_physical_address(0,al*4+2)=ds;
+				rm_vec_set[al] = 1;
+			if (getenv("M2C_IRQDBG") && (al==0x08||al==0x09||al==0x1c))
+				fprintf(stderr,"SETVECT int=%02x ds:dx=%04x:%04x wptr=%p\n",(unsigned)al,(unsigned)ds,(unsigned)dx,(void*)host_physical_address(0,al*4));
 			if (al == 0x08) {
 				host.timer.enabled = true;
 				host.timer.last_us = host_now_us();
@@ -3927,8 +5169,10 @@ X86_REGREF
 				bx = 0x33 * 4;
 				es = 0;
 			} else {
-				bx=*(dw *)realAddress(al*4,0);
-				es=*(dw *)realAddress(al*4+2,0);
+				bx=*(dw *)host_physical_address(0,al*4);
+				es=*(dw *)host_physical_address(0,al*4+2);
+				if (getenv("M2C_IRQDBG") && (al==0x08||al==0x09))
+					fprintf(stderr,"GETVECT int=%02x -> es:bx=%04x:%04x\n",(unsigned)al,(unsigned)es,(unsigned)bx);
 			}
 			return;
 		}
@@ -3938,7 +5182,7 @@ X86_REGREF
         call_dos_realint(_state, a);
 			return;
 #else
-			const time_t raw_time = time(nullptr);
+			const time_t raw_time = m2c_host_time();
 			struct tm local_tm;
 #if defined(_WIN32)
 			localtime_s(&local_tm, &raw_time);
@@ -3964,7 +5208,7 @@ X86_REGREF
         call_dos_realint(_state, a);
 			return;
 #else
-			const time_t raw_time = time(nullptr);
+			const time_t raw_time = m2c_host_time();
 			struct tm local_tm;
 #if defined(_WIN32)
 			localtime_s(&local_tm, &raw_time);
@@ -5276,8 +6520,9 @@ std::this_thread::sleep_for(std::chrono::microseconds(1));
        returns true to suppress the defaults. */
     if (!(m2c_ne_entry_setup && m2c_ne_entry_setup(_state))) {
         sp = STACK_SIZE - 4;
-        cs = M2C_LOAD_SEG;
-        ds = es = M2C_PSP_SEG; // EXE-style entry: CS is the load segment, DS/ES point at the PSP
+        cs = 0; // translated code space: bare k* dispatch offsets require a zero segment so `__disp |= cs<<16` is a no-op
+        eip = 6; // real MZ entry ip: pushed return words land in the true code-offset range so register-carried return juggling (delta<=4) and dispatch cases match as they did under the emulator
+        ds = es = M2C_PSP_SEG; // EXE-style entry: DS/ES point at the PSP
     }
     *(dw*)(raddr(0, 0x408)) = 0x378; //LPT
     /* DOS loader fills PSP:0002 with the top of the program's memory block
@@ -5286,6 +6531,12 @@ std::this_thread::sleep_for(std::chrono::microseconds(1));
        Report 640K - the top of conventional memory on the emulated PC. */
     *(dw*)(host_physical_address(host.current_psp, 2)) = 0xA000;
  #endif
+
+    /* BIOS POST boots the display in text mode with the page-0 buffer filled
+       with blanks at attribute 0x07. Programs that write straight to B800
+       (GW-BASIC's OEM layer) and ones that go through INT 10h must both see
+       that state; mirror it into guest VRAM before entry. */
+    host_text_clear_page(0, 0x07);
 
     /* When the Tandy overlay module is linked, present a Tandy/PCjr BIOS
        signature so the game's hardware probe (F000:FFFE==0xFF and
@@ -5296,8 +6547,32 @@ std::this_thread::sleep_for(std::chrono::microseconds(1));
         log_debug2("tandy: planted PCjr/Tandy BIOS signature in F000 shadow\n");
     }
 
+    /* Seed the real-mode IVT with standard BIOS vectors (F000:xxxx). Programs
+       that hook an interrupt save the previous vector and later chain to it
+       (Tornado's RetViaDOSIntr -> jmp DWORD CS:DOSTimerOff). Without a BIOS
+       default the saved vector is uninitialized garbage that aborts the
+       dispatch; F000:xxxx resolves to the "Jumping to BIOS" case and unwinds
+       cleanly. */
     if (m2c::Initializer) {
         m2c::Initializer();
+    }
+
+    /* Seed the real-mode IVT with standard BIOS vectors (F000:xxxx). Programs
+       that hook an interrupt save the previous vector and later chain to it
+       (Tornado's RetViaDOSIntr -> jmp DWORD CS:DOSTimerOff). Without a BIOS
+       default the saved vector is uninitialized garbage that aborts the
+       dispatch; F000:xxxx resolves to the "Jumping to BIOS" case and unwinds
+       cleanly. This runs AFTER the data-image Initializer(), which may write
+       program bytes over the IVT region. */
+    {
+        db* ivt = (db*)host_physical_address(0, 0);
+        auto seed = [&](int intno, dw off) {
+            *(dw*)(ivt + intno * 4) = off;
+            *(dw*)(ivt + intno * 4 + 2) = 0xF000;
+        };
+        seed(0x08, 0xFEA5); // IRQ0 timer tick (IBM PC TIM_INT)
+        seed(0x09, 0xE987); // IRQ1 keyboard (KB_INT)
+        seed(0x1C, 0xFF53); // user timer tick (dummy iret)
     }
 
     host_irq_main_state = _state;

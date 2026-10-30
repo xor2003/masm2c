@@ -201,6 +201,7 @@ class Cpp(Gen):
         self._expr_state.is_member = False
 
         self.far = False
+        self.proc = None
         self._active_proc_far = False
         self._pending_external_offset_ds_restore = False
         self._pending_data_offset_ds_restore = False
@@ -208,6 +209,10 @@ class Cpp(Gen):
         self._code_skip_label_counter = 0
         self._current_stmt: op.baseop | None = None
         self._next_stmt: op.baseop | None = None
+        self._call_sentinel: int = 0
+        self._sentinel_continuations: list[tuple[int, str]] = []
+        self._sentinel_proc = None
+        self._pending_continuation_label: str = ""
         self._expr_state.reset()
 
         self.itisjump = False
@@ -246,12 +251,18 @@ class Cpp(Gen):
 
     def _near_data_offset_expr(self, symbol: op.var, label: str) -> str:
         """Render a 16-bit OFFSET expression without changing register state."""
-        if self._should_emit_linked_data_offset(symbol):
+        # External symbols live in a segment owned by another generated module:
+        # symbol.segment names the *referencing* segment here, not the defining
+        # one, so offset(symbol.segment,label) would yield a cross-segment byte
+        # distance that truncates in 16-bit OFFSET fields. The linked helper
+        # resolves the true owning segment at link time and returns the correct
+        # within-segment near offset.
+        if symbol.external or self._should_emit_linked_data_offset(symbol):
             return f"m2c::near_offset_external({label})"
         return f"offset({symbol.segment},{label})"
 
     def _far_data_offset_expr(self, symbol: op.var, label: str) -> str:
-        if self._should_emit_linked_data_offset(symbol):
+        if symbol.external or self._should_emit_linked_data_offset(symbol):
             return f"m2c::far_offset_external({label})"
         return f"far_offset({symbol.segment},{label})"
 
@@ -1273,16 +1284,53 @@ class Cpp(Gen):
 
         proc_name = self.mangle_label(proc_name)
         inline_return_ip = self._inline_data_return_ip_after_current_call()
+        if inline_return_ip is None:
+            inline_return_ip = self._next_stmt_continuation_offset()
 
+        caller_fn = self.mangle_label(self.proc.name) if self.proc is not None else "nullptr"
         if far and inline_return_ip is not None:
-            ret += f"CALLFI({proc_name},{label_ip},{inline_return_ip})"
+            ret += f"CALLFI({proc_name},{label_ip},{inline_return_ip},{caller_fn})"
         elif far:
             ret += f"CALLF({proc_name},{label_ip})"
         elif inline_return_ip is not None:
-            ret += f"CALLI({proc_name},{label_ip},{inline_return_ip})"
+            ret += f"CALLI({proc_name},{label_ip},{inline_return_ip},{caller_fn})"
         else:
             ret += f"CALL({proc_name},{label_ip})"
         return ret
+
+    def _next_stmt_continuation_offset(self) -> str | None:
+        """Return the value a call should push as its guest return address.
+
+        Real x86 semantics push the address of the instruction after the
+        call; the generated equivalent is the dispatchable code offset of
+        the label sitting at that position (``m2c::k<label>``). When the
+        continuation has no label, push a unique per-site sentinel: the
+        native-return machinery matches the mark by value, and the value
+        cannot alias a real dispatch offset if the mark is ever lost and
+        the ``ret`` falls back to offset dispatch."""
+        stmts = getattr(self.proc, "stmts", None)
+        if not stmts or self._current_stmt is None:
+            return None
+        index = next(
+            (i for i, stmt in enumerate(stmts) if stmt is self._current_stmt),
+            None,
+        )
+        if index is None:
+            return None
+        for stmt in stmts[index + 1:]:
+            if stmt is self._next_stmt:
+                break
+            if isinstance(stmt, op.label):
+                return f"m2c::k{self.mangle_label(stmt.name)}"
+        self._call_sentinel += 1
+        sentinel = 0xE000 + self._call_sentinel
+        if self._sentinel_proc is not self.proc:
+            self._sentinel_proc = self.proc
+            self._sentinel_continuations = []
+        continuation_label = f"__m2c_sent_{self._call_sentinel}"
+        self._sentinel_continuations.append((sentinel, continuation_label))
+        self._pending_continuation_label = f"{continuation_label}:\n"
+        return hex(sentinel)
 
     def _inline_data_return_ip_after_current_call(self) -> str | None:
         """Return the code-data offset used as a call return IP, if present."""
@@ -1477,8 +1525,7 @@ class Cpp(Gen):
 
     def _ret(self, src: list[Expression | Any]) -> str:
         arg = self.render_instruction_argument(src[0]) if src else "0"
-        proc = getattr(self, "proc", None)
-        if getattr(proc, "far", False) or getattr(self, "_active_proc_far", False):
+        if getattr(self, "_active_proc_far", False):
             return f"RETF({arg})"
         return f"RETN({arg})"
 
@@ -3959,7 +4006,6 @@ struct Memory{
             result = """
   static bool __dispatch_call(m2c::_offsets __i, struct m2c::_STATE* _state){
   X86_REGREF
-     if ((__i>>16) == 0) {__i |= ((dd)cs) << 16;}
      __disp=__i;
      switch (__i) {
 """
@@ -4061,12 +4107,6 @@ struct Memory{
             {cs=0xf000;eip=__disp&0xffff;m2c::fix_segs();return false;}  // Jumping to BIOS
         #endif
         """
-        if self._is_listing_source():
-            # Listing inputs key every label real_seg<<16|off, so a bare
-            # near-offset dispatch (jump-table word, call/jmp reg) is always
-            # cs-relative.  Non-listing inputs use synthetic low ids that must
-            # reach their cases unchanged.
-            result += "            if ((__disp>>16) == 0) {__disp |= ((dd)cs) << 16;}\n"
         result += """            switch (__disp) {
         """
         label_offsets = self.export_defined_code_symbol_offsets()
@@ -4079,6 +4119,11 @@ struct Memory{
                     continue
                 emitted_offsets.add(off)
             result += f"        case m2c::k{name}: \tgoto {label};\n"
+        if self._sentinel_proc is not self.proc:
+            self._sentinel_continuations = []
+            self._sentinel_proc = self.proc
+        for sentinel_value, continuation_label in self._sentinel_continuations:
+            result += f"        case 0x{sentinel_value:x}: \tgoto {continuation_label};\n"
         if self.proc and self.proc.name in set(self.groups.values()):
             result += "        default: return __dispatch_call(__disp, _state);\n"
         else:
