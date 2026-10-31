@@ -105,34 +105,21 @@ def _has_memref(expr):
 
 
 def split_args(s):
-    out, depth, cur = [], 0, ''
-    in_s = in_d = False  # inside '...' char / "..." string literal
-    prev = ''
+    out, depth, cur, quote, prev = [], 0, '', '', ''
     for c in s:
-        if in_s:
+        if quote:
             cur += c
-            if c == "'" and prev != '\\':
-                in_s = False
-        elif in_d:
+            if c == quote and prev != '\\':
+                quote = ''
+        elif c in '\'"':
+            quote = c
             cur += c
-            if c == '"' and prev != '\\':
-                in_d = False
-        elif c == "'":
-            in_s = True
-            cur += c
-        elif c == '"':
-            in_d = True
-            cur += c
+        elif c == ',' and depth == 0:
+            out.append(cur)
+            cur = ''
         else:
-            if c in '([{':
-                depth += 1
-            elif c in ')]}':
-                depth -= 1
-            if c == ',' and depth == 0:
-                out.append(cur)
-                cur = ''
-            else:
-                cur += c
+            depth += (c in '([{') - (c in ')]}')
+            cur += c
         prev = c
     out.append(cur)
     return [a.strip() for a in out if a.strip() != '']

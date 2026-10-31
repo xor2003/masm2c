@@ -762,22 +762,54 @@ inline bool MSB(D a)  // get highest bit
 
 // Shadow buffer for the BIOS ROM segment (F000:xxxx). struct Memory is smaller
 // than 1MB, so F000 real-mode accesses would otherwise read out of bounds.
-// raddr_() redirects this segment here; it stays zeroed unless a Tandy/PCjr
-// signature is planted by the runtime (see m2c::init / tnd_present).
+// raddr_() redirects this segment here; it stays zeroed unless the program's
+// glue plants a machine signature before the guest reads it.
 extern db m2c_bios_rom[];
-extern bool tnd_present;
 
-// Translated TANDYSND overlay. The EXEC handler loads its image into a private
-// buffer (tnd_img) rather than inside struct Memory's heap: the game uses fixed
-// adapter-region segments (A000/B800/...) that alias the same linear offsets as
-// the EXEC load segment, so an in-m copy would be clobbered by the game's own
-// rep stosw buffer clears. Segments in [tnd_seg, tnd_seg+tnd_img_paras) are the
-// overlay's own (image base and its code segment) and route to tnd_img; the
-// game never uses them for its own buffers, so the image stays isolated.
-extern dw tnd_seg;          // EXEC load segment of TANDYSND.EXE (0 when absent)
-extern dw tnd_code_seg;     // overlay code segment (tnd_seg + 7)
-extern dw tnd_img_paras;    // paragraphs of tnd_img mapped from tnd_seg
-extern db tnd_img[];        // private overlay image buffer
+/* Game-integration hooks: the translated program (or its test glue) registers
+ * pointers to its own globals and optional callbacks at startup; the runtime
+ * itself never names program symbols. Every field is optional -- a null
+ * pointer/callback simply disables that feature. */
+struct m2c_game_hooks {
+	db*  key_state;      /* game's held-key table mirrored by host_set_key */
+	dw*  det_ticker;     /* tick counter the game's IRQ0 ISR increments */
+	dw*  det_frames;     /* frame counter (deterministic mode advances it per flip) */
+	dw*  det_countdown;  /* countdown counter (decremented per tick) */
+	dd*  det_elapsed;    /* elapsed-time dword */
+	void (*poll_hook)(void);   /* per-poll program adjustments */
+	void (*frame_hook)(void);  /* per frame-event work (mode set, flip, present) */
+};
+
+struct m2c_palette_map {
+	db*  flag;     /* set to 1 once the source block has been applied */
+	db*  src;      /* filled source block (e.g. a panel palette) */
+	db*  dst_a;    /* program-side copy target */
+	db*  dst_b;    /* program-side copy target applied at +start offset */
+	size_t start;  /* byte offset into dst_b and the VGA DAC table */
+	size_t size;   /* block size in bytes */
+};
+
+struct m2c_overlay_module {
+	const char* name_match;   /* uppercase substring matched against EXEC paths */
+	db*  img;                 /* private image buffer of a translated overlay */
+	size_t img_size;          /* img capacity in bytes */
+	dw   seg;                 /* bound image segment (filled by EXEC) */
+	dw   code_seg_off;        /* code segment offset from seg in paras */
+	dw   code_seg;            /* = seg + code_seg_off (filled by EXEC) */
+	dw   img_paras;           /* occupied paras inside img (filled by EXEC) */
+	bool (*call)(dd, _STATE*);  /* entry dispatch for the module */
+};
+
+void m2c_set_game_hooks(const m2c_game_hooks* hooks);
+void m2c_register_palette_map(const m2c_palette_map* map);
+bool m2c_register_overlay_module(m2c_overlay_module* mod);
+// Resolves a data-alias storage (bytes holding a relocated pointer) to the
+// pointer it names, or returns the storage itself when it is already a direct
+// address. Game glue uses it when registering generated-code symbols.
+db *m2c_data_symbol_address(db *symbol_storage);
+// Registered overlay slots (0-terminated): raddr_ consults them directly so
+// translated-overlay images stay reachable from generated code.
+extern m2c_overlay_module* m2c_overlays[];
 
 #if _BITS == 32
   #include "asm_32.h"
@@ -2459,7 +2491,8 @@ throw StackPop(skip);
              * stack. The DOS original would return into the suspended
              * caller's post-call offset; resume it by re-entering the
              * recorded caller proc at the sentinel's continuation case. */
-            if (auto it = sentinel_resume_map.find(ip); it != sentinel_resume_map.end()) {
+            auto it = sentinel_resume_map.find(ip);
+            if (it != sentinel_resume_map.end()) {
                 { extern int m2c_ret_dbg; if (m2c_ret_dbg) fprintf(stderr, "[SENT-RESUME] popped tag=%04x -> sentinel=%04x ss=%04x sp=%04x\n", (unsigned)ip, (unsigned)it->second.sentinel, (unsigned)ss, (unsigned)sp); }
                 return it->second.fn((_offsets)it->second.sentinel, _state);
             }
@@ -2570,7 +2603,8 @@ throw StackPop(skip);
 #endif
 #ifndef SHADOW_STACK
         if (!ret) {
-            if (auto it = sentinel_resume_map.find(ip); it != sentinel_resume_map.end()) {
+            auto it = sentinel_resume_map.find(ip);
+            if (it != sentinel_resume_map.end()) {
                 { extern int m2c_ret_dbg; if (m2c_ret_dbg) fprintf(stderr, "[SENT-RESUME-F] popped tag=%04x -> sentinel=%04x ss=%04x sp=%04x\n", (unsigned)ip, (unsigned)it->second.sentinel, (unsigned)ss, (unsigned)sp); }
                 return it->second.fn((_offsets)it->second.sentinel, _state);
             }

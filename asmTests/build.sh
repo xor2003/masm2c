@@ -13,6 +13,7 @@ DATA_REFS=""
 for f in _data_refs_*.cpp; do
   [ -e "$f" ] && DATA_REFS="$DATA_REFS $f"
 done
-$CXX _data.cpp $DATA_REFS $1.cpp ../asm.o ../memmgr.o ../shadowstack.o $OPT -o $1
+[ -e ../test_glue.o ] || $CXX $OPT ./test_glue.cpp -c -o ../test_glue.o
+$CXX _data.cpp $DATA_REFS $1.cpp ../asm.o ../memmgr.o ../shadowstack.o ../test_glue.o $OPT -o $1
 
 

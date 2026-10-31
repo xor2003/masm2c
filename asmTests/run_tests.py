@@ -52,7 +52,7 @@ def discover_cases(script_dir: Path) -> list[str]:
 def compile_runtime(script_dir: Path, cxx: str) -> None:
     parent = script_dir.parent
     cfg = script_dir / "_config.sh"
-    compile_targets = ("asm.cpp", "memmgr.cpp", "shadowstack.cpp")
+    compile_targets = ("asm.cpp", "memmgr.cpp", "shadowstack.cpp", "asmTests/test_glue.cpp")
     for source in compile_targets:
         cmd = (
             f"set -euo pipefail; "
@@ -163,6 +163,7 @@ def run_case(script_dir: Path, name: str, logs_dir: Path, cxx: str, opt_flags: s
         str(repo_root / "asm.o"),
         str(repo_root / "memmgr.o"),
         str(repo_root / "shadowstack.o"),
+        str(repo_root / "test_glue.o"),
         *shlex.split(opt_flags),
         f"-I{script_dir}",
         f"-I{repo_root}",

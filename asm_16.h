@@ -39,8 +39,11 @@
 	    if (segment == 0xF000) {
 	        return m2c_bios_rom + offset;
 	    }
-	    if (tnd_img_paras && segment >= tnd_seg && segment < tnd_seg + tnd_img_paras) {
-	        return tnd_img + ((segment - tnd_seg) << 4) + offset;
+	    for (int oi = 0; oi < 8 && m2c_overlays[oi]; ++oi) {
+	        m2c_overlay_module* mod = m2c_overlays[oi];
+	        if (mod->img_paras && segment >= mod->seg && segment < mod->seg + mod->img_paras) {
+	            return mod->img + ((segment - mod->seg) << 4) + offset;
+	        }
 	    }
 	    return (db *)&m + (segment<<4) + offset;
 	}

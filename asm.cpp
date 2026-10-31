@@ -90,68 +90,44 @@ SOFTWARE.
 #include <curses.h>
 #endif
 
-extern bool gameintr100(m2c::_offsets, struct m2c::_STATE*) __attribute__((weak));
-extern bool gameintr20(m2c::_offsets, struct m2c::_STATE*) __attribute__((weak));
-extern db* key __attribute__((weak));
-extern dw* ticker __attribute__((weak));
-extern dw* frames __attribute__((weak));
-extern dw* countdown __attribute__((weak));
-extern dd* elapsedtime __attribute__((weak));
-extern dw* controldevice __attribute__((weak));
-extern db vga_rgb_data __attribute__((weak));
-extern db vga_panel __attribute__((weak));
-extern db vga_panel1 __attribute__((weak));
-extern db setpaletteflag __attribute__((weak));
-extern db* wheelbrakes __attribute__((weak));
-extern db* ssf_wheelbrakes __attribute__((weak));
-extern dw* throttle __attribute__((weak));
-extern dw* autovias __attribute__((weak));
-extern dw* aimthrottle __attribute__((weak));
-extern dw* deltatime __attribute__((weak));
-extern dw* lastframe __attribute__((weak));
-extern dw* sqrtrho __attribute__((weak));
-extern dw* vias __attribute__((weak));
-extern dw* accel __attribute__((weak));
-extern dw* thrust4 __attribute__((weak));
-extern dw* drag4 __attribute__((weak));
-extern dw* cd0 __attribute__((weak));
-extern dw* alpha __attribute__((weak));
-extern dw* gforce __attribute__((weak));
-extern dw* xwindveff __attribute__((weak));
-extern dw* reheat __attribute__((weak));
-extern dw* rpm1 __attribute__((weak));
-extern db* nocollisions __attribute__((weak));
-extern db* crntflappos __attribute__((weak));
-extern db* destflappos __attribute__((weak));
-extern dw* crntflapval __attribute__((weak));
-extern dw* destflapval __attribute__((weak));
-extern dw* vtas __attribute__((weak));
-extern dw* pfine __attribute__((weak));
-extern dw* m_cosr __attribute__((weak));
-extern dw* zdot __attribute__((weak));
-extern dw* trueradalt __attribute__((weak));
-extern db* airborne1 __attribute__((weak));
-extern db* destroyed __attribute__((weak));
-extern db* dieflag __attribute__((weak));
-extern db* tmpdieflag __attribute__((weak));
-extern db* hitobjectnum __attribute__((weak));
-extern db* objscaleconvert __attribute__((weak));
-extern dw* xgrid1 __attribute__((weak));
-extern dw* ygrid1 __attribute__((weak));
-extern dw* controldevice __attribute__((weak));
-extern db* joya_flag __attribute__((weak));
-extern dw* eleposn __attribute__((weak));
-extern dw* altmode __attribute__((weak));
-extern dw* ailposn __attribute__((weak));
-extern dw* autoalt __attribute__((weak));
-extern dw* zfthi __attribute__((weak));
-extern dw* zftlo __attribute__((weak));
-extern dw* xft __attribute__((weak));
-extern dw* yft __attribute__((weak));
-extern dw* xft __attribute__((weak));
-extern dw* yft __attribute__((weak));
-extern dw* xsec __attribute__((weak));
-extern dw* ysec __attribute__((weak));
+static m2c::m2c_game_hooks g_hooks;
+static m2c::m2c_palette_map g_palette_map;
+static bool g_palette_mapped = false;
+m2c::m2c_overlay_module* m2c::m2c_overlays[8];
+
+void m2c::m2c_set_game_hooks(const m2c_game_hooks* hooks) {
+	g_hooks = hooks ? *hooks : m2c_game_hooks{};
+}
+
+void m2c::m2c_register_palette_map(const m2c_palette_map* map) {
+	if (map) { g_palette_map = *map; g_palette_mapped = true; }
+	else { g_palette_map = m2c_palette_map{}; g_palette_mapped = false; }
+}
+
+bool m2c::m2c_register_overlay_module(m2c_overlay_module* mod) {
+	for (auto& slot : m2c_overlays) {
+		if (!slot) { slot = mod; return true; }
+	}
+	return false;
+}
+
+static m2c::m2c_overlay_module* m2c_find_overlay(dw seg) {
+	for (auto* mod : m2c::m2c_overlays) {
+		if (mod && mod->code_seg && seg == mod->code_seg) return mod;
+	}
+	return nullptr;
+}
+
+static m2c::m2c_overlay_module* m2c_overlay_image_at(dw segment, dw offset) {
+	for (auto* mod : m2c::m2c_overlays) {
+		if (mod && mod->img_paras && segment >= mod->seg &&
+		    segment < mod->seg + mod->img_paras) {
+			(void)offset;
+			return mod;
+		}
+	}
+	return nullptr;
+}
 
 /* https://commons.wikimedia.org/wiki/File:Table_of_x86_Registers_svg.svg */
 
@@ -310,23 +286,10 @@ void interpret_unknown_callf(dw cs, dd eip, db source){assert(0);}
     __attribute__((weak)) db* linked_data_segment_raddr(dw, dw){return nullptr;}
     __attribute__((weak)) void set_segment_register(dw& reg, dw value){reg = value;}
     __attribute__((weak)) void copy_linked_program_segment_prefix(dw, const void*, size_t) {}
-    // Translated TANDYSND overlay module (tnd_module.cpp). tnd_seg is the EXEC
-    // load segment of TANDYSND.EXE; tnd_code_seg is its code segment (+7 paras,
-    // past the 0x70-byte header/seg000). Weak stubs: overridden by the real
-    // module when it is linked, and stay inert (tnd_code_seg==0) otherwise.
-    __attribute__((weak)) dw tnd_seg = 0;
-    __attribute__((weak)) dw tnd_code_seg = 0;
-    __attribute__((weak)) bool tnd_overlay_call(dd, _STATE*) { return false; }
-    // Private image buffer for the translated overlay (see asm.h). tnd_img_paras
-    // is the mapped span in paragraphs; 0 keeps the raddr_ route inert.
-    db tnd_img[0x8000] = {};
-    dw tnd_img_paras = 0;
-    // BIOS ROM shadow for the F000 segment (see asm.h). Zeroed by default; the
-    // Tandy signature bytes are planted only when the tnd module is linked.
+    // BIOS ROM shadow for the F000 segment (see asm.h). Zeroed by default; a
+    // program that emulates a specific machine plants its signature bytes via
+    // the overlay/game glue before the guest first reads the F000 segment.
     db m2c_bios_rom[0x10000] = {};
-    // tnd_module.cpp defines this strong=1 so the game auto-detects a
-    // Tandy/PCjr BIOS (F000:FFFE==0xFF && F000:C000==0x21) and loads TANDYSND.EXE.
-    __attribute__((weak)) bool tnd_present = false;
     bool host_try_overlay_retf(_offsets __disp, _STATE* _state, bool* out_result);
     __attribute__((weak)) bool m2c_guest_thunk(_offsets __disp, _STATE* _state) {
         (void)__disp; (void)_state;
@@ -971,11 +934,11 @@ bool is_dos_terminate_vector(dw segment, dw offset) {
 }
 
 static db* host_physical_address(dw segment, dw offset) {
-	// The translated TANDYSND overlay image lives in a private buffer (see
-	// asm.h): the EXEC load segment aliases the game's adapter-region buffer
-	// writes, so the image must not sit inside struct Memory's heap.
-	if (tnd_img_paras && segment >= tnd_seg && segment < tnd_seg + tnd_img_paras)
-		return tnd_img + ((segment - tnd_seg) << 4) + offset;
+	// A translated overlay's image lives in its private buffer: the EXEC load
+	// segment may alias regions the game writes through, so the image must not
+	// sit inside struct Memory's heap.
+	if (m2c_overlay_module* mod = m2c_overlay_image_at(segment, offset))
+		return mod->img + ((segment - mod->seg) << 4) + offset;
 	// PM selectors resolve through the emulated LDT (DOS services given a
 	// selector must see the same memory the guest sees).
 	if (db* sel_mem = m2c_alloc_segment_raddr(segment, offset))
@@ -1324,34 +1287,36 @@ static db *translated_data_symbol_address(db *symbol_storage) {
 	return symbol_storage;
 }
 
-static void maybe_apply_translated_vga_panel_palette() {
-	const size_t panel_color_start = 176 * 3;
-	const size_t panel_palette_size = 80 * 3;
-	if (!&::vga_rgb_data || !&::vga_panel || !&::vga_panel1 || !&::setpaletteflag) {
+db *m2c_data_symbol_address(db *symbol_storage) {
+	return translated_data_symbol_address(symbol_storage);
+}
+
+static void maybe_apply_registered_palette() {
+	if (!g_palette_mapped) {
 		return;
 	}
 
-	db *rgb_data = translated_data_symbol_address(&::vga_rgb_data);
-	db *panel = translated_data_symbol_address(&::vga_panel);
-	db *panel1 = translated_data_symbol_address(&::vga_panel1);
-	db *palette_flag = translated_data_symbol_address(&::setpaletteflag);
+	db *rgb_data = translated_data_symbol_address(g_palette_map.dst_b);
+	db *panel = translated_data_symbol_address(g_palette_map.dst_a);
+	db *panel1 = translated_data_symbol_address(g_palette_map.src);
+	db *palette_flag = translated_data_symbol_address(g_palette_map.flag);
 	if (!rgb_data || !panel || !panel1 || !palette_flag) {
 		return;
 	}
-	if (!bytes_have_nonzero(panel1, panel_palette_size)) {
+	if (!bytes_have_nonzero(panel1, g_palette_map.size)) {
 		return;
 	}
-	if (bytes_have_nonzero(rgb_data + panel_color_start, panel_palette_size)
-		|| bytes_have_nonzero(panel, panel_palette_size)) {
+	if (bytes_have_nonzero(rgb_data + g_palette_map.start, g_palette_map.size)
+		|| bytes_have_nonzero(panel, g_palette_map.size)) {
 		return;
 	}
 
-	std::copy(panel1, panel1 + panel_palette_size, panel);
-	std::copy(panel1, panel1 + panel_palette_size, rgb_data + panel_color_start);
-	std::copy(panel1, panel1 + panel_palette_size, vgaPalette + panel_color_start);
+	std::copy(panel1, panel1 + g_palette_map.size, panel);
+	std::copy(panel1, panel1 + g_palette_map.size, rgb_data + g_palette_map.start);
+	std::copy(panel1, panel1 + g_palette_map.size, vgaPalette + g_palette_map.start);
 	*palette_flag = 1;
 	if (m2c_stats_enabled()) {
-		std::fprintf(stderr, "vga panel palette initialized from translated VGA_Panel1 symbols\n");
+		std::fprintf(stderr, "vga panel palette initialized from registered palette map\n");
 	}
 }
 
@@ -1399,7 +1364,7 @@ static size_t vga_crtc_start_byte_offset() {
 
 // (the real per-frame boundary, unlike the CRTC-start flip which the game only
 // touches a few times). host_run_timer fires IRQ0 det_step times per render so
-// gameintr100 (and the Frames/LastFrame ticks it drives) advances a fixed count
+// the game's 100Hz ISR (and the counters it drives) advances a fixed count
 // per rendered frame -- identical between stock and lifted builds.
 static unsigned g_det_render_tick = 0;
 // Deterministic flip-tick counter: bumped once per CRTC page flip = once per
@@ -2151,7 +2116,7 @@ static void vga_render_indexed_frame() {
 		}
 	}
 
-	maybe_apply_translated_vga_panel_palette();
+	maybe_apply_registered_palette();
 	const size_t crtc_start = vga_crtc_start_byte_offset();
 	vga_maybe_dump_stats(crtc_start);
 	for (int y = 0; y < vga_logical_height; ++y) {
@@ -2277,34 +2242,8 @@ static void vga_dump_flip_index() {
 		char pp[1024]; std::snprintf(pp, sizeof(pp), "%s/pal.bin", dir);
 		if (FILE* pf = std::fopen(pp, "wb")) { std::fwrite(vgaPalette,1,256*3,pf); std::fclose(pf); }
 	}
-	if (getenv("M2C_IDXSTATE")) {  // scenario-selection flags for orig-vs-standalone compare
-		char sp[1024]; std::snprintf(sp, sizeof(sp), "%s/state.txt", dir);
-		if (FILE* sf = std::fopen(sp, "a")) {
-			const db* D = (const db*)&m;
-			unsigned nkeys = 0, keybits = 0;
-			for (int i = 0; i < 128; ++i) if (D[0x5a3 + i]) { ++nkeys; keybits |= (1u << (i & 31)); }
-			std::fprintf(sf, "flip=%u demomode=%u night=%u initnighthud=%u tornadotype=%u "
-				"nightdata=%u elapsedtime=%u nkeys=%u keybits=%08x "
-				"paused=%u viewmode=%u gvmode=%u ctrldev=%u "
-				"ele=%d ail=%d rud=%d kfPst=%u\n",
-				flip-1,
-				D[0x8671],          // demomode  (data+0x8601)
-				D[0x68f7],          // night[0]  (data+0x6887)
-				D[0x70+0x14fe],     // initnighthud (data+0x14fe)
-				(unsigned)D[0x8655] | ((unsigned)D[0x8656]<<8), // tornadotype (data+0x85e5, dw)
-				D[0x70+0xaf13],     // _night (data+0xaf13)
-				(unsigned)(*(const dd*)(D + 0x62f)), // elapsedtime (data+0x5bf, dd)
-				nkeys, keybits,
-				D[0x70+0xb1de],   // paused (data+0xb1de)
-				(unsigned)D[0x70+0x15d3] | ((unsigned)D[0x70+0x15d4]<<8), // viewmode (data+0x15d3, dw)
-				(unsigned)D[0x70+0x8488] | ((unsigned)D[0x70+0x8489]<<8), // gameviewmode (data+0x8488, dw)
-				(unsigned)D[0x70+0x85e7] | ((unsigned)D[0x70+0x85e8]<<8), // controldevice (data+0x85e7, dw)
-				(int)(short)(*(const dw*)(D + 0x70 + 0xb11d)), // eleposn (data+0xb11d)
-				(int)(short)(*(const dw*)(D + 0x70 + 0xb11f)), // ailposn (data+0xb11f)
-				(int)(short)(*(const dw*)(D + 0x70 + 0xb121)), // rudposn (data+0xb121)
-				(unsigned)D[0x70+0xb5df]); // kf_pause[k_status] (data+0xb5df, k_status@0)
-			std::fclose(sf);
-		}
+	if (g_hooks.frame_hook) {
+		g_hooks.frame_hook();
 	}
 }
 
@@ -2598,7 +2537,7 @@ static void clamp_host_mouse() {
 }
 
 static db* host_key_state() {
-	return &::key ? ::key : nullptr;
+	return g_hooks.key_state;
 }
 
 static bool host_keyboard_buffer_empty() {
@@ -2643,15 +2582,11 @@ static void host_queue_irq9(db port60);
 static void host_set_key(int scan_code, bool pressed);
 static void host_keyscript_tick() {
 	static const char* path = getenv("M2C_KEYSCRIPT");
-	static const char* dbg = getenv("M2C_STATEDBG");
 	static std::map<unsigned, std::vector<dw>> script;
 	static bool loaded = false;
 	static unsigned present = 0;
 	if (!loaded) {
 		loaded = true;
-		// Weak-symbol presence test must check &sym first: evaluating an
-		// undef weak data symbol derefs a NULL GOT/copy-reloc slot.
-		if (getenv("M2C_NOCOL") && &nocollisions && nocollisions) *nocollisions = 1;
 		if (path && *path) {
 			std::ifstream in(path);
 			unsigned fr; std::string kind; unsigned code;
@@ -2659,69 +2594,8 @@ static void host_keyscript_tick() {
 				script[fr].push_back((dw)code);
 		}
 	}
-	if (getenv("M2C_FLAPS") && &crntflappos) {
-		if (crntflappos) *crntflappos = 3;      // FLAPS_D_FULL
-		if (destflappos) *destflappos = 3;
-		if (crntflapval) *crntflapval = 600;    // FLAPS_A_FULL
-		if (destflapval) *destflapval = 600;
-	}
-	if (dbg && present == 0 && &objscaleconvert && objscaleconvert) {
-		fprintf(stderr, "[SCALE] objsc base=%p -> ", (void*)objscaleconvert);
-		for (int i = -9; i <= 15; i++) fprintf(stderr, "%+d=%02x ", i, (unsigned char)objscaleconvert[i]);
-		fprintf(stderr, "\n");
-	}
-	if (dbg && present % 15 == 0 && &wheelbrakes) {
-		const db* keys = host_key_state();
-		fprintf(stderr,
-			"[ST f=%u] wbrk=%s thr=%s avias=%s athr=%s dt=%s lf=%s rho=%s vias=%s reh=%s rpm=%s vtas=%s radalt=%s zft=%s.%s ac=%s t4=%s d4=%s cd=%s a=%s g=%s xw=%s sec=%s,%s ft=%s,%s hitobj=%s air=%s dst=%s die=%s/%s pitch=%s zdot=%s ctrl=%s joyA=%s ele=%s alt=%s ail=%s aalt=%s\n",
-			present,
-			wheelbrakes ? std::to_string(*wheelbrakes).c_str() : "-",
-			throttle ? std::to_string(*throttle).c_str() : "-",
-			autovias ? std::to_string(*autovias).c_str() : "-",
-			aimthrottle ? std::to_string(*aimthrottle).c_str() : "-",
-			deltatime ? std::to_string(*deltatime).c_str() : "-",
-			lastframe ? std::to_string(*lastframe).c_str() : "-",
-			sqrtrho ? std::to_string(*sqrtrho).c_str() : "-",
-			vias ? std::to_string(*vias).c_str() : "-",
-			reheat ? std::to_string(*reheat).c_str() : "-",
-			rpm1 ? std::to_string(*rpm1).c_str() : "-",
-			vtas ? std::to_string(*vtas).c_str() : "-",
-			trueradalt ? std::to_string(*trueradalt).c_str() : "-",
-			zfthi ? std::to_string((int)(short)*zfthi).c_str() : "-",
-			zftlo ? std::to_string(*zftlo).c_str() : "-",
-			accel ? std::to_string((int)(short)*accel).c_str() : "-",
-			thrust4 ? std::to_string(*thrust4).c_str() : "-",
-			drag4 ? std::to_string(*drag4).c_str() : "-",
-			cd0 ? std::to_string(*cd0).c_str() : "-",
-			alpha ? std::to_string((int)(short)*alpha).c_str() : "-",
-			gforce ? std::to_string((int)(short)*gforce).c_str() : "-",
-			xwindveff ? std::to_string((int)(short)*xwindveff).c_str() : "-",
-			xsec ? std::to_string(*xsec).c_str() : "-",
-			ysec ? std::to_string(*ysec).c_str() : "-",
-			xft ? std::to_string((int)(short)*xft).c_str() : "-",
-			yft ? std::to_string((int)(short)*yft).c_str() : "-",
-			hitobjectnum ? std::to_string(*hitobjectnum).c_str() : "-",
-			airborne1 ? std::to_string(*airborne1).c_str() : "-",
-			destroyed ? std::to_string(*destroyed).c_str() : "-",
-			dieflag ? std::to_string(*dieflag).c_str() : "-",
-			tmpdieflag ? std::to_string(*tmpdieflag).c_str() : "-",
-			pfine ? std::to_string((int)(short)*pfine).c_str() : "-",
-			zdot ? std::to_string((int)(short)*zdot).c_str() : "-",
-			controldevice ? std::to_string(*controldevice).c_str() : "-",
-			joya_flag ? std::to_string(*joya_flag).c_str() : "-",
-			eleposn ? std::to_string((int)(short)*eleposn).c_str() : "-",
-			altmode ? std::to_string(*altmode).c_str() : "-",
-			ailposn ? std::to_string((int)(short)*ailposn).c_str() : "-",
-			autoalt ? std::to_string((int)(short)*autoalt).c_str() : "-");
-		db* ks = host_key_state();
-		if (ks) fprintf(stderr, " k72=%d k80=%d k56=%d k29=%d\n",
-			(int)ks[72], (int)ks[80], (int)ks[56], (int)ks[29]);
-		else fprintf(stderr, " ks=null\n");
-		if (ks && (present == 0 || present == 120)) {
-			fprintf(stderr, "[KEYDUMP f=%u] ", present);
-			for (int i = 0; i < 128; i++) if (ks[i]) fprintf(stderr, "[%d]=%d ", i, (int)ks[i]);
-			fprintf(stderr, "\n");
-		}
+	if (g_hooks.frame_hook) {
+		g_hooks.frame_hook();
 	}
 	auto it = script.find(present++);
 	if (it != script.end())
@@ -2820,26 +2694,27 @@ static db host_keyboard_shift_flags() {
 }
 
 static dw* host_ticker_counter() {
-	return &::ticker ? ::ticker : nullptr;
+	return g_hooks.det_ticker;
 }
 
 static dw* host_frames_counter() {
-	return &::frames ? ::frames : nullptr;
+	return g_hooks.det_frames;
 }
 
 static dw* host_countdown_counter() {
-	return &::countdown ? ::countdown : nullptr;
+	return g_hooks.det_countdown;
 }
 
 static dd* host_elapsed_time() {
-	return &::elapsedtime ? ::elapsedtime : nullptr;
+	return g_hooks.det_elapsed;
 }
 
 // M2C_DET=1 selects a fixed-step timer: the wall-clock IRQ thread and poll-driven
 // counter advances are disabled; counters advance a constant amount once per
 // mode-X page flip (once per game frame). This makes the sim deterministic.
 static bool m2c_deterministic() {
-	static const int det = getenv("M2C_DET") ? atoi(getenv("M2C_DET")) : 0;
+	static const char* det_env = getenv("M2C_DET");
+	static const int det = det_env ? atoi(det_env) : 0;
 	return det != 0;
 }
 
@@ -2866,7 +2741,8 @@ static time_t m2c_host_time() {
 }
 
 static int m2c_force_lf() {
-	static const int v = getenv("M2C_FORCE_LF") ? atoi(getenv("M2C_FORCE_LF")) : 0;
+	static const char* lf_env = getenv("M2C_FORCE_LF");
+	static const int v = lf_env ? atoi(lf_env) : 0;
 	return v;
 }
 static void host_advance_timer_counters() {
@@ -2892,7 +2768,8 @@ static void host_advance_timer_counters() {
 // frames>=MaxFrameRate so the original runs at a fixed centisecond step per
 // frame; M2C_DET_STEP lets us match that quantum (default = lastframe).
 static int m2c_det_step() {
-	static const int s = getenv("M2C_DET_STEP") ? atoi(getenv("M2C_DET_STEP")) : 6;
+	static const char* step_env = getenv("M2C_DET_STEP");
+	static const int s = step_env ? atoi(step_env) : 6;
 	return s;
 }
 static void host_advance_timer_counters_n(int n) {
@@ -2948,9 +2825,9 @@ static void host_fire_ivt(int intno, _STATE* _state) {
 	const dw off = *(dw*)host_physical_address(0, intno * 4);
 	const dw seg = *(dw*)host_physical_address(0, intno * 4 + 2);
 	if (getenv("M2C_IRQDBG") && intno==0x08) { static int c8=0; if(++c8<=4) fprintf(stderr,"FIREIVT8 rptr=%p val=%04x:%04x m=%p\n",(void*)host_physical_address(0,intno*4),(unsigned)seg,(unsigned)off,(void*)&m2c::m); }
-	// Skip unset/BIOS-adapter-region vectors, but let the translated TANDYSND
-	// ISR (which lives at its own code segment, e.g. a239:0373) fire.
-	if ((off | seg) == 0 || (seg >= 0xa000 && seg != tnd_code_seg && !rm_vec_set[intno])) {
+	// Skip unset/BIOS-adapter-region vectors, but let a registered translated
+	// overlay's ISR (which lives at its own code segment) fire.
+	if ((off | seg) == 0 || (seg >= 0xa000 && !m2c_find_overlay(seg) && !rm_vec_set[intno])) {
 		return;
 	}
 	if (host_irq_main_state && !host_irq_main_state->IF) {
@@ -3184,14 +3061,10 @@ void host_irq_poll() {
 		}
 	}
 #endif
-	/* No joystick hardware exists (game port 0x201 always reads 0xff), but
-	   Tornado defaults ControlDevice to CTRL_DEV_JOY1/2 and then reads a dead
-	   stick, leaving flight controls unresponsive. Fall back to keyboard
-	   (CTRL_DEV_KBD1=0) whenever a joystick device is selected so arrows steer;
-	   the user can still switch device via the in-game menu. */
-	if (&::controldevice != nullptr && ::controldevice &&
-	    (*::controldevice == 4 || *::controldevice == 6)) {
-		*::controldevice = 0;
+	/* Per-poll program adjustments (e.g. input-device fallback when no
+	   joystick hardware exists) are supplied by the game's glue. */
+	if (g_hooks.poll_hook) {
+		g_hooks.poll_hook();
 	}
 	/* Keyboard IRQ1 (int9) is input-driven, not timer-driven: deliver pending
 	   scancodes on every poll regardless of deterministic mode or timer state,
@@ -3210,7 +3083,8 @@ void host_irq_poll() {
 		// page-flip/FrameWait tick-count jitter. FrameWait reads `frames` itself,
 		// so the source is pinned, not the downstream lastframe copy.
 		if (dw* fc = host_frames_counter()) {
-			static const int lf = getenv("M2C_FORCE_LF") ? atoi(getenv("M2C_FORCE_LF")) : 0;
+			static const char* lf_env = getenv("M2C_FORCE_LF");
+			static const int lf = lf_env ? atoi(lf_env) : 0;
 			if (lf > 0) *fc = lf;
 		}
 		return;
@@ -3239,20 +3113,23 @@ bool host_try_overlay_retf(_offsets __disp, _STATE* _state, bool* out_result) {
 	}
 	const dw tseg = static_cast<dw>(__disp >> 16);
 	m2c_check_cs(_state, __disp, "ovlretf");
-	// Translated TANDYSND overlay: an external far call / ISR targets the
-	// driver's code segment (tseg == tnd_code_seg), while an internal indirect
+	// Translated overlay module: an external far call / ISR targets the
+	// module's code segment (tseg == mod->code_seg), while an internal indirect
 	// dispatch (e.g. `call off_10380[bx]`) arrives with tseg == 0 while cs is
-	// still the driver's code segment. Route both into tnd_overlay_call.
-	if (tnd_code_seg &&
-	    (tseg == tnd_code_seg || (tseg == 0 && _state->cs == tnd_code_seg))) {
-		log_debug2("tnd call disp=%x cs=%x\n", __disp, _state->cs);
-		*out_result = tnd_overlay_call(__disp, _state);
-		return true;
+	// still the module's code segment. Route both into the module's entry.
+	for (auto* mod : m2c_overlays) {
+		if (mod && mod->code_seg && mod->call &&
+		    (tseg == mod->code_seg || (tseg == 0 && _state->cs == mod->code_seg))) {
+			log_debug2("overlay-module call disp=%x cs=%x\n", __disp, _state->cs);
+			*out_result = mod->call((dd)__disp, _state);
+			return true;
+		}
 	}
 	for (const auto& r : host.overlay_segs) {
 		if (tseg < r.first || tseg >= r.second) {
 			continue;
 		}
+		const dw toff = static_cast<dw>(__disp & 0xffff);
 		X86_REGREF
 		dw ret_ip = 0, ret_cs = 0;
 		POP(ret_ip);
@@ -3266,7 +3143,7 @@ bool host_try_overlay_retf(_offsets __disp, _STATE* _state, bool* out_result) {
 		}
 		m2c::last_ret_popped = 4;
 		log_debug2("overlay entry %x:%x emulated as retf to %x:%x\n",
-			tseg, (dw)(__disp & 0xffff), ret_cs, ret_ip);
+			tseg, toff, ret_cs, ret_ip);
 		*out_result = true;
 		return true;
 	}
@@ -3662,9 +3539,9 @@ static void host_run_timer(struct _STATE* _state) {
 	}
 	if (m2c_deterministic()) {
 		// Deterministic: drip-det_step IRQ0 ticks per rendered frame, spread one
-		// per poll rather than bunched -- gameintr100 then samples key[] state
-		// across the frame like a real PIT, so short key taps still register, and
-		// the per-frame tick count stays identical between stock and lifted.
+		// per poll rather than bunched -- the game's 100Hz ISR then samples key
+		// state across the frame like a real PIT, so short key taps still
+		// register, and the per-frame tick count stays identical across builds.
 		static int budget = 0;
 		static unsigned last_det = 0;
 		const unsigned now = g_det_flip_tick;
@@ -3697,7 +3574,7 @@ static void host_run_timer(struct _STATE* _state) {
 		/* Fire the installed IRQ0 handler (IVT[8] -> timerintr) through the
 		   cooperative-IRQ path. timerintr sets ds=DATA, updates the counters,
 		   checks the user-vector flags and CALLFs the registered 100Hz/20Hz
-		   user procs (gameintr100/gameintr20) with the correct segment -- the
+		   user procs with the correct segment -- the
 		   same work a real PIT tick performs. Calling the user procs directly
 		   here ran them on the shared _state with a stale cs/ds and ignored
 		   IF, which corrupted far-return dispatch whenever a tick landed mid
@@ -3941,9 +3818,10 @@ static void poll_host_events(struct _STATE* _state) {
 					md_prev = h;
 					char path[600]; char seq[32];
 					snprintf(seq, sizeof(seq), "_%05u", ++md_seq);
-					char *dot = strrchr(strcpy(path, md_path), '.');
+					snprintf(path, sizeof(path), "%s", md_path);
+					char *dot = strrchr(path, '.');
 					if (dot) { memmove(dot + strlen(seq), dot, strlen(dot) + 1); memcpy(dot, seq, strlen(seq)); }
-					else strcat(path, seq);
+					else snprintf(path + strlen(path), sizeof(path) - strlen(path), "%s", seq);
 					FILE *f = std::fopen(path, "wb");
 					if (f) { std::fwrite(p, 1, md_len, f); std::fclose(f); }
 				}
@@ -4273,7 +4151,7 @@ X86_REGREF
 		if (host.vga.crtc_index == 0x0c || host.vga.crtc_index == 0x0d) {
 			static size_t last_start = (size_t)-1;
 			const size_t cur = vga_crtc_start_byte_offset();
-			{static unsigned _fl=0; if (getenv("M2C_STATEDBG") && (++_fl<30 || _fl%300==0)) fprintf(stderr,"[crtcflip #%u idx=%#x data=%#x cur=%#x last=%#x]\n",_fl,(int)host.vga.crtc_index,(int)data,cur,last_start);}
+			{static unsigned _fl=0; if (getenv("M2C_STATEDBG") && (++_fl<30 || _fl%300==0)) fprintf(stderr,"[crtcflip #%u idx=%#x data=%#x cur=%#x last=%#x]\n",_fl,(int)host.vga.crtc_index,(int)data,(unsigned)cur,(unsigned)last_start);}
 			if (cur != last_start) {
 				last_start = cur;
 				/* A CRTC start-address change is the mode-X page flip: the frame's
@@ -4348,7 +4226,7 @@ X86_REGREF
 		return host.vga.gc_regs[host.vga.gc_index];
 	case 0x3c9:
 		{
-			maybe_apply_translated_vga_panel_palette();
+			maybe_apply_registered_palette();
 			const db value = vgaPalette[host.vga.dac_read_index];
 			host.vga.dac_read_index = (host.vga.dac_read_index + 1) % (256 * 3);
 			return value;
@@ -4997,14 +4875,6 @@ X86_REGREF
 	}
 	case 0x21:
 		{
-		static dd tnd_img_guard = 0;
-		if (tnd_seg) {
-			db* gp = (db*)host_physical_address(tnd_seg, 0);
-			dd cur = *(dd*)gp;
-			if (cur != tnd_img_guard)
-				log_debug("imgchg ah=%02x %08x->%08x ds=%x dx=%x es=%x at %x:%x\n", ah, tnd_img_guard, cur, ds, dx, es, cs, eip);
-			tnd_img_guard = cur;
-		}
 		if (ah == 0x48 || ah == 0x49 || ah == 0x4b || ah == 0x4c || ah == 0x09 || ah == 0x4a || ah == 0x3f)
 			log_debug("int21 ah=%02x bx=%x dx=%x es=%x ds=%x at %x:%x\n", ah, bx, dx, es, ds, cs, eip);
 		}
@@ -5717,17 +5587,23 @@ X86_REGREF
 				ax = 2;
 				return;
 			}
-			// Detect the translated TANDYSND overlay before loading so the image
-			// write and relocations route into tnd_img instead of m's heap.
-			bool is_tnd = false;
+			// Detect a registered translated overlay before loading so the
+			// image write and relocations route into its private image buffer
+			// instead of m's heap.
+			m2c_overlay_module* bound = nullptr;
 			{
 				char nm[96]; size_t i = 0;
 				for (; fname[i] && i < sizeof(nm) - 1; ++i) nm[i] = toupper((db)fname[i]);
 				nm[i] = 0;
-				is_tnd = strstr(nm, "TANDY") != nullptr;
-				if (is_tnd) {
-					tnd_seg = loadseg;
-					tnd_code_seg = (dw)(loadseg + 7);
+				for (auto* mod : m2c_overlays) {
+					if (mod && mod->name_match && strstr(nm, mod->name_match)) {
+						bound = mod;
+						break;
+					}
+				}
+				if (bound) {
+					bound->seg = loadseg;
+					bound->code_seg = (dw)(loadseg + bound->code_seg_off);
 				}
 			}
 			db hdr[0x20];
@@ -5740,9 +5616,9 @@ X86_REGREF
 			}
 			fseek(ovf, 0, SEEK_END);
 			const long fsz = ftell(ovf);
-			if (is_tnd) {
-				tnd_img_paras = (dw)((fsz - hsize + 15) / 16 + 2);
-				if (tnd_img_paras * 16 > sizeof(tnd_img)) { bad = true; }
+			if (bound) {
+				bound->img_paras = (dw)((fsz - hsize + 15) / 16 + 2);
+				if (bound->img_paras * 16 > bound->img_size) { bad = true; }
 			}
 			if (!bad && hsize < fsz) {
 				fseek(ovf, hsize, SEEK_SET);
@@ -5765,8 +5641,8 @@ X86_REGREF
 				return;
 			}
 			host.overlay_segs.push_back({loadseg, (dw)(loadseg + (fsz - hsize + 15) / 16 + 8)});
-			if (is_tnd) {
-				log_error("TANDYSND bound: image %x code %x paras %x\n", tnd_seg, tnd_code_seg, tnd_img_paras);
+			if (bound) {
+				log_error("overlay module bound: image %x code %x paras %x\n", bound->seg, bound->code_seg, bound->img_paras);
 			}
 			log_error("EXEC overlay %s loaded at %x fsz=%ld hsize=%x nreloc=%d img=%02x%02x%02x%02x base=%p\n",
 				fname, loadseg, fsz, (unsigned)hsize, (int)nreloc,
@@ -6538,32 +6414,19 @@ std::this_thread::sleep_for(std::chrono::microseconds(1));
        that state; mirror it into guest VRAM before entry. */
     host_text_clear_page(0, 0x07);
 
-    /* When the Tandy overlay module is linked, present a Tandy/PCjr BIOS
-       signature so the game's hardware probe (F000:FFFE==0xFF and
-       F000:C000==0x21) selects TANDYSND.EXE instead of the PC speaker driver. */
-    if (tnd_present) {
-        m2c_bios_rom[0xFFFE] = 0xFF;   // model byte
-        m2c_bios_rom[0xC000] = 0x21;   // secondary Tandy ROM marker
-        log_debug2("tandy: planted PCjr/Tandy BIOS signature in F000 shadow\n");
-    }
+    /* Machine-signature bytes in the F000 shadow are planted by the program's
+       game glue (it owns which BIOS identity to present) before the guest
+       first reads them -- the runtime supplies only the zeroed shadow. */
 
     /* Seed the real-mode IVT with standard BIOS vectors (F000:xxxx). Programs
        that hook an interrupt save the previous vector and later chain to it
-       (Tornado's RetViaDOSIntr -> jmp DWORD CS:DOSTimerOff). Without a BIOS
-       default the saved vector is uninitialized garbage that aborts the
-       dispatch; F000:xxxx resolves to the "Jumping to BIOS" case and unwinds
-       cleanly. */
-    if (m2c::Initializer) {
-        m2c::Initializer();
-    }
-
-    /* Seed the real-mode IVT with standard BIOS vectors (F000:xxxx). Programs
-       that hook an interrupt save the previous vector and later chain to it
-       (Tornado's RetViaDOSIntr -> jmp DWORD CS:DOSTimerOff). Without a BIOS
-       default the saved vector is uninitialized garbage that aborts the
-       dispatch; F000:xxxx resolves to the "Jumping to BIOS" case and unwinds
-       cleanly. This runs AFTER the data-image Initializer(), which may write
-       program bytes over the IVT region. */
+       (e.g. a game's RetViaDOSIntr-style jump through a saved vector).
+       Without a BIOS default the saved vector is uninitialized garbage that
+       aborts the dispatch; F000:xxxx resolves to the "Jumping to BIOS" case
+       and unwinds cleanly. This runs BEFORE the data-image Initializer():
+       images that carry their own low-memory bytes (a real DOS snapshot's
+       IVT, or program data flat-mapped at physical 0) must win over these
+       defaults; images that leave the vectors untouched keep them. */
     {
         db* ivt = (db*)host_physical_address(0, 0);
         auto seed = [&](int intno, dw off) {
@@ -6573,6 +6436,9 @@ std::this_thread::sleep_for(std::chrono::microseconds(1));
         seed(0x08, 0xFEA5); // IRQ0 timer tick (IBM PC TIM_INT)
         seed(0x09, 0xE987); // IRQ1 keyboard (KB_INT)
         seed(0x1C, 0xFF53); // user timer tick (dummy iret)
+    }
+    if (m2c::Initializer) {
+        m2c::Initializer();
     }
 
     host_irq_main_state = _state;

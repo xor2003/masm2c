@@ -150,7 +150,7 @@ class _TextMacro:
     parameters: list[str]
     body: list[str]
     vararg: str | None = None
-    defaults: dict = None
+    defaults: dict | None = None
 
 
 class Vector:
@@ -1302,34 +1302,41 @@ class Parser:
             # scoped to the enclosing implicit 'mainproc', while references
             # from inside another proc are scoped to that proc.  Fall back to
             # the top-level scope, then to the unscoped global name.
-            mangled = Parser.mangle_label(value_in)
-            for alt in (f"mainproc_{mangled}", mangled):
-                if alt != value and self.lookup_global_symbol(alt) is not None:
-                    value = alt
-                    g = self.lookup_global_symbol(alt)
-                    break
+            value, g = self._at_scoped_global(value, value_in)
         if g:
-            from masm2c.proc import Proc
-
-            from .enumeration import IndirectionType
-            if isinstance(g, (op._equ, op._assignment)):
-                if isinstance(g.value, Expression):
-                    g.size = g.value.size() or self._equ_value_member_size(g.value)
-                    if (
-                        len(g.children) == 2
-                        and isinstance(g.children[1], Expression)
-                        and g.children[1].indirection == IndirectionType.POINTER
-                    ):
-                        expr.ptr_size = g.size
-                    else:
-                        expr.element_size = g.size
-            elif isinstance(g, (Proc, op.label, op.var)):
-                pass
-            elif isinstance(g, op.Struct):
-                expr.element_size = g.size
+            self._apply_symbol_size(g, expr)
         elif self.has_structure(value):
             expr.element_size = self.structures[value].size
         return value
+
+    def _at_scoped_global(self, value: str, value_in: Token | str):
+        mangled = Parser.mangle_label(value_in)
+        for alt in (f"mainproc_{mangled}", mangled):
+            if alt != value:
+                g = self.lookup_global_symbol(alt)
+                if g is not None:
+                    return alt, g
+        return value, None
+
+    def _apply_symbol_size(self, g, expr: Expression) -> None:
+        from masm2c.proc import Proc
+
+        from .enumeration import IndirectionType
+        if isinstance(g, (op._equ, op._assignment)):
+            if isinstance(g.value, Expression):
+                g.size = g.value.size() or self._equ_value_member_size(g.value)
+                if (
+                    len(g.children) == 2
+                    and isinstance(g.children[1], Expression)
+                    and g.children[1].indirection == IndirectionType.POINTER
+                ):
+                    expr.ptr_size = g.size
+                else:
+                    expr.element_size = g.size
+        elif isinstance(g, (Proc, op.label, op.var)):
+            pass
+        elif isinstance(g, op.Struct):
+            expr.element_size = g.size
 
     def _equ_value_member_size(self, value: Expression) -> int:
         """Untyped equates still carry the width of a struc member they are
@@ -2868,52 +2875,62 @@ class Parser:
                 # emitted instruction.
                 rows.append(repeat.group("label") + ":\n")
             i += 1
-            body: list[str] = []
-            depth = 1
-            while i < len(lines) and depth:
-                if self._starts_macro_like_block(lines[i]):
-                    depth += 1
-                if re.match(r"^\s*ENDM\b", lines[i], re.IGNORECASE):
-                    depth -= 1
-                    if depth == 0:
-                        i += 1
-                        break
-                if depth:
-                    body.append(lines[i])
-                i += 1
+            body, i = self._collect_repeat_body(lines, i)
+            rows.extend(self._emit_repeat(kind, repeat, body, symbols))
+        return "".join(rows)
+
+    def _collect_repeat_body(self, lines: list[str], i: int) -> tuple[list[str], int]:
+        """Gather lines until the matching ENDM; returns (body, next_index)."""
+        body: list[str] = []
+        depth = 1
+        while i < len(lines) and depth:
+            if self._starts_macro_like_block(lines[i]):
+                depth += 1
+            if re.match(r"^\s*ENDM\b", lines[i], re.IGNORECASE):
+                depth -= 1
+                if depth == 0:
+                    i += 1
+                    break
+            if depth:
+                body.append(lines[i])
+            i += 1
+        return body, i
+
+    def _emit_repeat(self, kind: str, repeat, body: list[str],
+                     symbols: dict[str, int]) -> list[str]:
+        rows: list[str] = []
+        if repeat.group("iter"):
             if kind in {"IRP", "FOR"}:
                 items = self._split_macro_args(repeat.group("ilist"))
             elif kind in {"IRPC", "FORC"}:
                 items = list(repeat.group("ilist"))
             else:
                 items = []
-            if repeat.group("iter"):
-                symbol = repeat.group("isym").lower()
-                for item in items:
-                    substituted = [
-                        self._substitute_text_macro_args(
-                            body_line, {symbol: item})
-                        for body_line in body
-                    ]
-                    rows.extend(
-                        self._expand_repeat_iteration(substituted, symbols))
-            elif kind == "WHILE":
-                # WHILE is an assembly-time loop: evaluate the condition with
-                # the current '=' symbols and expand the body until it becomes
-                # false. The cap keeps non-terminating conditions from hanging
-                # the translator (MASM would loop forever too).
-                iterations = 0
-                while self._eval_repeat_conditional(repeat.group("count"), symbols):
-                    rows.extend(self._expand_repeat_iteration(body, symbols))
-                    iterations += 1
-                    if iterations >= 65536:
-                        break
-            else:
-                count = max(
-                    0, self._eval_repeat_expression(repeat.group("count"), symbols))
-                for _ in range(count):
-                    rows.extend(self._expand_repeat_iteration(body, symbols))
-        return "".join(rows)
+            symbol = repeat.group("isym").lower()
+            for item in items:
+                substituted = [
+                    self._substitute_text_macro_args(body_line, {symbol: item})
+                    for body_line in body
+                ]
+                rows.extend(
+                    self._expand_repeat_iteration(substituted, symbols))
+        elif kind == "WHILE":
+            # WHILE is an assembly-time loop: evaluate the condition with
+            # the current '=' symbols and expand the body until it becomes
+            # false. The cap keeps non-terminating conditions from hanging
+            # the translator (MASM would loop forever too).
+            iterations = 0
+            while self._eval_repeat_conditional(repeat.group("count"), symbols):
+                rows.extend(self._expand_repeat_iteration(body, symbols))
+                iterations += 1
+                if iterations >= 65536:
+                    break
+        else:
+            count = max(
+                0, self._eval_repeat_expression(repeat.group("count"), symbols))
+            for _ in range(count):
+                rows.extend(self._expand_repeat_iteration(body, symbols))
+        return rows
 
     @staticmethod
     def _inside_macro_definition(lines: list[str], index: int) -> bool:
@@ -3226,7 +3243,6 @@ class Parser:
             if match.group("args").lstrip().startswith("("):
                 # `M(a, b)` is also a valid macro invocation in MASM: treat the
                 # balanced parenthesized list the same as the whitespace form.
-                inner = match.group("args").strip()
                 open_paren = line.find("(", match.start("args"))
                 depth_n = 0
                 end = -1
@@ -3243,11 +3259,13 @@ class Parser:
                     line = match.group("ws") + (match.group("label") or "") + \
                         match.group("name") + " " + match_args + \
                         ("\n" if line.endswith("\n") else "")
-                    match = re.match(
+                    new_match = re.match(
                         r"^(?P<ws>\s*)(?:(?P<label>(?:@@|[A-Za-z_@$?][A-Za-z0-9_@$?]*)\s*:)\s*)?"
                         r"(?P<name>[A-Za-z_@$?][A-Za-z0-9_@$?]*)(?P<args>\b[^\r\n]*)$",
                         line,
                     )
+                    if new_match is not None:
+                        match = new_match
             if split_lines := self._split_chained_macro_invocation(line, match):
                 rows.extend(split_lines)
                 changed = True
@@ -3255,14 +3273,7 @@ class Parser:
                 continue
             changed = True
             args = self._split_macro_args(match.group("args").strip())
-            defaults = getattr(macro, "defaults", None) or {}
-            replacements = {}
-            for index, parameter in enumerate(macro.parameters):
-                if parameter == getattr(macro, "vararg", None):
-                    value = ", ".join(args[index:]) if index < len(args) else ""
-                else:
-                    value = args[index] if index < len(args) else ""
-                replacements[parameter] = value or defaults.get(parameter, "")
+            replacements = self._macro_arg_replacements(macro, args)
             self._text_macro_expansion_id += 1
             local_replacements = self._local_macro_replacements(macro.body, self._text_macro_expansion_id)
             replacements.update(local_replacements)
@@ -3293,6 +3304,30 @@ class Parser:
             i += 1
         return "".join(rows), changed
 
+    @staticmethod
+    def _balanced_paren_end(line: str, open_paren: int) -> int:
+        """Index of the `)` closing the `(` at open_paren, or -1."""
+        depth_n = 0
+        for j in range(open_paren, len(line)):
+            if line[j] == "(":
+                depth_n += 1
+            elif line[j] == ")":
+                depth_n -= 1
+                if depth_n == 0:
+                    return j
+        return -1
+
+    def _macro_arg_replacements(self, macro, args: list) -> dict:
+        replacements = {}
+        defaults = getattr(macro, "defaults", None) or {}
+        for index, parameter in enumerate(macro.parameters):
+            if parameter == getattr(macro, "vararg", None):
+                value = ", ".join(args[index:]) if index < len(args) else ""
+            else:
+                value = args[index] if index < len(args) else ""
+            replacements[parameter] = value or defaults.get(parameter, "")
+        return replacements
+
     def _expand_function_style_macro_calls(self, line: str, depth: int = 0) -> str:
         """Expand `name(args)` invocations of known text macros in operand position.
 
@@ -3307,28 +3342,12 @@ class Parser:
             if name not in self._text_macros:
                 continue
             open_paren = line.find("(", match.start())
-            depth_n = 0
-            end = -1
-            for j in range(open_paren, len(line)):
-                if line[j] == "(":
-                    depth_n += 1
-                elif line[j] == ")":
-                    depth_n -= 1
-                    if depth_n == 0:
-                        end = j
-                        break
+            end = self._balanced_paren_end(line, open_paren)
             if end < 0:
                 continue
             args = self._split_macro_args(line[open_paren + 1:end].strip())
             macro = self._text_macros[name]
-            defaults = getattr(macro, "defaults", None) or {}
-            replacements = {}
-            for index, parameter in enumerate(macro.parameters):
-                if parameter == getattr(macro, "vararg", None):
-                    value = ", ".join(args[index:]) if index < len(args) else ""
-                else:
-                    value = args[index] if index < len(args) else ""
-                replacements[parameter] = value or defaults.get(parameter, "")
+            replacements = self._macro_arg_replacements(macro, args)
             self._text_macro_expansion_id += 1
             replacements.update(
                 self._local_macro_replacements(macro.body, self._text_macro_expansion_id))
