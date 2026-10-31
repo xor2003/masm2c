@@ -6436,6 +6436,10 @@ std::this_thread::sleep_for(std::chrono::microseconds(1));
         seed(0x08, 0xFEA5); // IRQ0 timer tick (IBM PC TIM_INT)
         seed(0x09, 0xE987); // IRQ1 keyboard (KB_INT)
         seed(0x1C, 0xFF53); // user timer tick (dummy iret)
+        seed(0x1A, 0xFF53); // RTC services (dummy iret when no thunk)
+        seed(0x33, 0xFF53); // mouse driver stub: absent driver = dummy iret
+                           // so int33 calls unwind instead of dispatching
+                           // into an uninitialized vector offset
     }
     if (m2c::Initializer) {
         m2c::Initializer();
