@@ -2647,8 +2647,18 @@ throw StackPop(skip);
          * Also record tag -> (caller proc, sentinel): if the mark is later
          * abandoned while the word remains on the guest stack, a ret popping
          * it can still resume the suspended continuation like the original
-         * DOS code returning to the pushed offset. */
-        if (return_addr >= 0x8000) {
+         * DOS code returning to the pushed offset.
+         *
+         * Ordinary calls alias the same way: without an explicit return_ip
+         * the pushed word is the normalized eip, which collapses to a few
+         * identical values (e.g. 6) across every live frame.  Decrementing
+         * loop-counter pushes then steal marks through the carried-value
+         * delta tolerance, the real ret pops a stale word, and a shallower
+         * frame's mark wins by value - the caller's continuation replays
+         * the call forever.  Tag every implicit push too; explicit CALLI
+         * offsets stay literal because pop-si inline-data readers depend
+         * on them. */
+        if (return_addr >= 0x8000 || !has_explicit_return_addr) {
             const m2c::MWORDSIZE sentinel_value = return_addr;
             return_addr = 0x8000 | ((m2c::native_return_next_id + 1) & 0x7fff);
             if (caller_continuation) {

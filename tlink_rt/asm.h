@@ -1,0 +1,2871 @@
+/*
+MIT License
+
+Copyright (c) 2017 Franck GOTTHOLD, xor2003
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*/
+
+#ifndef __asm_h__
+#define __asm_h__
+
+#define MYINLINE inline
+
+#if M2CDEBUG==-1
+#define OPTINLINE __attribute__ ((noinline))
+#else
+#define OPTINLINE MYINLINE
+#endif
+#include <cstdlib>
+#include <cstdarg>
+#include <cmath>
+#include <cstddef>
+#include <cstdio>
+#include <cassert>
+
+#include <cstring>
+
+#include <iterator>
+#include <unordered_map>
+#include <vector>
+
+#ifndef NOSDL
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_mixer.h>
+#endif
+
+extern bool from_callf;
+
+#ifdef DOSBOX_CUSTOM
+#include "json.hpp"
+#include <typeinfo>
+
+#include "custom.h"
+#include "regs.h"
+#if M2CDEBUG != -1
+#include "cpu.h"
+#elif DOSBOX_CUSTOM
+void CPU_IRET(bool use32,Bitu oldeip);
+bool CPU_CLI(void);
+bool CPU_STI(void);
+void CPU_Exception(Bitu which,Bitu error=0);
+Bitu CPU_Pop16(void);
+Bitu CPU_Pop32(void);
+void CPU_Push16(Bitu value);
+void CPU_Push32(Bitu value);
+#endif
+#include "mem.h"
+#include "inout.h"
+
+#include <pic.h>
+#include <video.h>
+#include <timer.h>
+#include <vector>
+
+extern int ticksRemain;
+extern volatile bool from_interpreter;
+extern bool trace_instructions;
+extern bool collect_rt_info;
+extern volatile bool compare_jump;
+
+extern bool compare_instructions;
+extern bool complex_self_modifications;
+
+void increaseticks();
+#include <callback.h>
+
+#endif
+// Types
+#ifdef __BORLANDC__
+ typedef unsigned long uint32_t;
+ typedef long int32_t;
+ typedef unsigned short int uint16_t;
+ typedef short int int16_t;
+ typedef unsigned char uint8_t;
+ typedef char int8_t;
+ struct uint64_t
+ {
+	long a;
+	long b;
+ };
+
+ #define MYPACKED
+ #define MYINT_ENUM
+#else
+
+#include <stdint.h>
+#include <stdbool.h>
+
+ #define MYPACKED __attribute__((__packed__))
+ #define MYINT_ENUM : int
+#endif
+
+#ifdef __GNUC__
+#define PACK( __Declaration__ ) __Declaration__ __attribute__((__packed__))
+#endif
+
+#ifdef _MSC_VER
+#define PACK( __Declaration__ ) __pragma( pack(push, 1) ) __Declaration__ __pragma( pack(pop))
+#endif
+
+
+typedef uint8_t db;
+typedef uint16_t dw;
+typedef uint32_t dd;
+typedef uint64_t dq;
+//typedef uint80_t dt;
+
+typedef db byte;
+typedef dw word;
+typedef dd dword;
+typedef dq qword;
+//typedef dt tbyte;
+typedef float real4;
+typedef double real8;
+typedef long double real10;
+
+
+#ifndef DOSBOX_CUSTOM
+#include "memmgr.h"
+static void CPU_Exception(int){assert(0);}
+typedef int Bits;
+#endif
+
+#ifndef NOSDL
+extern struct SDL_Renderer *renderer;
+#endif
+
+namespace m2c {
+
+// Cooperative-IRQ drain hook. Called periodically from a counter inside the
+// hot flag helpers so pure-compute delay loops still run pending IVT handlers
+// on this thread. The real implementation lives in asm.cpp; single-TU test
+// builds (e.g. qemu_tests, compiled with NO_SHADOW_STACK and no runtime
+// objects) get this weak no-op instead -- a strong definition always wins it.
+#if defined(NO_SHADOW_STACK)
+__attribute__((weak)) void host_irq_poll() {}
+#else
+void host_irq_poll();
+#endif
+
+extern db vgaPalette[256*3];
+extern bool executionFinished;
+
+#if SDL_MAJOR_VERSION == 2 && !defined(NOSDL) && M2CDEBUG != -1
+    void init_sdl_vga_window();
+    void vga_read_byte_from_memory(const db *d);
+    db vga_read_byte_value_from_memory(const db *d);
+    void vga_read_bytes_from_memory(const db *d, size_t size);
+    void vga_write_pixel_from_memory(db *d, db color);
+    void vga_present_pending();
+#endif
+
+    extern struct Memory m;
+
+    // Weak hooks for games whose INT 9 hardware-keyboard ISR was emitted as data
+    // bytes (not a callable proc). A game module may provide strong overrides.
+    // host_int9_update maintains the held-key state on each host key make/break.
+    // host_int9_diverts_key reports whether a given scancode is diverted into the
+    // game's held-key bitmask (its ISR enabled AND a nonzero table entry) instead
+    // of chaining to BIOS -- matching the real hardware, where only mapped keys
+    // are diverted and every other key still feeds the BIOS buffer for INT 16h.
+    void host_int9_update(int scan_code, bool pressed);
+    bool host_int9_diverts_key(int scan_code);
+
+    db* linked_code_segment_raddr(dw segment, dw offset);
+    db* linked_data_segment_raddr(dw segment, dw offset);
+    // TLINK.EXE runtime hooks (defined only by the tlink_rt harness).
+    // Weak so projects that do not provide them still link; callers must
+    // null-check before calling (an undefined weak function resolves to 0).
+    __attribute__((weak)) db* tlink_code_segment_raddr(dw segment, dw offset);
+    __attribute__((weak)) db* tlink_alloc_segment_raddr(dw segment, dw offset);
+    dw tlink_rtm_alloc_paras(dw paras);
+    void set_segment_register(dw& reg, dw value);
+
+    extern size_t debug;
+
+    extern size_t counter;
+
+    extern db _indent;
+    extern const char *_str;
+
+    extern size_t inst_size(dw cs, dd eip);
+
+    struct _STATE;
+    void stackDump(_STATE *_state=0);
+
+    bool fix_segs();
+
+#if DOSBOX_CUSTOM
+
+struct CPU_Regs;
+struct Segments;
+    extern void log_regs_dbx(const char *file, int line, const char *instr, const CPU_Regs &r, const Segments &s);
+
+
+    extern void execute_irqs();
+    void run_hw_interrupts();
+
+    extern void single_step();
+#else
+    extern void log_regs_m2c(const char *file, int line, const char *instr, _STATE* _state);
+#endif
+
+struct flagBits{
+unsigned int _CF : 1,
+unused1:1,
+_PF:1,
+unused2:1,
+_AF:1,
+unused3:1,
+_ZF:1,
+_SF:1,
+_TF:1,
+_IF:1,
+_DF:1,
+_OF:1;
+};
+
+union flagsUnion{
+ flagBits bits;
+ dd value;
+};
+
+    typedef dd _offsets;
+
+// Regs
+struct _STATE{
+        _STATE() : eax(0), ebx(0), ecx(0), edx(0), esi(0), edi(0),
+                   esp(0), ebp(0), eip(0), cs(0), ds(0), es(0), fs(0),
+                   gs(0), ss(0), CF(false), PF(false), AF(false),
+                   ZF(false), SF(false), DF(false), OF(false), IF(false),
+                   TF(false), other_flags(0), call_source(0) {
+       }
+
+dd eax;
+dd ebx;
+dd ecx;
+dd edx;
+dd esi;
+dd edi;
+dd esp;
+dd ebp;
+dd eip;
+
+dw cs;         
+dw ds;         
+dw es;         
+dw fs;         
+dw gs;         
+dw ss;         
+                      
+        bool CF;
+        bool PF;
+        bool AF;
+        bool ZF;
+        bool SF;
+        bool DF;
+        bool OF;
+        bool IF;
+        bool TF;
+dd other_flags;
+int call_source;
+};
+
+
+#if M2CDEBUG==-1 //decomp
+
+#include "asm_regs_decomp.h"
+
+#elif DOSBOX_CUSTOM==0 //masm2c
+
+#include "asm_regs_m2c.h"
+
+#else // libdosbox
+
+#include "asm_regs_dbx.h"
+
+#endif
+
+typedef bool m2cf(_offsets, struct _STATE*); // common masm2c function
+bool dispatch_external_code(_offsets __disp, _STATE* _state, bool* handled);
+bool host_try_overlay_retf(_offsets __disp, _STATE* _state, bool* out_result);
+bool is_dos_terminate_vector(dw segment, dw offset);
+
+template<class S>
+    constexpr bool isaddrbelongtom(const S *const a) {
+        return ((const db *const) &m < (const db *const) a) && ((const db *const) &m + 16 * 1024 * 1024 >
+                                                                (const db *const) a);
+    }
+
+    static bool isaddrbelongtovga(dd a) {
+        return (0xa0000 <= a) && (a < 0xc0000);
+    }
+    //template<class S>
+    //S getdata(const S &s);
+
+//    extern struct Memory types;
+
+//    static int log_debug(const char *format, ...);
+
+    template<class S>
+    inline void check_type(const S &) {
+/*
+#if M2CDEBUG >=4
+  size_t addr = (((db*)&s)-((db*)&m2c::m));
+  if (addr >= (0x1920+0x100) && addr < (0x1920+0x10000) && ( *(S*)(((db*)&m2c::types)+addr) )==0 && s !=0)
+     log_debug("Read of uninit addr:%zx size:%zd %zx\n",addr-0x1920,(size_t)sizeof(S),(*(S*)(((db*)&m2c::types)+addr)) );
+#endif
+*/
+    }
+
+#if DOSBOX_CUSTOM && M2CDEBUG != -1 
+    static inline db getdata(const db &s) {
+        if (m2c::isaddrbelongtom(&s)) {
+            check_type(s);
+            //   if (collect_rt_info) m2c::shadow_memory.collect_data((db*)&s, sizeof(s));
+            return mem_readb((db *) &s - (db *) &m);
+        }
+        else return s;
+    }
+
+    static inline dw getdata(const dw &s) {
+        if (m2c::isaddrbelongtom(&s)) {
+            check_type(s);
+            //   if (collect_rt_info) m2c::shadow_memory.collect_data((db*)&s, sizeof(s));
+            return mem_readw((db *) &s - (db *) &m);
+        }
+        else return s;
+    }
+
+    static inline dd getdata(const dd &s) {
+        if (m2c::isaddrbelongtom(&s)) {
+            check_type(s);
+            //   if (collect_rt_info) m2c::shadow_memory.collect_data((db*)&s, sizeof(s));
+            return mem_readd((db *) &s - (db *) &m);
+        }
+        else return s;
+    }
+
+//    template<>
+    static inline db getdata(const char &s) {
+        if (m2c::isaddrbelongtom(&s)) {
+            check_type(s);
+            //   if (collect_rt_info) m2c::shadow_memory.collect_data((db*)&s, sizeof(s));
+            return mem_readb((db *) &s - (db *) &m);
+        }
+        else return s;
+    }
+
+    static inline dw getdata(const short int &s) {
+        if (m2c::isaddrbelongtom(&s)) {
+            check_type(s);
+            //   if (collect_rt_info) m2c::shadow_memory.collect_data((db*)&s, sizeof(s));
+            return mem_readw((db *) &s - (db *) &m);
+        }
+        else return s;
+    }
+
+    static inline dd getdata(const int &s) {
+        if (m2c::isaddrbelongtom(&s)) {
+            check_type(s);
+            //   if (collect_rt_info) m2c::shadow_memory.collect_data((db*)&s, sizeof(s));
+            return mem_readd((db *) &s - (db *) &m);
+        }
+        else return s;
+    }
+
+    static inline dd getdata(const long &s) {
+        if (m2c::isaddrbelongtom(&s)) {
+            check_type(s);
+            //   if (collect_rt_info) m2c::shadow_memory.collect_data((db*)&s, 4);
+            return mem_readd((db *) &s - (db *) &m);
+        }
+        else return s;
+    }
+
+    static inline dd getdata(const long long &s) {
+        if (m2c::isaddrbelongtom(&s)) {
+            check_type(s);
+            //   if (collect_rt_info) m2c::shadow_memory.collect_data((db*)&s, 4);
+            return mem_readd((db *) &s - (db *) &m);
+        }
+        else return s;
+    }
+
+    template<class S>
+    inline void set_type(const S &) {
+    }
+
+    static inline void setdata(db *d, db s) {
+        if (m2c::isaddrbelongtom(d)) {
+            set_type(*d);
+         //   if (collect_rt_info) m2c::shadow_memory.collect_data((db*)d, sizeof(*d));
+            mem_writeb((db *) d - (db *) &m, s);
+        }
+        else *d = s;
+    }
+
+    static inline void setdata(char *d, db s) {
+        if (m2c::isaddrbelongtom(d)) {
+            set_type(*d);
+         //   if (collect_rt_info) m2c::shadow_memory.collect_data((db*)d, sizeof(*d));
+            mem_writeb((db *) d - (db *) &m, s);
+        }
+        else *d = s;
+    }
+
+    static inline void setdata(dw *d, dw s) {
+        if (m2c::isaddrbelongtom(d)) {
+            set_type(*d);
+         //   if (collect_rt_info) m2c::shadow_memory.collect_data((db*)d, sizeof(*d));
+            mem_writew((db *) d - (db *) &m, s);
+        }
+        else *d = s;
+    }
+
+    static inline void setdata(dd *d, dd s) {
+        if (m2c::isaddrbelongtom(d)) {
+            set_type(*d);
+         //   if (collect_rt_info) m2c::shadow_memory.collect_data((db*)d, sizeof(*d));
+            mem_writed((db *) d - (db *) &m, s);
+        }
+        else *d = s;
+    }
+
+#else
+    template<class S>
+    inline void set_type(const S &) {
+    }
+
+    static inline void notify_vga_memory_read(const db *d, size_t size) {
+  #if SDL_MAJOR_VERSION == 2 && !defined(NOSDL) && M2CDEBUG != -1
+        const db *vga_begin = ((db*)&m) + 0xa0000;
+        const db *vga_end = ((db*)&m) + 0xc0000;
+        if (m2c::isaddrbelongtom(d) && d < vga_end && d + size > vga_begin) {
+            const db *start = d < vga_begin ? vga_begin : d;
+            const db *end = d + size > vga_end ? vga_end : d + size;
+            m2c::vga_read_bytes_from_memory(start, static_cast<size_t>(end - start));
+        }
+  #else
+        (void)d;
+        (void)size;
+  #endif
+    }
+
+    static inline bool is_vga_memory_range(const db *d, size_t size) {
+  #if SDL_MAJOR_VERSION == 2 && !defined(NOSDL) && M2CDEBUG != -1
+        const db *vga_begin = ((db*)&m) + 0xa0000;
+        const db *vga_end = ((db*)&m) + 0xc0000;
+        return m2c::isaddrbelongtom(d) && d < vga_end && d + size > vga_begin;
+  #else
+        (void)d;
+        (void)size;
+        return false;
+  #endif
+    }
+
+    static inline db read_vga_or_memory_byte(const db *p) {
+  #if SDL_MAJOR_VERSION == 2 && !defined(NOSDL) && M2CDEBUG != -1
+        if (is_vga_memory_range(p, 1)) {
+            return m2c::vga_read_byte_value_from_memory(p);
+        }
+  #endif
+        return *p;
+    }
+
+inline db getdata(const db& s)
+{
+    const db *p = &s;
+    return read_vga_or_memory_byte(p);
+}
+inline dw getdata(const dw& s)
+{
+    const db *p = (const db*)&s;
+    if (is_vga_memory_range(p, sizeof(s))) {
+        return static_cast<dw>(read_vga_or_memory_byte(p))
+            | (static_cast<dw>(read_vga_or_memory_byte(p + 1)) << 8);
+    }
+    return s;
+}
+inline dd getdata(const dd& s)
+{
+    const db *p = (const db*)&s;
+    if (is_vga_memory_range(p, sizeof(s))) {
+        return static_cast<dd>(read_vga_or_memory_byte(p))
+            | (static_cast<dd>(read_vga_or_memory_byte(p + 1)) << 8)
+            | (static_cast<dd>(read_vga_or_memory_byte(p + 2)) << 16)
+            | (static_cast<dd>(read_vga_or_memory_byte(p + 3)) << 24);
+    }
+    return s;
+}
+inline char getdata(const char& s)
+{
+    const db *p = (const db*)&s;
+    return static_cast<char>(read_vga_or_memory_byte(p));
+}
+inline short int getdata(const short int& s)
+{
+    const db *p = (const db*)&s;
+    if (is_vga_memory_range(p, sizeof(s))) {
+        return static_cast<short int>(
+            static_cast<dw>(read_vga_or_memory_byte(p))
+            | (static_cast<dw>(read_vga_or_memory_byte(p + 1)) << 8)
+        );
+    }
+    return s;
+}
+inline int getdata(const int& s)
+{ return s; }
+inline long getdata(const long& s)
+{ return s; }
+#ifdef _WIN32
+inline dd getdata(const __int64& s)
+{
+    return s;
+}
+#endif
+
+    static inline void notify_vga_memory_write(db *d, size_t size) {
+  #if SDL_MAJOR_VERSION == 2 && !defined(NOSDL) && M2CDEBUG != -1
+        for (size_t i = 0; i < size; ++i) {
+            db *p = d + i;
+            if (m2c::isaddrbelongtom(p) && p < ((db*)&m) + 0xc0000 && p >= ((db*)&m) + 0xa0000) {
+                m2c::vga_write_pixel_from_memory(p, *p);
+            }
+        }
+  #else
+        (void)d;
+        (void)size;
+  #endif
+    }
+
+    static inline void setdata(db *d, db s) {
+		*d = s;
+        notify_vga_memory_write(d, sizeof(*d));
+	{
+	}
+    }
+
+    static inline void setdata(char *d, db s) {
+           *d = s;
+           notify_vga_memory_write((db*)d, sizeof(*d));
+    }
+
+    static inline void setdata(dw *d, dw s) {
+           *d = s;
+           notify_vga_memory_write((db*)d, sizeof(*d));
+    }
+
+    static inline void setdata(dd *d, dd s) {
+        *d = s;
+        notify_vga_memory_write((db*)d, sizeof(*d));
+    }
+#endif
+
+extern FILE * logDebug;
+
+// Asm functions
+#ifdef DOSBOX_CUSTOM
+
+
+    extern int log_debug(const char *format, ...);
+//#define log_debug printf
+#define log_error log_debug
+#define log_info log_debug
+
+    extern const char *log_spaces(int n);
+
+#else
+void log_error(const char *fmt, ...);
+void log_debug(const char *fmt, ...);
+void log_info(const char *fmt, ...);
+void log_debug2(const char *fmt, ...);
+
+const char* log_spaces(int n);
+
+#endif
+
+#define VGARAM_SIZE (320*200)
+
+#ifdef __BORLANDC__
+ #define STACK_SIZE 4096
+ #define HEAP_SIZE 1024
+#else
+ #define STACK_SIZE (1024*64-16)
+ #define HEAP_SIZE 1024*1024 - 16 - STACK_SIZE
+#endif
+
+#define NB_SELECTORS 128
+
+#ifdef __cplusplus
+//extern "C" {
+#endif
+
+static const uint32_t MASK[]={0, 0xff, 0xffff, 0xffffff, 0xffffffff};
+
+template <class D>
+constexpr size_t bitsizeof(D)  // size of type in bits
+{ return 8*sizeof(D); }
+
+template <class D>
+inline size_t getbit(D dest,int bit)  // get specific bit
+{ return ((bit>=0)?(( (dest) >> bit)&1):0); }
+
+template <class D>
+inline size_t shiftmodule(D dest,size_t shift)  // get module of shift steps based on destiantion size in bits
+{ return shift&(bitsizeof(dest)-1); }
+
+template <class D>
+inline dd nthbitone(D dest,size_t bit)  // return n-th bit with 1
+{ return ( (dd)1 << shiftmodule(dest,bit)); }
+
+template <class D, class S>
+inline void bitset(D& dest, S src, size_t bit)  // set n-th bit to 1
+{dest=(bit>=0)?(( (dest) & (~nthbitone(dest,bit))) | ((src&1) << bit)):dest;}
+
+inline static bool LSB(dd a) {return (a&1) != 0;}  // get lower bit
+
+template <class D>
+inline bool MSB(D a)  // get highest bit
+{return (( (a)>>( m2c::bitsizeof(a)-1) )&1) != 0;}
+
+#if defined(_WIN32) || defined(__INTEL_COMPILER)
+ #define INLINE __inline
+#elif defined(__STDC_VERSION__) && __STDC_VERSION__>=199901L
+ #define INLINE inline
+#elif defined(__GNUC__)
+ #define INLINE __inline__
+#else
+ #define INLINE
+#endif
+
+// Shadow buffer for the BIOS ROM segment (F000:xxxx). struct Memory is smaller
+// than 1MB, so F000 real-mode accesses would otherwise read out of bounds.
+// raddr_() redirects this segment here; it stays zeroed unless a Tandy/PCjr
+// signature is planted by the runtime (see m2c::init / tnd_present).
+extern db m2c_bios_rom[];
+extern bool tnd_present;
+
+// Translated TANDYSND overlay. The EXEC handler loads its image into a private
+// buffer (tnd_img) rather than inside struct Memory's heap: the game uses fixed
+// adapter-region segments (A000/B800/...) that alias the same linear offsets as
+// the EXEC load segment, so an in-m copy would be clobbered by the game's own
+// rep stosw buffer clears. Segments in [tnd_seg, tnd_seg+tnd_img_paras) are the
+// overlay's own (image base and its code segment) and route to tnd_img; the
+// game never uses them for its own buffers, so the image stays isolated.
+extern dw tnd_seg;          // EXEC load segment of TANDYSND.EXE (0 when absent)
+extern dw tnd_code_seg;     // overlay code segment (tnd_seg + 7)
+extern dw tnd_img_paras;    // paragraphs of tnd_img mapped from tnd_seg
+extern db tnd_img[];        // private overlay image buffer
+
+#if _BITS == 32
+  #include "asm_32.h"
+#else
+  #include "asm_16.h"
+#endif
+#define raddr(s, o) m2c::raddr_(s, o)
+
+#define realAddress(offset, segment) m2c::raddr_(segment,offset)
+
+
+#define seg_offset(segment) ((dw)(((db*)(&segment)-(db*)(&m2c::m))>>4))
+
+// DJGPP
+#define MASK_LINEAR(addr)     (((size_t)addr) & 0x000FFFFF)
+#define RM_TO_LINEAR(addr)    (((((size_t)addr) & 0xFFFF0000) >> 12) + (((size_t)addr) & 0xFFFF))
+#define RM_OFFSET(addr)       (((size_t)addr) & 0xF)
+#define RM_SEGMENT(addr)      ((((size_t)addr) >> 4) & 0xFFFF)
+
+template <class T>
+inline dw near_offset_external(const T& symbol);
+
+template <class T>
+inline dw near_offset_external(const T& symbol, dw& segment);
+
+template <class T>
+inline dw segment_of_external(const T& symbol);
+
+template <class T>
+inline dd far_offset_external(const T& symbol);
+
+dw near_offset_linked_address(const void* symbol);
+dw segment_of_linked_address(const void* symbol);
+dd far_offset_linked_address(const void* symbol);
+void copy_linked_program_segment_prefix(dw segment, const void* source, size_t size);
+
+struct NativeReturnMark {
+    _STATE* state;
+    dw stack_segment;
+    dw stack_offset;
+    MWORDSIZE return_ip;
+    size_t id;
+    const void* carrier;
+    size_t call_depth;
+};
+
+extern std::vector<NativeReturnMark> native_return_marks;
+extern std::vector<NativeReturnMark> native_return_values;
+extern size_t native_return_next_id;
+extern size_t native_return_call_depth;
+extern bool suppress_native_return_push_transfer;
+
+struct NativeCallDepthScope {
+    NativeCallDepthScope() {
+        ++native_return_call_depth;
+    }
+
+    ~NativeCallDepthScope() {
+        --native_return_call_depth;
+    }
+};
+
+inline void mark_native_return_with_id(
+    _STATE* state,
+    dw stack_segment,
+    dw stack_offset,
+    MWORDSIZE return_ip,
+    size_t id
+) {
+    native_return_marks.push_back({
+        state,
+        stack_segment,
+        stack_offset,
+        return_ip,
+        id,
+        nullptr,
+        native_return_call_depth,
+    });
+}
+
+inline size_t mark_native_return(_STATE* state, dw stack_segment, dw stack_offset, MWORDSIZE return_ip) {
+    const size_t id = ++native_return_next_id;
+    mark_native_return_with_id(state, stack_segment, stack_offset, return_ip, id);
+    return id;
+}
+
+inline bool take_native_return_value(
+    _STATE* state,
+    MWORDSIZE return_ip,
+    const void* carrier = nullptr,
+    size_t* id = nullptr
+) {
+    if (return_ip == 0) {
+        // 0 is the unwind sentinel (`push 0`/`ret` to PSP:0 termination and
+        // dispatcher-entered continuations), never a real call return. A
+        // plain `push 0` must not consume tracking for it.
+        return false;
+    }
+    for (auto it = native_return_values.rbegin(); it != native_return_values.rend(); ++it) {
+        if (
+            it->state != state
+            || it->call_depth != native_return_call_depth
+        ) {
+            continue;
+        }
+        if (it->return_ip != return_ip) {
+            // A register-carried return may be deliberately adjusted before
+            // re-push (`pop si; inc si; push si` reads inline data placed
+            // after a call via the pushed return address). Allow a small
+            // delta only through the same carrier register, so register
+            // juggling that leaves the old carrier holding an unrelated
+            // value cannot steal the tracked return.
+            const int delta = (int)return_ip - (int)it->return_ip;
+            if (!carrier || it->carrier != carrier || delta < -4 || delta > 4) {
+                continue;
+            }
+        }
+        if (id) {
+            *id = it->id;
+        }
+        native_return_values.erase(std::next(it).base());
+        return true;
+    }
+    return false;
+}
+
+inline bool consume_native_return(_STATE* state, dw stack_segment, dw stack_offset, MWORDSIZE return_ip, size_t* matched_call_depth = nullptr) {
+    for (auto it = native_return_marks.rbegin(); it != native_return_marks.rend(); ++it) {
+        if (
+            it->state != state
+            || it->stack_segment != stack_segment
+            || it->stack_offset != stack_offset
+            || it->call_depth != native_return_call_depth
+        ) {
+            continue;
+        }
+        const bool matched = it->return_ip == return_ip;
+        if (matched_call_depth) {
+            *matched_call_depth = it->call_depth;
+        }
+        native_return_marks.erase(std::next(it).base());
+        if (matched) {
+            return true;
+        }
+        // The guest overwrote this stack slot after the marked call (e.g.
+        // XTHL-style return-address juggling): the mark is stale. Drop it
+        // but keep looking so a relocated same-address mark can match below.
+        break;
+    }
+    // Frame-skipping return (e.g. `pop reg` discarding intermediate frames
+    // followed by `ret`): the popped address is a live outer frame's return
+    // sitting at this slot, but at a shallower native call depth. Match it and
+    // report the depth so the caller can unwind the skipped scopes.
+    for (auto it = native_return_marks.rbegin(); it != native_return_marks.rend(); ++it) {
+        if (
+            it->state != state
+            || it->stack_segment != stack_segment
+            || it->stack_offset != stack_offset
+            || it->return_ip != return_ip
+            || it->call_depth >= native_return_call_depth
+        ) {
+            continue;
+        }
+        if (matched_call_depth) {
+            *matched_call_depth = it->call_depth;
+        }
+        native_return_marks.erase(std::next(it).base());
+        return true;
+    }
+    // Relocated return slot (e.g. `pop si; xchg; push; push` XTHL-style
+    // juggling): the callee moves the caller's pushed return to an adjacent
+    // stack word before `ret`, so the same return address pops one slot over.
+    // Match it by value within a small window at the same call depth.
+    for (auto it = native_return_marks.rbegin(); it != native_return_marks.rend(); ++it) {
+        const int slot_delta = (int)it->stack_offset - (int)stack_offset;
+        if (
+            it->state != state
+            || it->stack_segment != stack_segment
+            || it->call_depth != native_return_call_depth
+            || it->return_ip != return_ip
+            || slot_delta < -8 || slot_delta > 8
+        ) {
+            continue;
+        }
+        if (matched_call_depth) {
+            *matched_call_depth = it->call_depth;
+        }
+        native_return_marks.erase(std::next(it).base());
+        return true;
+    }
+    return false;
+}
+
+inline void carry_native_return(
+    _STATE* state,
+    dw stack_segment,
+    dw stack_offset,
+    MWORDSIZE return_ip,
+    const void* carrier
+) {
+    for (auto it = native_return_marks.rbegin(); it != native_return_marks.rend(); ++it) {
+        const int slot_delta = (int)it->stack_offset - (int)stack_offset;
+        if (
+            it->state != state
+            || it->stack_segment != stack_segment
+            // Stack-slot juggling (pop/push sequences around the return word)
+            // can leave the return one word off the marked slot; the value is
+            // what identifies it.
+            || slot_delta < -4 || slot_delta > 4
+            || it->return_ip != return_ip
+            || it->call_depth != native_return_call_depth
+        ) {
+            continue;
+        }
+        const size_t id = it->id;
+        const size_t call_depth = it->call_depth;
+        native_return_marks.erase(std::next(it).base());
+        native_return_values.push_back({state, 0, 0, return_ip, id, carrier, call_depth});
+        return;
+    }
+}
+
+inline void discard_native_return(size_t id) {
+    for (auto it = native_return_marks.rbegin(); it != native_return_marks.rend(); ++it) {
+        if (it->id == id) {
+            native_return_marks.erase(std::next(it).base());
+            return;
+        }
+    }
+    for (auto it = native_return_values.rbegin(); it != native_return_values.rend(); ++it) {
+        if (it->id == id) {
+            native_return_values.erase(std::next(it).base());
+            return;
+        }
+    }
+}
+
+template <class T>
+inline dw near_offset_external(const T& symbol) {
+    return near_offset_linked_address(static_cast<const void*>(&symbol));
+}
+
+template <class T>
+inline dw near_offset_external(const T& symbol, dw& segment) {
+    segment = segment_of_external(symbol);
+    return near_offset_external(symbol);
+}
+
+template <class T>
+inline dw segment_of_external(const T& symbol) {
+    return segment_of_linked_address(static_cast<const void*>(&symbol));
+}
+
+template <class T>
+inline dd far_offset_external(const T& symbol) {
+    return far_offset_linked_address(static_cast<const void*>(&symbol));
+}
+
+static std::vector<dw> data_offset_saved_ds_stack;
+
+inline size_t mark_data_offset_ds() {
+    return data_offset_saved_ds_stack.size();
+}
+
+inline void restore_data_offset_ds(dw& segment, size_t mark) {
+    while (data_offset_saved_ds_stack.size() > mark) {
+        segment = data_offset_saved_ds_stack.back();
+        data_offset_saved_ds_stack.pop_back();
+    }
+}
+
+inline void restore_data_offset_ds(dw& segment) {
+    if (!data_offset_saved_ds_stack.empty()) {
+        segment = data_offset_saved_ds_stack.back();
+        data_offset_saved_ds_stack.pop_back();
+    }
+}
+
+template <class T>
+inline dw near_offset_data(const T& symbol, dw& segment) {
+    data_offset_saved_ds_stack.push_back(segment);
+    segment = segment_of_external(symbol);
+    return near_offset_external(symbol);
+}
+
+static dw external_offset_saved_ds;
+
+template <class T>
+inline dw near_offset_external_for_ds_arg(const T& symbol, dw& segment) {
+    external_offset_saved_ds = segment;
+    return near_offset_external(symbol, segment);
+}
+
+inline void restore_external_offset_ds(dw& segment) {
+    segment = external_offset_saved_ds;
+}
+
+
+    extern class ShadowStack shadow_stack;
+
+#define GET_DF() m2cflags.getDF()
+#define GET_CF() m2cflags.getCF()
+#define GET_AF() m2cflags.getAF()
+#define GET_OF() m2cflags.getOF()
+#define GET_SF() m2cflags.getSF()
+#define GET_ZF() m2cflags.getZF()
+#define GET_PF() m2cflags.getPF()
+#define GET_IF() m2cflags.getIF()
+#define AFFECT_DF(a) m2cflags.setDF(a)
+#define AFFECT_CF(a) m2cflags.setCF(a)
+#define AFFECT_AF(a) m2cflags.setAF(a)
+#define AFFECT_OF(a) m2cflags.setOF(a)
+#define AFFECT_IF(a) m2cflags.setIF(a)
+#define ISNEGATIVE(f, a) ( (a) & (1 << (m2c::bitsizeof(f)-1)) )
+#define AFFECT_SF(a) m2cflags.setSF(a)
+#define AFFECT_SF_(f, a) {AFFECT_SF(ISNEGATIVE(f,a));}
+	#define AFFECT_ZF(a) m2cflags.setZF(a)
+	#define AFFECT_ZFifz(a) m2cflags.setZF((a)==0)
+	#define AFFECT_PF(a) m2cflags.setPF(a)
+
+    inline uint64_t operand_mask_for_size(size_t bytes) {
+        return bytes >= 8 ? UINT64_MAX : ((uint64_t)1 << (bytes * 8)) - 1;
+    }
+
+    inline uint64_t sign_mask_for_size(size_t bytes) {
+        return (uint64_t)1 << (bytes * 8 - 1);
+    }
+
+    inline bool even_parity8(db value) {
+        value ^= (db)(value >> 4);
+        value &= 0x0f;
+        return ((0x6996u >> value) & 1u) == 0;
+    }
+
+    inline void set_szp_flags(size_t bytes, uint64_t value, m2c::eflags &m2cflags) {
+        // Periodically drain pending hardware IRQs so spin-wait loops that
+        // only do arithmetic (cmp/jnz) still run installed IVT handlers.
+        { static unsigned m2c_irqctr = 0; if (++m2c_irqctr >= 0x40000) { m2c_irqctr = 0; host_irq_poll(); } }
+        const uint64_t masked = value & operand_mask_for_size(bytes);
+        AFFECT_ZFifz(masked);
+        AFFECT_SF((masked & sign_mask_for_size(bytes)) != 0);
+        AFFECT_PF(even_parity8((db)masked));
+    }
+
+    inline void set_logic_flags(size_t bytes, uint64_t value, m2c::eflags &m2cflags) {
+        AFFECT_CF(false);
+        AFFECT_OF(false);
+        AFFECT_AF(false);
+        set_szp_flags(bytes, value, m2cflags);
+    }
+
+#ifdef DOSBOX_CUSTOM
+
+#define PUSH(a) {m2c::PUSH_(a);}
+#define POP(a) {m2c::POP_(a);}
+
+    template<typename S>
+    void PUSH_(S a);
+
+    template<>
+    OPTINLINE void PUSH_<dw>(dw a) { fix_segs();CPU_Push16(a); }
+
+    template<>
+    OPTINLINE void PUSH_<dd>(dd a) { fix_segs();CPU_Push32(a); }
+
+    template<>
+    OPTINLINE void PUSH_<short int>(short int a) { fix_segs();CPU_Push16(a); }
+
+    // 16-bit mode: `push imm` always pushes a word. A bare host `int` literal
+    // is 32-bit, so narrow it here or every imm push desyncs the guest stack.
+    template<>
+    OPTINLINE void PUSH_<int>(int a) { fix_segs();CPU_Push16(a); }
+
+
+    OPTINLINE void POP_(dw &a) { fix_segs();a = CPU_Pop16(); }
+
+    OPTINLINE void POP_(dd &a) { fix_segs();a = CPU_Pop32(); }
+
+#else
+
+#define PUSH(a) {m2c::PUSH_(a, _state);}
+#define POP(a) {m2c::POP_(a, _state);}
+
+    template<typename S> OPTINLINE void PUSH_(const S& a, _STATE *_state);
+
+    // 16-bit mode: `push imm` always pushes a word. A bare host `int` literal
+    // is 32-bit; route it through the word path or every imm push desyncs the
+    // guest stack (arg layouts, saved-word restores, varargs). The same applies
+    // to `offset()` results (ptrdiff_t -> long) and 64-bit host types.
+    OPTINLINE void PUSH_(const int& a, _STATE *_state) { PUSH_((dw)a, _state); }
+    OPTINLINE void PUSH_(const long& a, _STATE *_state) { PUSH_((dw)a, _state); }
+    OPTINLINE void PUSH_(const unsigned long& a, _STATE *_state) { PUSH_((dw)a, _state); }
+    OPTINLINE void PUSH_(const long long& a, _STATE *_state) { PUSH_((dw)a, _state); }
+    OPTINLINE void PUSH_(const unsigned long long& a, _STATE *_state) { PUSH_((dw)a, _state); }
+
+    template<typename S>
+    OPTINLINE void PUSH_(const S& a, _STATE *_state)
+{
+  X86_REGREF
+  dd averytemporary=a;stackPointer-=sizeof(a); 
+			memcpy (m2c::stack_raddr_(ss,stackPointer), &averytemporary, sizeof (a)); 
+  size_t native_return_id = 0;
+  if (
+      !m2c::suppress_native_return_push_transfer
+      && sizeof(a) == sizeof(m2c::MWORDSIZE)
+      // Match the tracked return by value only: register juggling (e.g.
+      // `xchg si,bx` in XTHL sequences) can move the return into a different
+      // carrier register, and pushing the old carrier register with new
+      // contents must not consume the tracked value.
+      && m2c::take_native_return_value(_state, (m2c::MWORDSIZE)(uintptr_t)a, &a, &native_return_id)
+  ) {
+      m2c::mark_native_return_with_id(_state, ss, stackPointer, (m2c::MWORDSIZE)(uintptr_t)a, native_return_id);
+  }
+ #if M2CDEBUG > 0
+ 		m2c::log_debug("after push %x\n",stackPointer); 
+ #endif
+ #ifdef SHADOW_STACK
+  m2c::shadow_stack.push(_state,(dd)(a));
+#endif
+
+               }
+//		assert((m2c::raddr_(ss,stackPointer) - ((db*)&stack))>8);
+
+    template<typename S>
+    OPTINLINE void POP_(S& a, _STATE *_state)
+{
+  X86_REGREF
+ #ifdef SHADOW_STACK
+  m2c::shadow_stack.pop(_state);
+ #endif
+
+	 #if M2CDEBUG > 0
+	     m2c::log_debug("before pop %x\n",stackPointer);
+	#endif
+	  memcpy (&a, m2c::stack_raddr_(ss,stackPointer), sizeof (a));
+  if (sizeof(a) == sizeof(m2c::MWORDSIZE)) {
+      m2c::carry_native_return(_state, ss, stackPointer, (m2c::MWORDSIZE)a, &a);
+  }
+  stackPointer+=sizeof(a);
+	}
+#endif
+
+#define PUSHAD m2c::PUSHAD_(_state)
+//pusha AX, CX, DX, BX, SP, BP, SI, DI
+    static void PUSHAD_(_STATE* _state) {
+        X86_REGREF
+        dd oldesp = esp;
+        PUSH(eax);
+        PUSH(ecx);
+        PUSH(edx);
+        PUSH(ebx);
+        PUSH(oldesp);
+        PUSH(ebp);
+        PUSH(esi);
+        PUSH(edi);
+    }
+//pushad EAX, ECX, EDX, EBX, ESP, EBP, ESI, EDI
+#define POPAD m2c::POPAD_(_state)
+
+    static void POPAD_(_STATE* _state) {
+        X86_REGREF
+        POP(edi);
+        POP(esi);
+        POP(ebp);
+        POP(ebx);
+        POP(ebx);
+        POP(edx);
+        POP(ecx);
+        POP(eax);
+    }
+
+#define PUSHA m2c::PUSHA_(_state)
+
+    static void PUSHA_(_STATE* _state) {
+        X86_REGREF
+        dw oldsp = sp;
+        PUSH(ax);
+        PUSH(cx);
+        PUSH(dx);
+        PUSH(bx);
+        PUSH(oldsp);
+        PUSH(bp);
+        PUSH(si);
+        PUSH(di);
+    }
+
+#define POPA m2c::POPA_(_state)
+
+    static void POPA_(_STATE* _state) {
+        X86_REGREF
+        POP(di);
+        POP(si);
+        POP(bp);
+        POP(bx);
+        POP(bx);
+        POP(dx);
+        POP(cx);
+        POP(ax);
+    }
+
+extern bool defered_irqs;
+OPTINLINE static void defer_irqs()
+{defered_irqs=true;}
+#if DOSBOX_CUSTOM
+#define STI {CPU_STI();m2c::defer_irqs();}
+#define CLI {CPU_CLI();}
+#else
+#define STI AFFECT_IF(1);
+#define CLI AFFECT_IF(0);
+#endif
+
+	#define CMP(a, b) m2c::CMP_(a, b, m2cflags)
+	template <class D, class S>
+	    MYINLINE void CMP_(const D &dest_, const S &src_, m2c::eflags &m2cflags) {
+        const size_t bytes = sizeof(D);
+        const uint64_t mask = m2c::operand_mask_for_size(bytes);
+        const uint64_t sign = m2c::sign_mask_for_size(bytes);
+        const uint64_t dest = (uint64_t)dest_ & mask;
+        const uint64_t src = (uint64_t)src_ & mask;
+        const uint64_t result = (dest - src) & mask;
+        AFFECT_CF(dest < src);
+        AFFECT_OF(((dest ^ src) & (dest ^ result) & sign) != 0);
+        AFFECT_AF(((dest ^ src ^ result) & 0x10u) != 0);
+        m2c::set_szp_flags(bytes, result, m2cflags);
+	}
+
+
+	#define OR(a, b) m2c::OR_(a, b, m2cflags)
+	template <class D, class S>
+	    MYINLINE void OR_(D &dest, const S &src, m2c::eflags &m2cflags) {
+	        D result = dest | static_cast<D>(src);
+	        dest = result;
+        m2c::set_logic_flags(sizeof(D), result, m2cflags);
+	 }
+
+	#define XOR(a, b) m2c::XOR_(a, b, m2cflags)
+	template <class D, class S>
+	    MYINLINE void XOR_(D &dest, const S &src, m2c::eflags &m2cflags) {
+	        D result = dest ^ static_cast<D>(src);
+	        dest = result;
+        m2c::set_logic_flags(sizeof(D), result, m2cflags);
+	 }
+
+	#define AND(a, b) m2c::AND_(a, b, m2cflags)
+	template <class D, class S>
+	    MYINLINE void AND_(D &dest, const S &src, m2c::eflags &m2cflags) {
+	        D result = dest & static_cast<D>(src);
+	        dest = result;
+        m2c::set_logic_flags(sizeof(D), result, m2cflags);
+	 }
+
+	#define NEG(a) m2c::NEG_(a, m2cflags)
+	template <class D>
+	    MYINLINE void NEG_(D &a, m2c::eflags &m2cflags) {
+        const size_t bytes = sizeof(D);
+        const uint64_t mask = m2c::operand_mask_for_size(bytes);
+        const uint64_t value = (uint64_t)a & mask;
+        const uint64_t result = (0 - value) & mask;
+        AFFECT_CF(value != 0);
+        AFFECT_OF(value == m2c::sign_mask_for_size(bytes));
+        AFFECT_AF(((value ^ result) & 0x10u) != 0);
+        a = static_cast<D>(result);
+        m2c::set_szp_flags(bytes, result, m2cflags);
+	}
+
+#ifdef TEST
+#undef TEST
+#endif
+	#define TEST(a, b) m2c::TEST_(a, b, m2cflags)
+	template <class D, class S>
+	    MYINLINE void TEST_(D &a, const S &b, m2c::eflags &m2cflags) {
+        const uint64_t result = ((uint64_t)a & (uint64_t)b)
+            & m2c::operand_mask_for_size(sizeof(D));
+        m2c::set_logic_flags(sizeof(D), result, m2cflags);
+	}
+
+	#define SHR(a, b) m2c::SHR_(a, b, m2cflags)
+	template <class D, class S>
+	    MYINLINE void SHR_(D &a, const S &b, m2c::eflags &m2cflags) {
+        uint64_t count = ((uint64_t)b) & 0x1f;
+        if (!count) return;
+        const size_t bytes = sizeof(D);
+        const uint64_t mask = m2c::operand_mask_for_size(bytes);
+        const uint64_t sign = m2c::sign_mask_for_size(bytes);
+        uint64_t value = (uint64_t)a & mask;
+        uint64_t old = value;
+        for (uint64_t index = 0; index < count; ++index) {
+            old = value;
+            AFFECT_CF((old & 1u) != 0);
+            value >>= 1;
+        }
+        AFFECT_OF((count == 1) && ((old & sign) != 0));
+        AFFECT_AF(false);
+        a = static_cast<D>(value);
+        m2c::set_szp_flags(bytes, value, m2cflags);
+	}
+
+	#define SHL(a, b) m2c::SHL_(a, b, m2cflags)
+	template <class D, class S>
+	    MYINLINE void SHL_(D &a, const S &b, m2c::eflags &m2cflags) {
+        uint64_t count = ((uint64_t)b) & 0x1f;
+        if (!count) return;
+        const size_t bytes = sizeof(D);
+        const uint64_t mask = m2c::operand_mask_for_size(bytes);
+        const uint64_t sign = m2c::sign_mask_for_size(bytes);
+        uint64_t value = (uint64_t)a & mask;
+        uint64_t old = value;
+        for (uint64_t index = 0; index < count; ++index) {
+            old = value;
+            AFFECT_CF((old & sign) != 0);
+            value = (value << 1) & mask;
+        }
+        AFFECT_OF((count == 1) && (((old ^ value) & sign) != 0));
+        AFFECT_AF(false);
+        a = static_cast<D>(value);
+        m2c::set_szp_flags(bytes, value, m2cflags);
+	}
+
+#define ROR(a, b) m2c::ROR_(a, b, m2cflags)
+template <class D, class S>
+    MYINLINE void ROR_(D &a, S b, m2c::eflags &m2cflags) {
+        if (b) {
+            AFFECT_CF(((a) >> (m2c::shiftmodule(a, b) - 1)) & 1);\
+		a=((a)>>(m2c::shiftmodule(a,b)) | a<<(m2c::bitsizeof(a)-(m2c::shiftmodule(a,b))));
+            D highestbitset = (1 << (m2c::bitsizeof(a) - 1));
+            AFFECT_OF((a ^ (a << 1)) & highestbitset);
+		}
+}
+
+#define ROL(a, b) m2c::ROL_(a, b, m2cflags)
+template <class D, class S>
+    MYINLINE void ROL_(D &a, S b, m2c::eflags &m2cflags) {
+        if (b) {
+            a = (((a) << (shiftmodule(a, b))) | (a) >> (bitsizeof(a) - (shiftmodule(a, b))));\
+		AFFECT_CF(LSB(a));
+            AFFECT_OF((a & 1) ^ (a >> (m2c::bitsizeof(a) - 1)));
+		}
+}
+
+
+#define RCL(a, b) m2c::RCL_(a, b, m2cflags)
+template <class D, class C>
+    MYINLINE void RCL_(D &op1, C op2, m2c::eflags &m2cflags) {
+	db lf_var2b=op2%(m2c::bitsizeof(op1) + 1);
+	if (!lf_var2b) return;
+	D cf=GET_CF()&1;
+	D lf_var1w=op1;									
+        D lf_resw;
+		if (lf_var2b == 1) {
+			lf_resw = (lf_var1w << 1) | cf;
+		} else {
+
+			lf_resw=(lf_var1w << lf_var2b) |					
+			(cf << (lf_var2b-1)) |						
+			(lf_var1w >> ((m2c::bitsizeof(op1) + 1)-lf_var2b));				
+		}
+	op1 = lf_resw;
+	AFFECT_CF((lf_var1w >> (m2c::bitsizeof(op1)-lf_var2b)) & 1);	
+	AFFECT_OF(GET_CF() ^ m2c::MSB(op1));
+}
+
+#define RCR(a, b) m2c::RCR_(a, b, m2cflags)
+template <class D, class C>
+    MYINLINE void RCR_(D &op1, C op2, m2c::eflags &m2cflags) {
+	db lf_var2b=op2%(m2c::bitsizeof(op1) + 1);
+	if (!lf_var2b) return;
+	D cf=GET_CF()&1;
+	D lf_var1w=op1;									
+        D lf_resw;
+        if (lf_var2b == 1) {
+			lf_resw = (lf_var1w >> 1) | (cf << (m2c::bitsizeof(op1) - 1));
+        } else {
+			lf_resw = (lf_var1w >> lf_var2b) | (cf << (m2c::bitsizeof(op1) - lf_var2b)) |
+			(lf_var1w << ((m2c::bitsizeof(op1) + 1) - lf_var2b));
+		}
+	op1 = lf_resw;
+	AFFECT_CF((lf_var1w >> (lf_var2b-1)) & 1);	
+	D highestbitset = (1<<( m2c::bitsizeof(op1)-1));
+	AFFECT_OF((lf_resw ^ (lf_resw << 1))&highestbitset);
+}
+
+template <class D>
+void SHLD_(D& Destination, D Source, size_t Count, m2c::eflags& m2cflags);
+
+template <class D>
+    MYINLINE void SHRD_(D &Destination, D Source, size_t Count, m2c::eflags &m2cflags) {
+ if(Count != 0) {
+            size_t TCount = Count & (2 * m2c::bitsizeof(Destination) - 1);
+
+            if (TCount > m2c::bitsizeof(Destination)) {
+                SHLD_(Destination, Source, 2 * m2c::bitsizeof(Destination) - TCount, m2cflags);
+            }
+            else {
+                AFFECT_CF(m2c::getbit(Destination, TCount - 1));
+                D originalDest = Destination;
+                Destination >>= TCount;
+		for(int i = m2c::bitsizeof(Destination) - TCount; i <= m2c::bitsizeof(Destination) - 1; ++i)
+                    if (i >= 0) {
+                        m2c::bitset(Destination, m2c::getbit(Source, i + TCount - m2c::bitsizeof(Destination)), i);
+                    }
+                if (m2c::bitsizeof(Destination) - TCount < 0) {
+                    AFFECT_CF(m2c::getbit(Source, TCount - m2c::bitsizeof(Destination) - 1));
+                }
+                AFFECT_OF((Destination ^ originalDest) & m2c::sign_mask_for_size(sizeof(D)));
+}
+ }
+}
+
+//template <class D>
+//void SHLD_(D& op1, D op2, size_t op3, m2c::eflags& m2cflags);
+/*
+{ 
+ if(Count != 0) {
+int TCount = Count&(2*m2c::bitsizeof(Destination)-1);
+if (TCount>m2c::bitsizeof(Destination)) {SHRD_(Destination, Source, 2*m2c::bitsizeof(Destination)-TCount, m2cflags);} 
+else
+{
+AFFECT_CF(((Destination<<m2c::bitsizeof(Destination)+Source) >> (32 - Count)) & 1);
+//		AFFECT_CF(m2c::getbit(Destination,m2c::bitsizeof(Destination)-TCount)); 
+		Destination<<=TCount;
+		for(int i = 0; i < TCount; ++i) 
+			if (i>=0) {m2c::bitset(Destination,m2c::getbit(Source,m2c::bitsizeof(Destination) - TCount + i),i);}
+}
+ }
+}
+*/
+//template <>
+    static void SHLD_(dw &Destination, dw Source, size_t Count, m2c::eflags &m2cflags) {
+ if(Count != 0) {
+            size_t TCount = Count & (2 * m2c::bitsizeof(Destination) - 1);
+            if (TCount > m2c::bitsizeof(Destination)) {
+                SHRD_(Destination, Source, 2 * m2c::bitsizeof(Destination) - TCount, m2cflags);
+            }
+            else {
+      //AFFECT_CF(((Destination<<m2c::bitsizeof(Destination)+Source) >> (32 - Count)) & 1);
+      AFFECT_CF(m2c::getbit(Destination,m2c::bitsizeof(Destination)-TCount));
+                dw originalDest = Destination;
+		Destination<<=TCount;
+		for(int i = 0; i < TCount; ++i) 
+                    if (i >= 0) {
+                        m2c::bitset(Destination, m2c::getbit(Source, m2c::bitsizeof(Destination) - TCount + i), i);
+                    }
+//        AFFECT_CF((Destination >> (32 - TCount)) & 1);
+      AFFECT_OF((Destination ^ originalDest) & 0x8000);
+   }
+               }
+}
+
+//template <>
+    static void SHLD_(dd &op1, dd op2, size_t op3, m2c::eflags &m2cflags) {
+	db val=op3 & 0x1F;
+	if (!val) return;
+	db lf_var2b=val;
+        dd lf_var1d=op1;
+	op1 = (lf_var1d << lf_var2b) | (op2 >> (32-lf_var2b));
+        AFFECT_CF((lf_var1d >> (32 - lf_var2b)) & 1);
+	AFFECT_OF((op1 ^ lf_var1d) & 0x80000000);
+}
+
+#define SHRD(a, b, c) {m2c::SHRD_(a, b, c, m2cflags);if (c) {AFFECT_ZFifz(a);AFFECT_SF_(a,a);}}
+#define SHLD(a, b, c) {m2c::SHLD_(a, b, c, m2cflags);if (c) {AFFECT_ZFifz(a);AFFECT_SF_(a,a);}}
+
+/*
+#define SAR(a,b) {if (b) {bool sign = m2c::MSB(a);\
+	 int shift = (m2c::bitsizeof(a)-b);\
+         shift = shift>0?shift:0;\
+	 dd sigg=shift<(m2c::bitsizeof(a))?( (sign?-1:0)<<shift):0;\
+         a = b>m2c::bitsizeof(a)?0:a;\
+	 AFFECT_CF((a >> (b-1))&1);\
+	 a=sigg | (a >> b);\
+		AFFECT_ZFifz(a);\
+		AFFECT_SF_(a,a);}} // TODO optimize
+*/
+	#define SAR(a, b) m2c::SAR_(a, b, m2cflags)
+	template <class D, class S>
+	    MYINLINE void SAR_(D &op1, const S &op2, m2c::eflags &m2cflags) {
+        uint64_t count = ((uint64_t)op2) & 0x1f;
+        if (!count) return;
+        const size_t bytes = sizeof(D);
+        const unsigned bits = (unsigned)(bytes * 8);
+        const uint64_t mask = m2c::operand_mask_for_size(bytes);
+        const uint64_t sign = m2c::sign_mask_for_size(bytes);
+        uint64_t value = (uint64_t)op1 & mask;
+        for (uint64_t index = 0; index < count; ++index) {
+            AFFECT_CF((value & 1u) != 0);
+            value = (value >> 1) | (value & sign);
+            value &= mask;
+            if (index + 1 >= bits) {
+                value = (value & sign) ? mask : 0;
+            }
+        }
+        AFFECT_OF(false);
+        AFFECT_AF(false);
+        op1 = static_cast<D>(value);
+        m2c::set_szp_flags(bytes, value, m2cflags);
+	}
+
+#define SAL(a,b) SHL(a,b)
+
+
+#define DAA	{											\
+	if (((al & 0x0F)>0x09) || GET_AF()) {				\
+		if ((al > 0x99) || GET_CF()) {					\
+			al+=0x60;									\
+			AFFECT_CF(true);							\
+		} else {											\
+			AFFECT_CF(false);							\
+		}													\
+		al+=0x06;										\
+		AFFECT_AF(true);								\
+	} else {												\
+		if ((al > 0x99) || GET_CF()) {					\
+			al+=0x60;									\
+			AFFECT_CF(true);							\
+		} else {											\
+			AFFECT_CF(false);							\
+		}													\
+		AFFECT_AF(false);								\
+	}														\
+	AFFECT_SF(al&0x80);							\
+	AFFECT_ZFifz(al); \
+	AFFECT_PF(m2c::even_parity8(al));}
+
+#define DAS												\
+{															\
+	db osigned=al & 0x80;							\
+	if (((al & 0x0f) > 9) || GET_AF()) {				\
+		if ((al>0x99) || GET_CF()) {					\
+			al-=0x60;									\
+			AFFECT_CF(true);							\
+		} else {											\
+			AFFECT_CF((al<=0x05));					\
+		}													\
+		al-=6;											\
+		AFFECT_AF(true);								\
+	} else {												\
+		if ((al>0x99) || GET_CF()) {					\
+			al-=0x60;									\
+			AFFECT_CF(true);							\
+		} else {											\
+			AFFECT_CF(false);							\
+		}													\
+		AFFECT_AF(false);								\
+	}														\
+	AFFECT_OF(osigned && ((al&0x80)==0));			\
+	AFFECT_SF(al&0x80);							\
+	AFFECT_ZFifz(al); \
+	AFFECT_PF(m2c::even_parity8(al)); \
+}
+
+
+#define SALC	{AL=GET_CF()?0xff:0;}
+
+#define AAA	{											\
+	AFFECT_SF(((al>=0x7a) && (al<=0xf9)));		\
+	if ((al & 0xf) > 9) {								\
+		AFFECT_OF((al&0xf0)==0x70);					\
+		ax += 0x106;									\
+		AFFECT_CF(true);								\
+		AFFECT_ZFifz(al);						\
+		AFFECT_AF(true);								\
+	} else if (GET_AF()) {									\
+		ax += 0x106;									\
+		AFFECT_OF(false);								\
+		AFFECT_CF(true);								\
+		AFFECT_ZFifz(-1);								\
+		AFFECT_AF(true);								\
+	} else {												\
+		AFFECT_OF(false);								\
+		AFFECT_CF(false);								\
+		AFFECT_ZFifz(al);						\
+		AFFECT_AF(false);								\
+	}														\
+	AFFECT_PF(m2c::even_parity8(al));				\
+	al &= 0x0F;}
+
+#define AAS {												\
+	if ((al & 0x0f)>9) {								\
+		AFFECT_SF(al>0x85);						\
+		ax -= 0x106;									\
+		AFFECT_OF(false);								\
+		AFFECT_CF(true);								\
+		AFFECT_AF(true);								\
+	} else if (GET_AF()) {									\
+		AFFECT_OF(((al>=0x80) && (al<=0x85)));	\
+		AFFECT_SF((al<0x06) || (al>0x85));		\
+		ax -= 0x106;									\
+		AFFECT_CF(true);								\
+		AFFECT_AF(true);								\
+	} else {												\
+		AFFECT_SF(al>=0x80);						\
+		AFFECT_OF(false);								\
+		AFFECT_CF(false);								\
+		AFFECT_AF(false);								\
+	}														\
+	AFFECT_ZFifz(al);							\
+	AFFECT_PF(m2c::even_parity8(al));				\
+	al &= 0x0F;}
+
+#define AAM1(x)											\
+{															\
+	db dv=x;											\
+	if (dv!=0) {											\
+		ah=al / dv;									\
+		al=al % dv;									\
+		AFFECT_SF(al & 0x80);						\
+		AFFECT_ZFifz(al);						\
+		AFFECT_PF(m2c::even_parity8(al));				\
+		AFFECT_CF(false);								\
+		AFFECT_OF(false);								\
+		AFFECT_AF(false);								\
+	} else {CPU_Exception(0);} \
+}
+
+#define AAM AAM1(10)
+
+#define AAD1(x)											\
+	{														\
+		al = ah * x + al;								\
+		ah = 0;											\
+		AFFECT_CF(false);								\
+		AFFECT_OF(false);								\
+		AFFECT_AF(false);								\
+		AFFECT_SF(al >= 0x80);						\
+		AFFECT_ZFifz(al);							\
+		AFFECT_PF(m2c::even_parity8(al));				\
+	}
+
+#define AAD AAD1(10)
+
+	#define ADD(a, b) m2c::ADD_(a, b, m2cflags)
+	template <class D, class S>
+	    MYINLINE void ADD_(D &dest, const S &src, m2c::eflags &m2cflags) {
+        const size_t bytes = sizeof(D);
+        const uint64_t mask = m2c::operand_mask_for_size(bytes);
+        const uint64_t sign = m2c::sign_mask_for_size(bytes);
+        const uint64_t left = (uint64_t)dest & mask;
+        const uint64_t right = (uint64_t)src & mask;
+        const uint64_t result64 = left + right;
+        const uint64_t result = result64 & mask;
+        AFFECT_CF(result64 > mask);
+        AFFECT_OF(((left ^ result) & (right ^ result) & sign) != 0);
+        AFFECT_AF(((left ^ right ^ result) & 0x10u) != 0);
+        dest = static_cast<D>(result);
+        m2c::set_szp_flags(bytes, result, m2cflags);
+	}
+
+
+#define XADD(a,b) {dq averytemporary=(dq)(a); dq averytemporary2=(dq)(b); \
+		dq averytemporary3=(averytemporary+averytemporary2)&m2c::MASK[sizeof(a)]; \
+		AFFECT_CF(averytemporary+averytemporary2>m2c::MASK[sizeof(a)]); \
+		AFFECT_OF(((averytemporary^averytemporary3)&(averytemporary2^averytemporary3)&m2c::sign_mask_for_size(sizeof(a)))!=0); \
+		AFFECT_AF(((averytemporary^averytemporary2^averytemporary3)&0x10u)!=0); \
+		b=averytemporary; \
+		a=averytemporary3; \
+		m2c::set_szp_flags(sizeof(a),averytemporary3,m2cflags);}
+
+	#define SUB(a, b) m2c::SUB_(a, b, m2cflags)
+
+	template <class D, class S>
+	    MYINLINE void SUB_(D &dest, const S &src, m2c::eflags &m2cflags) {
+        const size_t bytes = sizeof(D);
+        const uint64_t mask = m2c::operand_mask_for_size(bytes);
+        const uint64_t sign = m2c::sign_mask_for_size(bytes);
+        const uint64_t left = (uint64_t)dest & mask;
+        const uint64_t right = (uint64_t)src & mask;
+        const uint64_t result = (left - right) & mask;
+        AFFECT_CF(left < right);
+        AFFECT_OF(((left ^ right) & (left ^ result) & sign) != 0);
+        AFFECT_AF(((left ^ right ^ result) & 0x10u) != 0);
+        dest = static_cast<D>(result);
+        m2c::set_szp_flags(bytes, result, m2cflags);
+	}
+
+	#define ADC(a, b) m2c::ADC_(a, b, m2cflags)
+	template <class D, class S>
+	    MYINLINE void ADC_(D &dest, const S &src, m2c::eflags &m2cflags) {
+        const size_t bytes = sizeof(D);
+        const uint64_t mask = m2c::operand_mask_for_size(bytes);
+        const uint64_t sign = m2c::sign_mask_for_size(bytes);
+        const uint64_t left = (uint64_t)dest & mask;
+        const uint64_t right = (uint64_t)src & mask;
+        const uint64_t rhs = right + (GET_CF() ? 1u : 0u);
+        const uint64_t result64 = left + rhs;
+        const uint64_t result = result64 & mask;
+        AFFECT_CF(result64 > mask);
+        AFFECT_OF(((left ^ result) & (rhs ^ result) & sign) != 0);
+        AFFECT_AF(((left ^ rhs ^ result) & 0x10u) != 0);
+        dest = static_cast<D>(result);
+        m2c::set_szp_flags(bytes, result, m2cflags);
+	}
+
+	#define SBB(a, b) m2c::SBB_(a, b, m2cflags)
+	template <class D, class S>
+	    MYINLINE void SBB_(D &dest, const S &src, m2c::eflags &m2cflags) {
+        const size_t bytes = sizeof(D);
+        const uint64_t mask = m2c::operand_mask_for_size(bytes);
+        const uint64_t sign = m2c::sign_mask_for_size(bytes);
+        const uint64_t left = (uint64_t)dest & mask;
+        const uint64_t right = (uint64_t)src & mask;
+        const uint64_t rhs = right + (GET_CF() ? 1u : 0u);
+        const uint64_t result = (left - rhs) & mask;
+        AFFECT_CF(left < rhs);
+        AFFECT_OF(((left ^ rhs) & (left ^ result) & sign) != 0);
+        AFFECT_AF(((left ^ rhs ^ result) & 0x10u) != 0);
+        dest = static_cast<D>(result);
+        m2c::set_szp_flags(bytes, result, m2cflags);
+	}
+
+// TODO: should affects OF, SF, ZF, AF, and PF
+#define INC(a) m2c::INC_(a, m2cflags)
+template <class D>
+    MYINLINE void INC_(D &a, m2c::eflags &m2cflags) {
+        a += 1;
+		AFFECT_ZFifz(a);
+		AFFECT_SF_(a,a);
+		D highestbitset = (1<<( m2c::bitsizeof(a)-1));
+		AFFECT_OF(a==highestbitset);
+}
+            
+#define DEC(a) m2c::DEC_(a, m2cflags)
+template <class D>
+    MYINLINE void DEC_(D &a, m2c::eflags &m2cflags) {
+        a -= 1;
+		AFFECT_ZFifz(a);
+		AFFECT_SF_(a,a);
+		D a7fff = (1<<( m2c::bitsizeof(a)-1))-1;
+		AFFECT_OF(a==a7fff);
+}
+
+
+// #num_args _ #bytes
+#define IMUL1_1(a) {ax=((int8_t)al)*((int8_t)(a)); AFFECT_OF(AFFECT_CF((ax & 0xff80)!=0xff80&&(ax & 0xff80)!=0));}
+#define IMUL1_2(a) {int32_t averytemporary=(int32_t)((int16_t)ax)*((int16_t)(a));ax=averytemporary;dx=averytemporary>>16; AFFECT_OF(AFFECT_CF((averytemporary & 0xffff8000)!=0xffff8000&&(averytemporary & 0xffff8000)!=0));}
+#define IMUL1_4(a) {int64_t averytemporary=(int64_t)((int32_t)eax)*((int32_t)(a));eax=averytemporary;edx=averytemporary>>32; AFFECT_OF(AFFECT_CF((averytemporary & 0xffffffff80000000)!=0xffffffff80000000&&(averytemporary & 0xffffffff80000000)!=0));}
+#define IMUL2_2(a,b) {int32_t averytemporary = ((int16_t)(a)) * ((int16_t)(b)); a=averytemporary;AFFECT_OF(AFFECT_CF((averytemporary>= -32768)  && (averytemporary<=32767)?false:true));}
+#define IMUL2_4(a,b) {int64_t averytemporary = ((int64_t)(int32_t)(a)) * ((int64_t)(int32_t)(b)); a=averytemporary;AFFECT_OF(AFFECT_CF((averytemporary>=-((int64_t)(2147483647)+1)) && (averytemporary<=(int64_t)2147483647)?false:true));}
+#define IMUL3_2(a,b,c) {int32_t averytemporary = ((int16_t)(b)) * ((int16_t)(c)); a=averytemporary;AFFECT_OF(AFFECT_CF((averytemporary>= -32768)  && (averytemporary<=32767)?false:true));}
+#define IMUL3_4(a,b,c) {int64_t averytemporary = ((int64_t)(int32_t)(b)) * ((int64_t)(int32_t)(c)); a=averytemporary;AFFECT_OF(AFFECT_CF((averytemporary>=-((int64_t)(2147483647)+1)) && (averytemporary<=(int64_t)2147483647)?false:true));}
+
+#define MUL1_1(a) {ax=(dw)al*(a); AFFECT_OF(AFFECT_CF(ah));}
+#define MUL1_2(a) {dd averytemporary=(dd)ax*(a);ax=averytemporary;dx=averytemporary>>16; AFFECT_OF(AFFECT_CF(dx));}
+#define MUL1_4(a) {dq averytemporary=(dq)eax*(a);eax=averytemporary;edx=averytemporary>>32; AFFECT_OF(AFFECT_CF(edx));}
+#define MUL2_2(a,b) {dd averytemporary=(dd)(a)*(b);a=averytemporary; AFFECT_OF(AFFECT_CF(averytemporary>>16));}
+#define MUL2_4(a,b) {dq averytemporary=(dq)(a)*(b);a=averytemporary; AFFECT_OF(AFFECT_CF(averytemporary>>32));}
+#define MUL3_2(a,b,c) {dd averytemporary=(dd)(b)*(c);a=averytemporary; AFFECT_OF(AFFECT_CF(averytemporary>>16));}
+#define MUL3_4(a,b,c) {dq averytemporary=(dq)(b)*(c);a=averytemporary; AFFECT_OF(AFFECT_CF(averytemporary>>32));}
+
+/*
+#define IDIV1(a) {SETFLAGBIT(OF,0);if(a) {int16_t averytemporary=ax;al=averytemporary/((int8_t)a); ah=averytemporary%((int8_t)a); AFFECT_OF(false);}}
+#define IDIV2(a) {SETFLAGBIT(OF,0);if(a) {int32_t averytemporary=(((int32_t)(int16_t)dx)<<16)|ax; ax=averytemporary/((int16_t)a);dx=averytemporary%((int16_t)a); AFFECT_OF(false);}}
+#define IDIV4(a) {SETFLAGBIT(OF,0);if(a) {int64_t averytemporary=(((int64_t)(int32_t)edx)<<32)|eax;eax=averytemporary/((int32_t)a);edx=averytemporary%((int32_t)a); AFFECT_OF(false);}}
+*/
+#define IDIV1(op1)                                \
+{                                                            \
+    Bits val=(int8_t)(op1);                            \
+    if (val==0)    CPU_Exception(0);                                \
+    Bits quo=((int16_t)ax) / val;                        \
+    int8_t rem=(int8_t)((int16_t)ax % val);                \
+    int8_t quo8s=(int8_t)(quo&0xff);                            \
+    if (quo!=(int16_t)quo8s) CPU_Exception(0);                    \
+    ah=rem;                                                \
+    al=quo8s;                                            \
+    AFFECT_OF(false);                                    \
+}
+
+
+#define IDIV2(op1)                                \
+{                                                            \
+    Bits val=(int16_t)(op1);                            \
+    if (val==0) CPU_Exception(0);                                    \
+    Bits num=(int32_t)((dx<<16)|ax);                    \
+    Bits quo=num/val;                                        \
+    int16_t rem=(int16_t)(num % val);                            \
+    int16_t quo16s=(int16_t)quo;                                \
+    if (quo!=(int32_t)quo16s) CPU_Exception(0);                    \
+    dx=rem;                                                \
+    ax=quo16s;                                            \
+    AFFECT_OF(false);                                    \
+}
+
+#define IDIV4(op1)                                \
+{                                                            \
+    Bits val=(int32_t)(op1);                            \
+    if (val==0) CPU_Exception(0);                                    \
+    int64_t num=(((uint64_t)edx)<<32)|eax;                \
+    int64_t quo=num/val;                                        \
+    int32_t rem=(int32_t)(num % val);                            \
+    int32_t quo32s=(int32_t)(quo&0xffffffff);                    \
+    if (quo!=(int64_t)quo32s) CPU_Exception(0);                    \
+    edx=rem;                                            \
+    eax=quo32s;                                            \
+    AFFECT_OF(false);                                    \
+}
+
+#define DIV1(a) {dw m2c_div_v=(dw)(a);if(m2c_div_v){dw averytemporary=ax;dw m2c_div_q=averytemporary/m2c_div_v;if(m2c_div_q<=0xff){al=(db)m2c_div_q;ah=(db)(averytemporary%m2c_div_v);}/* else #DE: result registers left unchanged */} AFFECT_OF(false);}
+#define DIV2(a) {dw m2c_div_v=(dw)(a);if(m2c_div_v){dd averytemporary=((((dd)dx)<<16)|ax);dd m2c_div_q=averytemporary/m2c_div_v;if(m2c_div_q<=0xffff){ax=(dw)m2c_div_q;dx=(dw)(averytemporary%m2c_div_v);}/* else #DE: result registers left unchanged */} AFFECT_OF(false);}
+#define DIV4(a) {dd m2c_div_v=(dd)(a);if(m2c_div_v){uint64_t averytemporary=((((dq)edx)<<32)|eax);uint64_t m2c_div_q=averytemporary/m2c_div_v;if(m2c_div_q<=0xffffffffull){eax=(dd)m2c_div_q;edx=(dd)(averytemporary%m2c_div_v);}/* else #DE: result registers left unchanged */} AFFECT_OF(false);}
+#define DIV0(a) DIV1(a)
+
+#define NOT(a) {a= ~(a);};// AFFECT_ZFifz(a) //TODO
+
+#define SETA(a) {a=GET_CF()==0 && GET_ZF()==0;}
+#define SETNBE(a) {a=GET_CF()==0 && GET_ZF()==0;}
+#define SETAE(a) {a=GET_CF()==0;}
+#define SETNB(a) {a=GET_CF()==0;}
+#define SETNC(a) {a=GET_CF()==0;}
+#define SETBE(a) {a=GET_CF() || GET_ZF();}
+#define SETNA(a) {a=GET_CF() || GET_ZF();}
+#define SETB(a) {a=GET_CF();}
+#define SETNAE(a) {a=GET_CF();}
+#define SETC(a) {a=GET_CF();}
+#define SETL(a) {a=GET_SF()!=GET_OF();}
+#define SETNGE(a) {a=GET_SF()!=GET_OF();}
+#define SETNS(a) {a=GET_SF()==0;}
+#define SETS(a) {a=GET_SF();}
+#define SETGE(a) {a=GET_SF()==GET_OF();}
+#define SETNL(a) {a=GET_SF()==GET_OF();}
+#define SETG(a) {a=GET_ZF()==0 && GET_SF()==GET_OF();}
+#define SETNLE(a) {a=GET_ZF()==0 && GET_SF()==GET_OF();}
+#define SETNE(a) {a=GET_ZF()==0;}
+#define SETNZ(a) {a=GET_ZF()==0;}
+#define SETLE(a) {a=GET_ZF() || GET_SF()!=GET_OF();}
+#define SETNG(a) {a=GET_ZF() || GET_SF()!=GET_OF();}
+#define SETE(a) {a=GET_ZF();}
+#define SETZ(a) {a=GET_ZF();}
+#define SETNO(a) {a=!GET_OF();}
+#define SETNP(a) {a=!GET_PF();}
+#define SETO(a) {a=GET_OF();}
+#define SETP(a) {a=GET_PF();}
+
+
+#define JE(label) if (GET_ZF()) GOTOLABEL(label)
+#define JZ(label) JE(label)
+
+#define JNE(label) if (!GET_ZF()) GOTOLABEL(label)
+#define JNZ(label) JNE(label)
+
+#define JNB(label) if (!GET_CF()) GOTOLABEL(label)
+#define JAE(label) JNB(label)
+#define JNC(label) JNB(label)
+
+#define JB(label) if (GET_CF()) GOTOLABEL(label)
+#define JC(label) JB(label)
+#define JNAE(label) JB(label)
+
+#define JA(label) if (!GET_CF() && !GET_ZF()) GOTOLABEL(label)
+#define JNBE(label) JA(label)
+
+#define JNA(label) if (GET_CF() || GET_ZF()) GOTOLABEL(label)
+#define JBE(label) JNA(label)
+
+#define JGE(label) if (GET_SF()==GET_OF()) GOTOLABEL(label)
+#define JNL(label) JGE(label)
+
+#define JG(label) if (!GET_ZF() && GET_SF()==GET_OF()) GOTOLABEL(label)
+#define JNLE(label) JG(label)
+
+#define JLE(label) if (GET_ZF() || GET_SF()!=GET_OF()) GOTOLABEL(label) // TODO
+#define JNG(label) JLE(label)
+
+#define JL(label) if (GET_SF()!=GET_OF()) GOTOLABEL(label) // TODO
+#define JNGE(label) JL(label)
+
+#define JCXZ(label) if (cx == 0) GOTOLABEL(label) // TODO
+#define JECXZ(label) if (ecx == 0) GOTOLABEL(label) // TODO
+
+#define JS(label) if (GET_SF()) GOTOLABEL(label)
+#define JNS(label) if (!GET_SF()) GOTOLABEL(label)
+
+#define JO(label) if (GET_OF()) GOTOLABEL(label)
+#define JNO(label) if (!GET_OF()) GOTOLABEL(label)
+
+#define JP(label) if (GET_PF()) GOTOLABEL(label)
+#define JPE(label) if (GET_PF()) GOTOLABEL(label)
+#define JNP(label) if (!GET_PF()) GOTOLABEL(label)
+#define JPO(label) if (!GET_PF()) GOTOLABEL(label)
+#ifndef LOOP
+#define LOOP(label) {--cx; if (cx) GOTOLABEL(label);}
+#endif
+#ifndef LOOPE
+#define LOOPE(label) {--cx; if (cx && GET_ZF()) GOTOLABEL(label);}
+#endif
+#ifndef LOOPZ
+#define LOOPZ(label) LOOPE(label)
+#endif
+#ifndef LOOPNE
+#define LOOPNE(label) {--cx; if (cx && !GET_ZF()) GOTOLABEL(label);}
+#endif
+#ifndef LOOPNZ
+#define LOOPNZ(label) LOOPNE(label)
+#endif
+#define HLT {}
+/*
+#if M2CDEBUG >= 3
+ #define MOV(dest,src) {log_debug("%s := %x\n",#dest, src); dest = src;}
+#else
+ #define MOV(dest,src) {dest = src;}
+#endif
+*/
+
+#define MOV(dest,src) {m2c::MOV_(&dest,src);}
+
+template <class D, class S>
+    MYINLINE void MOV_(D *dest, const S &src) { m2c::setdata(dest, static_cast<D>(m2c::getdata(src))); }
+
+#if _BITS == 32
+#define LEAVE {MOV(esp, ebp);POP(ebp);}
+#else
+#define LEAVE {MOV(sp, bp);POP(bp);}
+#endif
+#define LFS(dest, src) {dw seg= *(dw*)((db*)&(src) + sizeof(dest));dest = src;fs=seg;}
+#define LES(dest, src) {dw seg= *(dw*)((db*)&(src) + sizeof(dest));dest = src;es=seg;}
+#define LGS(dest, src) {dw seg= *(dw*)((db*)&(src) + sizeof(dest));dest = src;gs=seg;}
+#define LDS(dest, src) {dw seg= *(dw*)((db*)&(src) + sizeof(dest));dest = src;ds=seg;}
+
+#define MOVZX(dest,src) {dest = src;}
+#define MOVSX(dest,src) {if (ISNEGATIVE(src,src)) { dest = ((-1 ^ (( 1 << (m2c::bitsizeof(src)) )-1)) | src ); } else { dest = src; }}
+
+#define BT(dest,src) {AFFECT_CF(dest & m2c::nthbitone(dest,src));} //TODO
+#define BTS(dest,src) {AFFECT_CF(dest & m2c::nthbitone(dest,src)); dest |= m2c::nthbitone(dest,src);}
+#define BTC(dest,src) {AFFECT_CF(dest & m2c::nthbitone(dest,src)); dest ^= m2c::nthbitone(dest,src);}
+#define BTR(dest,src) {AFFECT_CF(dest & m2c::nthbitone(dest,src)); dest &= ~(m2c::nthbitone(dest,src));}
+
+// LEA - Load Effective Address
+#define LEA(dest,src) {dest = src;}
+
+#define XCHG(dest, src) m2c::XCHG_(dest,src)
+
+/* CMPXCHG dest,src: compares accumulator (al/ax/eax) with dest.
+   If equal: ZF=1 and dest=src. Otherwise: ZF=0 and accumulator=dest.
+   Other flags are set as by CMP accumulator,dest. */
+#define CMPXCHG(dest, src) { \
+    if (sizeof(dest)==1) { CMP(al, (db)(dest)); if (GET_ZF()) {dest=(db)(src);} else {al=dest;} } \
+    else if (sizeof(dest)==2) { CMP(ax, (dw)(dest)); if (GET_ZF()) {dest=(dw)(src);} else {ax=dest;} } \
+    else { CMP(eax, (dd)(dest)); if (GET_ZF()) {dest=(dd)(src);} else {eax=dest;} } }
+
+/* CMPXCHG8B m64: compares edx:eax with m64.
+   If equal: ZF=1 and m64=ecx:ebx. Otherwise: ZF=0 and edx:eax=m64. */
+#define CMPXCHG8B(a) {dq m2c_cmpxchg8b_v=(dq)(a); \
+    if (((((dq)edx)<<32)|(dq)eax)==m2c_cmpxchg8b_v) { \
+        AFFECT_ZF(1); \
+        (a)=(dq)((((dq)ecx)<<32)|(dq)ebx); \
+    } else { \
+        AFFECT_ZF(0); \
+        edx=(dd)(m2c_cmpxchg8b_v>>32); \
+        eax=(dd)(m2c_cmpxchg8b_v&0xffffffffull); \
+    }}
+
+    template<class D>
+    MYINLINE void XCHG_(D &dest, D &src) {
+        D t = m2c::getdata(dest);
+        m2c::setdata(&dest, m2c::getdata(src));
+        m2c::setdata(&src, t);
+    }//std::swap(dest,src); TODO
+
+
+#define MOVS(dest,src,destreg,srcreg,s)  {dest=src; destreg+=(GET_DF()==0)?s:-s; srcreg+=(GET_DF()==0)?s:-s; }
+//                        {memmove(dest,src,s); dest+=s; src+=s; } \
+
+#define LODS(addr,destreg,s) {memcpy(((db *)&eax), &(addr), s); destreg+=(GET_DF()==0)?s:-s;}
+
+
+#define CBW {ah = ((int8_t)al) < 0?-1:0;} // TODO
+#define CWD {dx = ((int16_t)ax) < 0?-1:0;}
+#define CWDE {*(((dw*)&eax)+1) = ((int16_t)ax) < 0?-1:0;}
+
+// MOVSx (DF FLAG not implemented)
+
+//#define MOVSB MOVSS(1)
+//#define MOVSW MOVSS(2)
+//#define MOVSD MOVSS(4)
+
+
+
+#ifdef MSB_FIRST
+#define LODSB LODSS(1,3)
+#define LODSW LODSS(2,2)
+    //#else
+    // #define LODSB LODSS(1,0)
+    // #define LODSW LODSS(2,0)
+#endif
+
+//#define LODSD LODSS(4,0)
+
+
+
+// JMP - Unconditional Jump
+#define JMP(label) GOTOLABEL(label)
+#define GOTOLABEL(a) {_source=__LINE__;goto a;}
+
+
+#define CLD {AFFECT_DF(0);}
+#define STD {AFFECT_DF(1);}
+
+#define STC {AFFECT_CF(1);}
+#define CLC {AFFECT_CF(0);}
+#define CMC {AFFECT_CF(GET_CF() ^ 1);}
+
+#define PUSHF {PUSH( (m2c::MWORDSIZE)m2cflags.getvalue() );}
+#define POPF {m2c::MWORDSIZE averytemporary; POP(averytemporary); m2cflags.setvalue(averytemporary);m2c::defer_irqs();}
+
+// directjeu nosetjmp,2
+// directmenu
+
+#define NOP {;}
+
+#define LAHF {ah = m2cflags.getvalue();}
+#define SAHF {m2cflags.setvalue(ah);}
+/*
+#define CALLF(label) {log_debug("before callf %d\n",stackPointer);PUSH(cs);CALL(label);}
+#define CALL(label) \
+	{ log_debug("before call %d\n",stackPointer); db averytemporary4='x';  \
+	if (setjmp(jmpbuffer) == 0) { \
+		PUSH(jmpbuffer); PUSH(averytemporary4);\
+		JMP(label); \
+	} }
+
+#define RET {log_debug("before ret %d\n",stackPointer); db averytemporary5=0; POP(averytemporary5); if (averytemporary5!='x') {log_error("Stack corrupted.\n");exit(1);} \
+ 		POP(jmpbuffer); log_debug("after ret %d\n",stackPointer);longjmp(jmpbuffer, 0);}
+
+#define RETN RET
+#define RETF {log_debug("before ret %d\n",stackPointer); db averytemporary5=0; POP(averytemporary5); if (averytemporary5!='x') {log_error("Stack corrupted.\n");exit(1);} \
+ 		POP(jmpbuffer); stackPointer-=2; log_debug("after retf %d\n",stackPointer);longjmp(jmpbuffer, 0);}
+*/
+#define CALLF(label, disp) {PUSH(cs);CALL(label, disp);}
+/*
+#define CALL(label) \
+	{ db averytemporary6='x';  \
+	if (setjmp(jmpbuffer) == 0) { \
+		PUSH(jmpbuffer); PUSH(averytemporary6);\
+		JMP(label); \
+	} }
+
+#define RET {db averytemporary7=0; POP(averytemporary7); if (averytemporary7!='x') {log_error("Stack corrupted.\n");exit(1);} \
+ 		POP(jmpbuffer); longjmp(jmpbuffer, 0);}
+#define RETF {db averytemporary7=0; POP(averytemporary7); if (averytemporary7!='x') {log_error("Stack corrupted.\n");exit(1);} \
+ 		POP(jmpbuffer); stackPointer-=2; longjmp(jmpbuffer, 0);}
+*/
+#if SINGLEPROC
+#define RETN(i) {m2c::RETN_(i, _state); __disp=(cs<<16)+eip;goto __dispatch_call;}
+    static void RETN_(size_t i, struct _STATE *_state)
+    {
+        X86_REGREF
+ #if M2CDEBUG > 0
+       if (debug>2) log_debug("before ret %x\n",stackPointer);
+ #endif
+       m2c::MWORDSIZE averytemporary9=0; POP(averytemporary9);
+       eip=averytemporary9;
+       esp+=i;
+ #if M2CDEBUG > 0
+       if (debug>2) {log_debug("after ret %x\n",stackPointer);
+       m2c::_indent -= 1;
+       m2c::_str = m2c::log_spaces(m2c::_indent);
+          log_debug("return eip %x\n",eip);}
+ #endif
+    }
+
+#define RETF(i) {m2c::RETF_(i, _state); __disp=(cs<<16)+eip;goto __dispatch_call;}
+    static void RETF_(size_t i, struct _STATE *_state)
+    {
+        X86_REGREF
+ #if M2CDEBUG > 0
+            if (debug>2) log_debug("before retf %x\n",stackPointer);
+ #endif
+       m2c::MWORDSIZE averytemporary9=0; POP(averytemporary9);
+       eip=averytemporary9;
+        dw averytemporary11;POP(averytemporary11); cs=averytemporary11;
+       esp+=i;
+ #if M2CDEBUG > 0
+       if (debug>2) {log_debug("after retf %x\n",stackPointer);
+       m2c::_indent -= 1;
+       m2c::_str = m2c::log_spaces(m2c::_indent);
+          log_debug("return eip %x\n",eip);}
+ #endif
+    }
+
+#define CALL(label, disp) {m2c::CALL_(label, _state, disp);if (disp) {__disp=disp;} else {__disp=m2c::k##label;}goto __dispatch_call;}
+    static void CALL_(m2cf* label, struct _STATE* _state, _offsets _i=0) {
+     X86_REGREF
+    from_callf=true;
+          MWORDSIZE averytemporary8=eip+2; PUSH(averytemporary8);
+
+ #if M2CDEBUG > 0
+          if (debug>2) {log_debug("after call %x\n",stackPointer);
+          if (_state) {++m2c::_indent;m2c::_str=m2c::log_spaces(_state->_indent);};}
+ #endif
+     }
+#else
+
+// #define RETN(i) {m2c::MWORDSIZE averytemporary11=0; POP(averytemporary11);  \
+//	esp+=i;return true;}
+
+struct StackPop
+{
+   explicit StackPop(size_t deep=1)
+    :deep(deep)
+   {}
+
+   size_t deep;
+};
+
+#define RETN(i) {if (m2c::RETN_(i, _state)) {return true;} else  {__disp=eip;return __dispatch_call(__disp,_state);}}
+/*
+#else
+#define RETN(i) {m2c::RETN_(i, _state);return true;}
+#endif
+*/
+
+    static bool RETN_(size_t i, struct _STATE *_state) {
+        X86_REGREF
+ #if M2CDEBUG > 0
+        if (debug>2) log_debug("before ret %x\n", stackPointer);
+ #endif
+
+#ifdef SHADOW_STACK
+        shadow_stack.itisret();
+#endif
+        bool ret(false);
+        const dw return_ss = ss;
+        const dw return_sp = sp;
+#ifdef SHADOW_STACK
+        ret = shadow_stack.itwascall(_state);
+        POP(ip);
+        int skip = shadow_stack.getneedtoskipcallndclean();
+#else
+        POP(ip);
+#endif
+#ifndef SHADOW_STACK
+        size_t ret_match_depth = native_return_call_depth;
+        bool native_ret = false;
+        if (!ret) {
+            if (m2c::consume_native_return(_state, return_ss, return_sp, ip, &ret_match_depth)) {
+                native_ret = true;
+            } else {
+                native_ret = m2c::take_native_return_value(_state, ip, &ip);
+            }
+        }
+        ret = ret || native_ret;
+#else
+        const bool native_ret = !ret
+            && (m2c::consume_native_return(_state, return_ss, return_sp, ip)
+                || m2c::take_native_return_value(_state, ip, &ip));
+        ret = ret || native_ret;
+#endif
+#ifndef SHADOW_STACK
+        if (!ret && ip == 0) {
+            // Dispatcher-entered wrappers do not always have a native CALL marker.
+            // A zero return IP is the C++ continuation sentinel in that path.
+            ret = true;
+        }
+#endif
+        esp += i;
+#ifndef SHADOW_STACK
+        if (native_ret && ret_match_depth < native_return_call_depth) {
+            // The callee skipped intermediate frames (`pop reg`/`jmp` then `ret`),
+            // so the popped return belongs to an outer frame. Unwind the extra
+            // native call scopes so execution resumes at the matched frame.
+            throw StackPop(native_return_call_depth - ret_match_depth);
+        }
+#endif
+#ifdef SHADOW_STACK
+        if (!ret) {
+            // ip==0 is the unwind sentinel (dispatcher-entered continuations
+            // and synthesized interrupt frames): not a corrupt return.
+            if (ip != 0) {
+            // Throttle repeats: the same unmarked return can fire every poll
+            // iteration (e.g. "push offset; call/ret" idioms the native marker
+            // cannot see), which otherwise floods stderr forever.
+            static std::unordered_map<dd, size_t> nonnative_return_seen;
+            const dd warn_key = ((dd)cs << 16) | (dd)ip;
+            size_t& warn_count = nonnative_return_seen[warn_key];
+            if (++warn_count <= 3) {
+            fprintf(stderr, "Warning. Return address wasn't created by native CALL (found %x) at cs=%x sp=%x depth=%zu\n",
+                      (unsigned)ip, (unsigned)cs, (unsigned)return_sp, native_return_call_depth);
+            int shown = 0;
+            for (auto it = native_return_marks.rbegin();
+                 it != native_return_marks.rend() && shown < 8; ++it) {
+                const int dsp = (int)it->stack_offset - (int)return_sp;
+                if (it->state == _state
+                    && it->stack_segment == return_ss
+                    && dsp >= -16 && dsp <= 16) {
+                    fprintf(stderr, "  mark sp=%x ip=%x depth=%zu id=%zu\n",
+                              (unsigned)it->stack_offset, (unsigned)it->return_ip,
+                              it->call_depth, it->id);
+                    ++shown;
+                }
+            }
+            fflush(stderr);
+            } else if (warn_count == 4 || (warn_count & 0xFFFF) == 0) {
+                fprintf(stderr, "Warning. Return address wasn't created by native CALL (found %x) at cs=%x repeated %zu times\n",
+                          (unsigned)ip, (unsigned)cs, warn_count);
+                fflush(stderr);
+            }
+            }
+	}
+#endif
+ #if M2CDEBUG > 0
+//log_debug("retn target %x:%x\n", cs,ip);
+        if (debug>2) {
+            log_debug("after ret %x\n", stackPointer);
+            m2c::_indent -= 1;
+            m2c::_str = m2c::log_spaces(m2c::_indent);
+	}
+ #endif
+#ifdef SHADOW_STACK
+        // A ret validated by a native-return mark consumed a live call's
+        // return address (e.g. pop reg / push reg around inline data): it
+        // repays one call frame that an earlier non-ret pop over-counted.
+        if (native_ret && skip > 0) --skip;
+        if (skip>0)
+          {
+            log_debug("RETN_ throwing StackPop(%d) at %x:%x sp=%x ip=%x\n",
+                      skip, cs, return_sp, return_sp, ip);
+throw StackPop(skip);
+}
+        if (ret) {m2c::shadow_stack.decreasedeep();}
+#endif
+	return(ret);
+    }
+
+//#define RETF(i) {m2c::RETF_(i); if (ip=='xy') {m2c::shadow_stack.decreasedeep(); return true;} else  {return __dispatch_call((cs<<16)+eip,0);}}
+#define RETF(i) {if (m2c::RETF_(i, _state)) {return true;} if (m2c::is_dos_terminate_vector(cs, ip)) {return false;} __disp=(cs<<16)+ip;return __dispatch_call(__disp,_state);}
+
+    static bool RETF_(size_t i, struct _STATE *_state) {
+        X86_REGREF
+ #if M2CDEBUG > 0
+        if (debug>2) log_debug("before retf %x\n", stackPointer);
+ #endif
+
+//        m2c::MWORDSIZE averytemporary9 = 0;
+//        log_error("~~RETF before 1pop\n");
+        bool ret(false);
+#ifdef SHADOW_STACK
+        shadow_stack.itisret();
+        ret = shadow_stack.itwascall(_state);
+#endif
+        const dw return_ss = ss;
+        const dw return_sp = sp;
+        POP(ip);
+#ifndef SHADOW_STACK
+        size_t ret_match_depth = native_return_call_depth;
+        bool native_ret = false;
+        if (!ret) {
+            if (m2c::consume_native_return(_state, return_ss, return_sp, ip, &ret_match_depth)) {
+                native_ret = true;
+            } else {
+                native_ret = m2c::take_native_return_value(_state, ip, &ip);
+            }
+        }
+        ret = ret || native_ret;
+#else
+        const bool native_ret = !ret
+            && (m2c::consume_native_return(_state, return_ss, return_sp, ip)
+                || m2c::take_native_return_value(_state, ip, &ip));
+        ret = ret || native_ret;
+#endif
+        (void)return_ss;
+        (void)return_sp;
+#ifdef SHADOW_STACK
+        if (!ret) {
+            // 0:0 is the synthesized interrupt-frame sentinel pushed by
+            // host_run_timer_handler/IVT IRQ delivery: RETF/IRET to it unwinds
+            // to C++ via is_dos_terminate_vector — by design, not a corrupt
+            // return. The cs word has not been popped yet, so peek at ss:sp.
+            dw pending_cs = 1;
+            memcpy(&pending_cs, m2c::stack_raddr_(ss, stackPointer), sizeof(pending_cs));
+            if (!(ip == 0 && pending_cs == 0)) {
+                log_error("Warning. Return address wasn't created by native CALL (found %x)\n", ip);
+//            m2c::stackDump();
+            }
+        }
+//        log_error("~~RETF after 1pop\n");
+//        bool need = shadow_stack.needtoskipcalls();
+        int skip = shadow_stack.getneedtoskipcallndclean();
+        // A ret validated by a native-return mark repays one call frame that
+        // an earlier non-ret pop over-counted.
+        if (native_ret && skip > 0) --skip;
+ #if M2CDEBUG > 0
+log_debug("skip %d\n", skip);
+#endif
+#endif
+//        log_error("~~RETF before 2pop\n");
+        POP(cs);
+//        log_error("~~RETF after 2pop\n");
+        esp += i;
+#ifndef SHADOW_STACK
+        if (native_ret && ret_match_depth < native_return_call_depth) {
+            // Frame-skipping far return: unwind the extra native call scopes.
+            throw StackPop(native_return_call_depth - ret_match_depth);
+        }
+#endif
+ #if M2CDEBUG > 0
+log_debug("retf target %x:%x\n", cs,ip);
+        if (debug>2) {
+            log_debug("after retf %x\n", stackPointer);
+            m2c::_indent -= 1;
+            m2c::_str = m2c::log_spaces(m2c::_indent);
+        }
+ #endif
+#ifdef SHADOW_STACK
+        if (skip>0) 
+          {
+ #if M2CDEBUG > 0
+log_debug("~~will throw exception skip call=%d\n",skip);
+ #endif
+//shadow_stack.print(0);
+throw StackPop(skip);
+          }
+
+        m2c::shadow_stack.decreasedeep();
+#endif
+        return ret;
+    }
+/*
+#ifndef SHADOW_STACK
+#define CALL(label, disp) {if (!m2c::CALL_(label, _state, disp)) {return false;}}
+#else
+*/
+	#define CALL(label, disp) {if (!m2c::CALL_(label, _state, disp, #label)) {return false;}}
+	#define CALLI(label, disp, return_ip) {if (!m2c::CALL_(label, _state, disp, #label, (m2c::MWORDSIZE)(return_ip), true)) {return false;}}
+	#define CALLFI(label, disp, return_ip) {PUSH(cs);CALLI(label, disp, return_ip);}
+	    static bool CALL_(
+	        m2cf *label,
+	        struct _STATE *_state,
+	        _offsets _i = 0,
+	        const char* label_name = "",
+	        m2c::MWORDSIZE explicit_return_addr = 0,
+	        bool has_explicit_return_addr = false
+	    ) {
+	 X86_REGREF
+	        from_callf = true;
+#ifdef SHADOW_STACK
+	        shadow_stack.itiscall();
+#endif
+//        m2c::MWORDSIZE averytemporary8 = 'xy';
+	        m2c::MWORDSIZE return_addr = has_explicit_return_addr ? explicit_return_addr : ip;
+        /* Without an explicit return_ip the pushed word is the normalized
+         * eip, which collapses to a few identical values across every live
+         * frame.  Value-based mark matching then aliases frames and
+         * carried-value pops steal the wrong frame's mark.  Tag implicit
+         * pushes with a runtime-unique value in the 0x8000+ band so a pop
+         * can only ever match the mark of the call that pushed it. */
+        if (!has_explicit_return_addr) {
+            return_addr = 0x8000 | ((m2c::native_return_next_id + 1) & 0x7fff);
+        }
+#if DOSBOX_CUSTOM
+        if (compare_instructions) eip+=inst_size(cs,eip);
+#endif
+        size_t data_offset_ds_mark = m2c::mark_data_offset_ds();
+        dw oldsp=sp;
+        m2c::NativeCallDepthScope native_call_depth_scope;
+        m2c::suppress_native_return_push_transfer = true;
+        PUSH(return_addr);
+        m2c::suppress_native_return_push_transfer = false;
+        size_t native_return_id = m2c::mark_native_return(_state, ss, sp, return_addr);
+
+ #if M2CDEBUG > 0
+        if (debug>2) {
+            log_debug("after call %x\n", stackPointer);
+// 	  if (_state) {++_state->_indent;_state->_str=m2c::log_spaces(_state->_indent);};
+            m2c::_indent += 1;
+            m2c::_str = m2c::log_spaces(m2c::_indent);
+        }
+ #endif
+	        _state->call_source = 2;
+	        bool caught_stack_pop = false;
+	        try{
+		  if (!label(_i, _state)) {
+		      if (m2c::executionFinished) {
+			          m2c::discard_native_return(native_return_id);
+			          m2c::restore_data_offset_ds(ds, data_offset_ds_mark);
+		          return false;
+		      }
+	              bool ret = sp == oldsp || sp == oldsp + 2;
+		              m2c::discard_native_return(native_return_id);
+		              m2c::restore_data_offset_ds(ds, data_offset_ds_mark);
+	              return ret;
+	          }
+ #if M2CDEBUG > 0
+            if (sp!=oldsp && sp!=oldsp+2) log_debug("~~old SP %x != SP %x\n",oldsp, sp);
+ #endif
+#if M2CDEBUG > 0
+        if (sp != oldsp && sp != (dw)(oldsp + 2)) {
+            // Words the callee left unpopped (sp < oldsp) or over-popped
+            // (sp > oldsp+2). Note sp < oldsp is also produced legitimately by
+            // XTHL-style stack juggling that leaves a result word for the
+            // caller, so this is informational only.
+            log_debug("CALL_ %s returned sp=%x oldsp=%x ip=%x ret=%x\n",
+                      label_name, sp, oldsp, ip, return_addr);
+            fprintf(stderr, "[stack] ss=%04x residue sp..oldsp+2 after call to %s:\n",
+                    (unsigned)ss, label_name);
+            for (dw a = sp; (int)a <= (int)(oldsp + 2); a += 2) {
+                dw v = 0; memcpy(&v, m2c::raddr_(ss, a), 2);
+                fprintf(stderr, "  ss:%04x = %04x%s\n", (unsigned)a, (unsigned)v,
+                        a == sp ? " <== sp" : (a == (dw)(oldsp - 2) ? " <== pushed ret slot" : ""));
+            }
+        }
+#endif
+ while(std::strcmp(label_name, "__dispatch_call") != 0 && sp < oldsp && return_addr != ip&& ((dw)(ip - return_addr)) > 5 ) {
+  const m2c::MWORDSIZE trampoline_ip = ip;
+  bool external_trampoline_handled = false;
+  if (!m2c::dispatch_external_code(trampoline_ip, _state, &external_trampoline_handled)) {
+	      if (std::strcmp(label_name, "mainproc") != 0) {
+	          // Direct wrappers can cross into aggregate-dispatched code and then
+	          // return to a caller-local continuation that the C++ caller owns.
+	          sp = oldsp;
+		          m2c::discard_native_return(native_return_id);
+		          m2c::restore_data_offset_ds(ds, data_offset_ds_mark);
+	          return true;
+	      }
+		      m2c::discard_native_return(native_return_id);
+		      m2c::restore_data_offset_ds(ds, data_offset_ds_mark);
+	      return false;
+	  }
+  if (external_trampoline_handled) {
+      continue;
+  }
+	  if (std::strcmp(label_name, "mainproc") != 0) {
+	      // A direct wrapper call may leave a caller-local continuation on the
+	      // emulated stack. The C++ caller already resumes at the next statement.
+	      sp = oldsp;
+		      m2c::discard_native_return(native_return_id);
+		      m2c::restore_data_offset_ds(ds, data_offset_ds_mark);
+	      return true;
+	  }
+  if (!label(trampoline_ip, _state)) {
+	      log_error("~~Return address not equal to call addr: call from=%x poped ip=%x\n",return_addr,ip);
+	      bool ret = sp == oldsp || sp == oldsp + 2;
+		      m2c::discard_native_return(native_return_id);
+		      m2c::restore_data_offset_ds(ds, data_offset_ds_mark);
+	      return ret;
+	  }
+ }
+        }
+        catch(const StackPop& ex)
+        {
+            log_debug("CALL_ %s caught StackPop(%d) oldsp=%x sp=%x\n",
+                      label_name, ex.deep, oldsp, sp);
+#ifdef SHADOW_STACK
+shadow_stack.decreasedeep();
+             if (ex.deep > 0)
+             {
+ #if M2CDEBUG > 0
+  log_debug("~~Rethrowing upper\n");
+#endif
+		m2c::discard_native_return(native_return_id);
+		m2c::restore_data_offset_ds(ds, data_offset_ds_mark);
+		throw StackPop(ex.deep-1);
+             }
+             else
+             {
+ #if M2CDEBUG > 0
+  log_debug("~~Finished with skipping calls\n");
+#endif
+             caught_stack_pop = true;
+             }
+#else
+             if (ex.deep > 0)
+             {
+		// This native call frame is being skipped by a frame-skipping
+		// return: drop its return mark/carried value and keep unwinding.
+		m2c::discard_native_return(native_return_id);
+		m2c::restore_data_offset_ds(ds, data_offset_ds_mark);
+		throw StackPop(ex.deep-1);
+             }
+             else
+             {
+             caught_stack_pop = true;
+             }
+#endif
+	        }
+        // The pushed return word sits at oldsp-2: it is still live while
+        // sp <= oldsp-2 (a StackPop unwind or a callee that left residue can
+        // reach this point without consuming it). Dropping the mark then
+        // orphans the word and the next POP/RET of it re-dispatches into the
+        // caller's own proc (e.g. GW-BASIC LIST re-entering `list`). Only
+        // discard the bookkeeping once the word was actually consumed.
+        const bool native_return_consumed = (dw)sp >= (dw)oldsp;
+	       if (caught_stack_pop && (dw)sp < (dw)oldsp) {
+	           // A StackPop unwind skipped frames: words it left below the
+	           // pushed return slot are dead residue, so restore sp to keep
+	           // the caller's own pops from consuming them. A callee that
+	           // returns *normally* with sp<oldsp -- e.g. GW-BASIC's
+	           // XTHL-style pop/push juggling that deliberately leaves a
+	           // result word on the stack for the caller -- keeps its sp:
+	           // the caller pops that word itself.
+	           sp = oldsp;
+	       }
+		       if (native_return_consumed || caught_stack_pop) {
+		           m2c::discard_native_return(native_return_id);
+		       }
+		       m2c::restore_data_offset_ds(ds, data_offset_ds_mark);
+	       return true;
+	    }
+
+
+#endif
+
+#define RET RETN(0)
+/*
+#define IRET {m2c::MWORDSIZE averytemporary11=0; POP(averytemporary11); eip=averytemporary11;\
+	POP(cs); \
+        POPF; \
+	return;}
+*/
+#if DOSBOX_CUSTOM
+#define IRET {m2c::fix_segs();CPU_IRET(false,0);m2c::defer_irqs();return true;}
+#else
+#define IRET RETF(0)
+#endif
+//#define RETF {dw averytemporary=0; POP(averytemporary); RET;}
+#define BSWAP(op1)														\
+	op1 = (op1>>24)|((op1>>8)&0xFF00)|((op1<<8)&0xFF0000)|((op1<<24)&0xFF000000);
+
+#define RDTSC {dq averytemporary = realElapsedTime(); eax=averytemporary&0xffffffff; edx=(averytemporary>32)&0xffffffff;}
+
+
+#if M2CDEBUG>0
+// clean format
+//    #define R(a) {log_debug("%s%x:%d:%s eax: %x ebx: %x ecx: %x edx: %x ebp: %x ds: %x esi: %x es: %x edi: %x fs: %x esp: %x\n",_state->_str,cs/*pthread_self()*/,__LINE__,#a, \
+//eax, ebx, ecx, edx, ebp, ds, esi, es, edi, fs, esp);} \
+//	a 
+
+// dosbox logcpu format
+    #define R(a) {m2c::log_regs_m2c(__FILE__,__LINE__,#a,_state);a;}
+    #define J(a) {m2c::log_regs_m2c(__FILE__,__LINE__,#a,_state);a;}
+    #define T(a) {m2c::log_regs_m2c(__FILE__,__LINE__,#a,_state);a;}
+    #define X(a) {m2c::log_regs_m2c(__FILE__,__LINE__,#a,_state);a;}
+    #define S(a) {m2c::log_regs_m2c(__FILE__,__LINE__,#a,_state);a;}
+
+#else
+    #define R(a) {a;}
+    #define J(a) R(a)
+    #define T(a) R(a)
+    #define X(a) R(a)
+    #define S(a) R(a)
+#endif
+
+
+bool is_little_endian();
+
+#if defined(_MSC_VER)
+ #define SWAP16 _byteswap_ushort
+ #define SWAP32 _byteswap_ulong
+#else
+ #define SWAP16(x) ((uint16_t)(                  \
+			   (((uint16_t)(x) & 0x00ff) << 8)      | \
+			   (((uint16_t)(x) & 0xff00) >> 8)        \
+			   ))
+ #define SWAP32(x) ((uint32_t)(           \
+			   (((uint32_t)(x) & 0x000000ff) << 24) | \
+			   (((uint32_t)(x) & 0x0000ff00) <<  8) | \
+			   (((uint32_t)(x) & 0x00ff0000) >>  8) | \
+			   (((uint32_t)(x) & 0xff000000) >> 24)   \
+			   ))
+#endif
+
+// ---------unimplemented
+#define UNIMPLEMENTED m2c::log_debug("unimplemented\n");
+/*
+#define CMPXCHG8B(a) UNIMPLEMENTED // not in dosbox
+#define CMOVA(a,b) UNIMPLEMENTED // not in dosbox
+#define CMOVB(a,b) UNIMPLEMENTED
+#define CMOVBE(a,b) UNIMPLEMENTED
+#define CMOVG(a,b) UNIMPLEMENTED
+#define CMOVGE(a,b) UNIMPLEMENTED
+#define CMOVL(a,b) UNIMPLEMENTED
+#define CMOVLE(a,b) UNIMPLEMENTED
+#define CMOVNB(a,b) UNIMPLEMENTED
+#define CMOVNO(a,b) UNIMPLEMENTED
+#define CMOVNP(a,b) UNIMPLEMENTED
+#define CMOVNS(a,b) UNIMPLEMENTED
+#define CMOVNZ(a,b) UNIMPLEMENTED
+#define CMOVO(a,b) UNIMPLEMENTED
+#define CMOVP(a,b) UNIMPLEMENTED
+#define CMOVS(a,b) UNIMPLEMENTED
+#define CMOVZ(a,b) UNIMPLEMENTED
+
+#define JNO(x) UNIMPLEMENTED
+#ifndef JNP
+#define JNP(x) UNIMPLEMENTED
+#endif
+#define JO(x) UNIMPLEMENTED
+#ifndef JP
+#define JP(x) UNIMPLEMENTED
+#endif
+#ifndef JPE
+#define JPE(x) JP(x)
+#endif
+#ifndef JPO
+#define JPO(x) JNP(x)
+#endif
+
+
+#define LOOPW(x) UNIMPLEMENTED
+#define LOOPWE(x) UNIMPLEMENTED
+#define LOOPWNE(x) UNIMPLEMENTED
+*/
+
+#define BSR(dest, src) m2c::BSR_(dest, src, m2cflags)
+template <class D, class S>
+    MYINLINE void BSR_(D &dest, const S &src, m2c::eflags &m2cflags) {
+        if (src == 0) {
+            AFFECT_ZF(1);
+        } else {
+            AFFECT_ZF(0);
+            D bit = sizeof(S) * 8 - 1;
+            while (bit > 0 && (src & (static_cast<S>(1) << bit)) == 0) {
+                bit--;
+            }
+            dest = bit;
+        }
+}
+
+
+#define BSF(dest, src) m2c::BSF_(dest, src, m2cflags)
+template <class D, class S>
+    MYINLINE void BSF_(D &dest, const S &src, m2c::eflags &m2cflags) {
+        if (src == 0) {
+            AFFECT_ZF(1);
+        } else {
+            AFFECT_ZF(0);
+            D temp = 0;
+            while (temp < (sizeof(S)*8) && (src & (static_cast<S>(1) << temp)) == 0) {
+                temp++;
+            }
+            dest = temp;
+        }
+}
+
+#define CDQ { edx = (eax & 0x80000000) ? 0xffffffff : 0; }
+
+
+#define ORG(x) 
+#define XLATB XLAT
+#define LOCK // TODO check
+
+/*
+#ifndef __BORLANDC__
+enum  _offsets : int;
+#else
+enum  _offsets;
+#endif
+*/
+
+#ifdef DOSBOX_CUSTOM
+#define _INT(num) {m2c::fix_segs();CALLBACK_RunRealInt(num);}
+
+#define OUT(port, value) m2c::OUT_(port,value)
+
+    static void OUT_(dw port, db value) { IO_WriteB(port, value); }
+
+    static void OUT_(dw port, dw value) { IO_WriteW(port, value); }
+
+#define IN(res, port) m2c::IN_(res, port)
+
+    static void IN_(db &res, dw port) { res = IO_ReadB(port); }
+
+    static void IN_(dw &res, dw port) { res = IO_ReadW(port); }
+
+#else
+
+#define _INT(a) {m2c::asm2C_INT(_state,a);}
+
+void asm2C_OUT(int16_t address, int data,_STATE* _state);
+
+// Word-sized OUT: real hardware writes AL to port DX and AH to port DX+1,
+// which is how programs update VGA index/data register pairs (0x3c4/0x3c5,
+// 0x3ce/0x3cf, 0x3d4/0x3d5) with a single `out dx,ax`. The width must come
+// from the operand type — guessing from the value breaks when AH is 0
+// (e.g. Tornado selecting CRT start page 0 writes ax=0x000c).
+static inline void asm2C_OUT(int16_t address, dw data,_STATE* _state) {
+    asm2C_OUT(address, static_cast<int>(data & 0xff), _state);
+    asm2C_OUT(static_cast<int16_t>(address + 1), static_cast<int>((data >> 8) & 0xff), _state);
+}
+
+#define OUT(a,b) m2c::asm2C_OUT(a,b,_state)
+int8_t asm2C_IN(int16_t data,_STATE* _state);
+uint16_t asm2C_INW(uint16_t data,_STATE* _state);
+#define IN(a,b) a = m2c::asm2C_IN(b,_state);
+#endif
+
+/* IDA/Ghidra emit a handful of instructions the runtime does not model.
+   Generated code only reaches them inside misdecoded inline-data regions
+   (unreachable) or as genuine but inert ops — keep them compilable. */
+#define ENTER(sz, lvl) { PUSH(bp); bp = sp; SUB(sp, sz); }
+#define OUTS(port, val) { m2c::asm2C_OUT(port, (dw)(val), _state); si += (GET_DF()==0)?2:-2; }
+#define BOUND(reg, mem) {}
+#define ARPL(mem, reg)  {}
+#define TEXT(enc, lit)  {}
+#define FDIVP(a, b)     {}
+
+#define XLATP(x) {al = *(x + al);}
+#if DOSBOX_CUSTOM
+    void mycopy(db *, db *, size_t, const char *);
+    void cmpHexDump(void *addr1, void *addr2, int len);
+#endif
+
+void hexDump (void *addr, int len);
+void asm2C_INT(struct _STATE* state, int a);
+void asm2C_init();
+void asm2C_printOffsets(unsigned int offset);
+double realElapsedTime(void);
+
+void realtocurs();
+dw getscan();
+
+//extern chtype vga_to_curses[256];
+
+#ifdef __cplusplus
+//}
+#endif
+
+// ---------
+
+extern db(& stack)[STACK_SIZE];
+extern db(& heap)[HEAP_SIZE];
+extern  m2cf* _ENTRY_POINT_;
+void Initializer() __attribute__((weak));
+
+#if DOSBOX_CUSTOM
+    extern bool Jstart(const char *file, int line, const char *instr);
+
+    extern void Jend();
+
+    extern bool Sstart(const char *file, int line, const char *instr);
+    extern bool Tstart(const char *file, int line, const char *instr);
+
+    extern void Tend(const char *file, int line, const char *instr);
+
+    extern bool Xstart(const char *file, int line, const char *instr);
+
+    extern void Xend(const char *file, int line, const char *instr);
+
+#endif
+    extern void interpret_unknown_callf(dw cs, dd eip, db source=0);
+
+//extern void log_regs(int line, const char * instr, struct _STATE* _state);
+
+    static bool oldZF = false;
+    static bool repForMov = false;
+
+#define TODB(X) (*(db*)(&(X)))
+#define TODW(X) (*(dw*)(&(X)))
+#define TODD(X) (*(dd*)(&(X)))
+#define TODQ(X) (*(dq*)(&(X)))
+   extern bool defered_irqs;
+
+} // namespace m2c
+
+#if DOSBOX_CUSTOM
+extern void print_instruction(Bit16u newcs, Bit32u newip);
+extern void print_instruction_direct(Bit16u newcs, Bit32u newip);
+#endif
+
+
+/* ==========================================================================
+   M2CDEBUG == -1  --  IDA / Hex-Rays decompilation mode
+   --------------------------------------------------------------------------
+   The runnable emulator implements every ALU op as an m2c::* helper call that
+   additionally tracks the full flag set (including PF and AF).  For static
+   decompilation that produces noisy pseudocode, so in this mode each op is
+   re-emitted as a plain inline C expression acting directly on the register
+   globals.  Only the flags that conditional branches actually read are kept
+   (ZF, SF, CF, OF); PF and AF are dropped -- they are almost never consumed.
+   CALL/RETN/RETF/IRET collapse to a direct call / plain return so the decomp
+   shows real control flow instead of the shadow-stack + dispatch machinery.
+   ========================================================================== */
+#if M2CDEBUG == -1
+
+/* operand geometry helpers: width in bits, value mask, sign mask */
+#define M2CW_(a)   (sizeof(a) * 8)
+#define M2CM_(a)   ((((unsigned long long)1) << M2CW_(a)) - 1)
+#define M2CS_(a)   (((unsigned long long)1) << (M2CW_(a) - 1))
+#define M2CSZ_(a)  { ZF = ((a) == 0); SF = (((a) >> (M2CW_(a)-1)) & 1); }
+
+#undef ADD
+#define ADD(a, b) { \
+    auto& _a = (a); unsigned long long _b = (b); \
+    unsigned long long _r = (unsigned long long)_a + _b; \
+    CF = ((_r >> M2CW_(_a)) & 1); \
+    OF = ((((~(_a ^ _b)) & (_a ^ _r)) >> (M2CW_(_a)-1)) & 1); \
+    _a = _r; M2CSZ_(_a); }
+
+#undef ADC
+#define ADC(a, b) { \
+    auto& _a = (a); unsigned long long _b = (b); \
+    unsigned long long _r = (unsigned long long)_a + _b + (CF ? 1 : 0); \
+    CF = ((_r >> M2CW_(_a)) & 1); \
+    OF = ((((~(_a ^ _b)) & (_a ^ _r)) >> (M2CW_(_a)-1)) & 1); \
+    _a = _r; M2CSZ_(_a); }
+
+#undef SUB
+#define SUB(a, b) { \
+    auto& _a = (a); unsigned long long _b = (b); \
+    unsigned long long _r = (unsigned long long)_a - _b; \
+    CF = ((unsigned long long)_a < _b); \
+    OF = ((((_a ^ _b) & (_a ^ _r)) >> (M2CW_(_a)-1)) & 1); \
+    _a = _r; M2CSZ_(_a); }
+
+#undef SBB
+#define SBB(a, b) { \
+    auto& _a = (a); unsigned long long _b = (unsigned long long)(b) + (CF ? 1 : 0); \
+    unsigned long long _r = (unsigned long long)_a - _b; \
+    CF = ((unsigned long long)_a < _b); \
+    OF = ((((_a ^ _b) & (_a ^ _r)) >> (M2CW_(_a)-1)) & 1); \
+    _a = _r; M2CSZ_(_a); }
+
+#undef CMP
+#define CMP(a, b) { \
+    unsigned long long _a = (a), _b = (b); \
+    unsigned long long _r = (_a - _b) & M2CM_(a); \
+    CF = (_a < _b); \
+    OF = ((((_a ^ _b) & (_a ^ _r)) >> (M2CW_(a)-1)) & 1); \
+    ZF = (_r == 0); SF = ((_r >> (M2CW_(a)-1)) & 1); }
+
+#undef INC
+#define INC(a) { \
+    auto& _a = (a); _a = (unsigned long long)_a + 1; \
+    OF = (_a == M2CS_(_a)); M2CSZ_(_a); }
+
+#undef DEC
+#define DEC(a) { \
+    auto& _a = (a); _a = (unsigned long long)_a - 1; \
+    OF = (_a == M2CS_(_a)-1); M2CSZ_(_a); }
+
+#undef NEG
+#define NEG(a) { \
+    auto& _a = (a); unsigned long long _v = _a; \
+    CF = (_v != 0); _a = 0 - _v; OF = (_a == M2CS_(_a)); M2CSZ_(_a); }
+
+#undef AND
+#define AND(a, b) { auto& _a = (a); _a &= (b); CF = 0; OF = 0; M2CSZ_(_a); }
+#undef OR
+#define OR(a, b)  { auto& _a = (a); _a |= (b); CF = 0; OF = 0; M2CSZ_(_a); }
+#undef XOR
+#define XOR(a, b) { auto& _a = (a); _a ^= (b); CF = 0; OF = 0; M2CSZ_(_a); }
+
+#undef TEST
+#define TEST(a, b) { \
+    unsigned long long _r = (unsigned long long)(a) & (b); \
+    CF = 0; OF = 0; ZF = (_r == 0); SF = ((_r >> (M2CW_(a)-1)) & 1); }
+
+#undef SHL
+#define SHL(a, b) { auto& _a = (a); unsigned _n = (b) & 31; if (_n) { \
+    unsigned _w = M2CW_(_a); unsigned long long _v = _a; \
+    if (_n > _w) _n = _w; \
+    CF = ((_v >> (_w - _n)) & 1); \
+    _a = _v << _n; M2CSZ_(_a); } }
+
+#undef SHR
+#define SHR(a, b) { auto& _a = (a); unsigned _n = (b) & 31; if (_n) { \
+    unsigned _w = M2CW_(_a); unsigned long long _v = _a; \
+    if (_n > _w) _n = _w; \
+    CF = ((_v >> (_n - 1)) & 1); \
+    _a = _v >> _n; M2CSZ_(_a); } }
+
+#undef SAR
+#define SAR(a, b) { auto& _a = (a); unsigned _n = (b) & 31; if (_n) { \
+    unsigned _w = M2CW_(_a); if (_n >= _w) _n = _w - 1; \
+    CF = (((unsigned long long)_a >> (_n - 1)) & 1); \
+    _a = (unsigned long long)(((long long)_a << (64 - _w)) >> (64 - _w + _n)); \
+    M2CSZ_(_a); } }
+
+#undef XCHG
+#define XCHG(a, b) { auto _t = (a); a = (b); b = _t; }
+
+/* push / pop become plain word-sized accesses into the emulated stack        */
+#undef PUSH
+#define PUSH(a) { sp -= 2; *(dw*)raddr(ss, sp) = (a); }
+#undef POP
+#define POP(a)  { a = *(dw*)raddr(ss, sp); sp += 2; }
+
+/* calls / returns collapse to direct C call & return                        */
+#undef CALL
+#define CALL(label, disp)         { label((m2c::_offsets)(disp), _state); }
+#undef CALLF
+#define CALLF(label, disp)        { label((m2c::_offsets)(disp), _state); }
+#undef CALLI
+#define CALLI(label, disp, rip)   { label((m2c::_offsets)(disp), _state); }
+#undef CALLFI
+#define CALLFI(label, disp, rip)  { label((m2c::_offsets)(disp), _state); }
+
+#undef RETN
+#define RETN(i)   { sp += (i); return true; }
+#undef RETF
+#define RETF(i)   { sp += (i); return true; }
+#undef IRET
+#define IRET      { return true; }
+
+#endif /* M2CDEBUG == -1 decomp overrides */
+
+
+#endif
